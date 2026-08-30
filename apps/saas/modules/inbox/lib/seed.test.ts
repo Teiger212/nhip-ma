@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { createInboxStore } from "@repo/database/inbox";
+import { createInboxStore, sqliteFilePath, sqlitePathFromEnv } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
 import { oneShot } from "./draft";
@@ -63,4 +63,22 @@ test("seed writes invented threads once", async () => {
 	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(
 		first.reduce((n, conversation) => n + conversation.messages.length, 0),
 	);
+});
+
+test("sqlite file URLs resolve under the repo root", () => {
+	const prev = process.env.DATABASE_URL;
+	try {
+		process.env.DATABASE_URL = "file:./data/nhip.db";
+		const resolved = sqlitePathFromEnv();
+		expect(path.basename(path.dirname(resolved))).toBe("data");
+		expect(path.basename(resolved)).toBe("nhip.db");
+		expect(path.isAbsolute(resolved)).toBe(true);
+		expect(sqliteFilePath("/tmp/nhip-absolute.db")).toBe("/tmp/nhip-absolute.db");
+	} finally {
+		if (prev === undefined) {
+			delete process.env.DATABASE_URL;
+		} else {
+			process.env.DATABASE_URL = prev;
+		}
+	}
 });

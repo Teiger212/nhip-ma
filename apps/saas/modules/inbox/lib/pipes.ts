@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import type { Conversation, InboundEvent, Pipe, SendResult, ShopEnv } from "./types";
+import type { Conversation, InboundEvent, Pipe, SendResult, InboxEnv } from "./types";
 
 export const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -247,7 +247,7 @@ export async function transmit(input: {
 	conversation: Conversation;
 	text: string;
 	mode: string;
-	env: ShopEnv;
+	env: InboxEnv;
 }): Promise<SendResult> {
 	const pipe: Pipe = input.conversation.pipe;
 	const to = input.conversation.guestId;

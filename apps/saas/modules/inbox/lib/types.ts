@@ -15,5 +15,5 @@ export type {
 	RentOrBuy,
 	SendMode,
 	SendResult,
-	ShopEnv,
+	InboxEnv,
 } from "@repo/database/inbox";

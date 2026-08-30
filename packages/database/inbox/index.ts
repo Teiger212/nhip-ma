@@ -15,7 +15,7 @@ export type {
 	RentOrBuy,
 	SendMode,
 	SendResult,
-	ShopEnv,
+	InboxEnv,
 } from "./types";
 export { conversationId, createInboxStore, createStore, nowIso } from "./store";
 export { DEFAULT_SQLITE_PATH, sqliteFilePath, sqlitePathFromEnv } from "./sqlite-path";

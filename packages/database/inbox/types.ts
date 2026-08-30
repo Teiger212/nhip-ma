@@ -76,7 +76,7 @@ export type InboundEvent = {
 	phoneNumberId?: string | null;
 };
 
-export type ShopEnv = {
+export type InboxEnv = {
 	DATABASE_URL?: string;
 	SEND_MODE?: string;
 	WHATSAPP_VERIFY_TOKEN?: string;

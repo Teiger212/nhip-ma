@@ -1,11 +1,11 @@
 import { createInboxStore, sqlitePathFromEnv, type InboxStore } from "@repo/database/inbox";
 
-import type { SendMode, ShopEnv } from "./types";
+import type { SendMode, InboxEnv } from "./types";
 
 export type Runtime = {
 	store: InboxStore;
 	sendMode: SendMode;
-	env: ShopEnv;
+	env: InboxEnv;
 };
 
 type GlobalRuntime = typeof globalThis & { __nhipRuntime?: Runtime };
