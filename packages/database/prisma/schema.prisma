@@ -244,3 +244,117 @@ model UserNotificationPreference {
   @@unique([userId, type, target])
   @@map("user_notification_preference")
 }
+
+// Nhịp inbox entities only. Do not store inbox rows on User / Org / Plan / Subscription.
+
+enum Pipe {
+  zalo
+  whatsapp
+}
+
+enum MessageSource {
+  guest
+  oa_echo
+  nhip
+}
+
+enum MessageDirection {
+  in
+  out
+}
+
+enum RentOrBuy {
+  rent
+  buy
+}
+
+enum GuestLanguage {
+  en
+  vi
+  ja
+  ko
+  ru
+}
+
+enum CribLanguage {
+  en
+  vi
+}
+
+model Conversation {
+  id                 String          @id
+  pipe               Pipe
+  guestId            String
+  guestName          String?
+  language           GuestLanguage?
+  lastGuestInboundAt DateTime?
+  sentAt             DateTime?
+  updatedAt          DateTime
+  messages           Message[]
+  qualification      Qualification?
+  draft              Draft?
+  paperwork          Paperwork?
+  approvals          Approval[]
+  sends              Send[]
+
+  @@unique([pipe, guestId])
+}
+
+model Message {
+  id              String           @id
+  conversationId  String
+  conversation    Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction       MessageDirection
+  source          MessageSource
+  text            String
+  at              DateTime
+  vendorMessageId String?
+  mock            Boolean          @default(false)
+}
+
+model Qualification {
+  conversationId  String       @id
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  areaOfInterest  String?
+  nationality     String?
+  inVietnamNow    Boolean?
+  rentOrBuy       RentOrBuy?
+  timeframe       String?
+  budgetBand      String?
+  bedsOrHousehold String?
+}
+
+model Draft {
+  conversationId String        @id
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reply          String
+  crib           String
+  cribLanguage   CribLanguage
+}
+
+model Paperwork {
+  conversationId String       @id
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  mentioned      Boolean
+  flag           String?
+}
+
+model Approval {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reply          String
+  at             DateTime
+}
+
+model Send {
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  mock            Boolean
+  pipe            Pipe
+  to              String
+  text            String?
+  vendorMessageId String?
+  at              DateTime
+}

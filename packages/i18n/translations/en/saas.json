@@ -112,7 +112,8 @@
 			"navigationTitle": "Menu",
 			"openNavigation": "Open navigation",
 			"organizationSettings": "Organization settings",
-			"start": "Start"
+			"start": "Start",
+			"inbox": "Inbox"
 		},
 		"userMenu": {
 			"accountSettings": "Account settings",
@@ -687,5 +688,37 @@
 		"title": "Processing your purchase",
 		"description": "Please wait while we confirm your payment.",
 		"loading": "Confirming your purchase, please wait..."
+	},
+	"inbox": {
+		"brand": "Nhịp",
+		"navItem": "Inbox",
+		"footer": "Guests see the agency number. Never auto-send.",
+		"searchPlaceholder": "Search name or last message",
+		"searchAria": "Search threads",
+		"empty": "No conversations.",
+		"noMatches": "No matching threads.",
+		"noneSelected": "No conversation selected.",
+		"sent": "sent",
+		"needsApprove": "needs approve",
+		"mock": "mock",
+		"forYou": "For you",
+		"forYouHint": "Not sent to the guest.",
+		"reply": "Reply",
+		"approveAndSend": "Approve and send",
+		"notSent": "not sent",
+		"alreadySent": "already sent {at}",
+		"sending": "sending…",
+		"fields": {
+			"language": "Language",
+			"area": "Area",
+			"nationality": "Nationality",
+			"inVietnamNow": "In Việt Nam now",
+			"rentOrBuy": "Rent or buy",
+			"moveIn": "Move-in",
+			"budget": "Budget",
+			"beds": "Beds / household",
+			"paperwork": "Paperwork",
+			"noneMentioned": "none mentioned"
+		}
 	}
 }

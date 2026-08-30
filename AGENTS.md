@@ -15,16 +15,28 @@ Explicit user instructions win; if a documented command fails, report it rather 
 
 ### Environment
 
-Copy `.env.local.example` to `.env.local`. For local boot, set `DATABASE_URL` to
-`postgresql://postgres:postgres@localhost:5432/supastarter`, set `BETTER_AUTH_SECRET`,
-and keep the local app URLs from the example. OAuth, mail, payments, storage, and AI
-variables are only needed when using those integrations.
+Copy `.env.local.example` to `.env.local`. For the **inbox walkthrough**, keep
+`DATABASE_URL="file:./data/nhip.db"` and `NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`.
+Set `BETTER_AUTH_SECRET`. You do not need hosted Postgres for this walk.
 
-Start the local services with:
+For later kit Postgres boot, set `DATABASE_URL` to
+`postgresql://postgres:postgres@localhost:5432/supastarter` and start:
 
 ```bash
 docker compose up -d postgres
 ```
+
+```bash
+pnpm install
+pnpm seed
+pnpm --filter saas dev
+```
+
+Open http://localhost:3010 — the inbox. `pnpm seed` writes four invented threads
+(Minji, Yuki, Alexei, Thảo). Nothing is a real guest.
+
+`pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
+on port 3010. Do not build or ship marketing or admin this walk.
 
 The `postgres` service is PostgreSQL 16 on port 5432. The compose file also defines
 MinIO (`minio` and `minio-setup`) for S3-compatible storage when storage features are used.
@@ -49,6 +61,7 @@ pnpm dev
 | `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting |
 | `pnpm type-check`                   | Run workspace type checks      |
 | `pnpm test`                         | Run Vitest workspace tests     |
+| `pnpm seed`                         | Seed invented inbox threads    |
 | `pnpm clean`                        | Clear Turbo outputs            |
 
 Required gates:

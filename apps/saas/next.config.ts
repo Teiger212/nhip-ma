@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
 		useTypeScriptCli: true,
 	},
 	transpilePackages: ["@repo/api", "@repo/auth", "@repo/database", "@repo/ui"],
+	serverExternalPackages: ["better-sqlite3"],
 	images: {
 		remotePatterns: [
 			{
