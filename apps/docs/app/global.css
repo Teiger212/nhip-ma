@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/shadcn.css";
+@import "fumadocs-ui/css/preset.css";
+@import "@repo/tailwind-config/theme.css";
+
+@source "../../../packages/ui/components";
+
+@theme inline {
+	--font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+	--font-heading: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+	:root {
+		--sidebar-border: var(--border);
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	.prose :where(h1, h2, h3, h4, h5, h6) {
+		font-family: var(--font-heading);
+	}
+}

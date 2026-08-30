@@ -1,0 +1,331 @@
+{
+	"blog": {
+		"badge": "Blog",
+		"description": "Wie wir über Workspaces, Abrechnung und die Details nachdenken, die auftauchen, sobald das Team eingeladen ist.",
+		"title": "Notizen aus dem Produkt",
+		"back": "Zurück zum Journal",
+		"allTags": "Alle",
+		"filterLabel": "Nach Tag filtern",
+		"emptyFilter": "Keine Notizen mit diesem Tag."
+	},
+	"changelog": {
+		"badge": "Updates",
+		"description": "Neue Rollen, schnelleres Wechseln und die Abrechnungsdetails, die wir in dieser Saison ausgeliefert haben.",
+		"title": "Was gerade rausgekommen ist",
+		"latest": "Neu",
+		"kinds": {
+			"added": "Neu",
+			"improved": "Verbessert",
+			"fixed": "Behoben"
+		},
+		"entries": {
+			"clientPortals": {
+				"date": "2026-08-06",
+				"version": "v1.4",
+				"title": "Ein Zuhause für jeden Kunden",
+				"summary": "Kundinnen und Kunden können in ihren eigenen Workspace, den Stand sehen und eine Notiz hinterlassen — ohne sich den Login eines Teammitglieds zu leihen.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Gastzugang mit einer Nur-Lesen-Rolle, damit Kundinnen den Fortschritt sehen, ohne einen vollen Sitz zu brauchen."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Eine kundenfertige Übersicht auf der Startseite mit der Arbeit, die diese Woche zählt."
+					},
+					"item3": {
+						"kind": "improved",
+						"text": "Beim Wechsel der Organisation bleibt der Platz erhalten — auch bei einer langen Kundenliste."
+					}
+				}
+			},
+			"planClarity": {
+				"date": "2026-07-22",
+				"version": "v1.3",
+				"title": "Pläne, die man in einem Gespräch erklärt",
+				"summary": "Checkout und Preistabelle beginnen mit dem Betrag, dann kommen die Details — niemand muss auf dem Sales-Call ein Spreadsheet entschlüsseln.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Die Preistabelle führt mit dem Preis, danach die enthaltenen Funktionen."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Jahrespläne zeigen die Ersparnis im Checkout, nicht erst auf der Rechnung."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Der Abo-Status konnte direkt nach dem Checkout hinterherhinken. Er aktualisiert sich jetzt sofort."
+					}
+				}
+			},
+			"quietWeek": {
+				"date": "2026-07-08",
+				"version": "",
+				"title": "Eine ruhigere Woche voller Feinschliff",
+				"summary": "Kein großes Feature — nur die Leerzustände, E-Mails und Einladungs-Kanten, die das Produkt fertig wirken lassen.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Leere Mitglieder- und Einladungsseiten schlagen jetzt einen nächsten Schritt vor, statt nur zurückzustarren."
+					},
+					"item2": {
+						"kind": "fixed",
+						"text": "Einladungslinks scheiterten, wenn die Person schon ein Konto hatte. Sie landen jetzt im richtigen Workspace."
+					},
+					"item3": {
+						"kind": "improved",
+						"text": "Abrechnungs-Mails nennen den Workspace, damit ein Posteingang mit mehreren Kunden lesbar bleibt."
+					}
+				}
+			},
+			"workspaceSwitching": {
+				"date": "2026-06-30",
+				"version": "v1.2",
+				"title": "Workspaces wechseln, ohne zu warten",
+				"summary": "Zwischen Kundinnen zu wechseln soll sich anfühlen wie Ordner wechseln, nicht wie die App neu laden. Dieses Release dreht sich um diesen Klick.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Der Organisationswechsel bleibt flott, auch mit Dutzenden Mitgliedschaften."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Wir merken uns den letzten offenen Workspace und bringen euch dorthin zurück."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Der Org-Switcher konnte nach einer Umbenennung einen alten Namen zeigen. Er folgt jetzt dem Workspace."
+					}
+				}
+			},
+			"invites": {
+				"date": "2026-05-14",
+				"version": "v1.1",
+				"title": "Einladungen, die sich wie ein Händedruck anfühlen",
+				"summary": "Die erste E-Mail von Acme sollte den Workspace nennen, die Person, die gefragt hat, und den nächsten Schritt.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Einladungs-Mails enthalten den Workspacenamen und wer euch eingeladen hat."
+					},
+					"item2": {
+						"kind": "improved",
+						"text": "Das First-Run-Setup führt durch die erste Organisation, statt auf eine leere Startseite zu werfen."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Abgelaufene Einladungen sagen das jetzt, statt einer generischen Fehlermeldung."
+					}
+				}
+			},
+			"launch": {
+				"date": "2026-04-02",
+				"version": "v1.0",
+				"title": "Acme, ab dem ersten Login",
+				"summary": "Das erste öffentliche Release: Organisationen, Rollen und Abrechnung an einem Ort — damit ein Team Leute einladen und Arbeit abrechnen kann, ohne einen Umweg.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Organisationen, Rollen und Abrechnung gehören von Tag eins zusammen."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Eine Startseite für jeden Workspace, damit Teams wissen, wo sie anfangen."
+					},
+					"item3": {
+						"kind": "added",
+						"text": "Selbstbediente Planwechsel im Kundenportal."
+					}
+				}
+			}
+		}
+	},
+	"contact": {
+		"badge": "Kontakt",
+		"description": "Fragen zu Plänen, Onboarding oder einem Workspace für euer Team. Wir antworten in der Regel innerhalb eines Werktags.",
+		"form": {
+			"email": "E-Mail",
+			"message": "Nachricht",
+			"name": "Name",
+			"notifications": {
+				"error": "Wir konnten deine Nachricht nicht senden. Bitte versuche es gleich noch einmal.",
+				"success": "Nachricht gesendet. Wir melden uns bald."
+			},
+			"submit": "Nachricht senden"
+		},
+		"title": "Sagt uns, was ihr braucht"
+	},
+	"documentation": {
+		"title": "Dokumentation"
+	},
+	"faq": {
+		"badge": "Fragen",
+		"description": "Klare Antworten auf die Fragen, die Teams vor dem Start stellen.",
+		"title": "Häufig gestellte Fragen",
+		"items": {
+			"refundPolicy": {
+				"question": "Wie ist die Rückerstattungsrichtlinie?",
+				"answer": "Wenn das Produkt nicht passt, kannst du innerhalb von 30 Tagen eine vollständige Rückerstattung anfordern."
+			},
+			"cancelSubscription": {
+				"question": "Wie kann ich mein Abonnement kündigen?",
+				"answer": "Öffne die Abrechnung in den Kontoeinstellungen und kündige jederzeit. Der Zugang bleibt bis zum Ende der laufenden Periode erhalten."
+			},
+			"changePlan": {
+				"question": "Kann ich meinen Plan ändern?",
+				"answer": "Ja. Upgrade oder Downgrade jederzeit über die Abrechnung. Änderungen gelten mit der nächsten Rechnung, sofern nicht anders angegeben."
+			},
+			"freeTrial": {
+				"question": "Bietet ihr eine kostenlose Testversion an?",
+				"answer": "Ja. Bezahlte Pläne enthalten eine 7-tägige Testphase, damit dein Team das volle Produkt prüfen kann."
+			}
+		}
+	},
+	"home": {
+		"hero": {
+			"new": "Neu",
+			"featureBadge": "Multi-Tenant-Auth, Billing und Orgs — ready to ship",
+			"title": "Baue dein SaaS, ohne die Grundlagen neu zu erfinden",
+			"subtitle": "Ein produktionsnaher Next.js-Starter mit Authentifizierung, Organisationen, Billing und den UI-Mustern, die du für einen schnelleren Launch brauchst.",
+			"getStarted": "Jetzt starten",
+			"documentation": "Dokumentation lesen",
+			"imageAlt": "Vorschau des Produkt-Dashboards",
+			"preview": {
+				"organization": "Acme",
+				"start": "Start",
+				"chatbot": "KI-Chatbot",
+				"organizationSettings": "Organisationseinstellungen",
+				"accountSettings": "Kontoeinstellungen",
+				"welcome": "Willkommen auf der Startseite dieser Organisation!",
+				"newClients": "Neue Kunden",
+				"revenue": "Umsatz",
+				"churn": "Abwanderung",
+				"placeholder": "Platziere hier deinen Inhalt...",
+				"userName": "Maya Chen",
+				"userEmail": "maya@acme.com"
+			}
+		},
+		"features": {
+			"badge": "Produkt",
+			"title": "Alles zwischen Signup und Scale",
+			"description": "Meinungsstarke Defaults für die schwierigen Teile eines SaaS — damit dein Team sich auf das Produkt konzentrieren kann, für das Kunden zahlen.",
+			"feature1": {
+				"title": "Teams und Organisationen",
+				"subtitle": "Mitglieder einladen, Rollen verwalten und Workspaces von Tag eins isoliert halten.",
+				"description": "Multi-Tenant-Struktur ist eingebaut: Organisation anlegen, Team einladen und Kontexte wechseln — ohne eigenes Scaffolding.",
+				"benefit1": {
+					"title": "Rollenbasierter Zugang",
+					"description": "Owner, Admins und Members erhalten klar definierte Berechtigungen."
+				},
+				"benefit2": {
+					"title": "Einladungen, die funktionieren",
+					"description": "E-Mail-Einladungen und Join-Flows sind für echtes Onboarding verdrahtet, nicht nur für Demos."
+				},
+				"benefit3": {
+					"title": "Aktiver Workspace-Kontext",
+					"description": "Nutzer wechseln zwischen Organisationen, ohne ihren Platz im Produkt zu verlieren."
+				}
+			},
+			"feature2": {
+				"title": "Billing, das nicht im Weg steht",
+				"subtitle": "Abos, Trials und Kundenportale mit einem klaren Plan-Katalog.",
+				"description": "Pläne einmal konfigurieren — Checkout und Billing-Portale erledigen den Rest, während du Features auslieferst.",
+				"benefit1": {
+					"title": "Flexibler Plan-Katalog",
+					"description": "Monatlich, jährlich und einmalig lassen sich klar auf dein Pricing abbilden."
+				},
+				"benefit2": {
+					"title": "Trials ohne Custom-Code",
+					"description": "Gib Teams Zeit zur Evaluation, bevor sie sich festlegen."
+				},
+				"benefit3": {
+					"title": "Self-Serve-Upgrades",
+					"description": "Kunden verwalten Zahlungsmethoden und Planwechsel über ein Portal."
+				}
+			}
+		},
+		"testimonials": {
+			"badge": "Kunden",
+			"title": "Vertraut von Teams, die echte Produkte shippen",
+			"description": "Beispielzitate — ersetze sie später durch Stimmen deiner eigenen Kunden.",
+			"items": {
+				"item1": {
+					"quote": "Wir haben Monate an Auth- und Billing-Arbeit durch ein Fundament ersetzt, das wir wirklich erweitern konnten. Die ersten zahlenden Kunden waren in Wochen live, nicht in Quartalen.",
+					"name": "Maya Chen",
+					"role": "Founder, Northline"
+				},
+				"item2": {
+					"quote": "Das Organisationsmodell passte zu unserem Verkauf. Einladungen, Rollen und Workspace-Wechsel haben einfach funktioniert — wir haben Zeit am Produkt verbracht.",
+					"name": "Jonas Weber",
+					"role": "CTO, Latticeworks"
+				},
+				"item3": {
+					"quote": "Saubere Defaults, klare Struktur und nichts, das uns bei Anpassungen behindert hat. Es fühlt sich an, als hätte uns ein erfahrenes Team einen starken Startpunkt hinterlassen.",
+					"name": "Amelia Ortiz",
+					"role": "Product Lead, Harbor Studio"
+				}
+			}
+		},
+		"cta": {
+			"badge": "Loslegen",
+			"title": "Bereit für dein nächstes Release?",
+			"description": "Starte mit einem kompletten SaaS-Fundament — Auth, Orgs, Billing und UI — und mache es zu deinem.",
+			"primary": "Konto erstellen",
+			"secondary": "Schreib uns"
+		}
+	},
+	"newsletter": {
+		"email": "E-Mail",
+		"hints": {
+			"error": {
+				"message": "Anmeldung fehlgeschlagen. Bitte versuche es später erneut."
+			},
+			"success": {
+				"message": "Du bist auf der Liste. Wir senden Produkt-Updates sparsam.",
+				"title": "Angemeldet"
+			}
+		},
+		"submit": "Abonnieren",
+		"subtitle": "Produktnotizen und Launch-Updates — ohne Lärm.",
+		"title": "Bleib auf dem Laufenden"
+	},
+	"notFound": {
+		"code": "404",
+		"title": "Diese Seite gibt es nicht",
+		"goToDashboard": "Zum Dashboard",
+		"goToHomepage": "Zur Startseite"
+	},
+	"common": {
+		"footer": {
+			"blog": "Blog",
+			"features": "Funktionen",
+			"pricing": "Preise",
+			"privacyPolicy": "Datenschutz",
+			"termsAndConditions": "Allgemeine Geschäftsbedingungen",
+			"builtWith": "Erstellt mit supastarter"
+		},
+		"menu": {
+			"blog": "Blog",
+			"changelog": "Changelog",
+			"contact": "Kontakt",
+			"dashboard": "Dashboard",
+			"docs": "Dokumentation",
+			"faq": "FAQ",
+			"login": "Anmelden",
+			"pricing": "Preise"
+		},
+		"aria": {
+			"menu": "Menü",
+			"language": "Sprache"
+		},
+		"tableOfContents": {
+			"title": "Auf dieser Seite"
+		},
+		"colorMode": {
+			"system": "System",
+			"light": "Hell",
+			"dark": "Dunkel"
+		}
+	}
+}

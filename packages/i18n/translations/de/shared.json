@@ -1,0 +1,62 @@
+{
+	"pricing": {
+		"badge": "Preise",
+		"choosePlan": "Plan auswählen",
+		"contactSales": "Vertrieb kontaktieren",
+		"description": "Einfache Pläne, die mit deinem Team wachsen. Upgrade, wenn du bereit bist.",
+		"getStarted": "Jetzt loslegen",
+		"month": "{count, plural, one {Monat} other {{count} Monate}}",
+		"monthly": "Monatlich",
+		"products": {
+			"basic": {
+				"description": "Für Solo-Founder, die das erste Release validieren.",
+				"features": {
+					"anotherFeature": "Kernfunktionen des Produkts",
+					"limitedSupport": "Community-Support"
+				},
+				"title": "Basic"
+			},
+			"enterprise": {
+				"description": "Sicherheit, Support und Konditionen für deine Organisation.",
+				"features": {
+					"enterpriseSupport": "Dedizierter Support",
+					"unlimitedProjects": "Unbegrenzte Workspaces"
+				},
+				"title": "Enterprise"
+			},
+			"free": {
+				"description": "Das Produkt ohne Verpflichtung erkunden.",
+				"features": {
+					"anotherFeature": "Kernfunktionen des Produkts",
+					"limitedSupport": "Community-Support"
+				},
+				"title": "Free"
+			},
+			"lifetime": {
+				"description": "Einmal zahlen und Zugang behalten, während das Produkt wächst.",
+				"features": {
+					"extendSupport": "Priorisierter Support-Zeitraum",
+					"noRecurringCosts": "Keine wiederkehrenden Gebühren"
+				},
+				"title": "Lifetime"
+			},
+			"pro": {
+				"description": "Für Teams, die über Workspaces zusammenarbeiten.",
+				"features": {
+					"anotherFeature": "Erweiterte Produktfunktionen",
+					"fiveMembers": "Bis zu 5 Mitglieder",
+					"fullSupport": "E-Mail-Support"
+				},
+				"title": "Pro"
+			}
+		},
+		"purchase": "Kaufen",
+		"recommended": "Empfohlen",
+		"subscribe": "Abonnieren",
+		"title": "Preise",
+		"trialPeriod": "{days} {days, plural, one {Tag} other {Tage}} kostenlose Testphase",
+		"year": "{count, plural, one {Jahr} other {{count} Jahre}}",
+		"yearly": "Jährlich",
+		"perSeat": "Sitz"
+	}
+}

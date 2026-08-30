@@ -1,0 +1,331 @@
+{
+	"blog": {
+		"badge": "Blog",
+		"description": "How we think about workspaces, billing, and the details that show up after you invite the team.",
+		"title": "Notes from the product",
+		"back": "Back to journal",
+		"allTags": "All",
+		"filterLabel": "Filter by tag",
+		"emptyFilter": "No notes with this tag."
+	},
+	"changelog": {
+		"badge": "Updates",
+		"description": "New roles, faster switching, and the billing details we shipped this season.",
+		"title": "See what just shipped",
+		"latest": "New",
+		"kinds": {
+			"added": "New",
+			"improved": "Improved",
+			"fixed": "Fixed"
+		},
+		"entries": {
+			"clientPortals": {
+				"date": "2026-08-06",
+				"version": "v1.4",
+				"title": "A home for every client",
+				"summary": "Clients can step into their own workspace, review what’s in progress, and leave a note — without borrowing a teammate’s login.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Guest access with a view-only role, so clients see progress without a full seat."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "A client-ready overview on the start page with the work that matters this week."
+					},
+					"item3": {
+						"kind": "improved",
+						"text": "Switching organizations keeps your place, even with a long client list."
+					}
+				}
+			},
+			"planClarity": {
+				"date": "2026-07-22",
+				"version": "v1.3",
+				"title": "Plans you can explain in one sitting",
+				"summary": "Checkout and the pricing table now lead with the amount, then the details — so nobody has to decode a spreadsheet on a sales call.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "The pricing table leads with the price, then the features that come with it."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Annual plans show the savings at checkout, not after the invoice lands."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Subscription status could lag right after checkout. It now updates immediately."
+					}
+				}
+			},
+			"quietWeek": {
+				"date": "2026-07-08",
+				"version": "",
+				"title": "A quieter week of polish",
+				"summary": "No headline feature — just the empty states, emails, and invite edges that make the product feel finished.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Empty members and invitations screens now suggest a next step instead of staring back at you."
+					},
+					"item2": {
+						"kind": "fixed",
+						"text": "Invite links failed when the person already had an account. They now drop into the right workspace."
+					},
+					"item3": {
+						"kind": "improved",
+						"text": "Billing emails name the workspace they belong to, so a multi-client inbox stays readable."
+					}
+				}
+			},
+			"workspaceSwitching": {
+				"date": "2026-06-30",
+				"version": "v1.2",
+				"title": "Switch workspaces without the wait",
+				"summary": "Moving between clients should feel like changing folders, not reloading the app. This release is about that click.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Organization switching stays snappy even with dozens of memberships."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "We remember the last workspace you had open and take you back there."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "The org switcher could show a stale name after a rename. It now follows the workspace."
+					}
+				}
+			},
+			"invites": {
+				"date": "2026-05-14",
+				"version": "v1.1",
+				"title": "Invites that feel like a handshake",
+				"summary": "The first email someone gets from Acme should name the workspace, the person who asked, and what to do next.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Invite emails include the workspace name and who asked you in."
+					},
+					"item2": {
+						"kind": "improved",
+						"text": "First-run setup walks you through creating the first organization instead of dumping you on an empty start page."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Expired invites now say so, instead of a generic error."
+					}
+				}
+			},
+			"launch": {
+				"date": "2026-04-02",
+				"version": "v1.0",
+				"title": "Acme, from first login",
+				"summary": "The first public release: organizations, roles, and billing in one place — so a team can invite people and charge for work without a side quest.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Organizations, roles, and billing live together from day one."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "A start page for each workspace so teams know where to begin."
+					},
+					"item3": {
+						"kind": "added",
+						"text": "Self-serve plan changes from the customer portal."
+					}
+				}
+			}
+		}
+	},
+	"contact": {
+		"badge": "Contact",
+		"description": "Questions about plans, onboarding, or a workspace for your team. We usually reply within one business day.",
+		"form": {
+			"email": "Email",
+			"message": "Message",
+			"name": "Name",
+			"notifications": {
+				"error": "We could not send your message. Please try again in a moment.",
+				"success": "Message sent. We will get back to you soon."
+			},
+			"submit": "Send message"
+		},
+		"title": "Tell us what you need"
+	},
+	"documentation": {
+		"title": "Documentation"
+	},
+	"faq": {
+		"badge": "Questions",
+		"description": "Straight answers to the questions teams ask before they start.",
+		"title": "Frequently asked questions",
+		"items": {
+			"refundPolicy": {
+				"question": "What is the refund policy?",
+				"answer": "If the product is not a fit, request a refund within 30 days and we will process it in full."
+			},
+			"cancelSubscription": {
+				"question": "How do I cancel my subscription?",
+				"answer": "Open Billing in your account settings and cancel anytime. Access continues through the end of the current period."
+			},
+			"changePlan": {
+				"question": "Can I change my plan?",
+				"answer": "Yes. Upgrade or downgrade from Billing at any time. Changes take effect on the next invoice unless noted otherwise."
+			},
+			"freeTrial": {
+				"question": "Do you offer a free trial?",
+				"answer": "Yes. Paid plans include a 7-day trial so you can evaluate the full product with your team."
+			}
+		}
+	},
+	"home": {
+		"hero": {
+			"new": "New",
+			"featureBadge": "Multi-tenant auth, billing, and orgs — ready to ship",
+			"title": "Build your SaaS without rebuilding the foundations",
+			"subtitle": "A production-minded Next.js starter with authentication, organizations, billing, and the UI patterns you need to launch faster.",
+			"getStarted": "Start building",
+			"documentation": "Read the docs",
+			"imageAlt": "Product dashboard preview",
+			"preview": {
+				"organization": "Acme",
+				"start": "Start",
+				"chatbot": "AI Chatbot",
+				"organizationSettings": "Organization settings",
+				"accountSettings": "Account settings",
+				"welcome": "Welcome to the start page of this organization!",
+				"newClients": "New clients",
+				"revenue": "Revenue",
+				"churn": "Churn",
+				"placeholder": "Place your content here...",
+				"userName": "Maya Chen",
+				"userEmail": "maya@acme.com"
+			}
+		},
+		"features": {
+			"badge": "Product",
+			"title": "Everything between signup and scale",
+			"description": "Opinionated defaults for the hard parts of a SaaS — so your team can focus on the product customers pay for.",
+			"feature1": {
+				"title": "Teams and organizations",
+				"subtitle": "Invite members, manage roles, and keep every workspace isolated from day one.",
+				"description": "Multi-tenant structure is built in: create an organization, invite your team, and switch contexts without custom scaffolding.",
+				"benefit1": {
+					"title": "Role-aware access",
+					"description": "Owners, admins, and members get clear permissions out of the box."
+				},
+				"benefit2": {
+					"title": "Invites that work",
+					"description": "Email invitations and join flows are wired for real onboarding, not demos."
+				},
+				"benefit3": {
+					"title": "Active workspace context",
+					"description": "Users move between organizations without losing their place in the product."
+				}
+			},
+			"feature2": {
+				"title": "Billing that stays out of the way",
+				"subtitle": "Subscriptions, trials, and customer portals with a clean plan catalog.",
+				"description": "Configure plans once, then let checkout and billing portals handle the rest while you keep shipping product features.",
+				"benefit1": {
+					"title": "Flexible plan catalog",
+					"description": "Monthly, yearly, and one-time options map cleanly to your pricing model."
+				},
+				"benefit2": {
+					"title": "Trials without custom code",
+					"description": "Give teams time to evaluate before they commit."
+				},
+				"benefit3": {
+					"title": "Self-serve upgrades",
+					"description": "Customers manage payment methods and plan changes from a portal."
+				}
+			}
+		},
+		"testimonials": {
+			"badge": "Customers",
+			"title": "Trusted by teams shipping real products",
+			"description": "Example quotes you can replace with your own customers once you launch.",
+			"items": {
+				"item1": {
+					"quote": "We replaced months of auth and billing work with a foundation we could actually extend. Our first paying customers were live in weeks, not quarters.",
+					"name": "Maya Chen",
+					"role": "Founder, Northline"
+				},
+				"item2": {
+					"quote": "The organization model matched how we already sell. Invites, roles, and workspace switching just worked — we spent our time on the product instead.",
+					"name": "Jonas Weber",
+					"role": "CTO, Latticeworks"
+				},
+				"item3": {
+					"quote": "Clean defaults, clear structure, and nothing fighting us when we customized. It feels like a senior team left us a strong starting point.",
+					"name": "Amelia Ortiz",
+					"role": "Product Lead, Harbor Studio"
+				}
+			}
+		},
+		"cta": {
+			"badge": "Get started",
+			"title": "Ready to ship your next release?",
+			"description": "Start with a complete SaaS foundation — auth, orgs, billing, and UI — then make it yours.",
+			"primary": "Create your account",
+			"secondary": "Talk to us"
+		}
+	},
+	"newsletter": {
+		"email": "Email",
+		"hints": {
+			"error": {
+				"message": "Could not subscribe. Please try again later."
+			},
+			"success": {
+				"message": "You are on the list. We will share product updates sparingly.",
+				"title": "Subscribed"
+			}
+		},
+		"submit": "Subscribe",
+		"subtitle": "Product notes and launch updates — no noise.",
+		"title": "Stay in the loop"
+	},
+	"notFound": {
+		"code": "404",
+		"title": "This page does not exist",
+		"goToDashboard": "Go to dashboard",
+		"goToHomepage": "Go to homepage"
+	},
+	"common": {
+		"footer": {
+			"blog": "Blog",
+			"features": "Features",
+			"pricing": "Pricing",
+			"privacyPolicy": "Privacy policy",
+			"termsAndConditions": "Terms and conditions",
+			"builtWith": "Built with supastarter"
+		},
+		"menu": {
+			"blog": "Blog",
+			"changelog": "Changelog",
+			"contact": "Contact",
+			"dashboard": "Dashboard",
+			"docs": "Docs",
+			"faq": "FAQ",
+			"login": "Login",
+			"pricing": "Pricing"
+		},
+		"aria": {
+			"menu": "Menu",
+			"language": "Language"
+		},
+		"tableOfContents": {
+			"title": "On this page"
+		},
+		"colorMode": {
+			"system": "System",
+			"light": "Light",
+			"dark": "Dark"
+		}
+	}
+}

@@ -1,0 +1,331 @@
+{
+	"blog": {
+		"badge": "Blog",
+		"description": "Comment nous pensons les espaces de travail, la facturation et les détails qui apparaissent une fois l’équipe invitée.",
+		"title": "Notes du produit",
+		"back": "Retour au journal",
+		"allTags": "Toutes",
+		"filterLabel": "Filtrer par étiquette",
+		"emptyFilter": "Aucune note avec cette étiquette."
+	},
+	"changelog": {
+		"badge": "Mises à jour",
+		"description": "De nouveaux rôles, un changement d’espace plus rapide, et les détails de facturation livrés cette saison.",
+		"title": "Ce qui vient de sortir",
+		"latest": "Nouveau",
+		"kinds": {
+			"added": "Nouveau",
+			"improved": "Amélioré",
+			"fixed": "Corrigé"
+		},
+		"entries": {
+			"clientPortals": {
+				"date": "2026-08-06",
+				"version": "v1.4",
+				"title": "Un espace pour chaque client",
+				"summary": "Les clients peuvent entrer dans leur propre espace, voir ce qui avance et laisser une note — sans emprunter le compte d’un membre de l’équipe.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Accès invité en lecture seule, pour suivre l’avancement sans occuper un siège complet."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Une vue prête pour le client sur la page d’accueil, avec le travail qui compte cette semaine."
+					},
+					"item3": {
+						"kind": "improved",
+						"text": "Changer d’organisation conserve votre place, même avec une longue liste de clients."
+					}
+				}
+			},
+			"planClarity": {
+				"date": "2026-07-22",
+				"version": "v1.3",
+				"title": "Des offres que l’on explique en une réunion",
+				"summary": "Le paiement et le tableau des tarifs commencent par le montant, puis les détails — plus personne n’a à déchiffrer un tableur en appel.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Le tableau des tarifs met le prix en tête, puis les fonctionnalités incluses."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Les offres annuelles affichent l’économie au paiement, pas après la facture."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Le statut d’abonnement pouvait tarder juste après le paiement. Il se met à jour tout de suite."
+					}
+				}
+			},
+			"quietWeek": {
+				"date": "2026-07-08",
+				"version": "",
+				"title": "Une semaine plus calme, tout en finitions",
+				"summary": "Pas de grande fonctionnalité — seulement les états vides, les e-mails et les bords des invitations qui font que le produit paraît fini.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Les écrans vides des membres et des invitations proposent maintenant une prochaine étape au lieu de rester muets."
+					},
+					"item2": {
+						"kind": "fixed",
+						"text": "Les liens d’invitation échouaient si la personne avait déjà un compte. Ils ouvrent désormais le bon espace."
+					},
+					"item3": {
+						"kind": "improved",
+						"text": "Les e-mails de facturation nomment l’espace concerné, pour qu’une boîte multi-clients reste lisible."
+					}
+				}
+			},
+			"workspaceSwitching": {
+				"date": "2026-06-30",
+				"version": "v1.2",
+				"title": "Changer d’espace sans attendre",
+				"summary": "Passer d’un client à l’autre devrait ressembler à changer de dossier, pas à recharger l’app. Cette version, c’est ce clic-là.",
+				"changes": {
+					"item1": {
+						"kind": "improved",
+						"text": "Le changement d’organisation reste vif même avec des dizaines d’appartenances."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Nous mémorisons le dernier espace ouvert et vous y ramenons."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Le sélecteur d’organisation pouvait afficher un ancien nom après un renommage. Il suit maintenant l’espace."
+					}
+				}
+			},
+			"invites": {
+				"date": "2026-05-14",
+				"version": "v1.1",
+				"title": "Des invitations qui ressemblent à une poignée de main",
+				"summary": "Le premier e-mail d’Acme devrait nommer l’espace, la personne qui a invité, et la suite à donner.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Les e-mails d’invitation indiquent le nom de l’espace et qui vous a demandé de rejoindre."
+					},
+					"item2": {
+						"kind": "improved",
+						"text": "La première configuration vous guide pour créer la première organisation au lieu de vous laisser sur une page vide."
+					},
+					"item3": {
+						"kind": "fixed",
+						"text": "Les invitations expirées le disent maintenant, au lieu d’une erreur générique."
+					}
+				}
+			},
+			"launch": {
+				"date": "2026-04-02",
+				"version": "v1.0",
+				"title": "Acme, dès la première connexion",
+				"summary": "La première version publique : organisations, rôles et facturation au même endroit — pour qu’une équipe invite et facture sans détour.",
+				"changes": {
+					"item1": {
+						"kind": "added",
+						"text": "Organisations, rôles et facturation cohabitent dès le premier jour."
+					},
+					"item2": {
+						"kind": "added",
+						"text": "Une page d’accueil par espace pour que l’équipe sache par où commencer."
+					},
+					"item3": {
+						"kind": "added",
+						"text": "Changement d’offre en libre-service depuis le portail client."
+					}
+				}
+			}
+		}
+	},
+	"contact": {
+		"badge": "Contact",
+		"description": "Des questions sur les offres, l’onboarding ou un espace pour votre équipe. Nous répondons généralement sous un jour ouvré.",
+		"form": {
+			"email": "E-mail",
+			"message": "Message",
+			"name": "Nom",
+			"notifications": {
+				"error": "Nous n'avons pas pu envoyer votre message. Veuillez réessayer dans un instant.",
+				"success": "Message envoyé. Nous vous répondrons bientôt."
+			},
+			"submit": "Envoyer le message"
+		},
+		"title": "Dites-nous ce dont vous avez besoin"
+	},
+	"documentation": {
+		"title": "Documentation"
+	},
+	"faq": {
+		"badge": "Questions",
+		"description": "Des réponses claires aux questions que les équipes se posent avant de commencer.",
+		"title": "Questions fréquentes",
+		"items": {
+			"refundPolicy": {
+				"question": "Quelle est la politique de remboursement ?",
+				"answer": "Si le produit ne convient pas, demandez un remboursement sous 30 jours et nous le traiterons intégralement."
+			},
+			"cancelSubscription": {
+				"question": "Comment annuler mon abonnement ?",
+				"answer": "Ouvrez la facturation dans les paramètres du compte et annulez à tout moment. L'accès continue jusqu'à la fin de la période en cours."
+			},
+			"changePlan": {
+				"question": "Puis-je changer de forfait ?",
+				"answer": "Oui. Passez à un forfait supérieur ou inférieur depuis la facturation à tout moment. Les changements s'appliquent à la prochaine facture, sauf indication contraire."
+			},
+			"freeTrial": {
+				"question": "Proposez-vous un essai gratuit ?",
+				"answer": "Oui. Les forfaits payants incluent 7 jours d'essai pour que votre équipe évalue le produit complet."
+			}
+		}
+	},
+	"home": {
+		"hero": {
+			"new": "Nouveau",
+			"featureBadge": "Auth multi-tenant, billing et orgs — prêt à livrer",
+			"title": "Construisez votre SaaS sans reconstruire les fondations",
+			"subtitle": "Un starter Next.js orienté production avec authentification, organisations, facturation et les patterns UI dont vous avez besoin pour lancer plus vite.",
+			"getStarted": "Commencer à construire",
+			"documentation": "Lire la documentation",
+			"imageAlt": "Aperçu du tableau de bord produit",
+			"preview": {
+				"organization": "Acme",
+				"start": "Accueil",
+				"chatbot": "Chatbot IA",
+				"organizationSettings": "Paramètres de l'organisation",
+				"accountSettings": "Paramètres du compte",
+				"welcome": "Bienvenue sur la page d'accueil de cette organisation.",
+				"newClients": "Nouveaux clients",
+				"revenue": "Revenu",
+				"churn": "Churn",
+				"placeholder": "Placez votre contenu ici...",
+				"userName": "Maya Chen",
+				"userEmail": "maya@acme.com"
+			}
+		},
+		"features": {
+			"badge": "Produit",
+			"title": "Tout entre l'inscription et l'échelle",
+			"description": "Des defaults affirmés pour les parties difficiles d'un SaaS — pour que votre équipe se concentre sur le produit que les clients paient.",
+			"feature1": {
+				"title": "Équipes et organisations",
+				"subtitle": "Invitez des membres, gérez les rôles et isolez chaque workspace dès le premier jour.",
+				"description": "La structure multi-tenant est intégrée : créez une organisation, invitez votre équipe et changez de contexte sans scaffolding sur mesure.",
+				"benefit1": {
+					"title": "Accès par rôles",
+					"description": "Owners, admins et members reçoivent des permissions claires dès le départ."
+				},
+				"benefit2": {
+					"title": "Invitations qui fonctionnent",
+					"description": "Invitations e-mail et flux d'adhésion pensés pour un vrai onboarding, pas seulement des démos."
+				},
+				"benefit3": {
+					"title": "Contexte de workspace actif",
+					"description": "Les utilisateurs passent d'une organisation à l'autre sans perdre leur place dans le produit."
+				}
+			},
+			"feature2": {
+				"title": "Une facturation discrète",
+				"subtitle": "Abonnements, essais et portails clients avec un catalogue de forfaits clair.",
+				"description": "Configurez les forfaits une fois, puis laissez le checkout et les portails de facturation faire le reste pendant que vous livrez des fonctionnalités.",
+				"benefit1": {
+					"title": "Catalogue de forfaits flexible",
+					"description": "Options mensuelles, annuelles et ponctuelles s'alignent clairement sur votre modèle tarifaire."
+				},
+				"benefit2": {
+					"title": "Essais sans code custom",
+					"description": "Donnez aux équipes le temps d'évaluer avant de s'engager."
+				},
+				"benefit3": {
+					"title": "Upgrades en libre-service",
+					"description": "Les clients gèrent moyens de paiement et changements de forfait depuis un portail."
+				}
+			}
+		},
+		"testimonials": {
+			"badge": "Clients",
+			"title": "La confiance d'équipes qui livrent de vrais produits",
+			"description": "Citations d'exemple à remplacer par celles de vos clients une fois lancé.",
+			"items": {
+				"item1": {
+					"quote": "Nous avons remplacé des mois de travail sur l'auth et la facturation par une base que nous pouvions vraiment étendre. Nos premiers clients payants étaient en production en quelques semaines, pas en trimestres.",
+					"name": "Maya Chen",
+					"role": "Founder, Northline"
+				},
+				"item2": {
+					"quote": "Le modèle d'organisation correspondait à notre façon de vendre. Invitations, rôles et changement de workspace ont simplement fonctionné — nous avons passé notre temps sur le produit.",
+					"name": "Jonas Weber",
+					"role": "CTO, Latticeworks"
+				},
+				"item3": {
+					"quote": "Des defaults propres, une structure claire, et rien qui nous freinait à la personnalisation. On a l'impression qu'une équipe senior nous a laissé un excellent point de départ.",
+					"name": "Amelia Ortiz",
+					"role": "Product Lead, Harbor Studio"
+				}
+			}
+		},
+		"cta": {
+			"badge": "Pour commencer",
+			"title": "Prêt pour votre prochaine livraison ?",
+			"description": "Partez d'une base SaaS complète — auth, orgs, billing et UI — puis faites-en la vôtre.",
+			"primary": "Créer votre compte",
+			"secondary": "Nous écrire"
+		}
+	},
+	"newsletter": {
+		"email": "E-mail",
+		"hints": {
+			"error": {
+				"message": "Impossible de s'abonner. Veuillez réessayer plus tard."
+			},
+			"success": {
+				"message": "Vous êtes sur la liste. Nous partagerons les mises à jour produit avec parcimonie.",
+				"title": "Abonné"
+			}
+		},
+		"submit": "S'abonner",
+		"subtitle": "Notes produit et mises à jour de lancement — sans bruit.",
+		"title": "Restez informé"
+	},
+	"notFound": {
+		"code": "404",
+		"title": "Cette page n'existe pas",
+		"goToDashboard": "Aller au tableau de bord",
+		"goToHomepage": "Aller à l'accueil"
+	},
+	"common": {
+		"footer": {
+			"blog": "Blog",
+			"features": "Fonctionnalités",
+			"pricing": "Tarifs",
+			"privacyPolicy": "Politique de confidentialité",
+			"termsAndConditions": "Conditions générales",
+			"builtWith": "Construit avec supastarter"
+		},
+		"menu": {
+			"blog": "Blog",
+			"changelog": "Changelog",
+			"contact": "Contact",
+			"dashboard": "Tableau de bord",
+			"docs": "Docs",
+			"faq": "FAQ",
+			"login": "Connexion",
+			"pricing": "Tarifs"
+		},
+		"aria": {
+			"menu": "Menu",
+			"language": "Langue"
+		},
+		"tableOfContents": {
+			"title": "Sur cette page"
+		},
+		"colorMode": {
+			"system": "Système",
+			"light": "Clair",
+			"dark": "Sombre"
+		}
+	}
+}

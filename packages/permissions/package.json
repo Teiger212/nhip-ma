@@ -1,0 +1,21 @@
+{
+	"name": "@repo/permissions",
+	"version": "0.0.0",
+	"main": "./index.ts",
+	"types": "./index.ts",
+	"scripts": {
+		"clean": "git clean -xdf .cache .turbo dist node_modules",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"permix": "catalog:"
+	},
+	"devDependencies": {
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

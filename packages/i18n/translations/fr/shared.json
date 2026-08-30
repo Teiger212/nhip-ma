@@ -1,0 +1,62 @@
+{
+	"pricing": {
+		"badge": "Tarifs",
+		"choosePlan": "Choisir un forfait",
+		"contactSales": "Contacter les ventes",
+		"description": "Des forfaits simples qui évoluent avec votre équipe. Passez à la vitesse supérieure quand vous êtes prêt.",
+		"getStarted": "Commencer",
+		"month": "{count, plural, one {mois} other {{count} mois}}",
+		"monthly": "Mensuel",
+		"products": {
+			"basic": {
+				"description": "Pour les fondateurs solo qui valident la première version.",
+				"features": {
+					"anotherFeature": "Fonctionnalités produit essentielles",
+					"limitedSupport": "Support communautaire"
+				},
+				"title": "Basique"
+			},
+			"enterprise": {
+				"description": "Sécurité, support et conditions adaptés à votre organisation.",
+				"features": {
+					"enterpriseSupport": "Support dédié",
+					"unlimitedProjects": "Workspaces illimités"
+				},
+				"title": "Entreprise"
+			},
+			"free": {
+				"description": "Explorez le produit sans engagement.",
+				"features": {
+					"anotherFeature": "Fonctionnalités produit essentielles",
+					"limitedSupport": "Support communautaire"
+				},
+				"title": "Gratuit"
+			},
+			"lifetime": {
+				"description": "Payez une fois et conservez l'accès à mesure que le produit évolue.",
+				"features": {
+					"extendSupport": "Fenêtre de support prioritaire",
+					"noRecurringCosts": "Pas de frais récurrents"
+				},
+				"title": "À vie"
+			},
+			"pro": {
+				"description": "Pour les équipes qui collaborent entre workspaces.",
+				"features": {
+					"anotherFeature": "Fonctionnalités produit avancées",
+					"fiveMembers": "Jusqu'à 5 membres",
+					"fullSupport": "Support par e-mail"
+				},
+				"title": "Pro"
+			}
+		},
+		"purchase": "Acheter",
+		"recommended": "Recommandé",
+		"subscribe": "S'abonner",
+		"title": "Tarifs",
+		"trialPeriod": "{days} {days, plural, one {jour} other {jours}} d'essai gratuit",
+		"year": "{count, plural, one {an} other {{count} ans}}",
+		"yearly": "Annuel",
+		"perSeat": "place"
+	}
+}

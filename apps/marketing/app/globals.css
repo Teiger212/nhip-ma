@@ -1,0 +1,70 @@
+@import "tailwindcss";
+@import "@repo/tailwind-config/theme.css";
+@import "@repo/tailwind-config/tailwind-animate.css";
+
+@plugin "@tailwindcss/typography";
+
+@source "../../../packages/ui/components";
+
+@variant dark (&:where(.dark, .dark *));
+
+@utility container {
+	margin-inline: auto;
+	padding-inline: 1.5rem;
+	width: 100%;
+	max-width: var(--container-6xl);
+
+	@media (width >= 64rem) {
+		padding-inline: 2rem;
+	}
+}
+
+@utility no-scrollbar {
+	&::-webkit-scrollbar {
+		display: none;
+	}
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+@theme inline {
+	--font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+	--font-heading: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--border);
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	.prose :where(h1, h2, h3, h4, h5, h6) {
+		font-family: var(--font-heading);
+	}
+
+	body {
+		background-image: radial-gradient(
+			ellipse 70% 42% at 50% -12%,
+			color-mix(in oklab, var(--color-olive-200) 55%, transparent),
+			transparent
+		);
+		background-attachment: fixed;
+	}
+
+	.dark body {
+		background-image: radial-gradient(
+			ellipse 70% 42% at 50% -12%,
+			color-mix(in oklab, var(--color-olive-800) 40%, transparent),
+			transparent
+		);
+	}
+}
