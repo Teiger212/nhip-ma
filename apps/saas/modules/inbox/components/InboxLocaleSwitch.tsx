@@ -27,7 +27,9 @@ export function InboxLocaleSwitch() {
 		<LocaleSwitch
 			locales={locales}
 			value={value}
-			label={t("common.aria.language")}
+			label={t("inbox.language")}
+			triggerLabel={t("inbox.language")}
+			className="h-8 px-2 font-medium"
 			onValueChange={async (nextLocale) => {
 				if (!isWalkLocale(nextLocale)) {
 					return;

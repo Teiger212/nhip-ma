@@ -713,9 +713,27 @@
 		"notSent": "chưa gửi",
 		"alreadySent": "đã gửi {at}",
 		"sending": "đang gửi…",
+		"language": "Ngôn ngữ",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
+		},
+		"crib": {
+			"body": "Draft trả lời bằng {language}. Có trong inbound: {facts}. Không hỏi thêm kiểu interviewer.{paperwork}",
+			"emptyFacts": "chưa đủ field từ inbound",
+			"nationality": "quốc tịch {value}",
+			"inVietnamNow": "đang ở Việt Nam",
+			"notInVietnam": "chưa ở Việt Nam",
+			"rent": "thuê",
+			"buy": "mua",
+			"paperworkFlag": "Khách có nhắc giấy tờ hoặc sở hữu. Không bịa luật Việt Nam. Không hứa sổ hồng / pink book.",
+			"guestLanguage": {
+				"en": "tiếng Anh",
+				"vi": "tiếng Việt",
+				"ja": "tiếng Nhật",
+				"ko": "tiếng Hàn",
+				"ru": "tiếng Nga"
+			}
 		},
 		"fields": {
 			"language": "Ngôn ngữ",

@@ -15,6 +15,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { formatCribNotes } from "../lib/crib";
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import type { Conversation, Message } from "../lib/types";
 import { InboxLocaleSwitch } from "./InboxLocaleSwitch";
@@ -60,6 +61,7 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
+	const crib = useTranslations("inbox.crib");
 	const fields = useTranslations("inbox.fields");
 	const labels = {
 		missing: t("missing"),
@@ -68,16 +70,21 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	};
 	const q = conversation.oneShot?.qualification;
 	const paper = conversation.oneShot?.paperwork;
+	const language = conversation.oneShot?.language;
+	const rentOrBuy =
+		q?.rentOrBuy === "rent" || q?.rentOrBuy === "buy"
+			? crib(q.rentOrBuy)
+			: field(q?.rentOrBuy, labels);
 	const rows: [string, string][] = [
-		[fields("language"), field(conversation.oneShot?.language, labels)],
+		[fields("language"), language ? crib(`guestLanguage.${language}`) : t("missing")],
 		[fields("area"), field(q?.areaOfInterest, labels)],
 		[fields("nationality"), field(q?.nationality, labels)],
 		[fields("inVietnamNow"), field(q?.inVietnamNow, labels)],
-		[fields("rentOrBuy"), field(q?.rentOrBuy, labels)],
+		[fields("rentOrBuy"), rentOrBuy],
 		[fields("moveIn"), field(q?.timeframe, labels)],
 		[fields("budget"), field(q?.budgetBand, labels)],
 		[fields("beds"), field(q?.bedsOrHousehold, labels)],
-		[fields("paperwork"), paper?.mentioned ? field(paper.flag, labels) : fields("noneMentioned")],
+		[fields("paperwork"), paper?.mentioned ? crib("paperworkFlag") : fields("noneMentioned")],
 	];
 
 	return (
@@ -133,6 +140,7 @@ function ThreadMessage({ message }: { message: Message }) {
 export function Inbox() {
 	const t = useTranslations("inbox");
 	const pipes = useTranslations("inbox.pipes");
+	const crib = useTranslations("inbox.crib");
 	const [conversations, setConversations] = useState<Conversation[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [query, setQuery] = useState("");
@@ -228,7 +236,16 @@ export function Inbox() {
 		}
 	}
 
-	const draft = selected?.oneShot?.draft;
+	const cribNotes =
+		selected?.oneShot &&
+		formatCribNotes(
+			{
+				language: selected.oneShot.language,
+				qualification: selected.oneShot.qualification,
+				paperwork: selected.oneShot.paperwork,
+			},
+			crib,
+		);
 
 	return (
 		<div className="min-h-0 text-sm flex h-svh flex-col bg-background text-foreground">
@@ -319,7 +336,7 @@ export function Inbox() {
 											<CardDescription>{t("forYouHint")}</CardDescription>
 										</CardHeader>
 										<CardContent>
-											<p className="whitespace-pre-wrap">{draft?.crib || ""}</p>
+											<p className="whitespace-pre-wrap">{cribNotes || ""}</p>
 										</CardContent>
 									</Card>
 									<Card>

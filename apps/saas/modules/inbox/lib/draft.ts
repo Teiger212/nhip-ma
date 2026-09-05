@@ -56,6 +56,7 @@ export function draftReply(language: GuestLanguage, qualification: Qualification
 	return templates[language];
 }
 
+/** Stored crib for persistence. The walk UI formats crib at read time from `inbox.crib` keys. */
 export function buildCrib(
 	language: GuestLanguage,
 	qualification: Qualification,

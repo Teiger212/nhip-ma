@@ -715,9 +715,27 @@
 		"notSent": "not sent",
 		"alreadySent": "already sent {at}",
 		"sending": "sending…",
+		"language": "Language",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
+		},
+		"crib": {
+			"body": "Draft is in {language}. From inbound: {facts}. Not an interviewer.{paperwork}",
+			"emptyFacts": "nothing extractable yet",
+			"nationality": "nationality {value}",
+			"inVietnamNow": "in VN now",
+			"notInVietnam": "not in VN",
+			"rent": "rent",
+			"buy": "buy",
+			"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
+			"guestLanguage": {
+				"en": "English",
+				"vi": "Vietnamese",
+				"ja": "Japanese",
+				"ko": "Korean",
+				"ru": "Russian"
+			}
 		},
 		"fields": {
 			"language": "Language",
