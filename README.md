@@ -44,4 +44,4 @@ Walkthrough thread persistence is SQLite (`data/nhip.db`) via `packages/database
 
 ## Auth
 
-Inbox is an authenticated account route (`/inbox`) inside kit `AppWrapper`. Sign in, then open Inbox. Organizations are not required (`requireOrganization` is false). Do not treat Reports, International, billing, or orgs as product features.
+Inbox is an authenticated account route (`/inbox`) inside kit `AppWrapper`. Sign in, then open Inbox. Organizations are not required (`requireOrganization` is false). Kit `hideOrganization` hides the org switcher so create-org is not in the walk chrome. Do not treat Reports, International, billing, or orgs as product features.

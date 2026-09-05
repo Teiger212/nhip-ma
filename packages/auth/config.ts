@@ -13,7 +13,7 @@ export const config = {
 	},
 	organizations: {
 		enable: true,
-		hideOrganization: false,
+		hideOrganization: true,
 		enableUsersToCreateOrganizations: true,
 		requireOrganization: false,
 		forbiddenOrganizationSlugs: [

@@ -7,7 +7,7 @@
 #### Inbox (apps/saas)
 
 - Inbox is a first-class authenticated account route at `/inbox` (`(account)/inbox`, same pattern as chatbot). It uses kit `AppWrapper` / `NavBar` (mobile hamburger Sheet, desktop collapsible sidebar). The custom `InboxShell` rail is gone.
-- `/` redirects to `/inbox`. Unauthenticated visits hit kit login; `redirectAfterSignIn` is `/inbox`. `pnpm seed` still writes invented threads to `data/nhip.db` and adds walk login `walk@nhip.local` / `walkthrough` when `DATABASE_URL` is Postgres. Organizations are not required. Reports, International, billing, and orgs are not product features.
+- `/` redirects to `/inbox`. Unauthenticated visits hit kit login; `redirectAfterSignIn` is `/inbox`. `pnpm seed` still writes invented threads to `data/nhip.db` and adds walk login `walk@nhip.local` / `walkthrough` when `DATABASE_URL` is Postgres. Organizations are not required. Kit `hideOrganization` keeps org switcher / create-org out of NavBar. Reports, International, billing, and orgs are not product features.
 - Kit `LocaleSwitch` sits in the NavBar footer and mobile Sheet. Mobile list/detail still keep the labeled **Language** / **Ngôn ngữ** control.
 
 - Below Tailwind `md`, the inbox shows either the thread list or the selected thread. Detail opens from a list row and returns with an in-app **Back** control; the detail header shows the guest name. Desktop two-pane layout is unchanged.
