@@ -17,7 +17,8 @@ Explicit user instructions win; if a documented command fails, report it rather 
 
 Copy `.env.local.example` to `.env.local`. For the **inbox walkthrough**, set
 `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"` and
-`NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET`. Kit
+`NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET` (32+
+characters) and a dummy `RESEND_API_KEY` so kit auth can import Resend. Kit
 login (Better Auth / Prisma) needs local Postgres. Inbox threads stay in
 repo-root SQLite `data/nhip.db` — a postgres `DATABASE_URL` is ignored by the
 inbox store.
