@@ -701,6 +701,8 @@
 		"searchPlaceholder": "Tìm tên hoặc tin nhắn gần nhất",
 		"searchAria": "Tìm cuộc hội thoại",
 		"empty": "Không có cuộc hội thoại.",
+		"loading": "Đang tải cuộc hội thoại…",
+		"loadError": "Không tải được cuộc hội thoại.",
 		"noMatches": "Không có cuộc hội thoại phù hợp.",
 		"noneSelected": "Chưa chọn cuộc hội thoại.",
 		"sent": "đã gửi",

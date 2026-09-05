@@ -10,6 +10,7 @@
 - Inbox shell keeps **Inbox** as the only active left item and adds disabled **Reports** and **International** items (kit `Button` `disabled`, no navigation).
 - Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. The kit `@repo/ui` locale switch (Languages icon + **Language** / **Ngôn ngữ** label) sits at the **bottom of the InboxShell sidebar**, above the never-auto-send footer, and offers English ↔ Vietnamese. It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
 - **For you** crib body is formatted at read time from `inbox.crib` templates (not the seeded English-only string). Guest **Reply** stays in the guest's language. Inbox UI uses `useTranslations("inbox")` plus nested keys (`crib.body`, `fields.*`) so next-intl does not throw `MISSING_MESSAGE` for `inbox.crib`. Message JSON is imported statically from `@repo/i18n`.
+- Vietnamese list states: `inbox.loading` (`Đang tải cuộc hội thoại…`) and `inbox.loadError` (`Không tải được cuộc hội thoại.`) match the English loading / load-error keys.
 
 ### Fixed
 

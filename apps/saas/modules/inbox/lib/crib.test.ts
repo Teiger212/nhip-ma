@@ -41,6 +41,10 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.crib.body).toMatch(/Draft trả lời bằng \{language\}/);
 	expect(enMessages.inbox.guestLanguage.vi).toBe("Vietnamese");
 	expect(viMessages.inbox.guestLanguage.vi).toBe("tiếng Việt");
+	expect(enMessages.inbox.loading).toBe("Loading conversations…");
+	expect(viMessages.inbox.loading).toBe("Đang tải cuộc hội thoại…");
+	expect(enMessages.inbox.loadError).toBe("Could not load conversations.");
+	expect(viMessages.inbox.loadError).toBe("Không tải được cuộc hội thoại.");
 });
 
 test("English UI crib uses the English template and extracted facts", () => {
