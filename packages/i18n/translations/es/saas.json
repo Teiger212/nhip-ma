@@ -720,22 +720,24 @@
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
 		},
+		"guestLanguage": {
+			"en": "inglés",
+			"vi": "vietnamita",
+			"ja": "japonés",
+			"ko": "coreano",
+			"ru": "ruso"
+		},
+		"intent": {
+			"rent": "alquilar",
+			"buy": "comprar"
+		},
+		"paperworkFlag": "El huésped mencionó papeles o propiedad. No inventar derecho vietnamita. No prometer un pink book / sổ hồng.",
 		"crib": {
 			"body": "El borrador está en {language}. Del inbound: {facts}. No es una entrevista.{paperwork}",
 			"emptyFacts": "aún no hay datos del inbound",
 			"nationality": "nacionalidad {value}",
 			"inVietnamNow": "ahora en VN",
-			"notInVietnam": "no está en VN",
-			"rent": "alquilar",
-			"buy": "comprar",
-			"paperworkFlag": "El huésped mencionó papeles o propiedad. No inventar derecho vietnamita. No prometer un pink book / sổ hồng.",
-			"guestLanguage": {
-				"en": "inglés",
-				"vi": "vietnamita",
-				"ja": "japonés",
-				"ko": "coreano",
-				"ru": "ruso"
-			}
+			"notInVietnam": "no está en VN"
 		},
 		"fields": {
 			"language": "Idioma",

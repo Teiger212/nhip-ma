@@ -1,3 +1,4 @@
+import { getMessagesForLocale, type SaasMessages } from "@repo/i18n";
 import { expect, test } from "vitest";
 
 import enSaas from "../../../../../packages/i18n/translations/en/saas.json";
@@ -15,14 +16,14 @@ function translate(messages: Record<string, unknown>) {
 			return (acc as Record<string, unknown>)[part];
 		}, messages);
 		if (typeof raw !== "string") {
-			throw new Error(`Missing crib key ${key}`);
+			throw new Error(`Missing inbox key ${key}`);
 		}
 		return raw.replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? "");
 	};
 }
 
-const en = translate(enSaas.inbox.crib);
-const vi = translate(viSaas.inbox.crib);
+const en = translate(enSaas.inbox);
+const vi = translate(viSaas.inbox);
 
 const thao: Qualification = {
 	...emptyQualification(),
@@ -32,6 +33,15 @@ const thao: Qualification = {
 	budgetBand: "30 triệu",
 	bedsOrHousehold: "2 bed",
 };
+
+test("loaded en and vi saas messages include inbox.crib.body", async () => {
+	const enMessages = await getMessagesForLocale<SaasMessages>("en", "saas");
+	const viMessages = await getMessagesForLocale<SaasMessages>("vi", "saas");
+	expect(enMessages.inbox.crib.body).toMatch(/Draft is in \{language\}/);
+	expect(viMessages.inbox.crib.body).toMatch(/Draft trả lời bằng \{language\}/);
+	expect(enMessages.inbox.guestLanguage.vi).toBe("Vietnamese");
+	expect(viMessages.inbox.guestLanguage.vi).toBe("tiếng Việt");
+});
 
 test("English UI crib uses the English template and extracted facts", () => {
 	const crib = formatCribNotes(

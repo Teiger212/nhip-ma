@@ -722,22 +722,24 @@
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
 		},
+		"guestLanguage": {
+			"en": "Englisch",
+			"vi": "Vietnamesisch",
+			"ja": "Japanisch",
+			"ko": "Koreanisch",
+			"ru": "Russisch"
+		},
+		"intent": {
+			"rent": "mieten",
+			"buy": "kaufen"
+		},
+		"paperworkFlag": "Gast erwähnte Papierarbeit oder Eigentum. Kein vietnamesisches Recht erfinden. Kein Pink Book / sổ hồng versprechen.",
 		"crib": {
 			"body": "Der Entwurf ist auf {language}. Aus dem Inbound: {facts}. Kein Interview.{paperwork}",
 			"emptyFacts": "noch nichts aus dem Inbound",
 			"nationality": "Nationalität {value}",
 			"inVietnamNow": "gerade in VN",
-			"notInVietnam": "nicht in VN",
-			"rent": "mieten",
-			"buy": "kaufen",
-			"paperworkFlag": "Gast erwähnte Papierarbeit oder Eigentum. Kein vietnamesisches Recht erfinden. Kein Pink Book / sổ hồng versprechen.",
-			"guestLanguage": {
-				"en": "Englisch",
-				"vi": "Vietnamesisch",
-				"ja": "Japanisch",
-				"ko": "Koreanisch",
-				"ru": "Russisch"
-			}
+			"notInVietnam": "nicht in VN"
 		},
 		"fields": {
 			"language": "Sprache",

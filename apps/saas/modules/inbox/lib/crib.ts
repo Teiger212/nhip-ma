@@ -12,9 +12,9 @@ export function formatCribNotes(
 ): string {
 	const facts = cribFacts(input.qualification, t);
 	const paperwork = input.paperwork?.mentioned ? ` ${t("paperworkFlag")}` : "";
-	return t("body", {
+	return t("crib.body", {
 		language: t(`guestLanguage.${input.language}`),
-		facts: facts.length > 0 ? facts.join(", ") : t("emptyFacts"),
+		facts: facts.length > 0 ? facts.join(", ") : t("crib.emptyFacts"),
 		paperwork,
 	});
 }
@@ -22,19 +22,19 @@ export function formatCribNotes(
 function cribFacts(qualification: Qualification, t: CribTranslate): string[] {
 	const facts: string[] = [];
 	if (qualification.nationality) {
-		facts.push(t("nationality", { value: qualification.nationality }));
+		facts.push(t("crib.nationality", { value: qualification.nationality }));
 	}
 	if (qualification.inVietnamNow === true) {
-		facts.push(t("inVietnamNow"));
+		facts.push(t("crib.inVietnamNow"));
 	}
 	if (qualification.inVietnamNow === false) {
-		facts.push(t("notInVietnam"));
+		facts.push(t("crib.notInVietnam"));
 	}
 	if (qualification.rentOrBuy === "rent") {
-		facts.push(t("rent"));
+		facts.push(t("intent.rent"));
 	}
 	if (qualification.rentOrBuy === "buy") {
-		facts.push(t("buy"));
+		facts.push(t("intent.buy"));
 	}
 	if (qualification.timeframe) {
 		facts.push(qualification.timeframe);

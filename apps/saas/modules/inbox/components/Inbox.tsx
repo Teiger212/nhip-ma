@@ -40,8 +40,8 @@ function displayName(conversation: Conversation): string {
 	return conversation.guestName || conversation.guestId;
 }
 
-function pipeLabel(pipe: Conversation["pipe"], t: (key: "zalo" | "whatsapp") => string): string {
-	return t(pipe);
+function pipeLabel(pipe: Conversation["pipe"], t: (key: string) => string): string {
+	return t(`pipes.${pipe}`);
 }
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
@@ -61,8 +61,6 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
-	const crib = useTranslations("inbox.crib");
-	const fields = useTranslations("inbox.fields");
 	const labels = {
 		missing: t("missing"),
 		yes: t("yes"),
@@ -73,18 +71,18 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const language = conversation.oneShot?.language;
 	const rentOrBuy =
 		q?.rentOrBuy === "rent" || q?.rentOrBuy === "buy"
-			? crib(q.rentOrBuy)
+			? t(`intent.${q.rentOrBuy}`)
 			: field(q?.rentOrBuy, labels);
 	const rows: [string, string][] = [
-		[fields("language"), language ? crib(`guestLanguage.${language}`) : t("missing")],
-		[fields("area"), field(q?.areaOfInterest, labels)],
-		[fields("nationality"), field(q?.nationality, labels)],
-		[fields("inVietnamNow"), field(q?.inVietnamNow, labels)],
-		[fields("rentOrBuy"), rentOrBuy],
-		[fields("moveIn"), field(q?.timeframe, labels)],
-		[fields("budget"), field(q?.budgetBand, labels)],
-		[fields("beds"), field(q?.bedsOrHousehold, labels)],
-		[fields("paperwork"), paper?.mentioned ? crib("paperworkFlag") : fields("noneMentioned")],
+		[t("fields.language"), language ? t(`guestLanguage.${language}`) : t("missing")],
+		[t("fields.area"), field(q?.areaOfInterest, labels)],
+		[t("fields.nationality"), field(q?.nationality, labels)],
+		[t("fields.inVietnamNow"), field(q?.inVietnamNow, labels)],
+		[t("fields.rentOrBuy"), rentOrBuy],
+		[t("fields.moveIn"), field(q?.timeframe, labels)],
+		[t("fields.budget"), field(q?.budgetBand, labels)],
+		[t("fields.beds"), field(q?.bedsOrHousehold, labels)],
+		[t("fields.paperwork"), paper?.mentioned ? t("paperworkFlag") : t("fields.noneMentioned")],
 	];
 
 	return (
@@ -96,7 +94,7 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 							<dt className="text-muted-foreground">{label}</dt>
 							<dd
 								className={
-									value === t("missing") || value === fields("noneMentioned")
+									value === t("missing") || value === t("fields.noneMentioned")
 										? "text-muted-foreground"
 										: "text-foreground"
 								}
@@ -139,8 +137,6 @@ function ThreadMessage({ message }: { message: Message }) {
 
 export function Inbox() {
 	const t = useTranslations("inbox");
-	const pipes = useTranslations("inbox.pipes");
-	const crib = useTranslations("inbox.crib");
 	const [conversations, setConversations] = useState<Conversation[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [query, setQuery] = useState("");
@@ -244,7 +240,7 @@ export function Inbox() {
 				qualification: selected.oneShot.qualification,
 				paperwork: selected.oneShot.paperwork,
 			},
-			crib,
+			(key, values) => t(key, values),
 		);
 
 	return (
@@ -294,7 +290,7 @@ export function Inbox() {
 										) : null}
 										<span className="gap-1 flex flex-wrap items-center">
 											<Badge status="info" className="normal-case">
-												{pipeLabel(conversation.pipe, pipes)}
+												{pipeLabel(conversation.pipe, t)}
 											</Badge>
 											<Badge
 												status={conversation.sentAt ? "success" : "warning"}
@@ -319,7 +315,7 @@ export function Inbox() {
 									<div className="gap-2 flex flex-wrap items-center">
 										<p className="font-medium">{displayName(selected)}</p>
 										<Badge status="info" className="normal-case">
-											{pipeLabel(selected.pipe, pipes)}
+											{pipeLabel(selected.pipe, t)}
 										</Badge>
 										<Badge status={selected.sentAt ? "success" : "warning"} className="normal-case">
 											{selected.sentAt ? t("sent") : t("needsApprove")}
