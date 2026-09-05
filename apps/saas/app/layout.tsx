@@ -13,7 +13,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { PropsWithChildren } from "react";
 
 const sansFont = Inter({
-	subsets: ["latin"],
+	subsets: ["latin", "vietnamese"],
 	variable: "--font-inter",
 });
 

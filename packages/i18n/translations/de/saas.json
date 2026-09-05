@@ -694,7 +694,12 @@
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Posteingang",
+		"navReports": "Berichte",
+		"navInternational": "International",
 		"footer": "Gäste sehen die Agenturnummer. Niemals automatisch senden.",
+		"missing": "(fehlt)",
+		"yes": "ja",
+		"no": "nein",
 		"searchPlaceholder": "Name oder letzte Nachricht suchen",
 		"searchAria": "Threads durchsuchen",
 		"empty": "Keine Unterhaltungen.",

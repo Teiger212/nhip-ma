@@ -19,7 +19,9 @@ pnpm --filter saas dev
 
 Open http://localhost:3010
 
-You should see the inbox shell (one live left item: **Inbox**), four invented threads (Minji, Yuki, Alexei, Thảo), search by name or last inbound, extract / **For you** / **Reply** / **Approve and send** (mock send). Nothing here is a real guest.
+You should see the inbox shell (**Inbox** live; **Reports** and **International** disabled), four invented threads (Minji, Yuki, Alexei, Thảo), a search bar spanning the thread list and conversation pane, extract / **For you** / **Reply** / **Approve and send** (mock send). Nothing here is a real guest.
+
+Language uses the kit locale cookie `NEXT_LOCALE` (`en`, `de`, `es`, `fr`, `vi`). The shell locale switch sets it. Vietnamese is `vi` (not `vn`). To open the walk in Vietnamese without the switcher, set `NEXT_LOCALE=vi` in the browser cookie and refresh.
 
 `pnpm seed` is idempotent: it writes four invented threads once and skips IDs that already exist. Run it from the repo root (it still pins `data/nhip.db` if cwd is `apps/saas`). Delete `data/nhip.db` first if you need a fresh set. Seed works without `.env.local` (defaults: repo-root SQLite + `SEND_MODE=mock`); copy the example anyway so Next has the walk URLs.
 

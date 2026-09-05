@@ -12,26 +12,27 @@ import {
 	Input,
 	Textarea,
 } from "@repo/ui";
+import { LocaleSwitch } from "@shared/components/LocaleSwitch";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import type { Conversation, Message } from "../lib/types";
 
-function field(value: unknown): string {
+function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
-		return "(missing)";
+		return labels.missing;
 	}
 	if (value === true) {
-		return "yes";
+		return labels.yes;
 	}
 	if (value === false) {
-		return "no";
+		return labels.no;
 	}
 	if (typeof value === "string" || typeof value === "number") {
 		return String(value);
 	}
-	return "(missing)";
+	return labels.missing;
 }
 
 function displayName(conversation: Conversation): string {
@@ -58,19 +59,25 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
 }
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
-	const t = useTranslations("inbox.fields");
+	const t = useTranslations("inbox");
+	const fields = useTranslations("inbox.fields");
+	const labels = {
+		missing: t("missing"),
+		yes: t("yes"),
+		no: t("no"),
+	};
 	const q = conversation.oneShot?.qualification;
 	const paper = conversation.oneShot?.paperwork;
 	const rows: [string, string][] = [
-		[t("language"), field(conversation.oneShot?.language)],
-		[t("area"), field(q?.areaOfInterest)],
-		[t("nationality"), field(q?.nationality)],
-		[t("inVietnamNow"), field(q?.inVietnamNow)],
-		[t("rentOrBuy"), field(q?.rentOrBuy)],
-		[t("moveIn"), field(q?.timeframe)],
-		[t("budget"), field(q?.budgetBand)],
-		[t("beds"), field(q?.bedsOrHousehold)],
-		[t("paperwork"), paper?.mentioned ? field(paper.flag) : t("noneMentioned")],
+		[fields("language"), field(conversation.oneShot?.language, labels)],
+		[fields("area"), field(q?.areaOfInterest, labels)],
+		[fields("nationality"), field(q?.nationality, labels)],
+		[fields("inVietnamNow"), field(q?.inVietnamNow, labels)],
+		[fields("rentOrBuy"), field(q?.rentOrBuy, labels)],
+		[fields("moveIn"), field(q?.timeframe, labels)],
+		[fields("budget"), field(q?.budgetBand, labels)],
+		[fields("beds"), field(q?.bedsOrHousehold, labels)],
+		[fields("paperwork"), paper?.mentioned ? field(paper.flag, labels) : fields("noneMentioned")],
 	];
 
 	return (
@@ -82,7 +89,7 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 							<dt className="text-muted-foreground">{label}</dt>
 							<dd
 								className={
-									value === "(missing)" || value === t("noneMentioned")
+									value === t("missing") || value === fields("noneMentioned")
 										? "text-muted-foreground"
 										: "text-foreground"
 								}
@@ -224,16 +231,21 @@ export function Inbox() {
 
 	return (
 		<div className="min-h-0 text-sm flex h-svh flex-col bg-background text-foreground">
+			<div className="p-2 shrink-0 border-b">
+				<div className="gap-2 flex items-center">
+					<Input
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder={t("searchPlaceholder")}
+						aria-label={t("searchAria")}
+					/>
+					<div className="md:hidden shrink-0">
+						<LocaleSwitch />
+					</div>
+				</div>
+			</div>
 			<div className="min-h-0 flex flex-1">
 				<aside className="w-72 flex shrink-0 flex-col border-r">
-					<div className="p-2 border-b">
-						<Input
-							value={query}
-							onChange={(event) => setQuery(event.target.value)}
-							placeholder={t("searchPlaceholder")}
-							aria-label={t("searchAria")}
-						/>
-					</div>
 					<div className="min-h-0 flex-1 overflow-y-auto">
 						{visible.length === 0 ? (
 							<p className="px-3 py-3 text-muted-foreground">

@@ -692,7 +692,12 @@
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Bandeja",
+		"navReports": "Informes",
+		"navInternational": "Internacional",
 		"footer": "Los huéspedes ven el número de la agencia. Nunca enviar automáticamente.",
+		"missing": "(falta)",
+		"yes": "sí",
+		"no": "no",
 		"searchPlaceholder": "Buscar nombre o último mensaje",
 		"searchAria": "Buscar hilos",
 		"empty": "No hay conversaciones.",

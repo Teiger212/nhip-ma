@@ -13,6 +13,10 @@ export default getRequestConfig(async ({ requestLocale }) => {
 		locale = localeCookie?.value ?? i18nConfig.defaultLocale;
 	}
 
+	if (!(locale in i18nConfig.locales)) {
+		locale = i18nConfig.defaultLocale;
+	}
+
 	return {
 		locale,
 		messages: await getMessagesForLocale(locale),

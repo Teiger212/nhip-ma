@@ -1,7 +1,8 @@
 "use client";
 
 import { Button, cn } from "@repo/ui";
-import { InboxIcon } from "lucide-react";
+import { LocaleSwitch } from "@shared/components/LocaleSwitch";
+import { BarChart3Icon, GlobeIcon, InboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -11,8 +12,9 @@ export function InboxShell({ children }: { children: ReactNode }) {
 	return (
 		<div className="flex min-h-svh w-full">
 			<aside className="w-56 md:flex hidden h-svh shrink-0 flex-col border-r border-border bg-muted/30 text-foreground">
-				<div className="h-12 px-3 flex shrink-0 items-center border-b">
+				<div className="h-12 px-3 gap-2 flex shrink-0 items-center justify-between border-b">
 					<span className="text-sm font-medium">{t("brand")}</span>
+					<LocaleSwitch />
 				</div>
 				<div className="min-h-0 p-2 flex flex-1 flex-col">
 					<ul className="gap-1 flex w-full flex-col">
@@ -28,6 +30,28 @@ export function InboxShell({ children }: { children: ReactNode }) {
 							>
 								<InboxIcon className="size-4" />
 								{t("navItem")}
+							</Button>
+						</li>
+						<li>
+							<Button
+								type="button"
+								variant="ghost"
+								disabled
+								className="h-8 gap-2 px-2 text-sm font-medium w-full justify-start rounded-md"
+							>
+								<BarChart3Icon className="size-4" />
+								{t("navReports")}
+							</Button>
+						</li>
+						<li>
+							<Button
+								type="button"
+								variant="ghost"
+								disabled
+								className="h-8 gap-2 px-2 text-sm font-medium w-full justify-start rounded-md"
+							>
+								<GlobeIcon className="size-4" />
+								{t("navInternational")}
 							</Button>
 						</li>
 					</ul>

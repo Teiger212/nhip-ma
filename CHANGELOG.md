@@ -2,6 +2,14 @@
 
 ## 2026-09-05
 
+### Changed
+
+#### Inbox (apps/saas)
+
+- Search now sits in a full-width chrome row above the thread list and conversation pane (same width as list + detail, not the left shell nav).
+- Inbox shell keeps **Inbox** as the only active left item and adds disabled **Reports** and **International** items (kit `Button` `disabled`, no navigation).
+- Inbox UI strings are localized in English and Vietnamese (`vi`). The kit locale switch is on the inbox shell (desktop) and next to search on small screens. Set the `NEXT_LOCALE=vi` cookie to open the walk in Vietnamese; unknown codes such as `vn` fall back to English.
+
 ### Fixed
 
 #### Inbox (apps/saas)

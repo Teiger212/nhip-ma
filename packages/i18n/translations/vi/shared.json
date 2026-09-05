@@ -1,0 +1,62 @@
+{
+	"pricing": {
+		"badge": "Pricing",
+		"choosePlan": "Choose plan",
+		"contactSales": "Contact sales",
+		"description": "Simple plans that scale with your team. Upgrade when you are ready.",
+		"getStarted": "Get started",
+		"month": "{count, plural, one {month} other {{count} months}}",
+		"monthly": "Monthly",
+		"products": {
+			"basic": {
+				"description": "For solo founders validating the first release.",
+				"features": {
+					"anotherFeature": "Core product features",
+					"limitedSupport": "Community support"
+				},
+				"title": "Basic"
+			},
+			"enterprise": {
+				"description": "Security, support, and terms tailored to your organization.",
+				"features": {
+					"enterpriseSupport": "Dedicated support",
+					"unlimitedProjects": "Unlimited workspaces"
+				},
+				"title": "Enterprise"
+			},
+			"free": {
+				"description": "Explore the product with no commitment.",
+				"features": {
+					"anotherFeature": "Core product features",
+					"limitedSupport": "Community support"
+				},
+				"title": "Free"
+			},
+			"lifetime": {
+				"description": "Pay once and keep access as the product grows.",
+				"features": {
+					"extendSupport": "Priority support window",
+					"noRecurringCosts": "No recurring fees"
+				},
+				"title": "Lifetime"
+			},
+			"pro": {
+				"description": "For teams collaborating across workspaces.",
+				"features": {
+					"anotherFeature": "Advanced product features",
+					"fiveMembers": "Up to 5 members",
+					"fullSupport": "Email support"
+				},
+				"title": "Pro"
+			}
+		},
+		"purchase": "Purchase",
+		"recommended": "Recommended",
+		"subscribe": "Subscribe",
+		"title": "Pricing",
+		"trialPeriod": "{days} {days, plural, one {day} other {days}} free trial",
+		"year": "{count, plural, one {year} other {{count} years}}",
+		"yearly": "Yearly",
+		"perSeat": "seat"
+	}
+}
