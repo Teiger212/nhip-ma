@@ -113,9 +113,7 @@
 			"openNavigation": "Abrir navegación",
 			"organizationSettings": "Configuración de organización",
 			"start": "Inicio",
-			"inbox": "Bandeja",
-			"reports": "Informes",
-			"international": "Internacional"
+			"inbox": "Bandeja"
 		},
 		"userMenu": {
 			"accountSettings": "Configuración de cuenta",

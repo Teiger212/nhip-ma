@@ -31,11 +31,9 @@ import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { usePermissions } from "@shared/components/PermixProvider";
 import { UserMenu } from "@shared/components/UserMenu";
 import {
-	BarChart3Icon,
 	BotMessageSquareIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
-	GlobeIcon,
 	HomeIcon,
 	InboxIcon,
 	MenuIcon,
@@ -62,7 +60,6 @@ interface NavMenuItem {
 	href: string;
 	icon: React.ComponentType<{ className?: string }>;
 	isActive: boolean;
-	disabled?: boolean;
 	subItems?: NavSubItem[];
 }
 
@@ -93,8 +90,7 @@ function NavMenuList({
 						"gap-3 px-3 py-2 text-sm flex w-full items-center rounded-lg whitespace-nowrap transition-colors",
 						{
 							"font-semibold bg-touch/10": menuItem.isActive,
-							"hover:bg-accent/50": !menuItem.isActive && !menuItem.disabled,
-							"cursor-not-allowed opacity-50": menuItem.disabled,
+							"hover:bg-accent/50": !menuItem.isActive,
 							"md:justify-center md:px-2": isCollapsedEffective,
 						},
 					);
@@ -107,40 +103,6 @@ function NavMenuList({
 							)}
 						/>
 					);
-
-					if (menuItem.disabled) {
-						const disabledItem = (
-							<span className={parentClasses} aria-disabled="true">
-								{parentIcon}
-								{!isCollapsedEffective && (
-									<span className="text-muted-foreground">{menuItem.label}</span>
-								)}
-							</span>
-						);
-
-						if (isCollapsedEffective) {
-							return (
-								<li key={menuItem.href}>
-									<Tooltip>
-										<TooltipTrigger
-											render={(props) => (
-												<span
-													{...props}
-													className={cn(props.className, parentClasses)}
-													aria-disabled="true"
-												>
-													{parentIcon}
-												</span>
-											)}
-										/>
-										<TooltipContent side="right">{menuItem.label}</TooltipContent>
-									</Tooltip>
-								</li>
-							);
-						}
-
-						return <li key={menuItem.href}>{disabledItem}</li>;
-					}
 
 					if (menuItem.subItems?.length) {
 						if (isCollapsedEffective) {
@@ -432,20 +394,6 @@ export function NavBar() {
 				href: "/inbox",
 				icon: InboxIcon,
 				isActive: pathname === "/inbox" || pathname.startsWith("/inbox/"),
-			},
-			{
-				label: t("app.menu.reports"),
-				href: "/reports",
-				icon: BarChart3Icon,
-				isActive: false,
-				disabled: true,
-			},
-			{
-				label: t("app.menu.international"),
-				href: "/international",
-				icon: GlobeIcon,
-				isActive: false,
-				disabled: true,
 			},
 			{
 				label: t("app.menu.aiChatbot"),

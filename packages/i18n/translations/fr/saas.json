@@ -113,9 +113,7 @@
 			"openNavigation": "Ouvrir la navigation",
 			"organizationSettings": "Paramètres de l'organisation",
 			"start": "Démarrage",
-			"inbox": "Boîte de réception",
-			"reports": "Rapports",
-			"international": "International"
+			"inbox": "Boîte de réception"
 		},
 		"userMenu": {
 			"accountSettings": "Paramètres du compte",

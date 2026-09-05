@@ -1,15 +1,15 @@
 import { expect, test } from "vitest";
 
-import { canUseKitAuthDatabase } from "./walk-user";
+import { isPostgresDatabaseUrl } from "./walk-user";
 
 test("kit auth seed only runs against a postgres URL", () => {
-	expect(canUseKitAuthDatabase(undefined)).toBe(false);
-	expect(canUseKitAuthDatabase("")).toBe(false);
-	expect(canUseKitAuthDatabase("file:./data/nhip.db")).toBe(false);
-	expect(canUseKitAuthDatabase("postgresql://postgres:postgres@localhost:5432/supastarter")).toBe(
+	expect(isPostgresDatabaseUrl(undefined)).toBe(false);
+	expect(isPostgresDatabaseUrl("")).toBe(false);
+	expect(isPostgresDatabaseUrl("file:./data/nhip.db")).toBe(false);
+	expect(isPostgresDatabaseUrl("postgresql://postgres:postgres@localhost:5432/supastarter")).toBe(
 		true,
 	);
-	expect(canUseKitAuthDatabase("postgres://postgres:postgres@localhost:5432/supastarter")).toBe(
+	expect(isPostgresDatabaseUrl("postgres://postgres:postgres@localhost:5432/supastarter")).toBe(
 		true,
 	);
 });

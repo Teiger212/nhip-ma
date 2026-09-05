@@ -113,9 +113,7 @@
 			"openNavigation": "Open navigation",
 			"organizationSettings": "Organization settings",
 			"start": "Start",
-			"inbox": "Hộp thư",
-			"reports": "Báo cáo",
-			"international": "Quốc tế"
+			"inbox": "Hộp thư"
 		},
 		"userMenu": {
 			"accountSettings": "Account settings",
