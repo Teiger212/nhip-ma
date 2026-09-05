@@ -112,7 +112,8 @@
 			"navigationTitle": "Menú",
 			"openNavigation": "Abrir navegación",
 			"organizationSettings": "Configuración de organización",
-			"start": "Inicio"
+			"start": "Inicio",
+			"inbox": "Bandeja"
 		},
 		"userMenu": {
 			"accountSettings": "Configuración de cuenta",
@@ -687,5 +688,39 @@
 		"title": "Procesando tu compra",
 		"description": "Por favor espera mientras confirmamos tu pago.",
 		"loading": "Confirmando tu compra, por favor espera..."
+	},
+	"inbox": {
+		"brand": "Nhịp",
+		"navItem": "Bandeja",
+		"footer": "Los huéspedes ven el número de la agencia. Nunca enviar automáticamente.",
+		"searchPlaceholder": "Buscar nombre o último mensaje",
+		"searchAria": "Buscar hilos",
+		"empty": "No hay conversaciones.",
+		"loading": "Cargando conversaciones…",
+		"loadError": "No se pudieron cargar las conversaciones.",
+		"noMatches": "No hay hilos coincidentes.",
+		"noneSelected": "Ninguna conversación seleccionada.",
+		"sent": "enviado",
+		"needsApprove": "falta aprobar",
+		"mock": "mock",
+		"forYou": "Para ti",
+		"forYouHint": "No se envía al huésped.",
+		"reply": "Respuesta",
+		"approveAndSend": "Aprobar y enviar",
+		"notSent": "no enviado",
+		"alreadySent": "ya enviado {at}",
+		"sending": "enviando…",
+		"fields": {
+			"language": "Idioma",
+			"area": "Zona",
+			"nationality": "Nacionalidad",
+			"inVietnamNow": "En Việt Nam ahora",
+			"rentOrBuy": "Alquilar o comprar",
+			"moveIn": "Mudanza",
+			"budget": "Presupuesto",
+			"beds": "Habitaciones / hogar",
+			"paperwork": "Papeles",
+			"noneMentioned": "no mencionado"
+		}
 	}
 }

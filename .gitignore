@@ -43,3 +43,10 @@ dist/
 .react-email/
 .content-collections/
 .prisma-zod-generator-manifest.json
+
+# inbox sqlite
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

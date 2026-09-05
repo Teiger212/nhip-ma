@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-05
+
+### Fixed
+
+#### Inbox (apps/saas)
+
+- **Approve and send** refuses a second send on a thread that already has `sentAt` (`409 already_sent`). The button is disabled after a mock send so a double tap cannot transmit twice.
+- Inbox list shows a loading and load-error state instead of a false “No conversations.” when `/api/conversations` is still in flight or fails.
+- Seed output reports fresh write vs skipped existing IDs. Docs and `.env.local.example` state the repo-root SQLite path and that `SEND_MODE` defaults to mock unless it is exactly `live`.
+
+## 2026-08-30
+
+### Added
+
+#### Inbox (apps/saas)
+
+- Ported the Nhịp inbox into `apps/saas`: thread list search, layman extract, **For you** (crib, not sent to the guest) above **Reply**, paperwork flag, **Approve and send** (mock). Default URL is the inbox on port **3010**. Auth is bypassed for the local walkthrough. Seed four invented threads with `pnpm seed` (Minji, Yuki, Alexei, Thảo).
+- New Prisma / Drizzle models in `packages/database`: `Pipe`, `Conversation`, `Message`, `Qualification`, `Draft`, `Paperwork`, `Approval`, `Send`. Walkthrough uses SQLite (`file:./data/nhip.db`). Inbox rows are not stored on User / Org / Plan / Subscription.
+
 ## 2026-08-18
 
 ### Changed

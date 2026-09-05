@@ -224,6 +224,90 @@ export const notification = sqliteTable(
 	(table) => [index("notification_userId_idx").on(table.userId)],
 );
 
+export const conversation = sqliteTable(
+	"Conversation",
+	{
+		id: text("id").primaryKey(),
+		pipe: text("pipe", { enum: ["zalo", "whatsapp"] }).notNull(),
+		guestId: text("guestId").notNull(),
+		guestName: text("guestName"),
+		language: text("language", { enum: ["en", "vi", "ja", "ko", "ru"] }),
+		lastGuestInboundAt: integer("lastGuestInboundAt", { mode: "timestamp" }),
+		sentAt: integer("sentAt", { mode: "timestamp" }),
+		updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [uniqueIndex("Conversation_pipe_guestId_key").on(table.pipe, table.guestId)],
+);
+
+export const message = sqliteTable("Message", {
+	id: text("id").primaryKey(),
+	conversationId: text("conversationId")
+		.notNull()
+		.references(() => conversation.id, { onDelete: "cascade" }),
+	direction: text("direction", { enum: ["in", "out"] }).notNull(),
+	source: text("source", { enum: ["guest", "oa_echo", "nhip"] }).notNull(),
+	text: text("text").notNull(),
+	at: integer("at", { mode: "timestamp" }).notNull(),
+	vendorMessageId: text("vendorMessageId"),
+	mock: integer("mock", { mode: "boolean" }).notNull().default(false),
+});
+
+export const qualification = sqliteTable("Qualification", {
+	conversationId: text("conversationId")
+		.primaryKey()
+		.references(() => conversation.id, { onDelete: "cascade" }),
+	areaOfInterest: text("areaOfInterest"),
+	nationality: text("nationality"),
+	inVietnamNow: integer("inVietnamNow", { mode: "boolean" }),
+	rentOrBuy: text("rentOrBuy", { enum: ["rent", "buy"] }),
+	timeframe: text("timeframe"),
+	budgetBand: text("budgetBand"),
+	bedsOrHousehold: text("bedsOrHousehold"),
+});
+
+export const draft = sqliteTable("Draft", {
+	conversationId: text("conversationId")
+		.primaryKey()
+		.references(() => conversation.id, { onDelete: "cascade" }),
+	reply: text("reply").notNull(),
+	crib: text("crib").notNull(),
+	cribLanguage: text("cribLanguage", { enum: ["en", "vi"] }).notNull(),
+});
+
+export const paperwork = sqliteTable("Paperwork", {
+	conversationId: text("conversationId")
+		.primaryKey()
+		.references(() => conversation.id, { onDelete: "cascade" }),
+	mentioned: integer("mentioned", { mode: "boolean" }).notNull(),
+	flag: text("flag"),
+});
+
+export const approval = sqliteTable("Approval", {
+	id: text("id")
+		.$defaultFn(() => cuid())
+		.primaryKey(),
+	conversationId: text("conversationId")
+		.notNull()
+		.references(() => conversation.id, { onDelete: "cascade" }),
+	reply: text("reply").notNull(),
+	at: integer("at", { mode: "timestamp" }).notNull(),
+});
+
+export const send = sqliteTable("Send", {
+	id: text("id")
+		.$defaultFn(() => cuid())
+		.primaryKey(),
+	conversationId: text("conversationId")
+		.notNull()
+		.references(() => conversation.id, { onDelete: "cascade" }),
+	mock: integer("mock", { mode: "boolean" }).notNull(),
+	pipe: text("pipe", { enum: ["zalo", "whatsapp"] }).notNull(),
+	to: text("to").notNull(),
+	text: text("text"),
+	vendorMessageId: text("vendorMessageId"),
+	at: integer("at", { mode: "timestamp" }).notNull(),
+});
+
 export const userNotificationPreference = sqliteTable(
 	"user_notification_preference",
 	{
@@ -347,3 +431,54 @@ export const userNotificationPreferenceRelations = relations(
 		}),
 	}),
 );
+
+export const conversationRelations = relations(conversation, ({ many, one }) => ({
+	messages: many(message),
+	qualification: one(qualification),
+	draft: one(draft),
+	paperwork: one(paperwork),
+	approvals: many(approval),
+	sends: many(send),
+}));
+
+export const messageRelations = relations(message, ({ one }) => ({
+	conversation: one(conversation, {
+		fields: [message.conversationId],
+		references: [conversation.id],
+	}),
+}));
+
+export const qualificationRelations = relations(qualification, ({ one }) => ({
+	conversation: one(conversation, {
+		fields: [qualification.conversationId],
+		references: [conversation.id],
+	}),
+}));
+
+export const draftRelations = relations(draft, ({ one }) => ({
+	conversation: one(conversation, {
+		fields: [draft.conversationId],
+		references: [conversation.id],
+	}),
+}));
+
+export const paperworkRelations = relations(paperwork, ({ one }) => ({
+	conversation: one(conversation, {
+		fields: [paperwork.conversationId],
+		references: [conversation.id],
+	}),
+}));
+
+export const approvalRelations = relations(approval, ({ one }) => ({
+	conversation: one(conversation, {
+		fields: [approval.conversationId],
+		references: [conversation.id],
+	}),
+}));
+
+export const sendRelations = relations(send, ({ one }) => ({
+	conversation: one(conversation, {
+		fields: [send.conversationId],
+		references: [conversation.id],
+	}),
+}));

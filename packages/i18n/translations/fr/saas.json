@@ -112,7 +112,8 @@
 			"navigationTitle": "Menu",
 			"openNavigation": "Ouvrir la navigation",
 			"organizationSettings": "Paramètres de l'organisation",
-			"start": "Démarrage"
+			"start": "Démarrage",
+			"inbox": "Boîte de réception"
 		},
 		"userMenu": {
 			"accountSettings": "Paramètres du compte",
@@ -687,5 +688,39 @@
 		"title": "Traitement de votre achat",
 		"description": "Veuillez patienter pendant que nous confirmons votre paiement.",
 		"loading": "Confirmation de votre achat en cours, veuillez patienter..."
+	},
+	"inbox": {
+		"brand": "Nhịp",
+		"navItem": "Boîte de réception",
+		"footer": "Les invités voient le numéro de l'agence. Jamais d'envoi automatique.",
+		"searchPlaceholder": "Rechercher un nom ou le dernier message",
+		"searchAria": "Rechercher des fils",
+		"empty": "Aucune conversation.",
+		"loading": "Chargement des conversations…",
+		"loadError": "Impossible de charger les conversations.",
+		"noMatches": "Aucun fil correspondant.",
+		"noneSelected": "Aucune conversation sélectionnée.",
+		"sent": "envoyé",
+		"needsApprove": "à approuver",
+		"mock": "mock",
+		"forYou": "Pour vous",
+		"forYouHint": "Non envoyé à l'invité.",
+		"reply": "Réponse",
+		"approveAndSend": "Approuver et envoyer",
+		"notSent": "non envoyé",
+		"alreadySent": "déjà envoyé {at}",
+		"sending": "envoi…",
+		"fields": {
+			"language": "Langue",
+			"area": "Quartier",
+			"nationality": "Nationalité",
+			"inVietnamNow": "Au Việt Nam maintenant",
+			"rentOrBuy": "Louer ou acheter",
+			"moveIn": "Emménagement",
+			"budget": "Budget",
+			"beds": "Chambres / foyer",
+			"paperwork": "Paperasse",
+			"noneMentioned": "non mentionné"
+		}
 	}
 }

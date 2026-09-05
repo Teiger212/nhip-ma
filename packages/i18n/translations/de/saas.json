@@ -112,7 +112,8 @@
 			"navigationTitle": "Menü",
 			"openNavigation": "Navigation öffnen",
 			"organizationSettings": "Organisationseinstellungen",
-			"start": "Start"
+			"start": "Start",
+			"inbox": "Posteingang"
 		},
 		"userMenu": {
 			"accountSettings": "Kontoeinstellungen",
@@ -689,5 +690,39 @@
 		"title": "Kauf wird verarbeitet",
 		"description": "Bitte warten Sie, während wir Ihre Zahlung bestätigen.",
 		"loading": "Ihr Kauf wird bestätigt, bitte warten..."
+	},
+	"inbox": {
+		"brand": "Nhịp",
+		"navItem": "Posteingang",
+		"footer": "Gäste sehen die Agenturnummer. Niemals automatisch senden.",
+		"searchPlaceholder": "Name oder letzte Nachricht suchen",
+		"searchAria": "Threads durchsuchen",
+		"empty": "Keine Unterhaltungen.",
+		"loading": "Unterhaltungen werden geladen…",
+		"loadError": "Unterhaltungen konnten nicht geladen werden.",
+		"noMatches": "Keine passenden Threads.",
+		"noneSelected": "Keine Unterhaltung ausgewählt.",
+		"sent": "gesendet",
+		"needsApprove": "Freigabe nötig",
+		"mock": "mock",
+		"forYou": "Für dich",
+		"forYouHint": "Wird dem Gast nicht gesendet.",
+		"reply": "Antwort",
+		"approveAndSend": "Freigeben und senden",
+		"notSent": "nicht gesendet",
+		"alreadySent": "bereits gesendet {at}",
+		"sending": "senden…",
+		"fields": {
+			"language": "Sprache",
+			"area": "Gebiet",
+			"nationality": "Nationalität",
+			"inVietnamNow": "Gerade in Việt Nam",
+			"rentOrBuy": "Mieten oder kaufen",
+			"moveIn": "Einzug",
+			"budget": "Budget",
+			"beds": "Schlafzimmer / Haushalt",
+			"paperwork": "Papierarbeit",
+			"noneMentioned": "nicht erwähnt"
+		}
 	}
 }

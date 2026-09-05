@@ -11,7 +11,8 @@
 		"clean": "turbo clean",
 		"test": "dotenv -c -- turbo test",
 		"format": "oxfmt .",
-		"format:check": "oxfmt --check ."
+		"format:check": "oxfmt --check .",
+		"seed": "dotenv -c -- pnpm --filter saas seed"
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",

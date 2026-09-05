@@ -7,6 +7,12 @@ const prismaClientSingleton = () => {
 		throw new Error("DATABASE_URL is not set");
 	}
 
+	if (process.env.DATABASE_URL.startsWith("file:")) {
+		throw new Error(
+			"Postgres Prisma is unused for the inbox SQLite walkthrough. Inbox data lives in packages/database/inbox.",
+		);
+	}
+
 	const adapter = new PrismaPg({
 		connectionString: process.env.DATABASE_URL,
 	});
@@ -15,14 +21,23 @@ const prismaClientSingleton = () => {
 };
 
 declare global {
-	var prisma: PrismaClient;
+	var prisma: PrismaClient | undefined;
 }
 
-// oxlint-disable-next-line no-redeclare -- This is a singleton
-const prisma = globalThis.prisma || prismaClientSingleton();
-
-if (process.env.NODE_ENV !== "production") {
-	globalThis.prisma = prisma;
+function getClient(): PrismaClient {
+	if (!globalThis.prisma) {
+		globalThis.prisma = prismaClientSingleton();
+	}
+	return globalThis.prisma;
 }
 
-export { prisma as db };
+export const db = new Proxy({} as PrismaClient, {
+	get(_target, prop, receiver) {
+		const client = getClient();
+		const value = Reflect.get(client, prop, receiver);
+		if (typeof value === "function") {
+			return value.bind(client);
+		}
+		return value;
+	},
+});
