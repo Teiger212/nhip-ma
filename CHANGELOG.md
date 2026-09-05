@@ -8,7 +8,7 @@
 
 - Search now sits in a full-width chrome row above the thread list and conversation pane (same width as list + detail, not the left shell nav).
 - Inbox shell keeps **Inbox** as the only active left item and adds disabled **Reports** and **International** items (kit `Button` `disabled`, no navigation).
-- Inbox UI strings are localized in English and Vietnamese (`vi`). The kit locale switch is on the inbox shell (desktop) and next to search on small screens. Set the `NEXT_LOCALE=vi` cookie to open the walk in Vietnamese; unknown codes such as `vn` fall back to English.
+- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. The kit `@repo/ui` locale switch (Languages icon) sits at the **bottom of the InboxShell sidebar**, above the never-auto-send footer, and offers English ↔ Vietnamese. It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
 
 ### Fixed
 

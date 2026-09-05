@@ -717,6 +717,10 @@
 		"notSent": "nicht gesendet",
 		"alreadySent": "bereits gesendet {at}",
 		"sending": "senden…",
+		"pipes": {
+			"zalo": "Zalo",
+			"whatsapp": "WhatsApp"
+		},
 		"fields": {
 			"language": "Sprache",
 			"area": "Gebiet",

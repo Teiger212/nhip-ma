@@ -713,6 +713,10 @@
 		"notSent": "chưa gửi",
 		"alreadySent": "đã gửi {at}",
 		"sending": "đang gửi…",
+		"pipes": {
+			"zalo": "Zalo",
+			"whatsapp": "WhatsApp"
+		},
 		"fields": {
 			"language": "Ngôn ngữ",
 			"area": "Khu vực",

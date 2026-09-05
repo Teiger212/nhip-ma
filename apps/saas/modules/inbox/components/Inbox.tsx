@@ -12,12 +12,12 @@ import {
 	Input,
 	Textarea,
 } from "@repo/ui";
-import { LocaleSwitch } from "@shared/components/LocaleSwitch";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import type { Conversation, Message } from "../lib/types";
+import { InboxLocaleSwitch } from "./InboxLocaleSwitch";
 
 function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
@@ -39,8 +39,8 @@ function displayName(conversation: Conversation): string {
 	return conversation.guestName || conversation.guestId;
 }
 
-function pipeLabel(pipe: Conversation["pipe"]): string {
-	return pipe === "zalo" ? "Zalo" : "WhatsApp";
+function pipeLabel(pipe: Conversation["pipe"], t: (key: "zalo" | "whatsapp") => string): string {
+	return t(pipe);
 }
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
@@ -132,6 +132,7 @@ function ThreadMessage({ message }: { message: Message }) {
 
 export function Inbox() {
 	const t = useTranslations("inbox");
+	const pipes = useTranslations("inbox.pipes");
 	const [conversations, setConversations] = useState<Conversation[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [query, setQuery] = useState("");
@@ -232,17 +233,12 @@ export function Inbox() {
 	return (
 		<div className="min-h-0 text-sm flex h-svh flex-col bg-background text-foreground">
 			<div className="p-2 shrink-0 border-b">
-				<div className="gap-2 flex items-center">
-					<Input
-						value={query}
-						onChange={(event) => setQuery(event.target.value)}
-						placeholder={t("searchPlaceholder")}
-						aria-label={t("searchAria")}
-					/>
-					<div className="md:hidden shrink-0">
-						<LocaleSwitch />
-					</div>
-				</div>
+				<Input
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+					placeholder={t("searchPlaceholder")}
+					aria-label={t("searchAria")}
+				/>
 			</div>
 			<div className="min-h-0 flex flex-1">
 				<aside className="w-72 flex shrink-0 flex-col border-r">
@@ -281,7 +277,7 @@ export function Inbox() {
 										) : null}
 										<span className="gap-1 flex flex-wrap items-center">
 											<Badge status="info" className="normal-case">
-												{pipeLabel(conversation.pipe)}
+												{pipeLabel(conversation.pipe, pipes)}
 											</Badge>
 											<Badge
 												status={conversation.sentAt ? "success" : "warning"}
@@ -306,7 +302,7 @@ export function Inbox() {
 									<div className="gap-2 flex flex-wrap items-center">
 										<p className="font-medium">{displayName(selected)}</p>
 										<Badge status="info" className="normal-case">
-											{pipeLabel(selected.pipe)}
+											{pipeLabel(selected.pipe, pipes)}
 										</Badge>
 										<Badge status={selected.sentAt ? "success" : "warning"} className="normal-case">
 											{selected.sentAt ? t("sent") : t("needsApprove")}
@@ -362,8 +358,9 @@ export function Inbox() {
 					</div>
 				</article>
 			</div>
-			<footer className="px-3 py-2 text-xs md:hidden shrink-0 border-t text-muted-foreground">
-				{t("footer")}
+			<footer className="px-3 py-2 text-xs md:hidden gap-2 flex shrink-0 items-center justify-between border-t text-muted-foreground">
+				<span>{t("footer")}</span>
+				<InboxLocaleSwitch />
 			</footer>
 		</div>
 	);

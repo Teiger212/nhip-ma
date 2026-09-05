@@ -35,8 +35,8 @@ pnpm --filter saas dev
 Open http://localhost:3010 — the inbox. `pnpm seed` writes four invented threads
 (Minji, Yuki, Alexei, Thảo) into repo-root `data/nhip.db`. Re-run skips existing
 IDs. Delete `data/nhip.db` for a fresh set. Nothing is a real guest. Inbox copy is
-in `en` and `vi` (`packages/i18n`). The kit locale switch on the inbox shell sets
-the `NEXT_LOCALE` cookie; Vietnamese is `vi`.
+`inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. The kit Languages
+switch at the bottom of InboxShell writes `NEXT_LOCALE`; Vietnamese is `vi`.
 
 `pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
 on port 3010. Do not build or ship marketing or admin this walk.

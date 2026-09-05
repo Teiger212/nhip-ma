@@ -715,6 +715,10 @@
 		"notSent": "non envoyé",
 		"alreadySent": "déjà envoyé {at}",
 		"sending": "envoi…",
+		"pipes": {
+			"zalo": "Zalo",
+			"whatsapp": "WhatsApp"
+		},
 		"fields": {
 			"language": "Langue",
 			"area": "Quartier",
