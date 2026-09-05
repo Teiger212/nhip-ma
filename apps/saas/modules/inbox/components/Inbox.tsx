@@ -334,7 +334,7 @@ export function Inbox() {
 	}
 
 	return (
-		<div className="min-h-0 text-sm flex h-svh flex-col bg-background text-foreground">
+		<div className="min-h-0 text-sm flex h-full flex-col bg-background text-foreground">
 			<div
 				className={cn(
 					"p-2 gap-2 flex shrink-0 items-center border-b",

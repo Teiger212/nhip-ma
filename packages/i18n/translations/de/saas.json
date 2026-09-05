@@ -113,7 +113,9 @@
 			"openNavigation": "Navigation öffnen",
 			"organizationSettings": "Organisationseinstellungen",
 			"start": "Start",
-			"inbox": "Posteingang"
+			"inbox": "Posteingang",
+			"reports": "Berichte",
+			"international": "International"
 		},
 		"userMenu": {
 			"accountSettings": "Kontoeinstellungen",

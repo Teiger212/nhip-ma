@@ -15,16 +15,25 @@ const locales = Object.entries(i18nConfig.locales).map(([value, localeConfig]) =
 	label: localeConfig.label,
 }));
 
-export function LocaleSwitch() {
+export function LocaleSwitch({
+	showLabel,
+	className,
+}: {
+	showLabel?: boolean;
+	className?: string;
+} = {}) {
 	const t = useTranslations();
 	const router = useRouter();
 	const currentLocale = useLocale();
+	const languageLabel = t("common.aria.language");
 
 	return (
 		<LocaleSwitchControl
 			locales={locales}
 			value={currentLocale}
-			label={t("common.aria.language")}
+			label={languageLabel}
+			triggerLabel={showLabel ? languageLabel : undefined}
+			className={className}
 			onValueChange={async (nextLocale) => {
 				if (!isLocale(nextLocale)) {
 					return;

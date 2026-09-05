@@ -26,14 +26,18 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@repo/ui/components/tooltip";
+import { LocaleSwitch } from "@shared/components/LocaleSwitch";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { usePermissions } from "@shared/components/PermixProvider";
 import { UserMenu } from "@shared/components/UserMenu";
 import {
+	BarChart3Icon,
 	BotMessageSquareIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
+	GlobeIcon,
 	HomeIcon,
+	InboxIcon,
 	MenuIcon,
 	SettingsIcon,
 	ShieldUserIcon,
@@ -58,6 +62,7 @@ interface NavMenuItem {
 	href: string;
 	icon: React.ComponentType<{ className?: string }>;
 	isActive: boolean;
+	disabled?: boolean;
 	subItems?: NavSubItem[];
 }
 
@@ -88,7 +93,8 @@ function NavMenuList({
 						"gap-3 px-3 py-2 text-sm flex w-full items-center rounded-lg whitespace-nowrap transition-colors",
 						{
 							"font-semibold bg-touch/10": menuItem.isActive,
-							"hover:bg-accent/50": !menuItem.isActive,
+							"hover:bg-accent/50": !menuItem.isActive && !menuItem.disabled,
+							"cursor-not-allowed opacity-50": menuItem.disabled,
 							"md:justify-center md:px-2": isCollapsedEffective,
 						},
 					);
@@ -101,6 +107,40 @@ function NavMenuList({
 							)}
 						/>
 					);
+
+					if (menuItem.disabled) {
+						const disabledItem = (
+							<span className={parentClasses} aria-disabled="true">
+								{parentIcon}
+								{!isCollapsedEffective && (
+									<span className="text-muted-foreground">{menuItem.label}</span>
+								)}
+							</span>
+						);
+
+						if (isCollapsedEffective) {
+							return (
+								<li key={menuItem.href}>
+									<Tooltip>
+										<TooltipTrigger
+											render={(props) => (
+												<span
+													{...props}
+													className={cn(props.className, parentClasses)}
+													aria-disabled="true"
+												>
+													{parentIcon}
+												</span>
+											)}
+										/>
+										<TooltipContent side="right">{menuItem.label}</TooltipContent>
+									</Tooltip>
+								</li>
+							);
+						}
+
+						return <li key={menuItem.href}>{disabledItem}</li>;
+					}
 
 					if (menuItem.subItems?.length) {
 						if (isCollapsedEffective) {
@@ -388,6 +428,26 @@ export function NavBar() {
 				isActive: pathname === "/" || pathname === basePath,
 			},
 			{
+				label: t("app.menu.inbox"),
+				href: "/inbox",
+				icon: InboxIcon,
+				isActive: pathname === "/inbox" || pathname.startsWith("/inbox/"),
+			},
+			{
+				label: t("app.menu.reports"),
+				href: "/reports",
+				icon: BarChart3Icon,
+				isActive: false,
+				disabled: true,
+			},
+			{
+				label: t("app.menu.international"),
+				href: "/international",
+				icon: GlobeIcon,
+				isActive: false,
+				disabled: true,
+			},
+			{
 				label: t("app.menu.aiChatbot"),
 				href: "/chatbot",
 				icon: BotMessageSquareIcon,
@@ -487,6 +547,12 @@ export function NavBar() {
 													onLinkClick={() => setMobileMenuOpen(false)}
 												/>
 											</div>
+											<div className="pt-3 mt-auto shrink-0 border-t">
+												<LocaleSwitch
+													showLabel
+													className="min-h-11 min-w-11 h-11 px-3 font-medium"
+												/>
+											</div>
 										</div>
 									</SheetContent>
 								</Sheet>
@@ -540,6 +606,10 @@ export function NavBar() {
 						isCollapsedEffective && "md:items-center",
 					)}
 				>
+					<LocaleSwitch
+						showLabel={!isCollapsedEffective}
+						className={isCollapsedEffective ? undefined : "min-h-11 min-w-11 h-11 px-3 font-medium"}
+					/>
 					<div
 						className={cn(
 							"min-w-0 w-full flex-1",
