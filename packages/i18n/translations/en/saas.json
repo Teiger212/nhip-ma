@@ -696,6 +696,8 @@
 		"searchPlaceholder": "Search name or last message",
 		"searchAria": "Search threads",
 		"empty": "No conversations.",
+		"loading": "Loading conversations…",
+		"loadError": "Could not load conversations.",
 		"noMatches": "No matching threads.",
 		"noneSelected": "No conversation selected.",
 		"sent": "sent",

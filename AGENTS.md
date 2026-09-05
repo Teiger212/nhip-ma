@@ -33,7 +33,8 @@ pnpm --filter saas dev
 ```
 
 Open http://localhost:3010 — the inbox. `pnpm seed` writes four invented threads
-(Minji, Yuki, Alexei, Thảo). Nothing is a real guest.
+(Minji, Yuki, Alexei, Thảo) into repo-root `data/nhip.db`. Re-run skips existing
+IDs. Delete `data/nhip.db` for a fresh set. Nothing is a real guest.
 
 `pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
 on port 3010. Do not build or ship marketing or admin this walk.

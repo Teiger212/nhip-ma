@@ -6,6 +6,7 @@ import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test } from "vitest";
 
 import { POST as approve } from "../../../app/api/conversations/[id]/approve/route";
+import { GET as getConversation } from "../../../app/api/conversations/[id]/route";
 import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { whatsappWindowState } from "./pipes";
@@ -85,6 +86,115 @@ test("inbound does not send; approve is required", async () => {
 	expect(after.sentAt).toBeTruthy();
 	expect(after.lastSend.mock).toBe(true);
 	expect(after.messages.filter((message) => message.source === "nhip").length).toBe(1);
+});
+
+test("approve refuses a second send on an already-sent thread", async () => {
+	const injected = await json(
+		await inject(
+			new Request("http://localhost/dev/inbound", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					pipe: "zalo",
+					guestId: "guest-already",
+					text: "Looking to rent in Tay Ho",
+				}),
+			}),
+		),
+	);
+	const conv = injected.body.conversation as { id: string };
+	const first = await json(
+		await approve(
+			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params(conv.id),
+		),
+	);
+	expect(first.res.status).toBe(200);
+	const second = await json(
+		await approve(
+			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params(conv.id),
+		),
+	);
+	expect(second.res.status).toBe(409);
+	expect(second.body.error).toBe("already_sent");
+	const after = second.body.conversation as { messages?: Array<{ source: string }> } | undefined;
+	expect(after).toBeUndefined();
+	const listed = await json(await listConversations());
+	const thread = (
+		listed.body as unknown as Array<{ id: string; messages: Array<{ source: string }> }>
+	).find((item) => item.id === conv.id);
+	expect(thread?.messages.filter((message) => message.source === "nhip").length).toBe(1);
+});
+
+test("approve of a missing thread is 404", async () => {
+	const missing = await json(
+		await approve(
+			new Request("http://localhost/api/conversations/zalo:missing/approve", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params("zalo:missing"),
+		),
+	);
+	expect(missing.res.status).toBe(404);
+	expect(missing.body.error).toBe("not_found");
+});
+
+test("list and get conversation return the invented inbound", async () => {
+	const injected = await json(
+		await inject(
+			new Request("http://localhost/dev/inbound", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					pipe: "whatsapp",
+					guestId: "demo-ru-ciputra",
+					guestName: "Alexei",
+					text: "Здравствуйте. Я русский, сейчас в Ханое. Ищу аренду в Ciputra, 2 bedroom, $2000/month.",
+				}),
+			}),
+		),
+	);
+	const conv = injected.body.conversation as { id: string };
+	const listed = await json(await listConversations());
+	const fromList = (listed.body as unknown as Array<{ id: string; guestName: string | null }>).find(
+		(item) => item.id === conv.id,
+	);
+	expect(fromList?.guestName).toBe("Alexei");
+
+	const opened = await json(
+		await getConversation(
+			new Request(`http://localhost/api/conversations/${conv.id}`),
+			params(conv.id),
+		),
+	);
+	expect(opened.res.status).toBe(200);
+	const body = opened.body as unknown as {
+		guestName: string;
+		oneShot: { qualification: { areaOfInterest: string | null } };
+		messages: Array<{ text: string }>;
+	};
+	expect(body.guestName).toBe("Alexei");
+	expect(body.oneShot.qualification.areaOfInterest).toBe("Ciputra");
+	expect(body.messages[0]?.text).toMatch(/Ciputra/);
+
+	const missing = await json(
+		await getConversation(
+			new Request("http://localhost/api/conversations/zalo:missing"),
+			params("zalo:missing"),
+		),
+	);
+	expect(missing.res.status).toBe(404);
 });
 
 test("there is no send path except approve", async () => {

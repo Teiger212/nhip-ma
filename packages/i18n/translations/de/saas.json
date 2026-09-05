@@ -698,6 +698,8 @@
 		"searchPlaceholder": "Name oder letzte Nachricht suchen",
 		"searchAria": "Threads durchsuchen",
 		"empty": "Keine Unterhaltungen.",
+		"loading": "Unterhaltungen werden geladen…",
+		"loadError": "Unterhaltungen konnten nicht geladen werden.",
 		"noMatches": "Keine passenden Threads.",
 		"noneSelected": "Keine Unterhaltung ausgewählt.",
 		"sent": "gesendet",

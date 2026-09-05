@@ -12,7 +12,8 @@ type GlobalRuntime = typeof globalThis & { __nhipRuntime?: Runtime };
 
 let override: Runtime | null = null;
 
-function readSendMode(value: string | undefined): SendMode {
+/** Only the exact value `live` talks to WhatsApp/Zalo. Anything else is mock. */
+export function resolveSendMode(value: string | undefined): SendMode {
 	return value === "live" ? "live" : "mock";
 }
 
@@ -24,7 +25,7 @@ export function getRuntime(): Runtime {
 	if (!g.__nhipRuntime) {
 		g.__nhipRuntime = {
 			store: createInboxStore(sqlitePathFromEnv()),
-			sendMode: readSendMode(process.env.SEND_MODE),
+			sendMode: resolveSendMode(process.env.SEND_MODE),
 			env: process.env,
 		};
 	}

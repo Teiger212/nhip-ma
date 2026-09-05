@@ -67,6 +67,14 @@ export async function approveAndSend(id: string, replyOverride?: string): Promis
 	if (!conv) {
 		return { ok: false, status: 404, error: "not_found" };
 	}
+	if (conv.sentAt) {
+		return {
+			ok: false,
+			status: 409,
+			error: "already_sent",
+			message: "This thread was already approved and sent.",
+		};
+	}
 	if (!conv.oneShot?.draft?.reply) {
 		return { ok: false, status: 400, error: "no_draft" };
 	}

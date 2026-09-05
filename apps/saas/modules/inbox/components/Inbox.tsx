@@ -131,6 +131,9 @@ export function Inbox() {
 	const [reply, setReply] = useState("");
 	const [status, setStatus] = useState("");
 	const [statusKind, setStatusKind] = useState<"ok" | "warn" | "">("");
+	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
+	const [approving, setApproving] = useState(false);
 
 	const visible = useMemo(
 		() => conversations.filter((conversation) => matchesThreadSearch(conversation, query)),
@@ -140,17 +143,25 @@ export function Inbox() {
 
 	const refresh = useCallback(
 		async (keepId?: string | null) => {
-			const list = await api<Conversation[]>("/api/conversations");
-			setConversations(list);
-			const id = keepId === undefined ? selectedId : keepId;
-			const next = list.find((conversation) => conversation.id === id) || list[0] || null;
-			if (next && !id) {
-				setSelectedId(next.id);
+			try {
+				const list = await api<Conversation[]>("/api/conversations");
+				setConversations(list);
+				setLoadError(false);
+				const id = keepId === undefined ? selectedId : keepId;
+				const next = list.find((conversation) => conversation.id === id) || list[0] || null;
+				if (next && !id) {
+					setSelectedId(next.id);
+				}
+				if (next?.oneShot?.draft?.reply) {
+					setReply(next.oneShot.draft.reply);
+				}
+				return list;
+			} catch {
+				setLoadError(true);
+				return [];
+			} finally {
+				setLoading(false);
 			}
-			if (next?.oneShot?.draft?.reply) {
-				setReply(next.oneShot.draft.reply);
-			}
-			return list;
 		},
 		[selectedId],
 	);
@@ -183,9 +194,10 @@ export function Inbox() {
 	}, [selected?.id, selected?.sentAt, selected?.oneShot?.draft?.reply, t, selected]);
 
 	async function onApprove() {
-		if (!selected) {
+		if (!selected || selected.sentAt || approving) {
 			return;
 		}
+		setApproving(true);
 		setStatus(t("sending"));
 		setStatusKind("");
 		try {
@@ -203,6 +215,8 @@ export function Inbox() {
 			const error = err as Error & { data?: { message?: string; error?: string } };
 			setStatusKind("warn");
 			setStatus(error.data?.message || error.data?.error || error.message);
+		} finally {
+			setApproving(false);
 		}
 	}
 
@@ -223,7 +237,13 @@ export function Inbox() {
 					<div className="min-h-0 flex-1 overflow-y-auto">
 						{visible.length === 0 ? (
 							<p className="px-3 py-3 text-muted-foreground">
-								{conversations.length === 0 ? t("empty") : t("noMatches")}
+								{loading
+									? t("loading")
+									: loadError
+										? t("loadError")
+										: conversations.length === 0
+											? t("empty")
+											: t("noMatches")}
 							</p>
 						) : (
 							visible.map((conversation) => {
@@ -306,7 +326,12 @@ export function Inbox() {
 												aria-label={t("reply")}
 											/>
 											<div className="gap-2 flex flex-wrap items-center">
-												<Button type="button" variant="primary" onClick={() => void onApprove()}>
+												<Button
+													type="button"
+													variant="primary"
+													disabled={Boolean(selected.sentAt) || approving}
+													onClick={() => void onApprove()}
+												>
 													{t("approveAndSend")}
 												</Button>
 												<span

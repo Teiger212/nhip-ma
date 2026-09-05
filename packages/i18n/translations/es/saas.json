@@ -696,6 +696,8 @@
 		"searchPlaceholder": "Buscar nombre o último mensaje",
 		"searchAria": "Buscar hilos",
 		"empty": "No hay conversaciones.",
+		"loading": "Cargando conversaciones…",
+		"loadError": "No se pudieron cargar las conversaciones.",
 		"noMatches": "No hay hilos coincidentes.",
 		"noneSelected": "Ninguna conversación seleccionada.",
 		"sent": "enviado",

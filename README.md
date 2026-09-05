@@ -21,13 +21,15 @@ Open http://localhost:3010
 
 You should see the inbox shell (one live left item: **Inbox**), four invented threads (Minji, Yuki, Alexei, Thảo), search by name or last inbound, extract / **For you** / **Reply** / **Approve and send** (mock send). Nothing here is a real guest.
 
-Re-running `pnpm seed` skips threads that already exist. Delete `data/nhip.db` first if you need a fresh set.
+`pnpm seed` is idempotent: it writes four invented threads once and skips IDs that already exist. Run it from the repo root (it still pins `data/nhip.db` if cwd is `apps/saas`). Delete `data/nhip.db` first if you need a fresh set. Seed works without `.env.local` (defaults: repo-root SQLite + `SEND_MODE=mock`); copy the example anyway so Next has the walk URLs.
 
 `POST /dev/inbound` still exists for local simulation only. It is not in the UI. In production (`NODE_ENV=production`) that route returns 404.
 
 Webhook routes stay (`/webhooks/zalo`, `/webhooks/whatsapp`). Default `SEND_MODE=mock`. No live send required.
 
 `apps/marketing` and `packages/ui` stay in the turbo tree. Do not build or ship marketing or admin this walk.
+
+There are no GitHub Actions workflows in this repo yet. Inbox unit tests live under `apps/saas/modules/inbox` (`pnpm --filter saas test`).
 
 ## Data
 

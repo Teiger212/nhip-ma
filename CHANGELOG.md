@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-05
+
+### Fixed
+
+#### Inbox (apps/saas)
+
+- **Approve and send** refuses a second send on a thread that already has `sentAt` (`409 already_sent`). The button is disabled after a mock send so a double tap cannot transmit twice.
+- Inbox list shows a loading and load-error state instead of a false “No conversations.” when `/api/conversations` is still in flight or fails.
+- Seed output reports fresh write vs skipped existing IDs. Docs and `.env.local.example` state the repo-root SQLite path and that `SEND_MODE` defaults to mock unless it is exactly `live`.
+
 ## 2026-08-30
 
 ### Added

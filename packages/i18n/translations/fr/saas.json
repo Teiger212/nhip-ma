@@ -696,6 +696,8 @@
 		"searchPlaceholder": "Rechercher un nom ou le dernier message",
 		"searchAria": "Rechercher des fils",
 		"empty": "Aucune conversation.",
+		"loading": "Chargement des conversations…",
+		"loadError": "Impossible de charger les conversations.",
 		"noMatches": "Aucun fil correspondant.",
 		"noneSelected": "Aucune conversation sélectionnée.",
 		"sent": "envoyé",

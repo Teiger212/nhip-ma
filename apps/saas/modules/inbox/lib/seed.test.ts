@@ -56,13 +56,19 @@ test("seed writes invented threads once", async () => {
 	});
 	const first = await seedInbox();
 	expect(first.length).toBe(4);
+	expect(
+		first
+			.map((conversation) => conversation.guestName)
+			.sort((a, b) => (a ?? "").localeCompare(b ?? "")),
+	).toEqual(["Alexei", "Minji", "Thảo", "Yuki"]);
 	expect(first.every((conversation) => conversation.sentAt === null)).toBe(true);
 	expect(first.every((conversation) => conversation.oneShot?.draft.reply)).toBe(true);
+	expect(first.every((conversation) => conversation.messages.length === 1)).toBe(true);
+	const byId = (a: string, b: string) => a.localeCompare(b);
+	const firstIds = first.map((conversation) => conversation.id).sort(byId);
 	const again = await seedInbox();
-	expect(again.length).toBe(4);
-	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(
-		first.reduce((n, conversation) => n + conversation.messages.length, 0),
-	);
+	expect(again.map((conversation) => conversation.id).sort(byId)).toEqual(firstIds);
+	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(4);
 });
 
 test("sqlite file URLs resolve under the repo root", () => {
@@ -70,10 +76,22 @@ test("sqlite file URLs resolve under the repo root", () => {
 	try {
 		process.env.DATABASE_URL = "file:./data/nhip.db";
 		const resolved = sqlitePathFromEnv();
+		let repoRoot = process.cwd();
+		while (!fs.existsSync(path.join(repoRoot, "pnpm-workspace.yaml"))) {
+			const parent = path.dirname(repoRoot);
+			if (parent === repoRoot) {
+				break;
+			}
+			repoRoot = parent;
+		}
+		expect(resolved).toBe(path.join(repoRoot, "data", "nhip.db"));
 		expect(path.basename(path.dirname(resolved))).toBe("data");
 		expect(path.basename(resolved)).toBe("nhip.db");
 		expect(path.isAbsolute(resolved)).toBe(true);
 		expect(sqliteFilePath("/tmp/nhip-absolute.db")).toBe("/tmp/nhip-absolute.db");
+
+		process.env.DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/supastarter";
+		expect(sqlitePathFromEnv()).toBe(path.join(repoRoot, "data", "nhip.db"));
 	} finally {
 		if (prev === undefined) {
 			delete process.env.DATABASE_URL;
