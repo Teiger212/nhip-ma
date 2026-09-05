@@ -716,6 +716,9 @@
 		"alreadySent": "đã gửi {at}",
 		"sending": "đang gửi…",
 		"language": "Ngôn ngữ",
+		"back": "Quay lại",
+		"backAria": "Quay lại danh sách hội thoại",
+		"missingFields": "{count} trường thiếu",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"

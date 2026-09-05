@@ -37,6 +37,9 @@ Open http://localhost:3010 — the inbox. `pnpm seed` writes four invented threa
 IDs. Delete `data/nhip.db` for a fresh set. Nothing is a real guest. Inbox copy is
 `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. The kit Languages
 switch at the bottom of InboxShell writes `NEXT_LOCALE`; Vietnamese is `vi`.
+Below Tailwind `md`, the list and selected thread are exclusive; Language stays
+in inbox chrome (not only the desktop rail). Approve and send pins to the detail
+bar. Desktop two-pane is unchanged.
 
 `pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
 on port 3010. Do not build or ship marketing or admin this walk.

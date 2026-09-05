@@ -6,6 +6,13 @@
 
 #### Inbox (apps/saas)
 
+- Below Tailwind `md`, the inbox shows either the thread list or the selected thread. Detail opens from a list row and returns with an in-app **Back** control; the detail header shows the guest name. Desktop two-pane layout is unchanged.
+- **Language** / **Ngôn ngữ** stays reachable on small viewports (list chrome and detail header), not only in the `md+` shell rail. The control is at least 44×44 CSS pixels and keeps its text label.
+- **Approve and send** (full label) and send status pin to a sticky detail bar so the operator does not scroll past extract, crib, and reply. Reply stays editable above. One send path.
+- Extract keeps the nine-field model, lists filled facts first, and collapses `(missing)` / `none mentioned` rows. Mentioned paperwork stays visible.
+- Message and `sentAt` display use localized relative or local datetime. Storage stays ISO.
+- Send status uses `role="status"` with `aria-live="polite"` and `aria-atomic="true"`.
+- **For you** is omitted when there is no one-shot crib; empty extracts use `inbox.crib.emptyFacts`.
 - Search now sits in a full-width chrome row above the thread list and conversation pane (same width as list + detail, not the left shell nav).
 - Inbox shell keeps **Inbox** as the only active left item and adds disabled **Reports** and **International** items (kit `Button` `disabled`, no navigation).
 - Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. The kit `@repo/ui` locale switch (Languages icon + **Language** / **Ngôn ngữ** label) sits at the **bottom of the InboxShell sidebar**, above the never-auto-send footer, and offers English ↔ Vietnamese. It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.

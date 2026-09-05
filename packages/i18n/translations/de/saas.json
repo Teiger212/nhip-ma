@@ -718,6 +718,9 @@
 		"alreadySent": "bereits gesendet {at}",
 		"sending": "senden…",
 		"language": "Sprache",
+		"back": "Zurück",
+		"backAria": "Zurück zur Thread-Liste",
+		"missingFields": "{count} fehlen",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"

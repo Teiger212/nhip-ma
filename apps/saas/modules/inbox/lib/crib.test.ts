@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 
 import enSaas from "../../../../../packages/i18n/translations/en/saas.json";
 import viSaas from "../../../../../packages/i18n/translations/vi/saas.json";
-import { formatCribNotes } from "./crib";
+import { formatConversationCrib, formatCribNotes } from "./crib";
 import { emptyQualification } from "./extract";
 import type { GuestLanguage, Qualification } from "./types";
 
@@ -45,6 +45,12 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.loading).toBe("Đang tải cuộc hội thoại…");
 	expect(enMessages.inbox.loadError).toBe("Could not load conversations.");
 	expect(viMessages.inbox.loadError).toBe("Không tải được cuộc hội thoại.");
+	expect(enMessages.inbox.back).toBe("Back");
+	expect(viMessages.inbox.back).toBe("Quay lại");
+	expect(enMessages.inbox.language).toBe("Language");
+	expect(viMessages.inbox.language).toBe("Ngôn ngữ");
+	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
+	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
 });
 
 test("English UI crib uses the English template and extracted facts", () => {
@@ -86,4 +92,24 @@ test("paperwork flag is localized and does not invent law", () => {
 	expect(enCrib).not.toMatch(/stored English flag/);
 	expect(viCrib).toMatch(/Không bịa luật Việt Nam/);
 	expect(viCrib).not.toMatch(/sổ hồng ngày mai/i);
+});
+
+test("For you is omitted when there is no one-shot crib", () => {
+	expect(formatConversationCrib({ oneShot: null }, en)).toBeNull();
+});
+
+test("empty one-shot facts use the empty-facts crib string", () => {
+	const crib = formatConversationCrib(
+		{
+			oneShot: {
+				language: "en",
+				qualification: emptyQualification(),
+				paperwork: { mentioned: false, flag: null },
+				draft: { reply: "", crib: "", cribLanguage: "vi" },
+			},
+		},
+		en,
+	);
+	expect(crib).toMatch(/nothing extractable yet/);
+	expect(crib).not.toBe("");
 });

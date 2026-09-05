@@ -17,7 +17,7 @@ const locales = walkLocales.map((value) => ({
 	label: i18nConfig.locales[value].label,
 }));
 
-export function InboxLocaleSwitch() {
+export function InboxLocaleSwitch({ className }: { className?: string }) {
 	const t = useTranslations();
 	const router = useRouter();
 	const currentLocale = useLocale();
@@ -29,7 +29,7 @@ export function InboxLocaleSwitch() {
 			value={value}
 			label={t("inbox.language")}
 			triggerLabel={t("inbox.language")}
-			className="h-8 px-2 font-medium"
+			className={className ?? "min-h-11 min-w-11 h-11 px-3 font-medium"}
 			onValueChange={async (nextLocale) => {
 				if (!isWalkLocale(nextLocale)) {
 					return;

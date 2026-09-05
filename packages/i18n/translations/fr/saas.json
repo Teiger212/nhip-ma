@@ -716,6 +716,9 @@
 		"alreadySent": "déjà envoyé {at}",
 		"sending": "envoi…",
 		"language": "Langue",
+		"back": "Retour",
+		"backAria": "Retour à la liste des fils",
+		"missingFields": "{count} manquants",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
