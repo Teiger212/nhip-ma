@@ -694,7 +694,12 @@
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Posteingang",
+		"navReports": "Berichte",
+		"navInternational": "International",
 		"footer": "Gäste sehen die Agenturnummer. Niemals automatisch senden.",
+		"missing": "(fehlt)",
+		"yes": "ja",
+		"no": "nein",
 		"searchPlaceholder": "Name oder letzte Nachricht suchen",
 		"searchAria": "Threads durchsuchen",
 		"empty": "Keine Unterhaltungen.",
@@ -712,6 +717,30 @@
 		"notSent": "nicht gesendet",
 		"alreadySent": "bereits gesendet {at}",
 		"sending": "senden…",
+		"language": "Sprache",
+		"pipes": {
+			"zalo": "Zalo",
+			"whatsapp": "WhatsApp"
+		},
+		"guestLanguage": {
+			"en": "Englisch",
+			"vi": "Vietnamesisch",
+			"ja": "Japanisch",
+			"ko": "Koreanisch",
+			"ru": "Russisch"
+		},
+		"intent": {
+			"rent": "mieten",
+			"buy": "kaufen"
+		},
+		"paperworkFlag": "Gast erwähnte Papierarbeit oder Eigentum. Kein vietnamesisches Recht erfinden. Kein Pink Book / sổ hồng versprechen.",
+		"crib": {
+			"body": "Der Entwurf ist auf {language}. Aus dem Inbound: {facts}. Kein Interview.{paperwork}",
+			"emptyFacts": "noch nichts aus dem Inbound",
+			"nationality": "Nationalität {value}",
+			"inVietnamNow": "gerade in VN",
+			"notInVietnam": "nicht in VN"
+		},
 		"fields": {
 			"language": "Sprache",
 			"area": "Gebiet",

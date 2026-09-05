@@ -692,7 +692,12 @@
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Boîte de réception",
+		"navReports": "Rapports",
+		"navInternational": "International",
 		"footer": "Les invités voient le numéro de l'agence. Jamais d'envoi automatique.",
+		"missing": "(manquant)",
+		"yes": "oui",
+		"no": "non",
 		"searchPlaceholder": "Rechercher un nom ou le dernier message",
 		"searchAria": "Rechercher des fils",
 		"empty": "Aucune conversation.",
@@ -710,6 +715,30 @@
 		"notSent": "non envoyé",
 		"alreadySent": "déjà envoyé {at}",
 		"sending": "envoi…",
+		"language": "Langue",
+		"pipes": {
+			"zalo": "Zalo",
+			"whatsapp": "WhatsApp"
+		},
+		"guestLanguage": {
+			"en": "anglais",
+			"vi": "vietnamien",
+			"ja": "japonais",
+			"ko": "coréen",
+			"ru": "russe"
+		},
+		"intent": {
+			"rent": "louer",
+			"buy": "acheter"
+		},
+		"paperworkFlag": "L'invité a mentionné des papiers ou la propriété. Ne pas inventer le droit vietnamien. Ne pas promettre un pink book / sổ hồng.",
+		"crib": {
+			"body": "Le brouillon est en {language}. Issu de l'inbound : {facts}. Pas un entretien.{paperwork}",
+			"emptyFacts": "rien d'extractible pour l'instant",
+			"nationality": "nationalité {value}",
+			"inVietnamNow": "actuellement au VN",
+			"notInVietnam": "pas au VN"
+		},
 		"fields": {
 			"language": "Langue",
 			"area": "Quartier",

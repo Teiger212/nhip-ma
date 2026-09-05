@@ -669,8 +669,8 @@
 			"verify": "Verify"
 		},
 		"aria": {
-			"closeToast": "Close notification",
-			"language": "Language"
+			"closeToast": "Đóng thông báo",
+			"language": "Ngôn ngữ"
 		},
 		"colorMode": {
 			"system": "System",
@@ -691,65 +691,65 @@
 	},
 	"inbox": {
 		"brand": "Nhịp",
-		"navItem": "Inbox",
-		"navReports": "Reports",
-		"navInternational": "International",
-		"footer": "Guests see the agency number. Never auto-send.",
-		"missing": "(missing)",
-		"yes": "yes",
-		"no": "no",
-		"searchPlaceholder": "Search name or last message",
-		"searchAria": "Search threads",
-		"empty": "No conversations.",
-		"loading": "Loading conversations…",
-		"loadError": "Could not load conversations.",
-		"noMatches": "No matching threads.",
-		"noneSelected": "No conversation selected.",
-		"sent": "sent",
-		"needsApprove": "needs approve",
-		"mock": "mock",
-		"forYou": "For you",
-		"forYouHint": "Not sent to the guest.",
-		"reply": "Reply",
-		"approveAndSend": "Approve and send",
-		"notSent": "not sent",
-		"alreadySent": "already sent {at}",
-		"sending": "sending…",
-		"language": "Language",
+		"navItem": "Hộp thư",
+		"navReports": "Báo cáo",
+		"navInternational": "Quốc tế",
+		"footer": "Khách thấy số của môi giới. Không bao giờ gửi tự động.",
+		"missing": "(thiếu)",
+		"yes": "có",
+		"no": "không",
+		"searchPlaceholder": "Tìm tên hoặc tin nhắn gần nhất",
+		"searchAria": "Tìm cuộc hội thoại",
+		"empty": "Không có cuộc hội thoại.",
+		"loading": "Đang tải cuộc hội thoại…",
+		"loadError": "Không tải được cuộc hội thoại.",
+		"noMatches": "Không có cuộc hội thoại phù hợp.",
+		"noneSelected": "Chưa chọn cuộc hội thoại.",
+		"sent": "đã gửi",
+		"needsApprove": "cần duyệt",
+		"mock": "mẫu",
+		"forYou": "Dành cho bạn",
+		"forYouHint": "Không gửi cho khách.",
+		"reply": "Trả lời",
+		"approveAndSend": "Duyệt và gửi",
+		"notSent": "chưa gửi",
+		"alreadySent": "đã gửi {at}",
+		"sending": "đang gửi…",
+		"language": "Ngôn ngữ",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
 		},
 		"guestLanguage": {
-			"en": "English",
-			"vi": "Vietnamese",
-			"ja": "Japanese",
-			"ko": "Korean",
-			"ru": "Russian"
+			"en": "tiếng Anh",
+			"vi": "tiếng Việt",
+			"ja": "tiếng Nhật",
+			"ko": "tiếng Hàn",
+			"ru": "tiếng Nga"
 		},
 		"intent": {
-			"rent": "rent",
-			"buy": "buy"
+			"rent": "thuê",
+			"buy": "mua"
 		},
-		"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
+		"paperworkFlag": "Khách có nhắc giấy tờ hoặc sở hữu. Không bịa luật Việt Nam. Không hứa sổ hồng / pink book.",
 		"crib": {
-			"body": "Draft is in {language}. From inbound: {facts}. Not an interviewer.{paperwork}",
-			"emptyFacts": "nothing extractable yet",
-			"nationality": "nationality {value}",
-			"inVietnamNow": "in VN now",
-			"notInVietnam": "not in VN"
+			"body": "Draft trả lời bằng {language}. Có trong inbound: {facts}. Không hỏi thêm kiểu interviewer.{paperwork}",
+			"emptyFacts": "chưa đủ field từ inbound",
+			"nationality": "quốc tịch {value}",
+			"inVietnamNow": "đang ở Việt Nam",
+			"notInVietnam": "chưa ở Việt Nam"
 		},
 		"fields": {
-			"language": "Language",
-			"area": "Area",
-			"nationality": "Nationality",
-			"inVietnamNow": "In Việt Nam now",
-			"rentOrBuy": "Rent or buy",
-			"moveIn": "Move-in",
-			"budget": "Budget",
-			"beds": "Beds / household",
-			"paperwork": "Paperwork",
-			"noneMentioned": "none mentioned"
+			"language": "Ngôn ngữ",
+			"area": "Khu vực",
+			"nationality": "Quốc tịch",
+			"inVietnamNow": "Đang ở Việt Nam",
+			"rentOrBuy": "Thuê hoặc mua",
+			"moveIn": "Ngày vào",
+			"budget": "Ngân sách",
+			"beds": "Phòng ngủ / hộ",
+			"paperwork": "Giấy tờ",
+			"noneMentioned": "không nhắc đến"
 		}
 	}
 }

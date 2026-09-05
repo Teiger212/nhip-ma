@@ -692,7 +692,12 @@
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Bandeja",
+		"navReports": "Informes",
+		"navInternational": "Internacional",
 		"footer": "Los huéspedes ven el número de la agencia. Nunca enviar automáticamente.",
+		"missing": "(falta)",
+		"yes": "sí",
+		"no": "no",
 		"searchPlaceholder": "Buscar nombre o último mensaje",
 		"searchAria": "Buscar hilos",
 		"empty": "No hay conversaciones.",
@@ -710,6 +715,30 @@
 		"notSent": "no enviado",
 		"alreadySent": "ya enviado {at}",
 		"sending": "enviando…",
+		"language": "Idioma",
+		"pipes": {
+			"zalo": "Zalo",
+			"whatsapp": "WhatsApp"
+		},
+		"guestLanguage": {
+			"en": "inglés",
+			"vi": "vietnamita",
+			"ja": "japonés",
+			"ko": "coreano",
+			"ru": "ruso"
+		},
+		"intent": {
+			"rent": "alquilar",
+			"buy": "comprar"
+		},
+		"paperworkFlag": "El huésped mencionó papeles o propiedad. No inventar derecho vietnamita. No prometer un pink book / sổ hồng.",
+		"crib": {
+			"body": "El borrador está en {language}. Del inbound: {facts}. No es una entrevista.{paperwork}",
+			"emptyFacts": "aún no hay datos del inbound",
+			"nationality": "nacionalidad {value}",
+			"inVietnamNow": "ahora en VN",
+			"notInVietnam": "no está en VN"
+		},
 		"fields": {
 			"language": "Idioma",
 			"area": "Zona",

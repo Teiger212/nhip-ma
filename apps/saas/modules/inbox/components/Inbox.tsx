@@ -15,31 +15,33 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { formatCribNotes } from "../lib/crib";
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import type { Conversation, Message } from "../lib/types";
+import { InboxLocaleSwitch } from "./InboxLocaleSwitch";
 
-function field(value: unknown): string {
+function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
-		return "(missing)";
+		return labels.missing;
 	}
 	if (value === true) {
-		return "yes";
+		return labels.yes;
 	}
 	if (value === false) {
-		return "no";
+		return labels.no;
 	}
 	if (typeof value === "string" || typeof value === "number") {
 		return String(value);
 	}
-	return "(missing)";
+	return labels.missing;
 }
 
 function displayName(conversation: Conversation): string {
 	return conversation.guestName || conversation.guestId;
 }
 
-function pipeLabel(pipe: Conversation["pipe"]): string {
-	return pipe === "zalo" ? "Zalo" : "WhatsApp";
+function pipeLabel(pipe: Conversation["pipe"], t: (key: string) => string): string {
+	return t(`pipes.${pipe}`);
 }
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
@@ -58,19 +60,29 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
 }
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
-	const t = useTranslations("inbox.fields");
+	const t = useTranslations("inbox");
+	const labels = {
+		missing: t("missing"),
+		yes: t("yes"),
+		no: t("no"),
+	};
 	const q = conversation.oneShot?.qualification;
 	const paper = conversation.oneShot?.paperwork;
+	const language = conversation.oneShot?.language;
+	const rentOrBuy =
+		q?.rentOrBuy === "rent" || q?.rentOrBuy === "buy"
+			? t(`intent.${q.rentOrBuy}`)
+			: field(q?.rentOrBuy, labels);
 	const rows: [string, string][] = [
-		[t("language"), field(conversation.oneShot?.language)],
-		[t("area"), field(q?.areaOfInterest)],
-		[t("nationality"), field(q?.nationality)],
-		[t("inVietnamNow"), field(q?.inVietnamNow)],
-		[t("rentOrBuy"), field(q?.rentOrBuy)],
-		[t("moveIn"), field(q?.timeframe)],
-		[t("budget"), field(q?.budgetBand)],
-		[t("beds"), field(q?.bedsOrHousehold)],
-		[t("paperwork"), paper?.mentioned ? field(paper.flag) : t("noneMentioned")],
+		[t("fields.language"), language ? t(`guestLanguage.${language}`) : t("missing")],
+		[t("fields.area"), field(q?.areaOfInterest, labels)],
+		[t("fields.nationality"), field(q?.nationality, labels)],
+		[t("fields.inVietnamNow"), field(q?.inVietnamNow, labels)],
+		[t("fields.rentOrBuy"), rentOrBuy],
+		[t("fields.moveIn"), field(q?.timeframe, labels)],
+		[t("fields.budget"), field(q?.budgetBand, labels)],
+		[t("fields.beds"), field(q?.bedsOrHousehold, labels)],
+		[t("fields.paperwork"), paper?.mentioned ? t("paperworkFlag") : t("fields.noneMentioned")],
 	];
 
 	return (
@@ -82,7 +94,7 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 							<dt className="text-muted-foreground">{label}</dt>
 							<dd
 								className={
-									value === "(missing)" || value === t("noneMentioned")
+									value === t("missing") || value === t("fields.noneMentioned")
 										? "text-muted-foreground"
 										: "text-foreground"
 								}
@@ -220,20 +232,29 @@ export function Inbox() {
 		}
 	}
 
-	const draft = selected?.oneShot?.draft;
+	const cribNotes =
+		selected?.oneShot &&
+		formatCribNotes(
+			{
+				language: selected.oneShot.language,
+				qualification: selected.oneShot.qualification,
+				paperwork: selected.oneShot.paperwork,
+			},
+			(key, values) => t(key, values),
+		);
 
 	return (
 		<div className="min-h-0 text-sm flex h-svh flex-col bg-background text-foreground">
+			<div className="p-2 shrink-0 border-b">
+				<Input
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+					placeholder={t("searchPlaceholder")}
+					aria-label={t("searchAria")}
+				/>
+			</div>
 			<div className="min-h-0 flex flex-1">
 				<aside className="w-72 flex shrink-0 flex-col border-r">
-					<div className="p-2 border-b">
-						<Input
-							value={query}
-							onChange={(event) => setQuery(event.target.value)}
-							placeholder={t("searchPlaceholder")}
-							aria-label={t("searchAria")}
-						/>
-					</div>
 					<div className="min-h-0 flex-1 overflow-y-auto">
 						{visible.length === 0 ? (
 							<p className="px-3 py-3 text-muted-foreground">
@@ -269,7 +290,7 @@ export function Inbox() {
 										) : null}
 										<span className="gap-1 flex flex-wrap items-center">
 											<Badge status="info" className="normal-case">
-												{pipeLabel(conversation.pipe)}
+												{pipeLabel(conversation.pipe, t)}
 											</Badge>
 											<Badge
 												status={conversation.sentAt ? "success" : "warning"}
@@ -294,7 +315,7 @@ export function Inbox() {
 									<div className="gap-2 flex flex-wrap items-center">
 										<p className="font-medium">{displayName(selected)}</p>
 										<Badge status="info" className="normal-case">
-											{pipeLabel(selected.pipe)}
+											{pipeLabel(selected.pipe, t)}
 										</Badge>
 										<Badge status={selected.sentAt ? "success" : "warning"} className="normal-case">
 											{selected.sentAt ? t("sent") : t("needsApprove")}
@@ -311,7 +332,7 @@ export function Inbox() {
 											<CardDescription>{t("forYouHint")}</CardDescription>
 										</CardHeader>
 										<CardContent>
-											<p className="whitespace-pre-wrap">{draft?.crib || ""}</p>
+											<p className="whitespace-pre-wrap">{cribNotes || ""}</p>
 										</CardContent>
 									</Card>
 									<Card>
@@ -350,8 +371,9 @@ export function Inbox() {
 					</div>
 				</article>
 			</div>
-			<footer className="px-3 py-2 text-xs md:hidden shrink-0 border-t text-muted-foreground">
-				{t("footer")}
+			<footer className="px-3 py-2 text-xs md:hidden gap-2 flex shrink-0 items-center justify-between border-t text-muted-foreground">
+				<span>{t("footer")}</span>
+				<InboxLocaleSwitch />
 			</footer>
 		</div>
 	);

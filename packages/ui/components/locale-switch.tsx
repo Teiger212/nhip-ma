@@ -22,6 +22,7 @@ export type LocaleSwitchProps<Value extends string = string> = {
 	value: Value;
 	onValueChange: (value: Value) => void | Promise<void>;
 	label: string;
+	triggerLabel?: string;
 	className?: string;
 };
 
@@ -30,6 +31,7 @@ export function LocaleSwitch<Value extends string = string>({
 	value,
 	onValueChange,
 	label,
+	triggerLabel,
 	className,
 }: LocaleSwitchProps<Value>) {
 	const [selectedValue, setSelectedValue] = useState<Value>(value);
@@ -46,8 +48,14 @@ export function LocaleSwitch<Value extends string = string>({
 		<DropdownMenu modal={false}>
 			<DropdownMenuTrigger
 				render={
-					<Button variant="ghost" size="icon" aria-label={label} className={className}>
+					<Button
+						variant="ghost"
+						size={triggerLabel ? "sm" : "icon"}
+						aria-label={label}
+						className={className}
+					>
 						<LanguagesIcon className="size-4" />
+						{triggerLabel}
 					</Button>
 				}
 			/>

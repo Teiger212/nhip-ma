@@ -18,6 +18,10 @@ export const config = {
 			label: "Français",
 			currency: "USD",
 		},
+		vi: {
+			label: "Tiếng Việt",
+			currency: "VND",
+		},
 	},
 	defaultLocale: "en",
 	defaultCurrency: "USD",

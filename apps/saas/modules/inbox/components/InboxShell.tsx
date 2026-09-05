@@ -1,9 +1,11 @@
 "use client";
 
 import { Button, cn } from "@repo/ui";
-import { InboxIcon } from "lucide-react";
+import { BarChart3Icon, GlobeIcon, InboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+
+import { InboxLocaleSwitch } from "./InboxLocaleSwitch";
 
 export function InboxShell({ children }: { children: ReactNode }) {
 	const t = useTranslations("inbox");
@@ -30,10 +32,35 @@ export function InboxShell({ children }: { children: ReactNode }) {
 								{t("navItem")}
 							</Button>
 						</li>
+						<li>
+							<Button
+								type="button"
+								variant="ghost"
+								disabled
+								className="h-8 gap-2 px-2 text-sm font-medium w-full justify-start rounded-md"
+							>
+								<BarChart3Icon className="size-4" />
+								{t("navReports")}
+							</Button>
+						</li>
+						<li>
+							<Button
+								type="button"
+								variant="ghost"
+								disabled
+								className="h-8 gap-2 px-2 text-sm font-medium w-full justify-start rounded-md"
+							>
+								<GlobeIcon className="size-4" />
+								{t("navInternational")}
+							</Button>
+						</li>
 					</ul>
 				</div>
-				<div className="px-3 py-2 text-xs mt-auto border-t text-muted-foreground">
-					{t("footer")}
+				<div className="shrink-0 border-t">
+					<div className="p-2 flex items-center">
+						<InboxLocaleSwitch />
+					</div>
+					<div className="px-3 py-2 text-xs border-t text-muted-foreground">{t("footer")}</div>
 				</div>
 			</aside>
 			<main className="min-h-0 min-w-0 relative flex flex-1 flex-col bg-background">
