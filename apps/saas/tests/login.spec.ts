@@ -57,4 +57,16 @@ test.describe("login page", () => {
 		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 		await expect(passwordInput).toBeVisible();
 	});
+
+	test("language switcher offers only English and Vietnamese", async ({ page }) => {
+		await page.goto("/login");
+
+		await page.getByRole("button", { name: "Language" }).click();
+
+		await expect(page.getByRole("menuitemradio", { name: "English" })).toBeVisible();
+		await expect(page.getByRole("menuitemradio", { name: "Tiếng Việt" })).toBeVisible();
+		await expect(page.getByRole("menuitemradio", { name: "Deutsch" })).toHaveCount(0);
+		await expect(page.getByRole("menuitemradio", { name: "Español" })).toHaveCount(0);
+		await expect(page.getByRole("menuitemradio", { name: "Français" })).toHaveCount(0);
+	});
 });

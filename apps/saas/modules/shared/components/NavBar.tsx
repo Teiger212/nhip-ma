@@ -23,7 +23,7 @@ import {
 	SidebarSeparator,
 	useSidebar,
 } from "@repo/ui";
-import { LocaleSwitch } from "@shared/components/LocaleSwitch";
+import { AccountLanguageSubmenu } from "@shared/components/AccountLanguageSubmenu";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { usePermissions } from "@shared/components/PermixProvider";
 import { UserMenu } from "@shared/components/UserMenu";
@@ -45,6 +45,8 @@ import {
 	type AppNavItem,
 	buildAppNavItems,
 	groupAppNavItems,
+	isLinkNavSubItem,
+	isLocaleNavSubItem,
 	isNavSubItemActive,
 } from "../lib/app-nav-items";
 
@@ -119,6 +121,7 @@ export function NavBar() {
 					accountSecurity: t("settings.menu.account.security"),
 					accountNotifications: t("settings.menu.account.notifications"),
 					accountBilling: t("settings.menu.account.billing"),
+					accountLanguage: t("settings.menu.account.language"),
 					organizationGeneral: t("settings.menu.organization.general"),
 					organizationMembers: t("settings.menu.organization.members"),
 					organizationBilling: t("settings.menu.organization.billing"),
@@ -191,24 +194,31 @@ export function NavBar() {
 								{group.items.map((item) => (
 									<SidebarMenuItem key={item.id}>
 										<NavItemLink item={item} onNavigate={closeMobileNav} showLabel={showLabels} />
-										{item.subItems?.length && item.isActive && showLabels ? (
+										{item.subItems?.length &&
+										showLabels &&
+										(item.isActive || item.subItems.some(isLocaleNavSubItem)) ? (
 											<SidebarMenuSub>
-												{item.subItems.map((subItem) => (
-													<SidebarMenuSubItem key={subItem.href}>
-														<SidebarMenuSubButton
-															isActive={isNavSubItemActive(pathname, subItem.href)}
-															render={(props) => (
-																<Link
-																	{...props}
-																	href={subItem.href}
-																	onClick={closeMobileNav}
-																	prefetch
-																>
-																	<span>{subItem.label}</span>
-																</Link>
-															)}
-														/>
-													</SidebarMenuSubItem>
+												{item.isActive
+													? item.subItems.filter(isLinkNavSubItem).map((subItem) => (
+															<SidebarMenuSubItem key={subItem.href}>
+																<SidebarMenuSubButton
+																	isActive={isNavSubItemActive(pathname, subItem.href)}
+																	render={(props) => (
+																		<Link
+																			{...props}
+																			href={subItem.href}
+																			onClick={closeMobileNav}
+																			prefetch
+																		>
+																			<span>{subItem.label}</span>
+																		</Link>
+																	)}
+																/>
+															</SidebarMenuSubItem>
+														))
+													: null}
+												{item.subItems.filter(isLocaleNavSubItem).map((subItem) => (
+													<AccountLanguageSubmenu key={subItem.label} label={subItem.label} />
 												))}
 											</SidebarMenuSub>
 										) : null}
@@ -220,10 +230,6 @@ export function NavBar() {
 				))}
 			</SidebarContent>
 			<SidebarFooter>
-				<LocaleSwitch
-					showLabel={showLabels}
-					className={showLabels ? "min-h-11 min-w-11 h-11 px-3 font-medium" : undefined}
-				/>
 				<UserMenu showUserName={showLabels} />
 			</SidebarFooter>
 			<SidebarRail

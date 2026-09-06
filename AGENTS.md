@@ -57,10 +57,10 @@ authenticated account route
 `apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit
 `AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
 sheet, desktop icon-collapse). Language is
-the kit `LocaleSwitch` in the nav footer and mobile Sheet (`NEXT_LOCALE`);
-Vietnamese is `vi`. Below Tailwind `md`, the list and selected thread are
-exclusive; Language also stays in inbox list/detail chrome. Approve and send
-pins to the detail bar. Desktop two-pane is unchanged.
+**Language** / **Ngôn ngữ** under Account settings (`en` + `vi` only;
+`NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`, the list and selected
+thread are exclusive; Language also stays in inbox list/detail chrome. Approve
+and send pins to the detail bar. Desktop two-pane is unchanged.
 
 `pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
 on port 3010. Do not build or ship marketing or admin this walk.
