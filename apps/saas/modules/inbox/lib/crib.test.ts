@@ -66,6 +66,10 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.userMenu.logout).toBe("Đăng xuất");
 	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
+	expect(enMessages.inbox.editReply).toBe("Edit reply");
+	expect(viMessages.inbox.editReply).toBe("Sửa trả lời");
+	expect(enMessages.inbox.editReplyAria).toBe("Scroll to the reply box and edit it");
+	expect(viMessages.inbox.editReplyAria).toBe("Cuộn tới ô trả lời và sửa");
 	expect(enMessages.app.menu.inbox).toBe("Inbox");
 	expect(viMessages.app.menu.inbox).toBe("Hộp thư");
 	expect(enMessages.app.menu.home).toBe("Home");

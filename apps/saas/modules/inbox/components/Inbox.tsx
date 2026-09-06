@@ -7,6 +7,7 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 	type CSSProperties,
 	type ReactNode,
@@ -243,14 +244,27 @@ function ThreadMessage({ message }: { message: Message }) {
 	);
 }
 
-function SendStatus({ status, statusKind }: { status: string; statusKind: "ok" | "warn" | "" }) {
+function SendStatus({
+	status,
+	statusKind,
+	visuallyQuiet,
+}: {
+	status: string;
+	statusKind: "ok" | "warn" | "";
+	visuallyQuiet: boolean;
+}) {
 	return (
 		<output
 			aria-live="polite"
 			aria-atomic="true"
 			className={cn(
-				"text-xs font-medium",
-				statusKind === "warn" ? "text-destructive" : "text-muted-foreground",
+				"text-xs",
+				visuallyQuiet
+					? "sr-only"
+					: cn(
+							"mt-1.5 font-medium block",
+							statusKind === "warn" ? "text-destructive" : "text-muted-foreground",
+						),
 			)}
 		>
 			{status}
@@ -297,6 +311,7 @@ export function Inbox() {
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState(false);
 	const [approving, setApproving] = useState(false);
+	const replyRef = useRef<HTMLTextAreaElement>(null);
 
 	const visible = useMemo(
 		() => conversations.filter((conversation) => matchesThreadSearch(conversation, query)),
@@ -390,6 +405,15 @@ export function Inbox() {
 	function openThread(id: string) {
 		setSelectedId(id);
 		setDetailOpen(true);
+	}
+
+	function focusReply() {
+		const field = replyRef.current ?? document.querySelector<HTMLTextAreaElement>("#inbox-reply");
+		if (!field) {
+			return;
+		}
+		field.scrollIntoView({ block: "center" });
+		field.focus();
 	}
 
 	function listBody() {
@@ -560,6 +584,7 @@ export function Inbox() {
 										</label>
 										<Textarea
 											id="inbox-reply"
+											ref={replyRef}
 											value={reply}
 											onChange={(event) => setReply(event.target.value)}
 											className="min-h-28 text-sm rounded-md shadow-none"
@@ -568,17 +593,32 @@ export function Inbox() {
 									</section>
 								</div>
 							</div>
-							<div className="gap-3 px-3 py-2.5 flex shrink-0 flex-wrap items-center border-t bg-card">
-								<Button
-									type="button"
-									variant="primary"
-									className="min-h-11"
-									disabled={Boolean(selected.sentAt) || approving}
-									onClick={() => void onApprove()}
-								>
-									{t("approveAndSend")}
-								</Button>
-								<SendStatus status={status} statusKind={statusKind} />
+							<div className="px-3 py-2.5 shrink-0 border-t bg-card">
+								<div className="gap-2 flex flex-wrap items-center">
+									<Button
+										type="button"
+										variant="primary"
+										className="min-h-11"
+										disabled={Boolean(selected.sentAt) || approving}
+										onClick={() => void onApprove()}
+									>
+										{t("approveAndSend")}
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="min-h-11"
+										onClick={focusReply}
+										aria-label={t("editReplyAria")}
+									>
+										{t("editReply")}
+									</Button>
+								</div>
+								<SendStatus
+									status={status}
+									statusKind={statusKind}
+									visuallyQuiet={!selected.sentAt && !approving && statusKind !== "warn"}
+								/>
 							</div>
 						</>
 					)}

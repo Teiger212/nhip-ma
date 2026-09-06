@@ -719,6 +719,8 @@
 		"forYouHint": "Non envoyé à l'invité.",
 		"reply": "Réponse",
 		"approveAndSend": "Approuver et envoyer",
+		"editReply": "Modifier la réponse",
+		"editReplyAria": "Aller à la réponse et modifier",
 		"notSent": "non envoyé",
 		"alreadySent": "déjà envoyé {at}",
 		"sending": "envoi…",

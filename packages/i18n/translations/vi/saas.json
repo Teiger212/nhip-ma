@@ -719,6 +719,8 @@
 		"forYouHint": "Khách không thấy phần này.",
 		"reply": "Trả lời",
 		"approveAndSend": "Duyệt và gửi",
+		"editReply": "Sửa trả lời",
+		"editReplyAria": "Cuộn tới ô trả lời và sửa",
 		"notSent": "Chưa gửi",
 		"alreadySent": "Đã gửi {at}",
 		"sending": "Đang gửi…",

@@ -719,6 +719,8 @@
 		"forYouHint": "Not shown to the guest.",
 		"reply": "Reply",
 		"approveAndSend": "Approve and send",
+		"editReply": "Edit reply",
+		"editReplyAria": "Scroll to the reply box and edit it",
 		"notSent": "Not sent",
 		"alreadySent": "Sent {at}",
 		"sending": "Sending…",
