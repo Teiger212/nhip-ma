@@ -13,7 +13,7 @@ SaaS listens on **port 3010**. Auth sessions use local Postgres. Inbox threads l
 ```bash
 pnpm install
 cp .env.local.example .env.local
-docker compose up -d postgres
+brew services start postgresql@16   # or: docker compose up -d postgres
 pnpm --filter @repo/database generate
 pnpm --filter @repo/database push
 pnpm seed

@@ -25,7 +25,7 @@ Auth sessions need local Postgres. Inbox threads stay in repo-root SQLite
 `data/nhip.db`. A postgres `DATABASE_URL` is ignored by the inbox store.
 
 ```bash
-docker compose up -d postgres
+brew services start postgresql@16   # or: docker compose up -d postgres
 pnpm install
 pnpm --filter @repo/database generate
 pnpm --filter @repo/database push

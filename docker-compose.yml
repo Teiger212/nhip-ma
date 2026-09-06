@@ -1,5 +1,15 @@
-# Docker Compose configuration for local development
-# Provides PostgreSQL database and MinIO S3-compatible storage
+# Docker Compose configuration for local development — FALLBACK, not the default.
+#
+# The supported local path is native Homebrew Postgres, which needs no VM and costs
+# ~22 MB RAM / ~47 MB disk:
+#
+#   brew install postgresql@16 && brew services start postgresql@16
+#
+# Docker on macOS runs a full Linux VM to host containers, which is a large overhead
+# for a single database process. Use this file if you have no Homebrew Postgres, are
+# on a fresh machine, or need to match CI/production more closely.
+#
+# Provides PostgreSQL database and MinIO S3-compatible storage.
 
 services:
   postgres:
