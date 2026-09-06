@@ -36,9 +36,9 @@ pnpm --filter saas dev
 Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox.
 `/` goes to `/en/inbox`. Bare `/inbox` goes to `/{locale}/inbox`. Locale
 prefixes are required; cookie-only locale without a path prefix is rejected.
-Walk login is `walk@nhip.local` / `walkthrough`. Optional
-`WALK_BYPASS_AUTH=1` then `GET /api/walk-bypass` is local/tunnel only and
-403s in production. Inbox stays invented threads + `SEND_MODE=mock`.
+Walk login is `walk@nhip.local` / `walkthrough`, seeded by `pnpm seed`. There
+is no auth bypass route; sign in normally. Inbox stays invented threads +
+`SEND_MODE=mock`.
 
 This walk only needs `apps/saas` on port 3010. Do not build or ship marketing
 or admin this walk. Layout, data, and i18n details: [ARCHITECTURE.md](./ARCHITECTURE.md).

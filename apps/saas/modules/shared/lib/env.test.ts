@@ -104,25 +104,10 @@ describe("validateInboxEnv", () => {
 		}
 	});
 
-	it("rejects WALK_BYPASS_AUTH=1 in production", () => {
-		const result = validateInboxEnv(baseEnv({ WALK_BYPASS_AUTH: "1", NODE_ENV: "production" }));
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
-			expect(result.errors).toEqual(["WALK_BYPASS_AUTH=1 is not allowed when NODE_ENV=production"]);
-		}
-	});
-
-	it("allows WALK_BYPASS_AUTH=1 outside production", () => {
-		expect(validateInboxEnv(baseEnv({ WALK_BYPASS_AUTH: "1", NODE_ENV: "development" }))).toEqual({
-			ok: true,
-		});
-	});
-
 	it("collects every violated rule at once", () => {
 		const result = validateInboxEnv({
 			SEND_MODE: "prod",
 			BETTER_AUTH_SECRET: EXAMPLE_BETTER_AUTH_SECRET,
-			WALK_BYPASS_AUTH: "1",
 			NODE_ENV: "production",
 		} as NodeJS.ProcessEnv);
 		expect(result.ok).toBe(false);
@@ -130,7 +115,6 @@ describe("validateInboxEnv", () => {
 			expect(result.errors).toEqual([
 				`SEND_MODE must be "mock" or "live" when set, got "prod"`,
 				"BETTER_AUTH_SECRET must not be the .env.local.example placeholder value",
-				"WALK_BYPASS_AUTH=1 is not allowed when NODE_ENV=production",
 			]);
 		}
 	});

@@ -20,7 +20,6 @@ const envSchema = z
 		ZALO_OA_ACCESS_TOKEN: z.string().optional(),
 		ZALO_OA_SECRET_KEY: z.string().optional(),
 		BETTER_AUTH_SECRET: z.string().optional(),
-		WALK_BYPASS_AUTH: z.string().optional(),
 		NODE_ENV: z.string().optional(),
 	})
 	.superRefine((env, ctx) => {
@@ -65,14 +64,6 @@ const envSchema = z
 					message: "BETTER_AUTH_SECRET must not be the .env.local.example placeholder value",
 				});
 			}
-		}
-
-		if (env.WALK_BYPASS_AUTH === "1" && env.NODE_ENV === "production") {
-			ctx.addIssue({
-				code: "custom",
-				path: ["WALK_BYPASS_AUTH"],
-				message: "WALK_BYPASS_AUTH=1 is not allowed when NODE_ENV=production",
-			});
 		}
 	});
 
