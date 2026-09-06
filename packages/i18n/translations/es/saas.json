@@ -125,6 +125,7 @@
 			"documentation": "Documentación",
 			"home": "Inicio",
 			"language": "Idioma",
+			"style": "Estilo",
 			"logout": "Cerrar sesión"
 		},
 		"notifications": {
@@ -677,6 +678,14 @@
 		"aria": {
 			"closeToast": "Cerrar notificación",
 			"language": "Idioma"
+		},
+		"inboxStyle": {
+			"olive": "Oliva",
+			"oliveShort": "Oliva",
+			"swiss": "Suizo",
+			"swissShort": "Suizo",
+			"flat": "Plano",
+			"flatShort": "Plano"
 		},
 		"colorMode": {
 			"system": "Sistema",

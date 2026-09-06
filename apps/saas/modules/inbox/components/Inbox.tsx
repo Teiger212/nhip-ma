@@ -66,7 +66,7 @@ function GuestMark({ name }: { name: string }) {
 	return (
 		<span
 			aria-hidden="true"
-			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-md bg-touch/12 text-[0.7rem] text-touch"
+			className="size-8 font-semibold tracking-tight swiss:rounded-none swiss:border swiss:border-touch/40 swiss:bg-transparent flat:rounded-full flat:bg-primary flat:text-primary-foreground flex shrink-0 items-center justify-center rounded-md bg-touch/12 text-[0.7rem] text-touch"
 		>
 			{guestInitials(name)}
 		</span>
@@ -83,7 +83,7 @@ function CompactFlag({
 	return (
 		<span
 			className={cn(
-				"h-5 px-1.5 font-medium inline-flex items-center rounded-md text-[11px] leading-none",
+				"h-5 px-1.5 font-medium swiss:rounded-none swiss:text-[10px] swiss:uppercase swiss:tracking-[0.06em] flat:rounded-full flat:px-2 inline-flex items-center rounded-md text-[11px] leading-none",
 				tone === "neutral" && "bg-muted text-muted-foreground",
 				tone === "warning" && "bg-warning/12 text-warning",
 				tone === "success" && "bg-success/12 text-success",
@@ -199,7 +199,7 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	]);
 
 	return (
-		<section className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
+		<section className="gap-2 p-3 swiss:rounded-none swiss:border-y swiss:bg-transparent swiss:px-0 flat:rounded-lg flat:bg-muted flex flex-col rounded-md bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>
@@ -470,9 +470,9 @@ export function Inbox() {
 					variant="ghost"
 					aria-current={active ? "true" : undefined}
 					className={cn(
-						"gap-2.5 px-3 py-2.5 font-normal min-w-0 h-auto w-full items-start justify-start overflow-hidden rounded-none border-l-2 border-l-transparent text-left active:scale-100",
+						"gap-2.5 px-3 py-2.5 font-normal min-w-0 swiss:border-b swiss:border-b-border swiss:py-3 flat:my-0.5 flat:mx-1.5 flat:w-[calc(100%-0.75rem)] flat:rounded-lg flat:border-l-0 h-auto w-full items-start justify-start overflow-hidden rounded-none border-l-2 border-l-transparent text-left active:scale-100",
 						active
-							? "border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
+							? "flat:bg-primary/8 flat:hover:bg-primary/12 border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
 							: "hover:bg-muted/70",
 					)}
 					onClick={() => openThread(conversation.id)}
@@ -480,7 +480,7 @@ export function Inbox() {
 					<GuestMark name={name} />
 					<span className="min-w-0 flex-1">
 						<span className="gap-2 flex w-full items-baseline justify-between">
-							<span className="font-semibold tracking-tight truncate">{name}</span>
+							<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
 							{when ? (
 								<time
 									className="font-mono shrink-0 text-[11px] text-muted-foreground tabular-nums"
@@ -526,7 +526,7 @@ export function Inbox() {
 						onChange={(event) => setQuery(event.target.value)}
 						placeholder={t("searchPlaceholder")}
 						aria-label={t("searchAria")}
-						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-md shadow-none"
+						className="h-12 min-h-12 px-4 py-3 pl-12 text-base swiss:rounded-none flat:rounded-full flat:border-transparent flat:bg-muted rounded-md shadow-none"
 					/>
 				</div>
 			</div>
@@ -557,7 +557,7 @@ export function Inbox() {
 						<ThreadListState title={t("noneSelected")} />
 					) : (
 						<>
-							<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40">
+							<header className="gap-2 px-3 py-2 swiss:bg-transparent flat:bg-muted/60 flex shrink-0 flex-wrap items-center border-b bg-card/40">
 								<Button
 									type="button"
 									variant="ghost"
@@ -569,7 +569,7 @@ export function Inbox() {
 									{t("back")}
 								</Button>
 								<GuestMark name={displayName(selected)} />
-								<p className="font-semibold tracking-tight">{displayName(selected)}</p>
+								<p className="font-semibold tracking-tight font-heading">{displayName(selected)}</p>
 								<CompactFlag tone="neutral">{pipeLabel(selected.pipe, t)}</CompactFlag>
 								<CompactFlag tone={selected.sentAt ? "success" : "warning"}>
 									{selected.sentAt ? t("sent") : t("needsApprove")}
@@ -583,14 +583,17 @@ export function Inbox() {
 									<div className="border-t" />
 									<ExtractFields conversation={selected} />
 									{cribNotes ? (
-										<section className="gap-1.5 p-3 flex flex-col rounded-md bg-touch/8">
+										<section className="gap-1.5 p-3 swiss:rounded-none swiss:border-l-2 swiss:border-l-touch swiss:bg-transparent flat:rounded-lg flat:bg-primary/6 flex flex-col rounded-md bg-touch/8">
 											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
 											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
 											<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
 										</section>
 									) : null}
 									<section className="gap-1.5 flex flex-col">
-										<label htmlFor="inbox-reply" className="font-semibold tracking-tight text-sm">
+										<label
+											htmlFor="inbox-reply"
+											className="font-semibold tracking-tight text-sm font-heading"
+										>
 											{t("reply")}
 										</label>
 										<Textarea
@@ -598,13 +601,13 @@ export function Inbox() {
 											ref={replyRef}
 											value={reply}
 											onChange={(event) => setReply(event.target.value)}
-											className="min-h-28 text-sm rounded-md shadow-none"
+											className="min-h-28 text-sm swiss:rounded-none flat:rounded-lg rounded-md shadow-none"
 											aria-label={t("reply")}
 										/>
 									</section>
 								</div>
 							</div>
-							<div className="px-3 py-2.5 shrink-0 border-t bg-card">
+							<div className="px-3 py-2.5 swiss:bg-background flat:bg-muted/40 shrink-0 border-t bg-card">
 								<div className="gap-2 flex flex-wrap items-center">
 									<Button
 										type="button"

@@ -71,6 +71,148 @@
 		--sidebar-border: oklch(0.3 0.024 128);
 		--sidebar-ring: oklch(0.76 0.11 128);
 	}
+
+	/*
+	 * Variation: Swiss minimal + trust teal (ui-ux-pro-max, "real estate agent operator tool").
+	 * Primary is the single CTA blue; --touch carries the teal identity.
+	 */
+	html[data-style="swiss"] {
+		--background: #f0fdfa;
+		--foreground: #134e4a;
+		--card: #ffffff;
+		--card-foreground: #134e4a;
+		--popover: #ffffff;
+		--popover-foreground: #134e4a;
+		--primary: #0369a1;
+		--primary-foreground: #ffffff;
+		--secondary: #ccfbf1;
+		--secondary-foreground: #134e4a;
+		--muted: #e8f0f3;
+		--muted-foreground: #475569;
+		--accent: #ccfbf1;
+		--accent-foreground: #134e4a;
+		--touch: #0f766e;
+		--touch-foreground: #ffffff;
+		--border: #99f6e4;
+		--input: #99f6e4;
+		--ring: #0f766e;
+		--destructive: #dc2626;
+		--success: #0f766e;
+		--warning: #b45309;
+		--sidebar: #ffffff;
+		--sidebar-foreground: #134e4a;
+		--sidebar-primary: #0f766e;
+		--sidebar-primary-foreground: #ffffff;
+		--sidebar-accent: #e8f0f3;
+		--sidebar-accent-foreground: #134e4a;
+		--sidebar-border: #99f6e4;
+		--sidebar-ring: #0f766e;
+		--radius: 0.25rem;
+	}
+
+	html.dark[data-style="swiss"] {
+		--background: #0b1f1d;
+		--foreground: #e6fffa;
+		--card: #102825;
+		--card-foreground: #e6fffa;
+		--popover: #102825;
+		--popover-foreground: #e6fffa;
+		--primary: #38bdf8;
+		--primary-foreground: #082f49;
+		--secondary: #163632;
+		--secondary-foreground: #e6fffa;
+		--muted: #163632;
+		--muted-foreground: #9cc5bd;
+		--accent: #163632;
+		--accent-foreground: #e6fffa;
+		--touch: #2dd4bf;
+		--touch-foreground: #042f2e;
+		--border: #1f4a45;
+		--input: #1f4a45;
+		--ring: #2dd4bf;
+		--destructive: #f87171;
+		--success: #2dd4bf;
+		--warning: #fbbf24;
+		--sidebar: #081918;
+		--sidebar-foreground: #e6fffa;
+		--sidebar-primary: #2dd4bf;
+		--sidebar-primary-foreground: #042f2e;
+		--sidebar-accent: #163632;
+		--sidebar-accent-foreground: #e6fffa;
+		--sidebar-border: #1f4a45;
+		--sidebar-ring: #2dd4bf;
+	}
+
+	/*
+	 * Variation: Flat + inbox blue (ui-ux-pro-max, "messaging inbox triage").
+	 * Red is priority ("Needs approval") and errors; the CTA stays blue.
+	 */
+	html[data-style="flat"] {
+		--background: #ffffff;
+		--foreground: #0f172a;
+		--card: #ffffff;
+		--card-foreground: #0f172a;
+		--popover: #ffffff;
+		--popover-foreground: #0f172a;
+		--primary: #2563eb;
+		--primary-foreground: #ffffff;
+		--secondary: #f1f5fd;
+		--secondary-foreground: #1e3a8a;
+		--muted: #f1f5fd;
+		--muted-foreground: #475569;
+		--accent: #e4ecfc;
+		--accent-foreground: #1e3a8a;
+		--touch: #2563eb;
+		--touch-foreground: #ffffff;
+		--border: #e4ecfc;
+		--input: #e4ecfc;
+		--ring: #2563eb;
+		--destructive: #dc2626;
+		--success: #15803d;
+		--warning: #dc2626;
+		--sidebar: #f8fafc;
+		--sidebar-foreground: #0f172a;
+		--sidebar-primary: #2563eb;
+		--sidebar-primary-foreground: #ffffff;
+		--sidebar-accent: #e4ecfc;
+		--sidebar-accent-foreground: #1e3a8a;
+		--sidebar-border: #e4ecfc;
+		--sidebar-ring: #2563eb;
+		--radius: 0.375rem;
+	}
+
+	html.dark[data-style="flat"] {
+		--background: #0b1220;
+		--foreground: #e2e8f0;
+		--card: #111a2e;
+		--card-foreground: #e2e8f0;
+		--popover: #111a2e;
+		--popover-foreground: #e2e8f0;
+		--primary: #3b82f6;
+		--primary-foreground: #0b1220;
+		--secondary: #1b2740;
+		--secondary-foreground: #e2e8f0;
+		--muted: #1b2740;
+		--muted-foreground: #94a3b8;
+		--accent: #1b2740;
+		--accent-foreground: #e2e8f0;
+		--touch: #60a5fa;
+		--touch-foreground: #0b1220;
+		--border: #253352;
+		--input: #253352;
+		--ring: #60a5fa;
+		--destructive: #f87171;
+		--success: #4ade80;
+		--warning: #f87171;
+		--sidebar: #080e1a;
+		--sidebar-foreground: #e2e8f0;
+		--sidebar-primary: #60a5fa;
+		--sidebar-primary-foreground: #0b1220;
+		--sidebar-accent: #1b2740;
+		--sidebar-accent-foreground: #e2e8f0;
+		--sidebar-border: #253352;
+		--sidebar-ring: #60a5fa;
+	}
 }
 
 @theme {

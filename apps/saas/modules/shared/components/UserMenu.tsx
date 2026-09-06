@@ -15,12 +15,14 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@repo/ui";
+import { InboxStyleToggle } from "@shared/components/InboxStyleToggle";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { WalkLocaleToggle } from "@shared/components/WalkLocaleToggle";
 import {
 	BookIcon,
 	HomeIcon,
 	LanguagesIcon,
+	PaletteIcon,
 	LogOutIcon,
 	MoreVerticalIcon,
 	SettingsIcon,
@@ -140,6 +142,17 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						<span className="whitespace-nowrap">{t("app.userMenu.language")}</span>
 					</span>
 					<WalkLocaleToggle />
+				</DropdownMenuItem>
+
+				<DropdownMenuItem
+					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
+					closeOnClick={false}
+				>
+					<span className="flex items-center">
+						<PaletteIcon className="mr-2 size-4" />
+						<span className="whitespace-nowrap">{t("app.userMenu.style")}</span>
+					</span>
+					<InboxStyleToggle />
 				</DropdownMenuItem>
 
 				{config.docsUrl && (
