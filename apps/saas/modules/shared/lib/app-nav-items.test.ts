@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-	buildAppNavItems,
-	groupAppNavItems,
-	isLinkNavSubItem,
-	isLocaleNavSubItem,
-	isNavSubItemActive,
-} from "./app-nav-items";
+import { buildAppNavItems, groupAppNavItems, isNavSubItemActive } from "./app-nav-items";
 
 const labels = {
 	home: "Home",
@@ -19,7 +13,6 @@ const labels = {
 	accountSecurity: "Security",
 	accountNotifications: "Notifications",
 	accountBilling: "Billing",
-	accountLanguage: "Language",
 	organizationGeneral: "General",
 	organizationMembers: "Members",
 	organizationBilling: "Billing",
@@ -96,7 +89,7 @@ describe("buildAppNavItems", () => {
 		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(true);
 	});
 
-	it("puts a walk Language row at the end of account settings", () => {
+	it("keeps account settings as kit links without a language row", () => {
 		const items = buildAppNavItems({
 			pathname: "/inbox",
 			startHref: "/",
@@ -111,17 +104,13 @@ describe("buildAppNavItems", () => {
 		});
 		const accountSubItems = items.find((item) => item.id === "account-settings")?.subItems ?? [];
 
-		expect(accountSubItems.at(-1)).toEqual({
-			kind: "locale",
-			label: "Language",
-		});
-		expect(accountSubItems.filter(isLocaleNavSubItem)).toHaveLength(1);
-		expect(accountSubItems.filter(isLinkNavSubItem).map((item) => item.href)).toEqual([
+		expect(accountSubItems.map((item) => item.href)).toEqual([
 			"/settings/general",
 			"/settings/security",
 			"/settings/notifications",
 			"/settings/billing",
 		]);
+		expect(accountSubItems.some((item) => "kind" in item)).toBe(false);
 	});
 
 	it("adds account billing only when billing is attached to the user", () => {
@@ -153,14 +142,12 @@ describe("buildAppNavItems", () => {
 		expect(
 			withBilling
 				.find((item) => item.id === "account-settings")
-				?.subItems?.filter(isLinkNavSubItem)
-				.map((item) => item.href),
+				?.subItems?.map((item) => item.href),
 		).toContain("/settings/billing");
 		expect(
 			withoutBilling
 				.find((item) => item.id === "account-settings")
-				?.subItems?.filter(isLinkNavSubItem)
-				.map((item) => item.href),
+				?.subItems?.map((item) => item.href),
 		).not.toContain("/settings/billing");
 	});
 

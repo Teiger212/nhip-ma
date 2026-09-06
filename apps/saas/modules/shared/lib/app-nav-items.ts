@@ -1,26 +1,8 @@
 export type AppNavGroupId = "workspace" | "account";
 
-export type AppNavSubItem =
-	| {
-			kind?: "link";
-			label: string;
-			href: string;
-	  }
-	| {
-			kind: "locale";
-			label: string;
-	  };
-
-export function isLocaleNavSubItem(
-	item: AppNavSubItem,
-): item is Extract<AppNavSubItem, { kind: "locale" }> {
-	return item.kind === "locale";
-}
-
-export function isLinkNavSubItem(
-	item: AppNavSubItem,
-): item is Extract<AppNavSubItem, { href: string }> {
-	return item.kind !== "locale";
+export interface AppNavSubItem {
+	label: string;
+	href: string;
 }
 
 export interface AppNavItem {
@@ -45,7 +27,6 @@ export interface AppNavLabels {
 	accountSecurity: string;
 	accountNotifications: string;
 	accountBilling: string;
-	accountLanguage: string;
 	organizationGeneral: string;
 	organizationMembers: string;
 	organizationBilling: string;
@@ -99,10 +80,6 @@ export function buildAppNavItems({
 					},
 				]
 			: []),
-		{
-			kind: "locale",
-			label: labels.accountLanguage,
-		},
 	];
 
 	const orgSettingsPrefix = `${basePath}/settings`;

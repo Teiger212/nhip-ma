@@ -124,6 +124,7 @@
 			"colorMode": "Farbmodus",
 			"documentation": "Dokumentation",
 			"home": "Startseite",
+			"language": "Sprache",
 			"logout": "Abmelden"
 		},
 		"notifications": {

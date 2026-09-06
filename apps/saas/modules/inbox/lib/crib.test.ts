@@ -49,8 +49,8 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.back).toBe("Quay lại");
 	expect(enMessages.inbox.language).toBe("Language");
 	expect(viMessages.inbox.language).toBe("Ngôn ngữ");
-	expect(enMessages.settings.menu.account.language).toBe("Language");
-	expect(viMessages.settings.menu.account.language).toBe("Ngôn ngữ");
+	expect(enMessages.app.userMenu.language).toBe("Language");
+	expect(viMessages.app.userMenu.language).toBe("Ngôn ngữ");
 	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
 	expect(enMessages.app.menu.inbox).toBe("Inbox");

@@ -11,4 +11,9 @@ export function isWalkLocale(value: string): value is WalkLocale {
 export const walkLocaleOptions = walkLocales.map((value) => ({
 	value,
 	label: i18nConfig.locales[value].label,
+	code: value.toUpperCase(),
 }));
+
+export function resolveWalkLocale(value: string): WalkLocale {
+	return isWalkLocale(value) ? value : "en";
+}

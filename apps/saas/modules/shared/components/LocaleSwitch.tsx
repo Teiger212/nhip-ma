@@ -2,7 +2,7 @@
 
 import { updateLocale } from "@i18n/lib/update-locale";
 import { LocaleSwitch as LocaleSwitchControl } from "@repo/ui";
-import { isWalkLocale, walkLocaleOptions } from "@shared/lib/walk-locales";
+import { isWalkLocale, resolveWalkLocale, walkLocaleOptions } from "@shared/lib/walk-locales";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
@@ -19,7 +19,7 @@ export function LocaleSwitch({
 	const router = useRouter();
 	const currentLocale = useLocale();
 	const languageLabel = label ?? t("common.aria.language");
-	const value = isWalkLocale(currentLocale) ? currentLocale : "en";
+	const value = resolveWalkLocale(currentLocale);
 
 	return (
 		<LocaleSwitchControl

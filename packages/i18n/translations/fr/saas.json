@@ -124,6 +124,7 @@
 			"colorMode": "Mode couleur",
 			"documentation": "Documentation",
 			"home": "Accueil",
+			"language": "Langue",
 			"logout": "Déconnexion"
 		},
 		"notifications": {

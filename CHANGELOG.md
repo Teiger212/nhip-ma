@@ -13,7 +13,7 @@
 
 #### Walk language (apps/saas)
 
-- Walk chrome language lives under **Account settings** as **Language** / **Ngôn ngữ** with only **English** and **Tiếng Việt**. Kit `de` / `es` / `fr` stay in `@repo/i18n` config but are not offered in the walk selector. The footer `LocaleSwitch` is gone, and inbox list/detail no longer ship a second Language control. Choosing a language still writes `NEXT_LOCALE` and refreshes.
+- Walk chrome language lives in the Walk Operator **User menu**, immediately under **Account settings**, as **Language** / **Ngôn ngữ** with **EN** / **VI** toggles only. Kit `de` / `es` / `fr` stay in `@repo/i18n` config but are not offered in the walk selector. The sidebar Account settings submenu no longer includes Language. Login still uses the kit `LocaleSwitch`. Choosing a language still writes `NEXT_LOCALE` and refreshes.
 
 #### Walk nav placeholders (apps/saas)
 
@@ -33,10 +33,10 @@
 
 - Inbox is a first-class authenticated account route at `/inbox` (`(account)/inbox`, same pattern as chatbot). It uses kit `AppWrapper` / `NavBar` (mobile hamburger Sheet, desktop collapsible sidebar). The custom `InboxShell` rail is gone.
 - `/` redirects to `/inbox`. Unauthenticated visits hit kit login; `redirectAfterSignIn` is `/inbox`. `pnpm seed` still writes invented threads to `data/nhip.db` and adds walk login `walk@nhip.local` / `walkthrough` when `DATABASE_URL` is Postgres. Organizations are not required. Kit `hideOrganization` keeps org switcher / create-org out of NavBar. Reports, International, billing, and orgs are not product features.
-- Walk language sits under Account settings (**English** / **Tiếng Việt**). Inbox list/detail no longer duplicate the Language control.
+- Walk language sits in the Walk Operator user menu under Account settings (**EN** / **VI**). Inbox list/detail no longer duplicate the Language control.
 
 - Below Tailwind `md`, the inbox shows either the thread list or the selected thread. Detail opens from a list row and returns with an in-app **Back** control; the detail header shows the guest name. Desktop two-pane layout is unchanged.
-- **Language** / **Ngôn ngữ** lives under Account settings (English / Tiếng Việt only). Touch targets for those choices are at least 44×44 CSS pixels.
+- **Language** / **Ngôn ngữ** lives in the Walk Operator user menu under Account settings (**EN** / **VI** only).
 - **Approve and send** (full label) and send status pin to a sticky detail bar so the operator does not scroll past extract, crib, and reply. Reply stays editable above. One send path.
 - Extract keeps the nine-field model, lists filled facts first, and collapses `(missing)` / `none mentioned` rows. Mentioned paperwork stays visible.
 - Message and `sentAt` display use localized relative or local datetime. Storage stays ISO.
@@ -44,7 +44,7 @@
 - **For you** is omitted when there is no one-shot crib; empty extracts use `inbox.crib.emptyFacts`.
 - Search now sits in a full-width chrome row above the thread list and conversation pane (same width as list + detail, not the left shell nav).
 - Kit `NavBar` adds **Inbox** as the live account job next to existing kit items. Reports and International are not shipped as nav.
-- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. Walk chrome language is **Language** / **Ngôn ngữ** under Account settings (English / Tiếng Việt only). It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
+- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. Walk chrome language is **Language** / **Ngôn ngữ** in the Walk Operator user menu under Account settings (**EN** / **VI** only). It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
 - **For you** crib body is formatted at read time from `inbox.crib` templates (not the seeded English-only string). Guest **Reply** stays in the guest's language. Inbox UI uses `useTranslations("inbox")` plus nested keys (`crib.body`, `fields.*`) so next-intl does not throw `MISSING_MESSAGE` for `inbox.crib`. Message JSON is imported statically from `@repo/i18n`.
 - Vietnamese list states: `inbox.loading` (`Đang tải cuộc hội thoại…`) and `inbox.loadError` (`Không tải được cuộc hội thoại.`) match the English loading / load-error keys.
 

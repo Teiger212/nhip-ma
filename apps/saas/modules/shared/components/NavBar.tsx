@@ -23,7 +23,6 @@ import {
 	SidebarSeparator,
 	useSidebar,
 } from "@repo/ui";
-import { AccountLanguageSubmenu } from "@shared/components/AccountLanguageSubmenu";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { usePermissions } from "@shared/components/PermixProvider";
 import { UserMenu } from "@shared/components/UserMenu";
@@ -45,8 +44,6 @@ import {
 	type AppNavItem,
 	buildAppNavItems,
 	groupAppNavItems,
-	isLinkNavSubItem,
-	isLocaleNavSubItem,
 	isNavSubItemActive,
 } from "../lib/app-nav-items";
 
@@ -130,7 +127,6 @@ export function NavBar() {
 					accountSecurity: t("settings.menu.account.security"),
 					accountNotifications: t("settings.menu.account.notifications"),
 					accountBilling: t("settings.menu.account.billing"),
-					accountLanguage: t("settings.menu.account.language"),
 					organizationGeneral: t("settings.menu.organization.general"),
 					organizationMembers: t("settings.menu.organization.members"),
 					organizationBilling: t("settings.menu.organization.billing"),
@@ -203,31 +199,24 @@ export function NavBar() {
 								{group.items.map((item) => (
 									<SidebarMenuItem key={item.id}>
 										<NavItemLink item={item} onNavigate={closeMobileNav} showLabel={showLabels} />
-										{item.subItems?.length &&
-										showLabels &&
-										(item.isActive || item.subItems.some(isLocaleNavSubItem)) ? (
+										{item.subItems?.length && item.isActive && showLabels ? (
 											<SidebarMenuSub>
-												{item.isActive
-													? item.subItems.filter(isLinkNavSubItem).map((subItem) => (
-															<SidebarMenuSubItem key={subItem.href}>
-																<SidebarMenuSubButton
-																	isActive={isNavSubItemActive(pathname, subItem.href)}
-																	render={(props) => (
-																		<Link
-																			{...props}
-																			href={subItem.href}
-																			onClick={closeMobileNav}
-																			prefetch
-																		>
-																			<span>{subItem.label}</span>
-																		</Link>
-																	)}
-																/>
-															</SidebarMenuSubItem>
-														))
-													: null}
-												{item.subItems.filter(isLocaleNavSubItem).map((subItem) => (
-													<AccountLanguageSubmenu key={subItem.label} label={subItem.label} />
+												{item.subItems.map((subItem) => (
+													<SidebarMenuSubItem key={subItem.href}>
+														<SidebarMenuSubButton
+															isActive={isNavSubItemActive(pathname, subItem.href)}
+															render={(props) => (
+																<Link
+																	{...props}
+																	href={subItem.href}
+																	onClick={closeMobileNav}
+																	prefetch
+																>
+																	<span>{subItem.label}</span>
+																</Link>
+															)}
+														/>
+													</SidebarMenuSubItem>
 												))}
 											</SidebarMenuSub>
 										) : null}

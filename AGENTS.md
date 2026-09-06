@@ -58,8 +58,9 @@ authenticated account route
 `AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
 sheet, desktop icon-collapse). Nav furniture is **Home** and **International**
 (disabled placeholders), **Inbox** (the only working job), and Account
-settings. Language is **Language** / **Ngôn ngữ** under Account settings
-(`en` + `vi` only; `NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`,
+settings. Language is **Language** / **Ngôn ngữ** in the Walk Operator user
+menu, immediately under Account settings (`en` + `vi` only as **EN** / **VI**;
+`NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`,
 the list and selected thread are exclusive. Approve and send pins to the
 detail bar. Desktop two-pane is unchanged.
 
