@@ -113,7 +113,9 @@
 			"openNavigation": "Open navigation",
 			"organizationSettings": "Organization settings",
 			"start": "Start",
-			"inbox": "Inbox"
+			"inbox": "Inbox",
+			"groupWorkspace": "Workspace",
+			"groupAccount": "Account"
 		},
 		"userMenu": {
 			"accountSettings": "Account settings",

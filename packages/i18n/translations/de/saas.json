@@ -113,7 +113,9 @@
 			"openNavigation": "Navigation öffnen",
 			"organizationSettings": "Organisationseinstellungen",
 			"start": "Start",
-			"inbox": "Posteingang"
+			"inbox": "Posteingang",
+			"groupWorkspace": "Arbeitsbereich",
+			"groupAccount": "Konto"
 		},
 		"userMenu": {
 			"accountSettings": "Kontoeinstellungen",

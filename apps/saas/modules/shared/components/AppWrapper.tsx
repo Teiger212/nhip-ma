@@ -1,52 +1,65 @@
 "use client";
 
-import { cn } from "@repo/ui";
+import { cn, Logo, SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PropsWithChildren } from "react";
 
-import { SidebarProvider, useSidebar } from "../lib/sidebar-context";
 import { NavBar } from "./NavBar";
+import { NotificationCenter } from "./NotificationCenter";
+import { UserMenu } from "./UserMenu";
 
 function isInboxPath(pathname: string): boolean {
 	return pathname === "/inbox" || pathname.startsWith("/inbox/");
 }
 
+function AppMobileChrome() {
+	const t = useTranslations();
+
+	return (
+		<header className="h-14 px-3 gap-2 md:hidden flex shrink-0 items-center border-b border-sidebar-border bg-sidebar text-sidebar-foreground">
+			<SidebarTrigger
+				className="-ml-1 min-h-11 min-w-11"
+				aria-label={t("app.menu.openNavigation")}
+			/>
+			<Link href="/" className="mr-auto block shrink-0">
+				<Logo withLabel={false} className="text-sidebar-foreground" />
+			</Link>
+			<NotificationCenter className="shrink-0" />
+			<UserMenu />
+		</header>
+	);
+}
+
 function AppContent({ children }: PropsWithChildren) {
-	const { isCollapsed } = useSidebar();
 	const flush = isInboxPath(usePathname());
 
 	return (
-		<div
-			className={cn(
-				"bg-background",
-				flush
-					? "md:h-screen flex h-svh flex-col overflow-hidden"
-					: "md:h-screen md:overflow-hidden",
-			)}
-		>
+		<>
 			<NavBar />
-			<div
-				className={cn(flush ? "min-h-0 flex-1" : "h-screen", "flex", {
-					"md:ml-[280px]": !isCollapsed,
-					"md:ml-[80px]": isCollapsed,
-				})}
+			<SidebarInset
+				className={cn(flush ? "min-h-0 overflow-hidden" : "md:overflow-y-auto", "min-w-0")}
 			>
-				<main
+				<AppMobileChrome />
+				<div
 					className={cn(
-						"md:border-l md:border-t-0 h-full w-full border-t",
-						flush ? "min-h-0 p-0 overflow-hidden" : "py-4 md:overflow-y-auto",
+						flush ? "min-h-0 flex-1 overflow-hidden" : "flex-1",
+						!flush && "py-4 container",
 					)}
 				>
-					{flush ? children : <div className="container">{children}</div>}
-				</main>
-			</div>
-		</div>
+					{children}
+				</div>
+			</SidebarInset>
+		</>
 	);
 }
 
 export function AppWrapper({ children }: PropsWithChildren) {
+	const flush = isInboxPath(usePathname());
+
 	return (
-		<SidebarProvider>
+		<SidebarProvider className={cn("bg-background", flush ? "h-svh overflow-hidden" : undefined)}>
 			<AppContent>{children}</AppContent>
 		</SidebarProvider>
 	);

@@ -113,7 +113,9 @@
 			"openNavigation": "Open navigation",
 			"organizationSettings": "Organization settings",
 			"start": "Start",
-			"inbox": "Hộp thư"
+			"inbox": "Hộp thư",
+			"groupWorkspace": "Không gian làm việc",
+			"groupAccount": "Tài khoản"
 		},
 		"userMenu": {
 			"accountSettings": "Account settings",

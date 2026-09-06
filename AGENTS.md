@@ -43,7 +43,8 @@ is a real guest. Inbox copy is `inbox.*` in
 `packages/i18n/translations/{en,vi}/saas.json`. Inbox lives under the
 authenticated account route
 `apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit
-`AppWrapper` / `NavBar` (mobile hamburger Sheet, desktop sidebar). Language is
+`AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
+sheet, desktop icon-collapse). Language is
 the kit `LocaleSwitch` in the nav footer and mobile Sheet (`NEXT_LOCALE`);
 Vietnamese is `vi`. Below Tailwind `md`, the list and selected thread are
 exclusive; Language also stays in inbox list/detail chrome. Approve and send

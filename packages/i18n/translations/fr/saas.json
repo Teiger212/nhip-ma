@@ -113,7 +113,9 @@
 			"openNavigation": "Ouvrir la navigation",
 			"organizationSettings": "Paramètres de l'organisation",
 			"start": "Démarrage",
-			"inbox": "Boîte de réception"
+			"inbox": "Boîte de réception",
+			"groupWorkspace": "Espace de travail",
+			"groupAccount": "Compte"
 		},
 		"userMenu": {
 			"accountSettings": "Paramètres du compte",

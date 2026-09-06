@@ -113,7 +113,9 @@
 			"openNavigation": "Abrir navegación",
 			"organizationSettings": "Configuración de organización",
 			"start": "Inicio",
-			"inbox": "Bandeja"
+			"inbox": "Bandeja",
+			"groupWorkspace": "Espacio de trabajo",
+			"groupAccount": "Cuenta"
 		},
 		"userMenu": {
 			"accountSettings": "Configuración de cuenta",
