@@ -4,6 +4,7 @@ import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocaleRouter } from "@i18n/routing";
 import { OrganizationInvitationAlert } from "@organizations/components/OrganizationInvitationAlert";
 import { authClient } from "@repo/auth/client";
 import { config as authConfig } from "@repo/auth/config";
@@ -24,7 +25,7 @@ import { getSafeRedirectPath } from "@shared/lib/redirect";
 import { AlertTriangleIcon, ArrowRightIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { withQuery } from "ufo";
@@ -41,7 +42,7 @@ const formSchema = z.object({
 
 export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 	const t = useTranslations();
-	const router = useRouter();
+	const router = useLocaleRouter();
 	const { user, loaded: sessionLoaded } = useSession();
 	const { getAuthErrorMessage } = useAuthErrorMessages();
 	const searchParams = useSearchParams();

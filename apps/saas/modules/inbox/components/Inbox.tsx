@@ -118,7 +118,6 @@ function ExtractRowList({ rows }: { rows: Array<{ id: string; label: string; val
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
-	const locale = useLocale();
 	const labels = {
 		missing: t("missing"),
 		yes: t("yes"),
@@ -200,7 +199,7 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	]);
 
 	return (
-		<section key={locale} className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
+		<section className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>
@@ -313,6 +312,12 @@ export function Inbox() {
 	const [loadError, setLoadError] = useState(false);
 	const [approving, setApproving] = useState(false);
 	const replyRef = useRef<HTMLTextAreaElement>(null);
+	const selectedIdRef = useRef(selectedId);
+	const refreshRequestIdRef = useRef(0);
+
+	useEffect(() => {
+		selectedIdRef.current = selectedId;
+	}, [selectedId]);
 
 	const visible = useMemo(
 		() => conversations.filter((conversation) => matchesThreadSearch(conversation, query)),
@@ -320,30 +325,35 @@ export function Inbox() {
 	);
 	const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
 
-	const refresh = useCallback(
-		async (keepId?: string | null) => {
-			try {
-				const list = await api<Conversation[]>("/api/conversations");
-				setConversations(list);
-				setLoadError(false);
-				const id = keepId === undefined ? selectedId : keepId;
-				const next = list.find((conversation) => conversation.id === id) || list[0] || null;
-				if (next && !id) {
-					setSelectedId(next.id);
-				}
-				if (next?.oneShot?.draft?.reply) {
-					setReply(next.oneShot.draft.reply);
-				}
+	const refresh = useCallback(async (keepId?: string | null) => {
+		const requestId = ++refreshRequestIdRef.current;
+		try {
+			const list = await api<Conversation[]>("/api/conversations");
+			if (requestId !== refreshRequestIdRef.current) {
 				return list;
-			} catch {
+			}
+			setConversations(list);
+			setLoadError(false);
+			const id = keepId === undefined ? selectedIdRef.current : keepId;
+			const next = list.find((conversation) => conversation.id === id) || list[0] || null;
+			if (next && !id) {
+				setSelectedId(next.id);
+			}
+			if (next?.oneShot?.draft?.reply) {
+				setReply(next.oneShot.draft.reply);
+			}
+			return list;
+		} catch {
+			if (requestId === refreshRequestIdRef.current) {
 				setLoadError(true);
-				return [];
-			} finally {
+			}
+			return [];
+		} finally {
+			if (requestId === refreshRequestIdRef.current) {
 				setLoading(false);
 			}
-		},
-		[selectedId],
-	);
+		}
+	}, []);
 
 	useEffect(() => {
 		void refresh();
@@ -370,7 +380,7 @@ export function Inbox() {
 			setStatus(t("notSent"));
 			setStatusKind("");
 		}
-	}, [selected?.id, selected?.sentAt, selected?.oneShot?.draft?.reply, t, selected, locale]);
+	}, [selected?.id, selected?.sentAt, selected?.oneShot?.draft?.reply, t, locale]); // oxlint-disable-line eslint-plugin-react-hooks/exhaustive-deps
 
 	async function onApprove() {
 		if (!selected || selected.sentAt || approving) {
@@ -409,7 +419,7 @@ export function Inbox() {
 	}
 
 	function focusReply() {
-		const field = replyRef.current ?? document.querySelector<HTMLTextAreaElement>("#inbox-reply");
+		const field = replyRef.current;
 		if (!field) {
 			return;
 		}
@@ -571,7 +581,7 @@ export function Inbox() {
 										<ThreadMessage key={message.id} message={message} />
 									))}
 									<div className="border-t" />
-									<ExtractFields key={locale} conversation={selected} />
+									<ExtractFields conversation={selected} />
 									{cribNotes ? (
 										<section className="gap-1.5 p-3 flex flex-col rounded-md bg-touch/8">
 											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>

@@ -1,6 +1,16 @@
-import { expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { isPostgresDatabaseUrl, isWalkBypassAuthEnabled, walkInboxRedirectUrl } from "./walk-user";
+
+// Other test files stub NODE_ENV / WALK_BYPASS_AUTH; pin them so the defaults are deterministic.
+beforeEach(() => {
+	vi.stubEnv("WALK_BYPASS_AUTH", "");
+	vi.stubEnv("NODE_ENV", "test");
+});
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
 
 test("walk bypass is on only when WALK_BYPASS_AUTH is exactly 1 outside production", () => {
 	expect(isWalkBypassAuthEnabled(undefined)).toBe(false);

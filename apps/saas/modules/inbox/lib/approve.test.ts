@@ -267,8 +267,7 @@ test("WhatsApp approve outside 24h window is refused", async () => {
 });
 
 test("POST /dev/inbound is 404 in production", async () => {
-	const prev = process.env.NODE_ENV;
-	Object.assign(process.env, { NODE_ENV: "production" });
+	vi.stubEnv("NODE_ENV", "production");
 	try {
 		const res = await inject(
 			new Request("http://localhost/dev/inbound", {
@@ -283,7 +282,7 @@ test("POST /dev/inbound is 404 in production", async () => {
 		);
 		expect(res.status).toBe(404);
 	} finally {
-		Object.assign(process.env, { NODE_ENV: prev });
+		vi.unstubAllEnvs();
 	}
 });
 

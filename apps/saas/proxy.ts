@@ -9,5 +9,13 @@ export default function proxy(req: NextRequest) {
 }
 
 export const config = {
-	matcher: ["/((?!api|webhooks|dev|image-proxy|_next|_vercel|.*\\..*).*)"],
+	// Next statically parses this literal at build time (see
+	// `extractExportedConstValue` in
+	// next/dist/build/analysis/extract-const-value.js) and only understands
+	// literal expressions written directly in this file, so it cannot be
+	// imported from a shared constant.
+	// keep in sync with modules/i18n/lib/proxy-matcher.ts (PROXY_MATCHER_SOURCE)
+	matcher: [
+		"/((?!api(?:/|$)|webhooks(?:/|$)|dev(?:/|$)|image-proxy(?:/|$)|_next(?:/|$)|_vercel(?:/|$)|.*\\..*).*)",
+	],
 };

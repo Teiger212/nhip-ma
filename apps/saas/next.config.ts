@@ -3,6 +3,7 @@ import path from "node:path";
 
 // @ts-expect-error - PrismaPlugin is not typed
 import { PrismaPlugin } from "@prisma/nextjs-monorepo-workaround-plugin";
+import { config as i18nConfig } from "@repo/i18n";
 import dotenv from "dotenv";
 import type { NextConfig } from "next";
 import nextIntlPlugin from "next-intl/plugin";
@@ -26,6 +27,10 @@ dotenv.config({ path: path.join(repoRoot, ".env") });
 dotenv.config({ path: path.join(repoRoot, ".env.local"), override: true });
 
 const withNextIntl = nextIntlPlugin("./modules/i18n/request.ts");
+
+// Derived from @repo/i18n's config.locales so the redirect matchers below
+// can't drift from the supported locale list.
+const localeAlternation = Object.keys(i18nConfig.locales).join("|");
 
 const nextConfig: NextConfig = {
 	// Cloudflare quick tunnels serve the app from *.trycloudflare.com while
@@ -63,7 +68,7 @@ const nextConfig: NextConfig = {
 				permanent: true,
 			},
 			{
-				source: "/:locale(en|de|es|fr|vi)/settings",
+				source: `/:locale(${localeAlternation})/settings`,
 				destination: "/:locale/settings/general",
 				permanent: true,
 			},
@@ -73,7 +78,7 @@ const nextConfig: NextConfig = {
 				permanent: true,
 			},
 			{
-				source: "/:locale(en|de|es|fr|vi)/:organizationSlug/settings",
+				source: `/:locale(${localeAlternation})/:organizationSlug/settings`,
 				destination: "/:locale/:organizationSlug/settings/general",
 				permanent: true,
 			},
@@ -83,7 +88,7 @@ const nextConfig: NextConfig = {
 				permanent: true,
 			},
 			{
-				source: "/:locale(en|de|es|fr|vi)/admin",
+				source: `/:locale(${localeAlternation})/admin`,
 				destination: "/:locale/admin/users",
 				permanent: true,
 			},

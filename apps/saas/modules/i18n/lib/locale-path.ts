@@ -46,7 +46,14 @@ export function localeFromCookieHeader(cookieHeader?: string | null): Locale {
 			continue;
 		}
 
-		return resolveSaasLocale(decodeURIComponent(part.slice(separator + 1).trim()));
+		try {
+			return resolveSaasLocale(decodeURIComponent(part.slice(separator + 1).trim()));
+		} catch (error) {
+			if (error instanceof URIError) {
+				return i18nConfig.defaultLocale;
+			}
+			throw error;
+		}
 	}
 
 	return i18nConfig.defaultLocale;

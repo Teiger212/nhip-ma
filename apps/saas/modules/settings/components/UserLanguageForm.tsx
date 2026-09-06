@@ -14,6 +14,7 @@ import {
 } from "@repo/ui/components/select";
 import { toast } from "@repo/ui/components/toast";
 import { SettingsItem } from "@shared/components/SettingsItem";
+import { walkLocaleOptions } from "@shared/lib/walk-locales";
 import { useMutation } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -53,9 +54,9 @@ export function UserLanguageForm() {
 		return null;
 	}
 
-	const localeItems = Object.entries(i18nConfig.locales).map(([key, loc]) => ({
-		value: key,
-		label: loc.label,
+	const localeItems = walkLocaleOptions.map(({ value, label }) => ({
+		value,
+		label,
 	}));
 
 	return (
@@ -76,9 +77,9 @@ export function UserLanguageForm() {
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
-					{Object.entries(i18nConfig.locales).map(([key, value]) => (
-						<SelectItem key={key} value={key}>
-							{value.label}
+					{walkLocaleOptions.map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
 						</SelectItem>
 					))}
 				</SelectContent>
