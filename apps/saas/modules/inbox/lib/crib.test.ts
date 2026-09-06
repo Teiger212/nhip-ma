@@ -37,8 +37,9 @@ const thao: Qualification = {
 test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	const enMessages = await getMessagesForLocale<SaasMessages>("en", "saas");
 	const viMessages = await getMessagesForLocale<SaasMessages>("vi", "saas");
-	expect(enMessages.inbox.crib.body).toMatch(/Draft is in \{language\}/);
-	expect(viMessages.inbox.crib.body).toMatch(/Draft trả lời bằng \{language\}/);
+	expect(enMessages.inbox.crib.body).toMatch(/Reply is in \{language\}/);
+	expect(viMessages.inbox.crib.body).toMatch(/Bản trả lời bằng \{language\}/);
+	expect(viMessages.inbox.crib.body).not.toMatch(/Draft|inbound|interviewer|field/i);
 	expect(enMessages.inbox.guestLanguage.vi).toBe("Vietnamese");
 	expect(viMessages.inbox.guestLanguage.vi).toBe("tiếng Việt");
 	expect(enMessages.inbox.loading).toBe("Loading conversations…");
@@ -51,8 +52,18 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.back).toBe("Quay lại");
 	expect(enMessages.inbox.language).toBe("Language");
 	expect(viMessages.inbox.language).toBe("Ngôn ngữ");
+	expect(enMessages.inbox.needsApprove).toBe("Needs approval");
+	expect(viMessages.inbox.needsApprove).toBe("Cần duyệt");
+	expect(enMessages.inbox.forYou).toBe("Operator note");
+	expect(viMessages.inbox.forYou).toBe("Ghi chú nội bộ");
 	expect(enMessages.app.userMenu.language).toBe("Language");
 	expect(viMessages.app.userMenu.language).toBe("Ngôn ngữ");
+	expect(enMessages.app.userMenu.accountSettings).toBe("Account settings");
+	expect(viMessages.app.userMenu.accountSettings).toBe("Cài đặt tài khoản");
+	expect(enMessages.app.userMenu.colorMode).toBe("Color mode");
+	expect(viMessages.app.userMenu.colorMode).toBe("Giao diện");
+	expect(enMessages.app.userMenu.logout).toBe("Log out");
+	expect(viMessages.app.userMenu.logout).toBe("Đăng xuất");
 	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
 	expect(enMessages.app.menu.inbox).toBe("Inbox");
@@ -61,6 +72,7 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.menu.home).toBe("Trang chủ");
 	expect(enMessages.app.menu.international).toBe("International");
 	expect(viMessages.app.menu.international).toBe("Quốc tế");
+	expect(viMessages.app.menu.accountSettings).toBe("Cài đặt tài khoản");
 });
 
 test("English UI crib uses the English template and extracted facts", () => {
@@ -69,7 +81,7 @@ test("English UI crib uses the English template and extracted facts", () => {
 		en,
 	);
 	expect(crib).toBe(
-		"Draft is in Vietnamese. From inbound: rent, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Not an interviewer.",
+		"Reply is in Vietnamese. From the guest: rent, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Do not interview.",
 	);
 });
 
@@ -79,8 +91,9 @@ test("Vietnamese UI crib uses the Vietnamese template for the same extract", () 
 		vi,
 	);
 	expect(crib).toBe(
-		"Draft trả lời bằng tiếng Việt. Có trong inbound: thuê, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Không hỏi thêm kiểu interviewer.",
+		"Bản trả lời bằng tiếng Việt. Lấy từ tin khách: thuê, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Đừng hỏi thêm kiểu phỏng vấn.",
 	);
+	expect(crib).not.toMatch(/Draft|inbound|interviewer|field/i);
 	expect(crib).not.toMatch(/Draft is in/);
 	expect(crib).not.toMatch(/Not an interviewer/);
 });
@@ -120,6 +133,6 @@ test("empty one-shot facts use the empty-facts crib string", () => {
 		},
 		en,
 	);
-	expect(crib).toMatch(/nothing extractable yet/);
+	expect(crib).toMatch(/nothing from the guest yet/);
 	expect(crib).not.toBe("");
 });
