@@ -94,6 +94,18 @@ export async function approveAndSend(id: string, replyOverride?: string): Promis
 			? replyOverride.trim()
 			: conv.oneShot.draft.reply;
 
+	// Compare-and-swap before the network call so two concurrent approvals cannot both
+	// transmit. The `sentAt` read above is only a fast path; this is the real guard.
+	const claimed = await store.claimSend(conv.id);
+	if (!claimed) {
+		return {
+			ok: false,
+			status: 409,
+			error: "already_sent",
+			message: "This thread was already approved and sent.",
+		};
+	}
+
 	try {
 		const result = await transmit({
 			conversation: conv,
@@ -107,6 +119,7 @@ export async function approveAndSend(id: string, replyOverride?: string): Promis
 		}
 		return { ok: true, conversation: updated };
 	} catch (err) {
+		await store.releaseSend(conv.id);
 		const message = err instanceof Error ? err.message : "send failed";
 		const detail = err instanceof SendError ? err.detail : null;
 		return { ok: false, status: 502, error: "send_failed", message, detail };

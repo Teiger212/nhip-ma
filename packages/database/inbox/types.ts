@@ -94,6 +94,13 @@ export type InboxStore = {
 	getConversation: (id: string) => Promise<Conversation | null>;
 	upsertInbound: (event: InboundEvent) => Promise<Conversation>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
+	/**
+	 * Atomically mark a thread as being sent. Returns false when it was already
+	 * claimed or sent, so two concurrent approvals cannot both transmit.
+	 */
+	claimSend: (id: string) => Promise<boolean>;
+	/** Undo `claimSend` after a failed transmit so the operator can retry. */
+	releaseSend: (id: string) => Promise<void>;
 	recordApprovedSend: (
 		id: string,
 		text: string,

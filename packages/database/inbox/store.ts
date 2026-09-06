@@ -353,6 +353,24 @@ export function createInboxStore(filePath: string): InboxStore {
 			return load(id);
 		},
 
+		async claimSend(id) {
+			const result = sqlite
+				.prepare(
+					`UPDATE "Conversation" SET "sentAt" = ?, "updatedAt" = ? WHERE "id" = ? AND "sentAt" IS NULL`,
+				)
+				.run(nowIso(), nowIso(), id);
+			return result.changes === 1;
+		},
+
+		async releaseSend(id) {
+			sqlite
+				.prepare(
+					`UPDATE "Conversation" SET "sentAt" = NULL, "updatedAt" = ? WHERE "id" = ?
+             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."conversationId" = "Conversation"."id")`,
+				)
+				.run(nowIso(), id);
+		},
+
 		async recordApprovedSend(id, text, sendResult: SendResult) {
 			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
 			if (!conv) {

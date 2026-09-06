@@ -1,4 +1,5 @@
 import { approveAndSend } from "@inbox/lib/inbox";
+import { requireInboxSession } from "@inbox/lib/require-session";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +7,10 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext): Promise<Response> {
+	const denied = await requireInboxSession(request);
+	if (denied) {
+		return denied;
+	}
 	const { id } = await context.params;
 	let reply: string | undefined;
 	try {
@@ -18,12 +23,16 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	}
 	const result = await approveAndSend(decodeURIComponent(id), reply);
 	if (!result.ok) {
-		return NextResponse.json(
-			{
+		if (result.detail) {
+			// Vendor error bodies stay in server logs; they are never echoed to the caller.
+			console.error("inbox approve send failed", {
+				id,
 				error: result.error,
-				message: result.message,
-				detail: result.detail ?? null,
-			},
+				detail: result.detail,
+			});
+		}
+		return NextResponse.json(
+			{ error: result.error, message: result.message },
 			{ status: result.status },
 		);
 	}

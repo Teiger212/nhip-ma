@@ -158,19 +158,57 @@ export function parseZaloWebhook(body: unknown): InboundEvent[] {
 	return [];
 }
 
+function hexEqual(provided: string, expected: string): boolean {
+	if (!/^[0-9a-f]+$/i.test(provided)) return false;
+	const a = Buffer.from(provided, "hex");
+	const b = Buffer.from(expected, "hex");
+	if (a.length !== b.length) return false;
+	return crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * Meta signs the raw body with HMAC-SHA256 using the app secret
+ * (`X-Hub-Signature-256: sha256=<hex>`). Fails closed: no secret means no inbound.
+ */
 export function verifyWhatsAppSignature(
 	rawBody: string | Buffer,
 	signatureHeader: string | null,
 	appSecret: string | undefined,
 ): boolean {
-	if (!appSecret) return true;
+	if (!appSecret) return false;
 	if (!signatureHeader) return false;
-	const provided = signatureHeader.replace(/^sha256=/, "");
+	const provided = signatureHeader.replace(/^sha256=/, "").trim();
 	const expected = crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
-	const a = Buffer.from(provided, "hex");
-	const b = Buffer.from(expected, "hex");
-	if (a.length !== b.length) return false;
-	return crypto.timingSafeEqual(a, b);
+	return hexEqual(provided, expected);
+}
+
+/**
+ * Zalo OA signs webhooks as `X-ZEvent-Signature: mac=sha256(appId + rawBody + timestamp + OAsecretKey)`
+ * where `appId` and `timestamp` are the `app_id` and `timestamp` fields of the body.
+ * Fails closed: no secret means no inbound.
+ */
+export function verifyZaloSignature(
+	rawBody: string,
+	signatureHeader: string | null,
+	oaSecretKey: string | undefined,
+): boolean {
+	if (!oaSecretKey) return false;
+	if (!signatureHeader) return false;
+	let body: Json;
+	try {
+		body = asRecord(JSON.parse(rawBody) as unknown);
+	} catch {
+		return false;
+	}
+	const appId = asId(body.app_id);
+	const timestamp = asId(body.timestamp);
+	if (!appId || !timestamp) return false;
+	const provided = signatureHeader.replace(/^mac=/, "").trim();
+	const expected = crypto
+		.createHash("sha256")
+		.update(`${appId}${rawBody}${timestamp}${oaSecretKey}`)
+		.digest("hex");
+	return hexEqual(provided, expected);
 }
 
 class SendError extends Error {
