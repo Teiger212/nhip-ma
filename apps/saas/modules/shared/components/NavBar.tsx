@@ -155,28 +155,23 @@ export function NavBar() {
 			mobileDescription={t("app.menu.openNavigation")}
 		>
 			<SidebarHeader>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							size="lg"
-							tooltip={t("app.menu.start")}
-							render={(props) => (
-								<Link {...props} href="/" prefetch>
-									<Logo withLabel={false} className="text-sidebar-foreground" />
-									<span className={cn("font-semibold tracking-tight", !showLabels && "sr-only")}>
-										Acme
-									</span>
-								</Link>
-							)}
-						/>
-					</SidebarMenuItem>
-				</SidebarMenu>
-				<div
-					className={cn(
-						"px-2 flex items-center",
-						showLabels ? "justify-between" : "justify-center",
-					)}
-				>
+				<div className="gap-2 flex items-center group-data-[collapsible=icon]:flex-col">
+					<SidebarMenu className="min-w-0 flex-1">
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								size="lg"
+								tooltip={t("app.menu.start")}
+								render={(props) => (
+									<Link {...props} href="/" prefetch>
+										<Logo withLabel={false} className="text-sidebar-foreground" />
+										<span className={cn("font-semibold tracking-tight", !showLabels && "sr-only")}>
+											Acme
+										</span>
+									</Link>
+								)}
+							/>
+						</SidebarMenuItem>
+					</SidebarMenu>
 					<NotificationCenter className="shrink-0" />
 				</div>
 				{authConfig.organizations.enable && !authConfig.organizations.hideOrganization ? (
