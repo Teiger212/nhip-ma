@@ -55,6 +55,10 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
 	expect(enMessages.app.menu.inbox).toBe("Inbox");
 	expect(viMessages.app.menu.inbox).toBe("Hộp thư");
+	expect(enMessages.app.menu.home).toBe("Home");
+	expect(viMessages.app.menu.home).toBe("Trang chủ");
+	expect(enMessages.app.menu.international).toBe("International");
+	expect(viMessages.app.menu.international).toBe("Quốc tế");
 });
 
 test("English UI crib uses the English template and extracted facts", () => {

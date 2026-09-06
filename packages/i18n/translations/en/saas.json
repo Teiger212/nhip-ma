@@ -113,7 +113,9 @@
 			"openNavigation": "Open navigation",
 			"organizationSettings": "Organization settings",
 			"start": "Start",
+			"home": "Home",
 			"inbox": "Inbox",
+			"international": "International",
 			"groupWorkspace": "Workspace",
 			"groupAccount": "Account"
 		},

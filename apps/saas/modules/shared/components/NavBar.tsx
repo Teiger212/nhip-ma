@@ -70,6 +70,15 @@ function NavItemLink({
 }) {
 	const Icon = NAV_ICONS[item.iconName];
 
+	if (item.disabled) {
+		return (
+			<SidebarMenuButton isActive={false} tooltip={item.label} disabled aria-disabled>
+				<Icon />
+				<span className={cn(!showLabel && "sr-only")}>{item.label}</span>
+			</SidebarMenuButton>
+		);
+	}
+
 	return (
 		<SidebarMenuButton
 			isActive={item.isActive}
@@ -111,9 +120,9 @@ export function NavBar() {
 				hasActiveOrganization: Boolean(activeOrganization),
 				billingAttachedTo: paymentsConfig.billingAttachedTo,
 				labels: {
-					start: t("app.menu.start"),
+					home: t("app.menu.home"),
 					inbox: t("app.menu.inbox"),
-					aiChatbot: t("app.menu.aiChatbot"),
+					international: t("app.menu.international"),
 					organizationSettings: t("app.menu.organizationSettings"),
 					accountSettings: t("app.menu.accountSettings"),
 					admin: t("app.menu.admin"),

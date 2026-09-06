@@ -9,9 +9,9 @@ import {
 } from "./app-nav-items";
 
 const labels = {
-	start: "Start",
+	home: "Home",
 	inbox: "Inbox",
-	aiChatbot: "AI Chatbot",
+	international: "International",
 	organizationSettings: "Organization settings",
 	accountSettings: "Account settings",
 	admin: "Admin",
@@ -40,9 +40,43 @@ describe("buildAppNavItems", () => {
 			labels,
 		});
 
-		expect(items.map((item) => item.id)).toEqual(["start", "inbox", "chatbot", "account-settings"]);
-		expect(items.some((item) => /report|international/i.test(item.id))).toBe(false);
+		expect(items.map((item) => item.id)).toEqual([
+			"home",
+			"inbox",
+			"international",
+			"account-settings",
+		]);
+		expect(items.find((item) => item.id === "home")).toMatchObject({
+			label: "Home",
+			disabled: true,
+			isActive: false,
+		});
+		expect(items.find((item) => item.id === "international")).toMatchObject({
+			label: "International",
+			disabled: true,
+			isActive: false,
+		});
+		expect(items.find((item) => item.id === "inbox")?.disabled).toBeUndefined();
 		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(true);
+	});
+
+	it("keeps Home and International disabled on their kit routes", () => {
+		const items = buildAppNavItems({
+			pathname: "/chatbot",
+			startHref: "/",
+			basePath: "",
+			canAccessAdmin: false,
+			canManageOrganization: false,
+			canManageOrganizationBilling: false,
+			organizationsEnabled: false,
+			hasActiveOrganization: false,
+			billingAttachedTo: "user",
+			labels,
+		});
+
+		expect(items.find((item) => item.id === "home")?.isActive).toBe(false);
+		expect(items.find((item) => item.id === "international")?.isActive).toBe(false);
+		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(false);
 	});
 
 	it("marks nested inbox routes as the live job", () => {
@@ -147,7 +181,7 @@ describe("buildAppNavItems", () => {
 		);
 
 		expect(groups.map((group) => group.id)).toEqual(["workspace", "account"]);
-		expect(groups[0]?.items.map((item) => item.id)).toEqual(["start", "inbox", "chatbot"]);
+		expect(groups[0]?.items.map((item) => item.id)).toEqual(["home", "inbox", "international"]);
 		expect(groups[1]?.items.map((item) => item.id)).toEqual(["account-settings", "admin"]);
 	});
 });

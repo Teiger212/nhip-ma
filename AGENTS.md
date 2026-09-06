@@ -56,11 +56,12 @@ fresh thread set. Nothing is a real guest. Inbox copy is `inbox.*` in
 authenticated account route
 `apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit
 `AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
-sheet, desktop icon-collapse). Language is
-**Language** / **Ngôn ngữ** under Account settings (`en` + `vi` only;
-`NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`, the list and selected
-thread are exclusive; Language also stays in inbox list/detail chrome. Approve
-and send pins to the detail bar. Desktop two-pane is unchanged.
+sheet, desktop icon-collapse). Nav furniture is **Home** and **International**
+(disabled placeholders), **Inbox** (the only working job), and Account
+settings. Language is **Language** / **Ngôn ngữ** under Account settings
+(`en` + `vi` only; `NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`,
+the list and selected thread are exclusive. Approve and send pins to the
+detail bar. Desktop two-pane is unchanged.
 
 `pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
 on port 3010. Do not build or ship marketing or admin this walk.

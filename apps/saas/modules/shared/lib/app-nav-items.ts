@@ -30,13 +30,14 @@ export interface AppNavItem {
 	href: string;
 	iconName: "home" | "inbox" | "chatbot" | "settings" | "account" | "admin";
 	isActive: boolean;
+	disabled?: boolean;
 	subItems?: AppNavSubItem[];
 }
 
 export interface AppNavLabels {
-	start: string;
+	home: string;
 	inbox: string;
-	aiChatbot: string;
+	international: string;
 	organizationSettings: string;
 	accountSettings: string;
 	admin: string;
@@ -129,12 +130,13 @@ export function buildAppNavItems({
 
 	return [
 		{
-			id: "start",
+			id: "home",
 			group: "workspace",
-			label: labels.start,
+			label: labels.home,
 			href: startHref,
 			iconName: "home",
-			isActive: pathname === "/" || pathname === basePath,
+			isActive: false,
+			disabled: true,
 		},
 		{
 			id: "inbox",
@@ -145,12 +147,13 @@ export function buildAppNavItems({
 			isActive: pathname === "/inbox" || pathname.startsWith("/inbox/"),
 		},
 		{
-			id: "chatbot",
+			id: "international",
 			group: "workspace",
-			label: labels.aiChatbot,
+			label: labels.international,
 			href: "/chatbot",
 			iconName: "chatbot",
-			isActive: pathname.startsWith("/chatbot"),
+			isActive: false,
+			disabled: true,
 		},
 		...(organizationSubItems
 			? [

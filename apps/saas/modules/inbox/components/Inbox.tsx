@@ -21,8 +21,6 @@ import { arrangeExtractRows, isEmptyExtractValue } from "../lib/extract-rows";
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import { formatInboxTimestamp } from "../lib/time";
 import type { Conversation, Message } from "../lib/types";
-import { InboxLocaleSwitch } from "./InboxLocaleSwitch";
-
 function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
 		return labels.missing;
@@ -348,9 +346,6 @@ export function Inbox() {
 					aria-label={t("searchAria")}
 					className="min-w-0 flex-1"
 				/>
-				<div className="md:hidden shrink-0">
-					<InboxLocaleSwitch />
-				</div>
 			</div>
 			<div className="min-h-0 flex flex-1">
 				<aside
@@ -435,9 +430,6 @@ export function Inbox() {
 								<Badge status={selected.sentAt ? "success" : "warning"} className="normal-case">
 									{selected.sentAt ? t("sent") : t("needsApprove")}
 								</Badge>
-								<div className="md:hidden ml-auto shrink-0">
-									<InboxLocaleSwitch />
-								</div>
 							</header>
 							<div className="min-h-0 flex-1 overflow-y-auto">
 								<div className="max-w-3xl gap-3 p-3 mx-auto flex flex-col">
