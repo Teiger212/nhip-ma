@@ -8,6 +8,7 @@
 
 - Targeted visual upgrade of the walk inbox (list, detail, sticky approve bar) and shared chrome (`NavBar`, `UserMenu`, `WalkLocaleToggle`). Routes, nav labels, en+vi language control, and disabled Home / International stay the same.
 - Sidebar rail keeps collapse-on-click only and uses a pointer cursor (no `w-resize` / `e-resize`). Mobile header shows the full **Nhịp** wordmark next to the logo instead of truncating it.
+- Theme FOUC script no longer renders inside a client React tree. `@repo/ui` `ThemeProvider` / `useTheme` wrap `@teispace/next-themes`; layouts inject `getThemeScript()` in `<head>` with `noScript` so React 19 does not warn about `next-themes`' inline `<script>`. Light/dark/system toggle API is unchanged.
 - SaaS type stack is Be Vietnam Pro + IBM Plex Mono (Vietnamese-capable, not Inter). Olive tokens stay one green family; `--touch` remains the single accent. Buttons keep the kit pill rule; inbox rows stay square; panels use the 8px radius.
 - Thread rows use squircle initials, tabular timestamps, and compact status flags. Extract / crib / reply drop generic cards for hairline sections. Loading uses list-shaped skeletons; load errors offer **Try again**.
 - Sidebar wordmark uses `inbox.brand` (Nhịp) instead of Acme.

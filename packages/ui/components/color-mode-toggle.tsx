@@ -1,10 +1,10 @@
 "use client";
 
 import { MonitorCogIcon, MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { cn } from "../lib";
+import { useTheme } from "./theme-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
 export const colorModes = ["system", "light", "dark"] as const;

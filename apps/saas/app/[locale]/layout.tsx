@@ -1,12 +1,12 @@
 import { config } from "@config";
 import { routing } from "@i18n/routing";
-import { cn, Toaster } from "@repo/ui";
+import { cn, ThemeProvider, Toaster } from "@repo/ui";
 import { ApiClientProvider } from "@shared/components/ApiClientProvider";
 import { ClientProviders } from "@shared/components/ClientProviders";
+import { getTheme, getThemeScript } from "@teispace/next-themes/server";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { ThemeProvider } from "next-themes";
 import { Be_Vietnam_Pro, IBM_Plex_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -44,6 +44,17 @@ export default async function LocaleLayout({
 
 	const messages = await getMessages();
 	const t = await getTranslations();
+	const themeOptions = {
+		attribute: "class" as const,
+		enableSystem: true,
+		defaultTheme: config.defaultTheme,
+		themes: Array.from(config.enabledThemes),
+	};
+	const initialTheme = (await getTheme({ themes: themeOptions.themes })) ?? undefined;
+	const themeScript = getThemeScript({
+		...themeOptions,
+		initialTheme,
+	});
 
 	return (
 		<html
@@ -51,15 +62,17 @@ export default async function LocaleLayout({
 			suppressHydrationWarning
 			className={cn(sansFont.variable, monoFont.variable)}
 		>
+			<head>
+				<script dangerouslySetInnerHTML={{ __html: themeScript }} />
+			</head>
 			<body className={cn("font-sans min-h-screen bg-background text-foreground antialiased")}>
 				<NuqsAdapter>
 					<NextIntlClientProvider key={locale} locale={locale} messages={messages}>
 						<ThemeProvider
-							attribute="class"
+							{...themeOptions}
 							disableTransitionOnChange
-							enableSystem
-							defaultTheme={config.defaultTheme}
-							themes={Array.from(config.enabledThemes)}
+							initialTheme={initialTheme}
+							noScript
 						>
 							<ApiClientProvider>
 								<ClientProviders>
