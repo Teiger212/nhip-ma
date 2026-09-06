@@ -17,15 +17,17 @@ function AppMobileChrome() {
 	return (
 		<header className="h-14 px-3 gap-2 md:hidden flex shrink-0 items-center border-b border-sidebar-border bg-sidebar text-sidebar-foreground">
 			<SidebarTrigger
-				className="-ml-1 min-h-11 min-w-11"
+				className="-ml-1 min-h-11 min-w-11 shrink-0"
 				aria-label={t("app.menu.openNavigation")}
 			/>
-			<LocaleLink href="/inbox" className="gap-2 min-w-0 mr-auto flex items-center">
-				<Logo withLabel={false} className="text-sidebar-foreground" />
-				<span className="font-semibold tracking-tight truncate">{t("inbox.brand")}</span>
+			<LocaleLink href="/inbox" className="gap-2 mr-auto flex shrink-0 items-center">
+				<Logo withLabel={false} className="shrink-0 text-sidebar-foreground" />
+				<span className="font-semibold tracking-tight shrink-0">{t("inbox.brand")}</span>
 			</LocaleLink>
 			<NotificationCenter className="shrink-0" />
-			<UserMenu />
+			<div className="shrink-0">
+				<UserMenu />
+			</div>
 		</header>
 	);
 }
