@@ -3,24 +3,30 @@ import path from "node:path";
 
 import { createId as cuid } from "@paralleldrive/cuid2";
 import Database from "better-sqlite3";
+import { z } from "zod";
 
 import { ensureInboxSchema } from "./ensure-schema";
+import {
+	CribLanguage,
+	DbMessageSource,
+	GuestLanguage,
+	MessageDirection,
+	MessageSource,
+	Pipe,
+	RentOrBuy,
+	Timestamp,
+} from "./schema";
 import { sqliteFilePath } from "./sqlite-path";
 import type {
 	Conversation,
-	CribLanguage,
 	Draft,
-	GuestLanguage,
 	InboundEvent,
 	InboxStore,
 	InboxViewer,
 	Message,
-	MessageSource,
 	OneShot,
 	Paperwork,
-	Pipe,
 	Qualification,
-	RentOrBuy,
 	SendResult,
 } from "./types";
 
@@ -41,70 +47,102 @@ export function conversationId(pipe: Pipe, guestId: string): string {
 	return `${pipe}:${guestId}`;
 }
 
-type ConversationRow = {
-	id: string;
-	pipe: string;
-	guestId: string;
-	guestName: string | null;
-	ownerUserId: string | null;
-	language: string | null;
-	lastGuestInboundAt: string | null;
-	sentAt: string | null;
-	updatedAt: string;
-};
+/**
+ * Row shapes as SQLite hands them back. Declaring them as schemas rather than as bare
+ * TypeScript types is what lets `load()` check a row instead of asserting one: the type
+ * is inferred from the schema, so it can no longer describe a row the parse would reject.
+ * SQLite has no BOOLEAN, so `mock`/`mentioned`/`inVietnamNow` arrive as 0/1 numbers.
+ */
+const conversationRow = z.object({
+	id: z.string(),
+	pipe: Pipe,
+	guestId: z.string(),
+	guestName: z.string().nullable(),
+	ownerUserId: z.string().nullable(),
+	language: GuestLanguage.nullable(),
+	lastGuestInboundAt: Timestamp.nullable(),
+	sentAt: Timestamp.nullable(),
+	updatedAt: Timestamp,
+});
 
-type MessageRow = {
-	id: string;
-	conversationId: string;
-	direction: "in" | "out";
-	source: string;
-	text: string;
-	at: string;
-	vendorMessageId: string | null;
-	mock: number;
-};
+const messageRow = z.object({
+	id: z.string(),
+	conversationId: z.string(),
+	direction: MessageDirection,
+	source: DbMessageSource,
+	text: z.string(),
+	at: Timestamp,
+	vendorMessageId: z.string().nullable(),
+	mock: z.number(),
+});
 
-type QualificationRow = {
-	conversationId: string;
-	areaOfInterest: string | null;
-	nationality: string | null;
-	inVietnamNow: number | null;
-	rentOrBuy: string | null;
-	timeframe: string | null;
-	budgetBand: string | null;
-	bedsOrHousehold: string | null;
-};
+const qualificationRow = z.object({
+	conversationId: z.string(),
+	areaOfInterest: z.string().nullable(),
+	nationality: z.string().nullable(),
+	inVietnamNow: z.number().nullable(),
+	rentOrBuy: RentOrBuy.nullable(),
+	timeframe: z.string().nullable(),
+	budgetBand: z.string().nullable(),
+	bedsOrHousehold: z.string().nullable(),
+});
 
-type DraftRow = {
-	conversationId: string;
-	reply: string;
-	crib: string;
-	cribLanguage: string;
-};
+const draftRow = z.object({
+	conversationId: z.string(),
+	reply: z.string(),
+	crib: z.string(),
+	cribLanguage: CribLanguage,
+});
 
-type PaperworkRow = {
-	conversationId: string;
-	mentioned: number;
-	flag: string | null;
-};
+const paperworkRow = z.object({
+	conversationId: z.string(),
+	mentioned: z.number(),
+	flag: z.string().nullable(),
+});
 
-type SendRow = {
-	id: string;
-	conversationId: string;
-	mock: number;
-	pipe: string;
-	to: string;
-	text: string | null;
-	vendorMessageId: string | null;
-	at: string;
-};
+const sendRow = z.object({
+	id: z.string(),
+	conversationId: z.string(),
+	mock: z.number(),
+	pipe: Pipe,
+	to: z.string(),
+	text: z.string().nullable(),
+	vendorMessageId: z.string().nullable(),
+	at: Timestamp,
+});
 
-function toDbSource(source: MessageSource): "guest" | "oa_echo" | "nhip" {
+type ConversationRow = z.infer<typeof conversationRow>;
+type MessageRow = z.infer<typeof messageRow>;
+type QualificationRow = z.infer<typeof qualificationRow>;
+type DraftRow = z.infer<typeof draftRow>;
+type PaperworkRow = z.infer<typeof paperworkRow>;
+type SendRow = z.infer<typeof sendRow>;
+
+/**
+ * This store is the only writer of these rows, so a row that fails to parse is corrupt
+ * state rather than untrusted input. Fail loudly at the read instead of letting a value
+ * the vocabulary does not contain flow into the domain typed as though it did.
+ */
+function parseRow<Schema extends z.ZodType>(
+	schema: Schema,
+	row: unknown,
+	table: string,
+): z.infer<Schema> {
+	const parsed = schema.safeParse(row);
+	if (!parsed.success) {
+		throw new Error(
+			`Inbox store: "${table}" row does not match the expected shape. The SQLite file is corrupt or was written by an older version.\n${z.prettifyError(parsed.error)}`,
+		);
+	}
+	return parsed.data;
+}
+
+function toDbSource(source: MessageSource): DbMessageSource {
 	return source === "oa-echo" ? "oa_echo" : source;
 }
 
-function fromDbSource(source: string): MessageSource {
-	return source === "oa_echo" ? "oa-echo" : (source as MessageSource);
+function fromDbSource(source: DbMessageSource): MessageSource {
+	return source === "oa_echo" ? "oa-echo" : source;
 }
 
 function toBool(value: number | null): boolean | null {
@@ -120,7 +158,7 @@ function mapMessage(row: MessageRow): Message {
 		direction: row.direction,
 		source: fromDbSource(row.source),
 		text: row.text,
-		at: new Date(row.at).toISOString(),
+		at: row.at,
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
 	};
@@ -131,7 +169,7 @@ function mapQualification(row: QualificationRow): Qualification {
 		areaOfInterest: row.areaOfInterest,
 		nationality: row.nationality,
 		inVietnamNow: toBool(row.inVietnamNow),
-		rentOrBuy: (row.rentOrBuy as RentOrBuy | null) ?? null,
+		rentOrBuy: row.rentOrBuy,
 		timeframe: row.timeframe,
 		budgetBand: row.budgetBand,
 		bedsOrHousehold: row.bedsOrHousehold,
@@ -142,7 +180,7 @@ function mapDraft(row: DraftRow): Draft {
 	return {
 		reply: row.reply,
 		crib: row.crib,
-		cribLanguage: row.cribLanguage as CribLanguage,
+		cribLanguage: row.cribLanguage,
 	};
 }
 
@@ -153,43 +191,55 @@ function mapPaperwork(row: PaperworkRow): Paperwork {
 	};
 }
 
-function iso(value: string | null | undefined): string | null {
-	return value ? new Date(value).toISOString() : null;
-}
-
 export function createInboxStore(filePath: string): InboxStore {
 	const resolved = sqliteFilePath(filePath);
 	fs.mkdirSync(path.dirname(resolved), { recursive: true });
 	const sqlite = new Database(resolved);
 	ensureInboxSchema(sqlite);
 
+	/**
+	 * The single read funnel: `listConversations`, `getConversation`, `upsertInbound`,
+	 * `setOneShot` and `recordApprovedSend` all bottom out here, so parsing the rows once
+	 * at this boundary is enough to make every `Conversation` the store hands out true.
+	 */
 	function load(id: string): Conversation | null {
-		const row = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id) as
-			| ConversationRow
-			| undefined;
-		if (!row) {
+		const rawRow = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id);
+		if (!rawRow) {
 			return null;
 		}
-		const messages = sqlite
-			.prepare(`SELECT * FROM "Message" WHERE "conversationId" = ? ORDER BY "at" ASC`)
-			.all(id) as MessageRow[];
-		const qualification = sqlite
+		const row: ConversationRow = parseRow(conversationRow, rawRow, "Conversation");
+		const messages: MessageRow[] = parseRow(
+			z.array(messageRow),
+			sqlite
+				.prepare(`SELECT * FROM "Message" WHERE "conversationId" = ? ORDER BY "at" ASC`)
+				.all(id),
+			"Message",
+		);
+		const rawQualification = sqlite
 			.prepare(`SELECT * FROM "Qualification" WHERE "conversationId" = ?`)
-			.get(id) as QualificationRow | undefined;
-		const draft = sqlite.prepare(`SELECT * FROM "Draft" WHERE "conversationId" = ?`).get(id) as
-			| DraftRow
-			| undefined;
-		const paperwork = sqlite
+			.get(id);
+		const qualification: QualificationRow | undefined = rawQualification
+			? parseRow(qualificationRow, rawQualification, "Qualification")
+			: undefined;
+		const rawDraft = sqlite.prepare(`SELECT * FROM "Draft" WHERE "conversationId" = ?`).get(id);
+		const draft: DraftRow | undefined = rawDraft
+			? parseRow(draftRow, rawDraft, "Draft")
+			: undefined;
+		const rawPaperwork = sqlite
 			.prepare(`SELECT * FROM "Paperwork" WHERE "conversationId" = ?`)
-			.get(id) as PaperworkRow | undefined;
-		const send = sqlite
+			.get(id);
+		const paperwork: PaperworkRow | undefined = rawPaperwork
+			? parseRow(paperworkRow, rawPaperwork, "Paperwork")
+			: undefined;
+		const rawSend = sqlite
 			.prepare(`SELECT * FROM "Send" WHERE "conversationId" = ? ORDER BY "at" DESC LIMIT 1`)
-			.get(id) as SendRow | undefined;
+			.get(id);
+		const send: SendRow | undefined = rawSend ? parseRow(sendRow, rawSend, "Send") : undefined;
 
 		const oneShot: OneShot | null =
 			row.language && qualification && draft && paperwork
 				? {
-						language: row.language as GuestLanguage,
+						language: row.language,
 						qualification: mapQualification(qualification),
 						paperwork: mapPaperwork(paperwork),
 						draft: mapDraft(draft),
@@ -198,24 +248,24 @@ export function createInboxStore(filePath: string): InboxStore {
 
 		return {
 			id: row.id,
-			pipe: row.pipe as Pipe,
+			pipe: row.pipe,
 			guestId: row.guestId,
 			guestName: row.guestName,
-			ownerUserId: row.ownerUserId ?? null,
+			ownerUserId: row.ownerUserId,
 			messages: messages.map(mapMessage),
-			lastGuestInboundAt: iso(row.lastGuestInboundAt),
-			sentAt: iso(row.sentAt),
+			lastGuestInboundAt: row.lastGuestInboundAt,
+			sentAt: row.sentAt,
 			oneShot,
 			lastSend: send
 				? {
 						mock: Boolean(send.mock),
-						pipe: send.pipe as Pipe,
+						pipe: send.pipe,
 						to: send.to,
 						text: send.text ?? undefined,
 						vendorMessageId: send.vendorMessageId,
 					}
 				: undefined,
-			updatedAt: new Date(row.updatedAt).toISOString(),
+			updatedAt: row.updatedAt,
 		};
 	}
 
@@ -254,9 +304,8 @@ export function createInboxStore(filePath: string): InboxStore {
 			const owner = event.ownerUserId ?? null;
 
 			const write = sqlite.transaction(() => {
-				const existing = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id) as
-					| ConversationRow
-					| undefined;
+				// Existence is the only question here, so this row is never read as a shape.
+				const existing = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
 
 				if (!existing) {
 					sqlite

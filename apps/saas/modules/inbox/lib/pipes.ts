@@ -1,5 +1,7 @@
 import crypto from "crypto";
 
+import { z } from "zod";
+
 import type { Conversation, InboundEvent, Pipe, SendResult, InboxEnv } from "./types";
 
 export const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -47,63 +49,105 @@ function asRecord(value: unknown): Json {
 	return value && typeof value === "object" ? (value as Json) : {};
 }
 
+/**
+ * Webhook schemas are deliberately loose. Meta and Zalo add fields and whole message types
+ * without notice, so a schema that demands the payload it saw last quarter makes this more
+ * fragile, not less. Three rules hold throughout:
+ *
+ * 1. Only fields the parser actually reads are declared; unknown keys are dropped.
+ * 2. Decorative fields carry `.catch(undefined)`, so an unexpected shape reads as absent
+ *    rather than sinking the message that contains it.
+ * 3. Lists stay `unknown[]` and each member is parsed on its own, so one malformed entry,
+ *    change or message is skipped individually instead of rejecting the whole batch.
+ *
+ * Every entry point uses `safeParse`, so an unparseable body yields `[]` and never throws.
+ */
+
+/** An optional vendor field that never sinks the message it belongs to. */
+const looseString = z.string().optional().catch(undefined);
+
+/** `timestamp` stays `unknown` on purpose: the `at` handling below is intentionally permissive. */
+const looseTimestamp = z.unknown().optional();
+
+const looseList = z.array(z.unknown()).optional().catch(undefined);
+
+const looseText = z.object({ body: z.string() }).optional().catch(undefined);
+
+const whatsappWebhook = z.object({ entry: looseList });
+const whatsappEntry = z.object({ changes: looseList });
+const whatsappChange = z.object({
+	value: z.object({
+		metadata: z.object({ phone_number_id: looseString }).optional().catch(undefined),
+		contacts: looseList,
+		messages: looseList,
+		smb_message_echoes: looseList,
+	}),
+});
+const whatsappContact = z.object({
+	wa_id: z.string(),
+	profile: z.object({ name: looseString }).optional().catch(undefined),
+});
+const whatsappMessage = z.object({
+	from: z.string(),
+	id: looseString,
+	timestamp: looseTimestamp,
+	text: looseText,
+});
+const whatsappEcho = z.object({
+	to: looseString,
+	recipient: looseString,
+	id: looseString,
+	timestamp: looseTimestamp,
+	text: looseText,
+});
+
 export function parseWhatsAppWebhook(body: unknown): InboundEvent[] {
 	const events: InboundEvent[] = [];
-	const root = asRecord(body);
-	const entries = Array.isArray(root.entry) ? root.entry : [];
-	for (const entry of entries) {
-		const changes = Array.isArray(asRecord(entry).changes)
-			? (asRecord(entry).changes as unknown[])
-			: [];
-		for (const change of changes) {
-			const value = asRecord(asRecord(change).value);
-			const metadata = asRecord(value.metadata);
-			const contacts = Array.isArray(value.contacts) ? value.contacts : [];
+	const root = whatsappWebhook.safeParse(body);
+	if (!root.success) return events;
+	for (const rawEntry of root.data.entry ?? []) {
+		const entry = whatsappEntry.safeParse(rawEntry);
+		if (!entry.success) continue;
+		for (const rawChange of entry.data.changes ?? []) {
+			const change = whatsappChange.safeParse(rawChange);
+			if (!change.success) continue;
+			const value = change.data.value;
 			const nameByWa: Record<string, string | null> = {};
-			for (const raw of contacts) {
-				const c = asRecord(raw);
-				if (typeof c.wa_id === "string") {
-					const profile = asRecord(c.profile);
-					nameByWa[c.wa_id] = typeof profile.name === "string" ? profile.name : null;
-				}
+			for (const raw of value.contacts ?? []) {
+				const contact = whatsappContact.safeParse(raw);
+				if (!contact.success) continue;
+				nameByWa[contact.data.wa_id] = contact.data.profile?.name ?? null;
 			}
-			const messages = Array.isArray(value.messages) ? value.messages : [];
-			for (const raw of messages) {
-				const msg = asRecord(raw);
-				const textObj = asRecord(msg.text);
-				const text = typeof textObj.body === "string" ? textObj.body : null;
-				if (!text || typeof msg.from !== "string") continue;
+			for (const raw of value.messages ?? []) {
+				const parsed = whatsappMessage.safeParse(raw);
+				if (!parsed.success) continue;
+				const msg = parsed.data;
+				const text = msg.text?.body ?? null;
+				if (!text) continue;
 				events.push({
 					pipe: "whatsapp",
 					source: "guest",
 					guestId: msg.from,
 					guestName: nameByWa[msg.from] || null,
 					text,
-					vendorMessageId: typeof msg.id === "string" ? msg.id : null,
+					vendorMessageId: msg.id ?? null,
 					at: msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now(),
-					phoneNumberId:
-						typeof metadata.phone_number_id === "string" ? metadata.phone_number_id : null,
+					phoneNumberId: value.metadata?.phone_number_id ?? null,
 				});
 			}
-			const echoes = Array.isArray(value.smb_message_echoes) ? value.smb_message_echoes : [];
-			for (const raw of echoes) {
-				const echo = asRecord(raw);
-				const textObj = asRecord(echo.text);
-				const text = typeof textObj.body === "string" ? textObj.body : null;
+			for (const raw of value.smb_message_echoes ?? []) {
+				const parsed = whatsappEcho.safeParse(raw);
+				if (!parsed.success) continue;
+				const echo = parsed.data;
+				const text = echo.text?.body ?? null;
 				if (!text) continue;
-				const guestId =
-					typeof echo.to === "string"
-						? echo.to
-						: typeof echo.recipient === "string"
-							? echo.recipient
-							: "unknown";
 				events.push({
 					pipe: "whatsapp",
 					source: "oa-echo",
-					guestId,
+					guestId: echo.to ?? echo.recipient ?? "unknown",
 					guestName: null,
 					text,
-					vendorMessageId: typeof echo.id === "string" ? echo.id : null,
+					vendorMessageId: echo.id ?? null,
 					at: echo.timestamp ? Number(echo.timestamp) * 1000 : Date.now(),
 				});
 			}
@@ -112,50 +156,48 @@ export function parseWhatsAppWebhook(body: unknown): InboundEvent[] {
 	return events;
 }
 
+/** Zalo sends ids as either a string or a number; both stringify to the same guest id. */
+const zaloParty = z
+	.object({ id: z.union([z.string(), z.number()]) })
+	.optional()
+	.catch(undefined);
+
+const zaloWebhook = z.object({
+	event_name: z.string(),
+	timestamp: looseTimestamp,
+	message: z.object({ text: z.string(), msg_id: looseString }).optional().catch(undefined),
+	sender: zaloParty,
+	recipient: zaloParty,
+});
+
 export function parseZaloWebhook(body: unknown): InboundEvent[] {
-	const root = asRecord(body);
-	if (typeof root.event_name !== "string") return [];
-	const message = asRecord(root.message);
-	const text = typeof message.text === "string" ? message.text : null;
+	const parsed = zaloWebhook.safeParse(body);
+	if (!parsed.success) return [];
+	const root = parsed.data;
+	const text = root.message?.text ?? null;
 	if (!text) return [];
 
-	if (root.event_name === "user_send_text") {
-		const sender = asRecord(root.sender);
-		if (sender.id === undefined || sender.id === null) return [];
-		const guestId = asId(sender.id);
-		if (!guestId) return [];
-		return [
-			{
-				pipe: "zalo",
-				source: "guest",
-				guestId,
-				guestName: null,
-				text,
-				vendorMessageId: typeof message.msg_id === "string" ? message.msg_id : null,
-				at: root.timestamp ? Number(root.timestamp) : Date.now(),
-			},
-		];
-	}
+	const party =
+		root.event_name === "user_send_text"
+			? root.sender
+			: root.event_name === "oa_send_text"
+				? root.recipient
+				: null;
+	if (!party) return [];
+	const guestId = String(party.id);
+	if (!guestId) return [];
 
-	if (root.event_name === "oa_send_text") {
-		const recipient = asRecord(root.recipient);
-		if (recipient.id === undefined || recipient.id === null) return [];
-		const guestId = asId(recipient.id);
-		if (!guestId) return [];
-		return [
-			{
-				pipe: "zalo",
-				source: "oa-echo",
-				guestId,
-				guestName: null,
-				text,
-				vendorMessageId: typeof message.msg_id === "string" ? message.msg_id : null,
-				at: root.timestamp ? Number(root.timestamp) : Date.now(),
-			},
-		];
-	}
-
-	return [];
+	return [
+		{
+			pipe: "zalo",
+			source: root.event_name === "user_send_text" ? "guest" : "oa-echo",
+			guestId,
+			guestName: null,
+			text,
+			vendorMessageId: root.message?.msg_id ?? null,
+			at: root.timestamp ? Number(root.timestamp) : Date.now(),
+		},
+	];
 }
 
 function hexEqual(provided: string, expected: string): boolean {

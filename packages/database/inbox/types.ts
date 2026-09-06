@@ -1,10 +1,29 @@
-export type Pipe = "zalo" | "whatsapp";
-export type GuestLanguage = "en" | "vi" | "ja" | "ko" | "ru";
-export type RentOrBuy = "rent" | "buy";
-export type MessageSource = "guest" | "oa-echo" | "nhip";
-export type MessageDirection = "in" | "out";
+import type {
+	CribLanguage,
+	GuestLanguage,
+	MessageDirection,
+	MessageSource,
+	Pipe,
+	RentOrBuy,
+} from "./schema";
+
+/**
+ * The vocabulary lives in `./schema` as zod schemas; these are the types inferred from
+ * them. Import the schema when you need to check a value at runtime, these when you only
+ * need the type. There is no second declaration to keep in step.
+ */
+export type {
+	CribLanguage,
+	GuestLanguage,
+	MessageDirection,
+	MessageSource,
+	Pipe,
+	RentOrBuy,
+	Timestamp,
+} from "./schema";
+
+/** Not persisted, so it has no schema: this is runtime configuration, not stored data. */
 export type SendMode = "mock" | "live";
-export type CribLanguage = "en" | "vi";
 
 export type Qualification = {
 	areaOfInterest: string | null;

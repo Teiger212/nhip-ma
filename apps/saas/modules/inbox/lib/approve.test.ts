@@ -286,6 +286,79 @@ test("POST /dev/inbound is 404 in production", async () => {
 	}
 });
 
+test("POST /dev/inbound rejects a bad body with 400, not 500", async () => {
+	const post = async (body: unknown) =>
+		json(
+			await inject(
+				new Request("http://localhost/dev/inbound", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(body),
+				}),
+			),
+		);
+
+	// `at` used to reach `new Date(at).toISOString()` unchecked, where an unparsable value
+	// threw RangeError and surfaced as an unhandled 500.
+	const badAt = await post({ pipe: "zalo", guestId: "guest-1", text: "Hello", at: "not-a-date" });
+	expect(badAt.res.status).toBe(400);
+	expect(badAt.body.error).toBe("bad_request");
+	expect(String(badAt.body.message)).toMatch(/at/);
+
+	for (const body of [
+		{ pipe: "sms", guestId: "guest-1", text: "Hello" },
+		{ pipe: "zalo", guestId: "   ", text: "Hello" },
+		{ pipe: "zalo", guestId: "guest-1", text: "" },
+		{ pipe: "zalo", guestId: "guest-1" },
+		{ pipe: "zalo", guestId: "guest-1", text: "Hello", at: Number.NaN },
+		{},
+	]) {
+		const res = await post(body);
+		expect(res.res.status, JSON.stringify(body)).toBe(400);
+		expect(res.body.error).toBe("bad_request");
+	}
+
+	// A body that is not JSON at all is a 400, not a crash.
+	const notJson = await json(
+		await inject(
+			new Request("http://localhost/dev/inbound", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: "{ not json",
+			}),
+		),
+	);
+	expect(notJson.res.status).toBe(400);
+});
+
+test("POST /dev/inbound still accepts the shapes it always did", async () => {
+	const cases: Array<Record<string, unknown>> = [
+		{ pipe: "zalo", guestId: " guest-trim ", text: " Looking to rent in Tay Ho " },
+		{ pipe: "whatsapp", guestId: "g2", text: "Hello", at: Date.now() },
+		{ pipe: "whatsapp", guestId: "g3", text: "Hello", at: new Date().toISOString() },
+		// A wrong-typed optional field degrades to null rather than failing the request.
+		{ pipe: "zalo", guestId: "g4", text: "Hello", guestName: 42, vendorMessageId: 7 },
+	];
+	for (const body of cases) {
+		const res = await json(
+			await inject(
+				new Request("http://localhost/dev/inbound", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(body),
+				}),
+			),
+		);
+		expect(res.res.status, JSON.stringify(body)).toBe(200);
+	}
+	const runtime = peekTestRuntime();
+	const trimmed = await runtime?.store.getConversation("zalo:guest-trim");
+	expect(trimmed?.messages[0]?.text).toBe("Looking to rent in Tay Ho");
+	const degraded = await runtime?.store.getConversation("zalo:g4");
+	expect(degraded?.guestName).toBeNull();
+	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
+});
+
 test("whatsappWindowState helper", () => {
 	const open = whatsappWindowState({
 		pipe: "whatsapp",
