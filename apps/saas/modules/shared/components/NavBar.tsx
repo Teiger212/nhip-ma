@@ -28,6 +28,7 @@ import { usePermissions } from "@shared/components/PermixProvider";
 import { UserMenu } from "@shared/components/UserMenu";
 import {
 	BotMessageSquareIcon,
+	GlobeIcon,
 	HomeIcon,
 	InboxIcon,
 	SettingsIcon,
@@ -51,6 +52,7 @@ const NAV_ICONS = {
 	home: HomeIcon,
 	inbox: InboxIcon,
 	chatbot: BotMessageSquareIcon,
+	globe: GlobeIcon,
 	settings: SettingsIcon,
 	account: UserCogIcon,
 	admin: ShieldUserIcon,

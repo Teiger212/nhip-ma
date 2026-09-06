@@ -10,7 +10,7 @@ export interface AppNavItem {
 	group: AppNavGroupId;
 	label: string;
 	href: string;
-	iconName: "home" | "inbox" | "chatbot" | "settings" | "account" | "admin";
+	iconName: "home" | "inbox" | "chatbot" | "globe" | "settings" | "account" | "admin";
 	isActive: boolean;
 	disabled?: boolean;
 	subItems?: AppNavSubItem[];
@@ -128,7 +128,7 @@ export function buildAppNavItems({
 			group: "workspace",
 			label: labels.international,
 			href: "/chatbot",
-			iconName: "chatbot",
+			iconName: "globe",
 			isActive: false,
 			disabled: true,
 		},
