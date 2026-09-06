@@ -20,8 +20,6 @@
 		"@prisma/adapter-pg": "catalog:",
 		"@prisma/client": "catalog:",
 		"better-sqlite3": "^12.4.1",
-		"drizzle-orm": "catalog:",
-		"drizzle-zod": "catalog:",
 		"pg": "catalog:",
 		"zod": "catalog:"
 	},
@@ -31,7 +29,6 @@
 		"@types/node": "catalog:",
 		"dotenv": "catalog:",
 		"dotenv-cli": "catalog:",
-		"drizzle-kit": "catalog:",
 		"prisma": "catalog:",
 		"prisma-zod-generator": "catalog:"
 	}
