@@ -5,7 +5,8 @@
 	"types": "./**/.tsx",
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
-		"migrate": "dotenv -e ../../.env.local -- pnpm dlx @better-auth/cli@latest generate --config ./auth.ts --output ../database/prisma/schema.prisma",
+		"migrate": "dotenv -e ../../.env.local -- pnpm dlx @better-auth/cli@1.6.29 generate --config ./auth.ts --output ../database/prisma/better-auth.generated.prisma",
+		"migrate:help": "echo 'Diff better-auth.generated.prisma into schema.prisma by hand; do not overwrite schema.prisma.'",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {

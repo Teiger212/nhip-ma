@@ -74,6 +74,7 @@ Required gates:
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.
 3. Run the relevant tests before considering the change complete.
+4. CI (`.github/workflows/ci.yml`) runs the same lint, format:check, type-check, and test gates on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts

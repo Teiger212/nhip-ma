@@ -1,7 +1,7 @@
 import { oneShot } from "./draft";
 import { SendError, transmit, whatsappWindowState } from "./pipes";
 import { getRuntime } from "./runtime";
-import type { Conversation, InboundEvent, Pipe, Store } from "./types";
+import type { Conversation, InboundEvent, InboxViewer, Pipe, Store } from "./types";
 
 export async function applyOneShot(
 	store: Store,
@@ -17,9 +17,16 @@ export async function applyOneShot(
 	return store.setOneShot(conversation.id, oneShot(inbound));
 }
 
-export async function ingestEvents(store: Store, events: InboundEvent[]): Promise<void> {
+export async function ingestEvents(
+	store: Store,
+	events: InboundEvent[],
+	ownerUserId: string | null = null,
+): Promise<void> {
 	for (const event of events) {
-		const conv = await store.upsertInbound(event);
+		const conv = await store.upsertInbound({
+			...event,
+			ownerUserId: event.ownerUserId ?? ownerUserId,
+		});
 		if (event.source === "guest") {
 			await applyOneShot(store, conv);
 		}
@@ -33,6 +40,7 @@ export async function injectDevInbound(input: {
 	guestName?: string | null;
 	vendorMessageId?: string | null;
 	at?: number | string | Date;
+	ownerUserId?: string | null;
 }): Promise<Conversation> {
 	const { store } = getRuntime();
 	const conv = await store.upsertInbound({
@@ -43,6 +51,7 @@ export async function injectDevInbound(input: {
 		vendorMessageId: input.vendorMessageId || null,
 		at: input.at || Date.now(),
 		source: "guest",
+		ownerUserId: input.ownerUserId ?? null,
 	});
 	const updated = await applyOneShot(store, conv);
 	if (!updated) {
@@ -61,9 +70,13 @@ export type ApproveResult =
 			detail?: unknown;
 	  };
 
-export async function approveAndSend(id: string, replyOverride?: string): Promise<ApproveResult> {
+export async function approveAndSend(
+	id: string,
+	replyOverride?: string,
+	viewer?: InboxViewer,
+): Promise<ApproveResult> {
 	const { store, sendMode, env } = getRuntime();
-	const conv = await store.getConversation(id);
+	const conv = await store.getConversation(id, viewer);
 	if (!conv) {
 		return { ok: false, status: 404, error: "not_found" };
 	}
@@ -94,6 +107,18 @@ export async function approveAndSend(id: string, replyOverride?: string): Promis
 			? replyOverride.trim()
 			: conv.oneShot.draft.reply;
 
+	// Compare-and-swap before the network call so two concurrent approvals cannot both
+	// transmit. The `sentAt` read above is only a fast path; this is the real guard.
+	const claimed = await store.claimSend(conv.id);
+	if (!claimed) {
+		return {
+			ok: false,
+			status: 409,
+			error: "already_sent",
+			message: "This thread was already approved and sent.",
+		};
+	}
+
 	try {
 		const result = await transmit({
 			conversation: conv,
@@ -107,6 +132,7 @@ export async function approveAndSend(id: string, replyOverride?: string): Promis
 		}
 		return { ok: true, conversation: updated };
 	} catch (err) {
+		await store.releaseSend(conv.id);
 		const message = err instanceof Error ? err.message : "send failed";
 		const detail = err instanceof SendError ? err.detail : null;
 		return { ok: false, status: 502, error: "send_failed", message, detail };

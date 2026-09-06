@@ -3,6 +3,7 @@
 import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocaleRouter } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
@@ -20,7 +21,6 @@ import {
 	InputOTPSeparator,
 	InputOTPSlot,
 } from "@repo/ui/components/input-otp";
-import { useRouter } from "@shared/hooks/router";
 import { getSafeRedirectPath } from "@shared/lib/redirect";
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -35,7 +35,7 @@ const formSchema = z.object({
 
 export function OtpForm() {
 	const t = useTranslations();
-	const router = useRouter();
+	const router = useLocaleRouter();
 	const { getAuthErrorMessage } = useAuthErrorMessages();
 	const searchParams = useSearchParams();
 

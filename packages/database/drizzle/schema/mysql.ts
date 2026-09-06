@@ -20,19 +20,6 @@ export const notificationTypeEnum = mysqlEnum("NotificationType", ["WELCOME", "A
 
 export const notificationTargetEnum = mysqlEnum("NotificationTarget", ["IN_APP", "EMAIL"]);
 
-export const pipeEnum = mysqlEnum("Pipe", ["zalo", "whatsapp"]);
-
-export const messageSourceEnum = mysqlEnum("MessageSource", ["guest", "oa_echo", "nhip"]);
-
-export const messageDirectionEnum = mysqlEnum("MessageDirection", ["in", "out"]);
-
-export const rentOrBuyEnum = mysqlEnum("RentOrBuy", ["rent", "buy"]);
-
-export const guestLanguageEnum = mysqlEnum("GuestLanguage", ["en", "vi", "ja", "ko", "ru"]);
-
-export const cribLanguageEnum = mysqlEnum("CribLanguage", ["en", "vi"]);
-
-// Tables
 export const user = mysqlTable("user", {
 	id: varchar("id", { length: 255 })
 		.$defaultFn(() => cuid())
@@ -233,90 +220,6 @@ export const notification = mysqlTable(
 	(table) => [index("notification_userId_idx").on(table.userId)],
 );
 
-export const conversation = mysqlTable(
-	"Conversation",
-	{
-		id: varchar("id", { length: 255 }).primaryKey(),
-		pipe: pipeEnum.notNull(),
-		guestId: varchar("guestId", { length: 255 }).notNull(),
-		guestName: text("guestName"),
-		language: guestLanguageEnum,
-		lastGuestInboundAt: timestamp("lastGuestInboundAt"),
-		sentAt: timestamp("sentAt"),
-		updatedAt: timestamp("updatedAt").notNull(),
-	},
-	(table) => [uniqueIndex("Conversation_pipe_guestId_key").on(table.pipe, table.guestId)],
-);
-
-export const message = mysqlTable("Message", {
-	id: varchar("id", { length: 255 }).primaryKey(),
-	conversationId: varchar("conversationId", { length: 255 })
-		.notNull()
-		.references(() => conversation.id, { onDelete: "cascade" }),
-	direction: messageDirectionEnum.notNull(),
-	source: messageSourceEnum.notNull(),
-	text: text("text").notNull(),
-	at: timestamp("at").notNull(),
-	vendorMessageId: text("vendorMessageId"),
-	mock: boolean("mock").notNull().default(false),
-});
-
-export const qualification = mysqlTable("Qualification", {
-	conversationId: varchar("conversationId", { length: 255 })
-		.primaryKey()
-		.references(() => conversation.id, { onDelete: "cascade" }),
-	areaOfInterest: text("areaOfInterest"),
-	nationality: text("nationality"),
-	inVietnamNow: boolean("inVietnamNow"),
-	rentOrBuy: rentOrBuyEnum,
-	timeframe: text("timeframe"),
-	budgetBand: text("budgetBand"),
-	bedsOrHousehold: text("bedsOrHousehold"),
-});
-
-export const draft = mysqlTable("Draft", {
-	conversationId: varchar("conversationId", { length: 255 })
-		.primaryKey()
-		.references(() => conversation.id, { onDelete: "cascade" }),
-	reply: text("reply").notNull(),
-	crib: text("crib").notNull(),
-	cribLanguage: cribLanguageEnum.notNull(),
-});
-
-export const paperwork = mysqlTable("Paperwork", {
-	conversationId: varchar("conversationId", { length: 255 })
-		.primaryKey()
-		.references(() => conversation.id, { onDelete: "cascade" }),
-	mentioned: boolean("mentioned").notNull(),
-	flag: text("flag"),
-});
-
-export const approval = mysqlTable("Approval", {
-	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
-		.primaryKey(),
-	conversationId: varchar("conversationId", { length: 255 })
-		.notNull()
-		.references(() => conversation.id, { onDelete: "cascade" }),
-	reply: text("reply").notNull(),
-	at: timestamp("at").notNull(),
-});
-
-export const send = mysqlTable("Send", {
-	id: varchar("id", { length: 255 })
-		.$defaultFn(() => cuid())
-		.primaryKey(),
-	conversationId: varchar("conversationId", { length: 255 })
-		.notNull()
-		.references(() => conversation.id, { onDelete: "cascade" }),
-	mock: boolean("mock").notNull(),
-	pipe: pipeEnum.notNull(),
-	to: varchar("to", { length: 255 }).notNull(),
-	text: text("text"),
-	vendorMessageId: text("vendorMessageId"),
-	at: timestamp("at").notNull(),
-});
-
 export const userNotificationPreference = mysqlTable(
 	"user_notification_preference",
 	{
@@ -438,54 +341,3 @@ export const userNotificationPreferenceRelations = relations(
 		}),
 	}),
 );
-
-export const conversationRelations = relations(conversation, ({ many, one }) => ({
-	messages: many(message),
-	qualification: one(qualification),
-	draft: one(draft),
-	paperwork: one(paperwork),
-	approvals: many(approval),
-	sends: many(send),
-}));
-
-export const messageRelations = relations(message, ({ one }) => ({
-	conversation: one(conversation, {
-		fields: [message.conversationId],
-		references: [conversation.id],
-	}),
-}));
-
-export const qualificationRelations = relations(qualification, ({ one }) => ({
-	conversation: one(conversation, {
-		fields: [qualification.conversationId],
-		references: [conversation.id],
-	}),
-}));
-
-export const draftRelations = relations(draft, ({ one }) => ({
-	conversation: one(conversation, {
-		fields: [draft.conversationId],
-		references: [conversation.id],
-	}),
-}));
-
-export const paperworkRelations = relations(paperwork, ({ one }) => ({
-	conversation: one(conversation, {
-		fields: [paperwork.conversationId],
-		references: [conversation.id],
-	}),
-}));
-
-export const approvalRelations = relations(approval, ({ one }) => ({
-	conversation: one(conversation, {
-		fields: [approval.conversationId],
-		references: [conversation.id],
-	}),
-}));
-
-export const sendRelations = relations(send, ({ one }) => ({
-	conversation: one(conversation, {
-		fields: [send.conversationId],
-		references: [conversation.id],
-	}),
-}));

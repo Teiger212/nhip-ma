@@ -50,3 +50,4 @@ data/
 *.db-journal
 *.db-wal
 *.db-shm
+packages/database/prisma/better-auth.generated.prisma

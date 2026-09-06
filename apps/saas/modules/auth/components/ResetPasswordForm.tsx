@@ -4,6 +4,7 @@ import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocaleRouter } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
@@ -17,7 +18,6 @@ import {
 } from "@repo/ui/components/form";
 import { passwordSchema } from "@repo/utils";
 import { PasswordInput } from "@shared/components/PasswordInput";
-import { useRouter } from "@shared/hooks/router";
 import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -32,7 +32,7 @@ const formSchema = z.object({
 export function ResetPasswordForm() {
 	const t = useTranslations();
 	const { user } = useSession();
-	const router = useRouter();
+	const router = useLocaleRouter();
 	const { getAuthErrorMessage } = useAuthErrorMessages();
 	const searchParams = useSearchParams();
 	const token = searchParams.get("token");

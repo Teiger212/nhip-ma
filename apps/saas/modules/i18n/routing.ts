@@ -1,15 +1,16 @@
 import { config } from "@repo/i18n";
+import { walkLocales } from "@shared/lib/walk-locales";
 import { createNavigation } from "next-intl/navigation";
 import { defineRouting } from "next-intl/routing";
 
 export const routing = defineRouting({
-	locales: Object.keys(config.locales),
+	locales: walkLocales,
 	defaultLocale: config.defaultLocale,
 	localeCookie: {
 		name: config.localeCookieName,
 	},
 	localePrefix: "always",
-	localeDetection: Object.keys(config.locales).length > 1,
+	localeDetection: walkLocales.length > 1,
 });
 
 export const {

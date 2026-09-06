@@ -1,10 +1,11 @@
 "use client";
 
 import { config } from "@config";
+import { localePrefixedPath } from "@i18n/lib/locale-path";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
 import { toast } from "@repo/ui/components/toast";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { parseAsString, useQueryState } from "nuqs";
 
 import { oAuthProviders } from "../constants/oauth-providers";
@@ -17,6 +18,7 @@ export function SocialSigninButton({
 	className?: string;
 }) {
 	const t = useTranslations();
+	const locale = useLocale();
 	const [invitationId] = useQueryState("invitationId", parseAsString);
 	const providerData = oAuthProviders[provider];
 
@@ -25,7 +27,7 @@ export function SocialSigninButton({
 		: config.redirectAfterSignIn;
 
 	const onSignin = async () => {
-		const callbackURL = new URL(redirectPath, window.location.origin);
+		const callbackURL = new URL(localePrefixedPath(redirectPath, locale), window.location.origin);
 		const { error } = await authClient.signIn.social({
 			provider,
 			callbackURL: callbackURL.toString(),

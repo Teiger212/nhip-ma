@@ -20,7 +20,7 @@ const sansFont = Be_Vietnam_Pro({
 });
 
 const monoFont = IBM_Plex_Mono({
-	subsets: ["latin", "latin-ext"],
+	subsets: ["latin", "latin-ext", "vietnamese"],
 	weight: ["400", "500"],
 	variable: "--font-ibm-plex-mono",
 	display: "swap",

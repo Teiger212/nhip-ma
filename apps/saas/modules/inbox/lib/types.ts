@@ -5,6 +5,7 @@ export type {
 	GuestLanguage,
 	InboundEvent,
 	InboxStore as Store,
+	InboxViewer,
 	Message,
 	MessageDirection,
 	MessageSource,

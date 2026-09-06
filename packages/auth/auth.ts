@@ -43,7 +43,6 @@ export const auth = betterAuth({
 	},
 	session: {
 		expiresIn: config.sessionCookieMaxAge,
-		freshAge: 0,
 	},
 	databaseHooks: {
 		session: {

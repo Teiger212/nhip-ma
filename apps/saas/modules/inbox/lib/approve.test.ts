@@ -3,7 +3,17 @@ import os from "node:os";
 import path from "node:path";
 
 import { createInboxStore } from "@repo/database/inbox";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+vi.mock("@repo/auth", () => ({
+	auth: {
+		api: {
+			getSession: vi.fn(),
+		},
+	},
+}));
+
+import { auth } from "@repo/auth";
 
 import { POST as approve } from "../../../app/api/conversations/[id]/approve/route";
 import { GET as getConversation } from "../../../app/api/conversations/[id]/route";
@@ -21,7 +31,11 @@ function params(id: string): { params: Promise<{ id: string }> } {
 	return { params: Promise.resolve({ id }) };
 }
 
+const WALK_SESSION = { session: { id: "walk-session" }, user: { id: "walk-user" } };
+
 beforeEach(() => {
+	vi.mocked(auth.api.getSession).mockReset();
+	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
 	setRuntimeForTests({
 		store: createInboxStore(path.join(dir, "nhip.db")),
@@ -128,7 +142,9 @@ test("approve refuses a second send on an already-sent thread", async () => {
 	expect(second.body.error).toBe("already_sent");
 	const after = second.body.conversation as { messages?: Array<{ source: string }> } | undefined;
 	expect(after).toBeUndefined();
-	const listed = await json(await listConversations());
+	const listed = await json(
+		await listConversations(new Request("http://localhost/api/conversations")),
+	);
 	const thread = (
 		listed.body as unknown as Array<{ id: string; messages: Array<{ source: string }> }>
 	).find((item) => item.id === conv.id);
@@ -166,7 +182,9 @@ test("list and get conversation return the invented inbound", async () => {
 		),
 	);
 	const conv = injected.body.conversation as { id: string };
-	const listed = await json(await listConversations());
+	const listed = await json(
+		await listConversations(new Request("http://localhost/api/conversations")),
+	);
 	const fromList = (listed.body as unknown as Array<{ id: string; guestName: string | null }>).find(
 		(item) => item.id === conv.id,
 	);
@@ -209,7 +227,9 @@ test("there is no send path except approve", async () => {
 			}),
 		}),
 	);
-	const listed = await json(await listConversations());
+	const listed = await json(
+		await listConversations(new Request("http://localhost/api/conversations")),
+	);
 	const first = (listed.body as unknown as Array<{ sentAt: string | null }>)[0];
 	expect(first.sentAt).toBeNull();
 });
@@ -247,8 +267,7 @@ test("WhatsApp approve outside 24h window is refused", async () => {
 });
 
 test("POST /dev/inbound is 404 in production", async () => {
-	const prev = process.env.NODE_ENV;
-	Object.assign(process.env, { NODE_ENV: "production" });
+	vi.stubEnv("NODE_ENV", "production");
 	try {
 		const res = await inject(
 			new Request("http://localhost/dev/inbound", {
@@ -263,7 +282,7 @@ test("POST /dev/inbound is 404 in production", async () => {
 		);
 		expect(res.status).toBe(404);
 	} finally {
-		Object.assign(process.env, { NODE_ENV: prev });
+		vi.unstubAllEnvs();
 	}
 });
 
@@ -279,4 +298,103 @@ test("whatsappWindowState helper", () => {
 	});
 	expect(closed.open).toBe(false);
 	expect(closed.reason).toBe("outside_24h_window");
+});
+
+test("inbox routes refuse requests without a session", async () => {
+	vi.mocked(auth.api.getSession).mockResolvedValue(null as never);
+	const injected = await json(
+		await inject(
+			new Request("http://localhost/dev/inbound", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ pipe: "zalo", guestId: "guest-anon", text: "Hello" }),
+			}),
+		),
+	);
+	const conv = injected.body.conversation as { id: string; sentAt: string | null };
+
+	const list = await listConversations(new Request("http://localhost/api/conversations"));
+	expect(list.status).toBe(401);
+
+	const detail = await getConversation(
+		new Request(`http://localhost/api/conversations/${conv.id}`),
+		params(conv.id),
+	);
+	expect(detail.status).toBe(401);
+
+	const approved = await approve(
+		new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ reply: "attacker text" }),
+		}),
+		params(conv.id),
+	);
+	expect(approved.status).toBe(401);
+
+	const runtime = peekTestRuntime();
+	const after = await runtime?.store.getConversation(conv.id);
+	expect(after?.sentAt).toBeNull();
+});
+
+test("two concurrent approvals send exactly once", async () => {
+	const injected = await json(
+		await inject(
+			new Request("http://localhost/dev/inbound", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ pipe: "zalo", guestId: "guest-race", text: "Hello" }),
+			}),
+		),
+	);
+	const conv = injected.body.conversation as { id: string };
+	const request = () =>
+		approve(
+			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params(conv.id),
+		);
+	const [a, b] = await Promise.all([request(), request()]);
+	const statuses = [a.status, b.status].sort((x, y) => x - y);
+	expect(statuses).toEqual([200, 409]);
+
+	const runtime = peekTestRuntime();
+	const after = await runtime?.store.getConversation(conv.id);
+	expect(after?.messages.filter((message) => message.source === "nhip").length).toBe(1);
+});
+
+test("approve does not echo vendor error bodies", async () => {
+	const injected = await json(
+		await inject(
+			new Request("http://localhost/dev/inbound", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ pipe: "zalo", guestId: "guest-live", text: "Hello" }),
+			}),
+		),
+	);
+	const conv = injected.body.conversation as { id: string };
+	const runtime = peekTestRuntime();
+	if (!runtime) throw new Error("runtime missing");
+	// Live mode with no token: transmit throws before any network call.
+	setRuntimeForTests({ ...runtime, sendMode: "live", env: { SEND_MODE: "live" } });
+	const failed = await json(
+		await approve(
+			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params(conv.id),
+		),
+	);
+	expect(failed.res.status).toBe(502);
+	expect(failed.body.error).toBe("send_failed");
+	expect("detail" in failed.body).toBe(false);
+	// The failed claim is released so the operator can retry once tokens exist.
+	const after = await runtime.store.getConversation(conv.id);
+	expect(after?.sentAt).toBeNull();
 });

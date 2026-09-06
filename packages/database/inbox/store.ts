@@ -13,6 +13,7 @@ import type {
 	GuestLanguage,
 	InboundEvent,
 	InboxStore,
+	InboxViewer,
 	Message,
 	MessageSource,
 	OneShot,
@@ -45,6 +46,7 @@ type ConversationRow = {
 	pipe: string;
 	guestId: string;
 	guestName: string | null;
+	ownerUserId: string | null;
 	language: string | null;
 	lastGuestInboundAt: string | null;
 	sentAt: string | null;
@@ -199,6 +201,7 @@ export function createInboxStore(filePath: string): InboxStore {
 			pipe: row.pipe as Pipe,
 			guestId: row.guestId,
 			guestName: row.guestName,
+			ownerUserId: row.ownerUserId ?? null,
 			messages: messages.map(mapMessage),
 			lastGuestInboundAt: iso(row.lastGuestInboundAt),
 			sentAt: iso(row.sentAt),
@@ -219,78 +222,96 @@ export function createInboxStore(filePath: string): InboxStore {
 	return {
 		filePath: resolved,
 
-		async listConversations() {
-			const rows = sqlite
-				.prepare(`SELECT "id" FROM "Conversation" ORDER BY "updatedAt" DESC`)
-				.all() as Array<{ id: string }>;
+		async listConversations(viewer?: InboxViewer) {
+			const rows = (
+				viewer
+					? sqlite
+							.prepare(
+								`SELECT "id" FROM "Conversation" WHERE "ownerUserId" IS NULL OR "ownerUserId" = ? ORDER BY "updatedAt" DESC`,
+							)
+							.all(viewer.userId)
+					: sqlite.prepare(`SELECT "id" FROM "Conversation" ORDER BY "updatedAt" DESC`).all()
+			) as Array<{ id: string }>;
 			return rows
 				.map((row) => load(row.id))
 				.filter((conversation): conversation is Conversation => Boolean(conversation));
 		},
 
-		async getConversation(id) {
-			return load(id);
+		async getConversation(id, viewer?: InboxViewer) {
+			const conversation = load(id);
+			if (!conversation) {
+				return null;
+			}
+			if (viewer && conversation.ownerUserId && conversation.ownerUserId !== viewer.userId) {
+				return null;
+			}
+			return conversation;
 		},
 
 		async upsertInbound(event: InboundEvent) {
 			const id = conversationId(event.pipe, event.guestId);
 			const at = nowIso(event.at);
+			const owner = event.ownerUserId ?? null;
 
-			const existing = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id) as
-				| ConversationRow
-				| undefined;
+			const write = sqlite.transaction(() => {
+				const existing = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id) as
+					| ConversationRow
+					| undefined;
 
-			if (!existing) {
-				sqlite
-					.prepare(
-						`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "lastGuestInboundAt", "sentAt", "updatedAt")
-             VALUES (?, ?, ?, ?, NULL, NULL, ?)`,
-					)
-					.run(id, event.pipe, event.guestId, event.guestName || null, at);
-			} else if (event.guestName && !existing.guestName) {
-				sqlite
-					.prepare(`UPDATE "Conversation" SET "guestName" = ?, "updatedAt" = ? WHERE "id" = ?`)
-					.run(event.guestName, at, id);
-			} else {
-				sqlite.prepare(`UPDATE "Conversation" SET "updatedAt" = ? WHERE "id" = ?`).run(at, id);
-			}
-
-			if (event.vendorMessageId) {
-				const dup = sqlite
-					.prepare(
-						`SELECT "id" FROM "Message" WHERE "conversationId" = ? AND "vendorMessageId" = ?`,
-					)
-					.get(id, event.vendorMessageId);
-				if (dup) {
-					return load(id) as Conversation;
+				if (!existing) {
+					sqlite
+						.prepare(
+							`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "ownerUserId", "lastGuestInboundAt", "sentAt", "updatedAt")
+             VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)`,
+						)
+						.run(id, event.pipe, event.guestId, event.guestName || null, owner, at);
+				} else {
+					sqlite
+						.prepare(
+							`UPDATE "Conversation" SET
+                 "guestName" = COALESCE("guestName", ?),
+                 "ownerUserId" = COALESCE("ownerUserId", ?),
+                 "updatedAt" = ?
+               WHERE "id" = ?`,
+						)
+						.run(event.guestName || null, owner, at, id);
 				}
-			}
 
-			const countRow = sqlite
-				.prepare(`SELECT COUNT(*) as count FROM "Message" WHERE "conversationId" = ?`)
-				.get(id) as { count: number };
-			sqlite
-				.prepare(
-					`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId")
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				)
-				.run(
-					`${id}:${countRow.count + 1}`,
-					id,
-					event.source === "guest" ? "in" : "out",
-					toDbSource(event.source),
-					event.text,
-					at,
-					event.vendorMessageId || null,
-				);
+				if (event.vendorMessageId) {
+					const dup = sqlite
+						.prepare(
+							`SELECT "id" FROM "Message" WHERE "conversationId" = ? AND "vendorMessageId" = ?`,
+						)
+						.get(id, event.vendorMessageId);
+					if (dup) {
+						return;
+					}
+				}
 
-			if (event.source === "guest") {
 				sqlite
 					.prepare(
-						`UPDATE "Conversation" SET "lastGuestInboundAt" = ?, "updatedAt" = ? WHERE "id" = ?`,
+						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId")
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
 					)
-					.run(at, at, id);
-			}
+					.run(
+						cuid(),
+						id,
+						event.source === "guest" ? "in" : "out",
+						toDbSource(event.source),
+						event.text,
+						at,
+						event.vendorMessageId || null,
+					);
+
+				if (event.source === "guest") {
+					sqlite
+						.prepare(
+							`UPDATE "Conversation" SET "lastGuestInboundAt" = ?, "updatedAt" = ? WHERE "id" = ?`,
+						)
+						.run(at, at, id);
+				}
+			});
+			write();
 
 			return load(id) as Conversation;
 		},
@@ -353,29 +374,37 @@ export function createInboxStore(filePath: string): InboxStore {
 			return load(id);
 		},
 
+		async claimSend(id) {
+			const result = sqlite
+				.prepare(
+					`UPDATE "Conversation" SET "sentAt" = ?, "updatedAt" = ? WHERE "id" = ? AND "sentAt" IS NULL`,
+				)
+				.run(nowIso(), nowIso(), id);
+			return result.changes === 1;
+		},
+
+		async releaseSend(id) {
+			sqlite
+				.prepare(
+					`UPDATE "Conversation" SET "sentAt" = NULL, "updatedAt" = ? WHERE "id" = ?
+             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."conversationId" = "Conversation"."id")`,
+				)
+				.run(nowIso(), id);
+		},
+
 		async recordApprovedSend(id, text, sendResult: SendResult) {
 			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
 			if (!conv) {
 				return null;
 			}
 			const at = nowIso();
-			const countRow = sqlite
-				.prepare(`SELECT COUNT(*) as count FROM "Message" WHERE "conversationId" = ?`)
-				.get(id) as { count: number };
 			const write = sqlite.transaction(() => {
 				sqlite
 					.prepare(
 						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock")
              VALUES (?, ?, 'out', 'nhip', ?, ?, ?, ?)`,
 					)
-					.run(
-						`${id}:${countRow.count + 1}`,
-						id,
-						text,
-						at,
-						sendResult.vendorMessageId || null,
-						sendResult.mock ? 1 : 0,
-					);
+					.run(cuid(), id, text, at, sendResult.vendorMessageId || null, sendResult.mock ? 1 : 0);
 				sqlite
 					.prepare(
 						`INSERT INTO "Approval" ("id", "conversationId", "reply", "at") VALUES (?, ?, ?, ?)`,

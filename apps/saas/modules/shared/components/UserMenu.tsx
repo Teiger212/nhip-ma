@@ -2,6 +2,7 @@
 
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
+import { LocaleLink } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import {
 	cn,
@@ -119,14 +120,14 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 				<DropdownMenuItem
 					nativeButton={false}
 					render={(props) => (
-						<Link
+						<LocaleLink
 							{...props}
 							href="/settings/general"
 							className={cn(props.className, "flex items-center")}
 						>
 							<SettingsIcon className="mr-2 size-4" />
 							{t("app.userMenu.accountSettings")}
-						</Link>
+						</LocaleLink>
 					)}
 				/>
 

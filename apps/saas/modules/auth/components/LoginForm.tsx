@@ -4,6 +4,7 @@ import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { sessionQueryKey } from "@auth/lib/api";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocaleRouter } from "@i18n/routing";
 import { OrganizationInvitationAlert } from "@organizations/components/OrganizationInvitationAlert";
 import { authClient } from "@repo/auth/client";
 import { config as authConfig } from "@repo/auth/config";
@@ -51,6 +52,7 @@ export function LoginForm() {
 	const t = useTranslations();
 	const { getAuthErrorMessage } = useAuthErrorMessages();
 	const router = useRouter();
+	const localeRouter = useLocaleRouter();
 	const queryClient = useQueryClient();
 	const searchParams = useSearchParams();
 	const { user, loaded: sessionLoaded } = useSession();
@@ -75,7 +77,7 @@ export function LoginForm() {
 
 	useEffect(() => {
 		if (sessionLoaded && user) {
-			router.replace(redirectPath);
+			localeRouter.replace(redirectPath);
 		}
 	}, [user, sessionLoaded]); // oxlint-disable-line eslint-plugin-react-hooks/exhaustive-deps
 
@@ -99,7 +101,7 @@ export function LoginForm() {
 					queryKey: sessionQueryKey,
 				});
 
-				router.replace(redirectPath);
+				localeRouter.replace(redirectPath);
 			} else {
 				const { error } = await authClient.signIn.magicLink({
 					...values,
@@ -123,7 +125,7 @@ export function LoginForm() {
 		try {
 			await authClient.signIn.passkey();
 
-			router.replace(redirectPath);
+			localeRouter.replace(redirectPath);
 		} catch (e) {
 			form.setError("root", {
 				message: getAuthErrorMessage(

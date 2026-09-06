@@ -42,6 +42,10 @@ describe("locale path helpers", () => {
 		expect(localeFromCookieHeader(undefined)).toBe("en");
 	});
 
+	it("falls back to the default locale for a malformed cookie value", () => {
+		expect(localeFromCookieHeader("NEXT_LOCALE=%E0%A4%A")).toBe("en");
+	});
+
 	it("prefixes paths with the resolved locale", () => {
 		expect(localePrefixedPath("/inbox")).toBe("/en/inbox");
 		expect(localePrefixedPath("/inbox", "vi")).toBe("/vi/inbox");
