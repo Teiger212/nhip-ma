@@ -9,7 +9,7 @@ Explicit user instructions win; if a documented command fails, report it rather 
 ## Stack
 
 - Next.js App Router, React, TypeScript, Node.js 22+, and pnpm workspaces
-- Turborepo, oRPC, Hono, Better Auth, Prisma, and Drizzle
+- Turborepo, oRPC, Hono, Better Auth, and Prisma (kit auth) plus a hand-written SQLite store for the inbox
 - Tailwind CSS, Shadcn-style components, and Base UI (`@base-ui/react`)
 - React Hook Form, Zod 4, TanStack Query, next-intl, Vitest, Playwright, Oxlint, and Oxfmt
 
@@ -154,8 +154,9 @@ oRPC modules live under `packages/api/modules`. Procedures use `publicProcedure`
 `protectedProcedure`, or `adminProcedure`, with route metadata, Zod input validation,
 middleware, and a handler. Follow `packages/api/modules/organizations/procedures/`.
 
-Keep database access in `packages/database`. Prisma owns the schema and migrations;
-Drizzle is used for query implementations. The database package scripts are:
+Keep database access in `packages/database`. Prisma owns the Better Auth schema and
+migrations (`prisma/schema.prisma`); the inbox lives in `packages/database/inbox` as
+hand-written SQLite DDL plus zod schemas, with no ORM. The database package scripts are:
 
 ```bash
 pnpm --filter @repo/database generate
