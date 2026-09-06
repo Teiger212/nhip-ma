@@ -35,7 +35,7 @@ async function main(): Promise<void> {
 		console.info(
 			"Set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supastarter, then:",
 		);
-		console.info("  docker compose up -d postgres");
+		console.info("  brew services start postgresql@16   # or: docker compose up -d postgres");
 		console.info("  pnpm --filter @repo/database generate");
 		console.info("  pnpm --filter @repo/database push");
 		console.info("  pnpm seed");

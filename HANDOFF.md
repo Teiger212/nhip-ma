@@ -37,7 +37,7 @@ Not mass-market brokerage. Not a rental operator. Not Hạnh. Working name only;
 ```bash
 pnpm install
 cp .env.local.example .env.local
-docker compose up -d postgres
+brew services start postgresql@16   # or: docker compose up -d postgres
 pnpm --filter @repo/database generate
 pnpm --filter @repo/database push
 pnpm seed
