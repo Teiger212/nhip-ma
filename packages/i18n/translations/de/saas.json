@@ -711,6 +711,7 @@
 		"empty": "Keine Unterhaltungen.",
 		"loading": "Unterhaltungen werden geladen…",
 		"loadError": "Unterhaltungen konnten nicht geladen werden.",
+		"retry": "Erneut versuchen",
 		"noMatches": "Keine passenden Threads.",
 		"noneSelected": "Keine Unterhaltung ausgewählt.",
 		"sent": "gesendet",

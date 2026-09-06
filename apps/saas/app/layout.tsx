@@ -6,15 +6,24 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ThemeProvider } from "next-themes";
-import { Inter } from "next/font/google";
+import { Be_Vietnam_Pro, IBM_Plex_Mono } from "next/font/google";
 
 import "./globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { PropsWithChildren } from "react";
 
-const sansFont = Inter({
+const sansFont = Be_Vietnam_Pro({
 	subsets: ["latin", "vietnamese"],
-	variable: "--font-inter",
+	weight: ["400", "500", "600", "700"],
+	variable: "--font-be-vietnam",
+	display: "swap",
+});
+
+const monoFont = IBM_Plex_Mono({
+	subsets: ["latin", "latin-ext"],
+	weight: ["400", "500"],
+	variable: "--font-ibm-plex-mono",
+	display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -34,7 +43,11 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 	const t = await getTranslations();
 
 	return (
-		<html lang={locale} suppressHydrationWarning className={sansFont.variable}>
+		<html
+			lang={locale}
+			suppressHydrationWarning
+			className={cn(sansFont.variable, monoFont.variable)}
+		>
 			<body className={cn("font-sans min-h-screen bg-background text-foreground antialiased")}>
 				<NuqsAdapter>
 					<NextIntlClientProvider messages={messages}>

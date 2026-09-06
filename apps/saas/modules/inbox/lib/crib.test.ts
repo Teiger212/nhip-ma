@@ -45,6 +45,8 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.loading).toBe("Đang tải cuộc hội thoại…");
 	expect(enMessages.inbox.loadError).toBe("Could not load conversations.");
 	expect(viMessages.inbox.loadError).toBe("Không tải được cuộc hội thoại.");
+	expect(enMessages.inbox.retry).toBe("Try again");
+	expect(viMessages.inbox.retry).toBe("Thử lại");
 	expect(enMessages.inbox.back).toBe("Back");
 	expect(viMessages.inbox.back).toBe("Quay lại");
 	expect(enMessages.inbox.language).toBe("Language");

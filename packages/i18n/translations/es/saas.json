@@ -709,6 +709,7 @@
 		"empty": "No hay conversaciones.",
 		"loading": "Cargando conversaciones…",
 		"loadError": "No se pudieron cargar las conversaciones.",
+		"retry": "Intentar de nuevo",
 		"noMatches": "No hay hilos coincidentes.",
 		"noneSelected": "Ninguna conversación seleccionada.",
 		"sent": "enviado",

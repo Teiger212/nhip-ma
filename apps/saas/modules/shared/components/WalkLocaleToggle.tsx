@@ -18,13 +18,13 @@ export function WalkLocaleToggle({ className }: { className?: string }) {
 		<TooltipProvider delay={0}>
 			<div
 				className={cn(
-					"gap-0 p-0.5 relative inline-flex items-center rounded-full bg-muted",
+					"gap-0 p-0.5 relative inline-flex items-center rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]",
 					className,
 				)}
 				data-test="walk-locale-toggle"
 			>
 				<div
-					className="left-0.5 top-0.5 h-7 w-8 ease-in-out absolute rounded-full border border-border bg-background transition-transform duration-200"
+					className="left-0.5 top-0.5 h-7 w-8 ease-out shadow-xs absolute rounded-full border border-border bg-background transition-transform duration-200 motion-reduce:transition-none"
 					style={{
 						transform: `translateX(${activeIndex * 100}%)`,
 					}}

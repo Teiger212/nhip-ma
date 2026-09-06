@@ -709,6 +709,7 @@
 		"empty": "No conversations.",
 		"loading": "Loading conversations…",
 		"loadError": "Could not load conversations.",
+		"retry": "Try again",
 		"noMatches": "No matching threads.",
 		"noneSelected": "No conversation selected.",
 		"sent": "sent",

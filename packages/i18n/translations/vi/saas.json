@@ -709,6 +709,7 @@
 		"empty": "Không có cuộc hội thoại.",
 		"loading": "Đang tải cuộc hội thoại…",
 		"loadError": "Không tải được cuộc hội thoại.",
+		"retry": "Thử lại",
 		"noMatches": "Không có cuộc hội thoại phù hợp.",
 		"noneSelected": "Chưa chọn cuộc hội thoại.",
 		"sent": "đã gửi",

@@ -23,8 +23,9 @@ function AppMobileChrome() {
 				className="-ml-1 min-h-11 min-w-11"
 				aria-label={t("app.menu.openNavigation")}
 			/>
-			<Link href="/" className="mr-auto block shrink-0">
+			<Link href="/" className="gap-2 min-w-0 mr-auto flex items-center">
 				<Logo withLabel={false} className="text-sidebar-foreground" />
+				<span className="font-semibold tracking-tight truncate">{t("inbox.brand")}</span>
 			</Link>
 			<NotificationCenter className="shrink-0" />
 			<UserMenu />
@@ -59,7 +60,7 @@ export function AppWrapper({ children }: PropsWithChildren) {
 	const flush = isInboxPath(usePathname());
 
 	return (
-		<SidebarProvider className={cn("bg-background", flush ? "h-svh overflow-hidden" : undefined)}>
+		<SidebarProvider className={cn("bg-background", flush ? "h-dvh overflow-hidden" : undefined)}>
 			<AppContent>{children}</AppContent>
 		</SidebarProvider>
 	);

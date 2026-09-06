@@ -2,6 +2,15 @@
 
 ## 2026-09-06
 
+### Changed
+
+#### Inbox walk UI (apps/saas, packages/ui, tooling/tailwind)
+
+- Targeted visual upgrade of the walk inbox (list, detail, sticky approve bar) and shared chrome (`NavBar`, `UserMenu`, `WalkLocaleToggle`). Routes, nav labels, en+vi language control, and disabled Home / International stay the same.
+- SaaS type stack is Be Vietnam Pro + IBM Plex Mono (Vietnamese-capable, not Inter). Olive tokens stay one green family; `--touch` remains the single accent. Buttons keep the kit pill rule; inbox rows stay square; panels use the 8px radius.
+- Thread rows use squircle initials, tabular timestamps, and compact status flags. Extract / crib / reply drop generic cards for hairline sections. Loading uses list-shaped skeletons; load errors offer **Try again**.
+- Sidebar wordmark uses `inbox.brand` (Nhịp) instead of Acme.
+
 ### Added
 
 #### Walk / tunnel (apps/saas)
