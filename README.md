@@ -20,18 +20,18 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010 — `/` goes to `/inbox`, then kit login if you are signed out.
+Open http://localhost:3010/en/inbox — `/` goes to `/en/inbox`, then kit login (`/en/login`) if you are signed out. Vietnamese is `/vi/inbox`.
 
 Sign in as `walk@nhip.local` / `walkthrough`. Kit login stays on. A commented
 `WALK_BYPASS_AUTH=1` in `.env.local` is an optional local/tunnel walk flag
 on the operator’s run only: `GET /api/walk-bypass` signs in that invented
-demo session and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. Off by
+demo session and redirects to `NEXT_PUBLIC_SAAS_URL` + `/{locale}/inbox`. Off by
 default. Never enable it in production, a leave-behind, or a public deploy.
 For a Cloudflare quick tunnel, also set `NEXT_PUBLIC_SAAS_URL` to that
 run’s `*.trycloudflare.com` origin (do not commit it). Inbox stays invented
 threads + mock send. You should see kit chrome (hamburger Sheet on a phone, desktop sidebar), **Inbox** active in `NavBar`, four invented threads (Minji, Yuki, Alexei, Thảo), a search bar, extract / **For you** / **Reply** / **Approve and send** (mock send). Notifications and the user menu are kit chrome, not the walk. Nothing here is a real guest.
 
-Language uses the kit locale cookie `NEXT_LOCALE`. Open the Walk Operator user menu (sidebar footer) and use **Language** / **Ngôn ngữ** with **EN** / **VI** only (`vi`, not `vn`). Inbox copy lives in `packages/i18n/translations/{locale}/saas.json` under `inbox.*`. To open Vietnamese without the switcher, set `NEXT_LOCALE=vi` and refresh.
+Language uses next-intl locale routes (`/en/inbox`, `/vi/inbox`) plus the kit cookie `NEXT_LOCALE`. Open the Walk Operator user menu (sidebar footer) and use **Language** / **Ngôn ngữ** with **EN** / **VI** only (`vi`, not `vn`). The toggle changes the path prefix. Inbox copy lives in `packages/i18n/translations/{locale}/saas.json` under `inbox.*`. Open `/vi/inbox` directly for Vietnamese.
 
 `pnpm seed` is idempotent: it writes four invented threads once and skips IDs that already exist, and creates the walk user once when `DATABASE_URL` is Postgres. Run it from the repo root (threads still pin `data/nhip.db` if cwd is `apps/saas`). Delete `data/nhip.db` first if you need a fresh thread set.
 
@@ -51,4 +51,4 @@ Walkthrough thread persistence is SQLite (`data/nhip.db`) via `packages/database
 
 ## Auth
 
-Inbox is an authenticated account route (`/inbox`) inside kit `AppWrapper`. Sign in, then open Inbox. Organizations are not required (`requireOrganization` is false). Kit `hideOrganization` hides the org switcher so create-org is not in the walk chrome. Do not treat Reports, International, billing, or orgs as product features.
+Inbox is an authenticated account route (`/en/inbox` or `/vi/inbox`) inside kit `AppWrapper`. Sign in, then open Inbox. Organizations are not required (`requireOrganization` is false). Kit `hideOrganization` hides the org switcher so create-org is not in the walk chrome. Do not treat Reports, International, billing, or orgs as product features.

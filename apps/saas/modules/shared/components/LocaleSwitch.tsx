@@ -1,10 +1,9 @@
 "use client";
 
-import { updateLocale } from "@i18n/lib/update-locale";
+import { useSwitchLocale } from "@i18n/lib/use-switch-locale";
 import { LocaleSwitch as LocaleSwitchControl } from "@repo/ui";
 import { isWalkLocale, resolveWalkLocale, walkLocaleOptions } from "@shared/lib/walk-locales";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 
 export function LocaleSwitch({
 	showLabel,
@@ -16,7 +15,7 @@ export function LocaleSwitch({
 	label?: string;
 } = {}) {
 	const t = useTranslations();
-	const router = useRouter();
+	const switchLocale = useSwitchLocale();
 	const currentLocale = useLocale();
 	const languageLabel = label ?? t("common.aria.language");
 	const value = resolveWalkLocale(currentLocale);
@@ -33,8 +32,7 @@ export function LocaleSwitch({
 					return;
 				}
 
-				await updateLocale(nextLocale);
-				router.refresh();
+				await switchLocale(nextLocale);
 			}}
 		/>
 	);

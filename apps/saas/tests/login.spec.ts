@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("login page", () => {
 	test("should load and show all relevant login form components", async ({ page }) => {
-		await page.goto("/login");
+		await page.goto("/en/login");
 
 		// Main heading and subtitle
 		await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
@@ -38,7 +38,7 @@ test.describe("login page", () => {
 	});
 
 	test("should switch between magic link and password auth modes", async ({ page }) => {
-		await page.goto("/login");
+		await page.goto("/en/login");
 
 		const passwordInput = page.locator('input[autocomplete="current-password"]');
 
@@ -59,7 +59,7 @@ test.describe("login page", () => {
 	});
 
 	test("language switcher offers only English and Vietnamese", async ({ page }) => {
-		await page.goto("/login");
+		await page.goto("/en/login");
 
 		await page.getByRole("button", { name: "Language" }).click();
 
@@ -68,5 +68,8 @@ test.describe("login page", () => {
 		await expect(page.getByRole("menuitemradio", { name: "Deutsch" })).toHaveCount(0);
 		await expect(page.getByRole("menuitemradio", { name: "Español" })).toHaveCount(0);
 		await expect(page.getByRole("menuitemradio", { name: "Français" })).toHaveCount(0);
+
+		await page.getByRole("menuitemradio", { name: "Tiếng Việt" }).click();
+		await expect(page).toHaveURL(/\/vi\/login/);
 	});
 });

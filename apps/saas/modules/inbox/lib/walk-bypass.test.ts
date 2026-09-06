@@ -48,7 +48,7 @@ describe("createWalkBypassResponse", () => {
 		expect(auth.api.signInEmail).not.toHaveBeenCalled();
 	});
 
-	it("signs in the walk user and redirects to NEXT_PUBLIC_SAAS_URL/inbox", async () => {
+	it("signs in the walk user and redirects to NEXT_PUBLIC_SAAS_URL/{locale}/inbox", async () => {
 		vi.stubEnv("WALK_BYPASS_AUTH", "1");
 		vi.stubEnv("NEXT_PUBLIC_SAAS_URL", "https://demo.trycloudflare.com");
 		const signInResponse = new Response(JSON.stringify({ user: { email: WALK_USER_EMAIL } }), {
@@ -68,7 +68,7 @@ describe("createWalkBypassResponse", () => {
 		);
 
 		expect(response.status).toBe(307);
-		expect(response.headers.get("location")).toBe("https://demo.trycloudflare.com/inbox");
+		expect(response.headers.get("location")).toBe("https://demo.trycloudflare.com/en/inbox");
 		expect(response.headers.getSetCookie()).toContain(SESSION_COOKIE);
 		expect(auth.api.signInEmail).toHaveBeenCalledWith({
 			body: {
@@ -81,6 +81,29 @@ describe("createWalkBypassResponse", () => {
 
 		const signInHeaders = vi.mocked(auth.api.signInEmail).mock.calls[0]?.[0]?.headers as Headers;
 		expect(signInHeaders.get("origin")).toBe("https://demo.trycloudflare.com");
+	});
+
+	it("respects NEXT_LOCALE when redirecting after walk sign-in", async () => {
+		vi.stubEnv("WALK_BYPASS_AUTH", "1");
+		vi.stubEnv("NEXT_PUBLIC_SAAS_URL", "https://demo.trycloudflare.com");
+		const signInResponse = new Response(JSON.stringify({ user: { email: WALK_USER_EMAIL } }), {
+			status: 200,
+			headers: {
+				"Set-Cookie": SESSION_COOKIE,
+			},
+		});
+		vi.mocked(auth.api.signInEmail).mockResolvedValue(
+			signInResponse as unknown as Awaited<ReturnType<typeof auth.api.signInEmail>>,
+		);
+
+		const response = await createWalkBypassResponse(
+			new Request("http://localhost:3010/api/walk-bypass", {
+				headers: { cookie: "NEXT_LOCALE=vi" },
+			}),
+		);
+
+		expect(response.status).toBe(307);
+		expect(response.headers.get("location")).toBe("https://demo.trycloudflare.com/vi/inbox");
 	});
 
 	it("returns the Better Auth status when walk sign-in fails", async () => {
