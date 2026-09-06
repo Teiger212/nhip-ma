@@ -1,15 +1,18 @@
 "use client";
 
-import { isInboxPath } from "@i18n/lib/locale-path";
-import { LocaleLink } from "@i18n/routing";
 import { cn, Logo, SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PropsWithChildren } from "react";
 
 import { NavBar } from "./NavBar";
 import { NotificationCenter } from "./NotificationCenter";
 import { UserMenu } from "./UserMenu";
+
+function isInboxPath(pathname: string): boolean {
+	return pathname === "/inbox" || pathname.startsWith("/inbox/");
+}
 
 function AppMobileChrome() {
 	const t = useTranslations();
@@ -20,10 +23,10 @@ function AppMobileChrome() {
 				className="-ml-1 min-h-11 min-w-11"
 				aria-label={t("app.menu.openNavigation")}
 			/>
-			<LocaleLink href="/inbox" className="gap-2 min-w-0 mr-auto flex items-center">
+			<Link href="/" className="gap-2 min-w-0 mr-auto flex items-center">
 				<Logo withLabel={false} className="text-sidebar-foreground" />
 				<span className="font-semibold tracking-tight truncate">{t("inbox.brand")}</span>
-			</LocaleLink>
+			</Link>
 			<NotificationCenter className="shrink-0" />
 			<UserMenu />
 		</header>

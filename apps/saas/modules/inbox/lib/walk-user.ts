@@ -1,5 +1,3 @@
-import { localePrefixedPath } from "@i18n/lib/locale-path";
-
 export const WALK_USER_EMAIL = "walk@nhip.local";
 export const WALK_USER_NAME = "Walk Operator";
 export const WALK_USER_PASSWORD = "walkthrough";
@@ -13,11 +11,8 @@ export function isWalkBypassAuthEnabled(
 	return value === "1" && nodeEnv !== "production";
 }
 
-export function walkInboxRedirectUrl(
-	saasUrl = process.env.NEXT_PUBLIC_SAAS_URL,
-	locale?: string | null,
-): URL {
-	return new URL(localePrefixedPath("/inbox", locale), saasUrl || DEFAULT_WALK_SAAS_URL);
+export function walkInboxRedirectUrl(saasUrl = process.env.NEXT_PUBLIC_SAAS_URL): URL {
+	return new URL("/inbox", saasUrl || DEFAULT_WALK_SAAS_URL);
 }
 
 export function isPostgresDatabaseUrl(databaseUrl: string | undefined): boolean {

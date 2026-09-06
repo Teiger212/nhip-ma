@@ -1,12 +1,13 @@
 "use client";
 
-import { useSwitchLocale } from "@i18n/lib/use-switch-locale";
+import { updateLocale } from "@i18n/lib/update-locale";
 import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui";
 import { isWalkLocale, resolveWalkLocale, walkLocaleOptions } from "@shared/lib/walk-locales";
 import { useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 
 export function WalkLocaleToggle({ className }: { className?: string }) {
-	const switchLocale = useSwitchLocale();
+	const router = useRouter();
 	const value = resolveWalkLocale(useLocale());
 	const activeIndex = Math.max(
 		0,
@@ -46,7 +47,9 @@ export function WalkLocaleToggle({ className }: { className?: string }) {
 												return;
 											}
 
-											void switchLocale(locale.value);
+											void updateLocale(locale.value).then(() => {
+												router.refresh();
+											});
 										}}
 										className={cn(
 											props.className,

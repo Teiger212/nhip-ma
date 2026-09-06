@@ -32,9 +32,8 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010/en/inbox — `/` redirects to `/en/inbox`.
-Unauthenticated visits go to kit login (`/en/login`), then Inbox
-(`redirectAfterSignIn` is `/inbox`, prefixed by locale routing). Kit login
+Open http://localhost:3010 — `/` redirects to `/inbox`. Unauthenticated visits
+go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). Kit login
 stays on. For a local or Cloudflare quick-tunnel walk on the operator’s
 machine only, you may set `WALK_BYPASS_AUTH=1` in `.env.local` (commented
 out in `.env.local.example`; off by default). Never enable it in
@@ -42,11 +41,10 @@ production, a leave-behind, or a public deploy — the route also 403s when
 `NODE_ENV=production`. That flag is not “no login”: unsigned Inbox visits
 hit `GET /api/walk-bypass`, which signs in the invented
 `walk@nhip.local` / `walkthrough` demo session and redirects to
-`NEXT_PUBLIC_SAAS_URL` + `/{locale}/inbox` (cookie `NEXT_LOCALE` or `en`;
-not the tunneled localhost request URL). For a tunnel share, point
-`NEXT_PUBLIC_SAAS_URL` at that run’s `https://*.trycloudflare.com` origin
-on the operator machine; do not commit the tunnel URL. Inbox stays invented
-threads + mock send.
+`NEXT_PUBLIC_SAAS_URL` + `/inbox` (not the tunneled localhost request
+URL). For a tunnel share, point `NEXT_PUBLIC_SAAS_URL` at that run’s
+`https://*.trycloudflare.com` origin on the operator machine; do not
+commit the tunnel URL. Inbox stays invented threads + mock send.
 `apps/saas/next.config.ts` keeps `allowedDevOrigins: ["*.trycloudflare.com"]`
 so tunnel JS (`/_next/*`) is not blocked. `pnpm seed` writes four invented
 threads (Minji, Yuki, Alexei, Thảo) into `data/nhip.db` and an idempotent walk user
@@ -56,16 +54,14 @@ existing thread IDs and the existing walk user. Delete `data/nhip.db` for a
 fresh thread set. Nothing is a real guest. Inbox copy is `inbox.*` in
 `packages/i18n/translations/{en,vi}/saas.json`. Inbox lives under the
 authenticated account route
-`apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx`
-and uses kit `AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar
-primitives (mobile sheet, desktop icon-collapse). SaaS uses next-intl
-locale prefixes (`/en/inbox`, `/vi/inbox`) via `defineRouting` + `proxy.ts`.
-Bare `/inbox` redirects to `/{locale}/inbox`. Nav furniture is **Home** and
-**International** (disabled placeholders), **Inbox** (the only working job),
-and Account settings. Language is **Language** / **Ngôn ngữ** in the Walk
-Operator user menu, immediately under Account settings (`en` + `vi` only as
-**EN** / **VI**). The toggle navigates to the other locale path and writes
-`NEXT_LOCALE`. Vietnamese is `vi`. Below Tailwind `md`,
+`apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit
+`AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
+sheet, desktop icon-collapse). Nav furniture is **Home** and **International**
+(disabled placeholders), **Inbox** (the only working job), and Account
+settings. Language is **Language** / **Ngôn ngữ** in the Walk Operator user
+menu, immediately under Account settings (`en` + `vi` only as **EN** / **VI**;
+`NEXT_LOCALE`). Cookie locale without a `/en` or `/vi` URL prefix is
+intentional for this authenticated walk. Vietnamese is `vi`. Below Tailwind `md`,
 the list and selected thread are exclusive. Approve and send pins to the
 detail bar. Desktop two-pane is unchanged.
 
@@ -226,7 +222,7 @@ keys before showing success UI. Do not rely on a full page reload.
 
 - Use Server Components by default; add `"use client"` only for browser APIs or interaction.
 - Keep client boundaries small and keep server-only data access on the server.
-- Follow the auth/layout patterns in `apps/saas/app/[locale]/(authenticated)/layout.tsx`.
+- Follow the auth/layout patterns in `apps/saas/app/(authenticated)/layout.tsx`.
 - Follow the oRPC procedure pattern in `packages/api/modules/organizations/procedures/`.
 
 ## Auth & multi-tenancy

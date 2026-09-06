@@ -1,7 +1,8 @@
 "use client";
 
-import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { cn } from "@repo/ui";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 export function SettingsMenu({
@@ -19,7 +20,7 @@ export function SettingsMenu({
 	}[];
 	className?: string;
 }) {
-	const pathname = useLocalePathname();
+	const pathname = usePathname();
 
 	const isActiveMenuItem = (href: string) => pathname.includes(href);
 
@@ -32,7 +33,7 @@ export function SettingsMenu({
 				{allItems.map((item, index) => {
 					const isActive = isActiveMenuItem(item.href);
 					return (
-						<LocaleLink
+						<Link
 							key={index}
 							href={item.href}
 							className={cn(
@@ -43,7 +44,7 @@ export function SettingsMenu({
 							)}
 						>
 							{item.title}
-						</LocaleLink>
+						</Link>
 					);
 				})}
 			</nav>

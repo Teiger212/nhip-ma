@@ -1,7 +1,6 @@
 "use client";
 
 import { updateLocale } from "@i18n/lib/update-locale";
-import { useLocalePathname, useLocaleRouter } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import type { Locale } from "@repo/i18n";
 import { config as i18nConfig } from "@repo/i18n";
@@ -16,13 +15,13 @@ import { toast } from "@repo/ui/components/toast";
 import { SettingsItem } from "@shared/components/SettingsItem";
 import { useMutation } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function UserLanguageForm() {
 	const currentLocale = useLocale();
 	const t = useTranslations();
-	const router = useLocaleRouter();
-	const pathname = useLocalePathname();
+	const router = useRouter();
 	const [locale, setLocale] = useState<Locale | undefined>(currentLocale as Locale);
 
 	const updateLocaleMutation = useMutation({
@@ -35,7 +34,7 @@ export function UserLanguageForm() {
 				locale,
 			});
 			await updateLocale(locale);
-			router.replace(pathname, { locale });
+			router.refresh();
 		},
 	});
 

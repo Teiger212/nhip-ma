@@ -1,6 +1,5 @@
 "use client";
 
-import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
 import { config as authConfig } from "@repo/auth/config";
 import { config as paymentsConfig } from "@repo/payments/config";
@@ -37,6 +36,8 @@ import {
 	UserCogIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
 import { OrganzationSelect } from "../../organizations/components/OrganizationSelect";
@@ -93,10 +94,10 @@ function NavItemLink({
 					: undefined
 			}
 			render={(props) => (
-				<LocaleLink {...props} href={item.href} onClick={onNavigate} prefetch>
+				<Link {...props} href={item.href} onClick={onNavigate} prefetch>
 					<Icon />
 					<span className={cn(!showLabel && "sr-only")}>{item.label}</span>
-				</LocaleLink>
+				</Link>
 			)}
 		/>
 	);
@@ -104,7 +105,7 @@ function NavItemLink({
 
 export function NavBar() {
 	const t = useTranslations();
-	const pathname = useLocalePathname();
+	const pathname = usePathname();
 	const { check } = usePermissions();
 	const { activeOrganization } = useActiveOrganization();
 	const { isMobile, setOpenMobile, state } = useSidebar();
@@ -182,7 +183,7 @@ export function NavBar() {
 								size="lg"
 								tooltip={t("app.menu.start")}
 								render={(props) => (
-									<LocaleLink {...props} href="/inbox" prefetch>
+									<Link {...props} href="/" prefetch>
 										<Logo withLabel={false} className="text-sidebar-foreground" />
 										<span
 											className={cn(
@@ -192,7 +193,7 @@ export function NavBar() {
 										>
 											{t("inbox.brand")}
 										</span>
-									</LocaleLink>
+									</Link>
 								)}
 							/>
 						</SidebarMenuItem>
@@ -223,14 +224,14 @@ export function NavBar() {
 														<SidebarMenuSubButton
 															isActive={isNavSubItemActive(pathname, subItem.href)}
 															render={(props) => (
-																<LocaleLink
+																<Link
 																	{...props}
 																	href={subItem.href}
 																	onClick={closeMobileNav}
 																	prefetch
 																>
 																	<span>{subItem.label}</span>
-																</LocaleLink>
+																</Link>
 															)}
 														/>
 													</SidebarMenuSubItem>

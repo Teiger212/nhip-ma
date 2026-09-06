@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
 		return [
 			{
 				source: "/",
-				destination: "/en/inbox",
+				destination: "/inbox",
 				permanent: false,
 			},
 			{
@@ -63,28 +63,13 @@ const nextConfig: NextConfig = {
 				permanent: true,
 			},
 			{
-				source: "/:locale(en|de|es|fr|vi)/settings",
-				destination: "/:locale/settings/general",
-				permanent: true,
-			},
-			{
 				source: "/:organizationSlug/settings",
 				destination: "/:organizationSlug/settings/general",
 				permanent: true,
 			},
 			{
-				source: "/:locale(en|de|es|fr|vi)/:organizationSlug/settings",
-				destination: "/:locale/:organizationSlug/settings/general",
-				permanent: true,
-			},
-			{
 				source: "/admin",
 				destination: "/admin/users",
-				permanent: true,
-			},
-			{
-				source: "/:locale(en|de|es|fr|vi)/admin",
-				destination: "/:locale/admin/users",
 				permanent: true,
 			},
 		];

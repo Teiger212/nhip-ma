@@ -1,5 +1,3 @@
-import { isInboxPath } from "@i18n/lib/locale-path";
-
 export type AppNavGroupId = "workspace" | "account";
 
 export interface AppNavSubItem {
@@ -123,7 +121,7 @@ export function buildAppNavItems({
 			label: labels.inbox,
 			href: "/inbox",
 			iconName: "inbox",
-			isActive: isInboxPath(pathname),
+			isActive: pathname === "/inbox" || pathname.startsWith("/inbox/"),
 		},
 		{
 			id: "international",
