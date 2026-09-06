@@ -1,19 +1,32 @@
+/**
+ * The vocabulary comes straight from `./schema`, where each name is both a zod schema and
+ * the type inferred from it. One plain `export` therefore hands consumers the runtime
+ * check and the type under a single name, so `import type { Pipe }` keeps working while
+ * `import { Pipe }` now also gets something that can parse. Re-exporting these by name
+ * rather than as a namespace is what makes that source-compatible.
+ *
+ * `DbMessageSource` is deliberately not here: the `oa_echo` spelling is how the store
+ * writes to disk, not something the domain should be able to reach for.
+ */
+export {
+	CribLanguage,
+	GuestLanguage,
+	MessageDirection,
+	MessageSource,
+	Pipe,
+	RentOrBuy,
+	Timestamp,
+} from "./schema";
 export type {
 	Conversation,
-	CribLanguage,
 	Draft,
-	GuestLanguage,
 	InboundEvent,
 	InboxStore,
 	InboxViewer,
 	Message,
-	MessageDirection,
-	MessageSource,
 	OneShot,
 	Paperwork,
-	Pipe,
 	Qualification,
-	RentOrBuy,
 	SendMode,
 	SendResult,
 	InboxEnv,

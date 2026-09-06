@@ -1,10 +1,24 @@
-export type Pipe = "zalo" | "whatsapp";
-export type GuestLanguage = "en" | "vi" | "ja" | "ko" | "ru";
-export type RentOrBuy = "rent" | "buy";
-export type MessageSource = "guest" | "oa-echo" | "nhip";
-export type MessageDirection = "in" | "out";
+import type {
+	CribLanguage,
+	GuestLanguage,
+	MessageDirection,
+	MessageSource,
+	Pipe,
+	RentOrBuy,
+} from "./schema";
+
+/**
+ * The vocabulary is declared once, in `./schema`, and reaches consumers through
+ * `./index`. This module only borrows the inferred types to describe the shapes below —
+ * it deliberately does not re-export them, so the member lists appear in exactly one file.
+ */
+
+/**
+ * Not persisted and never parsed from an untrusted string in this package, so it stays a
+ * hand-written union: an enum nothing validates with would be ceremony, not safety. If
+ * `runtime.ts` ever starts checking the `SEND_MODE` env var, promote it to `./schema`.
+ */
 export type SendMode = "mock" | "live";
-export type CribLanguage = "en" | "vi";
 
 export type Qualification = {
 	areaOfInterest: string | null;
