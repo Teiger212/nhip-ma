@@ -59,7 +59,10 @@ Do not commit untracked local junk (`walkthrough-results/`, ad-hoc Playwright in
 | `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                           |
 | `apps/saas/modules/inbox/components/Inbox.tsx`                           | List + detail                         |
 | `apps/saas/modules/inbox/lib/`                                           | Extract, draft, seed, approve runtime |
-| `apps/saas/app/api/conversations/`                                       | List, detail, approve                 |
+| `apps/saas/app/api/conversations/`                                       | List, detail, approve (session-gated) |
+| `apps/saas/modules/inbox/lib/require-session.ts`                         | 401 gate for inbox routes             |
+| `apps/saas/modules/shared/lib/env.ts`                                    | Startup env validation                |
+| `.github/workflows/ci.yml`                                               | Lint, format, type-check, test on PRs |
 | `packages/database/inbox/`                                               | SQLite store                          |
 | `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                        |
 | `apps/saas/modules/i18n/routing.ts`                                      | `localePrefix: "always"`              |
@@ -102,4 +105,5 @@ Grounded in this tree only. Not a product roadmap.
 2. **Walk stays mock + invented.** `SEND_MODE=live` exists in code. Do not turn it on for this walk. Do not point webhooks at real guests.
 3. **Unused apps stay unused.** `apps/marketing`, `apps/docs`, admin, and org chrome are still in the monorepo. Leave them unless asked.
 4. **i18n catalog vs walk toggle.** `de` / `es` / `fr` remain in `packages/i18n/config.ts`. The walk selector must stay EN + VI.
-5. **No CI story to invent.** There are no GitHub Actions workflows required by this handoff. Inbox unit tests are `pnpm --filter saas test` under `apps/saas/modules/inbox`.
+5. **CI is on.** `.github/workflows/ci.yml` runs lint, format:check, type-check, and tests on every PR and push to main. Inbox unit tests are `pnpm --filter saas test` under `apps/saas/modules/inbox`.
+6. **Live cutover checklist.** Before `SEND_MODE=live`: set `WHATSAPP_APP_SECRET` and `ZALO_OA_SECRET_KEY` (webhooks 403 without them), set `INBOX_OWNER_USER_ID` or another owner source so new threads are scoped, and remove the walk user from any shared Postgres. The full audit that drove these is `reports/2026-09-06-handoff-analysis.md`.
