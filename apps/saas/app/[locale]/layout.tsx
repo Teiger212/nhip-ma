@@ -53,7 +53,7 @@ export default async function LocaleLayout({
 		>
 			<body className={cn("font-sans min-h-screen bg-background text-foreground antialiased")}>
 				<NuqsAdapter>
-					<NextIntlClientProvider locale={locale} messages={messages}>
+					<NextIntlClientProvider key={locale} locale={locale} messages={messages}>
 						<ThemeProvider
 							attribute="class"
 							disableTransitionOnChange

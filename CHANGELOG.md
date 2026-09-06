@@ -13,7 +13,7 @@
 - Inbox search is `h-12` with more padding. Desktop thread list is a locked `22rem` column (`flex: 0 0 22rem`) so long detail content cannot change its width.
 - Walk-visible `inbox.*` and operator menu copy: EN chips use sentence case (`Needs approval`, `Sent`, `Demo send`). Crib is **Operator note**. VI is full Vietnamese (no Draft / inbound / interviewer leftovers; user menu is Cài đặt tài khoản / Giao diện / Đăng xuất).
 - Sticky detail bar is **Approve and send** plus **Edit reply**. Idle **Not sent** stays an accessible live region but is visually hidden so it does not look like a second button. Progress, errors, and **Sent {at}** stay muted under the row. Edit reply scrolls `#inbox-reply` into view and focuses it.
-- SaaS uses next-intl locale prefixes (`/en/inbox`, `/vi/inbox`) with `defineRouting`, `createNavigation`, and `proxy.ts`. Bare `/inbox` and `/` go to a prefixed inbox. The walk language toggle navigates to the other locale path. Walk bypass lands on `/{locale}/inbox`.
+- SaaS uses next-intl locale prefixes (`/en/inbox`, `/vi/inbox`) with `defineRouting`, `createNavigation`, and `proxy.ts`. Cookie-only locale (no path prefix) is rejected for this walk. Bare `/inbox` and `/` go to a prefixed inbox. The walk language toggle navigates `/en/inbox` ↔ `/vi/inbox`. Walk bypass lands on `/{locale}/inbox`.
 - `NextIntlClientProvider` now receives `locale` on the `[locale]` layout so extract labels follow EN↔VI. English rent/buy values are **Rent** / **Buy** (not raw codes). Extract fields remount with `useLocale()`.
 
 ### Added

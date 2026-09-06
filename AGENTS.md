@@ -60,6 +60,7 @@ authenticated account route
 and uses kit `AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar
 primitives (mobile sheet, desktop icon-collapse). SaaS uses next-intl
 locale prefixes (`/en/inbox`, `/vi/inbox`) via `defineRouting` + `proxy.ts`.
+Cookie-only locale without a path prefix is rejected for this walk.
 Bare `/inbox` redirects to `/{locale}/inbox`. Nav furniture is **Home** and
 **International** (disabled placeholders), **Inbox** (the only working job),
 and Account settings. Language is **Language** / **Ngôn ngữ** in the Walk

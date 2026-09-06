@@ -31,7 +31,7 @@ For a Cloudflare quick tunnel, also set `NEXT_PUBLIC_SAAS_URL` to that
 run’s `*.trycloudflare.com` origin (do not commit it). Inbox stays invented
 threads + mock send. You should see kit chrome (hamburger Sheet on a phone, desktop sidebar), **Inbox** active in `NavBar`, four invented threads (Minji, Yuki, Alexei, Thảo), a search bar, extract / **For you** / **Reply** / **Approve and send** (mock send). Notifications and the user menu are kit chrome, not the walk. Nothing here is a real guest.
 
-Language uses next-intl locale routes (`/en/inbox`, `/vi/inbox`) plus the kit cookie `NEXT_LOCALE`. Open the Walk Operator user menu (sidebar footer) and use **Language** / **Ngôn ngữ** with **EN** / **VI** only (`vi`, not `vn`). The toggle changes the path prefix. Inbox copy lives in `packages/i18n/translations/{locale}/saas.json` under `inbox.*`. Open `/vi/inbox` directly for Vietnamese.
+Language uses next-intl locale routes (`/en/inbox`, `/vi/inbox`) plus the kit cookie `NEXT_LOCALE`. Cookie-only locale without a path prefix is rejected for this walk. Open the Walk Operator user menu (sidebar footer) and use **Language** / **Ngôn ngữ** with **EN** / **VI** only (`vi`, not `vn`). The toggle changes the path prefix. Inbox copy lives in `packages/i18n/translations/{locale}/saas.json` under `inbox.*`. Open `/vi/inbox` directly for Vietnamese.
 
 `pnpm seed` is idempotent: it writes four invented threads once and skips IDs that already exist, and creates the walk user once when `DATABASE_URL` is Postgres. Run it from the repo root (threads still pin `data/nhip.db` if cwd is `apps/saas`). Delete `data/nhip.db` first if you need a fresh thread set.
 
