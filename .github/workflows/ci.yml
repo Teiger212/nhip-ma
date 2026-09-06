@@ -47,3 +47,6 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Seed script loads
+        run: pnpm --filter saas seed:check
