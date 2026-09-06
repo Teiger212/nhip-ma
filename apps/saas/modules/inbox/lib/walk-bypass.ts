@@ -1,15 +1,18 @@
 import { auth } from "@repo/auth";
 import { NextResponse } from "next/server";
 
-import { isWalkBypassAuthEnabled, WALK_USER_EMAIL, WALK_USER_PASSWORD } from "./walk-user";
+import {
+	isWalkBypassAuthEnabled,
+	WALK_USER_EMAIL,
+	WALK_USER_PASSWORD,
+	walkInboxRedirectUrl,
+} from "./walk-user";
 
 function walkSignInHeaders(request: Request): Headers {
 	const headers = new Headers(request.headers);
-	const trustedOrigin = process.env.NEXT_PUBLIC_SAAS_URL ?? "http://localhost:3010";
-	// Server-side sign-in must present an origin Better Auth already trusts
-	// (baseURL / NEXT_PUBLIC_SAAS_URL). A Cloudflare quick-tunnel Origin would
-	// fail CSRF even though this route is the walk bypass.
-	headers.set("origin", trustedOrigin);
+	// Prefer NEXT_PUBLIC_SAAS_URL so a Cloudflare tunnel run that points
+	// that env at *.trycloudflare.com stays on the public origin (not localhost).
+	headers.set("origin", walkInboxRedirectUrl().origin);
 	return headers;
 }
 
@@ -49,7 +52,7 @@ export async function createWalkBypassResponse(request: Request): Promise<Respon
 		);
 	}
 
-	const redirect = NextResponse.redirect(new URL("/inbox", request.url));
+	const redirect = NextResponse.redirect(walkInboxRedirectUrl());
 	copySetCookies(signInResponse.headers, redirect.headers);
 	return redirect;
 }

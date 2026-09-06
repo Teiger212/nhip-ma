@@ -22,9 +22,14 @@ pnpm --filter saas dev
 
 Open http://localhost:3010 — `/` goes to `/inbox`, then kit login if you are signed out.
 
-Sign in as `walk@nhip.local` / `walkthrough`. For a showcase or Cloudflare
-quick tunnel only, set `WALK_BYPASS_AUTH=1` so Inbox opens without the login
-form (`GET /api/walk-bypass`). Never set that flag in production. You should see kit chrome (hamburger Sheet on a phone, desktop sidebar), **Inbox** active in `NavBar`, four invented threads (Minji, Yuki, Alexei, Thảo), a search bar, extract / **For you** / **Reply** / **Approve and send** (mock send). Notifications and the user menu are kit chrome, not the walk. Nothing here is a real guest.
+Sign in as `walk@nhip.local` / `walkthrough`. Kit login stays on. A commented
+`WALK_BYPASS_AUTH=1` in `.env.local` is an optional local/tunnel walk flag
+on the operator’s run only: `GET /api/walk-bypass` signs in that invented
+demo session and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. Off by
+default. Never enable it in production, a leave-behind, or a public deploy.
+For a Cloudflare quick tunnel, also set `NEXT_PUBLIC_SAAS_URL` to that
+run’s `*.trycloudflare.com` origin (do not commit it). Inbox stays invented
+threads + mock send. You should see kit chrome (hamburger Sheet on a phone, desktop sidebar), **Inbox** active in `NavBar`, four invented threads (Minji, Yuki, Alexei, Thảo), a search bar, extract / **For you** / **Reply** / **Approve and send** (mock send). Notifications and the user menu are kit chrome, not the walk. Nothing here is a real guest.
 
 Language uses the kit locale cookie `NEXT_LOCALE`. The kit Languages control in the nav footer and mobile Sheet includes Vietnamese (`vi`, not `vn`). On small viewports the labeled **Language** / **Ngôn ngữ** control also stays in inbox list/detail chrome. Inbox copy lives in `packages/i18n/translations/{locale}/saas.json` under `inbox.*`. To open Vietnamese without the switcher, set `NEXT_LOCALE=vi` and refresh.
 

@@ -33,14 +33,21 @@ pnpm --filter saas dev
 ```
 
 Open http://localhost:3010 — `/` redirects to `/inbox`. Unauthenticated visits
-go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). For a
-showcase or Cloudflare quick tunnel only, set `WALK_BYPASS_AUTH=1` (never
-production). The authenticated layout then sends unsigned visitors to
-`GET /api/walk-bypass`, which signs in `walk@nhip.local` / `walkthrough` via
-Better Auth (`signInEmail` + Set-Cookie forward) and continues to `/inbox`.
-`apps/saas/next.config.ts` allows `*.trycloudflare.com` so `/_next/*` is not
-blocked on a tunnel. `pnpm seed` writes four invented threads (Minji, Yuki,
-Alexei, Thảo) into `data/nhip.db` and an idempotent walk user
+go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). Kit login
+stays on. For a local or Cloudflare quick-tunnel walk on the operator’s
+machine only, you may set `WALK_BYPASS_AUTH=1` in `.env.local` (commented
+out in `.env.local.example`; off by default). Never enable it in
+production, a leave-behind, or a public deploy — the route also 403s when
+`NODE_ENV=production`. That flag is not “no login”: unsigned Inbox visits
+hit `GET /api/walk-bypass`, which signs in the invented
+`walk@nhip.local` / `walkthrough` demo session and redirects to
+`NEXT_PUBLIC_SAAS_URL` + `/inbox` (not the tunneled localhost request
+URL). For a tunnel share, point `NEXT_PUBLIC_SAAS_URL` at that run’s
+`https://*.trycloudflare.com` origin on the operator machine; do not
+commit the tunnel URL. Inbox stays invented threads + mock send.
+`apps/saas/next.config.ts` keeps `allowedDevOrigins: ["*.trycloudflare.com"]`
+so tunnel JS (`/_next/*`) is not blocked. `pnpm seed` writes four invented
+threads (Minji, Yuki, Alexei, Thảo) into `data/nhip.db` and an idempotent walk user
 `walk@nhip.local` / `walkthrough` (onboarding already complete; orgs are not
 required; kit `hideOrganization` hides the org switcher). Re-run skips
 existing thread IDs and the existing walk user. Delete `data/nhip.db` for a

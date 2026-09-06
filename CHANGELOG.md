@@ -7,7 +7,7 @@
 #### Walk / tunnel (apps/saas)
 
 - `allowedDevOrigins: ["*.trycloudflare.com"]` so Cloudflare quick tunnels can load `/_next/*` during `next dev`.
-- Dev-only `WALK_BYPASS_AUTH=1` signs in `walk@nhip.local` / `walkthrough` at `GET /api/walk-bypass` (Better Auth `signInEmail` + Set-Cookie forward) and sends unauthenticated Inbox visits there instead of `/login`. Showcase/tunnel only; never production. Better Auth stays enabled.
+- Optional local/tunnel walk flag `WALK_BYPASS_AUTH=1` (off by default, commented in `.env.local.example`) signs in the invented `walk@nhip.local` demo session at `GET /api/walk-bypass` and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. Refuses in `NODE_ENV=production`. Not an open door and not “no login”. Inbox stays invented threads + mock send. Better Auth stays enabled.
 
 ### Changed
 
