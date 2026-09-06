@@ -41,7 +41,7 @@
 #### Inbox chrome experiment (apps/saas, packages/ui)
 
 - Reversible look-only branch: kit `AppWrapper` / `NavBar` now compose shadcn-style `Sidebar*` primitives from `@repo/ui` (provider, header/content/footer, grouped menus, icon collapse, mobile sheet). Inbox stays the only working job. Nav furniture is Home (disabled), Inbox, International (disabled), and Account settings.
-- Sidebar tokens use a cooler sage palette (`--sidebar*`) so chrome reads differently from the olive page tokens. Close the PR / delete the branch to revert. Do not merge.
+- Sidebar tokens use a cooler sage palette (`--sidebar*`) so chrome reads differently from the olive page tokens. Landed on `main` with beautify and product-first docs in PR #8.
 
 ## 2026-09-05
 
