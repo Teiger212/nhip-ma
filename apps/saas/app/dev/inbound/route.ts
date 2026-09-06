@@ -1,5 +1,6 @@
 import { isDevInboundEnabled } from "@inbox/lib/dev";
 import { injectDevInbound } from "@inbox/lib/inbox";
+import { Pipe } from "@inbox/lib/types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -19,17 +20,15 @@ const at = z.union([
 ]);
 
 /**
- * `pipe` mirrors the `Pipe` vocabulary in `packages/database/inbox/schema.ts`. It is
- * restated rather than imported because `@repo/database` exposes no `./inbox/schema`
- * subpath and `inbox/index.ts` re-exports types only, so no zod value from that module can
- * reach this app today.
+ * `pipe` is the shared `Pipe` schema, so this route accepts exactly what the store can
+ * hold — adding a pipe is a one-line edit in `packages/database/inbox/schema.ts`.
  *
  * The optional fields carry `.catch(null)` so a wrong-typed `guestName` degrades to null
  * exactly as the hand-rolled narrowing did. Only the fields the injector cannot work
  * without, plus `at`, can produce a 400.
  */
 const devInboundBody = z.object({
-	pipe: z.enum(["zalo", "whatsapp"]),
+	pipe: Pipe,
 	guestId: z.string().trim().min(1),
 	text: z.string().trim().min(1),
 	guestName: z.string().nullish().catch(null),
@@ -48,7 +47,8 @@ export async function POST(request: Request): Promise<Response> {
 		return NextResponse.json(
 			{
 				error: "bad_request",
-				message: `invalid ${fields.join(", ")}. pipe (zalo|whatsapp), guestId, and text are required; at must be an epoch-millisecond number or a parsable date string`,
+				// `Pipe.options` rather than a spelled-out list, so the message cannot go stale.
+				message: `invalid ${fields.join(", ")}. pipe (${Pipe.options.join("|")}), guestId, and text are required; at must be an epoch-millisecond number or a parsable date string`,
 			},
 			{ status: 400 },
 		);

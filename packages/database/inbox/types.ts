@@ -8,21 +8,16 @@ import type {
 } from "./schema";
 
 /**
- * The vocabulary lives in `./schema` as zod schemas; these are the types inferred from
- * them. Import the schema when you need to check a value at runtime, these when you only
- * need the type. There is no second declaration to keep in step.
+ * The vocabulary is declared once, in `./schema`, and reaches consumers through
+ * `./index`. This module only borrows the inferred types to describe the shapes below —
+ * it deliberately does not re-export them, so the member lists appear in exactly one file.
  */
-export type {
-	CribLanguage,
-	GuestLanguage,
-	MessageDirection,
-	MessageSource,
-	Pipe,
-	RentOrBuy,
-	Timestamp,
-} from "./schema";
 
-/** Not persisted, so it has no schema: this is runtime configuration, not stored data. */
+/**
+ * Not persisted and never parsed from an untrusted string in this package, so it stays a
+ * hand-written union: an enum nothing validates with would be ceremony, not safety. If
+ * `runtime.ts` ever starts checking the `SEND_MODE` env var, promote it to `./schema`.
+ */
 export type SendMode = "mock" | "live";
 
 export type Qualification = {
