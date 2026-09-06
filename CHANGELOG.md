@@ -10,6 +10,7 @@
 - SaaS type stack is Be Vietnam Pro + IBM Plex Mono (Vietnamese-capable, not Inter). Olive tokens stay one green family; `--touch` remains the single accent. Buttons keep the kit pill rule; inbox rows stay square; panels use the 8px radius.
 - Thread rows use squircle initials, tabular timestamps, and compact status flags. Extract / crib / reply drop generic cards for hairline sections. Loading uses list-shaped skeletons; load errors offer **Try again**.
 - Sidebar wordmark uses `inbox.brand` (Nhịp) instead of Acme.
+- Inbox search is `h-12` with more padding. Desktop thread list is a locked `22rem` column (`flex: 0 0 22rem`) so long detail content cannot change its width.
 
 ### Added
 

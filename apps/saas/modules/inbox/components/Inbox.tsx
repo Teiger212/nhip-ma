@@ -3,7 +3,14 @@
 import { Badge, Button, cn, Input, Skeleton, Textarea } from "@repo/ui";
 import { ChevronLeftIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+	type CSSProperties,
+	type ReactNode,
+} from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { arrangeExtractRows, isEmptyExtractValue } from "../lib/extract-rows";
@@ -11,6 +18,9 @@ import { guestInitials } from "../lib/guest-initials";
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import { formatInboxTimestamp } from "../lib/time";
 import type { Conversation, Message } from "../lib/types";
+
+/** Desktop thread-list column. Same used width, min, and max so detail content cannot flex it. */
+const INBOX_LIST_WIDTH = "22rem";
 
 function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
@@ -86,7 +96,7 @@ function CompactFlag({
 function ExtractRowList({ rows }: { rows: Array<{ id: string; label: string; value: string }> }) {
 	const t = useTranslations("inbox");
 	return (
-		<dl className="gap-x-3 gap-y-1.5 text-sm grid grid-cols-[minmax(7rem,auto)_1fr]">
+		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
 			{rows.map((row) => (
 				<div key={row.id} className="contents">
 					<dt className="font-medium text-muted-foreground">{row.label}</dt>
@@ -425,7 +435,7 @@ export function Inbox() {
 					variant="ghost"
 					aria-current={active ? "true" : undefined}
 					className={cn(
-						"gap-2.5 px-3 py-2.5 font-normal h-auto w-full items-start justify-start rounded-none border-l-2 border-l-transparent text-left active:scale-100",
+						"gap-2.5 px-3 py-2.5 font-normal min-w-0 h-auto w-full items-start justify-start overflow-hidden rounded-none border-l-2 border-l-transparent text-left active:scale-100",
 						active
 							? "border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
 							: "hover:bg-muted/70",
@@ -466,14 +476,14 @@ export function Inbox() {
 		<div className="min-h-0 text-sm flex h-full flex-col bg-background text-foreground">
 			<div
 				className={cn(
-					"px-3 py-2 flex shrink-0 items-center border-b",
+					"px-3 py-3 flex shrink-0 items-center border-b",
 					detailOpen && "md:flex hidden",
 				)}
 			>
 				<div className="relative w-full">
 					<SearchIcon
 						aria-hidden="true"
-						className="left-2.5 size-3.5 pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground"
+						className="left-4 size-4 pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground"
 					/>
 					<Input
 						id="inbox-search"
@@ -481,24 +491,32 @@ export function Inbox() {
 						onChange={(event) => setQuery(event.target.value)}
 						placeholder={t("searchPlaceholder")}
 						aria-label={t("searchAria")}
-						className="h-9 pl-8 text-sm rounded-md shadow-none"
+						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-md shadow-none"
 					/>
 				</div>
 			</div>
-			<div className="min-h-0 flex flex-1">
+			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
 				<aside
+					style={{ "--inbox-list-width": INBOX_LIST_WIDTH } as CSSProperties}
 					className={cn(
-						"min-h-0 flex-col bg-card/40",
-						"md:w-80 md:flex md:shrink-0 md:border-r w-full",
-						detailOpen ? "md:flex hidden" : "flex flex-1",
+						"min-h-0 min-w-0 flex-col overflow-hidden bg-card/40",
+						"md:w-[var(--inbox-list-width)] md:min-w-[var(--inbox-list-width)] md:max-w-[var(--inbox-list-width)] w-full",
+						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-[var(--inbox-list-width)] md:border-r",
+						detailOpen ? "md:flex hidden" : "md:flex-none flex flex-1",
 					)}
 				>
-					<div className="min-h-0 flex-1 overflow-y-auto" aria-busy={loading}>
+					<div
+						className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+						aria-busy={loading}
+					>
 						{listBody()}
 					</div>
 				</aside>
 				<article
-					className={cn("min-h-0 min-w-0 flex-1 flex-col", detailOpen ? "flex" : "md:flex hidden")}
+					className={cn(
+						"min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+						detailOpen ? "flex" : "md:flex hidden",
+					)}
 				>
 					{!selected ? (
 						<ThreadListState title={t("noneSelected")} />
@@ -522,8 +540,8 @@ export function Inbox() {
 									{selected.sentAt ? t("sent") : t("needsApprove")}
 								</CompactFlag>
 							</header>
-							<div className="min-h-0 flex-1 overflow-y-auto">
-								<div className="max-w-3xl gap-3 p-3 mx-auto flex flex-col">
+							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+								<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
 									{selected.messages.map((message) => (
 										<ThreadMessage key={message.id} message={message} />
 									))}
