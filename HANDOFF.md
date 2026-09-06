@@ -46,7 +46,7 @@ pnpm --filter saas dev
 
 Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox.
 
-Walk login: `walk@nhip.local` / `walkthrough`. Optional `WALK_BYPASS_AUTH=1` then `GET /api/walk-bypass` (local/tunnel only; 403 in production).
+Walk login: `walk@nhip.local` / `walkthrough`, seeded by `pnpm seed`. No auth bypass route; sign in normally.
 
 Gates: `pnpm format`, `pnpm lint`, `pnpm type-check`, then relevant `pnpm --filter saas test`. See [AGENTS.md](./AGENTS.md).
 

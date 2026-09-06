@@ -2,7 +2,6 @@ import { SessionProvider } from "@auth/components/SessionProvider";
 import { sessionQueryKey } from "@auth/lib/api";
 import { getOrganizationList, getSession } from "@auth/lib/server";
 import { localeRedirect } from "@i18n/routing";
-import { isWalkBypassAuthEnabled } from "@inbox/lib/walk-user";
 import { ActiveOrganizationProvider } from "@organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@organizations/lib/api";
 import { listPurchases } from "@payments/lib/server";
@@ -16,7 +15,6 @@ import { setupPermissions, permix } from "@shared/lib/permix";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getLocale } from "next-intl/server";
-import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +25,6 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 	const locale = await getLocale();
 
 	if (!session) {
-		if (isWalkBypassAuthEnabled()) {
-			redirect("/api/walk-bypass");
-		}
 		localeRedirect({ href: "/login", locale });
 		return null;
 	}

@@ -35,7 +35,7 @@ The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversati
 
 Set `BETTER_AUTH_SECRET` (32+ characters) and a dummy `RESEND_API_KEY` so password login can start. `NEXT_PUBLIC_SAAS_URL` must be `http://localhost:3010` for this walk.
 
-Optional local/tunnel only: `WALK_BYPASS_AUTH=1` then `GET /api/walk-bypass` signs in the invented walk session and redirects to `NEXT_PUBLIC_SAAS_URL/{locale}/inbox`. Off by default. Never enable it in production or a public deploy.
+Sign in with the walk login above. There is no auth bypass; every route behind `(authenticated)` requires a real session.
 
 Do not build or ship marketing or admin this walk.
 
