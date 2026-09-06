@@ -2,6 +2,13 @@
 
 ## 2026-09-06
 
+### Added
+
+#### Walk / tunnel (apps/saas)
+
+- `allowedDevOrigins: ["*.trycloudflare.com"]` so Cloudflare quick tunnels can load `/_next/*` during `next dev`.
+- Dev-only `WALK_BYPASS_AUTH=1` signs in `walk@nhip.local` / `walkthrough` at `GET /api/walk-bypass` (Better Auth `signInEmail` + Set-Cookie forward) and sends unauthenticated Inbox visits there instead of `/login`. Showcase/tunnel only; never production. Better Auth stays enabled.
+
 ### Changed
 
 #### Inbox chrome experiment (apps/saas, packages/ui)

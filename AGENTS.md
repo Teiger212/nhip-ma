@@ -33,13 +33,18 @@ pnpm --filter saas dev
 ```
 
 Open http://localhost:3010 — `/` redirects to `/inbox`. Unauthenticated visits
-go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). `pnpm seed`
-writes four invented threads (Minji, Yuki, Alexei, Thảo) into `data/nhip.db`
-and an idempotent walk user `walk@nhip.local` / `walkthrough` (onboarding
-already complete; orgs are not required; kit `hideOrganization` hides the org
-switcher). Re-run skips existing thread IDs and
-the existing walk user. Delete `data/nhip.db` for a fresh thread set. Nothing
-is a real guest. Inbox copy is `inbox.*` in
+go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). For a
+showcase or Cloudflare quick tunnel only, set `WALK_BYPASS_AUTH=1` (never
+production). The authenticated layout then sends unsigned visitors to
+`GET /api/walk-bypass`, which signs in `walk@nhip.local` / `walkthrough` via
+Better Auth (`signInEmail` + Set-Cookie forward) and continues to `/inbox`.
+`apps/saas/next.config.ts` allows `*.trycloudflare.com` so `/_next/*` is not
+blocked on a tunnel. `pnpm seed` writes four invented threads (Minji, Yuki,
+Alexei, Thảo) into `data/nhip.db` and an idempotent walk user
+`walk@nhip.local` / `walkthrough` (onboarding already complete; orgs are not
+required; kit `hideOrganization` hides the org switcher). Re-run skips
+existing thread IDs and the existing walk user. Delete `data/nhip.db` for a
+fresh thread set. Nothing is a real guest. Inbox copy is `inbox.*` in
 `packages/i18n/translations/{en,vi}/saas.json`. Inbox lives under the
 authenticated account route
 `apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit

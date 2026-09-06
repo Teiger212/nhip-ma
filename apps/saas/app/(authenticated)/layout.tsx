@@ -1,6 +1,7 @@
 import { SessionProvider } from "@auth/components/SessionProvider";
 import { sessionQueryKey } from "@auth/lib/api";
 import { getOrganizationList, getSession } from "@auth/lib/server";
+import { isWalkBypassAuthEnabled } from "@inbox/lib/walk-user";
 import { ActiveOrganizationProvider } from "@organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@organizations/lib/api";
 import { listPurchases } from "@payments/lib/server";
@@ -23,7 +24,7 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 	const session = await getSession();
 
 	if (!session) {
-		redirect("/login");
+		redirect(isWalkBypassAuthEnabled() ? "/api/walk-bypass" : "/login");
 	}
 
 	let membershipRole: string | null = null;
