@@ -2,6 +2,24 @@
 
 ## 2026-09-06
 
+### Changed
+
+#### Inbox walk UI (apps/saas, packages/ui, tooling/tailwind)
+
+- Targeted visual upgrade of the walk inbox (list, detail, sticky approve bar) and shared chrome (`NavBar`, `UserMenu`, `WalkLocaleToggle`). Routes, nav labels, en+vi language control, and disabled Home / International stay the same.
+- Sidebar rail keeps collapse-on-click only and uses a pointer cursor (no `w-resize` / `e-resize`). Mobile header shows the full **Nhịp** wordmark next to the logo instead of truncating it.
+- Theme FOUC script no longer renders inside a client React tree. `@repo/ui` `ThemeProvider` / `useTheme` wrap `@teispace/next-themes`; layouts inject `getThemeScript()` in `<head>` with `noScript` so React 19 does not warn about `next-themes`' inline `<script>`. Light/dark/system toggle API is unchanged.
+- Color mode toggle uses `cursor-pointer` / `resize-none` on the pill and every system/light/dark button, matching the walk language toggle. The user-menu color-mode row is `cursor-default resize-none` so the sidebar rail cannot show a resize cursor between light and dark.
+- Root docs are product-first: `README.md`, `PRODUCT.md`, `ARCHITECTURE.md`, and `HANDOFF.md`. Locale-prefixed inbox routes stay the rule. Agent entry remains `AGENTS.md`.
+- SaaS type stack is Be Vietnam Pro + IBM Plex Mono (Vietnamese-capable, not Inter). Olive tokens stay one green family; `--touch` remains the single accent. Buttons keep the kit pill rule; inbox rows stay square; panels use the 8px radius.
+- Thread rows use squircle initials, tabular timestamps, and compact status flags. Extract / crib / reply drop generic cards for hairline sections. Loading uses list-shaped skeletons; load errors offer **Try again**.
+- Sidebar wordmark uses `inbox.brand` (Nhịp) instead of Acme.
+- Inbox search is `h-12` with more padding. Desktop thread list is a locked `22rem` column (`flex: 0 0 22rem`) so long detail content cannot change its width.
+- Walk-visible `inbox.*` and operator menu copy: EN chips use sentence case (`Needs approval`, `Sent`, `Demo send`). Crib is **Operator note**. VI is full Vietnamese (no Draft / inbound / interviewer leftovers; user menu is Cài đặt tài khoản / Giao diện / Đăng xuất).
+- Sticky detail bar is **Approve and send** plus **Edit reply**. Idle **Not sent** stays an accessible live region but is visually hidden so it does not look like a second button. Progress, errors, and **Sent {at}** stay muted under the row. Edit reply scrolls `#inbox-reply` into view and focuses it.
+- SaaS uses next-intl locale prefixes (`/en/inbox`, `/vi/inbox`) with `defineRouting`, `createNavigation`, and `proxy.ts`. Cookie-only locale (no path prefix) is rejected for this walk. Bare `/inbox` and `/` go to a prefixed inbox. The walk language toggle navigates `/en/inbox` ↔ `/vi/inbox`. Walk bypass lands on `/{locale}/inbox`.
+- `NextIntlClientProvider` now receives `locale` on the `[locale]` layout so extract labels follow EN↔VI. English rent/buy values are **Rent** / **Buy** (not raw codes). Extract fields remount with `useLocale()`.
+
 ### Added
 
 #### Walk / tunnel (apps/saas)

@@ -1,26 +1,28 @@
 "use client";
 
-import {
-	Badge,
-	Button,
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-	cn,
-	Input,
-	Textarea,
-} from "@repo/ui";
-import { ChevronLeftIcon } from "lucide-react";
+import { Badge, Button, cn, Input, Skeleton, Textarea } from "@repo/ui";
+import { ChevronLeftIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type CSSProperties,
+	type ReactNode,
+} from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { arrangeExtractRows, isEmptyExtractValue } from "../lib/extract-rows";
+import { guestInitials } from "../lib/guest-initials";
 import { lastInboundText, matchesThreadSearch } from "../lib/search";
 import { formatInboxTimestamp } from "../lib/time";
 import type { Conversation, Message } from "../lib/types";
+
+/** Desktop thread-list column. Same used width, min, and max so detail content cannot flex it. */
+const INBOX_LIST_WIDTH = "22rem";
+
 function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
 		return labels.missing;
@@ -60,18 +62,50 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
 	return data;
 }
 
+function GuestMark({ name }: { name: string }) {
+	return (
+		<span
+			aria-hidden="true"
+			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-md bg-touch/12 text-[0.7rem] text-touch"
+		>
+			{guestInitials(name)}
+		</span>
+	);
+}
+
+function CompactFlag({
+	children,
+	tone,
+}: {
+	children: ReactNode;
+	tone: "neutral" | "warning" | "success";
+}) {
+	return (
+		<span
+			className={cn(
+				"h-5 px-1.5 font-medium inline-flex items-center rounded-md text-[11px] leading-none",
+				tone === "neutral" && "bg-muted text-muted-foreground",
+				tone === "warning" && "bg-warning/12 text-warning",
+				tone === "success" && "bg-success/12 text-success",
+			)}
+		>
+			{children}
+		</span>
+	);
+}
+
 function ExtractRowList({ rows }: { rows: Array<{ id: string; label: string; value: string }> }) {
 	const t = useTranslations("inbox");
 	return (
-		<dl className="gap-x-3 gap-y-1 text-sm grid grid-cols-[minmax(7.5rem,auto)_1fr]">
+		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
 			{rows.map((row) => (
 				<div key={row.id} className="contents">
-					<dt className="text-muted-foreground">{row.label}</dt>
+					<dt className="font-medium text-muted-foreground">{row.label}</dt>
 					<dd
 						className={
 							isEmptyExtractValue(row.value, [t("missing"), t("fields.noneMentioned")])
 								? "text-muted-foreground"
-								: "text-foreground"
+								: "font-medium text-foreground"
 						}
 					>
 						{row.value}
@@ -84,6 +118,7 @@ function ExtractRowList({ rows }: { rows: Array<{ id: string; label: string; val
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
+	const locale = useLocale();
 	const labels = {
 		missing: t("missing"),
 		yes: t("yes"),
@@ -165,61 +200,102 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	]);
 
 	return (
-		<Card>
-			<CardContent className="gap-2 p-4 flex flex-col">
-				<ExtractRowList rows={arranged.visible} />
-				{arranged.collapsed.length > 0 ? (
-					<details>
-						<summary className="text-sm min-h-11 flex cursor-pointer items-center text-muted-foreground">
-							{t("missingFields", { count: arranged.collapsed.length })}
-						</summary>
-						<div className="mt-2">
-							<ExtractRowList rows={arranged.collapsed} />
-						</div>
-					</details>
-				) : null}
-			</CardContent>
-		</Card>
+		<section key={locale} className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
+			<ExtractRowList rows={arranged.visible} />
+			{arranged.collapsed.length > 0 ? (
+				<details>
+					<summary className="text-sm min-h-11 flex cursor-pointer items-center text-muted-foreground">
+						{t("missingFields", { count: arranged.collapsed.length })}
+					</summary>
+					<div className="mt-2">
+						<ExtractRowList rows={arranged.collapsed} />
+					</div>
+				</details>
+			) : null}
+		</section>
 	);
 }
 
 function ThreadMessage({ message }: { message: Message }) {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
+	const inbound = message.direction === "in";
 	return (
 		<div
 			className={cn(
-				"px-2.5 py-2 text-sm rounded-md border bg-card",
-				message.direction === "in"
-					? "border-l-2 border-l-foreground"
-					: "border-l-2 border-l-muted-foreground",
+				"px-3 py-2 text-sm rounded-md",
+				inbound
+					? "border-l-2 border-l-touch bg-card"
+					: "ml-6 border-l-2 border-l-foreground/20 bg-muted/40",
 			)}
 		>
-			<div className="mb-1 gap-1.5 text-xs flex flex-wrap items-center text-muted-foreground">
-				<span>
-					{message.source} ·{" "}
-					<time dateTime={message.at}>{formatInboxTimestamp(message.at, locale)}</time>
-				</span>
+			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
+				<span className="font-medium text-foreground/80">{message.source}</span>
+				<time className="font-mono tabular-nums" dateTime={message.at}>
+					{formatInboxTimestamp(message.at, locale)}
+				</time>
 				{message.mock ? (
-					<Badge status="info" className="h-4 px-1.5 text-[10px] normal-case">
+					<Badge status="info" className="h-4 px-1.5 font-medium text-[10px] normal-case">
 						{t("mock")}
 					</Badge>
 				) : null}
 			</div>
-			<div className="whitespace-pre-wrap">{message.text}</div>
+			<div className="leading-relaxed whitespace-pre-wrap">{message.text}</div>
 		</div>
 	);
 }
 
-function SendStatus({ status, statusKind }: { status: string; statusKind: "ok" | "warn" | "" }) {
+function SendStatus({
+	status,
+	statusKind,
+	visuallyQuiet,
+}: {
+	status: string;
+	statusKind: "ok" | "warn" | "";
+	visuallyQuiet: boolean;
+}) {
 	return (
 		<output
 			aria-live="polite"
 			aria-atomic="true"
-			className={statusKind === "warn" ? "text-destructive" : "text-muted-foreground"}
+			className={cn(
+				"text-xs",
+				visuallyQuiet
+					? "sr-only"
+					: cn(
+							"mt-1.5 font-medium block",
+							statusKind === "warn" ? "text-destructive" : "text-muted-foreground",
+						),
+			)}
 		>
 			{status}
 		</output>
+	);
+}
+
+function ThreadListSkeleton() {
+	return (
+		<div className="divide-y" aria-hidden="true">
+			{Array.from({ length: 4 }, (_, index) => (
+				<div key={index} className="gap-2.5 px-3 py-2.5 flex items-start">
+					<Skeleton className="size-8 rounded-md" />
+					<div className="min-w-0 flex-1">
+						<Skeleton className="mb-1.5 h-3.5 w-28" />
+						<Skeleton className="mb-1 h-3 w-full" />
+						<Skeleton className="h-3 w-2/3" />
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function ThreadListState({ title, action }: { title: string; action?: ReactNode }) {
+	return (
+		<div className="px-4 py-10 flex flex-col items-center justify-center text-center">
+			<p className="text-sm max-w-[22ch] text-pretty text-muted-foreground">{title}</p>
+			{action}
+		</div>
 	);
 }
 
@@ -236,6 +312,7 @@ export function Inbox() {
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState(false);
 	const [approving, setApproving] = useState(false);
+	const replyRef = useRef<HTMLTextAreaElement>(null);
 
 	const visible = useMemo(
 		() => conversations.filter((conversation) => matchesThreadSearch(conversation, query)),
@@ -331,88 +408,146 @@ export function Inbox() {
 		setDetailOpen(true);
 	}
 
+	function focusReply() {
+		const field = replyRef.current ?? document.querySelector<HTMLTextAreaElement>("#inbox-reply");
+		if (!field) {
+			return;
+		}
+		field.scrollIntoView({ block: "center" });
+		field.focus();
+	}
+
+	function listBody() {
+		if (loading && conversations.length === 0 && !loadError) {
+			return <ThreadListSkeleton />;
+		}
+		if (visible.length === 0) {
+			const title = loadError
+				? t("loadError")
+				: conversations.length === 0
+					? t("empty")
+					: t("noMatches");
+			return (
+				<ThreadListState
+					title={title}
+					action={
+						loadError ? (
+							<Button
+								type="button"
+								variant="outline"
+								className="mt-3 min-h-11"
+								onClick={() => {
+									setLoading(true);
+									void refresh();
+								}}
+							>
+								{t("retry")}
+							</Button>
+						) : null
+					}
+				/>
+			);
+		}
+		return visible.map((conversation) => {
+			const active = conversation.id === selectedId;
+			const preview = lastInboundText(conversation);
+			const name = displayName(conversation);
+			const when = conversation.lastGuestInboundAt;
+			return (
+				<Button
+					key={conversation.id}
+					type="button"
+					variant="ghost"
+					aria-current={active ? "true" : undefined}
+					className={cn(
+						"gap-2.5 px-3 py-2.5 font-normal min-w-0 h-auto w-full items-start justify-start overflow-hidden rounded-none border-l-2 border-l-transparent text-left active:scale-100",
+						active
+							? "border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
+							: "hover:bg-muted/70",
+					)}
+					onClick={() => openThread(conversation.id)}
+				>
+					<GuestMark name={name} />
+					<span className="min-w-0 flex-1">
+						<span className="gap-2 flex w-full items-baseline justify-between">
+							<span className="font-semibold tracking-tight truncate">{name}</span>
+							{when ? (
+								<time
+									className="font-mono shrink-0 text-[11px] text-muted-foreground tabular-nums"
+									dateTime={when}
+								>
+									{formatInboxTimestamp(when, locale)}
+								</time>
+							) : null}
+						</span>
+						{preview ? (
+							<span className="text-xs mt-0.5 leading-snug line-clamp-2 w-full text-muted-foreground">
+								{preview}
+							</span>
+						) : null}
+						<span className="mt-1.5 gap-1 flex flex-wrap items-center">
+							<CompactFlag tone="neutral">{pipeLabel(conversation.pipe, t)}</CompactFlag>
+							<CompactFlag tone={conversation.sentAt ? "success" : "warning"}>
+								{conversation.sentAt ? t("sent") : t("needsApprove")}
+							</CompactFlag>
+						</span>
+					</span>
+				</Button>
+			);
+		});
+	}
+
 	return (
 		<div className="min-h-0 text-sm flex h-full flex-col bg-background text-foreground">
 			<div
 				className={cn(
-					"p-2 gap-2 flex shrink-0 items-center border-b",
+					"px-3 py-3 flex shrink-0 items-center border-b",
 					detailOpen && "md:flex hidden",
 				)}
 			>
-				<Input
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder={t("searchPlaceholder")}
-					aria-label={t("searchAria")}
-					className="min-w-0 flex-1"
-				/>
+				<div className="relative w-full">
+					<SearchIcon
+						aria-hidden="true"
+						className="left-4 size-4 pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground"
+					/>
+					<Input
+						id="inbox-search"
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder={t("searchPlaceholder")}
+						aria-label={t("searchAria")}
+						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-md shadow-none"
+					/>
+				</div>
 			</div>
-			<div className="min-h-0 flex flex-1">
+			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
 				<aside
+					style={{ "--inbox-list-width": INBOX_LIST_WIDTH } as CSSProperties}
 					className={cn(
-						"min-h-0 flex-col",
-						"md:w-72 md:flex md:shrink-0 md:border-r w-full",
-						detailOpen ? "md:flex hidden" : "flex flex-1",
+						"min-h-0 min-w-0 flex-col overflow-hidden bg-card/40",
+						"md:w-[var(--inbox-list-width)] md:min-w-[var(--inbox-list-width)] md:max-w-[var(--inbox-list-width)] w-full",
+						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-[var(--inbox-list-width)] md:border-r",
+						detailOpen ? "md:flex hidden" : "md:flex-none flex flex-1",
 					)}
 				>
-					<div className="min-h-0 flex-1 overflow-y-auto">
-						{visible.length === 0 ? (
-							<p className="px-3 py-3 text-muted-foreground">
-								{loading
-									? t("loading")
-									: loadError
-										? t("loadError")
-										: conversations.length === 0
-											? t("empty")
-											: t("noMatches")}
-							</p>
-						) : (
-							visible.map((conversation) => {
-								const active = conversation.id === selectedId;
-								const preview = lastInboundText(conversation);
-								return (
-									<Button
-										key={conversation.id}
-										type="button"
-										variant="ghost"
-										aria-current={active ? "true" : undefined}
-										className={cn(
-											"gap-1 px-3 py-2.5 font-normal h-auto w-full flex-col items-start rounded-none border-b border-l-2 border-l-transparent text-left",
-											active && "border-l-foreground bg-muted hover:bg-muted",
-										)}
-										onClick={() => openThread(conversation.id)}
-									>
-										<span className="font-medium w-full truncate">{displayName(conversation)}</span>
-										{preview ? (
-											<span className="text-xs line-clamp-2 w-full text-muted-foreground">
-												{preview}
-											</span>
-										) : null}
-										<span className="gap-1 flex flex-wrap items-center">
-											<Badge status="info" className="normal-case">
-												{pipeLabel(conversation.pipe, t)}
-											</Badge>
-											<Badge
-												status={conversation.sentAt ? "success" : "warning"}
-												className="normal-case"
-											>
-												{conversation.sentAt ? t("sent") : t("needsApprove")}
-											</Badge>
-										</span>
-									</Button>
-								);
-							})
-						)}
+					<div
+						className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+						aria-busy={loading}
+					>
+						{listBody()}
 					</div>
 				</aside>
 				<article
-					className={cn("min-h-0 min-w-0 flex-1 flex-col", detailOpen ? "flex" : "md:flex hidden")}
+					className={cn(
+						"min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+						detailOpen ? "flex" : "md:flex hidden",
+					)}
 				>
 					{!selected ? (
-						<p className="p-3 text-muted-foreground">{t("noneSelected")}</p>
+						<ThreadListState title={t("noneSelected")} />
 					) : (
 						<>
-							<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b">
+							<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40">
 								<Button
 									type="button"
 									variant="ghost"
@@ -423,58 +558,68 @@ export function Inbox() {
 									<ChevronLeftIcon className="size-4" />
 									{t("back")}
 								</Button>
-								<p className="font-medium">{displayName(selected)}</p>
-								<Badge status="info" className="normal-case">
-									{pipeLabel(selected.pipe, t)}
-								</Badge>
-								<Badge status={selected.sentAt ? "success" : "warning"} className="normal-case">
+								<GuestMark name={displayName(selected)} />
+								<p className="font-semibold tracking-tight">{displayName(selected)}</p>
+								<CompactFlag tone="neutral">{pipeLabel(selected.pipe, t)}</CompactFlag>
+								<CompactFlag tone={selected.sentAt ? "success" : "warning"}>
 									{selected.sentAt ? t("sent") : t("needsApprove")}
-								</Badge>
+								</CompactFlag>
 							</header>
-							<div className="min-h-0 flex-1 overflow-y-auto">
-								<div className="max-w-3xl gap-3 p-3 mx-auto flex flex-col">
+							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+								<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
 									{selected.messages.map((message) => (
 										<ThreadMessage key={message.id} message={message} />
 									))}
 									<div className="border-t" />
-									<ExtractFields conversation={selected} />
+									<ExtractFields key={locale} conversation={selected} />
 									{cribNotes ? (
-										<Card className="bg-muted/40">
-											<CardHeader className="border-b">
-												<CardTitle>{t("forYou")}</CardTitle>
-												<CardDescription>{t("forYouHint")}</CardDescription>
-											</CardHeader>
-											<CardContent>
-												<p className="whitespace-pre-wrap">{cribNotes}</p>
-											</CardContent>
-										</Card>
+										<section className="gap-1.5 p-3 flex flex-col rounded-md bg-touch/8">
+											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
+											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
+											<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
+										</section>
 									) : null}
-									<Card>
-										<CardHeader>
-											<CardTitle>{t("reply")}</CardTitle>
-										</CardHeader>
-										<CardContent>
-											<Textarea
-												value={reply}
-												onChange={(event) => setReply(event.target.value)}
-												className="min-h-28"
-												aria-label={t("reply")}
-											/>
-										</CardContent>
-									</Card>
+									<section className="gap-1.5 flex flex-col">
+										<label htmlFor="inbox-reply" className="font-semibold tracking-tight text-sm">
+											{t("reply")}
+										</label>
+										<Textarea
+											id="inbox-reply"
+											ref={replyRef}
+											value={reply}
+											onChange={(event) => setReply(event.target.value)}
+											className="min-h-28 text-sm rounded-md shadow-none"
+											aria-label={t("reply")}
+										/>
+									</section>
 								</div>
 							</div>
-							<div className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-t bg-background">
-								<Button
-									type="button"
-									variant="primary"
-									className="min-h-11"
-									disabled={Boolean(selected.sentAt) || approving}
-									onClick={() => void onApprove()}
-								>
-									{t("approveAndSend")}
-								</Button>
-								<SendStatus status={status} statusKind={statusKind} />
+							<div className="px-3 py-2.5 shrink-0 border-t bg-card">
+								<div className="gap-2 flex flex-wrap items-center">
+									<Button
+										type="button"
+										variant="primary"
+										className="min-h-11"
+										disabled={Boolean(selected.sentAt) || approving}
+										onClick={() => void onApprove()}
+									>
+										{t("approveAndSend")}
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="min-h-11"
+										onClick={focusReply}
+										aria-label={t("editReplyAria")}
+									>
+										{t("editReply")}
+									</Button>
+								</div>
+								<SendStatus
+									status={status}
+									statusKind={statusKind}
+									visuallyQuiet={!selected.sentAt && !approving && statusKind !== "warn"}
+								/>
 							</div>
 						</>
 					)}
@@ -482,7 +627,7 @@ export function Inbox() {
 			</div>
 			<footer
 				className={cn(
-					"px-3 py-2 text-xs md:hidden shrink-0 border-t text-muted-foreground",
+					"px-3 py-2 text-xs md:hidden shrink-0 border-t text-pretty text-muted-foreground",
 					detailOpen && "hidden",
 				)}
 			>

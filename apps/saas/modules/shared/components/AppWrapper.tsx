@@ -1,8 +1,9 @@
 "use client";
 
+import { isInboxPath } from "@i18n/lib/locale-path";
+import { LocaleLink } from "@i18n/routing";
 import { cn, Logo, SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PropsWithChildren } from "react";
 
@@ -10,24 +11,23 @@ import { NavBar } from "./NavBar";
 import { NotificationCenter } from "./NotificationCenter";
 import { UserMenu } from "./UserMenu";
 
-function isInboxPath(pathname: string): boolean {
-	return pathname === "/inbox" || pathname.startsWith("/inbox/");
-}
-
 function AppMobileChrome() {
 	const t = useTranslations();
 
 	return (
 		<header className="h-14 px-3 gap-2 md:hidden flex shrink-0 items-center border-b border-sidebar-border bg-sidebar text-sidebar-foreground">
 			<SidebarTrigger
-				className="-ml-1 min-h-11 min-w-11"
+				className="-ml-1 min-h-11 min-w-11 shrink-0"
 				aria-label={t("app.menu.openNavigation")}
 			/>
-			<Link href="/" className="mr-auto block shrink-0">
-				<Logo withLabel={false} className="text-sidebar-foreground" />
-			</Link>
+			<LocaleLink href="/inbox" className="gap-2 mr-auto flex shrink-0 items-center">
+				<Logo withLabel={false} className="shrink-0 text-sidebar-foreground" />
+				<span className="font-semibold tracking-tight shrink-0">{t("inbox.brand")}</span>
+			</LocaleLink>
 			<NotificationCenter className="shrink-0" />
-			<UserMenu />
+			<div className="shrink-0">
+				<UserMenu />
+			</div>
 		</header>
 	);
 }
@@ -59,7 +59,7 @@ export function AppWrapper({ children }: PropsWithChildren) {
 	const flush = isInboxPath(usePathname());
 
 	return (
-		<SidebarProvider className={cn("bg-background", flush ? "h-svh overflow-hidden" : undefined)}>
+		<SidebarProvider className={cn("bg-background", flush ? "h-dvh overflow-hidden" : undefined)}>
 			<AppContent>{children}</AppContent>
 		</SidebarProvider>
 	);

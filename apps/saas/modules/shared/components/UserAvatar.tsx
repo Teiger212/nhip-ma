@@ -34,7 +34,7 @@ export const UserAvatar = ({
 	);
 
 	return (
-		<Avatar ref={ref} className={cn("size-8 rounded-full", className)}>
+		<Avatar ref={ref} className={cn("size-8 rounded-md", className)}>
 			<AvatarImage src={avatarSrc} />
 			<AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
 		</Avatar>

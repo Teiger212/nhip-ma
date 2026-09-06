@@ -1,10 +1,10 @@
 "use client";
 
 import { MonitorCogIcon, MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { cn } from "../lib";
+import { useTheme } from "./theme-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
 export const colorModes = ["system", "light", "dark"] as const;
@@ -68,13 +68,13 @@ export function ColorModeToggle({
 		<TooltipProvider delay={0}>
 			<div
 				className={cn(
-					"gap-0 p-0.5 relative inline-flex items-center rounded-full bg-muted",
+					"gap-0 p-0.5 relative inline-flex cursor-pointer resize-none items-center rounded-full bg-muted hover:cursor-pointer",
 					className,
 				)}
 				data-test="color-mode-toggle"
 			>
 				<div
-					className="left-0.5 top-0.5 h-7 w-7 ease-in-out absolute rounded-full border border-border bg-background transition-transform duration-200"
+					className="left-0.5 top-0.5 h-7 w-7 ease-in-out pointer-events-none absolute rounded-full border border-border bg-background transition-transform duration-200"
 					style={{
 						transform: `translateX(${activeIndex * 100}%)`,
 					}}
@@ -99,7 +99,7 @@ export function ColorModeToggle({
 										}}
 										className={cn(
 											props.className,
-											"h-7 w-7 relative z-10 flex items-center justify-center rounded-full transition-colors",
+											"h-7 w-7 relative z-10 flex cursor-pointer resize-none items-center justify-center rounded-full transition-colors hover:cursor-pointer",
 											"focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
 											isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
 										)}

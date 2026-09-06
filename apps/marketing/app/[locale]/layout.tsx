@@ -1,15 +1,15 @@
 import { AnalyticsScript } from "@analytics";
 import { config } from "@config";
 import { config as i18nConfig } from "@i18n/config";
-import { cn } from "@repo/ui";
+import { cn, ThemeProvider } from "@repo/ui";
 import { ClientProviders } from "@shared/components/ClientProviders";
 import { ConsentBanner } from "@shared/components/ConsentBanner";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
 import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
+import { getTheme, getThemeScript } from "@teispace/next-themes/server";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
-import { ThemeProvider } from "next-themes";
 import { DM_Sans, Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
@@ -47,6 +47,17 @@ export default async function MarketingLayout({
 
 	const cookieStore = await cookies();
 	const consentCookie = cookieStore.get("consent");
+	const themeOptions = {
+		attribute: "class" as const,
+		enableSystem: true,
+		defaultTheme: config.defaultTheme,
+		themes: Array.from(config.enabledThemes),
+	};
+	const initialTheme = (await getTheme({ themes: themeOptions.themes })) ?? undefined;
+	const themeScript = getThemeScript({
+		...themeOptions,
+		initialTheme,
+	});
 
 	return (
 		<html
@@ -54,16 +65,18 @@ export default async function MarketingLayout({
 			suppressHydrationWarning
 			className={cn(sansFont.variable, headingFont.variable)}
 		>
+			<head>
+				<script dangerouslySetInnerHTML={{ __html: themeScript }} />
+			</head>
 			<body className={cn("font-sans min-h-screen bg-background text-foreground antialiased")}>
 				<ConsentProvider initialConsent={consentCookie?.value === "true"}>
 					<NextIntlClientProvider locale={locale} messages={messages}>
 						<ClientProviders>
 							<ThemeProvider
-								attribute="class"
+								{...themeOptions}
 								disableTransitionOnChange
-								enableSystem
-								defaultTheme={config.defaultTheme}
-								themes={Array.from(config.enabledThemes)}
+								initialTheme={initialTheme}
+								noScript
 							>
 								<NavBar />
 

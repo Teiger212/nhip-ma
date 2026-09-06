@@ -1,6 +1,8 @@
 # AGENTS.md
 
-This file applies to the whole `supastarter-nextjs` repository.
+Canonical agent entry for this repository: setup, gates, aliases, and conventions.
+Product intention: [PRODUCT.md](./PRODUCT.md). System shape: [ARCHITECTURE.md](./ARCHITECTURE.md). Cold start: [HANDOFF.md](./HANDOFF.md).
+
 Mirror existing conventions and prefer nearby canonical implementations.
 Explicit user instructions win; if a documented command fails, report it rather than inventing a workaround.
 
@@ -15,13 +17,12 @@ Explicit user instructions win; if a documented command fails, report it rather 
 
 ### Environment
 
-Copy `.env.local.example` to `.env.local`. For the **inbox walkthrough**, set
+Copy `.env.local.example` to `.env.local`. For the inbox walk set
 `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"` and
 `NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET` (32+
-characters) and a dummy `RESEND_API_KEY` so kit auth can import Resend. Kit
-login (Better Auth / Prisma) needs local Postgres. Inbox threads stay in
-repo-root SQLite `data/nhip.db` — a postgres `DATABASE_URL` is ignored by the
-inbox store.
+characters) and a dummy `RESEND_API_KEY` so password login can import Resend.
+Auth sessions need local Postgres. Inbox threads stay in repo-root SQLite
+`data/nhip.db`. A postgres `DATABASE_URL` is ignored by the inbox store.
 
 ```bash
 docker compose up -d postgres
@@ -32,43 +33,18 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010 — `/` redirects to `/inbox`. Unauthenticated visits
-go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). Kit login
-stays on. For a local or Cloudflare quick-tunnel walk on the operator’s
-machine only, you may set `WALK_BYPASS_AUTH=1` in `.env.local` (commented
-out in `.env.local.example`; off by default). Never enable it in
-production, a leave-behind, or a public deploy — the route also 403s when
-`NODE_ENV=production`. That flag is not “no login”: unsigned Inbox visits
-hit `GET /api/walk-bypass`, which signs in the invented
-`walk@nhip.local` / `walkthrough` demo session and redirects to
-`NEXT_PUBLIC_SAAS_URL` + `/inbox` (not the tunneled localhost request
-URL). For a tunnel share, point `NEXT_PUBLIC_SAAS_URL` at that run’s
-`https://*.trycloudflare.com` origin on the operator machine; do not
-commit the tunnel URL. Inbox stays invented threads + mock send.
-`apps/saas/next.config.ts` keeps `allowedDevOrigins: ["*.trycloudflare.com"]`
-so tunnel JS (`/_next/*`) is not blocked. `pnpm seed` writes four invented
-threads (Minji, Yuki, Alexei, Thảo) into `data/nhip.db` and an idempotent walk user
-`walk@nhip.local` / `walkthrough` (onboarding already complete; orgs are not
-required; kit `hideOrganization` hides the org switcher). Re-run skips
-existing thread IDs and the existing walk user. Delete `data/nhip.db` for a
-fresh thread set. Nothing is a real guest. Inbox copy is `inbox.*` in
-`packages/i18n/translations/{en,vi}/saas.json`. Inbox lives under the
-authenticated account route
-`apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit
-`AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
-sheet, desktop icon-collapse). Nav furniture is **Home** and **International**
-(disabled placeholders), **Inbox** (the only working job), and Account
-settings. Language is **Language** / **Ngôn ngữ** in the Walk Operator user
-menu, immediately under Account settings (`en` + `vi` only as **EN** / **VI**;
-`NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`,
-the list and selected thread are exclusive. Approve and send pins to the
-detail bar. Desktop two-pane is unchanged.
+Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox.
+`/` goes to `/en/inbox`. Bare `/inbox` goes to `/{locale}/inbox`. Locale
+prefixes are required; cookie-only locale without a path prefix is rejected.
+Walk login is `walk@nhip.local` / `walkthrough`. Optional
+`WALK_BYPASS_AUTH=1` then `GET /api/walk-bypass` is local/tunnel only and
+403s in production. Inbox stays invented threads + `SEND_MODE=mock`.
 
-`pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
-on port 3010. Do not build or ship marketing or admin this walk.
+This walk only needs `apps/saas` on port 3010. Do not build or ship marketing
+or admin this walk. Layout, data, and i18n details: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-The `postgres` service is PostgreSQL 16 on port 5432. The compose file also defines
-MinIO (`minio` and `minio-setup`) for S3-compatible storage when storage features are used.
+`pnpm dev` still runs the workspace Turbo tasks. The `postgres` service is
+PostgreSQL 16 on port 5432. Compose also defines MinIO when storage is used.
 
 ### Install and run
 
@@ -155,6 +131,7 @@ Only app-local aliases are configured in the app `tsconfig.json` files.
 | `@ai/*`            | `./modules/ai/*`            |
 | `@onboarding/*`    | `./modules/onboarding/*`    |
 | `@shared/*`        | `./modules/shared/*`        |
+| `@inbox/*`         | `./modules/inbox/*`         |
 
 ### `apps/marketing/tsconfig.json`
 
@@ -221,7 +198,8 @@ keys before showing success UI. Do not rely on a full page reload.
 
 - Use Server Components by default; add `"use client"` only for browser APIs or interaction.
 - Keep client boundaries small and keep server-only data access on the server.
-- Follow the auth/layout patterns in `apps/saas/app/(authenticated)/layout.tsx`.
+- Follow the auth/layout patterns in `apps/saas/app/[locale]/(authenticated)/layout.tsx`.
+  SaaS inbox routes are locale-prefixed (`/en/inbox`, `/vi/inbox`).
 - Follow the oRPC procedure pattern in `packages/api/modules/organizations/procedures/`.
 
 ## Auth & multi-tenancy
@@ -299,10 +277,10 @@ dependencies to the workspace package that imports them.
 
 - Use conventional commits such as `feat:`, `fix:`, `docs:`, or `refactor:`.
 - Update `CHANGELOG.md` for consumer-impacting changes.
-- Update relevant docs under `apps/marketing/content` for user-facing behavior.
+- Update [PRODUCT.md](./PRODUCT.md), [ARCHITECTURE.md](./ARCHITECTURE.md), or
+  [HANDOFF.md](./HANDOFF.md) when intention, shape, or walk rules change.
 - Update `AGENTS.md` when conventions, aliases, scripts, or app boundaries change.
-- Supastarter ships three starter kits. Keep changes generic and consider whether
-  an equivalent update belongs in the Nuxt or TanStack Start kit.
+- Keep this walk scoped to `apps/saas` unless asked otherwise.
 
 ## Before you're done
 
@@ -315,4 +293,4 @@ dependencies to the workspace package that imports them.
 - [ ] User-facing strings have translations
 - [ ] Relevant docs and `CHANGELOG.md` are updated
 
-More documentation: https://supastarter.dev/docs/nextjs
+See [README.md](./README.md) for the product entry and [HANDOFF.md](./HANDOFF.md) to pick up work cold.

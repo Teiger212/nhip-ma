@@ -1,14 +1,14 @@
-# Nhịp on the kit chassis
+# Nhịp
 
-Working name only (pulse of the first reply). Not a brand.
+Working name only: pulse of the first reply. Not a brand lock.
 
-This repo is the Supastarter Next.js turbo tree (`apps/saas`, `apps/marketing`, `packages/ui`, `packages/database`). This walk ports the Nhịp inbox into `apps/saas` only. Do not land on marketing, billing, docs, or admin this walk. Inbox uses kit auth chrome (`AppWrapper` / `NavBar`).
+Nhịp is for Hà Nội real-estate agents on expat and luxury inbound. A lead writes the agency. Nhịp drafts a useful first reply in the guest’s language (EN, JP, KO, RU, and others), does not promise deals Vietnamese law will not allow, flags foreigner paperwork, and waits. A human taps **Approve and send**. Then the reply goes out on the same pipe. The guest still sees the agency number. Never auto-send. Nhịp is all-hours first reply, not night-only.
 
-Agency inbox: a lead writes the brokerage on Zalo OA or WhatsApp Cloud API. Nhịp extracts what is already in that inbound, drafts a first reply in the guest’s language, adds a VN or EN note for the agent (**For you**, not sent to the guest), flags paperwork without inventing Vietnamese law, and waits. A human taps **Approve and send**. Then — and only then — we send on the same pipe. The guest still sees the agency number. Never auto-send.
+This walk uses invented threads only. Nothing here is a real guest.
 
-## Laptop walkthrough
+## Run the walk
 
-Kit login needs local Postgres. Inbox threads stay in SQLite `data/nhip.db`. SaaS listens on **port 3010** (3000 is another app).
+SaaS listens on **port 3010**. Auth sessions use local Postgres. Inbox threads live in repo-root SQLite `data/nhip.db`.
 
 ```bash
 pnpm install
@@ -20,35 +20,28 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010 — `/` goes to `/inbox`, then kit login if you are signed out.
+Open:
 
-Sign in as `walk@nhip.local` / `walkthrough`. Kit login stays on. A commented
-`WALK_BYPASS_AUTH=1` in `.env.local` is an optional local/tunnel walk flag
-on the operator’s run only: `GET /api/walk-bypass` signs in that invented
-demo session and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. Off by
-default. Never enable it in production, a leave-behind, or a public deploy.
-For a Cloudflare quick tunnel, also set `NEXT_PUBLIC_SAAS_URL` to that
-run’s `*.trycloudflare.com` origin (do not commit it). Inbox stays invented
-threads + mock send. You should see kit chrome (hamburger Sheet on a phone, desktop sidebar), **Inbox** active in `NavBar`, four invented threads (Minji, Yuki, Alexei, Thảo), a search bar, extract / **For you** / **Reply** / **Approve and send** (mock send). Notifications and the user menu are kit chrome, not the walk. Nothing here is a real guest.
+- English: http://localhost:3010/en/inbox
+- Vietnamese: http://localhost:3010/vi/inbox
 
-Language uses the kit locale cookie `NEXT_LOCALE`. Open the Walk Operator user menu (sidebar footer) and use **Language** / **Ngôn ngữ** with **EN** / **VI** only (`vi`, not `vn`). Inbox copy lives in `packages/i18n/translations/{locale}/saas.json` under `inbox.*`. To open Vietnamese without the switcher, set `NEXT_LOCALE=vi` and refresh.
+`/` goes to `/en/inbox`. Bare `/inbox` goes to `/{locale}/inbox`. Walk language is **en** and **vi** only (`vi`, not `vn`). Cookie-only locale without a path prefix is rejected.
 
-`pnpm seed` is idempotent: it writes four invented threads once and skips IDs that already exist, and creates the walk user once when `DATABASE_URL` is Postgres. Run it from the repo root (threads still pin `data/nhip.db` if cwd is `apps/saas`). Delete `data/nhip.db` first if you need a fresh thread set.
+Sign in as `walk@nhip.local` / `walkthrough`. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send).
 
-`POST /dev/inbound` still exists for local simulation only. It is not in the UI. In production (`NODE_ENV=production`) that route returns 404.
+`pnpm seed` writes those threads into `data/nhip.db` and creates the walk user when `DATABASE_URL` is Postgres. Re-run skips existing IDs. Delete `data/nhip.db` for a fresh thread set. Default `SEND_MODE=mock`.
 
-Webhook routes stay (`/webhooks/zalo`, `/webhooks/whatsapp`). Default `SEND_MODE=mock`. No live send required.
+Set `BETTER_AUTH_SECRET` (32+ characters) and a dummy `RESEND_API_KEY` so password login can start. `NEXT_PUBLIC_SAAS_URL` must be `http://localhost:3010` for this walk.
 
-`apps/marketing` and `packages/ui` stay in the turbo tree. Do not build or ship marketing or admin this walk.
+Optional local/tunnel only: `WALK_BYPASS_AUTH=1` then `GET /api/walk-bypass` signs in the invented walk session and redirects to `NEXT_PUBLIC_SAAS_URL/{locale}/inbox`. Off by default. Never enable it in production or a public deploy.
 
-There are no GitHub Actions workflows in this repo yet. Inbox unit tests live under `apps/saas/modules/inbox` (`pnpm --filter saas test`).
+Do not build or ship marketing or admin this walk.
 
-## Data
+## Docs
 
-New models in `packages/database` (Prisma + Drizzle postgres/mysql/sqlite): `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork` flag, `Approval`, `Send`.
-
-Walkthrough thread persistence is SQLite (`data/nhip.db`) via `packages/database/inbox`. Inbox rows are not stored on User / Org / Plan / Subscription. Kit sessions use Postgres.
-
-## Auth
-
-Inbox is an authenticated account route (`/inbox`) inside kit `AppWrapper`. Sign in, then open Inbox. Organizations are not required (`requireOrganization` is false). Kit `hideOrganization` hides the org switcher so create-org is not in the walk chrome. Do not treat Reports, International, billing, or orgs as product features.
+| File                                 | What it is                            |
+| ------------------------------------ | ------------------------------------- |
+| [PRODUCT.md](./PRODUCT.md)           | Locked product intention              |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | How this repo is shaped               |
+| [HANDOFF.md](./HANDOFF.md)           | Cold start for any other agent or LLM |
+| [AGENTS.md](./AGENTS.md)             | Setup, gates, conventions             |

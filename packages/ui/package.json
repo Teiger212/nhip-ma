@@ -9,11 +9,11 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "catalog:",
+		"@teispace/next-themes": "catalog:",
 		"class-variance-authority": "catalog:",
 		"clsx": "catalog:",
 		"input-otp": "catalog:",
 		"lucide-react": "catalog:",
-		"next-themes": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"react-hook-form": "catalog:",

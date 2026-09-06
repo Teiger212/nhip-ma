@@ -69,6 +69,9 @@ catalogs:
     '@tanstack/react-table':
       specifier: ^9.1.2
       version: 9.1.2
+    '@teispace/next-themes':
+      specifier: ^3.0.0
+      version: 3.0.0
     '@types/js-cookie':
       specifier: ^3.0.6
       version: 3.0.6
@@ -153,9 +156,6 @@ catalogs:
     next-intl:
       specifier: 4.13.6
       version: 4.13.6
-    next-themes:
-      specifier: ^0.4.6
-      version: 0.4.6
     nprogress:
       specifier: ^0.2.0
       version: 0.2.0
@@ -367,6 +367,9 @@ importers:
       '@repo/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@teispace/next-themes':
+        specifier: 'catalog:'
+        version: 3.0.0(next@16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       js-cookie:
         specifier: 'catalog:'
         version: 3.0.8
@@ -379,9 +382,6 @@ importers:
       next-intl:
         specifier: 'catalog:'
         version: 4.13.6(@swc/helpers@0.5.23)(next@16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
-      next-themes:
-        specifier: 'catalog:'
-        version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -527,6 +527,9 @@ importers:
       '@tanstack/react-table':
         specifier: 'catalog:'
         version: 9.1.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@teispace/next-themes':
+        specifier: 'catalog:'
+        version: 3.0.0(next@16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       cropperjs:
         specifier: 'catalog:'
         version: 2.1.1
@@ -548,9 +551,6 @@ importers:
       next-intl:
         specifier: 'catalog:'
         version: 4.13.6(@swc/helpers@0.5.23)(next@16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
-      next-themes:
-        specifier: 'catalog:'
-        version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nprogress:
         specifier: 'catalog:'
         version: 0.2.0
@@ -1028,6 +1028,9 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@teispace/next-themes':
+        specifier: 'catalog:'
+        version: 3.0.0(next@16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -1040,9 +1043,6 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 1.31.0(react@19.2.8)
-      next-themes:
-        specifier: 'catalog:'
-        version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -4081,6 +4081,17 @@ packages:
   '@tanstack/table-core@9.1.2':
     resolution: {integrity: sha512-ONpWQeass1sfg80CWF1NSwQ8r3GiqxA2lT/EdqIcrDEPZ0Z+0mM94eQoFYLPN0Kztzj8TQVb2+PrSZSItqA61g==}
     engines: {node: '>=20'}
+
+  '@teispace/next-themes@3.0.0':
+    resolution: {integrity: sha512-YCrfq5wWvy7NfuQhdLjg6oKYWSF12FsfvnqeNIexGUMmte6XDchjwiJM7IGsRSxoeq8qye0d0lYFHyIj4sV9Og==}
+    engines: {node: '>=20.9.0'}
+    peerDependencies:
+      next: '>=13.0.0'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+    peerDependenciesMeta:
+      next:
+        optional: true
 
   '@turbo/darwin-64@2.10.10':
     resolution: {integrity: sha512-gFDD+wRP5hWxBRghGyEbjpbLOY7aIU/wvsnKdMM7odQcp/wHMrnI83p0FyxxMRZnFH9ZD+S59MvcpOC5b+nrCA==}
@@ -10685,6 +10696,13 @@ snapshots:
   '@tanstack/table-core@9.1.2':
     dependencies:
       '@tanstack/store': 0.11.0
+
+  '@teispace/next-themes@3.0.0(next@16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+    optionalDependencies:
+      next: 16.3.1(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
   '@turbo/darwin-64@2.10.10':
     optional: true

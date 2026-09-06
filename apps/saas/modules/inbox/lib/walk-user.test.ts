@@ -12,12 +12,15 @@ test("walk bypass is on only when WALK_BYPASS_AUTH is exactly 1 outside producti
 	expect(isWalkBypassAuthEnabled("1", "production")).toBe(false);
 });
 
-test("walk inbox redirect uses NEXT_PUBLIC_SAAS_URL, not the incoming request host", () => {
+test("walk inbox redirect uses NEXT_PUBLIC_SAAS_URL and a locale prefix", () => {
 	expect(walkInboxRedirectUrl("https://demo.trycloudflare.com").href).toBe(
-		"https://demo.trycloudflare.com/inbox",
+		"https://demo.trycloudflare.com/en/inbox",
 	);
-	expect(walkInboxRedirectUrl("http://localhost:3010").href).toBe("http://localhost:3010/inbox");
-	expect(walkInboxRedirectUrl(undefined).href).toBe("http://localhost:3010/inbox");
+	expect(walkInboxRedirectUrl("http://localhost:3010").href).toBe("http://localhost:3010/en/inbox");
+	expect(walkInboxRedirectUrl(undefined).href).toBe("http://localhost:3010/en/inbox");
+	expect(walkInboxRedirectUrl("http://localhost:3010", "vi").href).toBe(
+		"http://localhost:3010/vi/inbox",
+	);
 });
 
 test("kit auth seed only runs against a postgres URL", () => {
