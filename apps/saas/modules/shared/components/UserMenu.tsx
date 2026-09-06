@@ -15,7 +15,15 @@ import {
 	DropdownMenuTrigger,
 } from "@repo/ui";
 import { UserAvatar } from "@shared/components/UserAvatar";
-import { BookIcon, HomeIcon, LogOutIcon, MoreVerticalIcon, SettingsIcon } from "lucide-react";
+import { WalkLocaleToggle } from "@shared/components/WalkLocaleToggle";
+import {
+	BookIcon,
+	HomeIcon,
+	LanguagesIcon,
+	LogOutIcon,
+	MoreVerticalIcon,
+	SettingsIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
@@ -121,6 +129,17 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						</Link>
 					)}
 				/>
+
+				<DropdownMenuItem
+					className="gap-4 flex items-center justify-between hover:bg-transparent focus:bg-transparent"
+					closeOnClick={false}
+				>
+					<span className="flex items-center">
+						<LanguagesIcon className="mr-2 size-4" />
+						<span className="whitespace-nowrap">{t("app.userMenu.language")}</span>
+					</span>
+					<WalkLocaleToggle />
+				</DropdownMenuItem>
 
 				{config.docsUrl && (
 					<DropdownMenuItem

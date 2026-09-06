@@ -28,6 +28,9 @@ dotenv.config({ path: path.join(repoRoot, ".env.local"), override: true });
 const withNextIntl = nextIntlPlugin("./modules/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+	// Cloudflare quick tunnels serve the app from *.trycloudflare.com while
+	// next dev still binds localhost. Without this, Next.js blocks /_next/*.
+	allowedDevOrigins: ["*.trycloudflare.com"],
 	experimental: {
 		useTypeScriptCli: true,
 	},
@@ -49,6 +52,11 @@ const nextConfig: NextConfig = {
 	},
 	async redirects() {
 		return [
+			{
+				source: "/",
+				destination: "/inbox",
+				permanent: false,
+			},
 			{
 				source: "/settings",
 				destination: "/settings/general",

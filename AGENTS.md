@@ -15,28 +15,54 @@ Explicit user instructions win; if a documented command fails, report it rather 
 
 ### Environment
 
-Copy `.env.local.example` to `.env.local`. For the **inbox walkthrough**, keep
-`DATABASE_URL="file:./data/nhip.db"` and `NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`.
-Set `BETTER_AUTH_SECRET`. You do not need hosted Postgres for this walk.
-
-For later kit Postgres boot, set `DATABASE_URL` to
-`postgresql://postgres:postgres@localhost:5432/supastarter` and start:
+Copy `.env.local.example` to `.env.local`. For the **inbox walkthrough**, set
+`DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"` and
+`NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET` (32+
+characters) and a dummy `RESEND_API_KEY` so kit auth can import Resend. Kit
+login (Better Auth / Prisma) needs local Postgres. Inbox threads stay in
+repo-root SQLite `data/nhip.db` — a postgres `DATABASE_URL` is ignored by the
+inbox store.
 
 ```bash
 docker compose up -d postgres
-```
-
-```bash
 pnpm install
+pnpm --filter @repo/database generate
+pnpm --filter @repo/database push
 pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010 — the inbox. `pnpm seed` writes four invented threads
-(Minji, Yuki, Alexei, Thảo) into repo-root `data/nhip.db`. Re-run skips existing
-IDs. Delete `data/nhip.db` for a fresh set. Nothing is a real guest. Inbox copy is
-`inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. The kit Languages
-switch at the bottom of InboxShell writes `NEXT_LOCALE`; Vietnamese is `vi`.
+Open http://localhost:3010 — `/` redirects to `/inbox`. Unauthenticated visits
+go to kit login, then Inbox (`redirectAfterSignIn` is `/inbox`). Kit login
+stays on. For a local or Cloudflare quick-tunnel walk on the operator’s
+machine only, you may set `WALK_BYPASS_AUTH=1` in `.env.local` (commented
+out in `.env.local.example`; off by default). Never enable it in
+production, a leave-behind, or a public deploy — the route also 403s when
+`NODE_ENV=production`. That flag is not “no login”: unsigned Inbox visits
+hit `GET /api/walk-bypass`, which signs in the invented
+`walk@nhip.local` / `walkthrough` demo session and redirects to
+`NEXT_PUBLIC_SAAS_URL` + `/inbox` (not the tunneled localhost request
+URL). For a tunnel share, point `NEXT_PUBLIC_SAAS_URL` at that run’s
+`https://*.trycloudflare.com` origin on the operator machine; do not
+commit the tunnel URL. Inbox stays invented threads + mock send.
+`apps/saas/next.config.ts` keeps `allowedDevOrigins: ["*.trycloudflare.com"]`
+so tunnel JS (`/_next/*`) is not blocked. `pnpm seed` writes four invented
+threads (Minji, Yuki, Alexei, Thảo) into `data/nhip.db` and an idempotent walk user
+`walk@nhip.local` / `walkthrough` (onboarding already complete; orgs are not
+required; kit `hideOrganization` hides the org switcher). Re-run skips
+existing thread IDs and the existing walk user. Delete `data/nhip.db` for a
+fresh thread set. Nothing is a real guest. Inbox copy is `inbox.*` in
+`packages/i18n/translations/{en,vi}/saas.json`. Inbox lives under the
+authenticated account route
+`apps/saas/app/(authenticated)/(main)/(account)/inbox/page.tsx` and uses kit
+`AppWrapper` / `NavBar` composed from `@repo/ui` Sidebar primitives (mobile
+sheet, desktop icon-collapse). Nav furniture is **Home** and **International**
+(disabled placeholders), **Inbox** (the only working job), and Account
+settings. Language is **Language** / **Ngôn ngữ** in the Walk Operator user
+menu, immediately under Account settings (`en` + `vi` only as **EN** / **VI**;
+`NEXT_LOCALE`). Vietnamese is `vi`. Below Tailwind `md`,
+the list and selected thread are exclusive. Approve and send pins to the
+detail bar. Desktop two-pane is unchanged.
 
 `pnpm dev` still runs the workspace Turbo tasks. This walk only needs `apps/saas`
 on port 3010. Do not build or ship marketing or admin this walk.
@@ -55,17 +81,17 @@ pnpm dev
 
 ### Root commands
 
-| Command                             | Purpose                        |
-| ----------------------------------- | ------------------------------ |
-| `pnpm dev`                          | Start development tasks        |
-| `pnpm build`                        | Build the workspace            |
-| `pnpm start`                        | Start built applications       |
-| `pnpm lint` / `pnpm lint:fix`       | Check / fix Oxlint issues      |
-| `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting |
-| `pnpm type-check`                   | Run workspace type checks      |
-| `pnpm test`                         | Run Vitest workspace tests     |
-| `pnpm seed`                         | Seed invented inbox threads    |
-| `pnpm clean`                        | Clear Turbo outputs            |
+| Command                             | Purpose                            |
+| ----------------------------------- | ---------------------------------- |
+| `pnpm dev`                          | Start development tasks            |
+| `pnpm build`                        | Build the workspace                |
+| `pnpm start`                        | Start built applications           |
+| `pnpm lint` / `pnpm lint:fix`       | Check / fix Oxlint issues          |
+| `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting     |
+| `pnpm type-check`                   | Run workspace type checks          |
+| `pnpm test`                         | Run Vitest workspace tests         |
+| `pnpm seed`                         | Seed invented threads + walk login |
+| `pnpm clean`                        | Clear Turbo outputs                |
 
 Required gates:
 

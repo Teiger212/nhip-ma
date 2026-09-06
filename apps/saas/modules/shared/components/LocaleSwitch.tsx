@@ -1,32 +1,35 @@
 "use client";
 
 import { updateLocale } from "@i18n/lib/update-locale";
-import { config as i18nConfig, type Locale } from "@repo/i18n";
 import { LocaleSwitch as LocaleSwitchControl } from "@repo/ui";
+import { isWalkLocale, resolveWalkLocale, walkLocaleOptions } from "@shared/lib/walk-locales";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
-function isLocale(value: string): value is Locale {
-	return Object.hasOwn(i18nConfig.locales, value);
-}
-
-const locales = Object.entries(i18nConfig.locales).map(([value, localeConfig]) => ({
-	value,
-	label: localeConfig.label,
-}));
-
-export function LocaleSwitch() {
+export function LocaleSwitch({
+	showLabel,
+	className,
+	label,
+}: {
+	showLabel?: boolean;
+	className?: string;
+	label?: string;
+} = {}) {
 	const t = useTranslations();
 	const router = useRouter();
 	const currentLocale = useLocale();
+	const languageLabel = label ?? t("common.aria.language");
+	const value = resolveWalkLocale(currentLocale);
 
 	return (
 		<LocaleSwitchControl
-			locales={locales}
-			value={currentLocale}
-			label={t("common.aria.language")}
+			locales={walkLocaleOptions}
+			value={value}
+			label={languageLabel}
+			triggerLabel={showLabel ? languageLabel : undefined}
+			className={className}
 			onValueChange={async (nextLocale) => {
-				if (!isLocale(nextLocale)) {
+				if (!isWalkLocale(nextLocale)) {
 					return;
 				}
 

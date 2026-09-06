@@ -113,13 +113,18 @@
 			"openNavigation": "Abrir navegación",
 			"organizationSettings": "Configuración de organización",
 			"start": "Inicio",
-			"inbox": "Bandeja"
+			"home": "Inicio",
+			"inbox": "Bandeja",
+			"international": "Internacional",
+			"groupWorkspace": "Espacio de trabajo",
+			"groupAccount": "Cuenta"
 		},
 		"userMenu": {
 			"accountSettings": "Configuración de cuenta",
 			"colorMode": "Modo de color",
 			"documentation": "Documentación",
 			"home": "Inicio",
+			"language": "Idioma",
 			"logout": "Cerrar sesión"
 		},
 		"notifications": {
@@ -641,6 +646,7 @@
 				"billing": "Facturación",
 				"dangerZone": "Zona de peligro",
 				"general": "General",
+				"language": "Idioma",
 				"notifications": "Notificaciones",
 				"security": "Seguridad",
 				"title": "Cuenta"
@@ -716,6 +722,9 @@
 		"alreadySent": "ya enviado {at}",
 		"sending": "enviando…",
 		"language": "Idioma",
+		"back": "Volver",
+		"backAria": "Volver a la lista de hilos",
+		"missingFields": "{count} faltan",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"

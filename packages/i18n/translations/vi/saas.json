@@ -113,13 +113,18 @@
 			"openNavigation": "Open navigation",
 			"organizationSettings": "Organization settings",
 			"start": "Start",
-			"inbox": "Inbox"
+			"home": "Trang chủ",
+			"inbox": "Hộp thư",
+			"international": "Quốc tế",
+			"groupWorkspace": "Không gian làm việc",
+			"groupAccount": "Tài khoản"
 		},
 		"userMenu": {
 			"accountSettings": "Account settings",
 			"colorMode": "Color mode",
 			"documentation": "Documentation",
 			"home": "Home",
+			"language": "Ngôn ngữ",
 			"logout": "Logout"
 		},
 		"notifications": {
@@ -641,6 +646,7 @@
 				"billing": "Billing",
 				"dangerZone": "Danger zone",
 				"general": "General",
+				"language": "Ngôn ngữ",
 				"notifications": "Notifications",
 				"security": "Security",
 				"title": "Account"
@@ -716,6 +722,9 @@
 		"alreadySent": "đã gửi {at}",
 		"sending": "đang gửi…",
 		"language": "Ngôn ngữ",
+		"back": "Quay lại",
+		"backAria": "Quay lại danh sách hội thoại",
+		"missingFields": "{count} trường thiếu",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"

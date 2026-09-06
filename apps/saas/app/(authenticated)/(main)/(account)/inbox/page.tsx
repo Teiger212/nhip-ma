@@ -2,9 +2,9 @@ import { Inbox } from "@inbox/components/Inbox";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
-	const t = await getTranslations("inbox");
+	const t = await getTranslations("app.menu");
 	return {
-		title: t("navItem"),
+		title: t("inbox"),
 	};
 }
 

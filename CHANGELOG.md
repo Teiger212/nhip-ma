@@ -1,14 +1,50 @@
 # Changelog
 
+## 2026-09-06
+
+### Added
+
+#### Walk / tunnel (apps/saas)
+
+- `allowedDevOrigins: ["*.trycloudflare.com"]` so Cloudflare quick tunnels can load `/_next/*` during `next dev`.
+- Optional local/tunnel walk flag `WALK_BYPASS_AUTH=1` (off by default, commented in `.env.local.example`) signs in the invented `walk@nhip.local` demo session at `GET /api/walk-bypass` and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. Refuses in `NODE_ENV=production`. Not an open door and not “no login”. Inbox stays invented threads + mock send. Better Auth stays enabled.
+
+### Changed
+
+#### Walk language (apps/saas)
+
+- Walk chrome language lives in the Walk Operator **User menu**, immediately under **Account settings**, as **Language** / **Ngôn ngữ** with **EN** / **VI** toggles only. Kit `de` / `es` / `fr` stay in `@repo/i18n` config but are not offered in the walk selector. The sidebar Account settings submenu no longer includes Language. Login still uses the kit `LocaleSwitch`. Choosing a language still writes `NEXT_LOCALE` and refreshes.
+
+#### Walk nav placeholders (apps/saas)
+
+- **Start** is labeled **Home** / **Trang chủ** and stays in the sidebar as a disabled placeholder (`aria-disabled`, not clickable).
+- **AI Chatbot** is labeled **International** / **Quốc tế** and stays as a disabled placeholder. Inbox remains the only working nav job. Account settings stays.
+
+#### Inbox chrome experiment (apps/saas, packages/ui)
+
+- Reversible look-only branch: kit `AppWrapper` / `NavBar` now compose shadcn-style `Sidebar*` primitives from `@repo/ui` (provider, header/content/footer, grouped menus, icon collapse, mobile sheet). Inbox stays the only working job. Nav furniture is Home (disabled), Inbox, International (disabled), and Account settings.
+- Sidebar tokens use a cooler sage palette (`--sidebar*`) so chrome reads differently from the olive page tokens. Close the PR / delete the branch to revert. Do not merge.
+
 ## 2026-09-05
 
 ### Changed
 
 #### Inbox (apps/saas)
 
+- Inbox is a first-class authenticated account route at `/inbox` (`(account)/inbox`, same pattern as chatbot). It uses kit `AppWrapper` / `NavBar` (mobile hamburger Sheet, desktop collapsible sidebar). The custom `InboxShell` rail is gone.
+- `/` redirects to `/inbox`. Unauthenticated visits hit kit login; `redirectAfterSignIn` is `/inbox`. `pnpm seed` still writes invented threads to `data/nhip.db` and adds walk login `walk@nhip.local` / `walkthrough` when `DATABASE_URL` is Postgres. Organizations are not required. Kit `hideOrganization` keeps org switcher / create-org out of NavBar. Reports, International, billing, and orgs are not product features.
+- Walk language sits in the Walk Operator user menu under Account settings (**EN** / **VI**). Inbox list/detail no longer duplicate the Language control.
+
+- Below Tailwind `md`, the inbox shows either the thread list or the selected thread. Detail opens from a list row and returns with an in-app **Back** control; the detail header shows the guest name. Desktop two-pane layout is unchanged.
+- **Language** / **Ngôn ngữ** lives in the Walk Operator user menu under Account settings (**EN** / **VI** only).
+- **Approve and send** (full label) and send status pin to a sticky detail bar so the operator does not scroll past extract, crib, and reply. Reply stays editable above. One send path.
+- Extract keeps the nine-field model, lists filled facts first, and collapses `(missing)` / `none mentioned` rows. Mentioned paperwork stays visible.
+- Message and `sentAt` display use localized relative or local datetime. Storage stays ISO.
+- Send status uses `role="status"` with `aria-live="polite"` and `aria-atomic="true"`.
+- **For you** is omitted when there is no one-shot crib; empty extracts use `inbox.crib.emptyFacts`.
 - Search now sits in a full-width chrome row above the thread list and conversation pane (same width as list + detail, not the left shell nav).
-- Inbox shell keeps **Inbox** as the only active left item and adds disabled **Reports** and **International** items (kit `Button` `disabled`, no navigation).
-- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. The kit `@repo/ui` locale switch (Languages icon + **Language** / **Ngôn ngữ** label) sits at the **bottom of the InboxShell sidebar**, above the never-auto-send footer, and offers English ↔ Vietnamese. It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
+- Kit `NavBar` adds **Inbox** as the live account job next to existing kit items. Reports and International are not shipped as nav.
+- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. Walk chrome language is **Language** / **Ngôn ngữ** in the Walk Operator user menu under Account settings (**EN** / **VI** only). It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
 - **For you** crib body is formatted at read time from `inbox.crib` templates (not the seeded English-only string). Guest **Reply** stays in the guest's language. Inbox UI uses `useTranslations("inbox")` plus nested keys (`crib.body`, `fields.*`) so next-intl does not throw `MISSING_MESSAGE` for `inbox.crib`. Message JSON is imported statically from `@repo/i18n`.
 - Vietnamese list states: `inbox.loading` (`Đang tải cuộc hội thoại…`) and `inbox.loadError` (`Không tải được cuộc hội thoại.`) match the English loading / load-error keys.
 

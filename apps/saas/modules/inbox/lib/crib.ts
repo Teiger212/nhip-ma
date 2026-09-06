@@ -1,6 +1,24 @@
-import type { GuestLanguage, Paperwork, Qualification } from "./types";
+import type { Conversation, GuestLanguage, Paperwork, Qualification } from "./types";
 
 export type CribTranslate = (key: string, values?: Record<string, string>) => string;
+
+export function formatConversationCrib(
+	conversation: Pick<Conversation, "oneShot">,
+	t: CribTranslate,
+): string | null {
+	if (!conversation.oneShot) {
+		return null;
+	}
+
+	return formatCribNotes(
+		{
+			language: conversation.oneShot.language,
+			qualification: conversation.oneShot.qualification,
+			paperwork: conversation.oneShot.paperwork,
+		},
+		t,
+	);
+}
 
 export function formatCribNotes(
 	input: {
