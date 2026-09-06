@@ -1,38 +1,43 @@
 import { getOrganizationList, getSession } from "@auth/lib/server";
+import { localeRedirect } from "@i18n/routing";
 import { listPurchases } from "@repo/api/modules/payments/procedures/list-purchases";
 import { config as authConfig } from "@repo/auth/config";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
+import { getLocale } from "next-intl/server";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
 
 export default async function MainLayout({ children }: PropsWithChildren) {
 	const session = await getSession();
+	const locale = await getLocale();
 
 	if (!session) {
-		redirect("/login");
+		localeRedirect({ href: "/login", locale });
+		return null;
 	}
 
 	if (authConfig.users.enableOnboarding && !session.user.onboardingComplete) {
-		redirect("/onboarding");
+		localeRedirect({ href: "/onboarding", locale });
+		return null;
 	}
 
 	const organizations = await getOrganizationList();
 
 	if (authConfig.organizations.enable && authConfig.organizations.requireOrganization) {
 		const organization =
-			organizations.find((org) => org.id === session?.session.activeOrganizationId) ||
+			organizations.find((org) => org.id === session.session.activeOrganizationId) ||
 			organizations[0];
 
 		if (!organization) {
-			redirect("/new-organization");
+			localeRedirect({ href: "/new-organization", locale });
+			return null;
 		}
 	}
 
 	if (paymentsConfig.requireActiveSubscription) {
 		const organizationId = authConfig.organizations.enable
-			? session?.session.activeOrganizationId || organizations?.at(0)?.id
+			? session.session.activeOrganizationId || organizations?.at(0)?.id
 			: undefined;
 
 		const purchases = await listPurchases.callable({
@@ -44,7 +49,8 @@ export default async function MainLayout({ children }: PropsWithChildren) {
 		const { activePlan } = createPurchasesHelper(purchases);
 
 		if (!activePlan) {
-			redirect("/choose-plan");
+			localeRedirect({ href: "/choose-plan", locale });
+			return null;
 		}
 	}
 

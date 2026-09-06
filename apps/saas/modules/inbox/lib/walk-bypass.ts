@@ -1,3 +1,4 @@
+import { localeFromCookieHeader } from "@i18n/lib/locale-path";
 import { auth } from "@repo/auth";
 import { NextResponse } from "next/server";
 
@@ -52,7 +53,9 @@ export async function createWalkBypassResponse(request: Request): Promise<Respon
 		);
 	}
 
-	const redirect = NextResponse.redirect(walkInboxRedirectUrl());
+	const redirect = NextResponse.redirect(
+		walkInboxRedirectUrl(undefined, localeFromCookieHeader(request.headers.get("cookie"))),
+	);
 	copySetCookies(signInResponse.headers, redirect.headers);
 	return redirect;
 }
