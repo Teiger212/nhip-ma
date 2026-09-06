@@ -1,4 +1,4 @@
-import { auth } from "@repo/auth";
+import { hashPassword } from "@repo/auth/lib/password";
 import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
 
 import {
@@ -22,8 +22,7 @@ export async function seedWalkUser(
 		return "exists";
 	}
 
-	const authContext = await auth.$context;
-	const hashedPassword = await authContext.password.hash(WALK_USER_PASSWORD);
+	const hashedPassword = await hashPassword(WALK_USER_PASSWORD);
 	const user = await createUser({
 		email: WALK_USER_EMAIL,
 		name: WALK_USER_NAME,

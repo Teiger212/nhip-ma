@@ -7,6 +7,7 @@
 		"clean": "git clean -xdf .cache .turbo dist node_modules .next .content-collections",
 		"dev": "next dev --port 3010",
 		"seed": "tsx --tsconfig tsconfig.json modules/inbox/scripts/seed.ts",
+		"seed:check": "tsx --tsconfig tsconfig.json modules/inbox/scripts/seed-loads.ts",
 		"e2e": "pnpm exec playwright test --ui",
 		"e2e:ci": "pnpm exec playwright install && pnpm exec playwright test",
 		"start": "next start",
