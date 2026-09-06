@@ -17,7 +17,7 @@ export function WalkLocaleToggle({ className }: { className?: string }) {
 		<TooltipProvider delay={0}>
 			<div
 				className={cn(
-					"gap-0 p-0.5 relative inline-flex items-center rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]",
+					"gap-0 p-0.5 relative inline-flex cursor-pointer resize-none items-center rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)] hover:cursor-pointer",
 					className,
 				)}
 				data-test="walk-locale-toggle"
@@ -50,7 +50,7 @@ export function WalkLocaleToggle({ className }: { className?: string }) {
 										}}
 										className={cn(
 											props.className,
-											"h-7 w-8 text-xs font-semibold relative z-10 flex items-center justify-center rounded-full transition-colors",
+											"h-7 w-8 text-xs font-semibold relative z-10 flex cursor-pointer resize-none items-center justify-center rounded-full transition-colors hover:cursor-pointer",
 											"focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
 											isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
 										)}

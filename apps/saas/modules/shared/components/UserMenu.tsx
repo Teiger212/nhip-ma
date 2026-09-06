@@ -65,7 +65,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						type="button"
 						className={cn(
 							props.className,
-							"gap-2 md:w-[100%+1rem] md:px-2 md:py-1.5 md:hover:bg-sidebar-accent flex w-full cursor-pointer items-center justify-between rounded-md outline-hidden transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-sidebar-ring motion-reduce:transition-none",
+							"gap-2 md:w-full md:px-2 md:py-1.5 md:hover:bg-sidebar-accent flex w-full cursor-pointer items-center justify-between rounded-md outline-hidden transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-sidebar-ring motion-reduce:transition-none",
 						)}
 						aria-label="User menu"
 					>
@@ -131,7 +131,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 				/>
 
 				<DropdownMenuItem
-					className="gap-4 flex items-center justify-between hover:bg-transparent focus:bg-transparent"
+					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
 					closeOnClick={false}
 				>
 					<span className="flex items-center">
