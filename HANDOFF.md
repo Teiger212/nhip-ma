@@ -26,15 +26,11 @@ Not mass-market brokerage. Not a rental operator. Not Hạnh. Working name only;
 - Inventing a new product shape, brand lock, or design-system lock. Inbox triage is the current surface. Tokens and primitives come from `packages/ui`.
 - Rebuilding old cockpits unless someone asks.
 
-## Repo and PR
+## Repo
 
 - GitHub: `Teiger212/nhip-ma`
-- Working branch: `cursor/beautify-nhip-inbox-a018`
-- PR: https://github.com/Teiger212/nhip-ma/pull/8 against `main`
-- Do not merge this PR. The coordinator merges after review.
-- Do not open a second PR for this walk unless asked.
-
-Tip of this branch when these docs landed is whatever `git log -1 --oneline` shows on `cursor/beautify-nhip-inbox-a018`. Recent product/UI commits on the branch include locale-prefixed inbox routes, beautify (type, olive tokens, list/detail, sticky **Approve and send** + **Edit reply**), rent/buy i18n, pointer cursors (language toggle, sidebar rail, color mode), full mobile **Nhịp** wordmark, and the React 19 theme-script fix (`@teispace/next-themes`).
+- Source of truth: `main`
+- Beautify and product-first docs landed via merged [PR #8](https://github.com/Teiger212/nhip-ma/pull/8) (`8ca8e8f`).
 
 ## Run locally
 
@@ -88,7 +84,9 @@ Do not commit untracked local junk (`walkthrough-results/`, ad-hoc Playwright in
 - Do not invent product shape or rebuild old cockpits unless asked.
 - Do not treat Home, International, Reports, billing, or orgs as the working job.
 
-## Recent UI on PR #8
+## Landed UI (PR #8)
+
+These are on `main`. They are not an open branch.
 
 - Beautify: Be Vietnam Pro + IBM Plex Mono, olive tokens, squircle initials, compact flags, no card chrome on extract / crib / reply, search `h-12`, desktop list locked at `22rem`.
 - Sticky detail bar: **Approve and send** + **Edit reply** (scrolls/focuses `#inbox-reply`). Idle “Not sent” is `sr-only`.
@@ -100,9 +98,8 @@ Do not commit untracked local junk (`walkthrough-results/`, ad-hoc Playwright in
 
 Grounded in this tree only. Not a product roadmap.
 
-1. **PR #8 review and merge.** Coordinator merges. Do not merge from this walk. Address review comments on the same branch.
-2. **Keep locale prefixes.** A cookie-only revert already landed and was rejected. Do not do that again.
-3. **Walk stays mock + invented.** `SEND_MODE=live` exists in code. Do not turn it on for this walk. Do not point webhooks at real guests.
-4. **Unused apps stay unused.** `apps/marketing`, `apps/docs`, admin, and org chrome are still in the monorepo. Leave them unless asked.
-5. **i18n catalog vs walk toggle.** `de` / `es` / `fr` remain in `packages/i18n/config.ts`. The walk selector must stay EN + VI.
-6. **No CI story to invent.** There are no GitHub Actions workflows required by this handoff. Inbox unit tests are `pnpm --filter saas test` under `apps/saas/modules/inbox`.
+1. **Keep locale prefixes.** A cookie-only revert already landed and was rejected. Do not do that again.
+2. **Walk stays mock + invented.** `SEND_MODE=live` exists in code. Do not turn it on for this walk. Do not point webhooks at real guests.
+3. **Unused apps stay unused.** `apps/marketing`, `apps/docs`, admin, and org chrome are still in the monorepo. Leave them unless asked.
+4. **i18n catalog vs walk toggle.** `de` / `es` / `fr` remain in `packages/i18n/config.ts`. The walk selector must stay EN + VI.
+5. **No CI story to invent.** There are no GitHub Actions workflows required by this handoff. Inbox unit tests are `pnpm --filter saas test` under `apps/saas/modules/inbox`.
