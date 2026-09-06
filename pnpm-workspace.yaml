@@ -74,7 +74,6 @@ catalog:
   nanoid: ^6.0.1
   next: ^16.3.1
   next-intl: 4.13.6
-  next-themes: ^0.4.6
   "@teispace/next-themes": ^3.0.0
   nprogress: ^0.2.0
   nuqs: ^2.9.5
@@ -104,6 +103,5 @@ catalog:
   ufo: ^1.6.4
   use-intl: ^4.13.6
   usehooks-ts: ^3.1.1
-  uuid: ^14.0.1
   vitest: ^4.1.10
   zod: ^4.4.3

@@ -24,7 +24,14 @@
 		"export": {
 			"outputs": ["out/**"]
 		},
+		"lint": {
+			"outputs": []
+		},
+		"format:check": {
+			"outputs": []
+		},
 		"test": {
+			"dependsOn": ["^generate"],
 			"outputs": ["coverage/**"]
 		},
 		"start": {
