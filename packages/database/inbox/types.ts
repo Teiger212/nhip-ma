@@ -57,6 +57,12 @@ export type Conversation = {
 	pipe: Pipe;
 	guestId: string;
 	guestName: string | null;
+	/**
+	 * Better Auth user id that owns this thread. `null` means "unscoped" (seeded or
+	 * pre-tenant rows), which every signed-in operator may see. Once every writer sets an
+	 * owner, drop the `IS NULL` fallback in the store to make isolation strict.
+	 */
+	ownerUserId: string | null;
 	messages: Message[];
 	lastGuestInboundAt: string | null;
 	sentAt: string | null;
@@ -74,7 +80,12 @@ export type InboundEvent = {
 	vendorMessageId: string | null;
 	at?: number | string | Date;
 	phoneNumberId?: string | null;
+	/** Owner to assign when this event creates the thread (or the thread has none). */
+	ownerUserId?: string | null;
 };
+
+/** Who is reading. Threads are visible when unowned or owned by this user. */
+export type InboxViewer = { userId: string };
 
 export type InboxEnv = {
 	DATABASE_URL?: string;
@@ -85,13 +96,15 @@ export type InboxEnv = {
 	WHATSAPP_PHONE_NUMBER_ID?: string;
 	ZALO_OA_ACCESS_TOKEN?: string;
 	ZALO_OA_SECRET_KEY?: string;
+	/** Owner assigned to threads created by webhooks. Unset means unowned. */
+	INBOX_OWNER_USER_ID?: string;
 	[key: string]: string | undefined;
 };
 
 export type InboxStore = {
 	filePath: string;
-	listConversations: () => Promise<Conversation[]>;
-	getConversation: (id: string) => Promise<Conversation | null>;
+	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
+	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
 	upsertInbound: (event: InboundEvent) => Promise<Conversation>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/**

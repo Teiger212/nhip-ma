@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext): Promise<Response> {
-	const denied = await requireInboxSession(request);
-	if (denied) {
-		return denied;
+	const gate = await requireInboxSession(request);
+	if (gate.denied) {
+		return gate.denied;
 	}
 	const { id } = await context.params;
 	let reply: string | undefined;
@@ -21,7 +21,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	} catch {
 		reply = undefined;
 	}
-	const result = await approveAndSend(decodeURIComponent(id), reply);
+	const result = await approveAndSend(decodeURIComponent(id), reply, gate.viewer);
 	if (!result.ok) {
 		if (result.detail) {
 			// Vendor error bodies stay in server logs; they are never echoed to the caller.

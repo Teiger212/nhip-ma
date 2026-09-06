@@ -37,6 +37,6 @@ export async function POST(request: Request): Promise<Response> {
 			body = {};
 		}
 	}
-	await ingestEvents(store, parseWhatsAppWebhook(body));
+	await ingestEvents(store, parseWhatsAppWebhook(body), env.INBOX_OWNER_USER_ID || null);
 	return NextResponse.json({ ok: true });
 }

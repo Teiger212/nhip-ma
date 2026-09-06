@@ -29,6 +29,6 @@ export async function POST(request: Request): Promise<Response> {
 			body = {};
 		}
 	}
-	await ingestEvents(store, parseZaloWebhook(body));
+	await ingestEvents(store, parseZaloWebhook(body), env.INBOX_OWNER_USER_ID || null);
 	return NextResponse.json({ ok: true });
 }
