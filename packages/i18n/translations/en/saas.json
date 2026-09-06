@@ -740,8 +740,8 @@
 			"ru": "Russian"
 		},
 		"intent": {
-			"rent": "rent",
-			"buy": "buy"
+			"rent": "Rent",
+			"buy": "Buy"
 		},
 		"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
 		"crib": {

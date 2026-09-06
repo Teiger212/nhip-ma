@@ -118,6 +118,7 @@ function ExtractRowList({ rows }: { rows: Array<{ id: string; label: string; val
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
+	const locale = useLocale();
 	const labels = {
 		missing: t("missing"),
 		yes: t("yes"),
@@ -199,7 +200,7 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	]);
 
 	return (
-		<section className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
+		<section key={locale} className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>
@@ -570,7 +571,7 @@ export function Inbox() {
 										<ThreadMessage key={message.id} message={message} />
 									))}
 									<div className="border-t" />
-									<ExtractFields conversation={selected} />
+									<ExtractFields key={locale} conversation={selected} />
 									{cribNotes ? (
 										<section className="gap-1.5 p-3 flex flex-col rounded-md bg-touch/8">
 											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>

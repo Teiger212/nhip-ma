@@ -70,6 +70,12 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.editReply).toBe("Sửa trả lời");
 	expect(enMessages.inbox.editReplyAria).toBe("Scroll to the reply box and edit it");
 	expect(viMessages.inbox.editReplyAria).toBe("Cuộn tới ô trả lời và sửa");
+	expect(enMessages.inbox.fields.rentOrBuy).toBe("Rent or buy");
+	expect(viMessages.inbox.fields.rentOrBuy).toBe("Thuê hoặc mua");
+	expect(enMessages.inbox.intent.rent).toBe("Rent");
+	expect(enMessages.inbox.intent.buy).toBe("Buy");
+	expect(viMessages.inbox.intent.rent).toBe("thuê");
+	expect(viMessages.inbox.intent.buy).toBe("mua");
 	expect(enMessages.app.menu.inbox).toBe("Inbox");
 	expect(viMessages.app.menu.inbox).toBe("Hộp thư");
 	expect(enMessages.app.menu.home).toBe("Home");
@@ -85,7 +91,7 @@ test("English UI crib uses the English template and extracted facts", () => {
 		en,
 	);
 	expect(crib).toBe(
-		"Reply is in Vietnamese. From the guest: rent, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Do not interview.",
+		"Reply is in Vietnamese. From the guest: Rent, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Do not interview.",
 	);
 });
 
