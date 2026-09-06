@@ -100,7 +100,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 
 				{/* Color mode selection */}
 				<DropdownMenuItem
-					className="gap-4 flex items-center justify-between hover:bg-transparent focus:bg-transparent"
+					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
 					closeOnClick={false}
 				>
 					<span className="whitespace-nowrap">{t("app.userMenu.colorMode")}</span>
