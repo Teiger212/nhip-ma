@@ -170,6 +170,10 @@ export function NavBar() {
 
 	const accountGroup = groups.find((group) => group.id === "account");
 	const contentGroups = groups.filter((group) => group.id !== "account");
+	const activeSettingsItem = accountGroup?.items.find(
+		(item) => item.isActive && item.subItems?.length,
+	);
+	const settingsSubItems = activeSettingsItem?.subItems ?? null;
 
 	function renderItems(items: AppNavItem[]) {
 		return items.map((item) => (
@@ -245,8 +249,33 @@ export function NavBar() {
 				))}
 			</SidebarContent>
 			<SidebarFooter>
-				{/* Settings open in the main pane; they live at the bottom next to the user menu. */}
-				{accountGroup ? <SidebarMenu>{renderItems(accountGroup.items)}</SidebarMenu> : null}
+				{/* The user row below opens Account settings; while a settings page is active its
+				    sections show here so they stay reachable. */}
+				{settingsSubItems && showLabels ? (
+					<SidebarMenu>
+						<SidebarMenuItem>
+							<SidebarMenuSub>
+								{settingsSubItems.map((subItem) => (
+									<SidebarMenuSubItem key={subItem.href}>
+										<SidebarMenuSubButton
+											isActive={isNavSubItemActive(pathname, subItem.href)}
+											render={(props) => (
+												<LocaleLink
+													{...props}
+													href={subItem.href}
+													onClick={closeMobileNav}
+													prefetch
+												>
+													<span>{subItem.label}</span>
+												</LocaleLink>
+											)}
+										/>
+									</SidebarMenuSubItem>
+								))}
+							</SidebarMenuSub>
+						</SidebarMenuItem>
+					</SidebarMenu>
+				) : null}
 				<UserMenu showUserName={showLabels} />
 			</SidebarFooter>
 			<SidebarRail
