@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, cn, Input, Skeleton, Textarea } from "@repo/ui";
+import { Badge, Button, cn, Input, Skeleton, Textarea, toast } from "@repo/ui";
 import { ChevronLeftIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -22,6 +22,25 @@ import type { Conversation, Message } from "../lib/types";
 
 /** Desktop thread-list column. Same used width, min, and max so detail content cannot flex it. */
 const INBOX_LIST_WIDTH = "22rem";
+
+/** The inbox is a queue: the default view is what still needs a first reply. */
+const INBOX_VIEWS = ["needsReply", "sent", "all"] as const;
+type InboxView = (typeof INBOX_VIEWS)[number];
+
+function inView(conversation: Conversation, view: InboxView): boolean {
+	if (view === "all") return true;
+	return view === "sent" ? Boolean(conversation.sentAt) : !conversation.sentAt;
+}
+
+/** Oldest waiting guest first for the queue; most recent activity first elsewhere. */
+function sortForView(list: Conversation[], view: InboxView): Conversation[] {
+	const time = (value: string | null) => (value ? new Date(value).getTime() : 0);
+	return [...list].sort((a, b) =>
+		view === "needsReply"
+			? time(a.lastGuestInboundAt) - time(b.lastGuestInboundAt)
+			: time(b.updatedAt) - time(a.updatedAt),
+	);
+}
 
 function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
 	if (value === null || value === undefined || value === "") {
@@ -262,7 +281,7 @@ function SendStatus({
 				visuallyQuiet
 					? "sr-only"
 					: cn(
-							"mt-1.5 font-medium block",
+							"font-medium min-w-0 flex-1 truncate",
 							statusKind === "warn" ? "text-destructive" : "text-muted-foreground",
 						),
 			)}
@@ -305,13 +324,13 @@ export function Inbox() {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [detailOpen, setDetailOpen] = useState(false);
 	const [query, setQuery] = useState("");
+	const [view, setView] = useState<InboxView>("needsReply");
 	const [reply, setReply] = useState("");
 	const [status, setStatus] = useState("");
 	const [statusKind, setStatusKind] = useState<"ok" | "warn" | "">("");
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState(false);
 	const [approving, setApproving] = useState(false);
-	const replyRef = useRef<HTMLTextAreaElement>(null);
 	const selectedIdRef = useRef(selectedId);
 	const refreshRequestIdRef = useRef(0);
 
@@ -320,8 +339,22 @@ export function Inbox() {
 	}, [selectedId]);
 
 	const visible = useMemo(
-		() => conversations.filter((conversation) => matchesThreadSearch(conversation, query)),
-		[conversations, query],
+		() =>
+			sortForView(
+				conversations.filter(
+					(conversation) => inView(conversation, view) && matchesThreadSearch(conversation, query),
+				),
+				view,
+			),
+		[conversations, query, view],
+	);
+	const counts = useMemo(
+		() => ({
+			needsReply: conversations.filter((conversation) => !conversation.sentAt).length,
+			sent: conversations.filter((conversation) => Boolean(conversation.sentAt)).length,
+			all: conversations.length,
+		}),
+		[conversations],
 	);
 	const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
 
@@ -398,8 +431,13 @@ export function Inbox() {
 					body: JSON.stringify({ reply }),
 				},
 			);
-			setSelectedId(result.conversation.id);
-			await refresh(result.conversation.id);
+			toast.add({
+				title: t("sentTo", { name: displayName(result.conversation) }),
+				type: "success",
+			});
+			// In the queue view the sent thread leaves the list and the selection effect
+			// advances to the next waiting guest; in other views it stays selected.
+			await refresh(view === "needsReply" ? null : result.conversation.id);
 		} catch (err) {
 			const error = err as Error & { data?: { message?: string; error?: string } };
 			setStatusKind("warn");
@@ -418,25 +456,19 @@ export function Inbox() {
 		setDetailOpen(true);
 	}
 
-	function focusReply() {
-		const field = replyRef.current;
-		if (!field) {
-			return;
-		}
-		field.scrollIntoView({ block: "center" });
-		field.focus();
-	}
-
 	function listBody() {
 		if (loading && conversations.length === 0 && !loadError) {
 			return <ThreadListSkeleton />;
 		}
 		if (visible.length === 0) {
+			const caughtUp = !loadError && !query && view === "needsReply" && conversations.length > 0;
 			const title = loadError
 				? t("loadError")
 				: conversations.length === 0
 					? t("empty")
-					: t("noMatches");
+					: caughtUp
+						? t("allCaughtUp")
+						: t("noMatches");
 			return (
 				<ThreadListState
 					title={title}
@@ -452,6 +484,15 @@ export function Inbox() {
 								}}
 							>
 								{t("retry")}
+							</Button>
+						) : caughtUp && counts.sent > 0 ? (
+							<Button
+								type="button"
+								variant="outline"
+								className="mt-3 min-h-11"
+								onClick={() => setView("sent")}
+							>
+								{t("viewSent")}
 							</Button>
 						) : null
 					}
@@ -530,6 +571,41 @@ export function Inbox() {
 					/>
 				</div>
 			</div>
+			<div
+				className={cn(
+					"px-3 py-2 gap-2 flex shrink-0 flex-wrap items-center justify-between border-b",
+					detailOpen && "md:flex hidden",
+				)}
+			>
+				<div className="gap-0 p-0.5 swiss:rounded-none inline-flex rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
+					{INBOX_VIEWS.map((option) => {
+						const active = option === view;
+						return (
+							<button
+								key={option}
+								type="button"
+								aria-pressed={active}
+								onClick={() => setView(option)}
+								className={cn(
+									"h-8 px-3 text-xs font-semibold gap-1.5 swiss:rounded-none inline-flex cursor-pointer items-center rounded-full transition-colors",
+									"focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+									active
+										? "shadow-xs border border-border bg-background text-foreground"
+										: "text-muted-foreground hover:text-foreground",
+								)}
+							>
+								{t(`views.${option}`)}
+								<span className="font-mono text-[10px] tabular-nums opacity-70">
+									{counts[option]}
+								</span>
+							</button>
+						);
+					})}
+				</div>
+				<p className="text-xs text-muted-foreground" aria-live="polite">
+					{t("queueCount", { count: counts.needsReply })}
+				</p>
+			</div>
 			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
 				<aside
 					style={{ "--inbox-list-width": INBOX_LIST_WIDTH } as CSSProperties}
@@ -598,7 +674,6 @@ export function Inbox() {
 										</label>
 										<Textarea
 											id="inbox-reply"
-											ref={replyRef}
 											value={reply}
 											onChange={(event) => setReply(event.target.value)}
 											className="min-h-28 text-sm swiss:rounded-none flat:rounded-lg rounded-md shadow-none"
@@ -607,32 +682,21 @@ export function Inbox() {
 									</section>
 								</div>
 							</div>
-							<div className="px-3 py-2.5 swiss:bg-background flat:bg-muted/40 shrink-0 border-t bg-card">
-								<div className="gap-2 flex flex-wrap items-center">
-									<Button
-										type="button"
-										variant="primary"
-										className="min-h-11"
-										disabled={Boolean(selected.sentAt) || approving}
-										onClick={() => void onApprove()}
-									>
-										{t("approveAndSend")}
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="min-h-11"
-										onClick={focusReply}
-										aria-label={t("editReplyAria")}
-									>
-										{t("editReply")}
-									</Button>
-								</div>
+							<div className="px-3 py-2 gap-3 swiss:bg-background flat:bg-muted/40 flex shrink-0 items-center justify-between border-t bg-card">
 								<SendStatus
 									status={status}
 									statusKind={statusKind}
 									visuallyQuiet={!selected.sentAt && !approving && statusKind !== "warn"}
 								/>
+								<Button
+									type="button"
+									variant="primary"
+									className="min-h-11 ml-auto shrink-0"
+									disabled={Boolean(selected.sentAt) || approving}
+									onClick={() => void onApprove()}
+								>
+									{t("approveAndSend")}
+								</Button>
 							</div>
 						</>
 					)}

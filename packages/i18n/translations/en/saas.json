@@ -728,8 +728,6 @@
 		"forYouHint": "Not shown to the guest.",
 		"reply": "Reply",
 		"approveAndSend": "Approve and send",
-		"editReply": "Edit reply",
-		"editReplyAria": "Scroll to the reply box and edit it",
 		"notSent": "Not sent",
 		"alreadySent": "Sent {at}",
 		"sending": "Sending…",
@@ -771,6 +769,16 @@
 			"beds": "Beds / household",
 			"paperwork": "Paperwork",
 			"noneMentioned": "none mentioned"
-		}
+		},
+		"views": {
+			"aria": "Filter threads",
+			"needsReply": "Needs reply",
+			"sent": "Sent",
+			"all": "All"
+		},
+		"queueCount": "{count, plural, =0 {Nothing needs a reply} one {# needs a reply} other {# need a reply}}",
+		"allCaughtUp": "All caught up.",
+		"viewSent": "View sent",
+		"sentTo": "Sent to {name}"
 	}
 }

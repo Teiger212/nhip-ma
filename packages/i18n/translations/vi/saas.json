@@ -728,8 +728,6 @@
 		"forYouHint": "Khách không thấy phần này.",
 		"reply": "Trả lời",
 		"approveAndSend": "Duyệt và gửi",
-		"editReply": "Sửa trả lời",
-		"editReplyAria": "Cuộn tới ô trả lời và sửa",
 		"notSent": "Chưa gửi",
 		"alreadySent": "Đã gửi {at}",
 		"sending": "Đang gửi…",
@@ -771,6 +769,16 @@
 			"beds": "Phòng ngủ / hộ",
 			"paperwork": "Giấy tờ",
 			"noneMentioned": "không nhắc đến"
-		}
+		},
+		"views": {
+			"aria": "Lọc cuộc hội thoại",
+			"needsReply": "Cần trả lời",
+			"sent": "Đã gửi",
+			"all": "Tất cả"
+		},
+		"queueCount": "{count, plural, =0 {Không có cuộc nào cần trả lời} other {# cuộc cần trả lời}}",
+		"allCaughtUp": "Đã xử lý hết.",
+		"viewSent": "Xem đã gửi",
+		"sentTo": "Đã gửi cho {name}"
 	}
 }

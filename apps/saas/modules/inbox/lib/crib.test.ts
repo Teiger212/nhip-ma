@@ -66,10 +66,11 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.userMenu.logout).toBe("Đăng xuất");
 	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
-	expect(enMessages.inbox.editReply).toBe("Edit reply");
-	expect(viMessages.inbox.editReply).toBe("Sửa trả lời");
-	expect(enMessages.inbox.editReplyAria).toBe("Scroll to the reply box and edit it");
-	expect(viMessages.inbox.editReplyAria).toBe("Cuộn tới ô trả lời và sửa");
+	expect(enMessages.inbox.views.needsReply).toBe("Needs reply");
+	expect(viMessages.inbox.views.needsReply).toBe("Cần trả lời");
+	expect(enMessages.inbox.sentTo).toBe("Sent to {name}");
+	expect(viMessages.inbox.sentTo).toBe("Đã gửi cho {name}");
+	expect(enMessages.inbox).not.toHaveProperty("editReply");
 	expect(enMessages.inbox.fields.rentOrBuy).toBe("Rent or buy");
 	expect(viMessages.inbox.fields.rentOrBuy).toBe("Thuê hoặc mua");
 	expect(enMessages.inbox.intent.rent).toBe("Rent");

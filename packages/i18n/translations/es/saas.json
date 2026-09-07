@@ -728,8 +728,6 @@
 		"forYouHint": "No se envía al huésped.",
 		"reply": "Respuesta",
 		"approveAndSend": "Aprobar y enviar",
-		"editReply": "Editar respuesta",
-		"editReplyAria": "Ir al recuadro de respuesta y editar",
 		"notSent": "no enviado",
 		"alreadySent": "ya enviado {at}",
 		"sending": "enviando…",
@@ -771,6 +769,16 @@
 			"beds": "Habitaciones / hogar",
 			"paperwork": "Papeles",
 			"noneMentioned": "no mencionado"
-		}
+		},
+		"views": {
+			"aria": "Filtrar conversaciones",
+			"needsReply": "Necesita respuesta",
+			"sent": "Enviados",
+			"all": "Todos"
+		},
+		"queueCount": "{count, plural, =0 {Nada pendiente de respuesta} one {# pendiente de respuesta} other {# pendientes de respuesta}}",
+		"allCaughtUp": "Todo al día.",
+		"viewSent": "Ver enviados",
+		"sentTo": "Enviado a {name}"
 	}
 }
