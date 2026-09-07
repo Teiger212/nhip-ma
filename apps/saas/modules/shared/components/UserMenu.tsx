@@ -2,7 +2,6 @@
 
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
-import { LocaleLink } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import {
 	cn,
@@ -25,7 +24,6 @@ import {
 	PaletteIcon,
 	LogOutIcon,
 	MoreVerticalIcon,
-	SettingsIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -118,20 +116,6 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 				</DropdownMenuItem>
 
 				<DropdownMenuSeparator />
-
-				<DropdownMenuItem
-					nativeButton={false}
-					render={(props) => (
-						<LocaleLink
-							{...props}
-							href="/settings/general"
-							className={cn(props.className, "flex items-center")}
-						>
-							<SettingsIcon className="mr-2 size-4" />
-							{t("app.userMenu.accountSettings")}
-						</LocaleLink>
-					)}
-				/>
 
 				<DropdownMenuItem
 					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"

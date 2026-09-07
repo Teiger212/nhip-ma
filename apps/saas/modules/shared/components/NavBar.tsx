@@ -168,6 +168,33 @@ export function NavBar() {
 		}
 	}
 
+	const accountGroup = groups.find((group) => group.id === "account");
+	const contentGroups = groups.filter((group) => group.id !== "account");
+
+	function renderItems(items: AppNavItem[]) {
+		return items.map((item) => (
+			<SidebarMenuItem key={item.id}>
+				<NavItemLink item={item} onNavigate={closeMobileNav} showLabel={showLabels} />
+				{item.subItems?.length && item.isActive && showLabels ? (
+					<SidebarMenuSub>
+						{item.subItems.map((subItem) => (
+							<SidebarMenuSubItem key={subItem.href}>
+								<SidebarMenuSubButton
+									isActive={isNavSubItemActive(pathname, subItem.href)}
+									render={(props) => (
+										<LocaleLink {...props} href={subItem.href} onClick={closeMobileNav} prefetch>
+											<span>{subItem.label}</span>
+										</LocaleLink>
+									)}
+								/>
+							</SidebarMenuSubItem>
+						))}
+					</SidebarMenuSub>
+				) : null}
+			</SidebarMenuItem>
+		));
+	}
+
 	return (
 		<Sidebar
 			collapsible="icon"
@@ -207,44 +234,19 @@ export function NavBar() {
 				) : null}
 			</SidebarHeader>
 			<SidebarContent>
-				{groups.map((group, index) => (
+				{contentGroups.map((group, index) => (
 					<SidebarGroup key={group.id}>
 						{index > 0 ? <SidebarSeparator className="mb-2" /> : null}
 						<SidebarGroupLabel>{groupLabels[group.id]}</SidebarGroupLabel>
 						<SidebarGroupContent>
-							<SidebarMenu>
-								{group.items.map((item) => (
-									<SidebarMenuItem key={item.id}>
-										<NavItemLink item={item} onNavigate={closeMobileNav} showLabel={showLabels} />
-										{item.subItems?.length && item.isActive && showLabels ? (
-											<SidebarMenuSub>
-												{item.subItems.map((subItem) => (
-													<SidebarMenuSubItem key={subItem.href}>
-														<SidebarMenuSubButton
-															isActive={isNavSubItemActive(pathname, subItem.href)}
-															render={(props) => (
-																<LocaleLink
-																	{...props}
-																	href={subItem.href}
-																	onClick={closeMobileNav}
-																	prefetch
-																>
-																	<span>{subItem.label}</span>
-																</LocaleLink>
-															)}
-														/>
-													</SidebarMenuSubItem>
-												))}
-											</SidebarMenuSub>
-										) : null}
-									</SidebarMenuItem>
-								))}
-							</SidebarMenu>
+							<SidebarMenu>{renderItems(group.items)}</SidebarMenu>
 						</SidebarGroupContent>
 					</SidebarGroup>
 				))}
 			</SidebarContent>
 			<SidebarFooter>
+				{/* Settings open in the main pane; they live at the bottom next to the user menu. */}
+				{accountGroup ? <SidebarMenu>{renderItems(accountGroup.items)}</SidebarMenu> : null}
 				<UserMenu showUserName={showLabels} />
 			</SidebarFooter>
 			<SidebarRail
