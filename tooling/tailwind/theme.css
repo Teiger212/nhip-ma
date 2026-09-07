@@ -151,7 +151,8 @@
 
 	/*
 	 * Variation: Flat + inbox blue (ui-ux-pro-max, "messaging inbox triage").
-	 * Red is priority ("Needs approval") and errors; the CTA stays blue.
+	 * Blue is the one action color; red is destructive and errors only;
+	 * pending is amber, sent is green.
 	 */
 	html[data-style="flat"] {
 		--background: #ffffff;
@@ -171,11 +172,14 @@
 		--touch: #2563eb;
 		--touch-foreground: #ffffff;
 		--border: #e4ecfc;
-		--input: #e4ecfc;
+		--input: #cbd9f5;
 		--ring: #2563eb;
 		--destructive: #dc2626;
+		--destructive-foreground: #ffffff;
 		--success: #15803d;
-		--warning: #dc2626;
+		--success-foreground: #ffffff;
+		--warning: #b45309;
+		--warning-foreground: #ffffff;
 		--sidebar: #f8fafc;
 		--sidebar-foreground: #0f172a;
 		--sidebar-primary: #2563eb;
@@ -205,11 +209,14 @@
 		--touch: #60a5fa;
 		--touch-foreground: #0b1220;
 		--border: #253352;
-		--input: #253352;
+		--input: #34456b;
 		--ring: #60a5fa;
 		--destructive: #f87171;
+		--destructive-foreground: #0b1220;
 		--success: #4ade80;
-		--warning: #f87171;
+		--success-foreground: #0b1220;
+		--warning: #fbbf24;
+		--warning-foreground: #0b1220;
 		--sidebar: #080e1a;
 		--sidebar-foreground: #e2e8f0;
 		--sidebar-primary: #60a5fa;
