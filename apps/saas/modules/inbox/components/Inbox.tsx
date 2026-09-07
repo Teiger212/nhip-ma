@@ -583,7 +583,7 @@ export function Inbox() {
 									<div className="border-t" />
 									<ExtractFields conversation={selected} />
 									{cribNotes ? (
-										<section className="gap-1.5 p-3 swiss:rounded-none swiss:border-l-2 swiss:border-l-touch swiss:bg-transparent flat:rounded-lg flat:bg-primary/6 flex flex-col rounded-md bg-touch/8">
+										<section className="gap-1.5 p-3 swiss:rounded-none swiss:border-l-2 swiss:border-l-primary swiss:bg-primary/5 flat:rounded-lg flat:bg-primary/6 flex flex-col rounded-md bg-touch/8">
 											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
 											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
 											<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
