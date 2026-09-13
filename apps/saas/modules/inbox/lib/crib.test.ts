@@ -1,29 +1,10 @@
 import { getMessagesForLocale, type SaasMessages } from "@repo/i18n";
 import { expect, test } from "vitest";
 
-import enSaas from "../../../../../packages/i18n/translations/en/saas.json";
-import viSaas from "../../../../../packages/i18n/translations/vi/saas.json";
 import { formatConversationCrib, formatCribNotes } from "./crib";
 import { emptyQualification } from "./extract";
+import { inboxEn as en, inboxVi as vi } from "./test-translate";
 import type { GuestLanguage, Qualification } from "./types";
-
-function translate(messages: Record<string, unknown>) {
-	return (key: string, values: Record<string, string> = {}) => {
-		const raw = key.split(".").reduce<unknown>((acc, part) => {
-			if (!acc || typeof acc !== "object") {
-				return undefined;
-			}
-			return (acc as Record<string, unknown>)[part];
-		}, messages);
-		if (typeof raw !== "string") {
-			throw new Error(`Missing inbox key ${key}`);
-		}
-		return raw.replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? "");
-	};
-}
-
-const en = translate(enSaas.inbox);
-const vi = translate(viSaas.inbox);
 
 const thao: Qualification = {
 	...emptyQualification(),
@@ -139,7 +120,7 @@ test("empty one-shot facts use the empty-facts crib string", () => {
 				language: "en",
 				qualification: emptyQualification(),
 				paperwork: { mentioned: false, flag: null },
-				draft: { reply: "", crib: "", cribLanguage: "vi" },
+				draft: { reply: "" },
 			},
 		},
 		en,

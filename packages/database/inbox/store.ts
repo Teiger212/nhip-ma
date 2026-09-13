@@ -7,7 +7,6 @@ import { z } from "zod";
 
 import { ensureInboxSchema } from "./ensure-schema";
 import {
-	CribLanguage,
 	DbMessageSource,
 	GuestLanguage,
 	MessageDirection,
@@ -90,8 +89,6 @@ const qualificationRow = z.object({
 const draftRow = z.object({
 	conversationId: z.string(),
 	reply: z.string(),
-	crib: z.string(),
-	cribLanguage: CribLanguage,
 });
 
 const paperworkRow = z.object({
@@ -177,11 +174,7 @@ function mapQualification(row: QualificationRow): Qualification {
 }
 
 function mapDraft(row: DraftRow): Draft {
-	return {
-		reply: row.reply,
-		crib: row.crib,
-		cribLanguage: row.cribLanguage,
-	};
+	return { reply: row.reply };
 }
 
 function mapPaperwork(row: PaperworkRow): Paperwork {
@@ -398,14 +391,11 @@ export function createInboxStore(filePath: string): InboxStore {
 					);
 				sqlite
 					.prepare(
-						`INSERT INTO "Draft" ("conversationId", "reply", "crib", "cribLanguage")
-             VALUES (?, ?, ?, ?)
-             ON CONFLICT("conversationId") DO UPDATE SET
-               "reply" = excluded."reply",
-               "crib" = excluded."crib",
-               "cribLanguage" = excluded."cribLanguage"`,
+						`INSERT INTO "Draft" ("conversationId", "reply")
+             VALUES (?, ?)
+             ON CONFLICT("conversationId") DO UPDATE SET "reply" = excluded."reply"`,
 					)
-					.run(id, shot.draft.reply, shot.draft.crib, shot.draft.cribLanguage);
+					.run(id, shot.draft.reply);
 				sqlite
 					.prepare(
 						`INSERT INTO "Paperwork" ("conversationId", "mentioned", "flag")

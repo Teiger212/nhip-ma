@@ -1,5 +1,5 @@
 import { extractFromInbound } from "./extract";
-import type { Draft, GuestLanguage, OneShot, Paperwork, Qualification } from "./types";
+import type { GuestLanguage, OneShot, Qualification } from "./types";
 
 type Clause = { en: string; vi: string; ja: string; ko: string; ru: string };
 
@@ -56,61 +56,8 @@ export function draftReply(language: GuestLanguage, qualification: Qualification
 	return templates[language];
 }
 
-/** Stored crib for persistence. The walk UI formats crib at read time from `inbox.crib` keys. */
-export function buildCrib(
-	language: GuestLanguage,
-	qualification: Qualification,
-	paperwork: Paperwork,
-): Pick<Draft, "crib" | "cribLanguage"> {
-	const q = qualification;
-	const lines: string[] = [];
-	if (q.nationality) lines.push(`quốc tịch ${q.nationality}`);
-	if (q.inVietnamNow === true) lines.push("đang ở Việt Nam");
-	if (q.inVietnamNow === false) lines.push("chưa ở Việt Nam");
-	if (q.rentOrBuy === "rent") lines.push("thuê");
-	if (q.rentOrBuy === "buy") lines.push("mua");
-	if (q.timeframe) lines.push(q.timeframe);
-	if (q.areaOfInterest) lines.push(q.areaOfInterest);
-	if (q.budgetBand) lines.push(q.budgetBand);
-	if (q.bedsOrHousehold) lines.push(q.bedsOrHousehold);
-
-	const known = lines.length ? lines.join(", ") : "chưa đủ field từ inbound";
-	const cribVi = `Draft trả lời bằng ${language}. Có trong inbound: ${known}. Không hỏi thêm kiểu interviewer.${
-		paperwork.mentioned ? " " + paperwork.flag : ""
-	}`;
-
-	if (language === "vi") {
-		const enBits: string[] = [];
-		if (q.nationality) enBits.push(q.nationality);
-		if (q.inVietnamNow === true) enBits.push("in VN now");
-		if (q.inVietnamNow === false) enBits.push("not in VN");
-		if (q.rentOrBuy) enBits.push(q.rentOrBuy);
-		if (q.timeframe) enBits.push(q.timeframe);
-		if (q.areaOfInterest) enBits.push(q.areaOfInterest);
-		if (q.budgetBand) enBits.push(q.budgetBand);
-		if (q.bedsOrHousehold) enBits.push(q.bedsOrHousehold);
-		const knownEn = enBits.length ? enBits.join(", ") : "nothing extractable yet";
-		return {
-			crib: `Draft is in Vietnamese. From inbound: ${knownEn}. Not an interviewer.${
-				paperwork.mentioned ? " " + paperwork.flag : ""
-			}`,
-			cribLanguage: "en",
-		};
-	}
-
-	return { crib: cribVi, cribLanguage: "vi" };
-}
-
 export function oneShot(text: string): OneShot {
 	const extracted = extractFromInbound(text);
 	const reply = draftReply(extracted.language, extracted.qualification);
-	const { crib, cribLanguage } = buildCrib(
-		extracted.language,
-		extracted.qualification,
-		extracted.paperwork,
-	);
-	return {
-		...extracted,
-		draft: { reply, crib, cribLanguage },
-	};
+	return { ...extracted, draft: { reply } };
 }

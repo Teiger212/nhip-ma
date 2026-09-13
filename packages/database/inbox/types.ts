@@ -1,11 +1,4 @@
-import type {
-	CribLanguage,
-	GuestLanguage,
-	MessageDirection,
-	MessageSource,
-	Pipe,
-	RentOrBuy,
-} from "./schema";
+import type { GuestLanguage, MessageDirection, MessageSource, Pipe, RentOrBuy } from "./schema";
 
 /**
  * The vocabulary is declared once, in `./schema`, and reaches consumers through
@@ -35,10 +28,12 @@ export type Paperwork = {
 	flag: string | null;
 };
 
+/**
+ * The guest-facing draft. The operator note is not stored: `crib.ts` renders it from the
+ * qualification at read time, in the operator's language.
+ */
 export type Draft = {
 	reply: string;
-	crib: string;
-	cribLanguage: CribLanguage;
 };
 
 export type OneShot = {

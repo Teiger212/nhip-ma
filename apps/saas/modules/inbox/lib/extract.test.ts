@@ -1,7 +1,9 @@
 import { expect, test } from "vitest";
 
+import { formatCribNotes } from "./crib";
 import { oneShot } from "./draft";
 import { extractFromInbound, PAPERWORK_FLAG } from "./extract";
+import { inboxEn as en, inboxVi as vi } from "./test-translate";
 
 test("full English inbound extracts fields that are present", () => {
 	const text =
@@ -64,25 +66,26 @@ test("paperwork flag does not invent Vietnamese law", () => {
 	expect(shot.paperwork.flag ?? "").toMatch(/Do not invent Vietnamese law/);
 	expect(shot.draft.reply).not.toMatch(/tomorrow/i);
 	expect(shot.draft.reply).not.toMatch(/you (can|will) (get|receive) a pink book/i);
-	expect(shot.draft.crib).not.toMatch(/sổ hồng ngày mai/i);
+	expect(formatCribNotes(shot, en)).toMatch(/Do not invent Vietnamese law/);
+	expect(formatCribNotes(shot, en)).not.toMatch(/sổ hồng ngày mai/i);
 });
 
-test("draft follows guest language and crib is VN or EN", () => {
-	const en = oneShot("Looking to rent in Ba Dinh, I am French");
-	expect(en.language).toBe("en");
-	expect(en.draft.reply).toMatch(/Ba Đình|renting/i);
-	expect(en.draft.cribLanguage).toBe("vi");
-	expect(en.draft.crib).toMatch(/French|Ba Đình|thuê/i);
+test("draft follows guest language; the operator note follows the operator's language", () => {
+	const enGuest = oneShot("Looking to rent in Ba Dinh, I am French");
+	expect(enGuest.language).toBe("en");
+	expect(enGuest.draft.reply).toMatch(/Ba Đình|renting/i);
+	expect(formatCribNotes(enGuest, vi)).toMatch(/French|Ba Đình|thuê/i);
+	expect(formatCribNotes(enGuest, en)).toMatch(/French|Ba Đình|rent/i);
 
-	const vi = oneShot("Tôi muốn mua nhà ở Ba Đình");
-	expect(vi.language).toBe("vi");
-	expect(vi.draft.reply).toMatch(/mua|Ba Đình/);
-	expect(vi.draft.cribLanguage).toBe("en");
+	const viGuest = oneShot("Tôi muốn mua nhà ở Ba Đình");
+	expect(viGuest.language).toBe("vi");
+	expect(viGuest.draft.reply).toMatch(/mua|Ba Đình/);
+	expect(formatCribNotes(viGuest, en)).toMatch(/Vietnamese/);
 
-	const ja = oneShot("ハノイにいます。Tay Hoで賃貸を探しています。");
-	expect(ja.language).toBe("ja");
-	expect(ja.draft.reply).toMatch(/チャット/);
-	expect(ja.draft.cribLanguage).toBe("vi");
+	const jaGuest = oneShot("ハノイにいます。Tay Hoで賃貸を探しています。");
+	expect(jaGuest.language).toBe("ja");
+	expect(jaGuest.draft.reply).toMatch(/チャット/);
+	expect(formatCribNotes(jaGuest, vi)).toMatch(/tiếng Nhật/);
 });
 
 test("one-shot is not an interviewer", () => {
