@@ -2,8 +2,7 @@ import crypto from "crypto";
 
 import { z } from "zod";
 
-import type { InboxConfig } from "./config";
-import type { Conversation, InboundEvent, Pipe, SendResult } from "./types";
+import type { Conversation, InboundEvent, SendResult } from "../types";
 
 export const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -254,7 +253,7 @@ export function verifyZaloSignature(
 	return hexEqual(provided, expected);
 }
 
-class SendError extends Error {
+export class SendError extends Error {
 	detail: unknown;
 	constructor(message: string, detail: unknown) {
 		super(message);
@@ -262,7 +261,7 @@ class SendError extends Error {
 	}
 }
 
-async function sendWhatsApp(input: {
+export async function sendWhatsApp(input: {
 	to: string;
 	text: string;
 	accessToken: string;
@@ -294,7 +293,7 @@ async function sendWhatsApp(input: {
 	};
 }
 
-async function sendZalo(input: {
+export async function sendZalo(input: {
 	to: string;
 	text: string;
 	accessToken: string;
@@ -323,39 +322,3 @@ async function sendZalo(input: {
 		vendorMessageId: typeof data.message_id === "string" ? data.message_id : null,
 	};
 }
-
-export async function transmit(input: {
-	conversation: Conversation;
-	text: string;
-	config: InboxConfig;
-}): Promise<SendResult> {
-	const pipe: Pipe = input.conversation.pipe;
-	const to = input.conversation.guestId;
-	if (input.config.sendMode !== "live") {
-		return {
-			mock: true,
-			pipe,
-			to,
-			text: input.text,
-			vendorMessageId: `mock-${Date.now()}`,
-		};
-	}
-
-	if (pipe === "whatsapp") {
-		const { accessToken, phoneNumberId } = input.config.whatsapp;
-		if (!accessToken || !phoneNumberId) {
-			throw new Error(
-				"WhatsApp live send needs WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID",
-			);
-		}
-		return sendWhatsApp({ to, text: input.text, accessToken, phoneNumberId });
-	}
-
-	const accessToken = input.config.zalo.accessToken;
-	if (!accessToken) {
-		throw new Error("Zalo live send needs ZALO_OA_ACCESS_TOKEN");
-	}
-	return sendZalo({ to, text: input.text, accessToken });
-}
-
-export { SendError };

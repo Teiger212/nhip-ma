@@ -1,5 +1,5 @@
 import { oneShot } from "./draft";
-import { SendError, transmit, whatsappWindowState } from "./pipes";
+import { pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime } from "./runtime";
 import type { Conversation, InboundEvent, InboxViewer, Pipe, Store } from "./types";
 
@@ -92,7 +92,7 @@ export async function approveAndSend(
 		return { ok: false, status: 400, error: "no_draft" };
 	}
 
-	const window = whatsappWindowState(conv);
+	const window = pipeAdapter(conv.pipe).sendWindow(conv);
 	if (!window.open) {
 		return {
 			ok: false,

@@ -7,7 +7,7 @@ import {
 	parseZaloWebhook,
 	verifyWhatsAppSignature,
 	verifyZaloSignature,
-} from "./pipes";
+} from "./vendors";
 
 const WA_SECRET = "wa-app-secret";
 const WA_BODY = JSON.stringify({ entry: [] });

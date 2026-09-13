@@ -20,7 +20,7 @@ import { GET as getConversation } from "../../../app/api/conversations/[id]/rout
 import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
-import { whatsappWindowState } from "./pipes";
+import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 
 async function json(res: Response): Promise<{ res: Response; body: Record<string, unknown> }> {
