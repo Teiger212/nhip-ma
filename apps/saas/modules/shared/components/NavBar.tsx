@@ -1,8 +1,6 @@
 "use client";
 
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
-import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
-import { config as authConfig } from "@repo/auth/config";
 import { config as paymentsConfig } from "@repo/payments/config";
 import {
 	cn,
@@ -21,48 +19,42 @@ import {
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
 	SidebarRail,
-	SidebarSeparator,
 	useSidebar,
 } from "@repo/ui";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
-import { usePermissions } from "@shared/components/PermixProvider";
 import { UserMenu } from "@shared/components/UserMenu";
-import {
-	BotMessageSquareIcon,
-	GlobeIcon,
-	HomeIcon,
-	InboxIcon,
-	SettingsIcon,
-	ShieldUserIcon,
-	UserCogIcon,
-} from "lucide-react";
+import { GlobeIcon, HomeIcon, InboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
 
-import { OrganzationSelect } from "../../organizations/components/OrganizationSelect";
-import {
-	type AppNavItem,
-	buildAppNavItems,
-	groupAppNavItems,
-	isNavSubItemActive,
-} from "../lib/app-nav-items";
+import { buildSettingsSections, buildWalkNav, type WalkNavItem } from "../lib/walk-nav";
 
 const NAV_ICONS = {
 	home: HomeIcon,
 	inbox: InboxIcon,
-	chatbot: BotMessageSquareIcon,
 	globe: GlobeIcon,
-	settings: SettingsIcon,
-	account: UserCogIcon,
-	admin: ShieldUserIcon,
+} as const;
+
+const NAV_LABEL_KEYS = {
+	home: "app.menu.home",
+	inbox: "app.menu.inbox",
+	international: "app.menu.international",
+} as const;
+
+const SECTION_LABEL_KEYS = {
+	general: "settings.menu.account.general",
+	security: "settings.menu.account.security",
+	notifications: "settings.menu.account.notifications",
+	billing: "settings.menu.account.billing",
 } as const;
 
 function NavItemLink({
 	item,
+	label,
 	onNavigate,
 	showLabel,
 }: {
-	item: AppNavItem;
+	item: WalkNavItem;
+	label: string;
 	onNavigate?: () => void;
 	showLabel: boolean;
 }) {
@@ -72,13 +64,13 @@ function NavItemLink({
 		return (
 			<SidebarMenuButton
 				isActive={false}
-				tooltip={item.label}
+				tooltip={label}
 				disabled
 				aria-disabled
 				className="opacity-45"
 			>
 				<Icon />
-				<span className={cn(!showLabel && "sr-only")}>{item.label}</span>
+				<span className={cn(!showLabel && "sr-only")}>{label}</span>
 			</SidebarMenuButton>
 		);
 	}
@@ -86,7 +78,7 @@ function NavItemLink({
 	return (
 		<SidebarMenuButton
 			isActive={item.isActive}
-			tooltip={item.label}
+			tooltip={label}
 			className={
 				item.isActive
 					? "shadow-[inset_2px_0_0_var(--sidebar-primary)] data-[active=true]:bg-sidebar-accent"
@@ -95,7 +87,7 @@ function NavItemLink({
 			render={(props) => (
 				<LocaleLink {...props} href={item.href} onClick={onNavigate} prefetch>
 					<Icon />
-					<span className={cn(!showLabel && "sr-only")}>{item.label}</span>
+					<span className={cn(!showLabel && "sr-only")}>{label}</span>
 				</LocaleLink>
 			)}
 		/>
@@ -105,98 +97,18 @@ function NavItemLink({
 export function NavBar() {
 	const t = useTranslations();
 	const pathname = useLocalePathname();
-	const { check } = usePermissions();
-	const { activeOrganization } = useActiveOrganization();
 	const { isMobile, setOpenMobile, state } = useSidebar();
-	const canAccessAdmin = check("admin.access");
-	const canManageOrganization = check("organization.manage");
-	const canManageOrganizationBilling = check("organization.manageBilling");
 	const showLabels = isMobile || state === "expanded";
 
-	const basePath = activeOrganization ? `/${activeOrganization.slug}` : "";
-	const startHref = basePath || "/";
-
-	const menuItems = useMemo(
-		() =>
-			buildAppNavItems({
-				pathname,
-				startHref,
-				basePath,
-				canAccessAdmin,
-				canManageOrganization,
-				canManageOrganizationBilling,
-				organizationsEnabled: authConfig.organizations.enable,
-				hasActiveOrganization: Boolean(activeOrganization),
-				billingAttachedTo: paymentsConfig.billingAttachedTo,
-				labels: {
-					home: t("app.menu.home"),
-					inbox: t("app.menu.inbox"),
-					international: t("app.menu.international"),
-					organizationSettings: t("app.menu.organizationSettings"),
-					accountSettings: t("app.menu.accountSettings"),
-					admin: t("app.menu.admin"),
-					accountGeneral: t("settings.menu.account.general"),
-					accountSecurity: t("settings.menu.account.security"),
-					accountNotifications: t("settings.menu.account.notifications"),
-					accountBilling: t("settings.menu.account.billing"),
-					organizationGeneral: t("settings.menu.organization.general"),
-					organizationMembers: t("settings.menu.organization.members"),
-					organizationBilling: t("settings.menu.organization.billing"),
-				},
-			}),
-		[
-			activeOrganization,
-			basePath,
-			canAccessAdmin,
-			canManageOrganization,
-			canManageOrganizationBilling,
-			pathname,
-			startHref,
-			t,
-		],
-	);
-
-	const groups = groupAppNavItems(menuItems);
-	const groupLabels: Record<(typeof groups)[number]["id"], string> = {
-		workspace: t("app.menu.groupWorkspace"),
-		account: t("app.menu.groupAccount"),
-	};
+	const items = buildWalkNav(pathname);
+	const settingsSections = buildSettingsSections(pathname, {
+		billingAttachedToUser: paymentsConfig.billingAttachedTo === "user",
+	});
 
 	function closeMobileNav() {
 		if (isMobile) {
 			setOpenMobile(false);
 		}
-	}
-
-	const accountGroup = groups.find((group) => group.id === "account");
-	const contentGroups = groups.filter((group) => group.id !== "account");
-	const activeSettingsItem = accountGroup?.items.find(
-		(item) => item.isActive && item.subItems?.length,
-	);
-	const settingsSubItems = activeSettingsItem?.subItems ?? null;
-
-	function renderItems(items: AppNavItem[]) {
-		return items.map((item) => (
-			<SidebarMenuItem key={item.id}>
-				<NavItemLink item={item} onNavigate={closeMobileNav} showLabel={showLabels} />
-				{item.subItems?.length && item.isActive && showLabels ? (
-					<SidebarMenuSub>
-						{item.subItems.map((subItem) => (
-							<SidebarMenuSubItem key={subItem.href}>
-								<SidebarMenuSubButton
-									isActive={isNavSubItemActive(pathname, subItem.href)}
-									render={(props) => (
-										<LocaleLink {...props} href={subItem.href} onClick={closeMobileNav} prefetch>
-											<span>{subItem.label}</span>
-										</LocaleLink>
-									)}
-								/>
-							</SidebarMenuSubItem>
-						))}
-					</SidebarMenuSub>
-				) : null}
-			</SidebarMenuItem>
-		));
 	}
 
 	return (
@@ -230,43 +142,45 @@ export function NavBar() {
 					</SidebarMenu>
 					<NotificationCenter className="shrink-0" />
 				</div>
-				{authConfig.organizations.enable && !authConfig.organizations.hideOrganization ? (
-					<OrganzationSelect
-						className={cn(!showLabels && "flex justify-center")}
-						collapsed={!showLabels}
-					/>
-				) : null}
 			</SidebarHeader>
 			<SidebarContent>
-				{contentGroups.map((group, index) => (
-					<SidebarGroup key={group.id}>
-						{index > 0 ? <SidebarSeparator className="mb-2" /> : null}
-						<SidebarGroupLabel>{groupLabels[group.id]}</SidebarGroupLabel>
-						<SidebarGroupContent>
-							<SidebarMenu>{renderItems(group.items)}</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
-				))}
+				<SidebarGroup>
+					<SidebarGroupLabel>{t("app.menu.groupWorkspace")}</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{items.map((item) => (
+								<SidebarMenuItem key={item.id}>
+									<NavItemLink
+										item={item}
+										label={t(NAV_LABEL_KEYS[item.id])}
+										onNavigate={closeMobileNav}
+										showLabel={showLabels}
+									/>
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
-				{/* The user row below opens Account settings; while a settings page is active its
+				{/* The user row opens Account settings; while a settings page is active its
 				    sections show here so they stay reachable. */}
-				{settingsSubItems && showLabels ? (
+				{settingsSections && showLabels ? (
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuSub>
-								{settingsSubItems.map((subItem) => (
-									<SidebarMenuSubItem key={subItem.href}>
+								{settingsSections.map((section) => (
+									<SidebarMenuSubItem key={section.href}>
 										<SidebarMenuSubButton
-											isActive={isNavSubItemActive(pathname, subItem.href)}
+											isActive={section.isActive}
 											render={(props) => (
 												<LocaleLink
 													{...props}
-													href={subItem.href}
+													href={section.href}
 													onClick={closeMobileNav}
 													prefetch
 												>
-													<span>{subItem.label}</span>
+													<span>{t(SECTION_LABEL_KEYS[section.id])}</span>
 												</LocaleLink>
 											)}
 										/>
