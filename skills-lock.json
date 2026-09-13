@@ -7,6 +7,12 @@
 			"skillPath": "skills/taste-skill/SKILL.md",
 			"computedHash": "6d838b246d0e35d0b53f4f23f98ba7a1dd561937e64f7d0c7553b0928e376c3e"
 		},
+		"improve-codebase-architecture": {
+			"source": "mattpocock/skills",
+			"sourceType": "github",
+			"skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+			"computedHash": "2449db6ab1ded9581f69fcc56c1f64818112d05e271fd4c5da23c6523f9d3d9d"
+		},
 		"redesign-existing-projects": {
 			"source": "Leonxlnx/taste-skill",
 			"sourceType": "github",
