@@ -779,6 +779,7 @@
 		"queueCount": "{count, plural, =0 {Không có cuộc nào cần trả lời} other {# cuộc cần trả lời}}",
 		"allCaughtUp": "Đã xử lý hết.",
 		"viewSent": "Xem đã gửi",
-		"sentTo": "Đã gửi cho {name}"
+		"sentTo": "Đã gửi cho {name}",
+		"sendFailed": "Gửi không thành công."
 	}
 }

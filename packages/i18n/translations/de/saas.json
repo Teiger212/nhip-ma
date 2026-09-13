@@ -781,6 +781,7 @@
 		"queueCount": "{count, plural, =0 {Nichts wartet auf Antwort} one {# wartet auf Antwort} other {# warten auf Antwort}}",
 		"allCaughtUp": "Alles erledigt.",
 		"viewSent": "Gesendete anzeigen",
-		"sentTo": "Gesendet an {name}"
+		"sentTo": "Gesendet an {name}",
+		"sendFailed": "Senden fehlgeschlagen."
 	}
 }

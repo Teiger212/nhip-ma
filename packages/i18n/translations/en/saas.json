@@ -779,6 +779,7 @@
 		"queueCount": "{count, plural, =0 {Nothing needs a reply} one {# needs a reply} other {# need a reply}}",
 		"allCaughtUp": "All caught up.",
 		"viewSent": "View sent",
-		"sentTo": "Sent to {name}"
+		"sentTo": "Sent to {name}",
+		"sendFailed": "Send failed."
 	}
 }

@@ -779,6 +779,7 @@
 		"queueCount": "{count, plural, =0 {Rien à répondre} one {# à répondre} other {# à répondre}}",
 		"allCaughtUp": "Tout est traité.",
 		"viewSent": "Voir les envoyés",
-		"sentTo": "Envoyé à {name}"
+		"sentTo": "Envoyé à {name}",
+		"sendFailed": "L'envoi a échoué."
 	}
 }
