@@ -19,6 +19,7 @@ import { POST as approve } from "../../../app/api/conversations/[id]/approve/rou
 import { GET as getConversation } from "../../../app/api/conversations/[id]/route";
 import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
+import { mockInboxConfig } from "./config";
 import { whatsappWindowState } from "./pipes";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 
@@ -39,11 +40,7 @@ beforeEach(() => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
 	setRuntimeForTests({
 		store: createInboxStore(path.join(dir, "nhip.db")),
-		sendMode: "mock",
-		env: {
-			WHATSAPP_VERIFY_TOKEN: "verify-me",
-			SEND_MODE: "mock",
-		},
+		config: mockInboxConfig({ whatsapp: { verifyToken: "verify-me" } }),
 	});
 });
 
@@ -491,7 +488,7 @@ test("approve does not echo vendor error bodies", async () => {
 	const runtime = peekTestRuntime();
 	if (!runtime) throw new Error("runtime missing");
 	// Live mode with no token: transmit throws before any network call.
-	setRuntimeForTests({ ...runtime, sendMode: "live", env: { SEND_MODE: "live" } });
+	setRuntimeForTests({ ...runtime, config: mockInboxConfig({ sendMode: "live" }) });
 	const failed = await json(
 		await approve(
 			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {

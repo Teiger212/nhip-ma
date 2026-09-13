@@ -75,7 +75,7 @@ export async function approveAndSend(
 	replyOverride?: string,
 	viewer?: InboxViewer,
 ): Promise<ApproveResult> {
-	const { store, sendMode, env } = getRuntime();
+	const { store, config } = getRuntime();
 	const conv = await store.getConversation(id, viewer);
 	if (!conv) {
 		return { ok: false, status: 404, error: "not_found" };
@@ -120,12 +120,7 @@ export async function approveAndSend(
 	}
 
 	try {
-		const result = await transmit({
-			conversation: conv,
-			text,
-			mode: sendMode,
-			env,
-		});
+		const result = await transmit({ conversation: conv, text, config });
 		const updated = await store.recordApprovedSend(conv.id, text, result);
 		if (!updated) {
 			return { ok: false, status: 404, error: "not_found" };

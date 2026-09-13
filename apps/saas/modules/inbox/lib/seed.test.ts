@@ -5,6 +5,7 @@ import path from "node:path";
 import { createInboxStore, sqliteFilePath, sqlitePathFromEnv } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
+import { mockInboxConfig } from "./config";
 import { oneShot } from "./draft";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
@@ -51,8 +52,7 @@ test("seed writes invented threads once", async () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
 	setRuntimeForTests({
 		store: createInboxStore(path.join(dir, "nhip.db")),
-		sendMode: "mock",
-		env: { SEND_MODE: "mock" },
+		config: mockInboxConfig(),
 	});
 	const first = await seedInbox();
 	expect(first.length).toBe(4);

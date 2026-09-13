@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 
+import { mockInboxConfig } from "./config";
 import { transmit } from "./pipes";
 import { resolveSendMode } from "./runtime";
 import type { Conversation } from "./types";
@@ -20,11 +21,7 @@ test("transmit stays mock when mode is not live even if tokens exist", async () 
 	const result = await transmit({
 		conversation,
 		text: "hello",
-		mode: "mock",
-		env: {
-			WHATSAPP_ACCESS_TOKEN: "token",
-			WHATSAPP_PHONE_NUMBER_ID: "phone",
-		},
+		config: mockInboxConfig({ whatsapp: { accessToken: "token", phoneNumberId: "phone" } }),
 	});
 	expect(result.mock).toBe(true);
 	expect(result.pipe).toBe("whatsapp");

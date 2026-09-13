@@ -29,7 +29,6 @@ export type {
 	Qualification,
 	SendMode,
 	SendResult,
-	InboxEnv,
 } from "./types";
 export { conversationId, createInboxStore, createStore, nowIso } from "./store";
 export { DEFAULT_SQLITE_PATH, sqliteFilePath, sqlitePathFromEnv } from "./sqlite-path";

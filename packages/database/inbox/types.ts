@@ -96,20 +96,6 @@ export type InboundEvent = {
 /** Who is reading. Threads are visible when unowned or owned by this user. */
 export type InboxViewer = { userId: string };
 
-export type InboxEnv = {
-	DATABASE_URL?: string;
-	SEND_MODE?: string;
-	WHATSAPP_VERIFY_TOKEN?: string;
-	WHATSAPP_APP_SECRET?: string;
-	WHATSAPP_ACCESS_TOKEN?: string;
-	WHATSAPP_PHONE_NUMBER_ID?: string;
-	ZALO_OA_ACCESS_TOKEN?: string;
-	ZALO_OA_SECRET_KEY?: string;
-	/** Owner assigned to threads created by webhooks. Unset means unowned. */
-	INBOX_OWNER_USER_ID?: string;
-	[key: string]: string | undefined;
-};
-
 export type InboxStore = {
 	filePath: string;
 	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;

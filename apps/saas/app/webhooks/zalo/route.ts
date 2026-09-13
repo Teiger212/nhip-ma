@@ -10,12 +10,12 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-	const { store, env } = getRuntime();
+	const { store, config } = getRuntime();
 	const raw = await request.text();
 	const ok = verifyZaloSignature(
 		raw,
 		request.headers.get("x-zevent-signature"),
-		env.ZALO_OA_SECRET_KEY,
+		config.zalo.oaSecretKey,
 	);
 	if (!ok) {
 		return new NextResponse("bad signature", { status: 403 });
@@ -29,6 +29,6 @@ export async function POST(request: Request): Promise<Response> {
 			body = {};
 		}
 	}
-	await ingestEvents(store, parseZaloWebhook(body), env.INBOX_OWNER_USER_ID || null);
+	await ingestEvents(store, parseZaloWebhook(body), config.webhookOwnerUserId);
 	return NextResponse.json({ ok: true });
 }

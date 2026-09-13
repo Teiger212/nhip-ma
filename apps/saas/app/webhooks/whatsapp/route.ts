@@ -10,7 +10,7 @@ export async function GET(request: Request): Promise<Response> {
 	const mode = url.searchParams.get("hub.mode");
 	const token = url.searchParams.get("hub.verify_token");
 	const challenge = url.searchParams.get("hub.challenge");
-	const expected = getRuntime().env.WHATSAPP_VERIFY_TOKEN;
+	const expected = getRuntime().config.whatsapp.verifyToken;
 	if (mode === "subscribe" && token && token === expected) {
 		return new NextResponse(String(challenge || ""), { status: 200 });
 	}
@@ -18,12 +18,12 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-	const { store, env } = getRuntime();
+	const { store, config } = getRuntime();
 	const raw = await request.text();
 	const ok = verifyWhatsAppSignature(
 		raw,
 		request.headers.get("x-hub-signature-256"),
-		env.WHATSAPP_APP_SECRET,
+		config.whatsapp.appSecret,
 	);
 	if (!ok) {
 		return new NextResponse("bad signature", { status: 403 });
@@ -37,6 +37,6 @@ export async function POST(request: Request): Promise<Response> {
 			body = {};
 		}
 	}
-	await ingestEvents(store, parseWhatsAppWebhook(body), env.INBOX_OWNER_USER_ID || null);
+	await ingestEvents(store, parseWhatsAppWebhook(body), config.webhookOwnerUserId);
 	return NextResponse.json({ ok: true });
 }

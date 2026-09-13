@@ -2,7 +2,8 @@ import crypto from "crypto";
 
 import { z } from "zod";
 
-import type { Conversation, InboundEvent, Pipe, SendResult, InboxEnv } from "./types";
+import type { InboxConfig } from "./config";
+import type { Conversation, InboundEvent, Pipe, SendResult } from "./types";
 
 export const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -326,12 +327,11 @@ async function sendZalo(input: {
 export async function transmit(input: {
 	conversation: Conversation;
 	text: string;
-	mode: string;
-	env: InboxEnv;
+	config: InboxConfig;
 }): Promise<SendResult> {
 	const pipe: Pipe = input.conversation.pipe;
 	const to = input.conversation.guestId;
-	if (input.mode !== "live") {
+	if (input.config.sendMode !== "live") {
 		return {
 			mock: true,
 			pipe,
@@ -342,8 +342,7 @@ export async function transmit(input: {
 	}
 
 	if (pipe === "whatsapp") {
-		const accessToken = input.env.WHATSAPP_ACCESS_TOKEN;
-		const phoneNumberId = input.env.WHATSAPP_PHONE_NUMBER_ID;
+		const { accessToken, phoneNumberId } = input.config.whatsapp;
 		if (!accessToken || !phoneNumberId) {
 			throw new Error(
 				"WhatsApp live send needs WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID",
@@ -352,7 +351,7 @@ export async function transmit(input: {
 		return sendWhatsApp({ to, text: input.text, accessToken, phoneNumberId });
 	}
 
-	const accessToken = input.env.ZALO_OA_ACCESS_TOKEN;
+	const accessToken = input.config.zalo.accessToken;
 	if (!accessToken) {
 		throw new Error("Zalo live send needs ZALO_OA_ACCESS_TOKEN");
 	}
