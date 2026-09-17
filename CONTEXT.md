@@ -29,6 +29,15 @@ is renamed.
 
 - **Inbox**: the agent's screen. A **queue**, not a mailbox: the default view is what
   waits on the operator, oldest waiting guest first.
+
+## Queue
+
+- **Your turn**: the guest spoke last. The only pending state. A fact, not a judgment.
+- **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
+  at the bottom of the queue, still Your turn.
+- **Sent**: the office spoke last.
+- **Resolved**: the CRM reports won or lost. Leaves the queue; visible under Sent / All.
+- There is no dismiss. The queue empties through sends and outcomes (ADR 0004).
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not
   gated by role. Office-level only. The headline is the **funnel** (ADR 0002); response
   time is a supporting widget. No per-agent breakdown (future feature).
