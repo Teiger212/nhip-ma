@@ -1,29 +1,10 @@
 import { getMessagesForLocale, type SaasMessages } from "@repo/i18n";
 import { expect, test } from "vitest";
 
-import enSaas from "../../../../../packages/i18n/translations/en/saas.json";
-import viSaas from "../../../../../packages/i18n/translations/vi/saas.json";
 import { formatConversationCrib, formatCribNotes } from "./crib";
 import { emptyQualification } from "./extract";
+import { inboxEn as en, inboxVi as vi } from "./test-translate";
 import type { GuestLanguage, Qualification } from "./types";
-
-function translate(messages: Record<string, unknown>) {
-	return (key: string, values: Record<string, string> = {}) => {
-		const raw = key.split(".").reduce<unknown>((acc, part) => {
-			if (!acc || typeof acc !== "object") {
-				return undefined;
-			}
-			return (acc as Record<string, unknown>)[part];
-		}, messages);
-		if (typeof raw !== "string") {
-			throw new Error(`Missing inbox key ${key}`);
-		}
-		return raw.replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? "");
-	};
-}
-
-const en = translate(enSaas.inbox);
-const vi = translate(viSaas.inbox);
 
 const thao: Qualification = {
 	...emptyQualification(),
@@ -66,10 +47,11 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.userMenu.logout).toBe("Đăng xuất");
 	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
-	expect(enMessages.inbox.editReply).toBe("Edit reply");
-	expect(viMessages.inbox.editReply).toBe("Sửa trả lời");
-	expect(enMessages.inbox.editReplyAria).toBe("Scroll to the reply box and edit it");
-	expect(viMessages.inbox.editReplyAria).toBe("Cuộn tới ô trả lời và sửa");
+	expect(enMessages.inbox.views.needsReply).toBe("Needs reply");
+	expect(viMessages.inbox.views.needsReply).toBe("Cần trả lời");
+	expect(enMessages.inbox.sentTo).toBe("Sent to {name}");
+	expect(viMessages.inbox.sentTo).toBe("Đã gửi cho {name}");
+	expect(enMessages.inbox).not.toHaveProperty("editReply");
 	expect(enMessages.inbox.fields.rentOrBuy).toBe("Rent or buy");
 	expect(viMessages.inbox.fields.rentOrBuy).toBe("Thuê hoặc mua");
 	expect(enMessages.inbox.intent.rent).toBe("Rent");
@@ -138,7 +120,7 @@ test("empty one-shot facts use the empty-facts crib string", () => {
 				language: "en",
 				qualification: emptyQualification(),
 				paperwork: { mentioned: false, flag: null },
-				draft: { reply: "", crib: "", cribLanguage: "vi" },
+				draft: { reply: "" },
 			},
 		},
 		en,

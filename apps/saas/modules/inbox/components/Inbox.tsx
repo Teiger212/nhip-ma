@@ -1,72 +1,32 @@
 "use client";
 
-import { Badge, Button, cn, Input, Skeleton, Textarea } from "@repo/ui";
+import { Badge, Button, cn, Input, Skeleton, Textarea, toast } from "@repo/ui";
 import { ChevronLeftIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	type CSSProperties,
-	type ReactNode,
-} from "react";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
-import { arrangeExtractRows, isEmptyExtractValue } from "../lib/extract-rows";
+import { arrangeExtractRows, type ExtractRow } from "../lib/extract-rows";
 import { guestInitials } from "../lib/guest-initials";
-import { lastInboundText, matchesThreadSearch } from "../lib/search";
+import { useApproveAndSend, useConversations } from "../lib/inbox-queries";
+import { buildQueueView, INBOX_VIEWS, nextSelection } from "../lib/queue";
+import { lastInboundText } from "../lib/search";
 import { formatInboxTimestamp } from "../lib/time";
 import type { Conversation, Message } from "../lib/types";
 
 /** Desktop thread-list column. Same used width, min, and max so detail content cannot flex it. */
 const INBOX_LIST_WIDTH = "22rem";
 
-function field(value: unknown, labels: { missing: string; yes: string; no: string }): string {
-	if (value === null || value === undefined || value === "") {
-		return labels.missing;
-	}
-	if (value === true) {
-		return labels.yes;
-	}
-	if (value === false) {
-		return labels.no;
-	}
-	if (typeof value === "string" || typeof value === "number") {
-		return String(value);
-	}
-	return labels.missing;
-}
-
 function displayName(conversation: Conversation): string {
 	return conversation.guestName || conversation.guestId;
-}
-
-function pipeLabel(pipe: Conversation["pipe"], t: (key: string) => string): string {
-	return t(`pipes.${pipe}`);
-}
-
-async function api<T>(url: string, opts?: RequestInit): Promise<T> {
-	const res = await fetch(url, opts);
-	const data = (await res.json().catch(() => ({}))) as T & {
-		error?: string;
-		message?: string;
-	};
-	if (!res.ok) {
-		throw Object.assign(new Error(data.message || data.error || res.statusText), {
-			data,
-			status: res.status,
-		});
-	}
-	return data;
 }
 
 function GuestMark({ name }: { name: string }) {
 	return (
 		<span
 			aria-hidden="true"
-			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-md bg-touch/12 text-[0.7rem] text-touch"
+			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-full rounded-md bg-primary bg-touch/12 text-[0.7rem] text-primary-foreground text-touch"
 		>
 			{guestInitials(name)}
 		</span>
@@ -83,7 +43,7 @@ function CompactFlag({
 	return (
 		<span
 			className={cn(
-				"h-5 px-1.5 font-medium inline-flex items-center rounded-md text-[11px] leading-none",
+				"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
 				tone === "neutral" && "bg-muted text-muted-foreground",
 				tone === "warning" && "bg-warning/12 text-warning",
 				tone === "success" && "bg-success/12 text-success",
@@ -94,112 +54,65 @@ function CompactFlag({
 	);
 }
 
-function ExtractRowList({ rows }: { rows: Array<{ id: string; label: string; value: string }> }) {
+function ThreadFlags({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
 	return (
+		<>
+			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
+			<CompactFlag tone={conversation.sentAt ? "success" : "warning"}>
+				{conversation.sentAt ? t("sent") : t("needsApprove")}
+			</CompactFlag>
+		</>
+	);
+}
+
+/** Translate one extract row for display. Presence was decided upstream from the value. */
+function useExtractRowText() {
+	const t = useTranslations("inbox");
+	return (row: ExtractRow): { label: string; value: string } => {
+		const label = t(`fields.${row.id}`);
+		if (!row.present) {
+			return { label, value: row.id === "paperwork" ? t("fields.noneMentioned") : t("missing") };
+		}
+		switch (row.id) {
+			case "language":
+				return { label, value: t(`guestLanguage.${String(row.value)}`) };
+			case "rentOrBuy":
+				return { label, value: t(`intent.${String(row.value)}`) };
+			case "inVietnamNow":
+				return { label, value: row.value ? t("yes") : t("no") };
+			case "paperwork":
+				return { label, value: t("paperworkFlag") };
+			default:
+				return { label, value: String(row.value) };
+		}
+	};
+}
+
+function ExtractRowList({ rows }: { rows: ExtractRow[] }) {
+	const text = useExtractRowText();
+	return (
 		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
-			{rows.map((row) => (
-				<div key={row.id} className="contents">
-					<dt className="font-medium text-muted-foreground">{row.label}</dt>
-					<dd
-						className={
-							isEmptyExtractValue(row.value, [t("missing"), t("fields.noneMentioned")])
-								? "text-muted-foreground"
-								: "font-medium text-foreground"
-						}
-					>
-						{row.value}
-					</dd>
-				</div>
-			))}
+			{rows.map((row) => {
+				const { label, value } = text(row);
+				return (
+					<div key={row.id} className="contents">
+						<dt className="font-medium text-muted-foreground">{label}</dt>
+						<dd className={row.present ? "font-medium text-foreground" : "text-muted-foreground"}>
+							{value}
+						</dd>
+					</div>
+				);
+			})}
 		</dl>
 	);
 }
 
 function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
-	const labels = {
-		missing: t("missing"),
-		yes: t("yes"),
-		no: t("no"),
-	};
-	const q = conversation.oneShot?.qualification;
-	const paper = conversation.oneShot?.paperwork;
-	const language = conversation.oneShot?.language;
-	const languageValue = language ? t(`guestLanguage.${language}`) : t("missing");
-	const areaValue = field(q?.areaOfInterest, labels);
-	const nationalityValue = field(q?.nationality, labels);
-	const inVietnamValue = field(q?.inVietnamNow, labels);
-	const rentOrBuyValue =
-		q?.rentOrBuy === "rent" || q?.rentOrBuy === "buy"
-			? t(`intent.${q.rentOrBuy}`)
-			: field(q?.rentOrBuy, labels);
-	const moveInValue = field(q?.timeframe, labels);
-	const budgetValue = field(q?.budgetBand, labels);
-	const bedsValue = field(q?.bedsOrHousehold, labels);
-	const paperworkMentioned = Boolean(paper?.mentioned);
-	const paperworkValue = paperworkMentioned ? t("paperworkFlag") : t("fields.noneMentioned");
-	const emptyLabels = [t("missing"), t("fields.noneMentioned")];
-	const arranged = arrangeExtractRows([
-		{
-			id: "language",
-			label: t("fields.language"),
-			value: languageValue,
-			isEmpty: !language,
-		},
-		{
-			id: "area",
-			label: t("fields.area"),
-			value: areaValue,
-			isEmpty: isEmptyExtractValue(areaValue, emptyLabels),
-		},
-		{
-			id: "nationality",
-			label: t("fields.nationality"),
-			value: nationalityValue,
-			isEmpty: isEmptyExtractValue(nationalityValue, emptyLabels),
-		},
-		{
-			id: "inVietnamNow",
-			label: t("fields.inVietnamNow"),
-			value: inVietnamValue,
-			isEmpty: isEmptyExtractValue(inVietnamValue, emptyLabels),
-		},
-		{
-			id: "rentOrBuy",
-			label: t("fields.rentOrBuy"),
-			value: rentOrBuyValue,
-			isEmpty: isEmptyExtractValue(rentOrBuyValue, emptyLabels),
-		},
-		{
-			id: "moveIn",
-			label: t("fields.moveIn"),
-			value: moveInValue,
-			isEmpty: isEmptyExtractValue(moveInValue, emptyLabels),
-		},
-		{
-			id: "budget",
-			label: t("fields.budget"),
-			value: budgetValue,
-			isEmpty: isEmptyExtractValue(budgetValue, emptyLabels),
-		},
-		{
-			id: "beds",
-			label: t("fields.beds"),
-			value: bedsValue,
-			isEmpty: isEmptyExtractValue(bedsValue, emptyLabels),
-		},
-		{
-			id: "paperwork",
-			label: t("fields.paperwork"),
-			value: paperworkValue,
-			isEmpty: !paperworkMentioned,
-			forceVisible: paperworkMentioned,
-		},
-	]);
-
+	const arranged = useMemo(() => arrangeExtractRows(conversation.oneShot), [conversation.oneShot]);
 	return (
-		<section className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
+		<section className="gap-2 p-3 flex flex-col rounded-lg rounded-md bg-muted bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>
@@ -244,34 +157,6 @@ function ThreadMessage({ message }: { message: Message }) {
 	);
 }
 
-function SendStatus({
-	status,
-	statusKind,
-	visuallyQuiet,
-}: {
-	status: string;
-	statusKind: "ok" | "warn" | "";
-	visuallyQuiet: boolean;
-}) {
-	return (
-		<output
-			aria-live="polite"
-			aria-atomic="true"
-			className={cn(
-				"text-xs",
-				visuallyQuiet
-					? "sr-only"
-					: cn(
-							"mt-1.5 font-medium block",
-							statusKind === "warn" ? "text-destructive" : "text-muted-foreground",
-						),
-			)}
-		>
-			{status}
-		</output>
-	);
-}
-
 function ThreadListSkeleton() {
 	return (
 		<div className="divide-y" aria-hidden="true">
@@ -298,213 +183,197 @@ function ThreadListState({ title, action }: { title: string; action?: ReactNode 
 	);
 }
 
+function ThreadRow({
+	conversation,
+	active,
+	onOpen,
+}: {
+	conversation: Conversation;
+	active: boolean;
+	onOpen: () => void;
+}) {
+	const locale = useLocale();
+	const preview = lastInboundText(conversation);
+	const name = displayName(conversation);
+	const when = conversation.lastGuestInboundAt;
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			aria-current={active ? "true" : undefined}
+			className={cn(
+				"gap-2.5 px-3 py-2.5 font-normal min-w-0 my-0.5 mx-1.5 h-auto w-[calc(100%-0.75rem)] w-full items-start justify-start overflow-hidden rounded-lg rounded-none border-l-0 border-l-2 border-l-transparent text-left active:scale-100",
+				active
+					? "border-l-touch bg-primary/8 bg-sidebar-accent/80 hover:bg-primary/12 hover:bg-sidebar-accent"
+					: "hover:bg-muted/70",
+			)}
+			onClick={onOpen}
+		>
+			<GuestMark name={name} />
+			<span className="min-w-0 flex-1">
+				<span className="gap-2 flex w-full items-baseline justify-between">
+					<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
+					{when ? (
+						<time
+							className="font-mono shrink-0 text-[11px] text-muted-foreground tabular-nums"
+							dateTime={when}
+						>
+							{formatInboxTimestamp(when, locale)}
+						</time>
+					) : null}
+				</span>
+				{preview ? (
+					<span className="text-xs mt-0.5 leading-snug line-clamp-2 w-full text-muted-foreground">
+						{preview}
+					</span>
+				) : null}
+				<span className="mt-1.5 gap-1 flex flex-wrap items-center">
+					<ThreadFlags conversation={conversation} />
+				</span>
+			</span>
+		</Button>
+	);
+}
+
+/**
+ * The reply box shows the operator's edit for the selected thread, falling back to the
+ * server draft. Edits are keyed by thread id and dropped when that thread is sent, so a
+ * background refetch never overwrites what the operator typed.
+ */
+function useReplyDraft(selected: Conversation | null) {
+	const [edits, setEdits] = useState<Record<string, string>>({});
+	const reply = selected ? (edits[selected.id] ?? selected.oneShot?.draft?.reply ?? "") : "";
+	const setReply = (value: string) => {
+		if (!selected) return;
+		setEdits((current) => ({ ...current, [selected.id]: value }));
+	};
+	const dropEdit = (id: string) =>
+		setEdits((current) => {
+			if (!(id in current)) return current;
+			const next = { ...current };
+			delete next[id];
+			return next;
+		});
+	return { reply, setReply, dropEdit };
+}
+
+const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("needsReply");
+
 export function Inbox() {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
-	const [conversations, setConversations] = useState<Conversation[]>([]);
+	const conversationsQuery = useConversations();
+	const approve = useApproveAndSend();
+	const [view, setView] = useQueryState("view", viewParser);
+	const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""));
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [detailOpen, setDetailOpen] = useState(false);
-	const [query, setQuery] = useState("");
-	const [reply, setReply] = useState("");
-	const [status, setStatus] = useState("");
-	const [statusKind, setStatusKind] = useState<"ok" | "warn" | "">("");
-	const [loading, setLoading] = useState(true);
-	const [loadError, setLoadError] = useState(false);
-	const [approving, setApproving] = useState(false);
-	const replyRef = useRef<HTMLTextAreaElement>(null);
-	const selectedIdRef = useRef(selectedId);
-	const refreshRequestIdRef = useRef(0);
+	const [sendError, setSendError] = useState<string | null>(null);
 
-	useEffect(() => {
-		selectedIdRef.current = selectedId;
-	}, [selectedId]);
-
-	const visible = useMemo(
-		() => conversations.filter((conversation) => matchesThreadSearch(conversation, query)),
-		[conversations, query],
+	const conversations = useMemo(() => conversationsQuery.data ?? [], [conversationsQuery.data]);
+	const queue = useMemo(
+		() => buildQueueView(conversations, view, query),
+		[conversations, view, query],
 	);
-	const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
 
-	const refresh = useCallback(async (keepId?: string | null) => {
-		const requestId = ++refreshRequestIdRef.current;
-		try {
-			const list = await api<Conversation[]>("/api/conversations");
-			if (requestId !== refreshRequestIdRef.current) {
-				return list;
-			}
-			setConversations(list);
-			setLoadError(false);
-			const id = keepId === undefined ? selectedIdRef.current : keepId;
-			const next = list.find((conversation) => conversation.id === id) || list[0] || null;
-			if (next && !id) {
-				setSelectedId(next.id);
-			}
-			if (next?.oneShot?.draft?.reply) {
-				setReply(next.oneShot.draft.reply);
-			}
-			return list;
-		} catch {
-			if (requestId === refreshRequestIdRef.current) {
-				setLoadError(true);
-			}
-			return [];
-		} finally {
-			if (requestId === refreshRequestIdRef.current) {
-				setLoading(false);
-			}
-		}
-	}, []);
-
+	// Selection follows the visible queue: stays put while visible, otherwise advances
+	// (this is what moves to the next waiting guest after a send).
 	useEffect(() => {
-		void refresh();
-	}, [refresh]);
+		const next = nextSelection(queue.visible, selectedId);
+		if (next !== selectedId) setSelectedId(next);
+	}, [queue.visible, selectedId]);
 
-	useEffect(() => {
-		if (!selectedId) {
-			return;
-		}
-		if (visible.some((conversation) => conversation.id === selectedId)) {
-			return;
-		}
-		setSelectedId(visible[0]?.id ?? null);
-	}, [selectedId, visible]);
-
-	useEffect(() => {
-		if (selected?.oneShot?.draft?.reply) {
-			setReply(selected.oneShot.draft.reply);
-		}
-		if (selected?.sentAt) {
-			setStatus(t("alreadySent", { at: formatInboxTimestamp(selected.sentAt, locale) }));
-			setStatusKind("ok");
-		} else if (selected) {
-			setStatus(t("notSent"));
-			setStatusKind("");
-		}
-	}, [selected?.id, selected?.sentAt, selected?.oneShot?.draft?.reply, t, locale]); // oxlint-disable-line eslint-plugin-react-hooks/exhaustive-deps
-
-	async function onApprove() {
-		if (!selected || selected.sentAt || approving) {
-			return;
-		}
-		setApproving(true);
-		setStatus(t("sending"));
-		setStatusKind("");
-		try {
-			const result = await api<{ conversation: Conversation }>(
-				`/api/conversations/${encodeURIComponent(selected.id)}/approve`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ reply }),
-				},
-			);
-			setSelectedId(result.conversation.id);
-			await refresh(result.conversation.id);
-		} catch (err) {
-			const error = err as Error & { data?: { message?: string; error?: string } };
-			setStatusKind("warn");
-			setStatus(error.data?.message || error.data?.error || error.message);
-		} finally {
-			setApproving(false);
-		}
-	}
-
+	const selected = conversations.find((conversation) => conversation.id === selectedId) ?? null;
+	const { reply, setReply, dropEdit } = useReplyDraft(selected);
 	const cribNotes = selected
 		? formatConversationCrib(selected, (key, values) => t(key, values))
 		: null;
+
+	async function onApprove() {
+		if (!selected || selected.sentAt || approve.isPending) return;
+		setSendError(null);
+		try {
+			const result = await approve.mutateAsync({ id: selected.id, reply });
+			dropEdit(selected.id);
+			toast.add({
+				title: t("sentTo", { name: displayName(result.conversation) }),
+				type: "success",
+			});
+			if (view !== "needsReply") setSelectedId(result.conversation.id);
+		} catch (error) {
+			setSendError(error instanceof Error ? error.message : t("sendFailed"));
+		}
+	}
 
 	function openThread(id: string) {
 		setSelectedId(id);
 		setDetailOpen(true);
 	}
 
-	function focusReply() {
-		const field = replyRef.current;
-		if (!field) {
-			return;
-		}
-		field.scrollIntoView({ block: "center" });
-		field.focus();
-	}
+	const sendStatus = approve.isPending
+		? { text: t("sending"), kind: "" as const, quiet: false }
+		: sendError
+			? { text: sendError, kind: "warn" as const, quiet: false }
+			: selected?.sentAt
+				? {
+						text: t("alreadySent", { at: formatInboxTimestamp(selected.sentAt, locale) }),
+						kind: "ok" as const,
+						quiet: false,
+					}
+				: { text: t("notSent"), kind: "" as const, quiet: true };
 
 	function listBody() {
-		if (loading && conversations.length === 0 && !loadError) {
-			return <ThreadListSkeleton />;
+		if (conversationsQuery.isPending) return <ThreadListSkeleton />;
+		if (conversationsQuery.isError) {
+			return (
+				<ThreadListState
+					title={t("loadError")}
+					action={
+						<Button
+							type="button"
+							variant="outline"
+							className="mt-3 min-h-11"
+							onClick={() => void conversationsQuery.refetch()}
+						>
+							{t("retry")}
+						</Button>
+					}
+				/>
+			);
 		}
-		if (visible.length === 0) {
-			const title = loadError
-				? t("loadError")
-				: conversations.length === 0
+		if (queue.visible.length === 0) {
+			const title =
+				conversations.length === 0
 					? t("empty")
-					: t("noMatches");
+					: queue.caughtUp
+						? t("allCaughtUp")
+						: t("noMatches");
 			return (
 				<ThreadListState
 					title={title}
 					action={
-						loadError ? (
+						queue.caughtUp && queue.counts.sent > 0 ? (
 							<Button
 								type="button"
 								variant="outline"
 								className="mt-3 min-h-11"
-								onClick={() => {
-									setLoading(true);
-									void refresh();
-								}}
+								onClick={() => void setView("sent")}
 							>
-								{t("retry")}
+								{t("viewSent")}
 							</Button>
 						) : null
 					}
 				/>
 			);
 		}
-		return visible.map((conversation) => {
-			const active = conversation.id === selectedId;
-			const preview = lastInboundText(conversation);
-			const name = displayName(conversation);
-			const when = conversation.lastGuestInboundAt;
-			return (
-				<Button
-					key={conversation.id}
-					type="button"
-					variant="ghost"
-					aria-current={active ? "true" : undefined}
-					className={cn(
-						"gap-2.5 px-3 py-2.5 font-normal min-w-0 h-auto w-full items-start justify-start overflow-hidden rounded-none border-l-2 border-l-transparent text-left active:scale-100",
-						active
-							? "border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
-							: "hover:bg-muted/70",
-					)}
-					onClick={() => openThread(conversation.id)}
-				>
-					<GuestMark name={name} />
-					<span className="min-w-0 flex-1">
-						<span className="gap-2 flex w-full items-baseline justify-between">
-							<span className="font-semibold tracking-tight truncate">{name}</span>
-							{when ? (
-								<time
-									className="font-mono shrink-0 text-[11px] text-muted-foreground tabular-nums"
-									dateTime={when}
-								>
-									{formatInboxTimestamp(when, locale)}
-								</time>
-							) : null}
-						</span>
-						{preview ? (
-							<span className="text-xs mt-0.5 leading-snug line-clamp-2 w-full text-muted-foreground">
-								{preview}
-							</span>
-						) : null}
-						<span className="mt-1.5 gap-1 flex flex-wrap items-center">
-							<CompactFlag tone="neutral">{pipeLabel(conversation.pipe, t)}</CompactFlag>
-							<CompactFlag tone={conversation.sentAt ? "success" : "warning"}>
-								{conversation.sentAt ? t("sent") : t("needsApprove")}
-							</CompactFlag>
-						</span>
-					</span>
-				</Button>
-			);
-		});
+		return queue.visible.map((conversation) => (
+			<ThreadRow
+				key={conversation.id}
+				conversation={conversation}
+				active={conversation.id === selectedId}
+				onOpen={() => openThread(conversation.id)}
+			/>
+		));
 	}
 
 	return (
@@ -523,12 +392,47 @@ export function Inbox() {
 					<Input
 						id="inbox-search"
 						value={query}
-						onChange={(event) => setQuery(event.target.value)}
+						onChange={(event) => void setQuery(event.target.value || null)}
 						placeholder={t("searchPlaceholder")}
 						aria-label={t("searchAria")}
-						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-md shadow-none"
+						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-full rounded-md border-transparent bg-muted shadow-none"
 					/>
 				</div>
+			</div>
+			<div
+				className={cn(
+					"px-3 py-2 gap-2 flex shrink-0 flex-wrap items-center justify-between border-b",
+					detailOpen && "md:flex hidden",
+				)}
+			>
+				<div className="gap-0 p-0.5 inline-flex rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
+					{INBOX_VIEWS.map((option) => {
+						const active = option === view;
+						return (
+							<button
+								key={option}
+								type="button"
+								aria-pressed={active}
+								onClick={() => void setView(option)}
+								className={cn(
+									"h-8 px-3 text-xs font-semibold gap-1.5 inline-flex cursor-pointer items-center rounded-full transition-colors",
+									"focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+									active
+										? "shadow-xs border border-border bg-background text-foreground"
+										: "text-muted-foreground hover:text-foreground",
+								)}
+							>
+								{t(`views.${option}`)}
+								<span className="font-mono text-[10px] tabular-nums opacity-70">
+									{queue.counts[option]}
+								</span>
+							</button>
+						);
+					})}
+				</div>
+				<p className="text-xs text-muted-foreground" aria-live="polite">
+					{t("queueCount", { count: queue.counts.needsReply })}
+				</p>
 			</div>
 			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
 				<aside
@@ -542,7 +446,7 @@ export function Inbox() {
 				>
 					<div
 						className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
-						aria-busy={loading}
+						aria-busy={conversationsQuery.isFetching}
 					>
 						{listBody()}
 					</div>
@@ -557,7 +461,7 @@ export function Inbox() {
 						<ThreadListState title={t("noneSelected")} />
 					) : (
 						<>
-							<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40">
+							<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40 bg-muted/60">
 								<Button
 									type="button"
 									variant="ghost"
@@ -569,11 +473,8 @@ export function Inbox() {
 									{t("back")}
 								</Button>
 								<GuestMark name={displayName(selected)} />
-								<p className="font-semibold tracking-tight">{displayName(selected)}</p>
-								<CompactFlag tone="neutral">{pipeLabel(selected.pipe, t)}</CompactFlag>
-								<CompactFlag tone={selected.sentAt ? "success" : "warning"}>
-									{selected.sentAt ? t("sent") : t("needsApprove")}
-								</CompactFlag>
+								<p className="font-semibold tracking-tight font-heading">{displayName(selected)}</p>
+								<ThreadFlags conversation={selected} />
 							</header>
 							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 								<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
@@ -583,53 +484,54 @@ export function Inbox() {
 									<div className="border-t" />
 									<ExtractFields conversation={selected} />
 									{cribNotes ? (
-										<section className="gap-1.5 p-3 flex flex-col rounded-md bg-touch/8">
+										<section className="gap-1.5 p-3 flex flex-col rounded-lg rounded-md border-l-2 border-l-primary bg-primary/6 bg-touch/8">
 											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
 											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
 											<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
 										</section>
 									) : null}
 									<section className="gap-1.5 flex flex-col">
-										<label htmlFor="inbox-reply" className="font-semibold tracking-tight text-sm">
+										<label
+											htmlFor="inbox-reply"
+											className="font-semibold tracking-tight text-sm font-heading"
+										>
 											{t("reply")}
 										</label>
 										<Textarea
 											id="inbox-reply"
-											ref={replyRef}
 											value={reply}
 											onChange={(event) => setReply(event.target.value)}
-											className="min-h-28 text-sm rounded-md shadow-none"
+											className="min-h-28 text-sm rounded-lg rounded-md shadow-none"
 											aria-label={t("reply")}
 										/>
 									</section>
 								</div>
 							</div>
-							<div className="px-3 py-2.5 shrink-0 border-t bg-card">
-								<div className="gap-2 flex flex-wrap items-center">
-									<Button
-										type="button"
-										variant="primary"
-										className="min-h-11"
-										disabled={Boolean(selected.sentAt) || approving}
-										onClick={() => void onApprove()}
-									>
-										{t("approveAndSend")}
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="min-h-11"
-										onClick={focusReply}
-										aria-label={t("editReplyAria")}
-									>
-										{t("editReply")}
-									</Button>
-								</div>
-								<SendStatus
-									status={status}
-									statusKind={statusKind}
-									visuallyQuiet={!selected.sentAt && !approving && statusKind !== "warn"}
-								/>
+							<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-card bg-muted/40">
+								<output
+									aria-live="polite"
+									aria-atomic="true"
+									className={cn(
+										"text-xs",
+										sendStatus.quiet
+											? "sr-only"
+											: cn(
+													"font-medium min-w-0 flex-1 truncate",
+													sendStatus.kind === "warn" ? "text-destructive" : "text-muted-foreground",
+												),
+									)}
+								>
+									{sendStatus.text}
+								</output>
+								<Button
+									type="button"
+									variant="primary"
+									className="min-h-11 ml-auto shrink-0"
+									disabled={Boolean(selected.sentAt) || approve.isPending}
+									onClick={() => void onApprove()}
+								>
+									{t("approveAndSend")}
+								</Button>
 							</div>
 						</>
 					)}

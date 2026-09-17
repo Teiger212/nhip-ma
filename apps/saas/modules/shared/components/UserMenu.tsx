@@ -2,7 +2,7 @@
 
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
-import { LocaleLink } from "@i18n/routing";
+import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import {
 	cn,
@@ -34,6 +34,8 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const t = useTranslations();
 	const { user } = useSession();
 	const isMobile = useIsMobile();
+	const pathname = useLocalePathname();
+	const settingsActive = pathname.startsWith("/settings/");
 	const marketingUrl = config.marketingUrl;
 
 	const onLogout = async () => {
@@ -57,33 +59,62 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const dropdownSide = isMobile ? "bottom" : showUserName ? "top" : "right";
 	const dropdownAlign = isMobile || !showUserName ? "end" : "start";
 
+	const rowClassName =
+		"flex cursor-pointer items-center rounded-md outline-hidden transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-sidebar-ring motion-reduce:transition-none";
+
 	return (
 		<DropdownMenu modal={false}>
-			<DropdownMenuTrigger
-				render={(props) => (
-					<button
-						{...props}
-						type="button"
+			{showUserName ? (
+				/* Expanded sidebar: the row opens Account settings in the pane; the dots open the menu. */
+				<div className="gap-1 flex w-full items-center">
+					<LocaleLink
+						href="/settings/general"
+						prefetch
+						aria-current={settingsActive ? "page" : undefined}
 						className={cn(
-							props.className,
-							"gap-2 md:w-full md:px-2 md:py-1.5 md:hover:bg-sidebar-accent flex w-full cursor-pointer items-center justify-between rounded-md outline-hidden transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-sidebar-ring motion-reduce:transition-none",
+							rowClassName,
+							"gap-2 px-2 py-1.5 min-w-0 flex-1 hover:bg-sidebar-accent",
+							settingsActive && "bg-sidebar-accent shadow-[inset_2px_0_0_var(--sidebar-primary)]",
 						)}
-						aria-label="User menu"
 					>
-						<span className="gap-2 flex items-center">
-							<UserAvatar name={name ?? ""} avatarUrl={image} />
-							{showUserName && (
-								<span className="leading-tight text-left">
-									<span className="font-medium text-sm">{name}</span>
-									<span className="text-xs block opacity-70">{email}</span>
-								</span>
-							)}
+						<UserAvatar name={name ?? ""} avatarUrl={image} />
+						<span className="leading-tight min-w-0 text-left">
+							<span className="font-medium text-sm block truncate">{name}</span>
+							<span className="text-xs block truncate opacity-70">{email}</span>
 						</span>
-
-						{showUserName && <MoreVerticalIcon className="size-4" />}
-					</button>
-				)}
-			/>
+					</LocaleLink>
+					<DropdownMenuTrigger
+						render={(props) => (
+							<button
+								{...props}
+								type="button"
+								className={cn(
+									props.className,
+									rowClassName,
+									"size-8 shrink-0 justify-center hover:bg-sidebar-accent",
+								)}
+								aria-label="User menu"
+							>
+								<MoreVerticalIcon className="size-4" />
+							</button>
+						)}
+					/>
+				</div>
+			) : (
+				/* Collapsed rail and mobile header: the avatar opens the menu, which then carries the settings link. */
+				<DropdownMenuTrigger
+					render={(props) => (
+						<button
+							{...props}
+							type="button"
+							className={cn(props.className, rowClassName, "gap-2 hover:bg-sidebar-accent")}
+							aria-label="User menu"
+						>
+							<UserAvatar name={name ?? ""} avatarUrl={image} />
+						</button>
+					)}
+				/>
+			)}
 
 			<DropdownMenuContent
 				side={dropdownSide}
@@ -117,19 +148,21 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 
 				<DropdownMenuSeparator />
 
-				<DropdownMenuItem
-					nativeButton={false}
-					render={(props) => (
-						<LocaleLink
-							{...props}
-							href="/settings/general"
-							className={cn(props.className, "flex items-center")}
-						>
-							<SettingsIcon className="mr-2 size-4" />
-							{t("app.userMenu.accountSettings")}
-						</LocaleLink>
-					)}
-				/>
+				{!showUserName ? (
+					<DropdownMenuItem
+						nativeButton={false}
+						render={(props) => (
+							<LocaleLink
+								{...props}
+								href="/settings/general"
+								className={cn(props.className, "flex items-center")}
+							>
+								<SettingsIcon className="mr-2 size-4" />
+								{t("app.userMenu.accountSettings")}
+							</LocaleLink>
+						)}
+					/>
+				) : null}
 
 				<DropdownMenuItem
 					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"

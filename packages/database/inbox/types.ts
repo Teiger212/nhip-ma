@@ -1,11 +1,4 @@
-import type {
-	CribLanguage,
-	GuestLanguage,
-	MessageDirection,
-	MessageSource,
-	Pipe,
-	RentOrBuy,
-} from "./schema";
+import type { GuestLanguage, MessageDirection, MessageSource, Pipe, RentOrBuy } from "./schema";
 
 /**
  * The vocabulary is declared once, in `./schema`, and reaches consumers through
@@ -35,10 +28,12 @@ export type Paperwork = {
 	flag: string | null;
 };
 
+/**
+ * The guest-facing draft. The operator note is not stored: `crib.ts` renders it from the
+ * qualification at read time, in the operator's language.
+ */
 export type Draft = {
 	reply: string;
-	crib: string;
-	cribLanguage: CribLanguage;
 };
 
 export type OneShot = {
@@ -100,20 +95,6 @@ export type InboundEvent = {
 
 /** Who is reading. Threads are visible when unowned or owned by this user. */
 export type InboxViewer = { userId: string };
-
-export type InboxEnv = {
-	DATABASE_URL?: string;
-	SEND_MODE?: string;
-	WHATSAPP_VERIFY_TOKEN?: string;
-	WHATSAPP_APP_SECRET?: string;
-	WHATSAPP_ACCESS_TOKEN?: string;
-	WHATSAPP_PHONE_NUMBER_ID?: string;
-	ZALO_OA_ACCESS_TOKEN?: string;
-	ZALO_OA_SECRET_KEY?: string;
-	/** Owner assigned to threads created by webhooks. Unset means unowned. */
-	INBOX_OWNER_USER_ID?: string;
-	[key: string]: string | undefined;
-};
 
 export type InboxStore = {
 	filePath: string;

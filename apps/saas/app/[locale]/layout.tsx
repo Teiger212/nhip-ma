@@ -7,7 +7,7 @@ import { getTheme, getThemeScript } from "@teispace/next-themes/server";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { Be_Vietnam_Pro, IBM_Plex_Mono } from "next/font/google";
+import { Be_Vietnam_Pro, IBM_Plex_Mono, Noto_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { PropsWithChildren } from "react";
@@ -16,6 +16,13 @@ const sansFont = Be_Vietnam_Pro({
 	subsets: ["latin", "vietnamese"],
 	weight: ["400", "500", "600", "700"],
 	variable: "--font-be-vietnam",
+	display: "swap",
+});
+
+const bodyFont = Noto_Sans({
+	subsets: ["latin", "vietnamese"],
+	weight: ["400", "500", "600"],
+	variable: "--font-noto-sans",
 	display: "swap",
 });
 
@@ -60,7 +67,7 @@ export default async function LocaleLayout({
 		<html
 			lang={locale}
 			suppressHydrationWarning
-			className={cn(sansFont.variable, monoFont.variable)}
+			className={cn(sansFont.variable, bodyFont.variable, monoFont.variable)}
 		>
 			<head>
 				<script dangerouslySetInnerHTML={{ __html: themeScript }} />

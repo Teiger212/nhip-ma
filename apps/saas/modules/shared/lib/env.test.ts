@@ -13,15 +13,15 @@ function baseEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.ProcessEnv 
 
 describe("validateInboxEnv", () => {
 	it("passes for a minimal valid env", () => {
-		expect(validateInboxEnv(baseEnv())).toEqual({ ok: true });
+		expect(validateInboxEnv(baseEnv())).toMatchObject({ ok: true });
 	});
 
 	it("accepts SEND_MODE left unset", () => {
-		expect(validateInboxEnv(baseEnv({ SEND_MODE: undefined }))).toEqual({ ok: true });
+		expect(validateInboxEnv(baseEnv({ SEND_MODE: undefined }))).toMatchObject({ ok: true });
 	});
 
 	it("accepts SEND_MODE=mock", () => {
-		expect(validateInboxEnv(baseEnv({ SEND_MODE: "mock" }))).toEqual({ ok: true });
+		expect(validateInboxEnv(baseEnv({ SEND_MODE: "mock" }))).toMatchObject({ ok: true });
 	});
 
 	it("rejects an invalid SEND_MODE value", () => {
@@ -75,7 +75,14 @@ describe("validateInboxEnv", () => {
 					ZALO_OA_SECRET_KEY: "secret",
 				}),
 			),
-		).toEqual({ ok: true });
+		).toMatchObject({
+			ok: true,
+			config: {
+				sendMode: "live",
+				whatsapp: { appSecret: "secret", accessToken: "token", phoneNumberId: "id" },
+				zalo: { accessToken: "token", oaSecretKey: "secret" },
+			},
+		});
 	});
 
 	it("requires BETTER_AUTH_SECRET", () => {

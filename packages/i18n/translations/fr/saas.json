@@ -719,8 +719,6 @@
 		"forYouHint": "Non envoyé à l'invité.",
 		"reply": "Réponse",
 		"approveAndSend": "Approuver et envoyer",
-		"editReply": "Modifier la réponse",
-		"editReplyAria": "Aller à la réponse et modifier",
 		"notSent": "non envoyé",
 		"alreadySent": "déjà envoyé {at}",
 		"sending": "envoi…",
@@ -762,6 +760,17 @@
 			"beds": "Chambres / foyer",
 			"paperwork": "Paperasse",
 			"noneMentioned": "non mentionné"
-		}
+		},
+		"views": {
+			"aria": "Filtrer les conversations",
+			"needsReply": "À répondre",
+			"sent": "Envoyés",
+			"all": "Tous"
+		},
+		"queueCount": "{count, plural, =0 {Rien à répondre} one {# à répondre} other {# à répondre}}",
+		"allCaughtUp": "Tout est traité.",
+		"viewSent": "Voir les envoyés",
+		"sentTo": "Envoyé à {name}",
+		"sendFailed": "L'envoi a échoué."
 	}
 }

@@ -39,8 +39,6 @@ const STATEMENTS = [
 	`CREATE TABLE IF NOT EXISTS "Draft" (
     "conversationId" TEXT NOT NULL PRIMARY KEY,
     "reply" TEXT NOT NULL,
-    "crib" TEXT NOT NULL,
-    "cribLanguage" TEXT NOT NULL,
     CONSTRAINT "Draft_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
   )`,
 	`CREATE TABLE IF NOT EXISTS "Paperwork" (
@@ -79,6 +77,16 @@ const SEND_UNIQUE_INDEX = `CREATE UNIQUE INDEX IF NOT EXISTS "Send_conversationI
  * Additive column migrations for files created before the column existed.
  * SQLite `CREATE TABLE IF NOT EXISTS` never alters an existing table.
  */
+/**
+ * Files created before the operator note stopped being stored still have
+ * Draft.crib / Draft.cribLanguage as NOT NULL. They are dropped so inserts of the
+ * new shape do not fail; the note is rendered from Qualification at read time.
+ */
+const COLUMN_DROPS: Array<{ table: string; column: string }> = [
+	{ table: "Draft", column: "crib" },
+	{ table: "Draft", column: "cribLanguage" },
+];
+
 const COLUMN_MIGRATIONS: Array<{ table: string; column: string; ddl: string }> = [
 	{
 		table: "Conversation",
@@ -104,6 +112,11 @@ export function ensureInboxSchema(database: Database.Database): void {
 	for (const migration of COLUMN_MIGRATIONS) {
 		if (!hasColumn(database, migration.table, migration.column)) {
 			database.exec(migration.ddl);
+		}
+	}
+	for (const drop of COLUMN_DROPS) {
+		if (hasColumn(database, drop.table, drop.column)) {
+			database.exec(`ALTER TABLE "${drop.table}" DROP COLUMN "${drop.column}"`);
 		}
 	}
 	try {

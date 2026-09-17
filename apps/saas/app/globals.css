@@ -8,7 +8,8 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-	--font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+	--font-sans: var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif;
+	--font-heading: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-ibm-plex-mono), ui-monospace, sfmono-regular, menlo, monaco, monospace;
 }
 
@@ -28,6 +29,11 @@
 }
 
 @layer base {
+	/* Noto Sans body with Be Vietnam Pro headings; both carry the Vietnamese subset. */
+	:is(h1, h2, h3, .font-heading) {
+		font-family: var(--font-heading);
+	}
+
 	*,
 	::after,
 	::before,

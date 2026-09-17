@@ -25,5 +25,4 @@ export type {
 	Qualification,
 	SendMode,
 	SendResult,
-	InboxEnv,
 } from "@repo/database/inbox";
