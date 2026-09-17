@@ -7,9 +7,54 @@ const VALID_SECRET = "a".repeat(32);
 function baseEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.ProcessEnv {
 	return {
 		BETTER_AUTH_SECRET: VALID_SECRET,
+		NEXT_PUBLIC_SAAS_URL: "http://localhost:3010",
 		...overrides,
 	} as NodeJS.ProcessEnv;
 }
+
+describe("auth base URL rules", () => {
+	it("requires NEXT_PUBLIC_SAAS_URL", () => {
+		const result = validateInboxEnv(baseEnv({ NEXT_PUBLIC_SAAS_URL: undefined }));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.errors[0]).toMatch(/NEXT_PUBLIC_SAAS_URL is required/);
+	});
+
+	it("rejects a relative or non-http base URL", () => {
+		const result = validateInboxEnv(baseEnv({ NEXT_PUBLIC_SAAS_URL: "localhost:3010" }));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.errors[0]).toMatch(/absolute http\(s\) URL/);
+	});
+
+	it("requires https in production", () => {
+		const result = validateInboxEnv(
+			baseEnv({ NODE_ENV: "production", NEXT_PUBLIC_SAAS_URL: "http://nhip.example" }),
+		);
+		expect(result.ok).toBe(false);
+		if (!result.ok)
+			expect(result.errors).toContainEqual(expect.stringMatching(/https in production/));
+	});
+
+	it("rejects a BETTER_AUTH_URL that disagrees with NEXT_PUBLIC_SAAS_URL", () => {
+		const agree = validateInboxEnv(baseEnv({ BETTER_AUTH_URL: "http://localhost:3010/" }));
+		expect(agree.ok).toBe(true);
+		const disagree = validateInboxEnv(baseEnv({ BETTER_AUTH_URL: "http://localhost:3000" }));
+		expect(disagree.ok).toBe(false);
+		if (!disagree.ok) expect(disagree.errors[0]).toMatch(/differs from NEXT_PUBLIC_SAAS_URL/);
+	});
+
+	it("refuses AUTH_TRUSTED_ORIGINS in production", () => {
+		const result = validateInboxEnv(
+			baseEnv({
+				NODE_ENV: "production",
+				NEXT_PUBLIC_SAAS_URL: "https://nhip.example",
+				AUTH_TRUSTED_ORIGINS: "https://*.trycloudflare.com",
+			}),
+		);
+		expect(result.ok).toBe(false);
+		if (!result.ok)
+			expect(result.errors).toContainEqual(expect.stringMatching(/AUTH_TRUSTED_ORIGINS/));
+	});
+});
 
 describe("validateInboxEnv", () => {
 	it("passes for a minimal valid env", () => {
@@ -121,6 +166,7 @@ describe("validateInboxEnv", () => {
 		if (!result.ok) {
 			expect(result.errors).toEqual([
 				`SEND_MODE must be "mock" or "live" when set, got "prod"`,
+				"NEXT_PUBLIC_SAAS_URL is required (the auth base URL and trusted origin)",
 				"BETTER_AUTH_SECRET must not be the .env.local.example placeholder value",
 			]);
 		}

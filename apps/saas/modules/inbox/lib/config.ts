@@ -13,6 +13,19 @@ const trimmed = z
 		return clean ? clean : undefined;
 	});
 
+function isAbsoluteUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
+function stripSlash(value: string): string {
+	return value.replace(/\/+$/, "");
+}
+
 const envSchema = z
 	.object({
 		SEND_MODE: trimmed,
@@ -24,6 +37,9 @@ const envSchema = z
 		ZALO_OA_SECRET_KEY: trimmed,
 		INBOX_OWNER_USER_ID: trimmed,
 		BETTER_AUTH_SECRET: z.string().optional(),
+		BETTER_AUTH_URL: trimmed,
+		NEXT_PUBLIC_SAAS_URL: trimmed,
+		AUTH_TRUSTED_ORIGINS: trimmed,
 		NODE_ENV: z.string().optional(),
 	})
 	.superRefine((env, ctx) => {
@@ -51,6 +67,49 @@ const envSchema = z
 				}
 			}
 		}
+		// Better Auth's baseURL is set explicitly from NEXT_PUBLIC_SAAS_URL and wins over
+		// BETTER_AUTH_URL, so the two must agree or one of them is silently ignored.
+		if (!env.NEXT_PUBLIC_SAAS_URL) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["NEXT_PUBLIC_SAAS_URL"],
+				message: "NEXT_PUBLIC_SAAS_URL is required (the auth base URL and trusted origin)",
+			});
+		} else if (!isAbsoluteUrl(env.NEXT_PUBLIC_SAAS_URL)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["NEXT_PUBLIC_SAAS_URL"],
+				message: `NEXT_PUBLIC_SAAS_URL must be an absolute http(s) URL, got "${env.NEXT_PUBLIC_SAAS_URL}"`,
+			});
+		} else {
+			if (env.NODE_ENV === "production" && !env.NEXT_PUBLIC_SAAS_URL.startsWith("https://")) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["NEXT_PUBLIC_SAAS_URL"],
+					message: "NEXT_PUBLIC_SAAS_URL must use https in production (secure cookies)",
+				});
+			}
+			if (
+				env.BETTER_AUTH_URL &&
+				stripSlash(env.BETTER_AUTH_URL) !== stripSlash(env.NEXT_PUBLIC_SAAS_URL)
+			) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["BETTER_AUTH_URL"],
+					message:
+						"BETTER_AUTH_URL is set but differs from NEXT_PUBLIC_SAAS_URL; unset it or make them match",
+				});
+			}
+		}
+		if (env.NODE_ENV === "production" && env.AUTH_TRUSTED_ORIGINS) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["AUTH_TRUSTED_ORIGINS"],
+				message:
+					"AUTH_TRUSTED_ORIGINS is a local/tunnel convenience and must be unset in production",
+			});
+		}
+
 		if (!env.BETTER_AUTH_SECRET) {
 			ctx.addIssue({
 				code: "custom",
