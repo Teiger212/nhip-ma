@@ -30,5 +30,24 @@ is renamed.
 - **Inbox**: the agent's screen. A **queue**, not a mailbox: the default view is what
   waits on the operator, oldest waiting guest first.
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not
-  gated by role. Office-level only: how fast is the office, what is waiting, what went
-  out. No per-agent breakdown (future feature).
+  gated by role. Office-level only. The headline is the **funnel** (ADR 0002); response
+  time is a supporting widget. No per-agent breakdown (future feature).
+
+## Funnel
+
+- **Lead**: a guest who wrote in. One per conversation.
+- **Engaged**: a lead who received at least one approved send.
+- **In conversation**: a lead with more than one exchange (a guest message after an
+  approved send).
+- **Closing**: a lead that became a signed lease or a completed sale. Known only through
+  the CRM adapter, never inferred from chat.
+- **Lost**: a lead the office marked lost in its CRM, with reason where known.
+- **Response time**: first inbound to first approved send. Supporting metric.
+
+## Integrations
+
+- **Pipe**: a messaging channel the guest uses (WhatsApp, Zalo). One **pipe adapter** per
+  pipe owns verify, parse, send window, and send.
+- **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
+  backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
+  become a CRM.
