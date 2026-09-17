@@ -2,7 +2,7 @@
 
 How this repo is shaped for Nhịp. Inbox triage is the current surface. Shared UI comes from `packages/ui` and existing tokens. There is no separate brand lock or design-system lock.
 
-## What this walk uses
+## What the product uses
 
 The working product lives in `apps/saas` on port **3010**. Locale-prefixed inbox routes are required:
 
@@ -11,18 +11,18 @@ The working product lives in `apps/saas` on port **3010**. Locale-prefixed inbox
 - `/` → `/en/inbox`
 - `/inbox` → `/{locale}/inbox`
 
-Do not build or ship `apps/marketing`, `apps/docs`, `apps/mail-preview`, or admin this walk. Those apps remain in the tree; they are out of scope.
+Do not build or ship `apps/marketing`, `apps/docs`, `apps/mail-preview`, or admin. Those apps remain in the tree as kit scaffolding; they are out of scope.
 
 ## Apps and packages
 
 ```text
-apps/saas          Authenticated product. This walk only needs this app.
+apps/saas          Authenticated product. The only app that ships.
 packages/ui        Shared chrome (sidebar, menus, buttons, theme)
 packages/i18n      Locale catalog and `inbox.*` copy
 packages/database  Auth schema (Prisma/Postgres) + inbox SQLite store
 ```
 
-Other `apps/*` and `packages/*` directories exist. Treat them as unused for this walk unless a change is explicitly asked for.
+Other `apps/*` and `packages/*` directories exist. Treat them as unused unless a change is explicitly asked for.
 
 SaaS app aliases (`apps/saas/tsconfig.json`) include `@inbox/*` → `./modules/inbox/*`, plus `@i18n/*`, `@shared/*`, `@auth/*`, and the other module aliases.
 
@@ -36,7 +36,7 @@ Pages live under `apps/saas/app/[locale]/…`. The inbox page is:
 
 `NextIntlClientProvider` is keyed by `locale` in `apps/saas/app/[locale]/layout.tsx`. The walk language toggle (`WalkLocaleToggle`) offers **EN** / **VI** only and navigates `/en/inbox` ↔ `/vi/inbox`. Cookie `NEXT_LOCALE` remembers preference for unprefixed paths such as `/inbox`. Bare `/` is a static `next.config.ts` redirect to `/en/inbox`; it runs before the proxy, so it is English by design. Cookie-only locale without a path prefix is rejected.
 
-`packages/i18n` still lists `de`, `es`, and `fr` for the rest of the tree. SaaS routing (`routing.ts`) is limited to the walk locales `en` and `vi`, so `/de/inbox` is not routable and the settings language form offers only EN / VI. Inbox copy is `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. Guest-facing draft language can be EN, VI, JA, KO, or RU. Operator chrome this walk is EN + VI.
+`packages/i18n` still lists `de`, `es`, and `fr` for the rest of the tree. SaaS routing (`routing.ts`) is limited to the operator locales `en` and `vi`, so `/de/inbox` is not routable and the settings language form offers only EN / VI. Inbox copy is `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. Guest-facing draft language can be EN, VI, JA, KO, or RU. Operator chrome is EN + VI.
 
 ## Auth vs inbox data
 
@@ -73,7 +73,7 @@ Nav furniture: **Home** and **International** are disabled placeholders. **Inbox
 
 ## Send
 
-Default `SEND_MODE=mock` (`.env.local.example`). Only the exact value `live` talks to WhatsApp or Zalo (`resolveSendMode` in `runtime.ts`). This walk stays mock.
+Default `SEND_MODE=mock` (`.env.local.example`). Only the exact value `live` talks to WhatsApp or Zalo (`resolveSendMode` in `runtime.ts`). Local development stays mock.
 
 Webhook routes exist (`/webhooks/zalo`, `/webhooks/whatsapp`). `POST /dev/inbound` is local simulation only, not in the UI, and returns 404 when `NODE_ENV=production`.
 
@@ -89,7 +89,7 @@ Inbound webhooks fail closed. WhatsApp verifies `X-Hub-Signature-256` with `WHAT
 
 ## Hard boundaries
 
-- No marketing, admin, billing, or org product work this walk.
+- No marketing, admin, billing, or org product work.
 - No auto-send.
 - No real guests. Invented threads only.
 - Never message real guests, agents, or Hạnh.

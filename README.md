@@ -4,9 +4,9 @@ Working name only: pulse of the first reply. Not a brand lock.
 
 Nhịp is for Hà Nội real-estate agents on expat and luxury inbound. A lead writes the agency. Nhịp drafts a useful first reply in the guest’s language (EN, JP, KO, RU, and others), does not promise deals Vietnamese law will not allow, flags foreigner paperwork, and waits. A human taps **Approve and send**. Then the reply goes out on the same pipe. The guest still sees the agency number. Never auto-send. Nhịp is all-hours first reply, not night-only.
 
-This walk uses invented threads only. Nothing here is a real guest.
+Local development uses invented threads only. Nothing here is a real guest. Product intention: [PRODUCT.md](./PRODUCT.md); vocabulary: [CONTEXT.md](./CONTEXT.md).
 
-## Run the walk
+## Run it locally
 
 SaaS listens on **port 3010**. Auth sessions use local Postgres. Inbox threads live in repo-root SQLite `data/nhip.db`.
 
@@ -33,11 +33,11 @@ Sign in as `walk@nhip.local` / `walkthrough`. You should see Inbox with four inv
 
 The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) requires a signed-in session and returns 401 otherwise. Approve claims the thread atomically before sending, so a double tap sends once. Inbound webhooks are rejected until `WHATSAPP_APP_SECRET` / `ZALO_OA_SECRET_KEY` are set. CI runs lint, format, type-check, and tests on every PR (`.github/workflows/ci.yml`).
 
-Set `BETTER_AUTH_SECRET` (32+ characters) and a dummy `RESEND_API_KEY` so password login can start. `NEXT_PUBLIC_SAAS_URL` must be `http://localhost:3010` for this walk.
+Set `BETTER_AUTH_SECRET` (32+ characters) and a dummy `RESEND_API_KEY` so password login can start. `NEXT_PUBLIC_SAAS_URL` must be `http://localhost:3010` locally.
 
 Sign in with the walk login above. There is no auth bypass; every route behind `(authenticated)` requires a real session.
 
-Do not build or ship marketing or admin this walk.
+Marketing, docs, admin, billing, and organizations are unused kit scaffolding; leave them unless asked.
 
 ## Docs
 

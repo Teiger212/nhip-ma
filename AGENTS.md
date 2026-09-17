@@ -17,7 +17,7 @@ Explicit user instructions win; if a documented command fails, report it rather 
 
 ### Environment
 
-Copy `.env.local.example` to `.env.local`. For the inbox walk set
+Copy `.env.local.example` to `.env.local`. For local development set
 `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"` and
 `NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET` (32+
 characters) and a dummy `RESEND_API_KEY` so password login can import Resend.
@@ -36,12 +36,12 @@ pnpm --filter saas dev
 Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox.
 `/` goes to `/en/inbox`. Bare `/inbox` goes to `/{locale}/inbox`. Locale
 prefixes are required; cookie-only locale without a path prefix is rejected.
-Walk login is `walk@nhip.local` / `walkthrough`, seeded by `pnpm seed`. There
+Local login is `walk@nhip.local` / `walkthrough`, seeded by `pnpm seed`. There
 is no auth bypass route; sign in normally. Inbox stays invented threads +
 `SEND_MODE=mock`.
 
 This walk only needs `apps/saas` on port 3010. Do not build or ship marketing
-or admin this walk. Layout, data, and i18n details: [ARCHITECTURE.md](./ARCHITECTURE.md).
+or admin. Layout, data, and i18n details: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 `pnpm dev` still runs the workspace Turbo tasks. The `postgres` service is
 PostgreSQL 16 on port 5432. Compose also defines MinIO when storage is used.
@@ -282,7 +282,7 @@ dependencies to the workspace package that imports them.
 - Update [PRODUCT.md](./PRODUCT.md), [ARCHITECTURE.md](./ARCHITECTURE.md), or
   [HANDOFF.md](./HANDOFF.md) when intention, shape, or walk rules change.
 - Update `AGENTS.md` when conventions, aliases, scripts, or app boundaries change.
-- Keep this walk scoped to `apps/saas` unless asked otherwise.
+- Keep product work scoped to `apps/saas` unless asked otherwise.
 
 ## Before you're done
 
