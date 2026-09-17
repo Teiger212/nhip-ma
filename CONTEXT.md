@@ -11,6 +11,8 @@ is renamed.
   hour, with the agency's own number.
 - **Language bridge**: the durable value. Agents who work in Vietnamese and some English
   serve multinational guests (JA, KO, RU, EN today) without a translator in the loop.
+  Two-way: every guest message is translated into the operator's language (ADR 0007),
+  and every reply is drafted in the guest's language.
 - **Listing match**: the horizon. Searching the office's own pool of properties against
   what the guest said, so the reply carries the best few matches. Not built.
 
@@ -74,7 +76,12 @@ is renamed.
 - **Draft adapter**: one interface, one implementation per model provider, with the
   template drafter as fallback.
 - **Operator note**: the agent-language summary of facts and flags. Not shown to the
-  guest. Never invents Vietnamese law.
+  guest. Never invents Vietnamese law. It is not a translation.
+- **Translation**: the guest message rendered in the operator's language, shown under the
+  original. Stored per message per operator locale (ADR 0007).
+- **Operator language**: EN or VI, from the operator's locale setting. The target for
+  translations and the language of the operator note.
+- **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class.
 
 ## Integrations
 
