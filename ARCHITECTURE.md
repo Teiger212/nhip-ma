@@ -36,7 +36,7 @@ Pages live under `apps/saas/app/[locale]/…`. The inbox page is:
 
 `NextIntlClientProvider` is keyed by `locale` in `apps/saas/app/[locale]/layout.tsx`. The walk language toggle (`WalkLocaleToggle`) offers **EN** / **VI** only and navigates `/en/inbox` ↔ `/vi/inbox`. Cookie `NEXT_LOCALE` remembers preference for unprefixed paths such as `/inbox`. Bare `/` is a static `next.config.ts` redirect to `/en/inbox`; it runs before the proxy, so it is English by design. Cookie-only locale without a path prefix is rejected.
 
-`packages/i18n` still lists `de`, `es`, and `fr` for the rest of the tree. SaaS routing (`routing.ts`) is limited to the walk locales `en` and `vi`, so `/de/inbox` is not routable and the settings language form offers only EN / VI. Inbox copy is `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. Guest-facing draft language can be EN, VI, JA, KO, or RU. Operator chrome this walk is EN + VI.
+`packages/i18n` still lists `de`, `es`, and `fr` for the rest of the tree. SaaS routing (`routing.ts`) is limited to the operator locales `en` and `vi`, so `/de/inbox` is not routable and the settings language form offers only EN / VI. Inbox copy is `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. Guest-facing draft language can be EN, VI, JA, KO, or RU. Operator chrome is EN + VI.
 
 ## Auth vs inbox data
 
