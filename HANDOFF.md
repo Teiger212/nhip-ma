@@ -1,36 +1,16 @@
 # Handoff
 
-Read this if you are picking up Nhịp cold (any agent or LLM). Then read [PRODUCT.md](./PRODUCT.md), [ARCHITECTURE.md](./ARCHITECTURE.md), and [AGENTS.md](./AGENTS.md).
-
-## Intention
-
-Nhịp (pulse of the first reply) helps Hà Nội real-estate agents answer expat and luxury inbound fast. Lead in → useful first reply in the guest’s language → no promises Vietnamese law will not allow → foreigner paperwork flagged → human **Approve and send** → send on the same pipe. Guest still sees the agency number. Never auto-send. All-hours first reply, not night-only.
-
-Not mass-market brokerage. Not a rental operator. Not Hạnh. Working name only; not a brand lock.
-
-## In scope this walk
-
-- Inbox triage in `apps/saas` on port 3010.
-- Invented threads in `data/nhip.db`.
-- `SEND_MODE=mock`.
-- Locale-prefixed routes: `/en/inbox`, `/vi/inbox`. Walk chrome language is EN + VI only.
-- Human approve-and-send. Extract, operator note, reply draft.
-- Existing chrome: `AppWrapper`, `NavBar`, user menu. Inbox is the only working nav job. Home and International stay disabled placeholders.
-
-## Out of scope this walk
-
-- Marketing, docs, mail-preview, admin, billing, orgs as product features.
-- Live WhatsApp / Zalo send.
-- Real guests, real agents, Hạnh’s tools, or customer data on a public Share link.
-- Cookie-only locale (no path prefix). That was tried and rejected. Keep `/en/inbox` and `/vi/inbox`.
-- Inventing a new product shape, brand lock, or design-system lock. Inbox triage is the current surface. Tokens and primitives come from `packages/ui`.
-- Rebuilding old cockpits unless someone asks.
+Read this if you are picking up Nhịp cold (any agent or LLM). What the product is and
+where it is going: [PRODUCT.md](./PRODUCT.md). How the repo is shaped:
+[ARCHITECTURE.md](./ARCHITECTURE.md). Setup, gates, and conventions:
+[AGENTS.md](./AGENTS.md). This file is only how to run it and where things are.
 
 ## Repo
 
-- GitHub: `Teiger212/nhip-ma`
-- Source of truth: `main`
-- Beautify and product-first docs landed via merged [PR #8](https://github.com/Teiger212/nhip-ma/pull/8) (`8ca8e8f`).
+- GitHub: `Teiger212/nhip-ma`. Source of truth: `main`.
+- CI (`.github/workflows/ci.yml`) runs lint, format:check, type-check, and tests on every
+  PR and push to `main`. Merge through PRs.
+- The audit that shaped the current code is `reports/2026-09-06-handoff-analysis.md`.
 
 ## Run locally
 
@@ -44,66 +24,57 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox.
+Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. Sign in as
+`walk@nhip.local` / `walkthrough` (created by `pnpm seed` when `DATABASE_URL` is
+Postgres). There is no auth bypass.
 
-Walk login: `walk@nhip.local` / `walkthrough`, seeded by `pnpm seed`. No auth bypass route; sign in normally.
+`pnpm seed` writes four invented threads (Minji, Yuki, Alexei, Thảo) to `data/nhip.db`
+once. Delete the file for a fresh set. `POST /dev/inbound` injects an inbound locally
+(404 in production). Default `SEND_MODE=mock`; only the exact value `live` talks to a
+vendor, and live needs the webhook secrets set or inbound is refused.
 
-Gates: `pnpm format`, `pnpm lint`, `pnpm type-check`, then relevant `pnpm --filter saas test`. See [AGENTS.md](./AGENTS.md).
-
-Do not commit untracked local junk (`walkthrough-results/`, ad-hoc Playwright inbox specs).
+Gates before a commit: `pnpm format`, `pnpm lint`, `pnpm type-check`, `pnpm --filter
+saas test`. Do not commit untracked local scripts or `data/`.
 
 ## Key paths
 
-| Path                                                                     | Why                                   |
-| ------------------------------------------------------------------------ | ------------------------------------- |
-| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                           |
-| `apps/saas/modules/inbox/components/Inbox.tsx`                           | List + detail                         |
-| `apps/saas/modules/inbox/lib/`                                           | Extract, draft, seed, approve runtime |
-| `apps/saas/app/api/conversations/`                                       | List, detail, approve (session-gated) |
-| `apps/saas/modules/inbox/lib/require-session.ts`                         | 401 gate for inbox routes             |
-| `apps/saas/modules/shared/lib/env.ts`                                    | Startup env validation                |
-| `.github/workflows/ci.yml`                                               | Lint, format, type-check, test on PRs |
-| `packages/database/inbox/`                                               | SQLite store                          |
-| `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                        |
-| `apps/saas/modules/i18n/routing.ts`                                      | `localePrefix: "always"`              |
-| `apps/saas/proxy.ts`                                                     | next-intl middleware                  |
-| `apps/saas/modules/shared/components/WalkLocaleToggle.tsx`               | EN / VI                               |
-| `apps/saas/modules/shared/components/UserMenu.tsx`                       | Color mode + language                 |
-| `packages/ui/components/color-mode-toggle.tsx`                           | System / light / dark                 |
-| `packages/ui/components/sidebar.tsx`                                     | Sidebar rail (pointer, collapse only) |
+| Path                                                                     | Why                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------ |
+| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                                      |
+| `apps/saas/modules/inbox/components/Inbox.tsx`                           | Inbox client module (renders, does not decide)   |
+| `apps/saas/modules/inbox/lib/queue.ts`                                   | Queue rules: views, order, counts, next selection |
+| `apps/saas/modules/inbox/lib/{extract,draft,crib}.ts`                    | One-shot: extract, guest draft, operator note    |
+| `apps/saas/modules/inbox/lib/inbox.ts`                                   | Ingest and approve-and-send                      |
+| `apps/saas/modules/inbox/lib/pipes/`                                     | Pipe adapters (WhatsApp, Zalo), mock/live seam   |
+| `apps/saas/modules/inbox/lib/{config,runtime}.ts`                        | Validated config, runtime singleton              |
+| `apps/saas/app/api/conversations/`                                       | List, detail, approve (session-gated)            |
+| `apps/saas/app/webhooks/{whatsapp,zalo}/route.ts`                        | Inbound (signature-verified, fail closed)        |
+| `packages/database/inbox/`                                               | SQLite store, DDL, zod vocabulary                |
+| `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                                   |
+| `apps/saas/modules/shared/lib/walk-nav.ts`                               | Sidebar rows                                     |
+| `apps/saas/proxy.ts`, `apps/saas/modules/i18n/routing.ts`                | Locale routing (`en`, `vi`)                      |
+| `tooling/tailwind/theme.css`                                             | Palette (Flat: blue action, amber pending)       |
 
-## i18n rules
+## Rules that hold
 
-- SaaS routes are locale-prefixed. Cookie `NEXT_LOCALE` may remember preference. Do not ship cookie-only locale.
-- Walk toggle: `en` and `vi` only (`WalkLocaleToggle`). Vietnamese is `vi`.
-- User-facing strings need translations. Inbox keys stay under `inbox.*`.
-- EN walk copy uses sentence case for chips (`Needs approval`, `Sent`). Crib label is **Operator note**. Rent/buy extract values are **Rent** / **Buy** in EN.
+- Never auto-send. Approve and send is the only send path, and it claims the message
+  atomically before any vendor call.
+- Never message real guests or agents from a dev or demo environment. Never put customer
+  data on a public link.
+- The operator note never invents Vietnamese law.
+- SaaS routes are locale-prefixed (`/en/...`, `/vi/...`); cookie-only locale was tried
+  and rejected. The operator language switch offers `en` and `vi` only.
+- User-facing strings need translations under `inbox.*`.
+- `apps/marketing`, `apps/docs`, admin, billing, and organizations are unused kit
+  scaffolding. Leave them unless asked.
 
-## Hard constraints
+## Before going live
 
-- Never send to real guests, agents, or Hạnh. Never log into her tools.
-- Never put customer data on a public Share link.
-- Never auto-send.
-- Do not invent product shape or rebuild old cockpits unless asked.
-- Do not treat Home, International, Reports, billing, or orgs as the working job.
-
-## Landed UI (PR #8)
-
-These are on `main`. They are not an open branch.
-
-- Beautify: Be Vietnam Pro + IBM Plex Mono, olive tokens, squircle initials, compact flags, no card chrome on extract / crib / reply, search `h-12`, desktop list locked at `22rem`.
-- Sticky detail bar: **Approve and send** + **Edit reply** (scrolls/focuses `#inbox-reply`). Idle “Not sent” is `sr-only`.
-- Locale prefixes restored after a rejected cookie-only revert.
-- Pointer cursors on language toggle, sidebar rail, and color-mode options. No resize cursor. Mobile header shows full **Nhịp**.
-- Theme FOUC script moved out of the React 19 client tree.
-
-## Next steps / open questions
-
-Grounded in this tree only. Not a product roadmap.
-
-1. **Keep locale prefixes.** A cookie-only revert already landed and was rejected. Do not do that again.
-2. **Walk stays mock + invented.** `SEND_MODE=live` exists in code. Do not turn it on for this walk. Do not point webhooks at real guests.
-3. **Unused apps stay unused.** `apps/marketing`, `apps/docs`, admin, and org chrome are still in the monorepo. Leave them unless asked.
-4. **i18n catalog vs walk toggle.** `de` / `es` / `fr` remain in `packages/i18n/config.ts`. The walk selector must stay EN + VI.
-5. **CI is on.** `.github/workflows/ci.yml` runs lint, format:check, type-check, and tests on every PR and push to main. Inbox unit tests are `pnpm --filter saas test` under `apps/saas/modules/inbox`.
-6. **Live cutover checklist.** Before `SEND_MODE=live`: set `WHATSAPP_APP_SECRET` and `ZALO_OA_SECRET_KEY` (webhooks 403 without them), set `INBOX_OWNER_USER_ID` or another owner source so new threads are scoped, and remove the walk user from any shared Postgres. The full audit that drove these is `reports/2026-09-06-handoff-analysis.md`.
+- Set `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`,
+  `WHATSAPP_PHONE_NUMBER_ID`, `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_SECRET_KEY`. Startup
+  validation refuses `SEND_MODE=live` without them.
+- Set `INBOX_OWNER_USER_ID` (or another owner source) so webhook-created threads are
+  scoped to an operator.
+- Remove `walk@nhip.local` from any shared database.
+- Run on one long-lived Node process with a real disk. The inbox store is SQLite and does
+  not run on serverless functions.
