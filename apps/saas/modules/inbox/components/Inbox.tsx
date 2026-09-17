@@ -1,4 +1,5 @@
 "use client";
+
 import { Badge, Button, cn, Input, Skeleton, Textarea, toast } from "@repo/ui";
 import { ChevronLeftIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -57,9 +58,8 @@ function ThreadFlags({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
 	return (
 		<>
-			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>{" "}
+			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
 			<CompactFlag tone={conversation.sentAt ? "success" : "warning"}>
-				{" "}
 				{conversation.sentAt ? t("sent") : t("needsApprove")}
 			</CompactFlag>
 		</>
@@ -97,7 +97,6 @@ function ExtractRowList({ rows }: { rows: ExtractRow[] }) {
 				const { label, value } = text(row);
 				return (
 					<div key={row.id} className="contents">
-						{" "}
 						<dt className="font-medium text-muted-foreground">{label}</dt>
 						<dd className={row.present ? "font-medium text-foreground" : "text-muted-foreground"}>
 							{value}
@@ -118,7 +117,6 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 			{arranged.collapsed.length > 0 ? (
 				<details>
 					<summary className="text-sm min-h-11 flex cursor-pointer items-center text-muted-foreground">
-						{" "}
 						{t("missingFields", { count: arranged.collapsed.length })}
 					</summary>
 					<div className="mt-2">
@@ -144,14 +142,12 @@ function ThreadMessage({ message }: { message: Message }) {
 			)}
 		>
 			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
-				{" "}
 				<span className="font-medium text-foreground/80">{message.source}</span>
 				<time className="font-mono tabular-nums" dateTime={message.at}>
 					{formatInboxTimestamp(message.at, locale)}
 				</time>
 				{message.mock ? (
 					<Badge status="info" className="h-4 px-1.5 font-medium text-[10px] normal-case">
-						{" "}
 						{t("mock")}
 					</Badge>
 				) : null}
@@ -166,11 +162,10 @@ function ThreadListSkeleton() {
 		<div className="divide-y" aria-hidden="true">
 			{Array.from({ length: 4 }, (_, index) => (
 				<div key={index} className="gap-2.5 px-3 py-2.5 flex items-start">
-					{" "}
-					<Skeleton className="size-8 rounded-md" />{" "}
+					<Skeleton className="size-8 rounded-md" />
 					<div className="min-w-0 flex-1">
-						{" "}
-						<Skeleton className="mb-1.5 h-3.5 w-28" /> <Skeleton className="mb-1 h-3 w-full" />{" "}
+						<Skeleton className="mb-1.5 h-3.5 w-28" />
+						<Skeleton className="mb-1 h-3 w-full" />
 						<Skeleton className="h-3 w-2/3" />
 					</div>
 				</div>
@@ -182,7 +177,6 @@ function ThreadListSkeleton() {
 function ThreadListState({ title, action }: { title: string; action?: ReactNode }) {
 	return (
 		<div className="px-4 py-10 flex flex-col items-center justify-center text-center">
-			{" "}
 			<p className="text-sm max-w-[22ch] text-pretty text-muted-foreground">{title}</p>
 			{action}
 		</div>
@@ -217,9 +211,7 @@ function ThreadRow({
 		>
 			<GuestMark name={name} />
 			<span className="min-w-0 flex-1">
-				{" "}
 				<span className="gap-2 flex w-full items-baseline justify-between">
-					{" "}
 					<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
 					{when ? (
 						<time
@@ -439,7 +431,6 @@ export function Inbox() {
 					})}
 				</div>
 				<p className="text-xs text-muted-foreground" aria-live="polite">
-					{" "}
 					{t("queueCount", { count: queue.counts.needsReply })}
 				</p>
 			</div>
@@ -478,14 +469,14 @@ export function Inbox() {
 									onClick={() => setDetailOpen(false)}
 									aria-label={t("backAria")}
 								>
-									<ChevronLeftIcon className="size-4" /> {t("back")}
+									<ChevronLeftIcon className="size-4" />
+									{t("back")}
 								</Button>
 								<GuestMark name={displayName(selected)} />
 								<p className="font-semibold tracking-tight font-heading">{displayName(selected)}</p>
 								<ThreadFlags conversation={selected} />
 							</header>
 							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-								{" "}
 								<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
 									{selected.messages.map((message) => (
 										<ThreadMessage key={message.id} message={message} />
@@ -494,9 +485,8 @@ export function Inbox() {
 									<ExtractFields conversation={selected} />
 									{cribNotes ? (
 										<section className="gap-1.5 p-3 flex flex-col rounded-lg rounded-md border-l-2 border-l-primary bg-primary/6 bg-touch/8">
-											{" "}
-											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>{" "}
-											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>{" "}
+											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
+											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
 											<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
 										</section>
 									) : null}
