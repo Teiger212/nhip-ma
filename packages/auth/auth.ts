@@ -16,7 +16,11 @@ import { getBaseUrl } from "@repo/utils";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
-import { admin, magicLink, openAPI, organization, twoFactor } from "better-auth/plugins";
+import { openAPI } from "better-auth/plugins";
+import { admin } from "better-auth/plugins/admin";
+import { magicLink } from "better-auth/plugins/magic-link";
+import { organization } from "better-auth/plugins/organization";
+import { twoFactor } from "better-auth/plugins/two-factor";
 import { parseCookie as parseCookies } from "cookie";
 
 import { config } from "./config";
@@ -30,9 +34,44 @@ const getLocaleFromRequest = (request?: Request) => {
 
 const appUrl = getBaseUrl(process.env.NEXT_PUBLIC_SAAS_URL, 3000);
 
+/**
+ * Extra origins allowed to call the auth API, comma-separated (for example a
+ * Cloudflare quick-tunnel origin during a demo). Exact origins or Better Auth
+ * wildcards such as `https://*.trycloudflare.com`. Never set in production.
+ */
+const extraTrustedOrigins = (process.env.AUTH_TRUSTED_ORIGINS ?? "")
+	.split(",")
+	.map((origin) => origin.trim())
+	.filter(Boolean);
+
+/** A provider is only offered when both halves of its credential are configured. */
+function socialProvider<T extends object>(
+	clientId: string | undefined,
+	clientSecret: string | undefined,
+	provider: (credentials: { clientId: string; clientSecret: string }) => T,
+): T | undefined {
+	return clientId && clientSecret ? provider({ clientId, clientSecret }) : undefined;
+}
+
+const google = socialProvider(
+	process.env.GOOGLE_CLIENT_ID,
+	process.env.GOOGLE_CLIENT_SECRET,
+	(credentials) => ({ ...credentials, scope: ["email", "profile"] }),
+);
+const github = socialProvider(
+	process.env.GITHUB_CLIENT_ID,
+	process.env.GITHUB_CLIENT_SECRET,
+	(credentials) => ({ ...credentials, scope: ["user:email"] }),
+);
+
 export const auth = betterAuth({
+	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
-	trustedOrigins: [appUrl],
+	trustedOrigins: [appUrl, ...extraTrustedOrigins],
+	// Rate limiting is on by default in production (memory store, 100/10s, sign-in 3/10s).
+	// Nhịp runs as one long-lived process, so the memory store is correct; behind a
+	// reverse proxy set advanced.ipAddress.ipAddressHeaders and trustedProxies so limits
+	// key on the client IP rather than the proxy.
 	database: prismaAdapter(db, {
 		provider: "postgresql",
 	}),
@@ -205,16 +244,8 @@ export const auth = betterAuth({
 		},
 	},
 	socialProviders: {
-		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID as string,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-			scope: ["email", "profile"],
-		},
-		github: {
-			clientId: process.env.GITHUB_CLIENT_ID as string,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-			scope: ["user:email"],
-		},
+		...(google ? { google } : {}),
+		...(github ? { github } : {}),
 	},
 	plugins: [
 		admin(),
