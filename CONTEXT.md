@@ -95,3 +95,19 @@ is renamed.
   become a CRM. First real adapter: **Attio** (provisional).
 - **CRM link**: the stored association between a conversation and a CRM lead. Made
   automatically by phone number (E.164), or by the agent through "link to CRM lead".
+
+## Deliberately not
+
+Nhịp is not, and is not becoming, any of these. Recorded so they do not creep in.
+
+- **Not a guest-facing bot.** Guests talk to the agency; every message they receive was
+  approved by a human.
+- **Not legal advice.** Paperwork is flagged to the agent, never explained to the guest.
+- **Not a CRM.** It links to the office's CRM through an adapter and never becomes the
+  record of deals.
+- **Not a listings database.** Listing match reads from a pool the office already keeps;
+  Nhịp does not scrape or maintain listings.
+- **Not a marketplace or a rental operator.** No guest-side accounts, no bookings, no
+  payments between guest and agency.
+- **Not a per-agent performance tool** in this version. Office numbers only.
+- **Not mass-market brokerage.** High-end apartments, multinational guests.
