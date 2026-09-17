@@ -16,6 +16,9 @@ buyer; one that serves only the manager is a dashboard nobody works in.
   guests, sends per day, language mix, and whatever else earns its place).
 - Home is accessible to every operator. No role gating on read. Agents see the same
   numbers the manager sees.
+- Home shows **office-level** numbers only: the whole office's speed, queue, and volume.
+  There is no per-agent breakdown. Per-agent performance is a future feature, not a
+  hidden one; it is deliberately not built yet.
 
 ## Consequences
 
@@ -24,4 +27,7 @@ buyer; one that serves only the manager is a dashboard nobody works in.
 - The data behind Home already exists in the inbox store (inbound and send timestamps,
   languages, pipes); no new capture is needed for the first widgets.
 - Permissions stay simple: roles are not modelled until something must be hidden.
+- Threads already carry `ownerUserId`, so a per-agent view is possible later without new
+  capture. Building it means deciding what an agent "owns" (the thread, or each send),
+  which is why it is deferred.
 - Metrics need definitions. "Speed" is undefined until ADR 0002.

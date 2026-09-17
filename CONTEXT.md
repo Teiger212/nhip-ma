@@ -30,5 +30,5 @@ is renamed.
 - **Inbox**: the agent's screen. A **queue**, not a mailbox: the default view is what
   waits on the operator, oldest waiting guest first.
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not
-  gated by role. Serves the manager's question "how fast are we, what are we losing"
-  without hiding it from agents.
+  gated by role. Office-level only: how fast is the office, what is waiting, what went
+  out. No per-agent breakdown (future feature).
