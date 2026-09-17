@@ -34,7 +34,14 @@ a working funnel. The mock is also the fallback when matching fails.
 - Home's closings and lost widgets read through the adapter, never from inbox tables.
 - Guest identity matching (phone number formats, Zalo ids without phones) is the hard part
   and belongs inside each adapter, not in Home.
-- Which CRM comes first is an open question for the interview; the seam does not depend on
-  the answer.
+- **Attio is the first real adapter** (provisional, 2026-09-17: no pilot office has named
+  its CRM yet; Attio is the placeholder because it has a clean REST API, phone and email
+  attributes on people, and deals as a first-class object). Swap it when a pilot office
+  says otherwise; the seam is the point.
+- **Matching rule**: phone number normalised to E.164 first. No match means the thread
+  shows a manual "link to CRM lead" action; the agent picks the lead once and Nhịp
+  remembers it. No name matching, ever: it is wrong often enough to poison the funnel.
+  Zalo guests, who often carry only a Zalo user id, will usually take the manual path
+  until the office stores Zalo ids in the CRM.
 - Credentials per CRM follow the pattern in `config.ts`: validated at startup, settled
   fields, no raw env reads downstream.

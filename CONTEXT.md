@@ -50,4 +50,6 @@ is renamed.
   pipe owns verify, parse, send window, and send.
 - **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
   backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
-  become a CRM.
+  become a CRM. First real adapter: **Attio** (provisional).
+- **CRM link**: the stored association between a conversation and a CRM lead. Made
+  automatically by phone number (E.164), or by the agent through "link to CRM lead".
