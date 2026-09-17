@@ -32,7 +32,8 @@ is renamed.
 
 ## Queue
 
-- **Your turn**: the guest spoke last. The only pending state. A fact, not a judgment.
+- **Your turn**: the guest spoke last, i.e. there is an unanswered inbound. The only
+  pending state. A fact, not a judgment.
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
 - **Sent**: the office spoke last.
@@ -52,6 +53,16 @@ is renamed.
   the CRM adapter, never inferred from chat.
 - **Lost**: a lead the office marked lost in its CRM, with reason where known.
 - **Response time**: first inbound to first approved send. Supporting metric.
+
+## Sending
+
+- **Approve and send**: the single send action. A human approving one suggested reply for
+  one inbound message. Never automatic.
+- **Reply-only**: every send answers exactly one guest message; one send per inbound; no
+  unprompted sends (nudges deferred, ADR 0006).
+- **Approval**, **Send**: records of one approved send, each tied to the inbound it
+  answers.
+- **SEND_MODE**: `mock` (no vendor call, the default) or exactly `live`.
 
 ## Drafting
 

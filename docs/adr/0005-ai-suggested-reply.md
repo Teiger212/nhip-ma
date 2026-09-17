@@ -7,7 +7,9 @@ Date: 2026-09-17. Status: accepted. Supersedes the "heuristic drafts only" short
 The first reply is a template keyed on language and extracted facts. A template cannot
 read what the guest just asked, so it cannot draft a second reply that is worth sending.
 The reply box exists precisely to hold a suggested answer the agent edits and approves.
-"No LLM" was a v1 shortcut to avoid inventing law; it was never the product rule.
+"No LLM" was a v1 shortcut: the template drafts exist so the UI could be seen and tested
+with invented threads, not because templates are the intended product. It was never the
+product rule.
 
 ## Decision
 
