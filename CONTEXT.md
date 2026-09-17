@@ -53,6 +53,18 @@ is renamed.
 - **Lost**: a lead the office marked lost in its CRM, with reason where known.
 - **Response time**: first inbound to first approved send. Supporting metric.
 
+## Drafting
+
+- **One-shot**: the deterministic pass on a new inbound: language detection, extraction
+  (Qualification), first-reply template, operator note. Regex and templates.
+- **Suggested reply**: the text in the reply box. For a first reply, the template. For a
+  follow-up, an AI draft from the whole conversation (ADR 0005). Always editable, never
+  sent without Approve and send.
+- **Draft adapter**: one interface, one implementation per model provider, with the
+  template drafter as fallback.
+- **Operator note**: the agent-language summary of facts and flags. Not shown to the
+  guest. Never invents Vietnamese law.
+
 ## Integrations
 
 - **Pipe**: a messaging channel the guest uses (WhatsApp, Zalo). One **pipe adapter** per
