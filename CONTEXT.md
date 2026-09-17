@@ -26,6 +26,9 @@ is renamed.
   responses and fewer lost multinational leads. Reads Home.
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
   role does not matter ("Operator note", "Your turn").
+- **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
+  Threads are shared: any agent in the office can work any thread. One agency, one
+  office is the MVP; multi-office agencies later.
 
 ## Surfaces
 
