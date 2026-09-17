@@ -6,11 +6,9 @@
 @source "../node_modules/streamdown/dist/*.js";
 
 @variant dark (&:where(.dark, .dark *));
-@custom-variant swiss (&:where(html[data-style="swiss"] *));
-@custom-variant flat (&:where(html[data-style="flat"] *));
 
 @theme inline {
-	--font-sans: var(--font-sans-active), ui-sans-serif, system-ui, sans-serif;
+	--font-sans: var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif;
 	--font-heading: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-ibm-plex-mono), ui-monospace, sfmono-regular, menlo, monaco, monospace;
 }
@@ -31,17 +29,8 @@
 }
 
 @layer base {
-	:root {
-		--font-sans-active: var(--font-be-vietnam);
-	}
-
-	/* ui-ux-pro-max variations pair Be Vietnam Pro headings with a Noto Sans body. */
-	html[data-style="swiss"],
-	html[data-style="flat"] {
-		--font-sans-active: var(--font-noto-sans);
-	}
-
-	html[data-style] :is(h1, h2, h3, .font-heading) {
+	/* Noto Sans body with Be Vietnam Pro headings; both carry the Vietnamese subset. */
+	:is(h1, h2, h3, .font-heading) {
 		font-family: var(--font-heading);
 	}
 

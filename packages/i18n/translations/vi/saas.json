@@ -125,7 +125,6 @@
 			"documentation": "Tài liệu",
 			"home": "Trang chủ",
 			"language": "Ngôn ngữ",
-			"style": "Phong cách",
 			"logout": "Đăng xuất"
 		},
 		"notifications": {
@@ -678,14 +677,6 @@
 		"aria": {
 			"closeToast": "Đóng thông báo",
 			"language": "Ngôn ngữ"
-		},
-		"inboxStyle": {
-			"olive": "Ô liu",
-			"oliveShort": "Ô liu",
-			"swiss": "Thụy Sĩ",
-			"swissShort": "Thụy ",
-			"flat": "Phẳng",
-			"flatShort": "Phẳng"
 		},
 		"colorMode": {
 			"system": "System",

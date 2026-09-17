@@ -1,5 +1,4 @@
 "use client";
-
 import { Badge, Button, cn, Input, Skeleton, Textarea, toast } from "@repo/ui";
 import { ChevronLeftIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -26,7 +25,7 @@ function GuestMark({ name }: { name: string }) {
 	return (
 		<span
 			aria-hidden="true"
-			className="size-8 font-semibold tracking-tight swiss:rounded-none swiss:border swiss:border-touch/40 swiss:bg-transparent flat:rounded-full flat:bg-primary flat:text-primary-foreground flex shrink-0 items-center justify-center rounded-md bg-touch/12 text-[0.7rem] text-touch"
+			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-full rounded-md bg-primary bg-touch/12 text-[0.7rem] text-primary-foreground text-touch"
 		>
 			{guestInitials(name)}
 		</span>
@@ -43,7 +42,7 @@ function CompactFlag({
 	return (
 		<span
 			className={cn(
-				"h-5 px-1.5 font-medium swiss:rounded-none swiss:text-[10px] swiss:uppercase swiss:tracking-[0.06em] flat:rounded-full flat:px-2 inline-flex items-center rounded-md text-[11px] leading-none",
+				"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
 				tone === "neutral" && "bg-muted text-muted-foreground",
 				tone === "warning" && "bg-warning/12 text-warning",
 				tone === "success" && "bg-success/12 text-success",
@@ -58,8 +57,9 @@ function ThreadFlags({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
 	return (
 		<>
-			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
+			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>{" "}
 			<CompactFlag tone={conversation.sentAt ? "success" : "warning"}>
+				{" "}
 				{conversation.sentAt ? t("sent") : t("needsApprove")}
 			</CompactFlag>
 		</>
@@ -97,6 +97,7 @@ function ExtractRowList({ rows }: { rows: ExtractRow[] }) {
 				const { label, value } = text(row);
 				return (
 					<div key={row.id} className="contents">
+						{" "}
 						<dt className="font-medium text-muted-foreground">{label}</dt>
 						<dd className={row.present ? "font-medium text-foreground" : "text-muted-foreground"}>
 							{value}
@@ -112,11 +113,12 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
 	const arranged = useMemo(() => arrangeExtractRows(conversation.oneShot), [conversation.oneShot]);
 	return (
-		<section className="gap-2 p-3 swiss:rounded-none swiss:border-y swiss:bg-transparent swiss:px-0 flat:rounded-lg flat:bg-muted flex flex-col rounded-md bg-muted/50">
+		<section className="gap-2 p-3 flex flex-col rounded-lg rounded-md bg-muted bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>
 					<summary className="text-sm min-h-11 flex cursor-pointer items-center text-muted-foreground">
+						{" "}
 						{t("missingFields", { count: arranged.collapsed.length })}
 					</summary>
 					<div className="mt-2">
@@ -142,12 +144,14 @@ function ThreadMessage({ message }: { message: Message }) {
 			)}
 		>
 			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
+				{" "}
 				<span className="font-medium text-foreground/80">{message.source}</span>
 				<time className="font-mono tabular-nums" dateTime={message.at}>
 					{formatInboxTimestamp(message.at, locale)}
 				</time>
 				{message.mock ? (
 					<Badge status="info" className="h-4 px-1.5 font-medium text-[10px] normal-case">
+						{" "}
 						{t("mock")}
 					</Badge>
 				) : null}
@@ -162,10 +166,11 @@ function ThreadListSkeleton() {
 		<div className="divide-y" aria-hidden="true">
 			{Array.from({ length: 4 }, (_, index) => (
 				<div key={index} className="gap-2.5 px-3 py-2.5 flex items-start">
-					<Skeleton className="size-8 rounded-md" />
+					{" "}
+					<Skeleton className="size-8 rounded-md" />{" "}
 					<div className="min-w-0 flex-1">
-						<Skeleton className="mb-1.5 h-3.5 w-28" />
-						<Skeleton className="mb-1 h-3 w-full" />
+						{" "}
+						<Skeleton className="mb-1.5 h-3.5 w-28" /> <Skeleton className="mb-1 h-3 w-full" />{" "}
 						<Skeleton className="h-3 w-2/3" />
 					</div>
 				</div>
@@ -177,6 +182,7 @@ function ThreadListSkeleton() {
 function ThreadListState({ title, action }: { title: string; action?: ReactNode }) {
 	return (
 		<div className="px-4 py-10 flex flex-col items-center justify-center text-center">
+			{" "}
 			<p className="text-sm max-w-[22ch] text-pretty text-muted-foreground">{title}</p>
 			{action}
 		</div>
@@ -202,16 +208,18 @@ function ThreadRow({
 			variant="ghost"
 			aria-current={active ? "true" : undefined}
 			className={cn(
-				"gap-2.5 px-3 py-2.5 font-normal min-w-0 swiss:border-b swiss:border-b-border swiss:py-3 flat:my-0.5 flat:mx-1.5 flat:w-[calc(100%-0.75rem)] flat:rounded-lg flat:border-l-0 h-auto w-full items-start justify-start overflow-hidden rounded-none border-l-2 border-l-transparent text-left active:scale-100",
+				"gap-2.5 px-3 py-2.5 font-normal min-w-0 my-0.5 mx-1.5 h-auto w-[calc(100%-0.75rem)] w-full items-start justify-start overflow-hidden rounded-lg rounded-none border-l-0 border-l-2 border-l-transparent text-left active:scale-100",
 				active
-					? "flat:bg-primary/8 flat:hover:bg-primary/12 border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
+					? "border-l-touch bg-primary/8 bg-sidebar-accent/80 hover:bg-primary/12 hover:bg-sidebar-accent"
 					: "hover:bg-muted/70",
 			)}
 			onClick={onOpen}
 		>
 			<GuestMark name={name} />
 			<span className="min-w-0 flex-1">
+				{" "}
 				<span className="gap-2 flex w-full items-baseline justify-between">
+					{" "}
 					<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
 					{when ? (
 						<time
@@ -395,7 +403,7 @@ export function Inbox() {
 						onChange={(event) => void setQuery(event.target.value || null)}
 						placeholder={t("searchPlaceholder")}
 						aria-label={t("searchAria")}
-						className="h-12 min-h-12 px-4 py-3 pl-12 text-base swiss:rounded-none flat:rounded-full flat:border-transparent flat:bg-muted rounded-md shadow-none"
+						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-full rounded-md border-transparent bg-muted shadow-none"
 					/>
 				</div>
 			</div>
@@ -405,7 +413,7 @@ export function Inbox() {
 					detailOpen && "md:flex hidden",
 				)}
 			>
-				<div className="gap-0 p-0.5 swiss:rounded-none inline-flex rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
+				<div className="gap-0 p-0.5 inline-flex rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
 					{INBOX_VIEWS.map((option) => {
 						const active = option === view;
 						return (
@@ -415,7 +423,7 @@ export function Inbox() {
 								aria-pressed={active}
 								onClick={() => void setView(option)}
 								className={cn(
-									"h-8 px-3 text-xs font-semibold gap-1.5 swiss:rounded-none inline-flex cursor-pointer items-center rounded-full transition-colors",
+									"h-8 px-3 text-xs font-semibold gap-1.5 inline-flex cursor-pointer items-center rounded-full transition-colors",
 									"focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
 									active
 										? "shadow-xs border border-border bg-background text-foreground"
@@ -431,6 +439,7 @@ export function Inbox() {
 					})}
 				</div>
 				<p className="text-xs text-muted-foreground" aria-live="polite">
+					{" "}
 					{t("queueCount", { count: queue.counts.needsReply })}
 				</p>
 			</div>
@@ -461,7 +470,7 @@ export function Inbox() {
 						<ThreadListState title={t("noneSelected")} />
 					) : (
 						<>
-							<header className="gap-2 px-3 py-2 swiss:bg-transparent flat:bg-muted/60 flex shrink-0 flex-wrap items-center border-b bg-card/40">
+							<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40 bg-muted/60">
 								<Button
 									type="button"
 									variant="ghost"
@@ -469,14 +478,14 @@ export function Inbox() {
 									onClick={() => setDetailOpen(false)}
 									aria-label={t("backAria")}
 								>
-									<ChevronLeftIcon className="size-4" />
-									{t("back")}
+									<ChevronLeftIcon className="size-4" /> {t("back")}
 								</Button>
 								<GuestMark name={displayName(selected)} />
 								<p className="font-semibold tracking-tight font-heading">{displayName(selected)}</p>
 								<ThreadFlags conversation={selected} />
 							</header>
 							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+								{" "}
 								<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
 									{selected.messages.map((message) => (
 										<ThreadMessage key={message.id} message={message} />
@@ -484,9 +493,10 @@ export function Inbox() {
 									<div className="border-t" />
 									<ExtractFields conversation={selected} />
 									{cribNotes ? (
-										<section className="gap-1.5 p-3 swiss:rounded-none swiss:border-l-2 swiss:border-l-primary swiss:bg-primary/5 flat:rounded-lg flat:border-l-2 flat:border-l-primary flat:bg-primary/6 flex flex-col rounded-md bg-touch/8">
-											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
-											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
+										<section className="gap-1.5 p-3 flex flex-col rounded-lg rounded-md border-l-2 border-l-primary bg-primary/6 bg-touch/8">
+											{" "}
+											<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>{" "}
+											<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>{" "}
 											<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
 										</section>
 									) : null}
@@ -501,13 +511,13 @@ export function Inbox() {
 											id="inbox-reply"
 											value={reply}
 											onChange={(event) => setReply(event.target.value)}
-											className="min-h-28 text-sm swiss:rounded-none flat:rounded-lg rounded-md shadow-none"
+											className="min-h-28 text-sm rounded-lg rounded-md shadow-none"
 											aria-label={t("reply")}
 										/>
 									</section>
 								</div>
 							</div>
-							<div className="px-3 py-2 gap-3 swiss:bg-background flat:bg-muted/40 flex shrink-0 items-center justify-between border-t bg-card">
+							<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-card bg-muted/40">
 								<output
 									aria-live="polite"
 									aria-atomic="true"

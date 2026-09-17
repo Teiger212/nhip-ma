@@ -125,7 +125,6 @@
 			"documentation": "Dokumentation",
 			"home": "Startseite",
 			"language": "Sprache",
-			"style": "Stil",
 			"logout": "Abmelden"
 		},
 		"notifications": {
@@ -680,14 +679,6 @@
 		"aria": {
 			"closeToast": "Benachrichtigung schließen",
 			"language": "Sprache"
-		},
-		"inboxStyle": {
-			"olive": "Olive",
-			"oliveShort": "Olive",
-			"swiss": "Swiss",
-			"swissShort": "Swiss",
-			"flat": "Flat",
-			"flatShort": "Flat"
 		},
 		"colorMode": {
 			"system": "System",
