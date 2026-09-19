@@ -1,10 +1,13 @@
 import { createInboxStore, sqlitePathFromEnv, type InboxStore } from "@repo/database/inbox";
 
 import { type InboxConfig, inboxConfigFromEnv, validateInboxEnv } from "./config";
+import { type DraftAdapter, draftAdapterFromConfig } from "./drafts";
 
 export type Runtime = {
 	store: InboxStore;
 	config: InboxConfig;
+	/** The model seam for translation and follow-up drafts (ADR 0005). */
+	drafts: DraftAdapter;
 };
 
 type GlobalRuntime = typeof globalThis & { __nhipRuntime?: Runtime; __nhipConfig?: InboxConfig };
@@ -34,9 +37,11 @@ export function getRuntime(): Runtime {
 	}
 	const g = globalThis as GlobalRuntime;
 	if (!g.__nhipRuntime) {
+		const config = resolveConfig();
 		g.__nhipRuntime = {
 			store: createInboxStore(sqlitePathFromEnv()),
-			config: resolveConfig(),
+			config,
+			drafts: draftAdapterFromConfig(config),
 		};
 	}
 	return g.__nhipRuntime;

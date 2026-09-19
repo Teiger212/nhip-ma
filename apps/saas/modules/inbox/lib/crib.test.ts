@@ -33,8 +33,12 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.inbox.back).toBe("Quay lại");
 	expect(enMessages.inbox.language).toBe("Language");
 	expect(viMessages.inbox.language).toBe("Ngôn ngữ");
-	expect(enMessages.inbox.needsApprove).toBe("Needs approval");
-	expect(viMessages.inbox.needsApprove).toBe("Cần duyệt");
+	expect(enMessages.inbox.yourTurn).toBe("Your turn");
+	expect(viMessages.inbox.yourTurn).toBe("Đến lượt bạn");
+	expect(enMessages.inbox.translation).toBe("Translation");
+	expect(viMessages.inbox.translation).toBe("Bản dịch");
+	expect(enMessages.inbox.quietHint).toMatch(/48 hours/);
+	expect(viMessages.inbox.quietHint).toMatch(/48 giờ/);
 	expect(enMessages.inbox.forYou).toBe("Operator note");
 	expect(viMessages.inbox.forYou).toBe("Ghi chú nội bộ");
 	expect(enMessages.app.userMenu.language).toBe("Language");
@@ -47,8 +51,9 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.userMenu.logout).toBe("Đăng xuất");
 	expect(enMessages.inbox.approveAndSend).toBe("Approve and send");
 	expect(viMessages.inbox.approveAndSend).toBe("Duyệt và gửi");
-	expect(enMessages.inbox.views.needsReply).toBe("Needs reply");
-	expect(viMessages.inbox.views.needsReply).toBe("Cần trả lời");
+	expect(enMessages.inbox.views.yourTurn).toBe("Your turn");
+	expect(viMessages.inbox.views.yourTurn).toBe("Đến lượt bạn");
+	expect(enMessages.inbox.views).not.toHaveProperty("needsReply");
 	expect(enMessages.inbox.sentTo).toBe("Sent to {name}");
 	expect(viMessages.inbox.sentTo).toBe("Đã gửi cho {name}");
 	expect(enMessages.inbox).not.toHaveProperty("editReply");
@@ -120,7 +125,7 @@ test("empty one-shot facts use the empty-facts crib string", () => {
 				language: "en",
 				qualification: emptyQualification(),
 				paperwork: { mentioned: false, flag: null },
-				draft: { reply: "" },
+				draft: { reply: "", answersMessageId: null, source: "template" },
 			},
 		},
 		en,

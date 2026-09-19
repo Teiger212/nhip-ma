@@ -38,27 +38,33 @@ saas test`. Do not commit untracked local scripts or `data/`.
 
 ## Key paths
 
-| Path                                                                     | Why                                               |
-| ------------------------------------------------------------------------ | ------------------------------------------------- |
-| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                                       |
-| `apps/saas/modules/inbox/components/Inbox.tsx`                           | Inbox client module (renders, does not decide)    |
-| `apps/saas/modules/inbox/lib/queue.ts`                                   | Queue rules: views, order, counts, next selection |
-| `apps/saas/modules/inbox/lib/{extract,draft,crib}.ts`                    | One-shot: extract, guest draft, operator note     |
-| `apps/saas/modules/inbox/lib/inbox.ts`                                   | Ingest and approve-and-send                       |
-| `apps/saas/modules/inbox/lib/pipes/`                                     | Pipe adapters (WhatsApp, Zalo), mock/live seam    |
-| `apps/saas/modules/inbox/lib/{config,runtime}.ts`                        | Validated config, runtime singleton               |
-| `apps/saas/app/api/conversations/`                                       | List, detail, approve (session-gated)             |
-| `apps/saas/app/webhooks/{whatsapp,zalo}/route.ts`                        | Inbound (signature-verified, fail closed)         |
-| `packages/database/inbox/`                                               | SQLite store, DDL, zod vocabulary                 |
-| `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                                    |
-| `apps/saas/modules/shared/lib/walk-nav.ts`                               | Sidebar rows                                      |
-| `apps/saas/proxy.ts`, `apps/saas/modules/i18n/routing.ts`                | Locale routing (`en`, `vi`)                       |
-| `tooling/tailwind/theme.css`                                             | Palette (Flat: blue action, amber pending)        |
+| Path                                                                     | Why                                                |
+| ------------------------------------------------------------------------ | -------------------------------------------------- |
+| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                                        |
+| `apps/saas/modules/inbox/components/Inbox.tsx`                           | Inbox client module (renders, does not decide)     |
+| `apps/saas/modules/inbox/lib/queue.ts`                                   | Queue rules: Your turn, quiet, order, counts       |
+| `apps/saas/modules/inbox/lib/{extract,draft,crib}.ts`                    | One-shot: extract, template reply, operator note   |
+| `apps/saas/modules/inbox/lib/inbox.ts`                                   | Ingest, approve-and-send, regenerate draft         |
+| `apps/saas/modules/inbox/lib/drafts/`                                    | Draft adapter (OpenAI-compatible or none), prompts |
+| `apps/saas/modules/inbox/lib/{translate,background}.ts`                  | Per-message translation, background jobs           |
+| `apps/saas/modules/inbox/lib/pipes/`                                     | Pipe adapters (WhatsApp, Zalo), mock/live seam     |
+| `apps/saas/modules/inbox/lib/{config,runtime}.ts`                        | Validated config, runtime singleton                |
+| `apps/saas/app/api/conversations/`                                       | List, detail, approve, draft (session-gated)       |
+| `apps/saas/app/webhooks/{whatsapp,zalo}/route.ts`                        | Inbound (signature-verified, fail closed)          |
+| `packages/database/inbox/`                                               | SQLite store, DDL, zod vocabulary                  |
+| `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                                     |
+| `apps/saas/modules/shared/lib/walk-nav.ts`                               | Sidebar rows                                       |
+| `apps/saas/proxy.ts`, `apps/saas/modules/i18n/routing.ts`                | Locale routing (`en`, `vi`)                        |
+| `tooling/tailwind/theme.css`                                             | Palette (Flat: blue action, amber pending)         |
 
 ## Rules that hold
 
-- Never auto-send. Approve and send is the only send path, and it claims the message
-  atomically before any vendor call.
+- Never auto-send. Approve and send is the only send path, and it claims the guest
+  message it answers atomically before any vendor call. Reply-only: one send per inbound,
+  and a thread is "Your turn" whenever the guest spoke last (ADRs 0004, 0006).
+- Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
+  Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
+  draft that touches paperwork is dropped by the post-check and the template stands.
 - Never message real guests or agents from a dev or demo environment. Never put customer
   data on a public link.
 - The operator note never invents Vietnamese law.
@@ -75,14 +81,14 @@ saas test`. Do not commit untracked local scripts or `data/`.
 Better Auth is a library and needs no account. These do. Two of them require the company
 entity, so start those first.
 
-| Service                                               | Used for                                                 | Needs the company entity                               |
-| ----------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
-| Meta developer app + WhatsApp Business                | inbound webhook, outbound send (`WHATSAPP_*`)            | Yes: Business Verification before real traffic         |
-| Zalo Official Account + developer app                 | same for Zalo (`ZALO_OA_*`)                              | Yes: OA verification requires a registered VN business |
-| Attio workspace + API key                             | CRM adapter, closings and lost (ADR 0003)                | No                                                     |
-| Anthropic API key                                     | draft adapter: translation, follow-ups (ADRs 0005, 0007) | No                                                     |
-| Resend (or the mail provider in `.env.local.example`) | magic link and verification emails                       | No, but a verified sending domain                      |
-| Google / GitHub OAuth apps                            | only if social login stays enabled                       | No                                                     |
+| Service                                                | Used for                                                            | Needs the company entity                               |
+| ------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
+| Meta developer app + WhatsApp Business                 | inbound webhook, outbound send (`WHATSAPP_*`)                       | Yes: Business Verification before real traffic         |
+| Zalo Official Account + developer app                  | same for Zalo (`ZALO_OA_*`)                                         | Yes: OA verification requires a registered VN business |
+| Attio workspace + API key                              | CRM adapter, closings and lost (ADR 0003)                           | No                                                     |
+| OpenRouter account (or any OpenAI-compatible endpoint) | draft adapter: translation, follow-ups (`DRAFT_*`, ADRs 0005, 0007) | No; prepaid balance is the budget                      |
+| Resend (or the mail provider in `.env.local.example`)  | magic link and verification emails                                  | No, but a verified sending domain                      |
+| Google / GitHub OAuth apps                             | only if social login stays enabled                                  | No                                                     |
 
 The office itself (ADR 0008) is created in-app, by seed or signup, not with any vendor.
 

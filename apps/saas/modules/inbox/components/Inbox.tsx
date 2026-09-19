@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, cn, Input, Skeleton, Textarea, toast } from "@repo/ui";
-import { ChevronLeftIcon, SearchIcon } from "lucide-react";
+import { ChevronLeftIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -9,17 +9,22 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { formatConversationCrib } from "../lib/crib";
 import { arrangeExtractRows, type ExtractRow } from "../lib/extract-rows";
 import { guestInitials } from "../lib/guest-initials";
-import { useApproveAndSend, useConversations } from "../lib/inbox-queries";
-import { buildQueueView, INBOX_VIEWS, nextSelection } from "../lib/queue";
+import { useApproveAndSend, useConversations, useRegenerateDraft } from "../lib/inbox-queries";
+import { buildQueueView, INBOX_VIEWS, nextSelection, yourTurn } from "../lib/queue";
 import { lastInboundText } from "../lib/search";
 import { formatInboxTimestamp } from "../lib/time";
-import type { Conversation, Message } from "../lib/types";
+import type { Conversation, Message, OperatorLanguage } from "../lib/types";
 
 /** Desktop thread-list column. Same used width, min, and max so detail content cannot flex it. */
 const INBOX_LIST_WIDTH = "22rem";
 
 function displayName(conversation: Conversation): string {
 	return conversation.guestName || conversation.guestId;
+}
+
+/** SaaS routing only serves the operator locales (`modules/i18n/routing.ts`). */
+function useOperatorLanguage(): OperatorLanguage {
+	return useLocale() as OperatorLanguage;
 }
 
 function GuestMark({ name }: { name: string }) {
@@ -56,11 +61,12 @@ function CompactFlag({
 
 function ThreadFlags({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
+	const turn = yourTurn(conversation);
 	return (
 		<>
 			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
-			<CompactFlag tone={conversation.sentAt ? "success" : "warning"}>
-				{conversation.sentAt ? t("sent") : t("needsApprove")}
+			<CompactFlag tone={turn ? "warning" : "success"}>
+				{turn ? t("yourTurn") : t("sent")}
 			</CompactFlag>
 		</>
 	);
@@ -130,8 +136,10 @@ function ExtractFields({ conversation }: { conversation: Conversation }) {
 
 function ThreadMessage({ message }: { message: Message }) {
 	const t = useTranslations("inbox");
-	const locale = useLocale();
+	const locale = useOperatorLanguage();
 	const inbound = message.direction === "in";
+	// Rendered as text, never as markup (ADR 0007): a React text node cannot carry HTML.
+	const translation = inbound ? message.translations?.[locale] : undefined;
 	return (
 		<div
 			className={cn(
@@ -153,6 +161,14 @@ function ThreadMessage({ message }: { message: Message }) {
 				) : null}
 			</div>
 			<div className="leading-relaxed whitespace-pre-wrap">{message.text}</div>
+			{translation ? (
+				<div className="mt-1.5 pt-1.5 text-xs leading-relaxed border-t border-dashed whitespace-pre-wrap text-muted-foreground">
+					<span className="mr-1.5 font-medium tracking-wide text-[10px] text-muted-foreground/80 uppercase">
+						{t("translation")}
+					</span>
+					{translation}
+				</div>
+			) : null}
 		</div>
 	);
 }
@@ -237,11 +253,13 @@ function ThreadRow({
 
 /**
  * The reply box shows the operator's edit for the selected thread, falling back to the
- * server draft. Edits are keyed by thread id and dropped when that thread is sent, so a
- * background refetch never overwrites what the operator typed.
+ * server's suggested reply. Edits are keyed by thread id and dropped when that thread is
+ * sent or a new suggestion is asked for, so a background refetch never overwrites what
+ * the operator typed.
  */
 function useReplyDraft(selected: Conversation | null) {
 	const [edits, setEdits] = useState<Record<string, string>>({});
+	const edited = Boolean(selected && selected.id in edits);
 	const reply = selected ? (edits[selected.id] ?? selected.oneShot?.draft?.reply ?? "") : "";
 	const setReply = (value: string) => {
 		if (!selected) return;
@@ -254,16 +272,17 @@ function useReplyDraft(selected: Conversation | null) {
 			delete next[id];
 			return next;
 		});
-	return { reply, setReply, dropEdit };
+	return { reply, edited, setReply, dropEdit };
 }
 
-const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("needsReply");
+const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("yourTurn");
 
 export function Inbox() {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
 	const conversationsQuery = useConversations();
 	const approve = useApproveAndSend();
+	const regenerate = useRegenerateDraft();
 	const [view, setView] = useQueryState("view", viewParser);
 	const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""));
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -275,22 +294,24 @@ export function Inbox() {
 		() => buildQueueView(conversations, view, query),
 		[conversations, view, query],
 	);
+	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
 
-	// Selection follows the visible queue: stays put while visible, otherwise advances
+	// Selection follows the list: stays put while the thread is there, otherwise advances
 	// (this is what moves to the next waiting guest after a send).
 	useEffect(() => {
-		const next = nextSelection(queue.visible, selectedId);
+		const next = nextSelection(ordered, selectedId);
 		if (next !== selectedId) setSelectedId(next);
-	}, [queue.visible, selectedId]);
+	}, [ordered, selectedId]);
 
 	const selected = conversations.find((conversation) => conversation.id === selectedId) ?? null;
-	const { reply, setReply, dropEdit } = useReplyDraft(selected);
+	const { reply, edited, setReply, dropEdit } = useReplyDraft(selected);
 	const cribNotes = selected
 		? formatConversationCrib(selected, (key, values) => t(key, values))
 		: null;
+	const canApprove = Boolean(selected?.unansweredInboundId);
 
 	async function onApprove() {
-		if (!selected || selected.sentAt || approve.isPending) return;
+		if (!selected || !selected.unansweredInboundId || approve.isPending) return;
 		setSendError(null);
 		try {
 			const result = await approve.mutateAsync({ id: selected.id, reply });
@@ -299,9 +320,22 @@ export function Inbox() {
 				title: t("sentTo", { name: displayName(result.conversation) }),
 				type: "success",
 			});
-			if (view !== "needsReply") setSelectedId(result.conversation.id);
+			if (view !== "yourTurn") setSelectedId(result.conversation.id);
 		} catch (error) {
 			setSendError(error instanceof Error ? error.message : t("sendFailed"));
+		}
+	}
+
+	async function onRegenerate() {
+		if (!selected || !selected.unansweredInboundId || regenerate.isPending) return;
+		try {
+			await regenerate.mutateAsync({ id: selected.id });
+			dropEdit(selected.id);
+		} catch (error) {
+			toast.add({
+				title: error instanceof Error ? error.message : t("regenerateFailed"),
+				type: "error",
+			});
 		}
 	}
 
@@ -314,13 +348,26 @@ export function Inbox() {
 		? { text: t("sending"), kind: "" as const, quiet: false }
 		: sendError
 			? { text: sendError, kind: "warn" as const, quiet: false }
-			: selected?.sentAt
+			: selected && !canApprove && selected.sentAt
 				? {
 						text: t("alreadySent", { at: formatInboxTimestamp(selected.sentAt, locale) }),
 						kind: "ok" as const,
 						quiet: false,
 					}
 				: { text: t("notSent"), kind: "" as const, quiet: true };
+
+	const draftSource = selected?.oneShot?.draft?.source ?? "template";
+
+	function rows(list: Conversation[]) {
+		return list.map((conversation) => (
+			<ThreadRow
+				key={conversation.id}
+				conversation={conversation}
+				active={conversation.id === selectedId}
+				onOpen={() => openThread(conversation.id)}
+			/>
+		));
+	}
 
 	function listBody() {
 		if (conversationsQuery.isPending) return <ThreadListSkeleton />;
@@ -341,7 +388,7 @@ export function Inbox() {
 				/>
 			);
 		}
-		if (queue.visible.length === 0) {
+		if (queue.visible.length === 0 && queue.quiet.length === 0) {
 			const title =
 				conversations.length === 0
 					? t("empty")
@@ -366,14 +413,24 @@ export function Inbox() {
 				/>
 			);
 		}
-		return queue.visible.map((conversation) => (
-			<ThreadRow
-				key={conversation.id}
-				conversation={conversation}
-				active={conversation.id === selectedId}
-				onOpen={() => openThread(conversation.id)}
-			/>
-		));
+		return (
+			<>
+				{queue.visible.length === 0 ? (
+					<ThreadListState title={t("onlyQuiet")} />
+				) : (
+					rows(queue.visible)
+				)}
+				{queue.quiet.length > 0 ? (
+					<details className="border-t">
+						<summary className="min-h-11 px-3 text-xs font-medium gap-2 flex cursor-pointer items-center text-muted-foreground">
+							{t("quiet", { count: queue.quiet.length })}
+						</summary>
+						<p className="px-3 pb-2 text-xs text-pretty text-muted-foreground">{t("quietHint")}</p>
+						{rows(queue.quiet)}
+					</details>
+				) : null}
+			</>
+		);
 	}
 
 	return (
@@ -431,7 +488,7 @@ export function Inbox() {
 					})}
 				</div>
 				<p className="text-xs text-muted-foreground" aria-live="polite">
-					{t("queueCount", { count: queue.counts.needsReply })}
+					{t("queueCount", { count: queue.counts.yourTurn })}
 				</p>
 			</div>
 			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
@@ -491,12 +548,38 @@ export function Inbox() {
 										</section>
 									) : null}
 									<section className="gap-1.5 flex flex-col">
-										<label
-											htmlFor="inbox-reply"
-											className="font-semibold tracking-tight text-sm font-heading"
-										>
-											{t("reply")}
-										</label>
+										<div className="gap-2 flex flex-wrap items-center justify-between">
+											<label
+												htmlFor="inbox-reply"
+												className="font-semibold tracking-tight text-sm font-heading"
+											>
+												{t("reply")}
+											</label>
+											{canApprove ? (
+												<div className="gap-2 flex items-center">
+													{!edited ? (
+														<span className="text-xs text-muted-foreground">
+															{draftSource === "model"
+																? t("suggested.model")
+																: t("suggested.template")}
+														</span>
+													) : null}
+													<Button
+														type="button"
+														variant="ghost"
+														className="h-8 min-h-8 gap-1.5 px-2 text-xs"
+														disabled={regenerate.isPending}
+														onClick={() => void onRegenerate()}
+													>
+														<RefreshCwIcon
+															aria-hidden="true"
+															className={cn("size-3.5", regenerate.isPending && "animate-spin")}
+														/>
+														{regenerate.isPending ? t("regenerating") : t("regenerate")}
+													</Button>
+												</div>
+											) : null}
+										</div>
 										<Textarea
 											id="inbox-reply"
 											value={reply}
@@ -527,7 +610,7 @@ export function Inbox() {
 									type="button"
 									variant="primary"
 									className="min-h-11 ml-auto shrink-0"
-									disabled={Boolean(selected.sentAt) || approve.isPending}
+									disabled={!canApprove || approve.isPending}
 									onClick={() => void onApprove()}
 								>
 									{t("approveAndSend")}

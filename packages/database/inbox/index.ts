@@ -9,10 +9,11 @@
  * writes to disk, not something the domain should be able to reach for.
  */
 export {
-	CribLanguage,
+	DraftSource,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
+	OperatorLanguage,
 	Pipe,
 	RentOrBuy,
 	Timestamp,
@@ -29,6 +30,7 @@ export type {
 	Qualification,
 	SendMode,
 	SendResult,
+	Translations,
 } from "./types";
 export { conversationId, createInboxStore, createStore, nowIso } from "./store";
 export { DEFAULT_SQLITE_PATH, sqliteFilePath, sqlitePathFromEnv } from "./sqlite-path";

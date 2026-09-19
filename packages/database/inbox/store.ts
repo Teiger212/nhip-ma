@@ -8,9 +8,11 @@ import { z } from "zod";
 import { ensureInboxSchema } from "./ensure-schema";
 import {
 	DbMessageSource,
+	DraftSource,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
+	OperatorLanguage,
 	Pipe,
 	RentOrBuy,
 	Timestamp,
@@ -27,6 +29,7 @@ import type {
 	Paperwork,
 	Qualification,
 	SendResult,
+	Translations,
 } from "./types";
 
 export function nowIso(at?: number | string | Date): string {
@@ -73,6 +76,13 @@ const messageRow = z.object({
 	at: Timestamp,
 	vendorMessageId: z.string().nullable(),
 	mock: z.number(),
+	claimedAt: Timestamp.nullable(),
+});
+
+const translationRow = z.object({
+	messageId: z.string(),
+	locale: OperatorLanguage,
+	text: z.string(),
 });
 
 const qualificationRow = z.object({
@@ -89,6 +99,8 @@ const qualificationRow = z.object({
 const draftRow = z.object({
 	conversationId: z.string(),
 	reply: z.string(),
+	answersMessageId: z.string().nullable(),
+	source: DraftSource,
 });
 
 const paperworkRow = z.object({
@@ -105,11 +117,13 @@ const sendRow = z.object({
 	to: z.string(),
 	text: z.string().nullable(),
 	vendorMessageId: z.string().nullable(),
+	answersMessageId: z.string().nullable(),
 	at: Timestamp,
 });
 
 type ConversationRow = z.infer<typeof conversationRow>;
 type MessageRow = z.infer<typeof messageRow>;
+type TranslationRow = z.infer<typeof translationRow>;
 type QualificationRow = z.infer<typeof qualificationRow>;
 type DraftRow = z.infer<typeof draftRow>;
 type PaperworkRow = z.infer<typeof paperworkRow>;
@@ -149,7 +163,7 @@ function toBool(value: number | null): boolean | null {
 	return Boolean(value);
 }
 
-function mapMessage(row: MessageRow): Message {
+function mapMessage(row: MessageRow, translations: Translations): Message {
 	return {
 		id: row.id,
 		direction: row.direction,
@@ -158,6 +172,7 @@ function mapMessage(row: MessageRow): Message {
 		at: row.at,
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
+		translations,
 	};
 }
 
@@ -174,7 +189,7 @@ function mapQualification(row: QualificationRow): Qualification {
 }
 
 function mapDraft(row: DraftRow): Draft {
-	return { reply: row.reply };
+	return { reply: row.reply, answersMessageId: row.answersMessageId, source: row.source };
 }
 
 function mapPaperwork(row: PaperworkRow): Paperwork {
@@ -190,10 +205,17 @@ export function createInboxStore(filePath: string): InboxStore {
 	const sqlite = new Database(resolved);
 	ensureInboxSchema(sqlite);
 
+	function answered(messageId: string): boolean {
+		return Boolean(
+			sqlite.prepare(`SELECT 1 FROM "Send" WHERE "answersMessageId" = ? LIMIT 1`).get(messageId),
+		);
+	}
+
 	/**
-	 * The single read funnel: `listConversations`, `getConversation`, `upsertInbound`,
-	 * `setOneShot` and `recordApprovedSend` all bottom out here, so parsing the rows once
-	 * at this boundary is enough to make every `Conversation` the store hands out true.
+	 * The single read funnel: every method that returns a `Conversation` bottoms out here,
+	 * so parsing the rows once at this boundary is enough to make every `Conversation` the
+	 * store hands out true. "Your turn" is derived here too, from the messages themselves:
+	 * the guest spoke last and no Send answers that message.
 	 */
 	function load(id: string): Conversation | null {
 		const rawRow = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id);
@@ -204,10 +226,29 @@ export function createInboxStore(filePath: string): InboxStore {
 		const messages: MessageRow[] = parseRow(
 			z.array(messageRow),
 			sqlite
-				.prepare(`SELECT * FROM "Message" WHERE "conversationId" = ? ORDER BY "at" ASC`)
+				.prepare(
+					`SELECT * FROM "Message" WHERE "conversationId" = ? ORDER BY "at" ASC, "rowid" ASC`,
+				)
 				.all(id),
 			"Message",
 		);
+		const translations: TranslationRow[] = parseRow(
+			z.array(translationRow),
+			sqlite
+				.prepare(
+					`SELECT "Translation".* FROM "Translation"
+           JOIN "Message" ON "Message"."id" = "Translation"."messageId"
+           WHERE "Message"."conversationId" = ?`,
+				)
+				.all(id),
+			"Translation",
+		);
+		const translationsByMessage = new Map<string, Translations>();
+		for (const translation of translations) {
+			const existing = translationsByMessage.get(translation.messageId) ?? {};
+			existing[translation.locale] = translation.text;
+			translationsByMessage.set(translation.messageId, existing);
+		}
 		const rawQualification = sqlite
 			.prepare(`SELECT * FROM "Qualification" WHERE "conversationId" = ?`)
 			.get(id);
@@ -239,15 +280,22 @@ export function createInboxStore(filePath: string): InboxStore {
 					}
 				: null;
 
+		const last = messages[messages.length - 1];
+		const unansweredInboundId =
+			last && last.direction === "in" && !answered(last.id) ? last.id : null;
+
 		return {
 			id: row.id,
 			pipe: row.pipe,
 			guestId: row.guestId,
 			guestName: row.guestName,
 			ownerUserId: row.ownerUserId,
-			messages: messages.map(mapMessage),
+			messages: messages.map((message) =>
+				mapMessage(message, translationsByMessage.get(message.id) ?? {}),
+			),
 			lastGuestInboundAt: row.lastGuestInboundAt,
 			sentAt: row.sentAt,
+			unansweredInboundId,
 			oneShot,
 			lastSend: send
 				? {
@@ -260,6 +308,19 @@ export function createInboxStore(filePath: string): InboxStore {
 				: undefined,
 			updatedAt: row.updatedAt,
 		};
+	}
+
+	function upsertDraft(id: string, draft: Draft): void {
+		sqlite
+			.prepare(
+				`INSERT INTO "Draft" ("conversationId", "reply", "answersMessageId", "source")
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT("conversationId") DO UPDATE SET
+           "reply" = excluded."reply",
+           "answersMessageId" = excluded."answersMessageId",
+           "source" = excluded."source"`,
+			)
+			.run(id, draft.reply, draft.answersMessageId, draft.source);
 	}
 
 	return {
@@ -389,13 +450,7 @@ export function createInboxStore(filePath: string): InboxStore {
 						q.budgetBand,
 						q.bedsOrHousehold,
 					);
-				sqlite
-					.prepare(
-						`INSERT INTO "Draft" ("conversationId", "reply")
-             VALUES (?, ?)
-             ON CONFLICT("conversationId") DO UPDATE SET "reply" = excluded."reply"`,
-					)
-					.run(id, shot.draft.reply);
+				upsertDraft(id, shot.draft);
 				sqlite
 					.prepare(
 						`INSERT INTO "Paperwork" ("conversationId", "mentioned", "flag")
@@ -413,25 +468,44 @@ export function createInboxStore(filePath: string): InboxStore {
 			return load(id);
 		},
 
-		async claimSend(id) {
+		async setDraft(id, draft: Draft) {
+			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
+			if (!conv) {
+				return null;
+			}
+			upsertDraft(id, draft);
+			return load(id);
+		},
+
+		async setTranslation(messageId, locale, text) {
+			sqlite
+				.prepare(
+					`INSERT INTO "Translation" ("messageId", "locale", "text") VALUES (?, ?, ?)
+           ON CONFLICT("messageId", "locale") DO UPDATE SET "text" = excluded."text"`,
+				)
+				.run(messageId, locale, text);
+		},
+
+		async claimSend(messageId) {
 			const result = sqlite
 				.prepare(
-					`UPDATE "Conversation" SET "sentAt" = ?, "updatedAt" = ? WHERE "id" = ? AND "sentAt" IS NULL`,
+					`UPDATE "Message" SET "claimedAt" = ? WHERE "id" = ? AND "direction" = 'in' AND "claimedAt" IS NULL
+             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."answersMessageId" = "Message"."id")`,
 				)
-				.run(nowIso(), nowIso(), id);
+				.run(nowIso(), messageId);
 			return result.changes === 1;
 		},
 
-		async releaseSend(id) {
+		async releaseSend(messageId) {
 			sqlite
 				.prepare(
-					`UPDATE "Conversation" SET "sentAt" = NULL, "updatedAt" = ? WHERE "id" = ?
-             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."conversationId" = "Conversation"."id")`,
+					`UPDATE "Message" SET "claimedAt" = NULL WHERE "id" = ?
+             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."answersMessageId" = "Message"."id")`,
 				)
-				.run(nowIso(), id);
+				.run(messageId);
 		},
 
-		async recordApprovedSend(id, text, sendResult: SendResult) {
+		async recordApprovedSend(id, text, sendResult: SendResult, answersMessageId) {
 			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
 			if (!conv) {
 				return null;
@@ -446,13 +520,13 @@ export function createInboxStore(filePath: string): InboxStore {
 					.run(cuid(), id, text, at, sendResult.vendorMessageId || null, sendResult.mock ? 1 : 0);
 				sqlite
 					.prepare(
-						`INSERT INTO "Approval" ("id", "conversationId", "reply", "at") VALUES (?, ?, ?, ?)`,
+						`INSERT INTO "Approval" ("id", "conversationId", "reply", "answersMessageId", "at") VALUES (?, ?, ?, ?, ?)`,
 					)
-					.run(cuid(), id, text, at);
+					.run(cuid(), id, text, answersMessageId, at);
 				sqlite
 					.prepare(
-						`INSERT INTO "Send" ("id", "conversationId", "mock", "pipe", "to", "text", "vendorMessageId", "at")
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+						`INSERT INTO "Send" ("id", "conversationId", "mock", "pipe", "to", "text", "vendorMessageId", "answersMessageId", "at")
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					)
 					.run(
 						cuid(),
@@ -462,6 +536,7 @@ export function createInboxStore(filePath: string): InboxStore {
 						sendResult.to,
 						sendResult.text ?? text,
 						sendResult.vendorMessageId,
+						answersMessageId,
 						at,
 					);
 				sqlite

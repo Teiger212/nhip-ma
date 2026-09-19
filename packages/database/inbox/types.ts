@@ -1,4 +1,12 @@
-import type { GuestLanguage, MessageDirection, MessageSource, Pipe, RentOrBuy } from "./schema";
+import type {
+	DraftSource,
+	GuestLanguage,
+	MessageDirection,
+	MessageSource,
+	OperatorLanguage,
+	Pipe,
+	RentOrBuy,
+} from "./schema";
 
 /**
  * The vocabulary is declared once, in `./schema`, and reaches consumers through
@@ -29,11 +37,16 @@ export type Paperwork = {
 };
 
 /**
- * The guest-facing draft. The operator note is not stored: `crib.ts` renders it from the
- * qualification at read time, in the operator's language.
+ * The suggested reply (CONTEXT.md): the text in the reply box. It answers one inbound
+ * message (ADR 0006), so a draft written for an earlier guest message is never mistaken
+ * for a draft of the current one. The operator note is not stored: `crib.ts` renders it
+ * from the qualification at read time, in the operator's language.
  */
 export type Draft = {
 	reply: string;
+	/** The guest message this reply answers. `null` only on files written before ADR 0006. */
+	answersMessageId: string | null;
+	source: DraftSource;
 };
 
 export type OneShot = {
@@ -43,6 +56,9 @@ export type OneShot = {
 	draft: Draft;
 };
 
+/** A guest message rendered in an operator language (ADR 0007). Keyed by that language. */
+export type Translations = Partial<Record<OperatorLanguage, string>>;
+
 export type Message = {
 	id: string;
 	direction: MessageDirection;
@@ -51,6 +67,8 @@ export type Message = {
 	at: string;
 	vendorMessageId: string | null;
 	mock?: boolean;
+	/** Empty for office messages: they are never translated back (ADR 0007). */
+	translations: Translations;
 };
 
 export type SendResult = {
@@ -74,7 +92,14 @@ export type Conversation = {
 	ownerUserId: string | null;
 	messages: Message[];
 	lastGuestInboundAt: string | null;
+	/** When the office last sent through Nhịp. Not terminal: the guest may write back. */
 	sentAt: string | null;
+	/**
+	 * "Your turn" (CONTEXT.md): the guest spoke last. This is the id of that unanswered
+	 * inbound message, the unit of approval under reply-only (ADR 0006). `null` means the
+	 * office spoke last, so there is nothing to approve.
+	 */
+	unansweredInboundId: string | null;
 	oneShot: OneShot | null;
 	lastSend?: SendResult;
 	updatedAt: string;
@@ -102,17 +127,22 @@ export type InboxStore = {
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
 	upsertInbound: (event: InboundEvent) => Promise<Conversation>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
+	/** Replace the suggested reply without touching extraction or paperwork. */
+	setDraft: (id: string, draft: Draft) => Promise<Conversation | null>;
+	/** Store one guest message's rendering in one operator language. */
+	setTranslation: (messageId: string, locale: OperatorLanguage, text: string) => Promise<void>;
 	/**
-	 * Atomically mark a thread as being sent. Returns false when it was already
-	 * claimed or sent, so two concurrent approvals cannot both transmit.
+	 * Atomically claim an inbound message as being answered. Returns false when it was
+	 * already claimed or answered, so two concurrent approvals cannot both transmit.
 	 */
-	claimSend: (id: string) => Promise<boolean>;
+	claimSend: (messageId: string) => Promise<boolean>;
 	/** Undo `claimSend` after a failed transmit so the operator can retry. */
-	releaseSend: (id: string) => Promise<void>;
+	releaseSend: (messageId: string) => Promise<void>;
 	recordApprovedSend: (
 		id: string,
 		text: string,
 		sendResult: SendResult,
+		answersMessageId: string,
 	) => Promise<Conversation | null>;
 	guestInboundText: (id: string) => Promise<string>;
 	close: () => Promise<void>;

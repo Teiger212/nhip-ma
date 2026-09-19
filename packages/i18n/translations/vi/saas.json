@@ -713,7 +713,18 @@
 		"noMatches": "Không có cuộc hội thoại phù hợp.",
 		"noneSelected": "Chưa chọn cuộc hội thoại.",
 		"sent": "Đã gửi",
-		"needsApprove": "Cần duyệt",
+		"yourTurn": "Đến lượt bạn",
+		"quiet": "Đã lắng ({count})",
+		"quietHint": "Khách nhắn lần cuối hơn 48 giờ trước. Vẫn đến lượt bạn.",
+		"onlyQuiet": "Không có gì mới. Các cuộc đã lắng bên dưới vẫn đến lượt bạn.",
+		"translation": "Bản dịch",
+		"suggested": {
+			"template": "Trả lời gợi ý",
+			"model": "AI gợi ý từ cuộc hội thoại"
+		},
+		"regenerate": "Tạo lại",
+		"regenerating": "Đang tạo lại…",
+		"regenerateFailed": "Không tạo được gợi ý mới.",
 		"mock": "Gửi thử",
 		"forYou": "Ghi chú nội bộ",
 		"forYouHint": "Khách không thấy phần này.",
@@ -763,11 +774,11 @@
 		},
 		"views": {
 			"aria": "Lọc cuộc hội thoại",
-			"needsReply": "Cần trả lời",
+			"yourTurn": "Đến lượt bạn",
 			"sent": "Đã gửi",
 			"all": "Tất cả"
 		},
-		"queueCount": "{count, plural, =0 {Không có cuộc nào cần trả lời} other {# cuộc cần trả lời}}",
+		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
 		"allCaughtUp": "Đã xử lý hết.",
 		"viewSent": "Xem đã gửi",
 		"sentTo": "Đã gửi cho {name}",

@@ -20,6 +20,7 @@ import { GET as getConversation } from "../../../app/api/conversations/[id]/rout
 import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
+import { noDraftAdapter } from "./drafts";
 import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 
@@ -41,6 +42,7 @@ beforeEach(() => {
 	setRuntimeForTests({
 		store: createInboxStore(path.join(dir, "nhip.db")),
 		config: mockInboxConfig({ whatsapp: { verifyToken: "verify-me" } }),
+		drafts: noDraftAdapter,
 	});
 });
 
@@ -99,7 +101,7 @@ test("inbound does not send; approve is required", async () => {
 	expect(after.messages.filter((message) => message.source === "nhip").length).toBe(1);
 });
 
-test("approve refuses a second send on an already-sent thread", async () => {
+test("approve refuses a second send against the same guest message", async () => {
 	const injected = await json(
 		await inject(
 			new Request("http://localhost/dev/inbound", {
@@ -136,7 +138,7 @@ test("approve refuses a second send on an already-sent thread", async () => {
 		),
 	);
 	expect(second.res.status).toBe(409);
-	expect(second.body.error).toBe("already_sent");
+	expect(second.body.error).toBe("already_answered");
 	const after = second.body.conversation as { messages?: Array<{ source: string }> } | undefined;
 	expect(after).toBeUndefined();
 	const listed = await json(

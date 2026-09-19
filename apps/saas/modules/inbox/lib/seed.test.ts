@@ -7,6 +7,7 @@ import { afterEach, expect, test } from "vitest";
 
 import { mockInboxConfig } from "./config";
 import { oneShot } from "./draft";
+import { noDraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
 
@@ -53,6 +54,7 @@ test("seed writes invented threads once", async () => {
 	setRuntimeForTests({
 		store: createInboxStore(path.join(dir, "nhip.db")),
 		config: mockInboxConfig(),
+		drafts: noDraftAdapter,
 	});
 	const first = await seedInbox();
 	expect(first.length).toBe(4);
@@ -62,7 +64,14 @@ test("seed writes invented threads once", async () => {
 			.sort((a, b) => (a ?? "").localeCompare(b ?? "")),
 	).toEqual(["Alexei", "Minji", "Thảo", "Yuki"]);
 	expect(first.every((conversation) => conversation.sentAt === null)).toBe(true);
+	expect(first.every((conversation) => conversation.unansweredInboundId !== null)).toBe(true);
 	expect(first.every((conversation) => conversation.oneShot?.draft.reply)).toBe(true);
+	expect(
+		first.every(
+			(conversation) =>
+				conversation.oneShot?.draft.answersMessageId === conversation.unansweredInboundId,
+		),
+	).toBe(true);
 	expect(first.every((conversation) => conversation.messages.length === 1)).toBe(true);
 	const byId = (a: string, b: string) => a.localeCompare(b);
 	const firstIds = first.map((conversation) => conversation.id).sort(byId);

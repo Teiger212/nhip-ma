@@ -8,7 +8,7 @@ const shot: OneShot = {
 	language: "vi",
 	qualification: { ...emptyQualification(), nationality: "Korean" },
 	paperwork: { mentioned: false, flag: null },
-	draft: { reply: "" },
+	draft: { reply: "", answersMessageId: null, source: "template" },
 };
 
 test("filled facts come first and missing rows collapse, decided from values not labels", () => {
