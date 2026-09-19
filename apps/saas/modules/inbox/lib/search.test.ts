@@ -9,7 +9,7 @@ function conv(partial: Partial<Conversation> & Pick<Conversation, "id">): Conver
 		pipe: "whatsapp",
 		guestId: partial.guestId || "g1",
 		guestName: partial.guestName ?? "Minji",
-		ownerUserId: null,
+		officeId: "walk-office",
 		messages: partial.messages ?? [],
 		lastGuestInboundAt: null,
 		sentAt: null,

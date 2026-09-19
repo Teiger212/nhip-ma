@@ -85,11 +85,12 @@ export type Conversation = {
 	guestId: string;
 	guestName: string | null;
 	/**
-	 * Better Auth user id that owns this thread. `null` means "unscoped" (seeded or
-	 * pre-tenant rows), which every signed-in operator may see. Once every writer sets an
-	 * owner, drop the `IS NULL` fallback in the store to make isolation strict.
+	 * The office (ADR 0008) this thread belongs to: the kit organization's id. Threads are
+	 * shared within the office and invisible outside it. `null` only on files written
+	 * before tenancy; `adoptUnownedThreads` gives those an office, and nothing new is
+	 * written without one.
 	 */
-	ownerUserId: string | null;
+	officeId: string | null;
 	messages: Message[];
 	lastGuestInboundAt: string | null;
 	/** When the office last sent through Nhịp. Not terminal: the guest may write back. */
@@ -113,19 +114,34 @@ export type InboundEvent = {
 	text: string;
 	vendorMessageId: string | null;
 	at?: number | string | Date;
-	phoneNumberId?: string | null;
-	/** Owner to assign when this event creates the thread (or the thread has none). */
-	ownerUserId?: string | null;
+	/**
+	 * The vendor's id for the office's side of the pipe: the WhatsApp phone number id, the
+	 * Zalo OA id. It is what maps an inbound to its office (`PipeConnection`).
+	 */
+	pipeExternalId?: string | null;
 };
 
-/** Who is reading. Threads are visible when unowned or owned by this user. */
-export type InboxViewer = { userId: string };
+/** Which office owns a pipe endpoint. Webhook-created threads take this office (ADR 0008). */
+export type PipeConnection = {
+	pipe: Pipe;
+	externalId: string;
+	officeId: string;
+};
+
+/** Who is reading: an operator and the office they act for. Threads are visible only inside it. */
+export type InboxViewer = { userId: string; officeId: string };
 
 export type InboxStore = {
 	filePath: string;
 	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
-	upsertInbound: (event: InboundEvent) => Promise<Conversation>;
+	/** Files the message under `officeId`; a thread that already has an office keeps it. */
+	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
+	/** Give every thread without an office (pre-tenancy files) to this one. Returns how many. */
+	adoptUnownedThreads: (officeId: string) => Promise<number>;
+	connectPipe: (connection: PipeConnection) => Promise<void>;
+	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
+	listPipeConnections: () => Promise<PipeConnection[]>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
 	setDraft: (id: string, draft: Draft) => Promise<Conversation | null>;

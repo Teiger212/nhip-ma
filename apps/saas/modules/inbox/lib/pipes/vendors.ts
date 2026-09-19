@@ -132,7 +132,7 @@ export function parseWhatsAppWebhook(body: unknown): InboundEvent[] {
 					text,
 					vendorMessageId: msg.id ?? null,
 					at: msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now(),
-					phoneNumberId: value.metadata?.phone_number_id ?? null,
+					pipeExternalId: value.metadata?.phone_number_id ?? null,
 				});
 			}
 			for (const raw of value.smb_message_echoes ?? []) {
@@ -149,6 +149,7 @@ export function parseWhatsAppWebhook(body: unknown): InboundEvent[] {
 					text,
 					vendorMessageId: echo.id ?? null,
 					at: echo.timestamp ? Number(echo.timestamp) * 1000 : Date.now(),
+					pipeExternalId: value.metadata?.phone_number_id ?? null,
 				});
 			}
 		}
@@ -186,6 +187,10 @@ export function parseZaloWebhook(body: unknown): InboundEvent[] {
 	if (!party) return [];
 	const guestId = String(party.id);
 	if (!guestId) return [];
+	// The office's side of the pipe is the OA: the recipient of a guest message, the sender
+	// of an OA echo. It is what maps the event to an office.
+	const oa = root.event_name === "user_send_text" ? root.recipient : root.sender;
+	const pipeExternalId = oa ? String(oa.id) : null;
 
 	return [
 		{
@@ -196,6 +201,7 @@ export function parseZaloWebhook(body: unknown): InboundEvent[] {
 			text,
 			vendorMessageId: root.message?.msg_id ?? null,
 			at: root.timestamp ? Number(root.timestamp) : Date.now(),
+			pipeExternalId,
 		},
 	];
 }

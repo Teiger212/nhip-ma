@@ -51,9 +51,9 @@ A Postgres `DATABASE_URL` is ignored by the inbox store unless it is a `file:` U
 
 The only inbox schema is the hand-written DDL in `packages/database/inbox/ensure-schema.ts` (WAL, `busy_timeout`, additive column migrations). There are no Prisma or Drizzle inbox models; `schema.prisma` is Better Auth only. Inbox types live in `packages/database/inbox/types.ts`: `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork`, `OneShot`, `SendResult`, `InboxViewer`. Threads are not stored on User / Org / Plan / Subscription.
 
-`Conversation.ownerUserId` scopes threads to a Better Auth user. Route handlers pass the session user as the viewer; a thread with `ownerUserId = NULL` (seeded walk threads) is visible to every signed-in operator, an owned thread only to its owner. Webhook-created threads take `INBOX_OWNER_USER_ID` when set. Dropping the `IS NULL` fallback in the store makes isolation strict once every writer sets an owner.
+The office is the tenant (ADR 0008) and it is the kit organization. `Conversation.officeId` is the organization id; the store lists and reads strictly by it, so a thread is visible only inside its office and shared by every agent in it. `requireInboxSession` resolves the viewer's office from the session's active organization, else the first organization the user is a member of, else 403 `no_office`. Webhook-created threads take the office that owns the pipe the message arrived on (`PipeConnection`: pipe + vendor id of the number or OA → office, set with `pnpm --filter saas pipe:connect`); inbound on an unconnected pipe is dropped. `POST /dev/inbound` files under the signed-in operator's office. Files from before tenancy carry `officeId = NULL` until `adoptUnownedThreads` runs (the seed does it for the walk office).
 
-Organizations are not required (`requireOrganization` is false). `hideOrganization` hides the org switcher.
+The seed creates the walk office (`walk-office`, fixed id) with the walk user as owner. `hideOrganization` keeps the org switcher hidden while one agency is one office; `requireOrganization` stays false because the inbox resolves the office itself.
 
 ## Inbox modules
 
@@ -69,11 +69,12 @@ Organizations are not required (`requireOrganization` is false). `hideOrganizati
 | `apps/saas/app/api/conversations`                          | List / detail (session required)    |
 | `apps/saas/app/api/conversations/[id]/approve`             | Approve and send (session required) |
 | `apps/saas/app/api/conversations/[id]/draft`               | Regenerate suggestion (never sends) |
-| `apps/saas/modules/inbox/lib/require-session.ts`           | 401 gate for inbox routes           |
+| `apps/saas/modules/inbox/lib/require-session.ts`           | 401 / 403 gate, resolves the office |
+| `apps/saas/modules/home/components/Home.tsx`               | Home: funnel shape, CRM empty state |
 | `apps/saas/modules/shared/components/WalkLocaleToggle.tsx` | EN / VI path switch                 |
 | `apps/saas/modules/shared/components/UserMenu.tsx`         | Color mode + language               |
 
-Nav furniture: **Home** and **International** are disabled placeholders. **Inbox** is the only working job. Account settings stays as existing chrome.
+Nav: **Inbox** is the agent's job; **Home** (`/home`) is the numbers screen (ADR 0001), currently the funnel's shape with "connect your CRM" where closings and lost will be (ADR 0002); **International** stays a disabled placeholder. `/` still lands on the inbox. Account settings stays as existing chrome.
 
 ## Send
 

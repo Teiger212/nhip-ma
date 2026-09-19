@@ -1,5 +1,6 @@
 import { isDevInboundEnabled } from "@inbox/lib/dev";
 import { injectDevInbound } from "@inbox/lib/inbox";
+import { requireInboxSession } from "@inbox/lib/require-session";
 import { Pipe } from "@inbox/lib/types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -37,9 +38,17 @@ const devInboundBody = z.object({
 	at: at.optional(),
 });
 
+/**
+ * A dev-only inbound is filed under the signed-in operator's office (ADR 0008), the
+ * same way a webhook files under the office that owns the pipe. So it needs a session.
+ */
 export async function POST(request: Request): Promise<Response> {
 	if (!isDevInboundEnabled()) {
 		return NextResponse.json({ error: "not_found" }, { status: 404 });
+	}
+	const gate = await requireInboxSession(request);
+	if (gate.denied) {
+		return gate.denied;
 	}
 	const parsed = devInboundBody.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) {
@@ -58,6 +67,7 @@ export async function POST(request: Request): Promise<Response> {
 		pipe: body.pipe,
 		guestId: body.guestId,
 		text: body.text,
+		officeId: gate.viewer.officeId,
 		guestName: body.guestName ?? null,
 		vendorMessageId: body.vendorMessageId ?? null,
 		at: body.at ?? Date.now(),

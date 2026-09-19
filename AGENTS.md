@@ -133,6 +133,7 @@ Only app-local aliases are configured in the app `tsconfig.json` files.
 | `@onboarding/*`    | `./modules/onboarding/*`    |
 | `@shared/*`        | `./modules/shared/*`        |
 | `@inbox/*`         | `./modules/inbox/*`         |
+| `@home/*`          | `./modules/home/*`          |
 
 ### `apps/marketing/tsconfig.json`
 

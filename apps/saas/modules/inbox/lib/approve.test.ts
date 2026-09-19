@@ -13,6 +13,10 @@ vi.mock("@repo/auth", () => ({
 	},
 }));
 
+vi.mock("@repo/database", () => ({
+	getFirstOrganizationMembershipForUser: vi.fn(async () => null),
+}));
+
 import { auth } from "@repo/auth";
 
 import { POST as approve } from "../../../app/api/conversations/[id]/approve/route";
@@ -33,7 +37,10 @@ function params(id: string): { params: Promise<{ id: string }> } {
 	return { params: Promise.resolve({ id }) };
 }
 
-const WALK_SESSION = { session: { id: "walk-session" }, user: { id: "walk-user" } };
+const WALK_SESSION = {
+	session: { id: "walk-session", activeOrganizationId: "walk-office" },
+	user: { id: "walk-user" },
+};
 
 beforeEach(() => {
 	vi.mocked(auth.api.getSession).mockReset();
@@ -411,7 +418,6 @@ test("whatsappWindowState helper", () => {
 });
 
 test("inbox routes refuse requests without a session", async () => {
-	vi.mocked(auth.api.getSession).mockResolvedValue(null as never);
 	const injected = await json(
 		await inject(
 			new Request("http://localhost/dev/inbound", {
@@ -422,6 +428,17 @@ test("inbox routes refuse requests without a session", async () => {
 		),
 	);
 	const conv = injected.body.conversation as { id: string; sentAt: string | null };
+	vi.mocked(auth.api.getSession).mockResolvedValue(null as never);
+
+	// The dev injector files under the operator's office, so it needs a session too.
+	const anonymous = await inject(
+		new Request("http://localhost/dev/inbound", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ pipe: "zalo", guestId: "guest-anon-2", text: "Hello" }),
+		}),
+	);
+	expect(anonymous.status).toBe(401);
 
 	const list = await listConversations(new Request("http://localhost/api/conversations"));
 	expect(list.status).toBe(401);

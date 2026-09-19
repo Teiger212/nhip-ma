@@ -13,6 +13,10 @@ vi.mock("@repo/auth", () => ({
 	},
 }));
 
+vi.mock("@repo/database", () => ({
+	getFirstOrganizationMembershipForUser: vi.fn(async () => null),
+}));
+
 import { auth } from "@repo/auth";
 
 import { POST as approve } from "../../../app/api/conversations/[id]/approve/route";
@@ -36,7 +40,10 @@ import type { Conversation } from "./types";
  * and it sends; a third approve with no new inbound is 409. No auto-send path exists.
  */
 
-const WALK_SESSION = { session: { id: "walk-session" }, user: { id: "walk-user" } };
+const WALK_SESSION = {
+	session: { id: "walk-session", activeOrganizationId: "walk-office" },
+	user: { id: "walk-user" },
+};
 
 type Body = Record<string, unknown>;
 

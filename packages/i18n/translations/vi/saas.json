@@ -695,6 +695,23 @@
 		"description": "Please wait while we confirm your payment.",
 		"loading": "Confirming your purchase, please wait..."
 	},
+	"home": {
+		"title": "Trang chủ",
+		"subtitle": "Số liệu của văn phòng. Ai cũng thấy cùng một con số.",
+		"funnel": {
+			"title": "Phễu",
+			"leadsIn": "Khách mới",
+			"engaged": "Đã tương tác",
+			"inConversation": "Đang trao đổi",
+			"closings": "Chốt",
+			"lost": "Mất"
+		},
+		"comingNext": "Sẽ đếm từ hộp thư ở bản dựng tiếp theo.",
+		"connectCrm": "Kết nối CRM",
+		"connectCrmHint": "Chốt và mất lấy từ CRM của văn phòng, không bao giờ suy ra từ chat.",
+		"responseTime": "Thời gian phản hồi",
+		"responseTimeHint": "Từ tin đầu tiên của khách đến lần gửi đầu tiên được duyệt. Chỉ số phụ, không phải tiêu đề."
+	},
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Hộp thư",

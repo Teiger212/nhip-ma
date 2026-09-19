@@ -65,14 +65,18 @@ saas test`. Do not commit untracked local scripts or `data/`.
 - Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
   draft that touches paperwork is dropped by the post-check and the template stands.
+- The office is the tenant (ADR 0008). Threads are shared inside it and invisible outside
+  it; there is no per-agent ownership. Webhooks file under the office that owns the pipe
+  (`pnpm --filter saas pipe:connect`), and inbound on an unconnected pipe is dropped.
 - Never message real guests or agents from a dev or demo environment. Never put customer
   data on a public link.
 - The operator note never invents Vietnamese law.
 - SaaS routes are locale-prefixed (`/en/...`, `/vi/...`); cookie-only locale was tried
   and rejected. The operator language switch offers `en` and `vi` only.
 - User-facing strings need translations under `inbox.*`.
-- `apps/marketing`, `apps/docs`, admin, billing, and organizations are unused kit
-  scaffolding. Leave them unless asked.
+- `apps/marketing`, `apps/docs`, admin, and billing are unused kit scaffolding. Leave
+  them unless asked. The kit organization is in use: it is the office, with its switcher
+  hidden while one agency is one office.
 
 ## Before going live
 
@@ -97,8 +101,10 @@ The office itself (ADR 0008) is created in-app, by seed or signup, not with any 
 - Set `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`,
   `WHATSAPP_PHONE_NUMBER_ID`, `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_SECRET_KEY`. Startup
   validation refuses `SEND_MODE=live` without them.
-- Set `INBOX_OWNER_USER_ID` (or another owner source) so webhook-created threads are
-  scoped to an operator.
+- Connect each pipe to its office so webhook-created threads have a tenant:
+  `pnpm --filter saas pipe:connect -- --pipe whatsapp --external-id <phone_number_id>
+--office <organization id>` (and the same for the Zalo OA id). Add `--adopt-unowned`
+  once to give threads from before tenancy to that office.
 - Remove `walk@nhip.local` from any shared database.
 - Auth (Better Auth 1.6): generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32`;
   `NEXT_PUBLIC_SAAS_URL` must be the public https origin (it is the auth base URL and the

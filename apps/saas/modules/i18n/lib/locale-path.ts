@@ -30,6 +30,11 @@ export function isInboxPath(pathname: string): boolean {
 	return path === "/inbox" || path.startsWith("/inbox/");
 }
 
+export function isHomePath(pathname: string): boolean {
+	const path = withoutLocalePrefix(pathname);
+	return path === "/home" || path.startsWith("/home/");
+}
+
 export function localeFromCookieHeader(cookieHeader?: string | null): Locale {
 	if (!cookieHeader) {
 		return i18nConfig.defaultLocale;

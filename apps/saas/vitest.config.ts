@@ -21,6 +21,7 @@ export default defineConfig({
 			"@onboarding": path.resolve(import.meta.dirname, "./modules/onboarding"),
 			"@settings": path.resolve(import.meta.dirname, "./modules/settings"),
 			"@inbox": path.resolve(import.meta.dirname, "./modules/inbox"),
+			"@home": path.resolve(import.meta.dirname, "./modules/home"),
 		},
 	},
 });

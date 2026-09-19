@@ -60,7 +60,7 @@ const conversationRow = z.object({
 	pipe: Pipe,
 	guestId: z.string(),
 	guestName: z.string().nullable(),
-	ownerUserId: z.string().nullable(),
+	officeId: z.string().nullable(),
 	language: GuestLanguage.nullable(),
 	lastGuestInboundAt: Timestamp.nullable(),
 	sentAt: Timestamp.nullable(),
@@ -77,6 +77,12 @@ const messageRow = z.object({
 	vendorMessageId: z.string().nullable(),
 	mock: z.number(),
 	claimedAt: Timestamp.nullable(),
+});
+
+const pipeConnectionRow = z.object({
+	pipe: Pipe,
+	externalId: z.string(),
+	officeId: z.string(),
 });
 
 const translationRow = z.object({
@@ -289,7 +295,7 @@ export function createInboxStore(filePath: string): InboxStore {
 			pipe: row.pipe,
 			guestId: row.guestId,
 			guestName: row.guestName,
-			ownerUserId: row.ownerUserId,
+			officeId: row.officeId,
 			messages: messages.map((message) =>
 				mapMessage(message, translationsByMessage.get(message.id) ?? {}),
 			),
@@ -331,9 +337,9 @@ export function createInboxStore(filePath: string): InboxStore {
 				viewer
 					? sqlite
 							.prepare(
-								`SELECT "id" FROM "Conversation" WHERE "ownerUserId" IS NULL OR "ownerUserId" = ? ORDER BY "updatedAt" DESC`,
+								`SELECT "id" FROM "Conversation" WHERE "officeId" = ? ORDER BY "updatedAt" DESC`,
 							)
-							.all(viewer.userId)
+							.all(viewer.officeId)
 					: sqlite.prepare(`SELECT "id" FROM "Conversation" ORDER BY "updatedAt" DESC`).all()
 			) as Array<{ id: string }>;
 			return rows
@@ -346,16 +352,15 @@ export function createInboxStore(filePath: string): InboxStore {
 			if (!conversation) {
 				return null;
 			}
-			if (viewer && conversation.ownerUserId && conversation.ownerUserId !== viewer.userId) {
+			if (viewer && conversation.officeId !== viewer.officeId) {
 				return null;
 			}
 			return conversation;
 		},
 
-		async upsertInbound(event: InboundEvent) {
+		async upsertInbound(event: InboundEvent, officeId: string) {
 			const id = conversationId(event.pipe, event.guestId);
 			const at = nowIso(event.at);
-			const owner = event.ownerUserId ?? null;
 
 			const write = sqlite.transaction(() => {
 				// Existence is the only question here, so this row is never read as a shape.
@@ -364,20 +369,20 @@ export function createInboxStore(filePath: string): InboxStore {
 				if (!existing) {
 					sqlite
 						.prepare(
-							`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "ownerUserId", "lastGuestInboundAt", "sentAt", "updatedAt")
+							`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "officeId", "lastGuestInboundAt", "sentAt", "updatedAt")
              VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)`,
 						)
-						.run(id, event.pipe, event.guestId, event.guestName || null, owner, at);
+						.run(id, event.pipe, event.guestId, event.guestName || null, officeId, at);
 				} else {
 					sqlite
 						.prepare(
 							`UPDATE "Conversation" SET
                  "guestName" = COALESCE("guestName", ?),
-                 "ownerUserId" = COALESCE("ownerUserId", ?),
+                 "officeId" = COALESCE("officeId", ?),
                  "updatedAt" = ?
                WHERE "id" = ?`,
 						)
-						.run(event.guestName || null, owner, at, id);
+						.run(event.guestName || null, officeId, at, id);
 				}
 
 				if (event.vendorMessageId) {
@@ -545,6 +550,37 @@ export function createInboxStore(filePath: string): InboxStore {
 			});
 			write();
 			return load(id);
+		},
+
+		async adoptUnownedThreads(officeId) {
+			const result = sqlite
+				.prepare(`UPDATE "Conversation" SET "officeId" = ? WHERE "officeId" IS NULL`)
+				.run(officeId);
+			return result.changes;
+		},
+
+		async connectPipe(connection) {
+			sqlite
+				.prepare(
+					`INSERT INTO "PipeConnection" ("pipe", "externalId", "officeId") VALUES (?, ?, ?)
+           ON CONFLICT("pipe", "externalId") DO UPDATE SET "officeId" = excluded."officeId"`,
+				)
+				.run(connection.pipe, connection.externalId, connection.officeId);
+		},
+
+		async officeForPipe(pipe, externalId) {
+			const raw = sqlite
+				.prepare(`SELECT * FROM "PipeConnection" WHERE "pipe" = ? AND "externalId" = ?`)
+				.get(pipe, externalId);
+			return raw ? parseRow(pipeConnectionRow, raw, "PipeConnection").officeId : null;
+		},
+
+		async listPipeConnections() {
+			return parseRow(
+				z.array(pipeConnectionRow),
+				sqlite.prepare(`SELECT * FROM "PipeConnection" ORDER BY "pipe", "externalId"`).all(),
+				"PipeConnection",
+			);
 		},
 
 		async guestInboundText(id) {

@@ -6,13 +6,19 @@ const STATEMENTS = [
     "pipe" TEXT NOT NULL,
     "guestId" TEXT NOT NULL,
     "guestName" TEXT,
-    "ownerUserId" TEXT,
+    "officeId" TEXT,
     "language" TEXT,
     "lastGuestInboundAt" DATETIME,
     "sentAt" DATETIME,
     "updatedAt" DATETIME NOT NULL
   )`,
 	`CREATE UNIQUE INDEX IF NOT EXISTS "Conversation_pipe_guestId_key" ON "Conversation"("pipe", "guestId")`,
+	`CREATE TABLE IF NOT EXISTS "PipeConnection" (
+    "pipe" TEXT NOT NULL,
+    "externalId" TEXT NOT NULL,
+    "officeId" TEXT NOT NULL,
+    PRIMARY KEY ("pipe", "externalId")
+  )`,
 	`CREATE TABLE IF NOT EXISTS "Message" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "conversationId" TEXT NOT NULL,
@@ -85,6 +91,9 @@ const STATEMENTS = [
  * message. It replaces the pre-ADR-0006 index that allowed one send per thread.
  */
 const LEGACY_SEND_UNIQUE_INDEX = `DROP INDEX IF EXISTS "Send_conversationId_key"`;
+
+/** Created after the column migrations: a pre-tenancy file has no `officeId` column yet. */
+const OFFICE_INDEX = `CREATE INDEX IF NOT EXISTS "Conversation_officeId_idx" ON "Conversation"("officeId")`;
 const SEND_UNIQUE_INDEX = `CREATE UNIQUE INDEX IF NOT EXISTS "Send_answersMessageId_key" ON "Send"("answersMessageId")`;
 
 /**
@@ -110,6 +119,10 @@ const BACKFILL_ANSWERS: string[] = ["Send", "Approval"].map(
 const COLUMN_DROPS: Array<{ table: string; column: string }> = [
 	{ table: "Draft", column: "crib" },
 	{ table: "Draft", column: "cribLanguage" },
+	// Pre-ADR-0008 files scoped threads to a person. A user id is not an office id, so the
+	// column goes and the threads wait unowned until `adoptUnownedThreads` runs (the seed
+	// and `pnpm --filter saas pipe:connect --adopt-unowned` both do).
+	{ table: "Conversation", column: "ownerUserId" },
 ];
 
 /**
@@ -119,8 +132,8 @@ const COLUMN_DROPS: Array<{ table: string; column: string }> = [
 const COLUMN_MIGRATIONS: Array<{ table: string; column: string; ddl: string }> = [
 	{
 		table: "Conversation",
-		column: "ownerUserId",
-		ddl: `ALTER TABLE "Conversation" ADD COLUMN "ownerUserId" TEXT`,
+		column: "officeId",
+		ddl: `ALTER TABLE "Conversation" ADD COLUMN "officeId" TEXT`,
 	},
 	{
 		table: "Message",
@@ -173,6 +186,7 @@ export function ensureInboxSchema(database: Database.Database): void {
 			database.exec(`ALTER TABLE "${drop.table}" DROP COLUMN "${drop.column}"`);
 		}
 	}
+	database.exec(OFFICE_INDEX);
 	database.exec(LEGACY_SEND_UNIQUE_INDEX);
 	for (const sql of BACKFILL_ANSWERS) {
 		database.exec(sql);

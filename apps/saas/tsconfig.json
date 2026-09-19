@@ -13,7 +13,8 @@
 			"@ai/*": ["./modules/ai/*"],
 			"@onboarding/*": ["./modules/onboarding/*"],
 			"@shared/*": ["./modules/shared/*"],
-			"@inbox/*": ["./modules/inbox/*"]
+			"@inbox/*": ["./modules/inbox/*"],
+			"@home/*": ["./modules/home/*"]
 		}
 	},
 	"include": ["**/*.ts", "**/*.tsx", "**/*.cjs", "**/*.mjs", ".next/types/**/*.ts"],

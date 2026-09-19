@@ -1,8 +1,8 @@
-import { isInboxPath } from "@i18n/lib/locale-path";
+import { isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 
 /**
- * The walk's sidebar, stated directly. Inbox is the only working job; Home and
- * International are placeholders the handoff keeps visible but disabled. Account
+ * The sidebar, stated directly. Inbox is the agent's job and Home the numbers screen
+ * (ADR 0001); International stays a placeholder, visible but disabled. Account
  * settings is reached from the user row in the footer, and its sections appear
  * there while a settings page is active. The kit's organization, billing and admin
  * rules stay in the kit until there is a second tenant.
@@ -29,7 +29,13 @@ export function isNavSubItemActive(pathname: string, href: string): boolean {
 
 export function buildWalkNav(pathname: string): WalkNavItem[] {
 	return [
-		{ id: "home", href: "/", iconName: "home", isActive: false, disabled: true },
+		{
+			id: "home",
+			href: "/home",
+			iconName: "home",
+			isActive: isHomePath(pathname),
+			disabled: false,
+		},
 		{
 			id: "inbox",
 			href: "/inbox",

@@ -88,16 +88,24 @@ export async function afterGuestInbound(
 	return updated;
 }
 
-export async function ingestEvents(
-	runtime: Runtime,
-	events: InboundEvent[],
-	ownerUserId: string | null = null,
-): Promise<void> {
+/**
+ * Webhook events are filed under the office that owns the pipe they arrived on
+ * (ADR 0008). An event from a pipe no office has connected is dropped, not filed under
+ * nobody: tenancy fails closed, and the log says which pipe to connect.
+ */
+export async function ingestEvents(runtime: Runtime, events: InboundEvent[]): Promise<void> {
 	for (const event of events) {
-		const conv = await runtime.store.upsertInbound({
-			...event,
-			ownerUserId: event.ownerUserId ?? ownerUserId,
-		});
+		const officeId = event.pipeExternalId
+			? await runtime.store.officeForPipe(event.pipe, event.pipeExternalId)
+			: null;
+		if (!officeId) {
+			console.warn("inbox: inbound dropped, no office owns this pipe", {
+				pipe: event.pipe,
+				pipeExternalId: event.pipeExternalId ?? null,
+			});
+			continue;
+		}
+		const conv = await runtime.store.upsertInbound(event, officeId);
 		if (event.source === "guest") {
 			await afterGuestInbound(runtime, conv);
 		}
@@ -108,22 +116,24 @@ export async function injectDevInbound(input: {
 	pipe: Pipe;
 	guestId: string;
 	text: string;
+	officeId: string;
 	guestName?: string | null;
 	vendorMessageId?: string | null;
 	at?: number | string | Date;
-	ownerUserId?: string | null;
 }): Promise<Conversation> {
 	const runtime = getRuntime();
-	const conv = await runtime.store.upsertInbound({
-		pipe: input.pipe,
-		guestId: input.guestId,
-		guestName: input.guestName || null,
-		text: input.text,
-		vendorMessageId: input.vendorMessageId || null,
-		at: input.at || Date.now(),
-		source: "guest",
-		ownerUserId: input.ownerUserId ?? null,
-	});
+	const conv = await runtime.store.upsertInbound(
+		{
+			pipe: input.pipe,
+			guestId: input.guestId,
+			guestName: input.guestName || null,
+			text: input.text,
+			vendorMessageId: input.vendorMessageId || null,
+			at: input.at || Date.now(),
+			source: "guest",
+		},
+		input.officeId,
+	);
 	return afterGuestInbound(runtime, conv);
 }
 
