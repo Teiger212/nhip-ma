@@ -713,7 +713,18 @@
 		"noMatches": "No matching threads.",
 		"noneSelected": "No conversation selected.",
 		"sent": "Sent",
-		"needsApprove": "Needs approval",
+		"yourTurn": "Your turn",
+		"quiet": "Quiet ({count})",
+		"quietHint": "The guest last wrote more than 48 hours ago. Still your turn.",
+		"onlyQuiet": "Nothing new. The quiet threads below are still your turn.",
+		"translation": "Translation",
+		"suggested": {
+			"template": "Suggested reply",
+			"model": "AI suggestion from the conversation"
+		},
+		"regenerate": "Regenerate",
+		"regenerating": "Regenerating…",
+		"regenerateFailed": "Could not get a new suggestion.",
 		"mock": "Demo send",
 		"forYou": "Operator note",
 		"forYouHint": "Not shown to the guest.",
@@ -763,11 +774,11 @@
 		},
 		"views": {
 			"aria": "Filter threads",
-			"needsReply": "Needs reply",
+			"yourTurn": "Your turn",
 			"sent": "Sent",
 			"all": "All"
 		},
-		"queueCount": "{count, plural, =0 {Nothing needs a reply} one {# needs a reply} other {# need a reply}}",
+		"queueCount": "{count, plural, =0 {No guest is waiting on you} one {# guest is waiting on you} other {# guests are waiting on you}}",
 		"allCaughtUp": "All caught up.",
 		"viewSent": "View sent",
 		"sentTo": "Sent to {name}",

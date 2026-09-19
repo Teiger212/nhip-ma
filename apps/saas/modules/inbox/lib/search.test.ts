@@ -13,6 +13,7 @@ function conv(partial: Partial<Conversation> & Pick<Conversation, "id">): Conver
 		messages: partial.messages ?? [],
 		lastGuestInboundAt: null,
 		sentAt: null,
+		unansweredInboundId: null,
 		oneShot: null,
 		updatedAt: new Date().toISOString(),
 		...partial,
@@ -31,6 +32,7 @@ test("search matches guest name or last inbound text", () => {
 				text: "Tay Ho에서 3 nights vs monthly stay",
 				at: new Date().toISOString(),
 				vendorMessageId: null,
+				translations: {},
 			},
 		],
 	});
@@ -57,6 +59,7 @@ test("Ciputra matches the invented Alexei thread only", () => {
 					text: demo.text,
 					at: new Date().toISOString(),
 					vendorMessageId: null,
+					translations: {},
 				},
 			],
 		}),

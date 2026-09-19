@@ -61,10 +61,14 @@ Organizations are not required (`requireOrganization` is false). `hideOrganizati
 | ---------------------------------------------------------- | ----------------------------------- |
 | `apps/saas/modules/inbox/components/Inbox.tsx`             | List + detail UI                    |
 | `apps/saas/modules/inbox/lib/extract.ts`                   | One-shot extract from inbound       |
-| `apps/saas/modules/inbox/lib/draft.ts`                     | Reply + operator crib               |
-| `apps/saas/modules/inbox/lib/runtime.ts`                   | Store + `SEND_MODE`                 |
+| `apps/saas/modules/inbox/lib/draft.ts`                     | Template replies (first, follow-up) |
+| `apps/saas/modules/inbox/lib/queue.ts`                     | Your turn, quiet, view order        |
+| `apps/saas/modules/inbox/lib/drafts/`                      | Draft adapter: Anthropic or none    |
+| `apps/saas/modules/inbox/lib/translate.ts`                 | Guest message translation (async)   |
+| `apps/saas/modules/inbox/lib/runtime.ts`                   | Store + config + draft adapter      |
 | `apps/saas/app/api/conversations`                          | List / detail (session required)    |
 | `apps/saas/app/api/conversations/[id]/approve`             | Approve and send (session required) |
+| `apps/saas/app/api/conversations/[id]/draft`               | Regenerate suggestion (never sends) |
 | `apps/saas/modules/inbox/lib/require-session.ts`           | 401 gate for inbox routes           |
 | `apps/saas/modules/shared/components/WalkLocaleToggle.tsx` | EN / VI path switch                 |
 | `apps/saas/modules/shared/components/UserMenu.tsx`         | Color mode + language               |
@@ -79,7 +83,13 @@ Webhook routes exist (`/webhooks/zalo`, `/webhooks/whatsapp`). `POST /dev/inboun
 
 Approve and send is a human action. Never auto-send. The guest still sees the agency number.
 
-Approve is idempotent under concurrency: `approveAndSend` claims the thread with an atomic `UPDATE … WHERE sentAt IS NULL` before any network call, releases the claim if transmit fails, and a unique index on `Send.conversationId` backstops it. Vendor error bodies are logged server-side, not returned to the caller.
+Reply-only (ADR 0006): every send answers exactly one guest message. The store derives `Conversation.unansweredInboundId` from the messages (the guest spoke last and no `Send` answers that message); that is "Your turn" (ADR 0004), and `sentAt` is only "last office send", not terminal. Approve is idempotent under concurrency: `approveAndSend` claims the inbound message with an atomic `UPDATE "Message" … WHERE claimedAt IS NULL` before any network call, releases the claim if transmit fails, and a unique index on `Send.answersMessageId` backstops it. A second approve with no new inbound is `409 already_answered`. Vendor error bodies are logged server-side, not returned to the caller.
+
+## Drafting and translation
+
+The draft adapter (`modules/inbox/lib/drafts/`, ADR 0005) is the one seam to a model, and it is vendor-neutral: `openai-compatible` when `DRAFT_API_KEY` is set (`DRAFT_MODEL` required, `DRAFT_BASE_URL` defaults to OpenRouter, so any vendor or a local Ollama is a config change), otherwise `none`. It is a plain `fetch` to `/chat/completions` with a zod-checked response, no vendor SDK. The first reply is always the template. When a guest writes back after a send, the follow-up template goes into the reply box at once and a model draft from the whole conversation replaces it in the background; `POST /api/conversations/[id]/draft` asks for a fresh one. Guest text is framed as data in the prompt, and `drafts/guardrails.ts` drops any draft that touches paperwork or ownership so the template stands.
+
+Every guest message is translated into `en` and `vi` at ingest (ADR 0007), through the same adapter, in the background (`background.ts` tracks jobs; tests call `settleBackgroundWork()`). Translations are stored per message per operator language (`Translation` table) and shown under the original; `GET /api/conversations?locale=` backfills whatever that locale is missing. The client polls every 10 seconds, which is how new inbounds, translations, and model drafts arrive.
 
 Inbound webhooks fail closed. WhatsApp verifies `X-Hub-Signature-256` with `WHATSAPP_APP_SECRET`; Zalo verifies `X-ZEvent-Signature` (`sha256(appId + body + timestamp + OA secret)`) with `ZALO_OA_SECRET_KEY`. With either secret unset the route returns 403.
 

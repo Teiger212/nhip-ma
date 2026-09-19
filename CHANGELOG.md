@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-18
+
+### Added
+
+#### The conversation loop (ADR 0009: ADRs 0004, 0005, 0006, 0007)
+
+- **Reply-only per-message approval.** `Approval` and `Send` record the guest message they answer (`answersMessageId`); the unique index moves from `Send.conversationId` to `Send.answersMessageId`, and the atomic claim moves from the thread to the inbound message (`Message.claimedAt`). `Conversation.sentAt` is the last office send and no longer terminal. Existing SQLite files migrate on open, and old sends are backfilled with the inbound they answered.
+- **Your turn.** The queue's pending state is `Conversation.unansweredInboundId` (the guest spoke last). Views are `yourTurn`, `sent`, `all`. Threads the guest last touched more than 48 hours ago sit in a collapsed **Quiet** section at the bottom of Your turn. A second approve with no new inbound is `409 already_answered`.
+- **Guest message translation.** Every guest message is translated into EN and VI at ingest, in the background, through the draft adapter, stored per message per operator language, and shown under the original. `GET /api/conversations?locale=` backfills missing translations.
+- **AI follow-up drafts.** When a guest writes back after a send, the follow-up template appears at once and a model draft from the whole conversation replaces it when it lands. The reply box shows where the suggestion came from and has **Regenerate** (`POST /api/conversations/[id]/draft`). A post-check drops any draft that touches paperwork or ownership. The first reply keeps the template.
+- **Draft adapter, vendor-neutral.** `DRAFT_API_KEY` + `DRAFT_MODEL` enable an OpenAI-compatible chat-completions client (`DRAFT_BASE_URL` defaults to OpenRouter; any vendor or a local Ollama is a config change, no SDK). A key without a model is a startup error. Unset means no translation and template drafts. Nothing in this path sends.
+- The inbox client polls every 10 seconds. `CribLanguage` is renamed `OperatorLanguage` (CONTEXT.md).
+
 ## 2026-09-06
 
 ### Changed

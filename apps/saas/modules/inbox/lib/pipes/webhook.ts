@@ -10,7 +10,8 @@ import { pipeAdapter } from "./index";
  * parsing and ingestion happen here through that pipe's adapter.
  */
 export async function handleInboundWebhook(pipe: Pipe, request: Request): Promise<Response> {
-	const { store, config } = getRuntime();
+	const runtime = getRuntime();
+	const { config } = runtime;
 	const adapter = pipeAdapter(pipe);
 	const raw = await request.text();
 	if (!adapter.verifyInbound(raw, request.headers, config)) {
@@ -24,6 +25,6 @@ export async function handleInboundWebhook(pipe: Pipe, request: Request): Promis
 			body = {};
 		}
 	}
-	await ingestEvents(store, adapter.parseInbound(body), config.webhookOwnerUserId);
+	await ingestEvents(runtime, adapter.parseInbound(body), config.webhookOwnerUserId);
 	return NextResponse.json({ ok: true });
 }

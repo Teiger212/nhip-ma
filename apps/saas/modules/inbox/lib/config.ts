@@ -36,6 +36,9 @@ const envSchema = z
 		ZALO_OA_ACCESS_TOKEN: trimmed,
 		ZALO_OA_SECRET_KEY: trimmed,
 		INBOX_OWNER_USER_ID: trimmed,
+		DRAFT_API_KEY: trimmed,
+		DRAFT_BASE_URL: trimmed,
+		DRAFT_MODEL: trimmed,
 		BETTER_AUTH_SECRET: z.string().optional(),
 		BETTER_AUTH_URL: trimmed,
 		NEXT_PUBLIC_SAAS_URL: trimmed,
@@ -66,6 +69,22 @@ const envSchema = z
 					});
 				}
 			}
+		}
+		// A model id is never defaulted in code, where it would go stale; a key alone is a
+		// misconfiguration, not "no model".
+		if (env.DRAFT_API_KEY && !env.DRAFT_MODEL) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["DRAFT_MODEL"],
+				message: "DRAFT_MODEL must be set when DRAFT_API_KEY is set",
+			});
+		}
+		if (env.DRAFT_BASE_URL && !isAbsoluteUrl(env.DRAFT_BASE_URL)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["DRAFT_BASE_URL"],
+				message: `DRAFT_BASE_URL must be an absolute http(s) URL, got "${env.DRAFT_BASE_URL}"`,
+			});
 		}
 		// Better Auth's baseURL is set explicitly from NEXT_PUBLIC_SAAS_URL and wins over
 		// BETTER_AUTH_URL, so the two must agree or one of them is silently ignored.
@@ -153,7 +172,20 @@ export type InboxConfig = {
 	};
 	/** Owner assigned to threads created by webhooks. `null` means unowned. */
 	webhookOwnerUserId: string | null;
+	/**
+	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
+	 * a key there is no model: no translation is shown and every suggested reply is a
+	 * template. The model id is whatever the office chose; nothing here names a vendor.
+	 */
+	drafts: {
+		apiKey?: string;
+		baseUrl: string;
+		model?: string;
+	};
 };
+
+/** OpenRouter fronts every vendor behind one prepaid balance, which doubles as the budget. */
+export const DEFAULT_DRAFT_BASE_URL = "https://openrouter.ai/api/v1";
 
 export function resolveSendMode(value: string | undefined): SendMode {
 	return value === "live" ? "live" : "mock";
@@ -175,6 +207,11 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 			oaSecretKey: clean(env.ZALO_OA_SECRET_KEY),
 		},
 		webhookOwnerUserId: clean(env.INBOX_OWNER_USER_ID) ?? null,
+		drafts: {
+			apiKey: clean(env.DRAFT_API_KEY),
+			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,
+			model: clean(env.DRAFT_MODEL),
+		},
 	};
 }
 
@@ -194,13 +231,14 @@ export function validateInboxEnv(env: NodeJS.ProcessEnv): ValidateInboxEnvResult
 	return { ok: true, config: inboxConfigFromEnv(env) };
 }
 
-/** A minimal config for tests and scripts: mock send, no credentials, unowned threads. */
+/** A minimal config for tests and scripts: mock send, no credentials, no model, unowned threads. */
 export function mockInboxConfig(overrides: Partial<InboxConfig> = {}): InboxConfig {
 	return {
 		sendMode: "mock",
 		whatsapp: {},
 		zalo: {},
 		webhookOwnerUserId: null,
+		drafts: { baseUrl: DEFAULT_DRAFT_BASE_URL },
 		...overrides,
 	};
 }

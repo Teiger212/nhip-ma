@@ -15,8 +15,12 @@ export type Pipe = z.infer<typeof Pipe>;
 export const GuestLanguage = z.enum(["en", "vi", "ja", "ko", "ru"]);
 export type GuestLanguage = z.infer<typeof GuestLanguage>;
 
-export const CribLanguage = z.enum(["en", "vi"]);
-export type CribLanguage = z.infer<typeof CribLanguage>;
+/**
+ * The operator's language (CONTEXT.md): the target of every translation and the language
+ * of the operator note. EN or VI, from the operator's locale setting.
+ */
+export const OperatorLanguage = z.enum(["en", "vi"]);
+export type OperatorLanguage = z.infer<typeof OperatorLanguage>;
 
 export const RentOrBuy = z.enum(["rent", "buy"]);
 export type RentOrBuy = z.infer<typeof RentOrBuy>;
@@ -34,6 +38,13 @@ export type MessageSource = z.infer<typeof MessageSource>;
  */
 export const DbMessageSource = z.enum(["guest", "oa_echo", "nhip"]);
 export type DbMessageSource = z.infer<typeof DbMessageSource>;
+
+/**
+ * Where the suggested reply came from: the deterministic template, or a model draft
+ * through the draft adapter (ADR 0005). The operator can always edit either.
+ */
+export const DraftSource = z.enum(["template", "model"]);
+export type DraftSource = z.infer<typeof DraftSource>;
 
 /**
  * Every timestamp the store reads or writes is `Date#toISOString` output, so the strict
