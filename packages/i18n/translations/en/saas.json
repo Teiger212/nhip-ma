@@ -710,7 +710,7 @@
 		"connectCrm": "Connect your CRM",
 		"connectCrmHint": "Closings and lost come from your CRM, never from the chat.",
 		"responseTime": "Response time",
-		"responseTimeHint": "First inbound to first approved send. A supporting number, not the headline."
+		"responseTimeHint": "First inbound to first approved send."
 	},
 	"inbox": {
 		"brand": "Nhịp",
