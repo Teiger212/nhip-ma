@@ -36,6 +36,8 @@ function conv(
 		sentAt: null,
 		unansweredInboundId: `${partial.id}:1`,
 		oneShot: null,
+		answers: [],
+		lastAnswer: null,
 		updatedAt: at,
 		...partial,
 	};

@@ -45,8 +45,10 @@ const whatsapp: PipeAdapter = {
 	send: async ({ to, text, config }) => {
 		const { accessToken, phoneNumberId } = config.whatsapp;
 		if (!accessToken || !phoneNumberId) {
-			throw new Error(
+			throw new SendError(
 				"WhatsApp live send needs WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID",
+				null,
+				"config",
 			);
 		}
 		return sendWhatsApp({ to, text, accessToken, phoneNumberId });
@@ -65,7 +67,7 @@ const zalo: PipeAdapter = {
 	send: async ({ to, text, config }) => {
 		const accessToken = config.zalo.accessToken;
 		if (!accessToken) {
-			throw new Error("Zalo live send needs ZALO_OA_ACCESS_TOKEN");
+			throw new SendError("Zalo live send needs ZALO_OA_ACCESS_TOKEN", null, "config");
 		}
 		return sendZalo({ to, text, accessToken });
 	},

@@ -1,5 +1,3 @@
-import { conversationId } from "@repo/database/inbox";
-
 import { injectDevInbound } from "./inbox";
 import { getRuntime } from "./runtime";
 import type { Conversation, Pipe } from "./types";
@@ -39,13 +37,20 @@ export const DEMO_THREADS: DemoThread[] = [
 	},
 ];
 
-/** Writes the invented threads under `officeId` (the walk office by default). */
+/**
+ * Writes the invented threads under `officeId` (the walk office by default). A thread is
+ * found by (office, pipe, guest), not by id, so one adopted from a pre-tenancy file (old
+ * `pipe:guest` id) counts as existing and is not written twice.
+ */
 export async function seedInbox(officeId: string): Promise<Conversation[]> {
 	const { store } = getRuntime();
+	const owned = await store.listConversations({ userId: "seed", officeId });
 	const result: Conversation[] = [];
 	for (const thread of DEMO_THREADS) {
-		const id = conversationId(officeId, thread.pipe, thread.guestId);
-		const existing = await store.getConversation(id);
+		const existing = owned.find(
+			(conversation) =>
+				conversation.pipe === thread.pipe && conversation.guestId === thread.guestId,
+		);
 		if (existing) {
 			result.push(existing);
 			continue;

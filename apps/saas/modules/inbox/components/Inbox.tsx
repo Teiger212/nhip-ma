@@ -252,18 +252,23 @@ function ThreadRow({
 }
 
 /**
- * The reply box shows the operator's edit for the selected thread, falling back to the
- * server's suggested reply. Edits are keyed by thread id and dropped when that thread is
- * sent or a new suggestion is asked for, so a background refetch never overwrites what
- * the operator typed.
+ * The reply box shows the operator's edit for the guest message being answered, falling
+ * back to the server's suggested reply. Edits are keyed by that message (ADR 0011), so a
+ * guest who writes again gets a fresh box instead of a reply meant for their last
+ * message, and they are dropped when the reply is sent or a new suggestion is asked for.
  */
+function replyKey(conversation: Conversation): string {
+	return conversation.unansweredInboundId ?? conversation.id;
+}
+
 function useReplyDraft(selected: Conversation | null) {
 	const [edits, setEdits] = useState<Record<string, string>>({});
-	const edited = Boolean(selected && selected.id in edits);
-	const reply = selected ? (edits[selected.id] ?? selected.oneShot?.draft?.reply ?? "") : "";
+	const key = selected ? replyKey(selected) : null;
+	const edited = Boolean(key && key in edits);
+	const reply = key ? (edits[key] ?? selected?.oneShot?.draft?.reply ?? "") : "";
 	const setReply = (value: string) => {
-		if (!selected) return;
-		setEdits((current) => ({ ...current, [selected.id]: value }));
+		if (!key) return;
+		setEdits((current) => ({ ...current, [key]: value }));
 	};
 	const dropEdit = (id: string) =>
 		setEdits((current) => {
@@ -308,14 +313,15 @@ export function Inbox() {
 	const cribNotes = selected
 		? formatConversationCrib(selected, (key, values) => t(key, values))
 		: null;
-	const canApprove = Boolean(selected?.unansweredInboundId);
+	const canApprove = Boolean(selected?.unansweredInboundId) && reply.trim().length > 0;
 
 	async function onApprove() {
-		if (!selected || !selected.unansweredInboundId || approve.isPending) return;
+		if (!selected || !selected.unansweredInboundId || !reply.trim() || approve.isPending) return;
 		setSendError(null);
+		const inboundId = selected.unansweredInboundId;
 		try {
-			const result = await approve.mutateAsync({ id: selected.id, reply });
-			dropEdit(selected.id);
+			const result = await approve.mutateAsync({ id: selected.id, inboundId, reply });
+			dropEdit(inboundId);
 			toast.add({
 				title: t("sentTo", { name: displayName(result.conversation) }),
 				type: "success",
@@ -330,7 +336,7 @@ export function Inbox() {
 		if (!selected || !selected.unansweredInboundId || regenerate.isPending) return;
 		try {
 			await regenerate.mutateAsync({ id: selected.id });
-			dropEdit(selected.id);
+			dropEdit(replyKey(selected));
 		} catch (error) {
 			toast.add({
 				title: error instanceof Error ? error.message : t("regenerateFailed"),
@@ -344,17 +350,20 @@ export function Inbox() {
 		setDetailOpen(true);
 	}
 
+	const lastAnswer = selected?.lastAnswer ?? null;
 	const sendStatus = approve.isPending
 		? { text: t("sending"), kind: "" as const, quiet: false }
 		: sendError
 			? { text: sendError, kind: "warn" as const, quiet: false }
-			: selected && !canApprove && selected.sentAt
-				? {
-						text: t("alreadySent", { at: formatInboxTimestamp(selected.sentAt, locale) }),
-						kind: "ok" as const,
-						quiet: false,
-					}
-				: { text: t("notSent"), kind: "" as const, quiet: true };
+			: lastAnswer?.status === "unknown"
+				? { text: t("deliveryUnknown"), kind: "warn" as const, quiet: false }
+				: selected && !selected.unansweredInboundId && selected.sentAt
+					? {
+							text: t("alreadySent", { at: formatInboxTimestamp(selected.sentAt, locale) }),
+							kind: "ok" as const,
+							quiet: false,
+						}
+					: { text: t("notSent"), kind: "" as const, quiet: true };
 
 	const draftSource = selected?.oneShot?.draft?.source ?? "template";
 

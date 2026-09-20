@@ -4,7 +4,7 @@ import { checkFollowUp } from "./drafts/guardrails";
 import { pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
-import type { Conversation, InboundEvent, InboxViewer, Pipe, Store } from "./types";
+import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
 
 /**
  * The deterministic pass after a guest message. The template in the reply box is the
@@ -169,14 +169,46 @@ const ALREADY_ANSWERED: InboxResult = {
 		"Every guest message in this thread has been answered. Wait for the guest to write back.",
 };
 
+const DELIVERY_UNKNOWN_MESSAGE =
+	"A previous send of this reply was not confirmed by the vendor. Check whether it arrived before sending again.";
+
+const DELIVERY_UNKNOWN: InboxResult = {
+	ok: false,
+	status: 409,
+	error: "delivery_unknown",
+	message: DELIVERY_UNKNOWN_MESSAGE,
+};
+
+/** Whether the guest's latest message has an Answer whose delivery nobody has confirmed. */
+function hasUnknownAnswer(conversation: Conversation): boolean {
+	for (let i = conversation.messages.length - 1; i >= 0; i -= 1) {
+		const message = conversation.messages[i];
+		if (message.direction === "in") {
+			return conversation.answers.some(
+				(answer) => answer.inboundId === message.id && answer.status === "unknown",
+			);
+		}
+	}
+	return false;
+}
+
+export type ApproveInput = {
+	/** The guest message the operator is answering. Required: an approval names its target. */
+	inboundId: string | undefined;
+	/** Exactly the text the operator approved. Blank is refused, never filled in. */
+	text: string | undefined;
+};
+
 /**
  * Approve and send (CONTEXT.md): one human approving one reply for one inbound message.
  * Reply-only (ADR 0006): the send answers the unanswered inbound, and a second approve
- * against the same inbound is refused.
+ * against the same inbound is refused. The Answer (ADR 0011) is on record before any
+ * vendor is called, so nothing that happens between approval and acknowledgement can
+ * send the wrong text, send twice, or hide a guest message that lands in between.
  */
 export async function approveAndSend(
 	id: string,
-	replyOverride?: string,
+	input: ApproveInput,
 	viewer?: InboxViewer,
 ): Promise<InboxResult> {
 	const { store, config } = getRuntime();
@@ -186,14 +218,34 @@ export async function approveAndSend(
 	}
 	const inboundId = conv.unansweredInboundId;
 	if (!inboundId) {
-		return ALREADY_ANSWERED;
+		// Nothing open. If that is because a send's outcome is unknown, say so: the operator
+		// has something to check, not a guest who has been answered.
+		return hasUnknownAnswer(conv) ? DELIVERY_UNKNOWN : ALREADY_ANSWERED;
 	}
-	const text =
-		typeof replyOverride === "string" && replyOverride.trim()
-			? replyOverride.trim()
-			: conv.oneShot?.draft?.reply;
+	if (!input.inboundId) {
+		return {
+			ok: false,
+			status: 400,
+			error: "inbound_required",
+			message: "An approval must name the guest message it answers.",
+		};
+	}
+	if (input.inboundId !== inboundId) {
+		return {
+			ok: false,
+			status: 409,
+			error: "stale_target",
+			message: "The guest wrote again since this reply was drafted. Review the new message.",
+		};
+	}
+	const text = input.text?.trim();
 	if (!text) {
-		return { ok: false, status: 400, error: "no_draft" };
+		return {
+			ok: false,
+			status: 400,
+			error: "empty_reply",
+			message: "The reply is empty. Nothing was sent.",
+		};
 	}
 
 	const adapter = pipeAdapter(conv.pipe);
@@ -220,25 +272,69 @@ export async function approveAndSend(
 		};
 	}
 
-	// Compare-and-swap on the inbound message before the network call so two concurrent
-	// approvals cannot both transmit. The read above is only a fast path; this is the guard.
-	const claimed = await store.claimSend(inboundId);
-	if (!claimed) {
-		return ALREADY_ANSWERED;
+	// The Answer is written before the vendor call. Its unique inbound is the guard against
+	// a concurrent approval; its status is what decides whether a retry is ever allowed.
+	const begun = await store.beginAnswer({
+		conversationId: conv.id,
+		inboundId,
+		text,
+		operatorId: viewer?.userId ?? null,
+	});
+	if (!begun.ok) {
+		switch (begun.reason) {
+			case "already_answered":
+				return ALREADY_ANSWERED;
+			case "in_progress":
+				return {
+					ok: false,
+					status: 409,
+					error: "send_in_progress",
+					message: "This message is being sent by another approval.",
+				};
+			case "unknown":
+				return DELIVERY_UNKNOWN;
+		}
+	}
+	const answerId = begun.answer.id;
+
+	let result: SendResult;
+	try {
+		result = await transmit({ conversation: conv, text, config });
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "send failed";
+		if (err instanceof SendError) {
+			// The vendor refused, or nothing was sent: a definite failure the operator may retry.
+			await store.failAnswer(answerId, message);
+			return { ok: false, status: 502, error: "send_failed", message, detail: err.detail };
+		}
+		// A network failure or timeout: the vendor may or may not have the message. Never
+		// retried automatically, and never approved again until a person has checked.
+		await store.markAnswerUnknown(answerId, message);
+		return {
+			ok: false,
+			status: 502,
+			error: "delivery_unknown",
+			message: `${DELIVERY_UNKNOWN_MESSAGE} (${message})`,
+		};
 	}
 
 	try {
-		const result = await transmit({ conversation: conv, text, config });
-		const updated = await store.recordApprovedSend(conv.id, text, result, inboundId);
+		const updated = await store.completeAnswer(answerId, result);
 		if (!updated) {
 			return { ok: false, status: 404, error: "not_found" };
 		}
 		return { ok: true, conversation: updated };
 	} catch (err) {
-		await store.releaseSend(inboundId);
-		const message = err instanceof Error ? err.message : "send failed";
-		const detail = err instanceof SendError ? err.detail : null;
-		return { ok: false, status: 502, error: "send_failed", message, detail };
+		// The vendor accepted but the record failed. The Answer stays on file as unknown, so
+		// the reply is not sent a second time; someone reconciles it against the vendor.
+		const message = err instanceof Error ? err.message : "record failed";
+		await store.markAnswerUnknown(answerId, `recorded_failed: ${message}`).catch(() => undefined);
+		return {
+			ok: false,
+			status: 500,
+			error: "record_failed",
+			message: "The reply was sent but could not be recorded. It will not be sent again.",
+		};
 	}
 }
 

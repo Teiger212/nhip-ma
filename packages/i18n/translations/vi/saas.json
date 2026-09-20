@@ -799,6 +799,7 @@
 		"allCaughtUp": "Đã xử lý hết.",
 		"viewSent": "Xem đã gửi",
 		"sentTo": "Đã gửi cho {name}",
-		"sendFailed": "Gửi không thành công."
+		"sendFailed": "Gửi không thành công.",
+		"deliveryUnknown": "Tin trả lời gần nhất đã gửi nhưng nhà cung cấp chưa xác nhận. Kiểm tra xem đã đến chưa trước khi gửi lại."
 	}
 }

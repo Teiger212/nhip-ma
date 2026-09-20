@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { ensureInboxSchema } from "./ensure-schema";
 import {
+	AnswerStatus,
 	DbMessageSource,
 	DraftSource,
 	GuestLanguage,
@@ -19,6 +20,8 @@ import {
 } from "./schema";
 import { sqliteFilePath } from "./sqlite-path";
 import type {
+	Answer,
+	BeginAnswerResult,
 	Conversation,
 	Draft,
 	InboundEvent,
@@ -82,7 +85,6 @@ const messageRow = z.object({
 	at: Timestamp,
 	vendorMessageId: z.string().nullable(),
 	mock: z.number(),
-	claimedAt: Timestamp.nullable(),
 	pipeExternalId: z.string().nullable(),
 });
 
@@ -122,16 +124,22 @@ const paperworkRow = z.object({
 	flag: z.string().nullable(),
 });
 
-const sendRow = z.object({
+const answerRow = z.object({
 	id: z.string(),
 	conversationId: z.string(),
+	inboundId: z.string(),
+	text: z.string(),
+	operatorId: z.string().nullable(),
+	status: AnswerStatus,
 	mock: z.number(),
 	pipe: Pipe,
 	to: z.string(),
-	text: z.string().nullable(),
+	pipeExternalId: z.string().nullable(),
 	vendorMessageId: z.string().nullable(),
-	answersMessageId: z.string().nullable(),
-	at: Timestamp,
+	approvedAt: Timestamp,
+	sentAt: Timestamp.nullable(),
+	failedAt: Timestamp.nullable(),
+	failureReason: z.string().nullable(),
 });
 
 type ConversationRow = z.infer<typeof conversationRow>;
@@ -140,7 +148,7 @@ type TranslationRow = z.infer<typeof translationRow>;
 type QualificationRow = z.infer<typeof qualificationRow>;
 type DraftRow = z.infer<typeof draftRow>;
 type PaperworkRow = z.infer<typeof paperworkRow>;
-type SendRow = z.infer<typeof sendRow>;
+type AnswerRow = z.infer<typeof answerRow>;
 
 /**
  * This store is the only writer of these rows, so a row that fails to parse is corrupt
@@ -213,23 +221,48 @@ function mapPaperwork(row: PaperworkRow): Paperwork {
 	};
 }
 
+function mapAnswer(row: AnswerRow): Answer {
+	return {
+		id: row.id,
+		conversationId: row.conversationId,
+		inboundId: row.inboundId,
+		text: row.text,
+		operatorId: row.operatorId,
+		status: row.status,
+		mock: Boolean(row.mock),
+		pipe: row.pipe,
+		to: row.to,
+		pipeExternalId: row.pipeExternalId,
+		vendorMessageId: row.vendorMessageId,
+		approvedAt: row.approvedAt,
+		sentAt: row.sentAt,
+		failedAt: row.failedAt,
+		failureReason: row.failureReason,
+	};
+}
+
+/** An Answer that counts as the office's reply: in flight, delivered, or possibly delivered. */
+const ANSWERING_STATUSES: readonly AnswerStatus[] = ["sending", "sent", "unknown"];
+
 export function createInboxStore(filePath: string): InboxStore {
 	const resolved = sqliteFilePath(filePath);
 	fs.mkdirSync(path.dirname(resolved), { recursive: true });
 	const sqlite = new Database(resolved);
 	ensureInboxSchema(sqlite);
 
-	function answered(messageId: string): boolean {
-		return Boolean(
-			sqlite.prepare(`SELECT 1 FROM "Send" WHERE "answersMessageId" = ? LIMIT 1`).get(messageId),
-		);
+	function loadAnswer(answerId: string): AnswerRow | null {
+		const raw = sqlite.prepare(`SELECT * FROM "Answer" WHERE "id" = ?`).get(answerId);
+		return raw ? parseRow(answerRow, raw, "Answer") : null;
 	}
 
 	/**
 	 * The single read funnel: every method that returns a `Conversation` bottoms out here,
 	 * so parsing the rows once at this boundary is enough to make every `Conversation` the
-	 * store hands out true. "Your turn" is derived here too, from the messages themselves:
-	 * the guest spoke last and no Send answers that message.
+	 * store hands out true. "Your turn" is derived here too (ADR 0011): the guest's latest
+	 * message is unanswered unless an Answer is in flight, sent or of unknown outcome for
+	 * it, or the agent replied from the OA app after it. Message order alone does not
+	 * decide, so a guest message that lands mid-send is not hidden by the outbound that
+	 * answers an earlier one.
 	 */
 	function load(id: string): Conversation | null {
 		const rawRow = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id);
@@ -279,10 +312,15 @@ export function createInboxStore(filePath: string): InboxStore {
 		const paperwork: PaperworkRow | undefined = rawPaperwork
 			? parseRow(paperworkRow, rawPaperwork, "Paperwork")
 			: undefined;
-		const rawSend = sqlite
-			.prepare(`SELECT * FROM "Send" WHERE "conversationId" = ? ORDER BY "at" DESC LIMIT 1`)
-			.get(id);
-		const send: SendRow | undefined = rawSend ? parseRow(sendRow, rawSend, "Send") : undefined;
+		const answers: AnswerRow[] = parseRow(
+			z.array(answerRow),
+			sqlite
+				.prepare(
+					`SELECT * FROM "Answer" WHERE "conversationId" = ? ORDER BY "approvedAt" ASC, "rowid" ASC`,
+				)
+				.all(id),
+			"Answer",
+		);
 
 		const oneShot: OneShot | null =
 			row.language && qualification && draft && paperwork
@@ -294,9 +332,20 @@ export function createInboxStore(filePath: string): InboxStore {
 					}
 				: null;
 
-		const last = messages[messages.length - 1];
-		const unansweredInboundId =
-			last && last.direction === "in" && !answered(last.id) ? last.id : null;
+		let unansweredInboundId: string | null = null;
+		for (let i = messages.length - 1; i >= 0; i -= 1) {
+			const message = messages[i];
+			if (message.direction === "in") {
+				const answered = answers.some(
+					(answer) => answer.inboundId === message.id && ANSWERING_STATUSES.includes(answer.status),
+				);
+				const echoedAfter = messages
+					.slice(i + 1)
+					.some((later) => later.direction === "out" && later.source === "oa_echo");
+				unansweredInboundId = answered || echoedAfter ? null : message.id;
+				break;
+			}
+		}
 
 		return {
 			id: row.id,
@@ -311,15 +360,8 @@ export function createInboxStore(filePath: string): InboxStore {
 			sentAt: row.sentAt,
 			unansweredInboundId,
 			oneShot,
-			lastSend: send
-				? {
-						mock: Boolean(send.mock),
-						pipe: send.pipe,
-						to: send.to,
-						text: send.text ?? undefined,
-						vendorMessageId: send.vendorMessageId,
-					}
-				: undefined,
+			answers: answers.map(mapAnswer),
+			lastAnswer: answers.length > 0 ? mapAnswer(answers[answers.length - 1]) : null,
 			updatedAt: row.updatedAt,
 		};
 	}
@@ -507,36 +549,87 @@ export function createInboxStore(filePath: string): InboxStore {
 				.run(messageId, locale, text);
 		},
 
-		async claimSend(messageId) {
-			const result = sqlite
-				.prepare(
-					`UPDATE "Message" SET "claimedAt" = ? WHERE "id" = ? AND "direction" = 'in' AND "claimedAt" IS NULL
-             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."answersMessageId" = "Message"."id")`,
-				)
-				.run(nowIso(), messageId);
-			return result.changes === 1;
+		async beginAnswer(input) {
+			const begin = sqlite.transaction((): BeginAnswerResult => {
+				const inbound = sqlite
+					.prepare(
+						`SELECT "Message"."direction", "Message"."pipeExternalId", "Conversation"."pipe", "Conversation"."guestId"
+             FROM "Message" JOIN "Conversation" ON "Conversation"."id" = "Message"."conversationId"
+             WHERE "Message"."id" = ? AND "Message"."conversationId" = ?`,
+					)
+					.get(input.inboundId, input.conversationId) as
+					| { direction: string; pipeExternalId: string | null; pipe: Pipe; guestId: string }
+					| undefined;
+				if (!inbound || inbound.direction !== "in") {
+					throw new Error("Inbox store: beginAnswer needs a guest message on this thread.");
+				}
+				const rawExisting = sqlite
+					.prepare(`SELECT * FROM "Answer" WHERE "inboundId" = ?`)
+					.get(input.inboundId);
+				const existing = rawExisting ? parseRow(answerRow, rawExisting, "Answer") : null;
+				const now = nowIso();
+				if (existing) {
+					if (existing.status === "sent") return { ok: false, reason: "already_answered" };
+					if (existing.status === "sending") return { ok: false, reason: "in_progress" };
+					if (existing.status === "unknown") return { ok: false, reason: "unknown" };
+					// A definite failure is retried on the same row: one Answer per inbound, always.
+					sqlite
+						.prepare(
+							`UPDATE "Answer" SET "status" = 'sending', "text" = ?, "operatorId" = ?, "approvedAt" = ?,
+                 "failedAt" = NULL, "failureReason" = NULL, "vendorMessageId" = NULL
+               WHERE "id" = ?`,
+						)
+						.run(input.text, input.operatorId, now, existing.id);
+					return { ok: true, answer: mapAnswer(loadAnswer(existing.id) as AnswerRow) };
+				}
+				const id = cuid();
+				sqlite
+					.prepare(
+						`INSERT INTO "Answer" ("id", "conversationId", "inboundId", "text", "operatorId", "status", "mock", "pipe", "to", "pipeExternalId", "vendorMessageId", "approvedAt")
+             VALUES (?, ?, ?, ?, ?, 'sending', 0, ?, ?, ?, NULL, ?)`,
+					)
+					.run(
+						id,
+						input.conversationId,
+						input.inboundId,
+						input.text,
+						input.operatorId,
+						inbound.pipe,
+						inbound.guestId,
+						inbound.pipeExternalId,
+						now,
+					);
+				return { ok: true, answer: mapAnswer(loadAnswer(id) as AnswerRow) };
+			});
+			try {
+				return begin();
+			} catch (error) {
+				// Two approvals in the same instant: the unique index on inboundId lets one in.
+				if (
+					error instanceof Error &&
+					/UNIQUE constraint failed: Answer\.inboundId/.test(error.message)
+				) {
+					return { ok: false, reason: "in_progress" };
+				}
+				throw error;
+			}
 		},
 
-		async releaseSend(messageId) {
-			sqlite
-				.prepare(
-					`UPDATE "Message" SET "claimedAt" = NULL WHERE "id" = ?
-             AND NOT EXISTS (SELECT 1 FROM "Send" WHERE "Send"."answersMessageId" = "Message"."id")`,
-				)
-				.run(messageId);
-		},
-
-		async recordApprovedSend(id, text, sendResult: SendResult, answersMessageId) {
-			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
-			if (!conv) {
+		async completeAnswer(answerId, result: SendResult) {
+			const answer = loadAnswer(answerId);
+			if (!answer) {
 				return null;
 			}
+			if (answer.status !== "sending") {
+				throw new Error(`Inbox store: completeAnswer on an Answer that is ${answer.status}.`);
+			}
 			const at = nowIso();
-			// The reply goes out on the number the guest wrote to; the outbound records it.
-			const endpoint = sqlite
-				.prepare(`SELECT "pipeExternalId" FROM "Message" WHERE "id" = ?`)
-				.get(answersMessageId) as { pipeExternalId: string | null } | undefined;
 			const write = sqlite.transaction(() => {
+				sqlite
+					.prepare(
+						`UPDATE "Answer" SET "status" = 'sent', "sentAt" = ?, "mock" = ?, "vendorMessageId" = ?, "to" = ? WHERE "id" = ?`,
+					)
+					.run(at, result.mock ? 1 : 0, result.vendorMessageId, result.to, answerId);
 				sqlite
 					.prepare(
 						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock", "pipeExternalId")
@@ -544,40 +637,35 @@ export function createInboxStore(filePath: string): InboxStore {
 					)
 					.run(
 						cuid(),
-						id,
-						text,
+						answer.conversationId,
+						answer.text,
 						at,
-						sendResult.vendorMessageId || null,
-						sendResult.mock ? 1 : 0,
-						endpoint?.pipeExternalId ?? null,
-					);
-				sqlite
-					.prepare(
-						`INSERT INTO "Approval" ("id", "conversationId", "reply", "answersMessageId", "at") VALUES (?, ?, ?, ?, ?)`,
-					)
-					.run(cuid(), id, text, answersMessageId, at);
-				sqlite
-					.prepare(
-						`INSERT INTO "Send" ("id", "conversationId", "mock", "pipe", "to", "text", "vendorMessageId", "answersMessageId", "at")
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					)
-					.run(
-						cuid(),
-						id,
-						sendResult.mock ? 1 : 0,
-						sendResult.pipe,
-						sendResult.to,
-						sendResult.text ?? text,
-						sendResult.vendorMessageId,
-						answersMessageId,
-						at,
+						result.vendorMessageId || null,
+						result.mock ? 1 : 0,
+						answer.pipeExternalId,
 					);
 				sqlite
 					.prepare(`UPDATE "Conversation" SET "sentAt" = ?, "updatedAt" = ? WHERE "id" = ?`)
-					.run(at, at, id);
+					.run(at, at, answer.conversationId);
 			});
 			write();
-			return load(id);
+			return load(answer.conversationId);
+		},
+
+		async failAnswer(answerId, reason) {
+			sqlite
+				.prepare(
+					`UPDATE "Answer" SET "status" = 'failed', "failedAt" = ?, "failureReason" = ? WHERE "id" = ? AND "status" = 'sending'`,
+				)
+				.run(nowIso(), reason, answerId);
+		},
+
+		async markAnswerUnknown(answerId, reason) {
+			sqlite
+				.prepare(
+					`UPDATE "Answer" SET "status" = 'unknown', "failedAt" = ?, "failureReason" = ? WHERE "id" = ? AND "status" = 'sending'`,
+				)
+				.run(nowIso(), reason, answerId);
 		},
 
 		async adoptUnownedThreads(officeId) {

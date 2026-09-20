@@ -47,6 +47,15 @@ export const DraftSource = z.enum(["template", "model"]);
 export type DraftSource = z.infer<typeof DraftSource>;
 
 /**
+ * The lifecycle of an Answer (ADR 0011). `sending` from the moment the operator approves
+ * until the vendor answers; `sent` on a vendor acknowledgement; `failed` on a definite
+ * refusal (the operator may approve again); `unknown` when the vendor did not answer or
+ * the acknowledgement could not be recorded, which is never retried automatically.
+ */
+export const AnswerStatus = z.enum(["sending", "sent", "failed", "unknown"]);
+export type AnswerStatus = z.infer<typeof AnswerStatus>;
+
+/**
  * Every timestamp the store reads or writes is `Date#toISOString` output, so the strict
  * UTC form is the whole contract. A local-time or half-formed string is corrupt state.
  */

@@ -51,6 +51,18 @@ const mockSend = (to: string) => ({
 	vendorMessageId: `mock-${to}`,
 });
 
+/** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
+async function answer(
+	store: ReturnType<typeof createInboxStore>,
+	conversationId: string,
+	inboundId: string,
+	text: string,
+) {
+	const begun = await store.beginAnswer({ conversationId, inboundId, text, operatorId: "agent-1" });
+	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
+	return store.completeAnswer(begun.answer.id, mockSend(conversationId.split(":").at(-1) ?? ""));
+}
+
 function indexNames(sqlite: RawDatabase, table: string): string[] {
 	return (sqlite.prepare(`PRAGMA index_list("${table}")`).all() as Array<{ name: string }>).map(
 		(index) => index.name,
@@ -68,14 +80,18 @@ test("store opens in WAL mode with a busy timeout and one send per guest message
 	const sqlite = new Database(store.filePath);
 	expect(sqlite.pragma("journal_mode", { simple: true })).toBe("wal");
 	expect(sqlite.pragma("busy_timeout", { simple: true })).toBe(5000);
-	const indexes = sqlite.prepare(`PRAGMA index_list("Send")`).all() as Array<{
+	const indexes = sqlite.prepare(`PRAGMA index_list("Answer")`).all() as Array<{
 		name: string;
 		unique: number;
 	}>;
-	expect(indexes.some((index) => index.name === "Send_answersMessageId_key" && index.unique)).toBe(
-		true,
-	);
-	expect(indexes.some((index) => index.name === "Send_conversationId_key")).toBe(false);
+	expect(indexes.some((index) => index.name === "Answer_inboundId_key" && index.unique)).toBe(true);
+	const tables = (
+		sqlite.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
+			name: string;
+		}>
+	).map((table) => table.name);
+	expect(tables).not.toContain("Send");
+	expect(tables).not.toContain("Approval");
 	sqlite.close();
 	await store.close();
 });
@@ -136,12 +152,7 @@ test("each message remembers the office endpoint it travelled through", async ()
 	const store = createInboxStore(tempDb());
 	const conv = await store.upsertInbound(inbound("ep", "hi", "oa-1"), OFFICE);
 	expect(conv.messages[0].pipeExternalId).toBe("oa-1");
-	const sent = await store.recordApprovedSend(
-		conv.id,
-		"hello",
-		mockSend("ep"),
-		conv.messages[0].id,
-	);
+	const sent = await answer(store, conv.id, conv.messages[0].id, "hello");
 	// The reply went out on the endpoint the guest wrote to.
 	expect(sent?.messages[1]).toMatchObject({ source: "nhip", pipeExternalId: "oa-1" });
 	// A dev injection has no endpoint, and that is allowed.
@@ -180,12 +191,7 @@ test("your turn is derived from the messages: the guest spoke last and nothing a
 	const secondInbound = burst.messages[1].id;
 	expect(burst.unansweredInboundId).toBe(secondInbound);
 
-	const sent = await store.recordApprovedSend(
-		zalo("turn"),
-		"reply",
-		mockSend("turn"),
-		secondInbound,
-	);
+	const sent = await answer(store, zalo("turn"), secondInbound, "reply");
 	expect(sent?.unansweredInboundId).toBeNull();
 	expect(sent?.sentAt).toBeTruthy();
 
@@ -203,36 +209,123 @@ test("your turn is derived from the messages: the guest spoke last and nothing a
 	await store.close();
 });
 
-test("claimSend is atomic per guest message and releaseSend only undoes an unrecorded claim", async () => {
+test("an Answer is on record from approval and carries the send's lifecycle", async () => {
 	const store = createInboxStore(tempDb());
-	const conv = await store.upsertInbound(inbound("claim"), OFFICE);
-	const inboundId = conv.unansweredInboundId;
-	if (!inboundId) throw new Error("expected an unanswered inbound");
-	expect(await store.claimSend(inboundId)).toBe(true);
-	expect(await store.claimSend(inboundId)).toBe(false);
-	await store.releaseSend(inboundId);
-	expect(await store.claimSend(inboundId)).toBe(true);
-	await store.recordApprovedSend(zalo("claim"), "reply", mockSend("claim"), inboundId);
-	await store.releaseSend(inboundId);
-	expect(await store.claimSend(inboundId)).toBe(false);
-	// An office message can never be claimed.
-	const after = await store.getConversation(zalo("claim"));
-	const outbound = after?.messages.find((message) => message.direction === "out");
-	expect(outbound).toBeTruthy();
-	expect(await store.claimSend(outbound!.id)).toBe(false);
+	const conv = await store.upsertInbound(inbound("life", "hi", "oa-1"), OFFICE);
+	const inboundId = conv.unansweredInboundId!;
+	const input = { conversationId: zalo("life"), inboundId, text: "reply", operatorId: "agent-1" };
+
+	// Approval writes the row before any vendor call, and the guest's turn is over already.
+	const begun = await store.beginAnswer(input);
+	if (!begun.ok) throw new Error(begun.reason);
+	expect(begun.answer).toMatchObject({
+		inboundId,
+		text: "reply",
+		operatorId: "agent-1",
+		status: "sending",
+		pipe: "zalo",
+		to: "life",
+		pipeExternalId: "oa-1",
+		sentAt: null,
+	});
+	expect((await store.getConversation(zalo("life")))?.unansweredInboundId).toBeNull();
+	expect((await store.getConversation(zalo("life")))?.messages).toHaveLength(1);
+
+	// A second approval while the first is in flight is refused.
+	expect(await store.beginAnswer(input)).toEqual({ ok: false, reason: "in_progress" });
+
+	// The vendor refused: failed, the guest's turn is back, and the retry reuses the row.
+	await store.failAnswer(begun.answer.id, "token expired");
+	let state = await store.getConversation(zalo("life"));
+	expect(state?.lastAnswer).toMatchObject({ status: "failed", failureReason: "token expired" });
+	expect(state?.unansweredInboundId).toBe(inboundId);
+	const retried = await store.beginAnswer({ ...input, text: "second try", operatorId: "agent-2" });
+	if (!retried.ok) throw new Error(retried.reason);
+	expect(retried.answer.id).toBe(begun.answer.id);
+	expect(retried.answer).toMatchObject({
+		status: "sending",
+		text: "second try",
+		operatorId: "agent-2",
+		failedAt: null,
+		failureReason: null,
+	});
+
+	// The vendor acknowledged: sent, the outbound on the thread, the office's sentAt set.
+	const done = await store.completeAnswer(retried.answer.id, {
+		mock: false,
+		pipe: "zalo",
+		to: "life",
+		vendorMessageId: "z-1",
+	});
+	expect(done?.lastAnswer).toMatchObject({ status: "sent", vendorMessageId: "z-1", mock: false });
+	expect(done?.lastAnswer?.sentAt).toBeTruthy();
+	expect(done?.sentAt).toBe(done?.lastAnswer?.sentAt);
+	expect(done?.messages.at(-1)).toMatchObject({
+		source: "nhip",
+		text: "second try",
+		pipeExternalId: "oa-1",
+		vendorMessageId: "z-1",
+	});
+	expect(done?.answers).toHaveLength(1);
+
+	// Once sent, the same guest message cannot be answered again, by any path.
+	expect(await store.beginAnswer(input)).toEqual({ ok: false, reason: "already_answered" });
+	await expect(store.completeAnswer(retried.answer.id, mockSend("life"))).rejects.toThrow(/sent/);
+	// Failing or marking a sent Answer is a no-op.
+	await store.failAnswer(retried.answer.id, "late");
+	await store.markAnswerUnknown(retried.answer.id, "late");
+	expect((await store.getConversation(zalo("life")))?.lastAnswer?.status).toBe("sent");
+	// Only a guest message can be answered.
+	const outbound = done!.messages.find((message) => message.direction === "out")!;
+	await expect(store.beginAnswer({ ...input, inboundId: outbound.id })).rejects.toThrow(
+		/guest message/,
+	);
 	await store.close();
 });
 
-test("a second Send answering the same guest message is refused by the file itself", async () => {
+test("an Answer of unknown outcome blocks every further approval of that message", async () => {
 	const store = createInboxStore(tempDb());
-	const conv = await store.upsertInbound(inbound("twice"), OFFICE);
+	const conv = await store.upsertInbound(inbound("unknown"), OFFICE);
 	const inboundId = conv.unansweredInboundId!;
-	await store.recordApprovedSend(zalo("twice"), "one", mockSend("twice"), inboundId);
-	await expect(
-		store.recordApprovedSend(zalo("twice"), "two", mockSend("twice"), inboundId),
-	).rejects.toThrow(/UNIQUE/);
-	const after = await store.getConversation(zalo("twice"));
-	expect(after?.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
+	const input = { conversationId: zalo("unknown"), inboundId, text: "reply", operatorId: null };
+	const begun = await store.beginAnswer(input);
+	if (!begun.ok) throw new Error(begun.reason);
+	await store.markAnswerUnknown(begun.answer.id, "fetch failed");
+	const state = await store.getConversation(zalo("unknown"));
+	expect(state?.lastAnswer).toMatchObject({ status: "unknown", failureReason: "fetch failed" });
+	// The vendor may have it: not Your turn, and not retried.
+	expect(state?.unansweredInboundId).toBeNull();
+	expect(await store.beginAnswer(input)).toEqual({ ok: false, reason: "unknown" });
+	expect(state?.messages.filter((message) => message.source === "nhip")).toHaveLength(0);
+	await store.close();
+});
+
+test("your turn reads the Answers, not message order: a guest message mid-send stays open", async () => {
+	const store = createInboxStore(tempDb());
+	const conv = await store.upsertInbound(inbound("mid", "M1"), OFFICE);
+	const m1 = conv.unansweredInboundId!;
+	const begun = await store.beginAnswer({
+		conversationId: zalo("mid"),
+		inboundId: m1,
+		text: "reply to M1",
+		operatorId: null,
+	});
+	if (!begun.ok) throw new Error(begun.reason);
+	// M2 lands while M1's reply is with the vendor.
+	const withM2 = await store.upsertInbound(inbound("mid", "M2"), OFFICE);
+	const m2 = withM2.unansweredInboundId!;
+	expect(m2).not.toBe(m1);
+	// M1's reply is acknowledged and stored last on the thread.
+	const done = await store.completeAnswer(begun.answer.id, mockSend("mid"));
+	expect(done?.messages.map((m) => m.text)).toEqual(["M1", "M2", "reply to M1"]);
+	expect(done?.unansweredInboundId).toBe(m2);
+	// Answering M2 closes the thread's turn.
+	const closed = await answer(store, zalo("mid"), m2, "reply to M2");
+	expect(closed?.unansweredInboundId).toBeNull();
+	expect(closed?.answers.map((a) => [a.inboundId, a.status])).toEqual([
+		[m1, "sent"],
+		[m2, "sent"],
+	]);
 	await store.close();
 });
 
@@ -334,7 +427,7 @@ test("a file from before tenancy drops the person column; its threads wait for a
 	await store.close();
 });
 
-test("a file from before reply-only is migrated: sends learn which message they answered", async () => {
+test("a file from before the Answer folds its sends into Answers and learns what they answered", async () => {
 	const file = tempDb();
 	const legacy = new Database(file);
 	legacy.exec(`CREATE TABLE "Conversation" (
@@ -407,25 +500,49 @@ test("a file from before reply-only is migrated: sends learn which message they 
 
 	const store = createInboxStore(file);
 	const sqlite = new Database(store.filePath);
-	const send = sqlite.prepare(`SELECT "answersMessageId" FROM "Send" WHERE "id" = 's-1'`).get() as {
-		answersMessageId: string | null;
-	};
-	expect(send.answersMessageId).toBe("m-in-1");
-	const approval = sqlite
-		.prepare(`SELECT "answersMessageId" FROM "Approval" WHERE "id" = 'a-1'`)
-		.get() as { answersMessageId: string | null };
-	expect(approval.answersMessageId).toBe("m-in-1");
-	expect(indexNames(sqlite, "Send")).toContain("Send_answersMessageId_key");
-	expect(indexNames(sqlite, "Send")).not.toContain("Send_conversationId_key");
+	const tables = (
+		sqlite.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
+			name: string;
+		}>
+	).map((table) => table.name);
+	expect(tables).toContain("Answer");
+	expect(tables).not.toContain("Send");
+	expect(tables).not.toContain("Approval");
+	expect(columnNames(sqlite, "Message")).not.toContain("claimedAt");
 	sqlite.close();
 
-	// The guest who wrote back after that old send is Your turn, which the old rule forbade.
+	// The old send is a sent Answer to the last inbound before it, with the approved text.
 	const conv = await store.getConversation("zalo:legacy");
+	expect(conv?.answers).toHaveLength(1);
+	expect(conv?.lastAnswer).toMatchObject({
+		id: "s-1",
+		inboundId: "m-in-1",
+		text: "hi there",
+		status: "sent",
+		mock: true,
+		pipe: "zalo",
+		to: "legacy",
+		operatorId: null,
+		approvedAt: t1,
+		sentAt: t1,
+	});
+	// The guest who wrote back after that old send is Your turn, which the old rule forbade.
 	expect(conv?.unansweredInboundId).toBe("m-in-2");
 	expect(conv?.sentAt).toBe(t1);
 	expect(conv?.officeId).toBeNull();
 	expect(conv?.messages.map((message) => message.pipeExternalId)).toEqual([null, null, null]);
 	expect(conv?.messages.map((message) => message.translations)).toEqual([{}, {}, {}]);
-	expect(await store.claimSend("m-in-2")).toBe(true);
+	// And it can be answered.
+	const begun = await store.beginAnswer({
+		conversationId: "zalo:legacy",
+		inboundId: "m-in-2",
+		text: "still here",
+		operatorId: null,
+	});
+	expect(begun.ok).toBe(true);
+	// Reopening the file is a no-op: nothing to fold twice.
 	await store.close();
+	const reopened = createInboxStore(file);
+	expect((await reopened.getConversation("zalo:legacy"))?.answers).toHaveLength(2);
+	await reopened.close();
 });
