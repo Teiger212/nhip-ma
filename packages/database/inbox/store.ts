@@ -124,6 +124,16 @@ const paperworkRow = z.object({
 	flag: z.string().nullable(),
 });
 
+/**
+ * One row per lead of the funnel cohort: when the guest first wrote, when the office first
+ * reached them (`null` until a `sent` Answer), and whether they wrote again after that.
+ */
+const funnelLeadRow = z.object({
+	firstInboundAt: Timestamp,
+	firstSentAt: Timestamp.nullable(),
+	wroteBack: z.number(),
+});
+
 const answerRow = z.object({
 	id: z.string(),
 	conversationId: z.string(),
@@ -716,10 +726,72 @@ export function createInboxStore(filePath: string): InboxStore {
 			return messages.map((message) => message.text).join("\n");
 		},
 
+		async funnel(viewer, window) {
+			const since = nowIso(window.since);
+			const until = nowIso();
+			// ISO-8601 UTC strings (`Timestamp`) sort as text, so the comparisons are on the
+			// stored strings and use the message index. One row per cohort lead, never per
+			// message; the percentiles are the only thing left for JavaScript.
+			const leads = parseRow(
+				z.array(funnelLeadRow),
+				sqlite
+					.prepare(
+						`WITH "first" AS (
+               SELECT "conversationId", MIN("at") AS "firstInboundAt"
+               FROM "Message" WHERE "direction" = 'in' GROUP BY "conversationId"
+             ),
+             "reached" AS (
+               SELECT "conversationId", MIN("sentAt") AS "firstSentAt"
+               FROM "Answer" WHERE "status" = 'sent' GROUP BY "conversationId"
+             )
+             SELECT "first"."firstInboundAt" AS "firstInboundAt",
+                    "reached"."firstSentAt" AS "firstSentAt",
+                    EXISTS (
+                      SELECT 1 FROM "Message" "later"
+                      WHERE "later"."conversationId" = "Conversation"."id"
+                        AND "later"."direction" = 'in'
+                        AND "later"."at" > "reached"."firstSentAt"
+                    ) AS "wroteBack"
+             FROM "Conversation"
+             JOIN "first" ON "first"."conversationId" = "Conversation"."id"
+             LEFT JOIN "reached" ON "reached"."conversationId" = "Conversation"."id"
+             WHERE "Conversation"."officeId" = ? AND "first"."firstInboundAt" >= ?`,
+					)
+					.all(viewer.officeId, since),
+				"Funnel",
+			);
+			const durations = leads
+				.flatMap((lead) =>
+					lead.firstSentAt ? [Date.parse(lead.firstSentAt) - Date.parse(lead.firstInboundAt)] : [],
+				)
+				.map((ms) => Math.max(0, ms))
+				.sort((a, b) => a - b);
+			return {
+				since,
+				until,
+				leadsIn: leads.length,
+				engaged: durations.length,
+				inConversation: leads.filter((lead) => lead.firstSentAt && lead.wroteBack).length,
+				responseTime:
+					durations.length === 0
+						? null
+						: {
+								answered: durations.length,
+								medianMs: nearestRank(durations, 0.5),
+								p90Ms: nearestRank(durations, 0.9),
+							},
+			};
+		},
+
 		async close() {
 			sqlite.close();
 		},
 	};
+}
+
+/** The nearest-rank percentile of an ascending list: `p` in (0, 1], never interpolated. */
+function nearestRank(sorted: number[], p: number): number {
+	return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)];
 }
 
 /** @deprecated Use createInboxStore */

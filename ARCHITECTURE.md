@@ -49,7 +49,7 @@ Two stores:
 
 A Postgres `DATABASE_URL` is ignored by the inbox store unless it is a `file:` URL. Default SQLite path is `data/nhip.db` at the repo root (`packages/database/inbox/sqlite-path.ts`).
 
-The only inbox schema is the hand-written DDL in `packages/database/inbox/ensure-schema.ts` (WAL, `busy_timeout`, additive column migrations). There are no Prisma or Drizzle inbox models; `schema.prisma` is Better Auth only. Inbox types live in `packages/database/inbox/types.ts`: `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork`, `OneShot`, `SendResult`, `InboxViewer`. Threads are not stored on User / Org / Plan / Subscription.
+The only inbox schema is the hand-written DDL in `packages/database/inbox/ensure-schema.ts` (WAL, `busy_timeout`, additive column migrations). There are no Prisma or Drizzle inbox models; `schema.prisma` is Better Auth only. Inbox types live in `packages/database/inbox/types.ts`: `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork`, `OneShot`, `SendResult`, `InboxViewer`; the funnel vocabulary (`Funnel`, `ResponseTime`) is zod in `schema.ts` and `store.funnel(viewer, { since })` counts it in SQL inside the office (ADR 0002 over ADR 0011). Threads are not stored on User / Org / Plan / Subscription.
 
 The office is the tenant (ADR 0008) and it is the kit organization; Nhịp assigns it and one operator belongs to exactly one (ADR 0010). `Conversation.officeId` is the organization id and a thread's identity is (office, pipe, guest), so the same guest at two offices is two threads; the store lists and reads strictly by office, so a thread is visible only inside its office and shared by every agent in it. `requireInboxSession` reads the operator's memberships on every request: none is 403 `no_office`, more than one is 403 `ambiguous_office`; the session's active organization is never consulted. Webhook-created threads take the office that owns the pipe the message arrived on (`PipeConnection`: pipe + vendor id of the number or OA → office, set with `pnpm --filter saas pipe:connect`); inbound on an unconnected pipe is dropped, and each message records the endpoint it travelled through (`Message.pipeExternalId`). A reply goes out on the number the guest last wrote to; with process-wide credentials, a thread on any other number is refused with 409 `pipe_not_configured`. `POST /dev/inbound` files under the signed-in operator's office. Files from before tenancy carry `officeId = NULL` until `adoptUnownedThreads` runs (the seed does it for the walk office).
 
@@ -69,8 +69,10 @@ Sign-up is invitation only (`enableSignup: false`, the kit's invitation-only plu
 | `apps/saas/app/api/conversations`                          | List / detail (session required)    |
 | `apps/saas/app/api/conversations/[id]/approve`             | Approve and send (session required) |
 | `apps/saas/app/api/conversations/[id]/draft`               | Regenerate suggestion (never sends) |
-| `apps/saas/modules/inbox/lib/require-session.ts`           | 401 / 403 gate, resolves the office |
-| `apps/saas/modules/home/components/Home.tsx`               | Home: funnel shape, CRM empty state |
+| `apps/saas/modules/inbox/lib/require-session.ts`           | 401 / 403 gate for route handlers   |
+| `apps/saas/modules/inbox/lib/office.ts`                    | Resolves the office from membership |
+| `apps/saas/modules/home/lib/funnel.ts`                     | Home's read: office + store.funnel  |
+| `apps/saas/modules/home/components/Home.tsx`               | Home: funnel, response time, CRM    |
 | `apps/saas/modules/shared/components/WalkLocaleToggle.tsx` | EN / VI path switch                 |
 | `apps/saas/modules/shared/components/UserMenu.tsx`         | Color mode + language               |
 

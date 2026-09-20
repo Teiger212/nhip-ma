@@ -61,3 +61,34 @@ export type AnswerStatus = z.infer<typeof AnswerStatus>;
  */
 export const Timestamp = z.iso.datetime();
 export type Timestamp = z.infer<typeof Timestamp>;
+
+/**
+ * Response time (CONTEXT.md): first inbound to the first sent Answer, over the leads that
+ * were answered. Nearest-rank percentiles, in milliseconds, so the caller formats.
+ */
+export const ResponseTime = z.object({
+	answered: z.number().int().nonnegative(),
+	medianMs: z.number().int().nonnegative(),
+	p90Ms: z.number().int().nonnegative(),
+});
+export type ResponseTime = z.infer<typeof ResponseTime>;
+
+/**
+ * The office funnel over a window (ADR 0002), the three stages Nhịp can count itself,
+ * read off Answers (ADR 0011). The cohort is every lead whose first message landed in the
+ * window; engaged and in conversation are counted inside that cohort, so the funnel never
+ * widens. Closings and lost are not here: they come from the CRM adapter (ADR 0003) or
+ * not at all. `responseTime` is `null` when nobody in the cohort was answered.
+ */
+export const Funnel = z.object({
+	since: Timestamp,
+	until: Timestamp,
+	/** Guests whose first message landed in the window. */
+	leadsIn: z.number().int().nonnegative(),
+	/** Leads with at least one `sent` Answer. */
+	engaged: z.number().int().nonnegative(),
+	/** Leads who wrote again after their first sent Answer. */
+	inConversation: z.number().int().nonnegative(),
+	responseTime: ResponseTime.nullable(),
+});
+export type Funnel = z.infer<typeof Funnel>;

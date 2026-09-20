@@ -27,7 +27,9 @@ office's CRM through the CRM adapter (ADR 0003).
 
 ## Consequences
 
-- The first three widgets are buildable now from inbox data.
+- The first three widgets are buildable now from inbox data. Built 2026-09-20, counted
+  from Answers (ADR 0011) over a fixed 30-day window by first contact; the definitions
+  are in CONTEXT.md under Funnel.
 - Closings and lost depend on the CRM adapter; until an office has one connected, those
   two widgets show "connect your CRM" rather than a zero that looks like a fact.
 - "Engaged" and "in conversation" need one definition each in CONTEXT.md so the chart

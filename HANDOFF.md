@@ -46,6 +46,8 @@ saas test`. Do not commit untracked local scripts or `data/`.
 | `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                                        |
 | `apps/saas/modules/inbox/components/Inbox.tsx`                           | Inbox client module (renders, does not decide)     |
 | `apps/saas/modules/inbox/lib/queue.ts`                                   | Queue rules: Your turn, quiet, order, counts       |
+| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/home/page.tsx`  | Home route                                         |
+| `apps/saas/modules/home/`                                                | Home: funnel over Answers, response time, CRM gap  |
 | `apps/saas/modules/inbox/lib/{extract,draft,crib}.ts`                    | One-shot: extract, template reply, operator note   |
 | `apps/saas/modules/inbox/lib/inbox.ts`                                   | Ingest, approve-and-send, regenerate draft         |
 | `apps/saas/modules/inbox/lib/drafts/`                                    | Draft adapter (OpenAI-compatible or none), prompts |
@@ -67,6 +69,10 @@ saas test`. Do not commit untracked local scripts or `data/`.
   Reply-only: one Answer per inbound; a thread is "Your turn" whenever the guest's latest
   message has no Answer (ADRs 0004, 0006). An Answer of unknown outcome is never retried
   by the app; a person checks the vendor first.
+- Home's funnel is counted from Answers inside the store, for guests whose first message
+  landed in the last 30 days: engaged is a `sent` Answer, in conversation a guest message
+  after it, response time first inbound to first `sentAt` (ADRs 0002, 0011). Closings and
+  lost only ever come from the CRM adapter (ADR 0003); until one is connected they say so.
 - Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
   draft that touches paperwork is dropped by the post-check and the template stands.
