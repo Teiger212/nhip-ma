@@ -19,7 +19,7 @@ Do not build or ship `apps/marketing`, `apps/docs`, `apps/mail-preview`, or admi
 apps/saas          Authenticated product. The only app that ships.
 packages/ui        Shared chrome (sidebar, menus, buttons, theme)
 packages/i18n      Locale catalog and `inbox.*` copy
-packages/database  Auth schema (Prisma/Postgres) + inbox SQLite store
+packages/database  Prisma schema: auth (kit) and inbox (ADR 0012), one Postgres
 ```
 
 Other `apps/*` and `packages/*` directories exist. Treat them as unused unless a change is explicitly asked for.
@@ -38,20 +38,18 @@ Pages live under `apps/saas/app/[locale]/…`. The inbox page is:
 
 `packages/i18n` still lists `de`, `es`, and `fr` for the rest of the tree. SaaS routing (`routing.ts`) is limited to the operator locales `en` and `vi`, so `/de/inbox` is not routable and the settings language form offers only EN / VI. Inbox copy is `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. Guest-facing draft language can be EN, VI, JA, KO, or RU. Operator chrome is EN + VI.
 
-## Auth vs inbox data
+## Auth and inbox data
 
-Two stores:
+One database, two owners:
 
-| Store           | Where                                                                                                        | What                                          |
-| --------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| Auth / sessions | Postgres via `DATABASE_URL` (local compose is PostgreSQL 16 on 5432; example database name is `supastarter`) | Better Auth users and sessions                |
-| Inbox threads   | SQLite `data/nhip.db` via `@repo/database/inbox`                                                             | Conversations, messages, extract, draft, send |
+| Store           | Where                                                                                                        | What                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Auth / sessions | Postgres via `DATABASE_URL` (local compose is PostgreSQL 16 on 5432; example database name is `supastarter`) | Better Auth users and sessions                   |
+| Inbox threads   | The same Postgres, `inbox_*` tables via `@repo/database/inbox`                                               | Conversations, messages, extract, draft, Answers |
 
-A Postgres `DATABASE_URL` is ignored by the inbox store unless it is a `file:` URL. Default SQLite path is `data/nhip.db` at the repo root (`packages/database/inbox/sqlite-path.ts`).
+The inbox models live in `schema.prisma` next to the kit's (ADR 0012). `Conversation.officeId` and `PipeConnection.officeId` reference `Organization` with cascade delete, `Answer.operatorId` references `User` with set-null. Schema changes go through `prisma db push` in development; production baselines with `prisma migrate` before the first deploy. The store (`createInboxStore(db)`) is the only writer of these tables; routes call its methods and never touch Prisma directly. Tests run against `supastarter_test` (`packages/database/inbox/testing.ts`). Inbox types live in `packages/database/inbox/types.ts`: `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork`, `OneShot`, `SendResult`, `InboxViewer`; the funnel vocabulary (`Funnel`, `ResponseTime`) is zod in `schema.ts` and `store.funnel(viewer, { since })` counts it in SQL inside the office (ADR 0002 over ADR 0011). Threads are not stored on User / Org / Plan / Subscription.
 
-The only inbox schema is the hand-written DDL in `packages/database/inbox/ensure-schema.ts` (WAL, `busy_timeout`, additive column migrations). There are no Prisma or Drizzle inbox models; `schema.prisma` is Better Auth only. Inbox types live in `packages/database/inbox/types.ts`: `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork`, `OneShot`, `SendResult`, `InboxViewer`; the funnel vocabulary (`Funnel`, `ResponseTime`) is zod in `schema.ts` and `store.funnel(viewer, { since })` counts it in SQL inside the office (ADR 0002 over ADR 0011). Threads are not stored on User / Org / Plan / Subscription.
-
-The office is the tenant (ADR 0008) and it is the kit organization; Nhịp assigns it and one operator belongs to exactly one (ADR 0010). `Conversation.officeId` is the organization id and a thread's identity is (office, pipe, guest), so the same guest at two offices is two threads; the store lists and reads strictly by office, so a thread is visible only inside its office and shared by every agent in it. `requireInboxSession` reads the operator's memberships on every request: none is 403 `no_office`, more than one is 403 `ambiguous_office`; the session's active organization is never consulted. Webhook-created threads take the office that owns the pipe the message arrived on (`PipeConnection`: pipe + vendor id of the number or OA → office, set with `pnpm --filter saas pipe:connect`); inbound on an unconnected pipe is dropped, and each message records the endpoint it travelled through (`Message.pipeExternalId`). A reply goes out on the number the guest last wrote to; with process-wide credentials, a thread on any other number is refused with 409 `pipe_not_configured`. `POST /dev/inbound` files under the signed-in operator's office. Files from before tenancy carry `officeId = NULL` until `adoptUnownedThreads` runs (the seed does it for the walk office).
+The office is the tenant (ADR 0008) and it is the kit organization; Nhịp assigns it and one operator belongs to exactly one (ADR 0010). `Conversation.officeId` is the organization id and a thread's identity is (office, pipe, guest), so the same guest at two offices is two threads; the store lists and reads strictly by office, so a thread is visible only inside its office and shared by every agent in it. `requireInboxSession` reads the operator's memberships on every request: none is 403 `no_office`, more than one is 403 `ambiguous_office`; the session's active organization is never consulted. Webhook-created threads take the office that owns the pipe the message arrived on (`PipeConnection`: pipe + vendor id of the number or OA → office, set with `pnpm --filter saas pipe:connect`); inbound on an unconnected pipe is dropped, and each message records the endpoint it travelled through (`Message.pipeExternalId`). A reply goes out on the number the guest last wrote to; with process-wide credentials, a thread on any other number is refused with 409 `pipe_not_configured`. `POST /dev/inbound` files under the signed-in operator's office. Every thread has an office from birth; there is no unowned state (ADR 0012).
 
 Sign-up is invitation only (`enableSignup: false`, the kit's invitation-only plugin), operators cannot create organizations, and accepting a second office's invitation is refused in an auth hook. The seed creates the walk office (`walk-office`, fixed id) with `admin@nhip.local` (role `admin`) as owner and `walk@nhip.local` as member. `hideOrganization` keeps the switcher hidden; `requireOrganization` stays false because the inbox resolves the office itself.
 

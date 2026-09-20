@@ -27,35 +27,37 @@
 
 ## File map
 
-| Path | Change | Responsibility |
-| --- | --- | --- |
-| `packages/database/prisma/schema.prisma` | modify | Inbox enums and models; relation fields on `Organization` and `User` |
-| `packages/database/prisma/client.ts` | modify | Drop the `file:` URL refusal |
-| `packages/database/prisma/queries/inbox.ts` | delete | Was a re-export of the SQLite store |
-| `packages/database/prisma/queries/index.ts` | modify | Remove the deleted re-export |
-| `packages/database/inbox/store.ts` | rewrite | `createInboxStore(db)` on Prisma |
-| `packages/database/inbox/types.ts` | modify | Remove `filePath`, `adoptUnownedThreads` |
-| `packages/database/inbox/index.ts` | modify | Remove SQLite exports |
-| `packages/database/inbox/ensure-schema.ts`, `sqlite-path.ts` | delete | SQLite DDL and path |
-| `packages/database/inbox/testing.ts` | create | Test database URL, creation, reset |
-| `packages/database/package.json` | modify | Drop `better-sqlite3`; export `./inbox/testing` |
-| `apps/saas/vitest.config.ts`, `apps/saas/vitest.global-setup.ts` | modify / create | Push the test schema once; run files serially |
-| `apps/saas/modules/inbox/lib/test-store.ts` | create | `testInboxStore()` for every store-backed test |
-| `apps/saas/modules/inbox/lib/{store,funnel,approve,loop,seed}.test.ts`, `pipes/webhook.test.ts` | modify | Use `testInboxStore()` |
-| `apps/saas/modules/inbox/lib/runtime.ts` | modify | `createInboxStore(db)` |
-| `apps/saas/modules/inbox/lib/walk-user.ts`, `scripts/seed.ts`, `scripts/seed-walk-user.ts`, `scripts/seed-walk-office.ts`, `scripts/connect-pipe.ts` | modify | Postgres is the only database; no adopt step |
-| `.github/workflows/ci.yml` | modify | Postgres service, `TEST_DATABASE_URL` |
-| `HANDOFF.md`, `ARCHITECTURE.md`, `AGENTS.md`, `README.md`, `.env.local.example`, `.gitignore`, `docs/adr/0010-office-assignment.md` | modify | SQLite is gone; test database; go-live migrate step |
+| Path                                                                                                                                                 | Change          | Responsibility                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------- |
+| `packages/database/prisma/schema.prisma`                                                                                                             | modify          | Inbox enums and models; relation fields on `Organization` and `User` |
+| `packages/database/prisma/client.ts`                                                                                                                 | modify          | Drop the `file:` URL refusal                                         |
+| `packages/database/prisma/queries/inbox.ts`                                                                                                          | delete          | Was a re-export of the SQLite store                                  |
+| `packages/database/prisma/queries/index.ts`                                                                                                          | modify          | Remove the deleted re-export                                         |
+| `packages/database/inbox/store.ts`                                                                                                                   | rewrite         | `createInboxStore(db)` on Prisma                                     |
+| `packages/database/inbox/types.ts`                                                                                                                   | modify          | Remove `filePath`, `adoptUnownedThreads`                             |
+| `packages/database/inbox/index.ts`                                                                                                                   | modify          | Remove SQLite exports                                                |
+| `packages/database/inbox/ensure-schema.ts`, `sqlite-path.ts`                                                                                         | delete          | SQLite DDL and path                                                  |
+| `packages/database/inbox/testing.ts`                                                                                                                 | create          | Test database URL, creation, reset                                   |
+| `packages/database/package.json`                                                                                                                     | modify          | Drop `better-sqlite3`; export `./inbox/testing`                      |
+| `apps/saas/vitest.config.ts`, `apps/saas/vitest.global-setup.ts`                                                                                     | modify / create | Push the test schema once; run files serially                        |
+| `apps/saas/modules/inbox/lib/test-store.ts`                                                                                                          | create          | `testInboxStore()` for every store-backed test                       |
+| `apps/saas/modules/inbox/lib/{store,funnel,approve,loop,seed}.test.ts`, `pipes/webhook.test.ts`                                                      | modify          | Use `testInboxStore()`                                               |
+| `apps/saas/modules/inbox/lib/runtime.ts`                                                                                                             | modify          | `createInboxStore(db)`                                               |
+| `apps/saas/modules/inbox/lib/walk-user.ts`, `scripts/seed.ts`, `scripts/seed-walk-user.ts`, `scripts/seed-walk-office.ts`, `scripts/connect-pipe.ts` | modify          | Postgres is the only database; no adopt step                         |
+| `.github/workflows/ci.yml`                                                                                                                           | modify          | Postgres service, `TEST_DATABASE_URL`                                |
+| `HANDOFF.md`, `ARCHITECTURE.md`, `AGENTS.md`, `README.md`, `.env.local.example`, `.gitignore`, `docs/adr/0010-office-assignment.md`                  | modify          | SQLite is gone; test database; go-live migrate step                  |
 
 ---
 
 ### Task 1: Inbox models in the Prisma schema
 
 **Files:**
+
 - Modify: `packages/database/prisma/schema.prisma`
 - Modify: `packages/database/prisma/client.ts:10-15`
 
 **Interfaces:**
+
 - Produces: Prisma models `Conversation`, `Message`, `Translation`, `Qualification`, `Draft`, `Paperwork`, `Answer`, `PipeConnection`; enums `Pipe`, `MessageDirection`, `MessageSource`, `DraftSource`, `AnswerStatus`; compound uniques `officeId_pipe_guestId` (Conversation), `messageId_locale` (Translation), `pipe_externalId` (PipeConnection); `Answer.inboundId` unique.
 
 - [ ] **Step 1: Add the enums and models to `schema.prisma`**
@@ -246,12 +248,11 @@ In `model User`, after `notificationPreferences  UserNotificationPreference[]` a
 In `packages/database/prisma/client.ts` delete this block:
 
 ```ts
-	if (process.env.DATABASE_URL.startsWith("file:")) {
-		throw new Error(
-			"Postgres Prisma is unused for the inbox SQLite walkthrough. Inbox data lives in packages/database/inbox.",
-		);
-	}
-
+if (process.env.DATABASE_URL.startsWith("file:")) {
+	throw new Error(
+		"Postgres Prisma is unused for the inbox SQLite walkthrough. Inbox data lives in packages/database/inbox.",
+	);
+}
 ```
 
 - [ ] **Step 4: Validate, generate and push to the dev database**
@@ -278,6 +279,7 @@ git commit -m "feat(database): inbox models in the Prisma schema (ADR 0012)"
 ### Task 2: A test database that is pushed once and reset per test
 
 **Files:**
+
 - Create: `packages/database/inbox/testing.ts`
 - Modify: `packages/database/package.json` (exports)
 - Create: `apps/saas/vitest.global-setup.ts`
@@ -287,6 +289,7 @@ git commit -m "feat(database): inbox models in the Prisma schema (ADR 0012)"
 - Modify: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Produces: `testDatabaseUrl(env?) => string`, `ensureTestDatabase(url?) => Promise<void>`, `createTestInboxClient(url?) => PrismaClient`, `resetInboxTables(db, { offices, operators }) => Promise<void>` from `@repo/database/inbox/testing`; `testInboxStore() => Promise<InboxStore>`, `TEST_OFFICES`, `TEST_OPERATORS` from `apps/saas/modules/inbox/lib/test-store.ts`.
 - Consumes: Task 1's models. Task 3's `createInboxStore(db)` (this task's `test-store.ts` calls it; until Task 3 lands, the file type-checks against the old signature only if you leave the call out, so write `test-store.test.ts` against `resetInboxTables` and the raw client and add the `createInboxStore` call in Task 3).
 
@@ -295,7 +298,11 @@ git commit -m "feat(database): inbox models in the Prisma schema (ADR 0012)"
 `apps/saas/modules/inbox/lib/test-store.test.ts`:
 
 ```ts
-import { createTestInboxClient, resetInboxTables, testDatabaseUrl } from "@repo/database/inbox/testing";
+import {
+	createTestInboxClient,
+	resetInboxTables,
+	testDatabaseUrl,
+} from "@repo/database/inbox/testing";
 import { expect, test } from "vitest";
 
 test("the test database is never DATABASE_URL, and a reset leaves the fixture rows and no threads", async () => {
@@ -377,7 +384,9 @@ export async function ensureTestDatabase(url = testDatabaseUrl()): Promise<void>
 	const name = new URL(url).pathname.replace(/^\//, "");
 	const admin = createTestInboxClient(withDatabaseName(url, () => "postgres"));
 	try {
-		const found = await admin.$queryRaw<Array<{ ok: number }>>`SELECT 1 AS ok FROM pg_database WHERE datname = ${name}`;
+		const found = await admin.$queryRaw<
+			Array<{ ok: number }>
+		>`SELECT 1 AS ok FROM pg_database WHERE datname = ${name}`;
 		if (found.length === 0) {
 			await admin.$executeRawUnsafe(`CREATE DATABASE "${name.replaceAll('"', '""')}"`);
 		}
@@ -448,7 +457,10 @@ import { ensureTestDatabase, testDatabaseUrl } from "@repo/database/inbox/testin
 export default async function setup(): Promise<void> {
 	const url = testDatabaseUrl();
 	await ensureTestDatabase(url);
-	execFileSync("pnpm", ["exec", "prisma", "db", "push", "--skip-generate", "--accept-data-loss"], {
+	// Plain push: Prisma 7 has no --skip-generate, and --accept-data-loss is refused when an
+	// AI agent runs it. A change that would lose data on the test database means
+	// `dropdb supastarter_test` and run again.
+	execFileSync("pnpm", ["exec", "prisma", "db", "push"], {
 		cwd: path.resolve(import.meta.dirname, "../../packages/database"),
 		env: { ...process.env, DATABASE_URL: url },
 		stdio: "inherit",
@@ -505,26 +517,26 @@ export async function resetTestInbox(): Promise<void> {
 In `.github/workflows/ci.yml`, under `env:` add:
 
 ```yaml
-  TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/supastarter_test
+TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/supastarter_test
 ```
 
 Under `jobs: ci:` after `timeout-minutes: 20` add:
 
 ```yaml
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: supastarter
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+services:
+  postgres:
+    image: postgres:16
+    env:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: supastarter
+    ports:
+      - 5432:5432
+    options: >-
+      --health-cmd pg_isready
+      --health-interval 5s
+      --health-timeout 5s
+      --health-retries 10
 ```
 
 - [ ] **Step 8: Gates and commit**
@@ -542,6 +554,7 @@ git commit -m "test(inbox): a Postgres test database, pushed once and reset per 
 ### Task 3: The store on Prisma
 
 **Files:**
+
 - Rewrite: `packages/database/inbox/store.ts`
 - Modify: `packages/database/inbox/types.ts:186-231`
 - Modify: `packages/database/inbox/index.ts`
@@ -551,6 +564,7 @@ git commit -m "test(inbox): a Postgres test database, pushed once and reset per 
 - Test: `apps/saas/modules/inbox/lib/store.test.ts` (ported), `apps/saas/modules/inbox/lib/funnel.test.ts` (ported)
 
 **Interfaces:**
+
 - Produces: `createInboxStore(db: PrismaClient): InboxStore` from `@repo/database/inbox`; `testInboxStore(): Promise<InboxStore>` from `apps/saas/modules/inbox/lib/test-store.ts`.
 - Consumes: Task 1 models, Task 2 helpers.
 
@@ -741,8 +755,8 @@ export type InboxStore = {
 Also in `types.ts`, on `Conversation.officeId`, replace the doc comment and type with:
 
 ```ts
-	/** The office (ADR 0008) this thread belongs to: the kit organization's id. Required (ADR 0012). */
-	officeId: string;
+/** The office (ADR 0008) this thread belongs to: the kit organization's id. Required (ADR 0012). */
+officeId: string;
 ```
 
 `packages/database/inbox/index.ts` becomes:
@@ -869,7 +883,11 @@ const ANSWERING_STATUSES: readonly AnswerStatus[] = ["sending", "sent", "unknown
  * schema change. This store is their only writer, so a value outside the vocabulary is
  * corrupt state: fail at the read rather than hand the domain something it cannot name.
  */
-function vocab<Schema extends z.ZodType>(schema: Schema, value: unknown, where: string): z.infer<Schema> {
+function vocab<Schema extends z.ZodType>(
+	schema: Schema,
+	value: unknown,
+	where: string,
+): z.infer<Schema> {
 	const parsed = schema.safeParse(value);
 	if (!parsed.success) {
 		throw new Error(
@@ -1000,7 +1018,9 @@ function mapConversation(record: ConversationRecord): Conversation {
 
 /** Prisma's unique-violation code. Duck-typed so no error class has to be imported. */
 function isUniqueViolation(error: unknown): boolean {
-	return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
+	return (
+		typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002"
+	);
 }
 
 /** The nearest-rank percentile of an ascending list: `p` in (0, 1], never interpolated. */
@@ -1381,11 +1401,13 @@ git commit -m "feat(inbox): the store runs on Prisma in Postgres (ADR 0012)"
 ### Task 4: The app, the seed and the remaining tests on the new store
 
 **Files:**
+
 - Modify: `apps/saas/modules/inbox/lib/runtime.ts:1,42`
 - Modify: `apps/saas/modules/inbox/lib/approve.test.ts:75-100`, `loop.test.ts:60-100`, `pipes/webhook.test.ts:30-55`, `seed.test.ts`
 - Modify: `apps/saas/modules/inbox/lib/walk-user.ts`, `apps/saas/modules/inbox/scripts/seed.ts`, `seed-walk-user.ts`, `seed-walk-office.ts`, `connect-pipe.ts`
 
 **Interfaces:**
+
 - Consumes: `createInboxStore(db)` from Task 3, `resetTestInbox`, `testDb` from Task 2/3.
 
 - [ ] **Step 1: Point the runtime at the kit's client**
@@ -1466,12 +1488,12 @@ test("seed finds an existing thread by guest and does not write it twice", async
 In `"seed writes invented threads once"` replace the `mkdtempSync` line and the `setRuntimeForTests({ store: createInboxStore(path.join(dir, "nhip.db")), ...` call with:
 
 ```ts
-	await resetTestInbox();
-	setRuntimeForTests({
-		store: createInboxStore(testDb),
-		config: mockInboxConfig(),
-		drafts: noDraftAdapter,
-	});
+await resetTestInbox();
+setRuntimeForTests({
+	store: createInboxStore(testDb),
+	config: mockInboxConfig(),
+	drafts: noDraftAdapter,
+});
 ```
 
 Any test in that file that used `sqliteFilePath` or `sqlitePathFromEnv` is deleted; those exports no longer exist.
@@ -1581,6 +1603,7 @@ git commit -m "feat(inbox): the app, the seed and the tests run on the Prisma st
 ### Task 5: Docs, the dev-server walk, the PR
 
 **Files:**
+
 - Modify: `HANDOFF.md`, `ARCHITECTURE.md`, `AGENTS.md`, `README.md`, `.env.local.example`, `.gitignore`, `docs/adr/0010-office-assignment.md`
 
 - [ ] **Step 1: HANDOFF.md**
@@ -1606,10 +1629,10 @@ In "Key paths", replace the `packages/database/inbox/` row's "Why" with `Prisma 
 In "Rules that hold", replace the office paragraph's sentence `Webhooks file under the office that owns the pipe (`pnpm --filter saas pipe:connect`), inbound on an unconnected pipe is dropped, and a reply is refused when the thread's number is not the one the credentials belong to.` with:
 
 ```markdown
-  Webhooks file under the office that owns the pipe (`pnpm --filter saas pipe:connect`),
-  inbound on an unconnected pipe is dropped, and a reply is refused when the thread's
-  number is not the one the credentials belong to. Every thread has an office from birth
-  (ADR 0012); deleting an office deletes its threads.
+Webhooks file under the office that owns the pipe (`pnpm --filter saas pipe:connect`),
+inbound on an unconnected pipe is dropped, and a reply is refused when the thread's
+number is not the one the credentials belong to. Every thread has an office from birth
+(ADR 0012); deleting an office deletes its threads.
 ```
 
 In the go-live "Checklist", remove the `--adopt-unowned` sentence from the pipe-connect bullet, replace the last bullet (`Run on one long-lived Node process with a real disk...`) with:
@@ -1627,7 +1650,7 @@ Line 22: `packages/database  Auth schema (Prisma/Postgres) + inbox SQLite store`
 Replace the "Auth vs inbox data" section's table row for inbox threads and the two paragraphs after it with:
 
 ```markdown
-| Inbox threads   | The same Postgres, `inbox_*` tables via `@repo/database/inbox`                                                | Conversations, messages, extract, draft, Answers |
+| Inbox threads | The same Postgres, `inbox_*` tables via `@repo/database/inbox` | Conversations, messages, extract, draft, Answers |
 
 One database (ADR 0012). The inbox models live in `schema.prisma` next to the kit's;
 `Conversation.officeId` and `PipeConnection.officeId` reference `Organization` with
@@ -1642,7 +1665,7 @@ since })` counts it in SQL inside the office (ADR 0002 over ADR 0011). The store
 never touch Prisma directly.
 ```
 
-In the office paragraph of that section, delete the sentence `Files from before tenancy carry `officeId = NULL` until `adoptUnownedThreads` runs (the seed does it for the walk office).`
+In the office paragraph of that section, delete the sentence `Files from before tenancy carry `officeId = NULL`until`adoptUnownedThreads` runs (the seed does it for the walk office).`
 
 - [ ] **Step 3: AGENTS.md, README.md, env example, gitignore, ADR 0010**
 
@@ -1657,8 +1680,8 @@ In the office paragraph of that section, delete the sentence `Files from before 
 `docs/adr/0010-office-assignment.md`: after the bullet that ends `...in which case they stay unowned and are reported.` add:
 
 ```markdown
-  Superseded on this point by ADR 0012: `officeId` is required and there is no adopt
-  path; every thread has an office from birth.
+Superseded on this point by ADR 0012: `officeId` is required and there is no adopt
+path; every thread has an office from birth.
 ```
 
 - [ ] **Step 4: Gates and the dev-server walk**
