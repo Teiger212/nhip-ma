@@ -1,9 +1,7 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
-import { Funnel, conversationId, createInboxStore } from "@repo/database/inbox";
+import { Funnel, conversationId } from "@repo/database/inbox";
 import { expect, test } from "vitest";
+
+import { testInboxStore } from "./test-store";
 
 /**
  * The funnel (ADR 0002) counted from Answers (ADR 0011): a lead is a guest who first
@@ -11,11 +9,6 @@ import { expect, test } from "vitest";
  * a lead who wrote again after that send; response time is first inbound to first sent
  * Answer. Everything is scoped to the viewer's office.
  */
-
-function tempDb(): string {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-funnel-"));
-	return path.join(dir, "nhip.db");
-}
 
 const OFFICE = "office-a";
 const OTHER_OFFICE = "office-b";
@@ -33,7 +26,7 @@ const inbound = (guestId: string, at: number, text = "Xin chào") => ({
 	at,
 });
 
-type Store = ReturnType<typeof createInboxStore>;
+type Store = Awaited<ReturnType<typeof testInboxStore>>;
 
 /** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
 async function sent(store: Store, id: string, inboundId: string) {
@@ -76,7 +69,7 @@ async function lastInboundId(store: Store, id: string): Promise<string> {
 }
 
 test("the funnel counts leads, engaged and in conversation for one office in the window", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const now = Date.now();
 	const since = now - 30 * DAY;
 
@@ -131,7 +124,7 @@ test("the funnel counts leads, engaged and in conversation for one office in the
 });
 
 test("response time is first inbound to first sent Answer, median and p90 over answered leads", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const now = Date.now();
 	// Five answered leads. Each first wrote in N minutes ago and is answered now, so the
 	// durations are about 10, 20, 30, 40 and 90 minutes; nearest-rank median is 30, p90 is 90.
@@ -165,7 +158,7 @@ test("response time is first inbound to first sent Answer, median and p90 over a
 });
 
 test("an office with nobody answered has no response time, and an empty window is all zeros", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const now = Date.now();
 	await store.upsertInbound(inbound("quiet", now - 1 * DAY), OFFICE);
 	const funnel = await store.funnel(viewer, { since: new Date(now - 30 * DAY) });

@@ -1,36 +1,26 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import { createId as cuid } from "@paralleldrive/cuid2";
-import Database from "better-sqlite3";
 import { z } from "zod";
 
-import { ensureInboxSchema } from "./ensure-schema";
+import type { Prisma, PrismaClient } from "../prisma/generated/client";
 import {
 	AnswerStatus,
 	DbMessageSource,
-	DraftSource,
 	GuestLanguage,
-	MessageDirection,
 	MessageSource,
 	OperatorLanguage,
-	Pipe,
 	RentOrBuy,
-	Timestamp,
 } from "./schema";
-import { sqliteFilePath } from "./sqlite-path";
 import type {
 	Answer,
 	BeginAnswerResult,
 	Conversation,
 	Draft,
+	Funnel,
 	InboundEvent,
 	InboxStore,
 	InboxViewer,
 	Message,
 	OneShot,
-	Paperwork,
-	Qualification,
 	SendResult,
 	Translations,
 } from "./types";
@@ -50,134 +40,51 @@ export function nowIso(at?: number | string | Date): string {
 
 /**
  * One thread per guest per office (ADR 0010). The office is part of the identity, so the
- * same guest writing to two offices is two threads that never see each other. Threads
- * from before tenancy keep their old `pipe:guest` ids; the unique index is on the triple,
- * not on the id's shape.
+ * same guest writing to two offices is two threads that never see each other. The id is
+ * part of every route, so it keeps this shape; the unique key is the triple.
  */
-export function conversationId(officeId: string, pipe: Pipe, guestId: string): string {
+export function conversationId(officeId: string, pipe: string, guestId: string): string {
 	return `${officeId}:${pipe}:${guestId}`;
 }
 
-/**
- * Row shapes as SQLite hands them back. Declaring them as schemas rather than as bare
- * TypeScript types is what lets `load()` check a row instead of asserting one: the type
- * is inferred from the schema, so it can no longer describe a row the parse would reject.
- * SQLite has no BOOLEAN, so `mock`/`mentioned`/`inVietnamNow` arrive as 0/1 numbers.
- */
-const conversationRow = z.object({
-	id: z.string(),
-	pipe: Pipe,
-	guestId: z.string(),
-	guestName: z.string().nullable(),
-	officeId: z.string().nullable(),
-	language: GuestLanguage.nullable(),
-	lastGuestInboundAt: Timestamp.nullable(),
-	sentAt: Timestamp.nullable(),
-	updatedAt: Timestamp,
-});
+/** Everything a `Conversation` is built from, in one read. */
+const CONVERSATION_INCLUDE = {
+	messages: { orderBy: [{ at: "asc" }, { seq: "asc" }], include: { translations: true } },
+	qualification: true,
+	draft: true,
+	paperwork: true,
+	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
+} satisfies Prisma.ConversationInclude;
 
-const messageRow = z.object({
-	id: z.string(),
-	conversationId: z.string(),
-	direction: MessageDirection,
-	source: DbMessageSource,
-	text: z.string(),
-	at: Timestamp,
-	vendorMessageId: z.string().nullable(),
-	mock: z.number(),
-	pipeExternalId: z.string().nullable(),
-});
+type ConversationRecord = Prisma.ConversationGetPayload<{ include: typeof CONVERSATION_INCLUDE }>;
+type MessageRecord = ConversationRecord["messages"][number];
+type AnswerRecord = ConversationRecord["answers"][number];
+type Db = PrismaClient | Prisma.TransactionClient;
 
-const pipeConnectionRow = z.object({
-	pipe: Pipe,
-	externalId: z.string(),
-	officeId: z.string(),
-});
-
-const translationRow = z.object({
-	messageId: z.string(),
-	locale: OperatorLanguage,
-	text: z.string(),
-});
-
-const qualificationRow = z.object({
-	conversationId: z.string(),
-	areaOfInterest: z.string().nullable(),
-	nationality: z.string().nullable(),
-	inVietnamNow: z.number().nullable(),
-	rentOrBuy: RentOrBuy.nullable(),
-	timeframe: z.string().nullable(),
-	budgetBand: z.string().nullable(),
-	bedsOrHousehold: z.string().nullable(),
-});
-
-const draftRow = z.object({
-	conversationId: z.string(),
-	reply: z.string(),
-	answersMessageId: z.string().nullable(),
-	source: DraftSource,
-});
-
-const paperworkRow = z.object({
-	conversationId: z.string(),
-	mentioned: z.number(),
-	flag: z.string().nullable(),
-});
+/** An Answer that counts as the office's reply: in flight, delivered, or possibly delivered. */
+const ANSWERING_STATUSES: readonly AnswerStatus[] = ["sending", "sent", "unknown"];
 
 /**
- * One row per lead of the funnel cohort: when the guest first wrote, when the office first
- * reached them (`null` until a `sent` Answer), and whether they wrote again after that.
+ * Languages and rent-or-buy are text on disk (ADR 0012) so the lists can grow without a
+ * schema change. This store is their only writer, so a value outside the vocabulary is
+ * corrupt state: fail at the read rather than hand the domain something it cannot name.
  */
-const funnelLeadRow = z.object({
-	firstInboundAt: Timestamp,
-	firstSentAt: Timestamp.nullable(),
-	wroteBack: z.number(),
-});
-
-const answerRow = z.object({
-	id: z.string(),
-	conversationId: z.string(),
-	inboundId: z.string(),
-	text: z.string(),
-	operatorId: z.string().nullable(),
-	status: AnswerStatus,
-	mock: z.number(),
-	pipe: Pipe,
-	to: z.string(),
-	pipeExternalId: z.string().nullable(),
-	vendorMessageId: z.string().nullable(),
-	approvedAt: Timestamp,
-	sentAt: Timestamp.nullable(),
-	failedAt: Timestamp.nullable(),
-	failureReason: z.string().nullable(),
-});
-
-type ConversationRow = z.infer<typeof conversationRow>;
-type MessageRow = z.infer<typeof messageRow>;
-type TranslationRow = z.infer<typeof translationRow>;
-type QualificationRow = z.infer<typeof qualificationRow>;
-type DraftRow = z.infer<typeof draftRow>;
-type PaperworkRow = z.infer<typeof paperworkRow>;
-type AnswerRow = z.infer<typeof answerRow>;
-
-/**
- * This store is the only writer of these rows, so a row that fails to parse is corrupt
- * state rather than untrusted input. Fail loudly at the read instead of letting a value
- * the vocabulary does not contain flow into the domain typed as though it did.
- */
-function parseRow<Schema extends z.ZodType>(
+function vocab<Schema extends z.ZodType>(
 	schema: Schema,
-	row: unknown,
-	table: string,
+	value: unknown,
+	where: string,
 ): z.infer<Schema> {
-	const parsed = schema.safeParse(row);
+	const parsed = schema.safeParse(value);
 	if (!parsed.success) {
 		throw new Error(
-			`Inbox store: "${table}" row does not match the expected shape. The SQLite file is corrupt or was written by an older version.\n${z.prettifyError(parsed.error)}`,
+			`Inbox store: ${where} holds a value outside the vocabulary.\n${z.prettifyError(parsed.error)}`,
 		);
 	}
 	return parsed.data;
 }
+
+const iso = (at: Date): string => at.toISOString();
+const isoOrNull = (at: Date | null): string | null => (at ? at.toISOString() : null);
 
 function toDbSource(source: MessageSource): DbMessageSource {
 	return source === "oa-echo" ? "oa_echo" : source;
@@ -187,20 +94,18 @@ function fromDbSource(source: DbMessageSource): MessageSource {
 	return source === "oa_echo" ? "oa-echo" : source;
 }
 
-function toBool(value: number | null): boolean | null {
-	if (value === null || value === undefined) {
-		return null;
+function mapMessage(row: MessageRecord): Message {
+	const translations: Translations = {};
+	for (const translation of row.translations) {
+		translations[vocab(OperatorLanguage, translation.locale, "Translation.locale")] =
+			translation.text;
 	}
-	return Boolean(value);
-}
-
-function mapMessage(row: MessageRow, translations: Translations): Message {
 	return {
 		id: row.id,
 		direction: row.direction,
 		source: fromDbSource(row.source),
 		text: row.text,
-		at: row.at,
+		at: iso(row.at),
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
 		pipeExternalId: row.pipeExternalId,
@@ -208,30 +113,7 @@ function mapMessage(row: MessageRow, translations: Translations): Message {
 	};
 }
 
-function mapQualification(row: QualificationRow): Qualification {
-	return {
-		areaOfInterest: row.areaOfInterest,
-		nationality: row.nationality,
-		inVietnamNow: toBool(row.inVietnamNow),
-		rentOrBuy: row.rentOrBuy,
-		timeframe: row.timeframe,
-		budgetBand: row.budgetBand,
-		bedsOrHousehold: row.bedsOrHousehold,
-	};
-}
-
-function mapDraft(row: DraftRow): Draft {
-	return { reply: row.reply, answersMessageId: row.answersMessageId, source: row.source };
-}
-
-function mapPaperwork(row: PaperworkRow): Paperwork {
-	return {
-		mentioned: Boolean(row.mentioned),
-		flag: row.flag,
-	};
-}
-
-function mapAnswer(row: AnswerRow): Answer {
+function mapAnswer(row: AnswerRecord): Answer {
 	return {
 		id: row.id,
 		conversationId: row.conversationId,
@@ -239,176 +121,124 @@ function mapAnswer(row: AnswerRow): Answer {
 		text: row.text,
 		operatorId: row.operatorId,
 		status: row.status,
-		mock: Boolean(row.mock),
+		mock: row.mock,
 		pipe: row.pipe,
 		to: row.to,
 		pipeExternalId: row.pipeExternalId,
 		vendorMessageId: row.vendorMessageId,
-		approvedAt: row.approvedAt,
-		sentAt: row.sentAt,
-		failedAt: row.failedAt,
+		approvedAt: iso(row.approvedAt),
+		sentAt: isoOrNull(row.sentAt),
+		failedAt: isoOrNull(row.failedAt),
 		failureReason: row.failureReason,
 	};
 }
 
-/** An Answer that counts as the office's reply: in flight, delivered, or possibly delivered. */
-const ANSWERING_STATUSES: readonly AnswerStatus[] = ["sending", "sent", "unknown"];
+/**
+ * Every method that returns a `Conversation` bottoms out here. "Your turn" is derived
+ * here too (ADR 0011): the guest's latest message is unanswered unless an Answer is in
+ * flight, sent or of unknown outcome for it, or the agent replied from the OA app after
+ * it. Message order alone does not decide, so a guest message that lands mid-send is not
+ * hidden by the outbound that answers an earlier one.
+ */
+function mapConversation(record: ConversationRecord): Conversation {
+	const messages = record.messages.map(mapMessage);
+	const answers = record.answers.map(mapAnswer);
 
-export function createInboxStore(filePath: string): InboxStore {
-	const resolved = sqliteFilePath(filePath);
-	fs.mkdirSync(path.dirname(resolved), { recursive: true });
-	const sqlite = new Database(resolved);
-	ensureInboxSchema(sqlite);
+	const oneShot: OneShot | null =
+		record.language && record.qualification && record.draft && record.paperwork
+			? {
+					language: vocab(GuestLanguage, record.language, "Conversation.language"),
+					qualification: {
+						areaOfInterest: record.qualification.areaOfInterest,
+						nationality: record.qualification.nationality,
+						inVietnamNow: record.qualification.inVietnamNow,
+						rentOrBuy: vocab(
+							RentOrBuy.nullable(),
+							record.qualification.rentOrBuy,
+							"Qualification.rentOrBuy",
+						),
+						timeframe: record.qualification.timeframe,
+						budgetBand: record.qualification.budgetBand,
+						bedsOrHousehold: record.qualification.bedsOrHousehold,
+					},
+					paperwork: { mentioned: record.paperwork.mentioned, flag: record.paperwork.flag },
+					draft: {
+						reply: record.draft.reply,
+						answersMessageId: record.draft.answersMessageId,
+						source: record.draft.source,
+					},
+				}
+			: null;
 
-	function loadAnswer(answerId: string): AnswerRow | null {
-		const raw = sqlite.prepare(`SELECT * FROM "Answer" WHERE "id" = ?`).get(answerId);
-		return raw ? parseRow(answerRow, raw, "Answer") : null;
-	}
-
-	/**
-	 * The single read funnel: every method that returns a `Conversation` bottoms out here,
-	 * so parsing the rows once at this boundary is enough to make every `Conversation` the
-	 * store hands out true. "Your turn" is derived here too (ADR 0011): the guest's latest
-	 * message is unanswered unless an Answer is in flight, sent or of unknown outcome for
-	 * it, or the agent replied from the OA app after it. Message order alone does not
-	 * decide, so a guest message that lands mid-send is not hidden by the outbound that
-	 * answers an earlier one.
-	 */
-	function load(id: string): Conversation | null {
-		const rawRow = sqlite.prepare(`SELECT * FROM "Conversation" WHERE "id" = ?`).get(id);
-		if (!rawRow) {
-			return null;
+	let unansweredInboundId: string | null = null;
+	for (let i = messages.length - 1; i >= 0; i -= 1) {
+		const message = messages[i];
+		if (message.direction === "in") {
+			const answered = answers.some(
+				(answer) => answer.inboundId === message.id && ANSWERING_STATUSES.includes(answer.status),
+			);
+			const echoedAfter = messages
+				.slice(i + 1)
+				.some((later) => later.direction === "out" && later.source === "oa-echo");
+			unansweredInboundId = answered || echoedAfter ? null : message.id;
+			break;
 		}
-		const row: ConversationRow = parseRow(conversationRow, rawRow, "Conversation");
-		const messages: MessageRow[] = parseRow(
-			z.array(messageRow),
-			sqlite
-				.prepare(
-					`SELECT * FROM "Message" WHERE "conversationId" = ? ORDER BY "at" ASC, "rowid" ASC`,
-				)
-				.all(id),
-			"Message",
-		);
-		const translations: TranslationRow[] = parseRow(
-			z.array(translationRow),
-			sqlite
-				.prepare(
-					`SELECT "Translation".* FROM "Translation"
-           JOIN "Message" ON "Message"."id" = "Translation"."messageId"
-           WHERE "Message"."conversationId" = ?`,
-				)
-				.all(id),
-			"Translation",
-		);
-		const translationsByMessage = new Map<string, Translations>();
-		for (const translation of translations) {
-			const existing = translationsByMessage.get(translation.messageId) ?? {};
-			existing[translation.locale] = translation.text;
-			translationsByMessage.set(translation.messageId, existing);
-		}
-		const rawQualification = sqlite
-			.prepare(`SELECT * FROM "Qualification" WHERE "conversationId" = ?`)
-			.get(id);
-		const qualification: QualificationRow | undefined = rawQualification
-			? parseRow(qualificationRow, rawQualification, "Qualification")
-			: undefined;
-		const rawDraft = sqlite.prepare(`SELECT * FROM "Draft" WHERE "conversationId" = ?`).get(id);
-		const draft: DraftRow | undefined = rawDraft
-			? parseRow(draftRow, rawDraft, "Draft")
-			: undefined;
-		const rawPaperwork = sqlite
-			.prepare(`SELECT * FROM "Paperwork" WHERE "conversationId" = ?`)
-			.get(id);
-		const paperwork: PaperworkRow | undefined = rawPaperwork
-			? parseRow(paperworkRow, rawPaperwork, "Paperwork")
-			: undefined;
-		const answers: AnswerRow[] = parseRow(
-			z.array(answerRow),
-			sqlite
-				.prepare(
-					`SELECT * FROM "Answer" WHERE "conversationId" = ? ORDER BY "approvedAt" ASC, "rowid" ASC`,
-				)
-				.all(id),
-			"Answer",
-		);
-
-		const oneShot: OneShot | null =
-			row.language && qualification && draft && paperwork
-				? {
-						language: row.language,
-						qualification: mapQualification(qualification),
-						paperwork: mapPaperwork(paperwork),
-						draft: mapDraft(draft),
-					}
-				: null;
-
-		let unansweredInboundId: string | null = null;
-		for (let i = messages.length - 1; i >= 0; i -= 1) {
-			const message = messages[i];
-			if (message.direction === "in") {
-				const answered = answers.some(
-					(answer) => answer.inboundId === message.id && ANSWERING_STATUSES.includes(answer.status),
-				);
-				const echoedAfter = messages
-					.slice(i + 1)
-					.some((later) => later.direction === "out" && later.source === "oa_echo");
-				unansweredInboundId = answered || echoedAfter ? null : message.id;
-				break;
-			}
-		}
-
-		return {
-			id: row.id,
-			pipe: row.pipe,
-			guestId: row.guestId,
-			guestName: row.guestName,
-			officeId: row.officeId,
-			messages: messages.map((message) =>
-				mapMessage(message, translationsByMessage.get(message.id) ?? {}),
-			),
-			lastGuestInboundAt: row.lastGuestInboundAt,
-			sentAt: row.sentAt,
-			unansweredInboundId,
-			oneShot,
-			answers: answers.map(mapAnswer),
-			lastAnswer: answers.length > 0 ? mapAnswer(answers[answers.length - 1]) : null,
-			updatedAt: row.updatedAt,
-		};
-	}
-
-	function upsertDraft(id: string, draft: Draft): void {
-		sqlite
-			.prepare(
-				`INSERT INTO "Draft" ("conversationId", "reply", "answersMessageId", "source")
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT("conversationId") DO UPDATE SET
-           "reply" = excluded."reply",
-           "answersMessageId" = excluded."answersMessageId",
-           "source" = excluded."source"`,
-			)
-			.run(id, draft.reply, draft.answersMessageId, draft.source);
 	}
 
 	return {
-		filePath: resolved,
+		id: record.id,
+		pipe: record.pipe,
+		guestId: record.guestId,
+		guestName: record.guestName,
+		officeId: record.officeId,
+		messages,
+		lastGuestInboundAt: isoOrNull(record.lastGuestInboundAt),
+		sentAt: isoOrNull(record.sentAt),
+		unansweredInboundId,
+		oneShot,
+		answers,
+		lastAnswer: answers.at(-1) ?? null,
+		updatedAt: iso(record.updatedAt),
+	};
+}
 
+/** Prisma's unique-violation code. Duck-typed so no error class has to be imported. */
+function isUniqueViolation(error: unknown): boolean {
+	return (
+		typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002"
+	);
+}
+
+/** The nearest-rank percentile of an ascending list: `p` in (0, 1], never interpolated. */
+function nearestRank(sorted: number[], p: number): number {
+	return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)];
+}
+
+export function createInboxStore(db: PrismaClient): InboxStore {
+	async function load(id: string, client: Db = db): Promise<Conversation | null> {
+		const record = await client.conversation.findUnique({
+			where: { id },
+			include: CONVERSATION_INCLUDE,
+		});
+		return record ? mapConversation(record) : null;
+	}
+
+	async function exists(id: string): Promise<boolean> {
+		return (await db.conversation.count({ where: { id } })) > 0;
+	}
+
+	return {
 		async listConversations(viewer?: InboxViewer) {
-			const rows = (
-				viewer
-					? sqlite
-							.prepare(
-								`SELECT "id" FROM "Conversation" WHERE "officeId" = ? ORDER BY "updatedAt" DESC`,
-							)
-							.all(viewer.officeId)
-					: sqlite.prepare(`SELECT "id" FROM "Conversation" ORDER BY "updatedAt" DESC`).all()
-			) as Array<{ id: string }>;
-			return rows
-				.map((row) => load(row.id))
-				.filter((conversation): conversation is Conversation => Boolean(conversation));
+			const records = await db.conversation.findMany({
+				where: viewer ? { officeId: viewer.officeId } : undefined,
+				orderBy: { updatedAt: "desc" },
+				include: CONVERSATION_INCLUDE,
+			});
+			return records.map(mapConversation);
 		},
 
 		async getConversation(id, viewer?: InboxViewer) {
-			const conversation = load(id);
+			const conversation = await load(id);
 			if (!conversation) {
 				return null;
 			}
@@ -419,206 +249,170 @@ export function createInboxStore(filePath: string): InboxStore {
 		},
 
 		async upsertInbound(event: InboundEvent, officeId: string) {
-			const at = nowIso(event.at);
-			let id = conversationId(officeId, event.pipe, event.guestId);
-
-			const write = sqlite.transaction(() => {
-				// The thread is found by (office, pipe, guest), never by the id's shape, so a
-				// pre-tenancy thread that was adopted by this office is the same thread.
-				const existing = sqlite
-					.prepare(
-						`SELECT "id" FROM "Conversation" WHERE "officeId" = ? AND "pipe" = ? AND "guestId" = ?`,
-					)
-					.get(officeId, event.pipe, event.guestId) as { id: string } | undefined;
+			const at = new Date(nowIso(event.at));
+			const id = await db.$transaction(async (tx) => {
+				// The thread is found by (office, pipe, guest), never by the id's shape.
+				const existing = await tx.conversation.findUnique({
+					where: { officeId_pipe_guestId: { officeId, pipe: event.pipe, guestId: event.guestId } },
+					select: { id: true, guestName: true },
+				});
+				const threadId = existing?.id ?? conversationId(officeId, event.pipe, event.guestId);
 				if (existing) {
-					id = existing.id;
-				}
-
-				if (!existing) {
-					sqlite
-						.prepare(
-							`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "officeId", "lastGuestInboundAt", "sentAt", "updatedAt")
-             VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)`,
-						)
-						.run(id, event.pipe, event.guestId, event.guestName || null, officeId, at);
+					await tx.conversation.update({
+						where: { id: threadId },
+						data: { guestName: existing.guestName ?? (event.guestName || null), updatedAt: at },
+					});
 				} else {
-					sqlite
-						.prepare(
-							`UPDATE "Conversation" SET
-                 "guestName" = COALESCE("guestName", ?),
-                 "updatedAt" = ?
-               WHERE "id" = ?`,
-						)
-						.run(event.guestName || null, at, id);
+					await tx.conversation.create({
+						data: {
+							id: threadId,
+							pipe: event.pipe,
+							guestId: event.guestId,
+							guestName: event.guestName || null,
+							officeId,
+							updatedAt: at,
+						},
+					});
 				}
 
 				if (event.vendorMessageId) {
-					const dup = sqlite
-						.prepare(
-							`SELECT "id" FROM "Message" WHERE "conversationId" = ? AND "vendorMessageId" = ?`,
-						)
-						.get(id, event.vendorMessageId);
-					if (dup) {
-						return;
+					const duplicate = await tx.message.findFirst({
+						where: { conversationId: threadId, vendorMessageId: event.vendorMessageId },
+						select: { id: true },
+					});
+					if (duplicate) {
+						return threadId;
 					}
 				}
 
-				sqlite
-					.prepare(
-						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "pipeExternalId")
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-					)
-					.run(
-						cuid(),
-						id,
-						event.source === "guest" ? "in" : "out",
-						toDbSource(event.source),
-						event.text,
+				await tx.message.create({
+					data: {
+						id: cuid(),
+						conversationId: threadId,
+						direction: event.source === "guest" ? "in" : "out",
+						source: toDbSource(event.source),
+						text: event.text,
 						at,
-						event.vendorMessageId || null,
-						event.pipeExternalId ?? null,
-					);
+						vendorMessageId: event.vendorMessageId || null,
+						pipeExternalId: event.pipeExternalId ?? null,
+					},
+				});
 
 				if (event.source === "guest") {
-					sqlite
-						.prepare(
-							`UPDATE "Conversation" SET "lastGuestInboundAt" = ?, "updatedAt" = ? WHERE "id" = ?`,
-						)
-						.run(at, at, id);
+					await tx.conversation.update({
+						where: { id: threadId },
+						data: { lastGuestInboundAt: at, updatedAt: at },
+					});
 				}
+				return threadId;
 			});
-			write();
-
-			return load(id) as Conversation;
+			return (await load(id)) as Conversation;
 		},
 
 		async setOneShot(id, shot: OneShot) {
-			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
-			if (!conv) {
+			if (!(await exists(id))) {
 				return null;
 			}
 			const q = shot.qualification;
-			const now = nowIso();
-			const upsert = sqlite.transaction(() => {
-				sqlite
-					.prepare(
-						`INSERT INTO "Qualification" ("conversationId", "areaOfInterest", "nationality", "inVietnamNow", "rentOrBuy", "timeframe", "budgetBand", "bedsOrHousehold")
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT("conversationId") DO UPDATE SET
-               "areaOfInterest" = excluded."areaOfInterest",
-               "nationality" = excluded."nationality",
-               "inVietnamNow" = excluded."inVietnamNow",
-               "rentOrBuy" = excluded."rentOrBuy",
-               "timeframe" = excluded."timeframe",
-               "budgetBand" = excluded."budgetBand",
-               "bedsOrHousehold" = excluded."bedsOrHousehold"`,
-					)
-					.run(
-						id,
-						q.areaOfInterest,
-						q.nationality,
-						q.inVietnamNow === null ? null : q.inVietnamNow ? 1 : 0,
-						q.rentOrBuy,
-						q.timeframe,
-						q.budgetBand,
-						q.bedsOrHousehold,
-					);
-				upsertDraft(id, shot.draft);
-				sqlite
-					.prepare(
-						`INSERT INTO "Paperwork" ("conversationId", "mentioned", "flag")
-             VALUES (?, ?, ?)
-             ON CONFLICT("conversationId") DO UPDATE SET
-               "mentioned" = excluded."mentioned",
-               "flag" = excluded."flag"`,
-					)
-					.run(id, shot.paperwork.mentioned ? 1 : 0, shot.paperwork.flag);
-				sqlite
-					.prepare(`UPDATE "Conversation" SET "language" = ?, "updatedAt" = ? WHERE "id" = ?`)
-					.run(shot.language, now, id);
-			});
-			upsert();
+			const paperwork = { mentioned: shot.paperwork.mentioned, flag: shot.paperwork.flag };
+			await db.$transaction([
+				db.qualification.upsert({
+					where: { conversationId: id },
+					create: { conversationId: id, ...q },
+					update: { ...q },
+				}),
+				db.draft.upsert({
+					where: { conversationId: id },
+					create: { conversationId: id, ...shot.draft },
+					update: { ...shot.draft },
+				}),
+				db.paperwork.upsert({
+					where: { conversationId: id },
+					create: { conversationId: id, ...paperwork },
+					update: paperwork,
+				}),
+				db.conversation.update({
+					where: { id },
+					data: { language: shot.language, updatedAt: new Date() },
+				}),
+			]);
 			return load(id);
 		},
 
 		async setDraft(id, draft: Draft) {
-			const conv = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
-			if (!conv) {
+			if (!(await exists(id))) {
 				return null;
 			}
-			upsertDraft(id, draft);
+			await db.draft.upsert({
+				where: { conversationId: id },
+				create: { conversationId: id, ...draft },
+				update: { ...draft },
+			});
 			return load(id);
 		},
 
 		async setTranslation(messageId, locale, text) {
-			sqlite
-				.prepare(
-					`INSERT INTO "Translation" ("messageId", "locale", "text") VALUES (?, ?, ?)
-           ON CONFLICT("messageId", "locale") DO UPDATE SET "text" = excluded."text"`,
-				)
-				.run(messageId, locale, text);
+			await db.translation.upsert({
+				where: { messageId_locale: { messageId, locale } },
+				create: { messageId, locale, text },
+				update: { text },
+			});
 		},
 
 		async beginAnswer(input) {
-			const begin = sqlite.transaction((): BeginAnswerResult => {
-				const inbound = sqlite
-					.prepare(
-						`SELECT "Message"."direction", "Message"."pipeExternalId", "Conversation"."pipe", "Conversation"."guestId"
-             FROM "Message" JOIN "Conversation" ON "Conversation"."id" = "Message"."conversationId"
-             WHERE "Message"."id" = ? AND "Message"."conversationId" = ?`,
-					)
-					.get(input.inboundId, input.conversationId) as
-					| { direction: string; pipeExternalId: string | null; pipe: Pipe; guestId: string }
-					| undefined;
-				if (!inbound || inbound.direction !== "in") {
-					throw new Error("Inbox store: beginAnswer needs a guest message on this thread.");
-				}
-				const rawExisting = sqlite
-					.prepare(`SELECT * FROM "Answer" WHERE "inboundId" = ?`)
-					.get(input.inboundId);
-				const existing = rawExisting ? parseRow(answerRow, rawExisting, "Answer") : null;
-				const now = nowIso();
-				if (existing) {
-					if (existing.status === "sent") return { ok: false, reason: "already_answered" };
-					if (existing.status === "sending") return { ok: false, reason: "in_progress" };
-					if (existing.status === "unknown") return { ok: false, reason: "unknown" };
-					// A definite failure is retried on the same row: one Answer per inbound, always.
-					sqlite
-						.prepare(
-							`UPDATE "Answer" SET "status" = 'sending', "text" = ?, "operatorId" = ?, "approvedAt" = ?,
-                 "failedAt" = NULL, "failureReason" = NULL, "vendorMessageId" = NULL
-               WHERE "id" = ?`,
-						)
-						.run(input.text, input.operatorId, now, existing.id);
-					return { ok: true, answer: mapAnswer(loadAnswer(existing.id) as AnswerRow) };
-				}
-				const id = cuid();
-				sqlite
-					.prepare(
-						`INSERT INTO "Answer" ("id", "conversationId", "inboundId", "text", "operatorId", "status", "mock", "pipe", "to", "pipeExternalId", "vendorMessageId", "approvedAt")
-             VALUES (?, ?, ?, ?, ?, 'sending', 0, ?, ?, ?, NULL, ?)`,
-					)
-					.run(
-						id,
-						input.conversationId,
-						input.inboundId,
-						input.text,
-						input.operatorId,
-						inbound.pipe,
-						inbound.guestId,
-						inbound.pipeExternalId,
-						now,
-					);
-				return { ok: true, answer: mapAnswer(loadAnswer(id) as AnswerRow) };
-			});
 			try {
-				return begin();
+				return await db.$transaction(async (tx): Promise<BeginAnswerResult> => {
+					const inbound = await tx.message.findFirst({
+						where: { id: input.inboundId, conversationId: input.conversationId },
+						select: {
+							direction: true,
+							pipeExternalId: true,
+							conversation: { select: { pipe: true, guestId: true } },
+						},
+					});
+					if (!inbound || inbound.direction !== "in") {
+						throw new Error("Inbox store: beginAnswer needs a guest message on this thread.");
+					}
+					const existing = await tx.answer.findUnique({ where: { inboundId: input.inboundId } });
+					const now = new Date();
+					if (existing) {
+						if (existing.status === "sent") return { ok: false, reason: "already_answered" };
+						if (existing.status === "sending") return { ok: false, reason: "in_progress" };
+						if (existing.status === "unknown") return { ok: false, reason: "unknown" };
+						// A definite failure is retried on the same row: one Answer per inbound, always.
+						const retried = await tx.answer.update({
+							where: { id: existing.id },
+							data: {
+								status: "sending",
+								text: input.text,
+								operatorId: input.operatorId,
+								approvedAt: now,
+								failedAt: null,
+								failureReason: null,
+								vendorMessageId: null,
+							},
+						});
+						return { ok: true, answer: mapAnswer(retried) };
+					}
+					const created = await tx.answer.create({
+						data: {
+							id: cuid(),
+							conversationId: input.conversationId,
+							inboundId: input.inboundId,
+							text: input.text,
+							operatorId: input.operatorId,
+							status: "sending",
+							pipe: inbound.conversation.pipe,
+							to: inbound.conversation.guestId,
+							pipeExternalId: inbound.pipeExternalId,
+							approvedAt: now,
+						},
+					});
+					return { ok: true, answer: mapAnswer(created) };
+				});
 			} catch (error) {
 				// Two approvals in the same instant: the unique index on inboundId lets one in.
-				if (
-					error instanceof Error &&
-					/UNIQUE constraint failed: Answer\.inboundId/.test(error.message)
-				) {
+				if (isUniqueViolation(error)) {
 					return { ok: false, reason: "in_progress" };
 				}
 				throw error;
@@ -626,149 +420,134 @@ export function createInboxStore(filePath: string): InboxStore {
 		},
 
 		async completeAnswer(answerId, result: SendResult) {
-			const answer = loadAnswer(answerId);
+			const answer = await db.answer.findUnique({ where: { id: answerId } });
 			if (!answer) {
 				return null;
 			}
 			if (answer.status !== "sending") {
 				throw new Error(`Inbox store: completeAnswer on an Answer that is ${answer.status}.`);
 			}
-			const at = nowIso();
-			const write = sqlite.transaction(() => {
-				sqlite
-					.prepare(
-						`UPDATE "Answer" SET "status" = 'sent', "sentAt" = ?, "mock" = ?, "vendorMessageId" = ?, "to" = ? WHERE "id" = ?`,
-					)
-					.run(at, result.mock ? 1 : 0, result.vendorMessageId, result.to, answerId);
-				sqlite
-					.prepare(
-						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock", "pipeExternalId")
-             VALUES (?, ?, 'out', 'nhip', ?, ?, ?, ?, ?)`,
-					)
-					.run(
-						cuid(),
-						answer.conversationId,
-						answer.text,
+			const at = new Date();
+			await db.$transaction([
+				db.answer.update({
+					where: { id: answerId },
+					data: {
+						status: "sent",
+						sentAt: at,
+						mock: result.mock,
+						vendorMessageId: result.vendorMessageId,
+						to: result.to,
+					},
+				}),
+				db.message.create({
+					data: {
+						id: cuid(),
+						conversationId: answer.conversationId,
+						direction: "out",
+						source: "nhip",
+						text: answer.text,
 						at,
-						result.vendorMessageId || null,
-						result.mock ? 1 : 0,
-						answer.pipeExternalId,
-					);
-				sqlite
-					.prepare(`UPDATE "Conversation" SET "sentAt" = ?, "updatedAt" = ? WHERE "id" = ?`)
-					.run(at, at, answer.conversationId);
-			});
-			write();
+						vendorMessageId: result.vendorMessageId || null,
+						mock: result.mock,
+						pipeExternalId: answer.pipeExternalId,
+					},
+				}),
+				db.conversation.update({
+					where: { id: answer.conversationId },
+					data: { sentAt: at, updatedAt: at },
+				}),
+			]);
 			return load(answer.conversationId);
 		},
 
 		async failAnswer(answerId, reason) {
-			sqlite
-				.prepare(
-					`UPDATE "Answer" SET "status" = 'failed', "failedAt" = ?, "failureReason" = ? WHERE "id" = ? AND "status" = 'sending'`,
-				)
-				.run(nowIso(), reason, answerId);
+			await db.answer.updateMany({
+				where: { id: answerId, status: "sending" },
+				data: { status: "failed", failedAt: new Date(), failureReason: reason },
+			});
 		},
 
 		async markAnswerUnknown(answerId, reason) {
-			sqlite
-				.prepare(
-					`UPDATE "Answer" SET "status" = 'unknown', "failedAt" = ?, "failureReason" = ? WHERE "id" = ? AND "status" = 'sending'`,
-				)
-				.run(nowIso(), reason, answerId);
-		},
-
-		async adoptUnownedThreads(officeId) {
-			// A pre-tenancy thread whose guest already has a thread in this office cannot be
-			// adopted without merging two histories; it is left unowned and reported.
-			const result = sqlite
-				.prepare(
-					`UPDATE "Conversation" SET "officeId" = ? WHERE "officeId" IS NULL
-             AND NOT EXISTS (
-               SELECT 1 FROM "Conversation" AS "owned"
-               WHERE "owned"."officeId" = ? AND "owned"."pipe" = "Conversation"."pipe" AND "owned"."guestId" = "Conversation"."guestId"
-             )`,
-				)
-				.run(officeId, officeId);
-			return result.changes;
+			await db.answer.updateMany({
+				where: { id: answerId, status: "sending" },
+				data: { status: "unknown", failedAt: new Date(), failureReason: reason },
+			});
 		},
 
 		async connectPipe(connection) {
-			sqlite
-				.prepare(
-					`INSERT INTO "PipeConnection" ("pipe", "externalId", "officeId") VALUES (?, ?, ?)
-           ON CONFLICT("pipe", "externalId") DO UPDATE SET "officeId" = excluded."officeId"`,
-				)
-				.run(connection.pipe, connection.externalId, connection.officeId);
+			await db.pipeConnection.upsert({
+				where: { pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId } },
+				create: connection,
+				update: { officeId: connection.officeId },
+			});
 		},
 
 		async officeForPipe(pipe, externalId) {
-			const raw = sqlite
-				.prepare(`SELECT * FROM "PipeConnection" WHERE "pipe" = ? AND "externalId" = ?`)
-				.get(pipe, externalId);
-			return raw ? parseRow(pipeConnectionRow, raw, "PipeConnection").officeId : null;
+			const found = await db.pipeConnection.findUnique({
+				where: { pipe_externalId: { pipe, externalId } },
+				select: { officeId: true },
+			});
+			return found?.officeId ?? null;
 		},
 
 		async listPipeConnections() {
-			return parseRow(
-				z.array(pipeConnectionRow),
-				sqlite.prepare(`SELECT * FROM "PipeConnection" ORDER BY "pipe", "externalId"`).all(),
-				"PipeConnection",
+			// Postgres orders an enum by its declaration, not its spelling; sort here so the
+			// list reads alphabetically by pipe, then by endpoint.
+			const connections = await db.pipeConnection.findMany({
+				select: { pipe: true, externalId: true, officeId: true },
+			});
+			return connections.sort(
+				(a, b) => a.pipe.localeCompare(b.pipe) || a.externalId.localeCompare(b.externalId),
 			);
 		},
 
 		async guestInboundText(id) {
-			const messages = sqlite
-				.prepare(
-					`SELECT "text" FROM "Message" WHERE "conversationId" = ? AND "source" = 'guest' ORDER BY "at" ASC`,
-				)
-				.all(id) as Array<{ text: string }>;
+			const messages = await db.message.findMany({
+				where: { conversationId: id, source: "guest" },
+				orderBy: [{ at: "asc" }, { seq: "asc" }],
+				select: { text: true },
+			});
 			return messages.map((message) => message.text).join("\n");
 		},
 
 		async funnel(viewer, window) {
-			const since = nowIso(window.since);
-			const until = nowIso();
-			// ISO-8601 UTC strings (`Timestamp`) sort as text, so the comparisons are on the
-			// stored strings and use the message index. One row per cohort lead, never per
-			// message; the percentiles are the only thing left for JavaScript.
-			const leads = parseRow(
-				z.array(funnelLeadRow),
-				sqlite
-					.prepare(
-						`WITH "first" AS (
-               SELECT "conversationId", MIN("at") AS "firstInboundAt"
-               FROM "Message" WHERE "direction" = 'in' GROUP BY "conversationId"
-             ),
-             "reached" AS (
-               SELECT "conversationId", MIN("sentAt") AS "firstSentAt"
-               FROM "Answer" WHERE "status" = 'sent' GROUP BY "conversationId"
-             )
-             SELECT "first"."firstInboundAt" AS "firstInboundAt",
-                    "reached"."firstSentAt" AS "firstSentAt",
-                    EXISTS (
-                      SELECT 1 FROM "Message" "later"
-                      WHERE "later"."conversationId" = "Conversation"."id"
-                        AND "later"."direction" = 'in'
-                        AND "later"."at" > "reached"."firstSentAt"
-                    ) AS "wroteBack"
-             FROM "Conversation"
-             JOIN "first" ON "first"."conversationId" = "Conversation"."id"
-             LEFT JOIN "reached" ON "reached"."conversationId" = "Conversation"."id"
-             WHERE "Conversation"."officeId" = ? AND "first"."firstInboundAt" >= ?`,
-					)
-					.all(viewer.officeId, since),
-				"Funnel",
-			);
+			const since = new Date(nowIso(window.since));
+			const until = new Date();
+			// One row per cohort lead, never per message; the percentiles are the only thing
+			// left for JavaScript.
+			const leads = await db.$queryRaw<
+				Array<{ firstInboundAt: Date; firstSentAt: Date | null; wroteBack: boolean }>
+			>`
+				WITH "first" AS (
+					SELECT "conversationId", MIN("at") AS "firstInboundAt"
+					FROM "inbox_message" WHERE "direction" = 'in' GROUP BY "conversationId"
+				),
+				"reached" AS (
+					SELECT "conversationId", MIN("sentAt") AS "firstSentAt"
+					FROM "inbox_answer" WHERE "status" = 'sent' GROUP BY "conversationId"
+				)
+				SELECT "first"."firstInboundAt" AS "firstInboundAt",
+				       "reached"."firstSentAt" AS "firstSentAt",
+				       EXISTS (
+				         SELECT 1 FROM "inbox_message" "later"
+				         WHERE "later"."conversationId" = "c"."id"
+				           AND "later"."direction" = 'in'
+				           AND "later"."at" > "reached"."firstSentAt"
+				       ) AS "wroteBack"
+				FROM "inbox_conversation" "c"
+				JOIN "first" ON "first"."conversationId" = "c"."id"
+				LEFT JOIN "reached" ON "reached"."conversationId" = "c"."id"
+				WHERE "c"."officeId" = ${viewer.officeId} AND "first"."firstInboundAt" >= ${since}
+			`;
 			const durations = leads
 				.flatMap((lead) =>
-					lead.firstSentAt ? [Date.parse(lead.firstSentAt) - Date.parse(lead.firstInboundAt)] : [],
+					lead.firstSentAt ? [lead.firstSentAt.getTime() - lead.firstInboundAt.getTime()] : [],
 				)
 				.map((ms) => Math.max(0, ms))
 				.sort((a, b) => a - b);
-			return {
-				since,
-				until,
+			const funnel: Funnel = {
+				since: iso(since),
+				until: iso(until),
 				leadsIn: leads.length,
 				engaged: durations.length,
 				inConversation: leads.filter((lead) => lead.firstSentAt && lead.wroteBack).length,
@@ -781,18 +560,11 @@ export function createInboxStore(filePath: string): InboxStore {
 								p90Ms: nearestRank(durations, 0.9),
 							},
 			};
+			return funnel;
 		},
 
 		async close() {
-			sqlite.close();
+			await db.$disconnect();
 		},
 	};
 }
-
-/** The nearest-rank percentile of an ascending list: `p` in (0, 1], never interpolated. */
-function nearestRank(sorted: number[], p: number): number {
-	return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)];
-}
-
-/** @deprecated Use createInboxStore */
-export const createStore = createInboxStore;

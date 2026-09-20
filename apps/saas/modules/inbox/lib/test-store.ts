@@ -1,3 +1,4 @@
+import { createInboxStore, type InboxStore } from "@repo/database/inbox";
 import { createTestInboxClient, resetInboxTables } from "@repo/database/inbox/testing";
 
 import { WALK_OFFICE_ID } from "./walk-user";
@@ -14,4 +15,10 @@ export const TEST_OPERATORS = ["agent-1", "agent-2", "walk-user"];
 /** Empty the inbox and make sure the fixture offices and operators exist. */
 export async function resetTestInbox(): Promise<void> {
 	await resetInboxTables(testDb, { offices: TEST_OFFICES, operators: TEST_OPERATORS });
+}
+
+/** A store over the test database with the inbox emptied and the fixtures present. */
+export async function testInboxStore(): Promise<InboxStore> {
+	await resetTestInbox();
+	return createInboxStore(testDb);
 }
