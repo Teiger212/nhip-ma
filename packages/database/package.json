@@ -5,7 +5,8 @@
 	"types": "./**/.tsx",
 	"exports": {
 		".": "./index.ts",
-		"./inbox": "./inbox/index.ts"
+		"./inbox": "./inbox/index.ts",
+		"./inbox/testing": "./inbox/testing.ts"
 	},
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",

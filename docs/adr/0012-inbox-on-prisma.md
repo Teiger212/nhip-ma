@@ -16,7 +16,7 @@ It has three costs that grew with the product:
   rows that carry the office id as text. Deleting an office leaves its threads behind, and
   no cascade, constraint or join can be written between the two.
 - **Two schema tools.** The kit uses `prisma db push`; the inbox uses `CREATE TABLE IF
-  NOT EXISTS` plus additive migrations that run on open. Every inbox change is a hand
+NOT EXISTS` plus additive migrations that run on open. Every inbox change is a hand
   migration with its own test.
 - **One process, one disk.** A SQLite file rules out serverless and any second instance.
 

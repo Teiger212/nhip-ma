@@ -7,6 +7,9 @@ export default defineConfig({
 		globals: true,
 		environment: "node",
 		exclude: ["**/node_modules/**", "**/tests/**", "**/.next/**"],
+		globalSetup: ["./vitest.global-setup.ts"],
+		// Store tests share one database and truncate it; files must not interleave.
+		fileParallelism: false,
 	},
 	resolve: {
 		alias: {
