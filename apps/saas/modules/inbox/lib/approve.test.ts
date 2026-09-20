@@ -13,6 +13,10 @@ vi.mock("@repo/auth", () => ({
 	},
 }));
 
+vi.mock("@repo/database", () => ({
+	getOrganizationMembershipsForUser: vi.fn(async () => [{ organizationId: "walk-office" }]),
+}));
+
 import { auth } from "@repo/auth";
 
 import { POST as approve } from "../../../app/api/conversations/[id]/approve/route";
@@ -33,7 +37,10 @@ function params(id: string): { params: Promise<{ id: string }> } {
 	return { params: Promise.resolve({ id }) };
 }
 
-const WALK_SESSION = { session: { id: "walk-session" }, user: { id: "walk-user" } };
+const WALK_SESSION = {
+	session: { id: "walk-session", activeOrganizationId: "walk-office" },
+	user: { id: "walk-user" },
+};
 
 beforeEach(() => {
 	vi.mocked(auth.api.getSession).mockReset();
@@ -305,7 +312,7 @@ test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 		);
 		expect(res.res.status, pipe).toBe(200);
 		// End to end: the value survives the write and the strict parse on the way back out.
-		const stored = await peekTestRuntime()?.store.getConversation(`${pipe}:${guestId}`);
+		const stored = await peekTestRuntime()?.store.getConversation(`walk-office:${pipe}:${guestId}`);
 		expect(stored?.pipe, pipe).toBe(pipe);
 	}
 
@@ -389,9 +396,9 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 		expect(res.res.status, JSON.stringify(body)).toBe(200);
 	}
 	const runtime = peekTestRuntime();
-	const trimmed = await runtime?.store.getConversation("zalo:guest-trim");
+	const trimmed = await runtime?.store.getConversation("walk-office:zalo:guest-trim");
 	expect(trimmed?.messages[0]?.text).toBe("Looking to rent in Tay Ho");
-	const degraded = await runtime?.store.getConversation("zalo:g4");
+	const degraded = await runtime?.store.getConversation("walk-office:zalo:g4");
 	expect(degraded?.guestName).toBeNull();
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
 });
@@ -411,7 +418,6 @@ test("whatsappWindowState helper", () => {
 });
 
 test("inbox routes refuse requests without a session", async () => {
-	vi.mocked(auth.api.getSession).mockResolvedValue(null as never);
 	const injected = await json(
 		await inject(
 			new Request("http://localhost/dev/inbound", {
@@ -422,6 +428,17 @@ test("inbox routes refuse requests without a session", async () => {
 		),
 	);
 	const conv = injected.body.conversation as { id: string; sentAt: string | null };
+	vi.mocked(auth.api.getSession).mockResolvedValue(null as never);
+
+	// The dev injector files under the operator's office, so it needs a session too.
+	const anonymous = await inject(
+		new Request("http://localhost/dev/inbound", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ pipe: "zalo", guestId: "guest-anon-2", text: "Hello" }),
+		}),
+	);
+	expect(anonymous.status).toBe(401);
 
 	const list = await listConversations(new Request("http://localhost/api/conversations"));
 	expect(list.status).toBe(401);
@@ -474,6 +491,79 @@ test("two concurrent approvals send exactly once", async () => {
 	const runtime = peekTestRuntime();
 	const after = await runtime?.store.getConversation(conv.id);
 	expect(after?.messages.filter((message) => message.source === "nhip").length).toBe(1);
+});
+
+test("a live reply is refused when the thread arrived on a number these credentials do not own", async () => {
+	const runtime = peekTestRuntime();
+	if (!runtime) throw new Error("runtime missing");
+	// The guest wrote to the office's second number; this deployment can only send from "phone-a".
+	const conv = await runtime.store.upsertInbound(
+		{
+			pipe: "whatsapp",
+			source: "guest",
+			guestId: "16315551199",
+			guestName: null,
+			text: "Hello",
+			vendorMessageId: null,
+			pipeExternalId: "phone-b",
+		},
+		"walk-office",
+	);
+	await runtime.store.setOneShot(conv.id, {
+		language: "en",
+		qualification: {
+			areaOfInterest: null,
+			nationality: null,
+			inVietnamNow: null,
+			rentOrBuy: null,
+			timeframe: null,
+			budgetBand: null,
+			bedsOrHousehold: null,
+		},
+		paperwork: { mentioned: false, flag: null },
+		draft: { reply: "Thanks", answersMessageId: conv.unansweredInboundId, source: "template" },
+	});
+	setRuntimeForTests({
+		...runtime,
+		config: mockInboxConfig({
+			sendMode: "live",
+			whatsapp: { accessToken: "token", phoneNumberId: "phone-a" },
+		}),
+	});
+	const refused = await json(
+		await approve(
+			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params(conv.id),
+		),
+	);
+	expect(refused.res.status).toBe(409);
+	expect(refused.body.error).toBe("pipe_not_configured");
+	// Nothing was claimed, nothing was sent.
+	const after = await runtime.store.getConversation(conv.id);
+	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
+	expect(after?.messages.filter((message) => message.source === "nhip")).toHaveLength(0);
+	// In mock mode the same thread is fine: no vendor identity is at stake.
+	setRuntimeForTests({ ...runtime, config: mockInboxConfig() });
+	const mocked = await json(
+		await approve(
+			new Request(`http://localhost/api/conversations/${conv.id}/approve`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			}),
+			params(conv.id),
+		),
+	);
+	expect(mocked.res.status).toBe(200);
+	const sent = mocked.body.conversation as {
+		messages: Array<{ source: string; pipeExternalId: string | null }>;
+	};
+	// The outbound records the endpoint it answered from.
+	expect(sent.messages.at(-1)).toMatchObject({ source: "nhip", pipeExternalId: "phone-b" });
 });
 
 test("approve does not echo vendor error bodies", async () => {

@@ -10,6 +10,7 @@ import { oneShot } from "./draft";
 import { noDraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
+import { WALK_OFFICE_ID } from "./walk-user";
 
 afterEach(async () => {
 	const runtime = peekTestRuntime();
@@ -56,8 +57,9 @@ test("seed writes invented threads once", async () => {
 		config: mockInboxConfig(),
 		drafts: noDraftAdapter,
 	});
-	const first = await seedInbox();
+	const first = await seedInbox(WALK_OFFICE_ID);
 	expect(first.length).toBe(4);
+	expect(first.every((conversation) => conversation.officeId === WALK_OFFICE_ID)).toBe(true);
 	expect(
 		first
 			.map((conversation) => conversation.guestName)
@@ -75,7 +77,7 @@ test("seed writes invented threads once", async () => {
 	expect(first.every((conversation) => conversation.messages.length === 1)).toBe(true);
 	const byId = (a: string, b: string) => a.localeCompare(b);
 	const firstIds = first.map((conversation) => conversation.id).sort(byId);
-	const again = await seedInbox();
+	const again = await seedInbox(WALK_OFFICE_ID);
 	expect(again.map((conversation) => conversation.id).sort(byId)).toEqual(firstIds);
 	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(4);
 });

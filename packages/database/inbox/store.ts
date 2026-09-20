@@ -45,8 +45,14 @@ export function nowIso(at?: number | string | Date): string {
 	return new Date().toISOString();
 }
 
-export function conversationId(pipe: Pipe, guestId: string): string {
-	return `${pipe}:${guestId}`;
+/**
+ * One thread per guest per office (ADR 0010). The office is part of the identity, so the
+ * same guest writing to two offices is two threads that never see each other. Threads
+ * from before tenancy keep their old `pipe:guest` ids; the unique index is on the triple,
+ * not on the id's shape.
+ */
+export function conversationId(officeId: string, pipe: Pipe, guestId: string): string {
+	return `${officeId}:${pipe}:${guestId}`;
 }
 
 /**
@@ -60,7 +66,7 @@ const conversationRow = z.object({
 	pipe: Pipe,
 	guestId: z.string(),
 	guestName: z.string().nullable(),
-	ownerUserId: z.string().nullable(),
+	officeId: z.string().nullable(),
 	language: GuestLanguage.nullable(),
 	lastGuestInboundAt: Timestamp.nullable(),
 	sentAt: Timestamp.nullable(),
@@ -77,6 +83,13 @@ const messageRow = z.object({
 	vendorMessageId: z.string().nullable(),
 	mock: z.number(),
 	claimedAt: Timestamp.nullable(),
+	pipeExternalId: z.string().nullable(),
+});
+
+const pipeConnectionRow = z.object({
+	pipe: Pipe,
+	externalId: z.string(),
+	officeId: z.string(),
 });
 
 const translationRow = z.object({
@@ -172,6 +185,7 @@ function mapMessage(row: MessageRow, translations: Translations): Message {
 		at: row.at,
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
+		pipeExternalId: row.pipeExternalId,
 		translations,
 	};
 }
@@ -289,7 +303,7 @@ export function createInboxStore(filePath: string): InboxStore {
 			pipe: row.pipe,
 			guestId: row.guestId,
 			guestName: row.guestName,
-			ownerUserId: row.ownerUserId,
+			officeId: row.officeId,
 			messages: messages.map((message) =>
 				mapMessage(message, translationsByMessage.get(message.id) ?? {}),
 			),
@@ -331,9 +345,9 @@ export function createInboxStore(filePath: string): InboxStore {
 				viewer
 					? sqlite
 							.prepare(
-								`SELECT "id" FROM "Conversation" WHERE "ownerUserId" IS NULL OR "ownerUserId" = ? ORDER BY "updatedAt" DESC`,
+								`SELECT "id" FROM "Conversation" WHERE "officeId" = ? ORDER BY "updatedAt" DESC`,
 							)
-							.all(viewer.userId)
+							.all(viewer.officeId)
 					: sqlite.prepare(`SELECT "id" FROM "Conversation" ORDER BY "updatedAt" DESC`).all()
 			) as Array<{ id: string }>;
 			return rows
@@ -346,38 +360,44 @@ export function createInboxStore(filePath: string): InboxStore {
 			if (!conversation) {
 				return null;
 			}
-			if (viewer && conversation.ownerUserId && conversation.ownerUserId !== viewer.userId) {
+			if (viewer && conversation.officeId !== viewer.officeId) {
 				return null;
 			}
 			return conversation;
 		},
 
-		async upsertInbound(event: InboundEvent) {
-			const id = conversationId(event.pipe, event.guestId);
+		async upsertInbound(event: InboundEvent, officeId: string) {
 			const at = nowIso(event.at);
-			const owner = event.ownerUserId ?? null;
+			let id = conversationId(officeId, event.pipe, event.guestId);
 
 			const write = sqlite.transaction(() => {
-				// Existence is the only question here, so this row is never read as a shape.
-				const existing = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
+				// The thread is found by (office, pipe, guest), never by the id's shape, so a
+				// pre-tenancy thread that was adopted by this office is the same thread.
+				const existing = sqlite
+					.prepare(
+						`SELECT "id" FROM "Conversation" WHERE "officeId" = ? AND "pipe" = ? AND "guestId" = ?`,
+					)
+					.get(officeId, event.pipe, event.guestId) as { id: string } | undefined;
+				if (existing) {
+					id = existing.id;
+				}
 
 				if (!existing) {
 					sqlite
 						.prepare(
-							`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "ownerUserId", "lastGuestInboundAt", "sentAt", "updatedAt")
+							`INSERT INTO "Conversation" ("id", "pipe", "guestId", "guestName", "officeId", "lastGuestInboundAt", "sentAt", "updatedAt")
              VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)`,
 						)
-						.run(id, event.pipe, event.guestId, event.guestName || null, owner, at);
+						.run(id, event.pipe, event.guestId, event.guestName || null, officeId, at);
 				} else {
 					sqlite
 						.prepare(
 							`UPDATE "Conversation" SET
                  "guestName" = COALESCE("guestName", ?),
-                 "ownerUserId" = COALESCE("ownerUserId", ?),
                  "updatedAt" = ?
                WHERE "id" = ?`,
 						)
-						.run(event.guestName || null, owner, at, id);
+						.run(event.guestName || null, at, id);
 				}
 
 				if (event.vendorMessageId) {
@@ -393,8 +413,8 @@ export function createInboxStore(filePath: string): InboxStore {
 
 				sqlite
 					.prepare(
-						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId")
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "pipeExternalId")
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 					)
 					.run(
 						cuid(),
@@ -404,6 +424,7 @@ export function createInboxStore(filePath: string): InboxStore {
 						event.text,
 						at,
 						event.vendorMessageId || null,
+						event.pipeExternalId ?? null,
 					);
 
 				if (event.source === "guest") {
@@ -511,13 +532,25 @@ export function createInboxStore(filePath: string): InboxStore {
 				return null;
 			}
 			const at = nowIso();
+			// The reply goes out on the number the guest wrote to; the outbound records it.
+			const endpoint = sqlite
+				.prepare(`SELECT "pipeExternalId" FROM "Message" WHERE "id" = ?`)
+				.get(answersMessageId) as { pipeExternalId: string | null } | undefined;
 			const write = sqlite.transaction(() => {
 				sqlite
 					.prepare(
-						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock")
-             VALUES (?, ?, 'out', 'nhip', ?, ?, ?, ?)`,
+						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock", "pipeExternalId")
+             VALUES (?, ?, 'out', 'nhip', ?, ?, ?, ?, ?)`,
 					)
-					.run(cuid(), id, text, at, sendResult.vendorMessageId || null, sendResult.mock ? 1 : 0);
+					.run(
+						cuid(),
+						id,
+						text,
+						at,
+						sendResult.vendorMessageId || null,
+						sendResult.mock ? 1 : 0,
+						endpoint?.pipeExternalId ?? null,
+					);
 				sqlite
 					.prepare(
 						`INSERT INTO "Approval" ("id", "conversationId", "reply", "answersMessageId", "at") VALUES (?, ?, ?, ?, ?)`,
@@ -545,6 +578,45 @@ export function createInboxStore(filePath: string): InboxStore {
 			});
 			write();
 			return load(id);
+		},
+
+		async adoptUnownedThreads(officeId) {
+			// A pre-tenancy thread whose guest already has a thread in this office cannot be
+			// adopted without merging two histories; it is left unowned and reported.
+			const result = sqlite
+				.prepare(
+					`UPDATE "Conversation" SET "officeId" = ? WHERE "officeId" IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM "Conversation" AS "owned"
+               WHERE "owned"."officeId" = ? AND "owned"."pipe" = "Conversation"."pipe" AND "owned"."guestId" = "Conversation"."guestId"
+             )`,
+				)
+				.run(officeId, officeId);
+			return result.changes;
+		},
+
+		async connectPipe(connection) {
+			sqlite
+				.prepare(
+					`INSERT INTO "PipeConnection" ("pipe", "externalId", "officeId") VALUES (?, ?, ?)
+           ON CONFLICT("pipe", "externalId") DO UPDATE SET "officeId" = excluded."officeId"`,
+				)
+				.run(connection.pipe, connection.externalId, connection.officeId);
+		},
+
+		async officeForPipe(pipe, externalId) {
+			const raw = sqlite
+				.prepare(`SELECT * FROM "PipeConnection" WHERE "pipe" = ? AND "externalId" = ?`)
+				.get(pipe, externalId);
+			return raw ? parseRow(pipeConnectionRow, raw, "PipeConnection").officeId : null;
+		},
+
+		async listPipeConnections() {
+			return parseRow(
+				z.array(pipeConnectionRow),
+				sqlite.prepare(`SELECT * FROM "PipeConnection" ORDER BY "pipe", "externalId"`).all(),
+				"PipeConnection",
+			);
 		},
 
 		async guestInboundText(id) {

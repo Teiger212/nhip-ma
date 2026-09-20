@@ -24,9 +24,12 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. Sign in as
-`walk@nhip.local` / `walkthrough` (created by `pnpm seed` when `DATABASE_URL` is
-Postgres). There is no auth bypass.
+Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. Two logins, both
+created by `pnpm seed` when `DATABASE_URL` is Postgres, password `walkthrough`:
+`walk@nhip.local` is the agent (a member of the walk office, sees Inbox and Home) and
+`admin@nhip.local` is the platform admin (owner of the walk office, also sees the kit's
+admin area where offices are created and agents invited). There is no auth bypass, and
+public sign-up is closed (ADR 0010).
 
 `pnpm seed` writes four invented threads (Minji, Yuki, Alexei, Thảo) to `data/nhip.db`
 once. Delete the file for a fresh set. `POST /dev/inbound` injects an inbound locally
@@ -65,14 +68,21 @@ saas test`. Do not commit untracked local scripts or `data/`.
 - Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
   draft that touches paperwork is dropped by the post-check and the template stands.
+- The office is the tenant (ADR 0008) and Nhịp assigns it (ADR 0010): one operator, one
+  office, read from the membership table on every request, never from the session's
+  active organization. Threads are one per guest per office, shared inside it and
+  invisible outside it. Webhooks file under the office that owns the pipe
+  (`pnpm --filter saas pipe:connect`), inbound on an unconnected pipe is dropped, and a
+  reply is refused when the thread's number is not the one the credentials belong to.
 - Never message real guests or agents from a dev or demo environment. Never put customer
   data on a public link.
 - The operator note never invents Vietnamese law.
 - SaaS routes are locale-prefixed (`/en/...`, `/vi/...`); cookie-only locale was tried
   and rejected. The operator language switch offers `en` and `vi` only.
 - User-facing strings need translations under `inbox.*`.
-- `apps/marketing`, `apps/docs`, admin, billing, and organizations are unused kit
-  scaffolding. Leave them unless asked.
+- `apps/marketing`, `apps/docs`, admin, and billing are unused kit scaffolding. Leave
+  them unless asked. The kit organization is in use: it is the office, with its switcher
+  hidden while one agency is one office.
 
 ## Before going live
 
@@ -97,9 +107,15 @@ The office itself (ADR 0008) is created in-app, by seed or signup, not with any 
 - Set `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`,
   `WHATSAPP_PHONE_NUMBER_ID`, `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_SECRET_KEY`. Startup
   validation refuses `SEND_MODE=live` without them.
-- Set `INBOX_OWNER_USER_ID` (or another owner source) so webhook-created threads are
-  scoped to an operator.
-- Remove `walk@nhip.local` from any shared database.
+- Connect each pipe to its office so webhook-created threads have a tenant:
+  `pnpm --filter saas pipe:connect -- --pipe whatsapp --external-id <phone_number_id>
+--office <organization id>` (and the same for the Zalo OA id). Add `--adopt-unowned`
+  once to give threads from before tenancy to that office.
+- Set `ZALO_OA_ID` to the OA the Zalo token belongs to, so replies on any other OA are
+  refused rather than sent from the wrong identity.
+- Remove `walk@nhip.local` and `admin@nhip.local` from any shared database; create the
+  real platform admin by setting `role = "admin"` on your own user, then create the
+  office and invite agents from `/admin/organizations`.
 - Auth (Better Auth 1.6): generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32`;
   `NEXT_PUBLIC_SAAS_URL` must be the public https origin (it is the auth base URL and the
   only trusted origin); leave `AUTH_TRUSTED_ORIGINS` and `BETTER_AUTH_URL` unset. Rate

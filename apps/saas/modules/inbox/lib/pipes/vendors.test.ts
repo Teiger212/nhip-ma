@@ -103,7 +103,7 @@ test("WhatsApp parser reads a well-formed payload", () => {
 		guestName: "Alexei",
 		text: "Looking to rent in Tay Ho",
 		vendorMessageId: "wamid.1",
-		phoneNumberId: "pn-1",
+		pipeExternalId: "pn-1",
 	});
 	// Seconds from Meta, milliseconds in the domain.
 	expect(events[0]?.at).toBe(1725600000 * 1000);

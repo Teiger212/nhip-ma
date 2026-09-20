@@ -19,7 +19,7 @@ function conv(
 	return {
 		pipe: "zalo",
 		guestId: partial.id,
-		ownerUserId: null,
+		officeId: "walk-office",
 		messages: [
 			{
 				id: `${partial.id}:1`,
@@ -28,6 +28,7 @@ function conv(
 				text: `hello from ${partial.guestName}`,
 				at,
 				vendorMessageId: null,
+				pipeExternalId: null,
 				translations: {},
 			},
 		],

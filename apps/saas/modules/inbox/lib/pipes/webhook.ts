@@ -25,6 +25,6 @@ export async function handleInboundWebhook(pipe: Pipe, request: Request): Promis
 			body = {};
 		}
 	}
-	await ingestEvents(runtime, adapter.parseInbound(body), config.webhookOwnerUserId);
+	await ingestEvents(runtime, adapter.parseInbound(body));
 	return NextResponse.json({ ok: true });
 }

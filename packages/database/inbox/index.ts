@@ -27,6 +27,7 @@ export type {
 	Message,
 	OneShot,
 	Paperwork,
+	PipeConnection,
 	Qualification,
 	SendMode,
 	SendResult,

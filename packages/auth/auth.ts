@@ -2,6 +2,7 @@ import { passkey } from "@better-auth/passkey";
 import {
 	db,
 	getInvitationById,
+	getOrganizationMembershipsForUser,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
@@ -15,7 +16,7 @@ import { cancelSubscription } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { openAPI } from "better-auth/plugins";
 import { admin } from "better-auth/plugins/admin";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -148,6 +149,21 @@ export const auth = betterAuth({
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
+			// One operator, one office (ADR 0010): an account already in an office cannot
+			// accept an invitation into another. The gate would refuse it as ambiguous anyway;
+			// refusing here keeps the membership table true.
+			if (ctx.path.startsWith("/organization/accept-invitation")) {
+				const userId = ctx.context.session?.session.userId;
+				if (userId) {
+					const memberships = await getOrganizationMembershipsForUser(userId);
+					if (memberships.length > 0) {
+						throw new APIError("FORBIDDEN", {
+							code: "ONE_OFFICE_PER_OPERATOR",
+							message: "This account already belongs to an office.",
+						});
+					}
+				}
+			}
 			if (ctx.path.startsWith("/delete-user") || ctx.path.startsWith("/organization/delete")) {
 				const userId = ctx.context.session?.session.userId;
 				const { organizationId } = ctx.body;

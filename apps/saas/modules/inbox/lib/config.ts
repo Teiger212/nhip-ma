@@ -35,7 +35,7 @@ const envSchema = z
 		WHATSAPP_PHONE_NUMBER_ID: trimmed,
 		ZALO_OA_ACCESS_TOKEN: trimmed,
 		ZALO_OA_SECRET_KEY: trimmed,
-		INBOX_OWNER_USER_ID: trimmed,
+		ZALO_OA_ID: trimmed,
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
@@ -169,9 +169,9 @@ export type InboxConfig = {
 	zalo: {
 		accessToken?: string;
 		oaSecretKey?: string;
+		/** The OA the token belongs to; when set, sends from any other OA are refused. */
+		oaId?: string;
 	};
-	/** Owner assigned to threads created by webhooks. `null` means unowned. */
-	webhookOwnerUserId: string | null;
 	/**
 	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
 	 * a key there is no model: no translation is shown and every suggested reply is a
@@ -205,8 +205,8 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 		zalo: {
 			accessToken: clean(env.ZALO_OA_ACCESS_TOKEN),
 			oaSecretKey: clean(env.ZALO_OA_SECRET_KEY),
+			oaId: clean(env.ZALO_OA_ID),
 		},
-		webhookOwnerUserId: clean(env.INBOX_OWNER_USER_ID) ?? null,
 		drafts: {
 			apiKey: clean(env.DRAFT_API_KEY),
 			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,
@@ -237,7 +237,6 @@ export function mockInboxConfig(overrides: Partial<InboxConfig> = {}): InboxConf
 		sendMode: "mock",
 		whatsapp: {},
 		zalo: {},
-		webhookOwnerUserId: null,
 		drafts: { baseUrl: DEFAULT_DRAFT_BASE_URL },
 		...overrides,
 	};

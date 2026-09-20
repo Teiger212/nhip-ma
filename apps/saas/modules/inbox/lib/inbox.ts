@@ -88,16 +88,24 @@ export async function afterGuestInbound(
 	return updated;
 }
 
-export async function ingestEvents(
-	runtime: Runtime,
-	events: InboundEvent[],
-	ownerUserId: string | null = null,
-): Promise<void> {
+/**
+ * Webhook events are filed under the office that owns the pipe they arrived on
+ * (ADR 0008). An event from a pipe no office has connected is dropped, not filed under
+ * nobody: tenancy fails closed, and the log says which pipe to connect.
+ */
+export async function ingestEvents(runtime: Runtime, events: InboundEvent[]): Promise<void> {
 	for (const event of events) {
-		const conv = await runtime.store.upsertInbound({
-			...event,
-			ownerUserId: event.ownerUserId ?? ownerUserId,
-		});
+		const officeId = event.pipeExternalId
+			? await runtime.store.officeForPipe(event.pipe, event.pipeExternalId)
+			: null;
+		if (!officeId) {
+			console.warn("inbox: inbound dropped, no office owns this pipe", {
+				pipe: event.pipe,
+				pipeExternalId: event.pipeExternalId ?? null,
+			});
+			continue;
+		}
+		const conv = await runtime.store.upsertInbound(event, officeId);
 		if (event.source === "guest") {
 			await afterGuestInbound(runtime, conv);
 		}
@@ -108,22 +116,24 @@ export async function injectDevInbound(input: {
 	pipe: Pipe;
 	guestId: string;
 	text: string;
+	officeId: string;
 	guestName?: string | null;
 	vendorMessageId?: string | null;
 	at?: number | string | Date;
-	ownerUserId?: string | null;
 }): Promise<Conversation> {
 	const runtime = getRuntime();
-	const conv = await runtime.store.upsertInbound({
-		pipe: input.pipe,
-		guestId: input.guestId,
-		guestName: input.guestName || null,
-		text: input.text,
-		vendorMessageId: input.vendorMessageId || null,
-		at: input.at || Date.now(),
-		source: "guest",
-		ownerUserId: input.ownerUserId ?? null,
-	});
+	const conv = await runtime.store.upsertInbound(
+		{
+			pipe: input.pipe,
+			guestId: input.guestId,
+			guestName: input.guestName || null,
+			text: input.text,
+			vendorMessageId: input.vendorMessageId || null,
+			at: input.at || Date.now(),
+			source: "guest",
+		},
+		input.officeId,
+	);
 	return afterGuestInbound(runtime, conv);
 }
 
@@ -139,6 +149,17 @@ export type InboxResult =
 
 /** @deprecated Use InboxResult */
 export type ApproveResult = InboxResult;
+
+/** The office number or OA the guest last wrote to, if the pipe told us. */
+function latestGuestEndpoint(conversation: Conversation): string | null {
+	for (let i = conversation.messages.length - 1; i >= 0; i -= 1) {
+		const message = conversation.messages[i];
+		if (message.direction === "in") {
+			return message.pipeExternalId;
+		}
+	}
+	return null;
+}
 
 const ALREADY_ANSWERED: InboxResult = {
 	ok: false,
@@ -175,13 +196,27 @@ export async function approveAndSend(
 		return { ok: false, status: 400, error: "no_draft" };
 	}
 
-	const window = pipeAdapter(conv.pipe).sendWindow(conv);
+	const adapter = pipeAdapter(conv.pipe);
+	const window = adapter.sendWindow(conv);
 	if (!window.open) {
 		return {
 			ok: false,
 			status: 409,
 			error: window.reason,
 			message: window.message,
+		};
+	}
+
+	// The reply goes out on the number the guest wrote to (ADR 0010). With process-wide
+	// credentials, a thread that arrived on any other number cannot be answered from here.
+	const endpoint = latestGuestEndpoint(conv);
+	if (config.sendMode === "live" && endpoint && !adapter.ownsEndpoint(endpoint, config)) {
+		return {
+			ok: false,
+			status: 409,
+			error: "pipe_not_configured",
+			message:
+				"This thread arrived on a number or OA this deployment is not configured to send from.",
 		};
 	}
 

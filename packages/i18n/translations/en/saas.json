@@ -695,6 +695,23 @@
 		"description": "Please wait while we confirm your payment.",
 		"loading": "Confirming your purchase, please wait..."
 	},
+	"home": {
+		"title": "Home",
+		"subtitle": "The office's numbers. The same for every operator.",
+		"funnel": {
+			"title": "Funnel",
+			"leadsIn": "Leads in",
+			"engaged": "Engaged",
+			"inConversation": "In conversation",
+			"closings": "Closings",
+			"lost": "Lost"
+		},
+		"comingNext": "Counted from the inbox in the next build.",
+		"connectCrm": "Connect your CRM",
+		"connectCrmHint": "Closings and lost come from your CRM, never from the chat.",
+		"responseTime": "Response time",
+		"responseTimeHint": "First inbound to first approved send."
+	},
 	"inbox": {
 		"brand": "Nhịp",
 		"navItem": "Inbox",
