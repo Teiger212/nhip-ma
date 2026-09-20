@@ -135,10 +135,13 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(followUps).toEqual([]);
 	expect(conv.oneShot?.draft.source).toBe("template");
 
-	// 2. The agent approves the first reply.
+	// 2. The agent approves the first reply, naming the message it answers.
 	const sentFirst = await json(
 		await approve(
-			post(`http://localhost/api/conversations/${conv.id}/approve`, {}),
+			post(`http://localhost/api/conversations/${conv.id}/approve`, {
+				inboundId: firstInbound,
+				reply: conv.oneShot?.draft.reply,
+			}),
 			params(conv.id),
 		),
 	);
@@ -195,7 +198,10 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	// 4. The agent approves the suggested follow-up. It sends.
 	const sentSecond = await json(
 		await approve(
-			post(`http://localhost/api/conversations/${conv.id}/approve`, {}),
+			post(`http://localhost/api/conversations/${conv.id}/approve`, {
+				inboundId: secondInbound,
+				reply: conv.oneShot?.draft.reply,
+			}),
 			params(conv.id),
 		),
 	);
@@ -205,12 +211,20 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	const office = conv.messages.filter((message) => message.source === "nhip");
 	expect(office).toHaveLength(2);
 	expect(office[1].text).toBe('Follow-up 2: about "금요일에 볼 수 있을까요?"');
-	expect(conv.lastSend?.mock).toBe(true);
+	expect(conv.answers.map((answer) => answer.status)).toEqual(["sent", "sent"]);
+	expect(conv.lastAnswer).toMatchObject({
+		inboundId: secondInbound,
+		mock: true,
+		operatorId: "walk-user",
+	});
 
 	// 5. A third approve with no new inbound is 409.
 	const third = await json(
 		await approve(
-			post(`http://localhost/api/conversations/${conv.id}/approve`, {}),
+			post(`http://localhost/api/conversations/${conv.id}/approve`, {
+				inboundId: secondInbound,
+				reply: "again",
+			}),
 			params(conv.id),
 		),
 	);
@@ -225,7 +239,8 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	);
 	expect(nothing.status).toBe(409);
 
-	// No auto-send path: every office message is one Approval, and nothing was sent without one.
+	// No auto-send path: every office message is one Answer, and nothing was sent without one.
+	expect(conv.answers).toHaveLength(2);
 	expect(followUps).toHaveLength(1);
 });
 
@@ -313,7 +328,13 @@ test("without a model there is no translation and every suggestion is a template
 	await settleBackgroundWork();
 	conv = await get(conv.id);
 	expect(conv.messages[0].translations).toEqual({});
-	await approve(post(`http://localhost/api/conversations/${conv.id}/approve`, {}), params(conv.id));
+	await approve(
+		post(`http://localhost/api/conversations/${conv.id}/approve`, {
+			inboundId: conv.unansweredInboundId,
+			reply: conv.oneShot?.draft.reply,
+		}),
+		params(conv.id),
+	);
 	await inject(
 		post("http://localhost/dev/inbound", { pipe: "zalo", guestId: "no-model", text: "Спасибо" }),
 	);

@@ -15,6 +15,8 @@ function conv(partial: Partial<Conversation> & Pick<Conversation, "id">): Conver
 		sentAt: null,
 		unansweredInboundId: null,
 		oneShot: null,
+		answers: [],
+		lastAnswer: null,
 		updatedAt: new Date().toISOString(),
 		...partial,
 	};

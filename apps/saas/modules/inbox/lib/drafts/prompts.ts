@@ -54,7 +54,8 @@ export function followUpSystemPrompt(guestLanguage: GuestLanguage): string {
 export function followUpUserPrompt(input: FollowUpInput): string {
 	const q = input.qualification;
 	const facts = [
-		`guest_name: ${input.guestName ?? "unknown"}`,
+		// The profile name is vendor-supplied text the guest controls: data, like the messages.
+		`guest_name: ${asData(input.guestName ?? "unknown")}`,
 		`nationality: ${q.nationality ?? "unknown"}`,
 		`in_vietnam_now: ${q.inVietnamNow === null ? "unknown" : q.inVietnamNow ? "yes" : "no"}`,
 		`rent_or_buy: ${q.rentOrBuy ?? "unknown"}`,

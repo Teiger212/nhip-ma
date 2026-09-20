@@ -50,6 +50,32 @@ test("demo threads extract; Japanese paperwork does not invent law", () => {
 	expect(vi.qualification.bedsOrHousehold).toBe("2 bed");
 });
 
+test("seed finds an adopted pre-tenancy thread by guest and does not write it twice", async () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
+	const store = createInboxStore(path.join(dir, "nhip.db"));
+	setRuntimeForTests({ store, config: mockInboxConfig(), drafts: noDraftAdapter });
+	// A thread for Thảo that an earlier office adopted keeps its old-style id.
+	const legacy = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId: "demo-vi-tayho",
+			guestName: "Thảo",
+			text: "old message",
+			vendorMessageId: null,
+		},
+		WALK_OFFICE_ID,
+	);
+	const seeded = await seedInbox(WALK_OFFICE_ID);
+	expect(seeded).toHaveLength(4);
+	const thao = seeded.find((conversation) => conversation.guestId === "demo-vi-tayho");
+	expect(thao?.id).toBe(legacy.id);
+	expect(thao?.messages.map((message) => message.text)).toEqual(["old message"]);
+	expect(await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID })).toHaveLength(
+		4,
+	);
+});
+
 test("seed writes invented threads once", async () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
 	setRuntimeForTests({

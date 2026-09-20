@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-20 (send contract)
+
+### Changed
+
+#### The Answer is the record of a send (ADR 0011)
+
+- `Approval`, `Send` and `Message.claimedAt` fold into one `Answer` table: one row per guest message answered, written in status `sending` before the vendor is called, then `sent`, `failed` or `unknown`. Old files migrate on open.
+- Approve names its target: the request carries `inboundId` and `reply`; `409 stale_target` when the guest wrote again, `400 inbound_required` and `400 empty_reply` otherwise. The reply box keys edits by the guest message, so a new message empties it.
+- A vendor refusal or missing credentials is `failed` and may be approved again; a network failure, or a vendor success the app could not record, is `unknown` and refused with `409 delivery_unknown` until reconciled. Nothing is ever sent twice for one guest message.
+- "Your turn" is derived from Answers, not message order: a guest message arriving mid-send stays in the queue.
+- The guest's profile name is escaped in the follow-up prompt like the messages are (audit finding 7).
+- `Conversation.lastSend` becomes `answers` and `lastAnswer`.
+
 ## 2026-09-20
 
 ### Added

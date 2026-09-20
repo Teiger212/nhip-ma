@@ -6,22 +6,30 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+/**
+ * Approve and send. The body names the guest message being answered and the exact text;
+ * a missing target, a stale target, or an empty reply is refused (ADR 0011).
+ */
 export async function POST(request: Request, context: RouteContext): Promise<Response> {
 	const gate = await requireInboxSession(request);
 	if (gate.denied) {
 		return gate.denied;
 	}
 	const { id } = await context.params;
-	let reply: string | undefined;
+	let inboundId: string | undefined;
+	let text: string | undefined;
 	try {
-		const body = (await request.json()) as { reply?: unknown };
+		const body = (await request.json()) as { inboundId?: unknown; reply?: unknown };
+		if (typeof body.inboundId === "string") {
+			inboundId = body.inboundId;
+		}
 		if (typeof body.reply === "string") {
-			reply = body.reply;
+			text = body.reply;
 		}
 	} catch {
-		reply = undefined;
+		// A malformed body is an approval of nothing; the checks below refuse it.
 	}
-	const result = await approveAndSend(decodeURIComponent(id), reply, gate.viewer);
+	const result = await approveAndSend(decodeURIComponent(id), { inboundId, text }, gate.viewer);
 	if (!result.ok) {
 		if (result.detail) {
 			// Vendor error bodies stay in server logs; they are never echoed to the caller.

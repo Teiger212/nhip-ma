@@ -1,5 +1,3 @@
-import { conversationId } from "@repo/database/inbox";
-
 import { settleBackgroundWork } from "../lib/background";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
@@ -42,13 +40,17 @@ async function main(): Promise<void> {
 		);
 	}
 
-	const existing = (
-		await Promise.all(
-			DEMO_THREADS.map((thread) =>
-				store.getConversation(conversationId(WALK_OFFICE_ID, thread.pipe, thread.guestId)),
-			),
-		)
-	).filter(Boolean).length;
+	// Files written before office tenancy carry threads with no office. The walk office
+	// takes them first, so the seed below finds them instead of writing the same guests
+	// again, and nothing disappears from the queue after an upgrade.
+	const adopted = await store.adoptUnownedThreads(WALK_OFFICE_ID);
+	if (adopted > 0) {
+		console.info(`${adopted} thread(s) without an office now belong to ${WALK_OFFICE_ID}.`);
+	}
+	const owned = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
+	const existing = DEMO_THREADS.filter((thread) =>
+		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
+	).length;
 	const conversations = await seedInbox(WALK_OFFICE_ID);
 	for (const conv of conversations) {
 		const q = conv.oneShot?.qualification;
@@ -62,12 +64,6 @@ async function main(): Promise<void> {
 		`\n${conversations.length} demo threads in ${store.filePath}` +
 			(existing ? ` (wrote ${created}, skipped ${existing} existing)` : " (fresh write)"),
 	);
-	// Files written before office tenancy carry threads with no office; the walk office
-	// takes them so nothing disappears from the queue after an upgrade.
-	const adopted = await store.adoptUnownedThreads(WALK_OFFICE_ID);
-	if (adopted > 0) {
-		console.info(`${adopted} thread(s) without an office now belong to ${WALK_OFFICE_ID}.`);
-	}
 	console.info("Re-run skips threads that already exist. Delete data/nhip.db for a fresh set.");
 	console.info("Open http://localhost:3010 — sign in, then Inbox. Nothing here is a real guest.");
 	// Translations (ADR 0007) run in the background after each inbound; let them land

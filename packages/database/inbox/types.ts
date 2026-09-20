@@ -1,4 +1,5 @@
 import type {
+	AnswerStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -84,6 +85,47 @@ export type SendResult = {
 	vendorMessageId: string | null;
 };
 
+/**
+ * An Answer (ADR 0011): the office's reply to exactly one guest message, on record from
+ * the moment the operator approves it. One row per inbound; the row carries the send's
+ * whole lifecycle, so an approval that targets the wrong message, a send that is
+ * repeated after a vendor success, and a guest message that arrives mid-send are all
+ * ruled out by the same record.
+ */
+export type Answer = {
+	id: string;
+	conversationId: string;
+	/** The guest message this answers. Unique: one Answer per inbound. */
+	inboundId: string;
+	/** Exactly what the operator approved. */
+	text: string;
+	/** Who approved. `null` on rows migrated from before ADR 0011. */
+	operatorId: string | null;
+	status: AnswerStatus;
+	mock: boolean;
+	pipe: Pipe;
+	to: string;
+	/** The office endpoint the reply went out on: the one the guest wrote to. */
+	pipeExternalId: string | null;
+	vendorMessageId: string | null;
+	approvedAt: string;
+	sentAt: string | null;
+	failedAt: string | null;
+	failureReason: string | null;
+};
+
+export type BeginAnswerResult =
+	| { ok: true; answer: Answer }
+	| {
+			ok: false;
+			/**
+			 * `already_answered`: a sent Answer exists. `in_progress`: another approval is
+			 * between approve and the vendor's reply. `unknown`: a previous send's outcome is
+			 * unknown and must be reconciled by a person before anything is sent again.
+			 */
+			reason: "already_answered" | "in_progress" | "unknown";
+	  };
+
 export type Conversation = {
 	id: string;
 	pipe: Pipe;
@@ -101,13 +143,18 @@ export type Conversation = {
 	/** When the office last sent through Nhịp. Not terminal: the guest may write back. */
 	sentAt: string | null;
 	/**
-	 * "Your turn" (CONTEXT.md): the guest spoke last. This is the id of that unanswered
-	 * inbound message, the unit of approval under reply-only (ADR 0006). `null` means the
-	 * office spoke last, so there is nothing to approve.
+	 * "Your turn" (CONTEXT.md): the guest's latest message has no Answer in flight or
+	 * sent, and no reply from the OA app after it. This is that message's id, the unit of
+	 * approval under reply-only (ADR 0006). `null` means there is nothing to approve. A
+	 * guest message that arrives while an earlier one is being answered stays here (ADR
+	 * 0011): the office's reply is read off the Answers, not off message order.
 	 */
 	unansweredInboundId: string | null;
 	oneShot: OneShot | null;
-	lastSend?: SendResult;
+	/** Every Answer on this thread, oldest first. */
+	answers: Answer[];
+	/** The most recent Answer, whatever its status. */
+	lastAnswer: Answer | null;
 	updatedAt: string;
 };
 
@@ -156,18 +203,23 @@ export type InboxStore = {
 	/** Store one guest message's rendering in one operator language. */
 	setTranslation: (messageId: string, locale: OperatorLanguage, text: string) => Promise<void>;
 	/**
-	 * Atomically claim an inbound message as being answered. Returns false when it was
-	 * already claimed or answered, so two concurrent approvals cannot both transmit.
+	 * The operator approved `text` as the answer to `inboundId`: write the Answer in status
+	 * `sending` before anything talks to a vendor. Atomic: a second approval of the same
+	 * message, concurrent or later, is refused with a reason; a `failed` Answer is reused
+	 * for the retry.
 	 */
-	claimSend: (messageId: string) => Promise<boolean>;
-	/** Undo `claimSend` after a failed transmit so the operator can retry. */
-	releaseSend: (messageId: string) => Promise<void>;
-	recordApprovedSend: (
-		id: string,
-		text: string,
-		sendResult: SendResult,
-		answersMessageId: string,
-	) => Promise<Conversation | null>;
+	beginAnswer: (input: {
+		conversationId: string;
+		inboundId: string;
+		text: string;
+		operatorId: string | null;
+	}) => Promise<BeginAnswerResult>;
+	/** The vendor acknowledged: `sent`, the outbound message on the thread, `sentAt` on it. */
+	completeAnswer: (answerId: string, result: SendResult) => Promise<Conversation | null>;
+	/** The vendor definitely refused: `failed`. The operator may approve again. */
+	failAnswer: (answerId: string, reason: string) => Promise<void>;
+	/** The vendor did not answer, or the acknowledgement could not be recorded: `unknown`. */
+	markAnswerUnknown: (answerId: string, reason: string) => Promise<void>;
 	guestInboundText: (id: string) => Promise<string>;
 	close: () => Promise<void>;
 };

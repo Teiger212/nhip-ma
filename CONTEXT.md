@@ -65,8 +65,9 @@ is renamed.
   one inbound message. Never automatic.
 - **Reply-only**: every send answers exactly one guest message; one send per inbound; no
   unprompted sends (nudges deferred, ADR 0006).
-- **Approval**, **Send**: records of one approved send, each tied to the inbound it
-  answers.
+- **Answer**: the record of one send, the office's reply to exactly one guest message,
+  on file from the moment the operator approves it and through `sending`, `sent`,
+  `failed` or `unknown` (ADR 0011). One per inbound.
 - **SEND_MODE**: `mock` (no vendor call, the default) or exactly `live`.
 
 ## Drafting

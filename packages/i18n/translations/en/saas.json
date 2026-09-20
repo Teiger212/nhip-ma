@@ -799,6 +799,7 @@
 		"allCaughtUp": "All caught up.",
 		"viewSent": "View sent",
 		"sentTo": "Sent to {name}",
-		"sendFailed": "Send failed."
+		"sendFailed": "Send failed.",
+		"deliveryUnknown": "The last reply was sent but the vendor did not confirm it. Check whether it arrived before sending again."
 	}
 }

@@ -259,11 +259,18 @@ export function verifyZaloSignature(
 	return hexEqual(provided, expected);
 }
 
+/**
+ * A definite non-delivery: the vendor refused (`rejected`) or nothing was ever sent
+ * because credentials are missing (`config`). Anything else thrown on the send path,
+ * a network failure or a timeout, is ambiguous and is treated as such (ADR 0011).
+ */
 export class SendError extends Error {
 	detail: unknown;
-	constructor(message: string, detail: unknown) {
+	kind: "rejected" | "config";
+	constructor(message: string, detail: unknown, kind: "rejected" | "config" = "rejected") {
 		super(message);
 		this.detail = detail;
+		this.kind = kind;
 	}
 }
 

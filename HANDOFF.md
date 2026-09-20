@@ -62,9 +62,11 @@ saas test`. Do not commit untracked local scripts or `data/`.
 
 ## Rules that hold
 
-- Never auto-send. Approve and send is the only send path, and it claims the guest
-  message it answers atomically before any vendor call. Reply-only: one send per inbound,
-  and a thread is "Your turn" whenever the guest spoke last (ADRs 0004, 0006).
+- Never auto-send. Approve and send is the only send path. It names the guest message it
+  answers and the exact text, and writes the Answer before any vendor call (ADR 0011).
+  Reply-only: one Answer per inbound; a thread is "Your turn" whenever the guest's latest
+  message has no Answer (ADRs 0004, 0006). An Answer of unknown outcome is never retried
+  by the app; a person checks the vendor first.
 - Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
   draft that touches paperwork is dropped by the post-check and the template stands.

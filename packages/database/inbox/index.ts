@@ -9,6 +9,7 @@
  * writes to disk, not something the domain should be able to reach for.
  */
 export {
+	AnswerStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -19,6 +20,8 @@ export {
 	Timestamp,
 } from "./schema";
 export type {
+	Answer,
+	BeginAnswerResult,
 	Conversation,
 	Draft,
 	InboundEvent,

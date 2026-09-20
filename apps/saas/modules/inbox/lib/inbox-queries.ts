@@ -59,8 +59,8 @@ export function useApproveAndSend() {
 	const mutation = useConversationMutation("approve");
 	return {
 		...mutation,
-		mutateAsync: ({ id, reply }: { id: string; reply: string }) =>
-			mutation.mutateAsync({ id, body: { reply } }),
+		mutateAsync: ({ id, inboundId, reply }: { id: string; inboundId: string; reply: string }) =>
+			mutation.mutateAsync({ id, body: { inboundId, reply } }),
 	};
 }
 
