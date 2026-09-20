@@ -101,47 +101,45 @@ export async function getOrganizationMembership(organizationId: string, userId: 
 }
 
 /**
- * The office an operator acts for when the session names none (ADR 0008): the first
- * organization they joined. One agency, one office is the MVP, so this is usually the
- * only membership there is.
+ * Every office an operator belongs to (ADR 0010). The inbox resolves the office from this
+ * on every request and never from a client-writable field; one membership is the rule,
+ * zero is "no office", more than one is a misconfiguration the gate refuses.
  */
-export async function getFirstOrganizationMembershipForUser(userId: string) {
-	return db.member.findFirst({
+export async function getOrganizationMembershipsForUser(userId: string) {
+	return db.member.findMany({
 		where: { userId },
 		orderBy: { createdAt: "asc" },
 	});
 }
 
 /**
- * Create an organization with a fixed id and one owner, and make it that user's active
- * organization. Idempotent: an existing organization is kept, membership is upserted.
- * Used by the seed to create the walk office.
+ * Ensure an organization with a fixed id exists and that a user is a member of it with
+ * the given role, and make it that user's active organization. Idempotent: an existing
+ * organization is kept, membership is upserted. Used by the seed for the walk office.
  */
-export async function createOrganizationWithOwner({
-	id,
-	name,
-	slug,
+export async function ensureOrganizationMembership({
+	organization: input,
 	userId,
+	role,
 }: {
-	id: string;
-	name: string;
-	slug: string;
+	organization: { id: string; name: string; slug: string };
 	userId: string;
+	role: "owner" | "admin" | "member";
 }) {
-	const existing = await db.organization.findUnique({ where: { id } });
+	const existing = await db.organization.findUnique({ where: { id: input.id } });
 	const organization =
 		existing ??
 		(await db.organization.create({
-			data: { id, name, slug, createdAt: new Date() },
+			data: { id: input.id, name: input.name, slug: input.slug, createdAt: new Date() },
 		}));
 	await db.member.upsert({
-		where: { organizationId_userId: { organizationId: id, userId } },
-		create: { organizationId: id, userId, role: "owner", createdAt: new Date() },
-		update: {},
+		where: { organizationId_userId: { organizationId: input.id, userId } },
+		create: { organizationId: input.id, userId, role, createdAt: new Date() },
+		update: { role },
 	});
 	await db.user.update({
 		where: { id: userId },
-		data: { lastActiveOrganizationId: id },
+		data: { lastActiveOrganizationId: input.id },
 	});
 	return { organization, created: !existing };
 }

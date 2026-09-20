@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "@auth/hooks/use-session";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { config as paymentsConfig } from "@repo/payments/config";
 import {
@@ -23,7 +24,7 @@ import {
 } from "@repo/ui";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { UserMenu } from "@shared/components/UserMenu";
-import { GlobeIcon, HomeIcon, InboxIcon } from "lucide-react";
+import { GlobeIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { buildSettingsSections, buildWalkNav, type WalkNavItem } from "../lib/walk-nav";
@@ -32,12 +33,14 @@ const NAV_ICONS = {
 	home: HomeIcon,
 	inbox: InboxIcon,
 	globe: GlobeIcon,
+	shield: ShieldCheckIcon,
 } as const;
 
 const NAV_LABEL_KEYS = {
 	home: "app.menu.home",
 	inbox: "app.menu.inbox",
 	international: "app.menu.international",
+	admin: "app.menu.admin",
 } as const;
 
 const SECTION_LABEL_KEYS = {
@@ -100,7 +103,8 @@ export function NavBar() {
 	const { isMobile, setOpenMobile, state } = useSidebar();
 	const showLabels = isMobile || state === "expanded";
 
-	const items = buildWalkNav(pathname);
+	const { user } = useSession();
+	const items = buildWalkNav(pathname, { isAdmin: user?.role === "admin" });
 	const settingsSections = buildSettingsSections(pathname, {
 		billingAttachedToUser: paymentsConfig.billingAttachedTo === "user",
 	});

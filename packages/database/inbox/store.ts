@@ -45,8 +45,14 @@ export function nowIso(at?: number | string | Date): string {
 	return new Date().toISOString();
 }
 
-export function conversationId(pipe: Pipe, guestId: string): string {
-	return `${pipe}:${guestId}`;
+/**
+ * One thread per guest per office (ADR 0010). The office is part of the identity, so the
+ * same guest writing to two offices is two threads that never see each other. Threads
+ * from before tenancy keep their old `pipe:guest` ids; the unique index is on the triple,
+ * not on the id's shape.
+ */
+export function conversationId(officeId: string, pipe: Pipe, guestId: string): string {
+	return `${officeId}:${pipe}:${guestId}`;
 }
 
 /**
@@ -77,6 +83,7 @@ const messageRow = z.object({
 	vendorMessageId: z.string().nullable(),
 	mock: z.number(),
 	claimedAt: Timestamp.nullable(),
+	pipeExternalId: z.string().nullable(),
 });
 
 const pipeConnectionRow = z.object({
@@ -178,6 +185,7 @@ function mapMessage(row: MessageRow, translations: Translations): Message {
 		at: row.at,
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
+		pipeExternalId: row.pipeExternalId,
 		translations,
 	};
 }
@@ -359,12 +367,20 @@ export function createInboxStore(filePath: string): InboxStore {
 		},
 
 		async upsertInbound(event: InboundEvent, officeId: string) {
-			const id = conversationId(event.pipe, event.guestId);
 			const at = nowIso(event.at);
+			let id = conversationId(officeId, event.pipe, event.guestId);
 
 			const write = sqlite.transaction(() => {
-				// Existence is the only question here, so this row is never read as a shape.
-				const existing = sqlite.prepare(`SELECT "id" FROM "Conversation" WHERE "id" = ?`).get(id);
+				// The thread is found by (office, pipe, guest), never by the id's shape, so a
+				// pre-tenancy thread that was adopted by this office is the same thread.
+				const existing = sqlite
+					.prepare(
+						`SELECT "id" FROM "Conversation" WHERE "officeId" = ? AND "pipe" = ? AND "guestId" = ?`,
+					)
+					.get(officeId, event.pipe, event.guestId) as { id: string } | undefined;
+				if (existing) {
+					id = existing.id;
+				}
 
 				if (!existing) {
 					sqlite
@@ -378,11 +394,10 @@ export function createInboxStore(filePath: string): InboxStore {
 						.prepare(
 							`UPDATE "Conversation" SET
                  "guestName" = COALESCE("guestName", ?),
-                 "officeId" = COALESCE("officeId", ?),
                  "updatedAt" = ?
                WHERE "id" = ?`,
 						)
-						.run(event.guestName || null, officeId, at, id);
+						.run(event.guestName || null, at, id);
 				}
 
 				if (event.vendorMessageId) {
@@ -398,8 +413,8 @@ export function createInboxStore(filePath: string): InboxStore {
 
 				sqlite
 					.prepare(
-						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId")
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "pipeExternalId")
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 					)
 					.run(
 						cuid(),
@@ -409,6 +424,7 @@ export function createInboxStore(filePath: string): InboxStore {
 						event.text,
 						at,
 						event.vendorMessageId || null,
+						event.pipeExternalId ?? null,
 					);
 
 				if (event.source === "guest") {
@@ -516,13 +532,25 @@ export function createInboxStore(filePath: string): InboxStore {
 				return null;
 			}
 			const at = nowIso();
+			// The reply goes out on the number the guest wrote to; the outbound records it.
+			const endpoint = sqlite
+				.prepare(`SELECT "pipeExternalId" FROM "Message" WHERE "id" = ?`)
+				.get(answersMessageId) as { pipeExternalId: string | null } | undefined;
 			const write = sqlite.transaction(() => {
 				sqlite
 					.prepare(
-						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock")
-             VALUES (?, ?, 'out', 'nhip', ?, ?, ?, ?)`,
+						`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at", "vendorMessageId", "mock", "pipeExternalId")
+             VALUES (?, ?, 'out', 'nhip', ?, ?, ?, ?, ?)`,
 					)
-					.run(cuid(), id, text, at, sendResult.vendorMessageId || null, sendResult.mock ? 1 : 0);
+					.run(
+						cuid(),
+						id,
+						text,
+						at,
+						sendResult.vendorMessageId || null,
+						sendResult.mock ? 1 : 0,
+						endpoint?.pipeExternalId ?? null,
+					);
 				sqlite
 					.prepare(
 						`INSERT INTO "Approval" ("id", "conversationId", "reply", "answersMessageId", "at") VALUES (?, ?, ?, ?, ?)`,
@@ -553,9 +581,17 @@ export function createInboxStore(filePath: string): InboxStore {
 		},
 
 		async adoptUnownedThreads(officeId) {
+			// A pre-tenancy thread whose guest already has a thread in this office cannot be
+			// adopted without merging two histories; it is left unowned and reported.
 			const result = sqlite
-				.prepare(`UPDATE "Conversation" SET "officeId" = ? WHERE "officeId" IS NULL`)
-				.run(officeId);
+				.prepare(
+					`UPDATE "Conversation" SET "officeId" = ? WHERE "officeId" IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM "Conversation" AS "owned"
+               WHERE "owned"."officeId" = ? AND "owned"."pipe" = "Conversation"."pipe" AND "owned"."guestId" = "Conversation"."guestId"
+             )`,
+				)
+				.run(officeId, officeId);
 			return result.changes;
 		},
 

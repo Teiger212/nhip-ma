@@ -11,6 +11,8 @@
 - **Pipe-to-office mapping.** `PipeConnection` (pipe + vendor id of the number or OA → office) replaces `INBOX_OWNER_USER_ID`. Webhook events carry `pipeExternalId` (WhatsApp `phone_number_id`, Zalo OA id) and are filed under the office that owns it; inbound on an unconnected pipe is dropped with a log line. `pnpm --filter saas pipe:connect` sets a mapping.
 - **Walk office.** `pnpm seed` creates organization `walk-office` with the walk user as owner and active organization, and files the invented threads under it.
 - **Home.** `/home` is enabled in the sidebar: the five funnel stages as cards, closings and lost showing "Connect your CRM", the rest and response time marked as coming next. No number on the screen looks like a fact yet.
+- **Office assignment (ADR 0010).** The gate reads the operator's memberships on every request and never the session's active organization (a client-writable field); none is `403 no_office`, more than one `403 ambiguous_office`. Thread identity is (office, pipe, guest) with a unique index on the triple, so the same guest at two offices is two threads. Each message records the office endpoint it travelled through; a live send is refused with `409 pipe_not_configured` when the thread's number is not the one the credentials belong to (`ZALO_OA_ID` names the Zalo OA). Public sign-up is closed, operators cannot create organizations, and accepting a second office's invitation is refused. The seed adds `admin@nhip.local` (platform admin, owner of the walk office); the sidebar shows **Admin** for platform admins.
+- GPT-6-Astra architecture audit recorded in `reports/2026-09-20-gpt6-astra-architecture-audit.md`; its tenancy findings are addressed here, the send-contract findings go to the next PR.
 
 ## 2026-09-18
 

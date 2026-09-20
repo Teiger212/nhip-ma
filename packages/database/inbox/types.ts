@@ -67,6 +67,11 @@ export type Message = {
 	at: string;
 	vendorMessageId: string | null;
 	mock?: boolean;
+	/**
+	 * The office's number or OA this message travelled through (ADR 0010): what the guest
+	 * wrote to, or what the reply went out on. `null` for dev injections and old files.
+	 */
+	pipeExternalId: string | null;
 	/** Empty for office messages: they are never translated back (ADR 0007). */
 	translations: Translations;
 };
@@ -137,7 +142,10 @@ export type InboxStore = {
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
 	/** Files the message under `officeId`; a thread that already has an office keeps it. */
 	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
-	/** Give every thread without an office (pre-tenancy files) to this one. Returns how many. */
+	/**
+	 * Give every thread without an office (pre-tenancy files) to this one, except a thread
+	 * whose guest already has one there. Returns how many were adopted.
+	 */
 	adoptUnownedThreads: (officeId: string) => Promise<number>;
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;

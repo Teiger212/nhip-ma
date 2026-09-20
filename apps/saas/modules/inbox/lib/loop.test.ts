@@ -14,7 +14,7 @@ vi.mock("@repo/auth", () => ({
 }));
 
 vi.mock("@repo/database", () => ({
-	getFirstOrganizationMembershipForUser: vi.fn(async () => null),
+	getOrganizationMembershipsForUser: vi.fn(async () => [{ organizationId: "walk-office" }]),
 }));
 
 import { auth } from "@repo/auth";

@@ -28,6 +28,7 @@ function conv(
 				text: `hello from ${partial.guestName}`,
 				at,
 				vendorMessageId: null,
+				pipeExternalId: null,
 				translations: {},
 			},
 		],

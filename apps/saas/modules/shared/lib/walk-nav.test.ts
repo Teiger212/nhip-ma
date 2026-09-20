@@ -11,6 +11,24 @@ describe("buildWalkNav", () => {
 		expect(items.find((item) => item.id === "home")?.isActive).toBe(false);
 	});
 
+	it("Admin is listed only for a platform admin, and only then can be active", () => {
+		expect(buildWalkNav("/admin/organizations").map((item) => item.id)).toEqual([
+			"home",
+			"inbox",
+			"international",
+		]);
+		const admin = buildWalkNav("/admin/organizations", { isAdmin: true });
+		expect(admin.map((item) => item.id)).toEqual(["home", "inbox", "international", "admin"]);
+		expect(admin.find((item) => item.id === "admin")).toMatchObject({
+			href: "/admin/organizations",
+			isActive: true,
+			disabled: false,
+		});
+		expect(
+			buildWalkNav("/vi/inbox", { isAdmin: true }).find((item) => item.id === "admin")?.isActive,
+		).toBe(false);
+	});
+
 	it("Home is the numbers screen at /home, in either locale", () => {
 		expect(buildWalkNav("/home").find((item) => item.id === "home")?.isActive).toBe(true);
 		expect(buildWalkNav("/vi/home").find((item) => item.id === "home")?.isActive).toBe(true);

@@ -44,7 +44,7 @@ export async function seedInbox(officeId: string): Promise<Conversation[]> {
 	const { store } = getRuntime();
 	const result: Conversation[] = [];
 	for (const thread of DEMO_THREADS) {
-		const id = conversationId(thread.pipe, thread.guestId);
+		const id = conversationId(officeId, thread.pipe, thread.guestId);
 		const existing = await store.getConversation(id);
 		if (existing) {
 			result.push(existing);

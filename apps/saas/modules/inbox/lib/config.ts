@@ -35,6 +35,7 @@ const envSchema = z
 		WHATSAPP_PHONE_NUMBER_ID: trimmed,
 		ZALO_OA_ACCESS_TOKEN: trimmed,
 		ZALO_OA_SECRET_KEY: trimmed,
+		ZALO_OA_ID: trimmed,
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
@@ -168,6 +169,8 @@ export type InboxConfig = {
 	zalo: {
 		accessToken?: string;
 		oaSecretKey?: string;
+		/** The OA the token belongs to; when set, sends from any other OA are refused. */
+		oaId?: string;
 	};
 	/**
 	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
@@ -202,6 +205,7 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 		zalo: {
 			accessToken: clean(env.ZALO_OA_ACCESS_TOKEN),
 			oaSecretKey: clean(env.ZALO_OA_SECRET_KEY),
+			oaId: clean(env.ZALO_OA_ID),
 		},
 		drafts: {
 			apiKey: clean(env.DRAFT_API_KEY),

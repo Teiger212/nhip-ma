@@ -12,7 +12,6 @@ const STATEMENTS = [
     "sentAt" DATETIME,
     "updatedAt" DATETIME NOT NULL
   )`,
-	`CREATE UNIQUE INDEX IF NOT EXISTS "Conversation_pipe_guestId_key" ON "Conversation"("pipe", "guestId")`,
 	`CREATE TABLE IF NOT EXISTS "PipeConnection" (
     "pipe" TEXT NOT NULL,
     "externalId" TEXT NOT NULL,
@@ -29,6 +28,7 @@ const STATEMENTS = [
     "vendorMessageId" TEXT,
     "mock" BOOLEAN NOT NULL DEFAULT 0,
     "claimedAt" DATETIME,
+    "pipeExternalId" TEXT,
     CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
   )`,
 	`CREATE INDEX IF NOT EXISTS "Message_conversationId_idx" ON "Message"("conversationId")`,
@@ -92,8 +92,16 @@ const STATEMENTS = [
  */
 const LEGACY_SEND_UNIQUE_INDEX = `DROP INDEX IF EXISTS "Send_conversationId_key"`;
 
-/** Created after the column migrations: a pre-tenancy file has no `officeId` column yet. */
-const OFFICE_INDEX = `CREATE INDEX IF NOT EXISTS "Conversation_officeId_idx" ON "Conversation"("officeId")`;
+/**
+ * Created after the column migrations: a pre-tenancy file has no `officeId` column yet.
+ * One thread per guest per office (ADR 0010) replaces the pre-tenancy one-per-guest rule;
+ * SQLite treats NULLs as distinct, so unowned legacy rows never collide with each other.
+ */
+const OFFICE_INDEXES = [
+	`DROP INDEX IF EXISTS "Conversation_pipe_guestId_key"`,
+	`CREATE INDEX IF NOT EXISTS "Conversation_officeId_idx" ON "Conversation"("officeId")`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS "Conversation_officeId_pipe_guestId_key" ON "Conversation"("officeId", "pipe", "guestId")`,
+];
 const SEND_UNIQUE_INDEX = `CREATE UNIQUE INDEX IF NOT EXISTS "Send_answersMessageId_key" ON "Send"("answersMessageId")`;
 
 /**
@@ -141,6 +149,11 @@ const COLUMN_MIGRATIONS: Array<{ table: string; column: string; ddl: string }> =
 		ddl: `ALTER TABLE "Message" ADD COLUMN "claimedAt" DATETIME`,
 	},
 	{
+		table: "Message",
+		column: "pipeExternalId",
+		ddl: `ALTER TABLE "Message" ADD COLUMN "pipeExternalId" TEXT`,
+	},
+	{
 		table: "Draft",
 		column: "answersMessageId",
 		ddl: `ALTER TABLE "Draft" ADD COLUMN "answersMessageId" TEXT`,
@@ -186,7 +199,9 @@ export function ensureInboxSchema(database: Database.Database): void {
 			database.exec(`ALTER TABLE "${drop.table}" DROP COLUMN "${drop.column}"`);
 		}
 	}
-	database.exec(OFFICE_INDEX);
+	for (const sql of OFFICE_INDEXES) {
+		database.exec(sql);
+	}
 	database.exec(LEGACY_SEND_UNIQUE_INDEX);
 	for (const sql of BACKFILL_ANSWERS) {
 		database.exec(sql);

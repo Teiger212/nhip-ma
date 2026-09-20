@@ -84,6 +84,12 @@ test("inbound on a connected pipe is filed under that office and stays there", a
 	expect(a[0].officeId).toBe("office-a");
 	expect(a[0].unansweredInboundId).toBe(a[0].messages[0].id);
 	expect(a[0].oneShot?.language).toBe("vi");
+	// Each message remembers the office endpoint it arrived on (ADR 0010).
+	expect(a[0].messages[0].pipeExternalId).toBe("oa-1");
+	expect(b[0].messages[0].pipeExternalId).toBe("oa-2");
+	// Thread identity carries the office: the ids differ even for the same pipe.
+	expect(a[0].id).toBe("office-a:zalo:guest-1");
+	expect(b[0].id).toBe("office-b:zalo:guest-2");
 });
 
 test("a bad signature is refused before anything is filed", async () => {

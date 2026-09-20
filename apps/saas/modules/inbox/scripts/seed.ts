@@ -5,6 +5,7 @@ import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
 import {
 	canUseKitAuthDatabase,
+	WALK_ADMIN_EMAIL,
 	WALK_OFFICE_ID,
 	WALK_USER_EMAIL,
 	WALK_USER_PASSWORD,
@@ -25,12 +26,16 @@ async function main(): Promise<void> {
 		console.info("  pnpm --filter @repo/database push");
 		console.info("  pnpm seed\n");
 	} else {
-		const { seedWalkUser } = await import("./seed-walk-user");
+		const { seedWalkAdmin, seedWalkUser } = await import("./seed-walk-user");
 		const { seedWalkOffice } = await import("./seed-walk-office");
 		const walkUser = await seedWalkUser();
+		const walkAdmin = await seedWalkAdmin();
 		const walkOffice = await seedWalkOffice();
 		console.info(
-			`Walk login ${walkUser === "exists" ? "already exists" : "created"}: ${WALK_USER_EMAIL} / ${WALK_USER_PASSWORD}`,
+			`Agent login ${walkUser === "exists" ? "already exists" : "created"}: ${WALK_USER_EMAIL} / ${WALK_USER_PASSWORD}`,
+		);
+		console.info(
+			`Admin login ${walkAdmin === "exists" ? "already exists" : "created"}: ${WALK_ADMIN_EMAIL} / ${WALK_USER_PASSWORD} (platform admin, owner of the walk office)`,
 		);
 		console.info(
 			`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}\n`,
@@ -40,7 +45,7 @@ async function main(): Promise<void> {
 	const existing = (
 		await Promise.all(
 			DEMO_THREADS.map((thread) =>
-				store.getConversation(conversationId(thread.pipe, thread.guestId)),
+				store.getConversation(conversationId(WALK_OFFICE_ID, thread.pipe, thread.guestId)),
 			),
 		)
 	).filter(Boolean).length;

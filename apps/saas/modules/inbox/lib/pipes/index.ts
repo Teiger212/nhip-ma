@@ -24,6 +24,13 @@ export type PipeAdapter = {
 	parseInbound(body: unknown): InboundEvent[];
 	/** Vendor rules on when a free-form send is allowed (WhatsApp's 24h window). */
 	sendWindow(conversation: Conversation, now?: number): WindowState;
+	/**
+	 * Whether this deployment's credentials can send from the office's number or OA the
+	 * guest wrote to (ADR 0010). Credentials are process-wide for the pilot, so a thread
+	 * that arrived on any other endpoint must be refused rather than answered from the
+	 * wrong identity.
+	 */
+	ownsEndpoint(pipeExternalId: string, config: InboxConfig): boolean;
 	/** Talks to the vendor. Only called when the send mode is live. */
 	send(input: { to: string; text: string; config: InboxConfig }): Promise<SendResult>;
 };
@@ -34,6 +41,7 @@ const whatsapp: PipeAdapter = {
 		verifyWhatsAppSignature(rawBody, headers.get("x-hub-signature-256"), config.whatsapp.appSecret),
 	parseInbound: parseWhatsAppWebhook,
 	sendWindow: (conversation, now) => whatsappWindowState(conversation, now),
+	ownsEndpoint: (pipeExternalId, config) => config.whatsapp.phoneNumberId === pipeExternalId,
 	send: async ({ to, text, config }) => {
 		const { accessToken, phoneNumberId } = config.whatsapp;
 		if (!accessToken || !phoneNumberId) {
@@ -51,6 +59,9 @@ const zalo: PipeAdapter = {
 		verifyZaloSignature(rawBody, headers.get("x-zevent-signature"), config.zalo.oaSecretKey),
 	parseInbound: parseZaloWebhook,
 	sendWindow: () => ({ open: true, reason: null }),
+	// Zalo's token is per OA; ZALO_OA_ID says which one. Unset means "not checked".
+	ownsEndpoint: (pipeExternalId, config) =>
+		!config.zalo.oaId || config.zalo.oaId === pipeExternalId,
 	send: async ({ to, text, config }) => {
 		const accessToken = config.zalo.accessToken;
 		if (!accessToken) {

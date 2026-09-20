@@ -1,7 +1,8 @@
-import { createOrganizationWithOwner, getUserByEmail } from "@repo/database";
+import { ensureOrganizationMembership, getUserByEmail } from "@repo/database";
 
 import {
 	canUseKitAuthDatabase,
+	WALK_ADMIN_EMAIL,
 	WALK_OFFICE_ID,
 	WALK_OFFICE_NAME,
 	WALK_OFFICE_SLUG,
@@ -11,8 +12,10 @@ import {
 export type WalkOfficeSeedResult = "created" | "exists" | "skipped";
 
 /**
- * The walk operator's office (ADR 0008): the kit organization with a fixed id, the walk
- * user as its owner, and that office made the user's active one. Idempotent.
+ * The walk office (ADRs 0008, 0010): the kit organization with a fixed id, the walk admin
+ * as its owner and the walk agent as a member, each with that office as their active one.
+ * Idempotent. In the pilot a real office is created the same way by the admin in
+ * `/admin/organizations`, and agents join through its invitation.
  */
 export async function seedWalkOffice(
 	databaseUrl = process.env.DATABASE_URL,
@@ -20,15 +23,17 @@ export async function seedWalkOffice(
 	if (!canUseKitAuthDatabase(databaseUrl)) {
 		return "skipped";
 	}
-	const user = await getUserByEmail(WALK_USER_EMAIL);
-	if (!user) {
-		throw new Error("Seed the walk login before the walk office.");
+	const admin = await getUserByEmail(WALK_ADMIN_EMAIL);
+	const agent = await getUserByEmail(WALK_USER_EMAIL);
+	if (!admin || !agent) {
+		throw new Error("Seed the walk logins before the walk office.");
 	}
-	const result = await createOrganizationWithOwner({
-		id: WALK_OFFICE_ID,
-		name: WALK_OFFICE_NAME,
-		slug: WALK_OFFICE_SLUG,
-		userId: user.id,
+	const organization = { id: WALK_OFFICE_ID, name: WALK_OFFICE_NAME, slug: WALK_OFFICE_SLUG };
+	const owner = await ensureOrganizationMembership({
+		organization,
+		userId: admin.id,
+		role: "owner",
 	});
-	return result.created ? "created" : "exists";
+	await ensureOrganizationMembership({ organization, userId: agent.id, role: "member" });
+	return owner.created ? "created" : "exists";
 }

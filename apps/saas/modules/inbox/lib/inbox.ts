@@ -150,6 +150,17 @@ export type InboxResult =
 /** @deprecated Use InboxResult */
 export type ApproveResult = InboxResult;
 
+/** The office number or OA the guest last wrote to, if the pipe told us. */
+function latestGuestEndpoint(conversation: Conversation): string | null {
+	for (let i = conversation.messages.length - 1; i >= 0; i -= 1) {
+		const message = conversation.messages[i];
+		if (message.direction === "in") {
+			return message.pipeExternalId;
+		}
+	}
+	return null;
+}
+
 const ALREADY_ANSWERED: InboxResult = {
 	ok: false,
 	status: 409,
@@ -185,13 +196,27 @@ export async function approveAndSend(
 		return { ok: false, status: 400, error: "no_draft" };
 	}
 
-	const window = pipeAdapter(conv.pipe).sendWindow(conv);
+	const adapter = pipeAdapter(conv.pipe);
+	const window = adapter.sendWindow(conv);
 	if (!window.open) {
 		return {
 			ok: false,
 			status: 409,
 			error: window.reason,
 			message: window.message,
+		};
+	}
+
+	// The reply goes out on the number the guest wrote to (ADR 0010). With process-wide
+	// credentials, a thread that arrived on any other number cannot be answered from here.
+	const endpoint = latestGuestEndpoint(conv);
+	if (config.sendMode === "live" && endpoint && !adapter.ownsEndpoint(endpoint, config)) {
+		return {
+			ok: false,
+			status: 409,
+			error: "pipe_not_configured",
+			message:
+				"This thread arrived on a number or OA this deployment is not configured to send from.",
 		};
 	}
 
