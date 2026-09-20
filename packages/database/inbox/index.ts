@@ -11,12 +11,14 @@
 export {
 	AnswerStatus,
 	DraftSource,
+	Funnel,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
 	OperatorLanguage,
 	Pipe,
 	RentOrBuy,
+	ResponseTime,
 	Timestamp,
 } from "./schema";
 export type {

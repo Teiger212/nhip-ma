@@ -698,19 +698,30 @@
 	"home": {
 		"title": "Home",
 		"subtitle": "The office's numbers. The same for every operator.",
+		"window": "Last {days} days",
 		"funnel": {
 			"title": "Funnel",
 			"leadsIn": "Leads in",
 			"engaged": "Engaged",
 			"inConversation": "In conversation",
 			"closings": "Closings",
-			"lost": "Lost"
+			"lost": "Lost",
+			"leadsInHint": "Guests who first wrote in during this window.",
+			"noLeads": "No guest has written in during this window.",
+			"ofLeads": "{percent}% of leads in"
 		},
-		"comingNext": "Counted from the inbox in the next build.",
 		"connectCrm": "Connect your CRM",
 		"connectCrmHint": "Closings and lost come from your CRM, never from the chat.",
 		"responseTime": "Response time",
-		"responseTimeHint": "First inbound to first approved send."
+		"responseTimeHint": "First inbound to first approved send.",
+		"median": "median",
+		"p90": "p90 {value}",
+		"answered": "{count, plural, one {# lead answered} other {# leads answered}}",
+		"noResponseTime": "No lead was answered in this window yet.",
+		"denied": {
+			"no_office": "This account does not belong to an office yet, so there is nothing to count.",
+			"ambiguous_office": "This account belongs to more than one office. Ask Nhịp to fix it."
+		}
 	},
 	"inbox": {
 		"brand": "Nhịp",

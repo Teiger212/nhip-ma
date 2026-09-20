@@ -1,4 +1,5 @@
 import type {
+	Funnel,
 	AnswerStatus,
 	DraftSource,
 	GuestLanguage,
@@ -221,5 +222,10 @@ export type InboxStore = {
 	/** The vendor did not answer, or the acknowledgement could not be recorded: `unknown`. */
 	markAnswerUnknown: (answerId: string, reason: string) => Promise<void>;
 	guestInboundText: (id: string) => Promise<string>;
+	/**
+	 * The office funnel (ADR 0002) for leads whose first message landed on or after
+	 * `since`, counted in SQL inside the office; no thread leaves the store for a count.
+	 */
+	funnel: (viewer: InboxViewer, window: { since: Date }) => Promise<Funnel>;
 	close: () => Promise<void>;
 };
