@@ -1,9 +1,7 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+import { resetTestInbox, testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -72,13 +70,13 @@ const fakeAdapter = (followUp: (input: FollowUpInput) => string | null): DraftAd
 
 const followUps: string[] = [];
 
-beforeEach(() => {
+beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
 	followUps.length = 0;
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-loop-"));
+	await resetTestInbox();
 	setRuntimeForTests({
-		store: createInboxStore(path.join(dir, "nhip.db")),
+		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
 		drafts: fakeAdapter((input) => {
 			const guest = input.messages.filter((message) => message.direction === "in");

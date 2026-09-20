@@ -7,7 +7,9 @@ import { PrismaClient } from "../prisma/generated/client";
  * in `DATABASE_URL`: `TEST_DATABASE_URL` when set, else the `DATABASE_URL` database with
  * `_test` appended to its name.
  */
-export function testDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
+type EnvLike = Record<string, string | undefined>;
+
+export function testDatabaseUrl(env: EnvLike = process.env as EnvLike): string {
 	const base = env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/supastarter";
 	const url = env.TEST_DATABASE_URL ?? withDatabaseName(base, (name) => `${name}_test`);
 	if (env.DATABASE_URL && url === env.DATABASE_URL) {
@@ -42,7 +44,7 @@ export async function ensureTestDatabase(url = testDatabaseUrl()): Promise<void>
 			Array<{ ok: number }>
 		>`SELECT 1 AS ok FROM pg_database WHERE datname = ${name}`;
 		if (found.length === 0) {
-			await admin.$executeRawUnsafe(`CREATE DATABASE "${name.replaceAll('"', '""')}"`);
+			await admin.$executeRawUnsafe(`CREATE DATABASE "${name.replace(/"/g, '""')}"`);
 		}
 	} finally {
 		await admin.$disconnect();

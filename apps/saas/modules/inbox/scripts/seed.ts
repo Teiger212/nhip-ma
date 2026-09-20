@@ -2,51 +2,30 @@ import { settleBackgroundWork } from "../lib/background";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
 import {
-	canUseKitAuthDatabase,
 	WALK_ADMIN_EMAIL,
 	WALK_OFFICE_ID,
 	WALK_USER_EMAIL,
 	WALK_USER_PASSWORD,
 } from "../lib/walk-user";
+import { seedWalkOffice } from "./seed-walk-office";
+import { seedWalkAdmin, seedWalkUser } from "./seed-walk-user";
 
 async function main(): Promise<void> {
 	const { store } = getRuntime();
 
-	if (!canUseKitAuthDatabase()) {
-		console.info(
-			"Walk login and office were skipped because DATABASE_URL is not Postgres. Kit NavBar needs Better Auth.",
-		);
-		console.info(
-			"Set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supastarter, then:",
-		);
-		console.info("  brew services start postgresql@16   # or: docker compose up -d postgres");
-		console.info("  pnpm --filter @repo/database generate");
-		console.info("  pnpm --filter @repo/database push");
-		console.info("  pnpm seed\n");
-	} else {
-		const { seedWalkAdmin, seedWalkUser } = await import("./seed-walk-user");
-		const { seedWalkOffice } = await import("./seed-walk-office");
-		const walkUser = await seedWalkUser();
-		const walkAdmin = await seedWalkAdmin();
-		const walkOffice = await seedWalkOffice();
-		console.info(
-			`Agent login ${walkUser === "exists" ? "already exists" : "created"}: ${WALK_USER_EMAIL} / ${WALK_USER_PASSWORD}`,
-		);
-		console.info(
-			`Admin login ${walkAdmin === "exists" ? "already exists" : "created"}: ${WALK_ADMIN_EMAIL} / ${WALK_USER_PASSWORD} (platform admin, owner of the walk office)`,
-		);
-		console.info(
-			`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}\n`,
-		);
-	}
+	const walkUser = await seedWalkUser();
+	const walkAdmin = await seedWalkAdmin();
+	const walkOffice = await seedWalkOffice();
+	console.info(
+		`Agent login ${walkUser === "exists" ? "already exists" : "created"}: ${WALK_USER_EMAIL} / ${WALK_USER_PASSWORD}`,
+	);
+	console.info(
+		`Admin login ${walkAdmin === "exists" ? "already exists" : "created"}: ${WALK_ADMIN_EMAIL} / ${WALK_USER_PASSWORD} (platform admin, owner of the walk office)`,
+	);
+	console.info(
+		`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}\n`,
+	);
 
-	// Files written before office tenancy carry threads with no office. The walk office
-	// takes them first, so the seed below finds them instead of writing the same guests
-	// again, and nothing disappears from the queue after an upgrade.
-	const adopted = await store.adoptUnownedThreads(WALK_OFFICE_ID);
-	if (adopted > 0) {
-		console.info(`${adopted} thread(s) without an office now belong to ${WALK_OFFICE_ID}.`);
-	}
 	const owned = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
 	const existing = DEMO_THREADS.filter((thread) =>
 		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
@@ -61,13 +40,15 @@ async function main(): Promise<void> {
 	}
 	const created = conversations.length - existing;
 	console.info(
-		`\n${conversations.length} demo threads in ${store.filePath}` +
+		`\n${conversations.length} demo threads in ${WALK_OFFICE_ID}` +
 			(existing ? ` (wrote ${created}, skipped ${existing} existing)` : " (fresh write)"),
 	);
-	console.info("Re-run skips threads that already exist. Delete data/nhip.db for a fresh set.");
+	console.info(
+		"Re-run skips threads that already exist. Delete the office's threads in the database for a fresh set.",
+	);
 	console.info("Open http://localhost:3010 — sign in, then Inbox. Nothing here is a real guest.");
 	// Translations (ADR 0007) run in the background after each inbound; let them land
-	// before the file is closed under them.
+	// before the connection is released under them.
 	await settleBackgroundWork();
 	await store.close();
 }

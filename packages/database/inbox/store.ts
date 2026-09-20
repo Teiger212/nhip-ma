@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from "../prisma/generated/client";
 import {
 	AnswerStatus,
 	DbMessageSource,
+	type Funnel,
 	GuestLanguage,
 	MessageSource,
 	OperatorLanguage,
@@ -15,7 +16,6 @@ import type {
 	BeginAnswerResult,
 	Conversation,
 	Draft,
-	Funnel,
 	InboundEvent,
 	InboxStore,
 	InboxViewer,
@@ -197,7 +197,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		unansweredInboundId,
 		oneShot,
 		answers,
-		lastAnswer: answers.at(-1) ?? null,
+		lastAnswer: answers.length > 0 ? answers[answers.length - 1] : null,
 		updatedAt: iso(record.updatedAt),
 	};
 }

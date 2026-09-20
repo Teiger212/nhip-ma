@@ -1,7 +1,4 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -9,6 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
 import { peekTestRuntime, setRuntimeForTests } from "../runtime";
+import { resetTestInbox, testDb } from "../test-store";
 import { handleInboundWebhook } from "./webhook";
 
 /**
@@ -37,10 +35,10 @@ function zaloRequest(guestId: string, text: string, oaId = "oa-1"): Request {
 	});
 }
 
-beforeEach(() => {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-webhook-"));
+beforeEach(async () => {
+	await resetTestInbox();
 	setRuntimeForTests({
-		store: createInboxStore(path.join(dir, "nhip.db")),
+		store: createInboxStore(testDb),
 		config: mockInboxConfig({ zalo: { oaSecretKey: OA_SECRET } }),
 		drafts: noDraftAdapter,
 	});

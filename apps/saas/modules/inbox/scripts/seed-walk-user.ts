@@ -2,7 +2,6 @@ import { hashPassword } from "@repo/auth/lib/password";
 import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
 
 import {
-	canUseKitAuthDatabase,
 	WALK_ADMIN_EMAIL,
 	WALK_ADMIN_NAME,
 	WALK_USER_EMAIL,
@@ -10,16 +9,13 @@ import {
 	WALK_USER_PASSWORD,
 } from "../lib/walk-user";
 
-export type WalkUserSeedResult = "created" | "exists" | "skipped";
+export type WalkUserSeedResult = "created" | "exists";
 
-async function seedLogin(
-	login: { email: string; name: string; role: "admin" | "user" },
-	databaseUrl = process.env.DATABASE_URL,
-): Promise<WalkUserSeedResult> {
-	if (!canUseKitAuthDatabase(databaseUrl)) {
-		return "skipped";
-	}
-
+async function seedLogin(login: {
+	email: string;
+	name: string;
+	role: "admin" | "user";
+}): Promise<WalkUserSeedResult> {
 	const existing = await getUserByEmail(login.email);
 	if (existing) {
 		return "exists";
@@ -49,15 +45,11 @@ async function seedLogin(
 }
 
 /** The agent login. */
-export async function seedWalkUser(
-	databaseUrl = process.env.DATABASE_URL,
-): Promise<WalkUserSeedResult> {
-	return seedLogin({ email: WALK_USER_EMAIL, name: WALK_USER_NAME, role: "user" }, databaseUrl);
+export async function seedWalkUser(): Promise<WalkUserSeedResult> {
+	return seedLogin({ email: WALK_USER_EMAIL, name: WALK_USER_NAME, role: "user" });
 }
 
 /** The platform admin login (ADR 0010): the account that creates offices and invites agents. */
-export async function seedWalkAdmin(
-	databaseUrl = process.env.DATABASE_URL,
-): Promise<WalkUserSeedResult> {
-	return seedLogin({ email: WALK_ADMIN_EMAIL, name: WALK_ADMIN_NAME, role: "admin" }, databaseUrl);
+export async function seedWalkAdmin(): Promise<WalkUserSeedResult> {
+	return seedLogin({ email: WALK_ADMIN_EMAIL, name: WALK_ADMIN_NAME, role: "admin" });
 }

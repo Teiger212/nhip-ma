@@ -1,9 +1,7 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
 import { createInboxStore, Pipe } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+import { resetTestInbox, testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -81,12 +79,12 @@ const WALK_SESSION = {
 	user: { id: "walk-user" },
 };
 
-beforeEach(() => {
+beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
+	await resetTestInbox();
 	setRuntimeForTests({
-		store: createInboxStore(path.join(dir, "nhip.db")),
+		store: createInboxStore(testDb),
 		config: mockInboxConfig({ whatsapp: { verifyToken: "verify-me" } }),
 		drafts: noDraftAdapter,
 	});
