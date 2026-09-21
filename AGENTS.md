@@ -9,7 +9,7 @@ Explicit user instructions win; if a documented command fails, report it rather 
 ## Stack
 
 - Next.js App Router, React, TypeScript, Node.js 22+, and pnpm workspaces
-- Turborepo, oRPC, Hono, Better Auth, and Prisma (kit auth) plus a hand-written SQLite store for the inbox
+- Turborepo, oRPC, Hono, Better Auth, and Prisma for auth and the inbox alike (ADR 0012)
 - Tailwind CSS, Shadcn-style components, and Base UI (`@base-ui/react`)
 - React Hook Form, Zod 4, TanStack Query, next-intl, Vitest, Playwright, Oxlint, and Oxfmt
 
@@ -21,8 +21,8 @@ Copy `.env.local.example` to `.env.local`. For local development set
 `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"` and
 `NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET` (32+
 characters) and a dummy `RESEND_API_KEY` so password login can import Resend.
-Auth sessions need local Postgres. Inbox threads stay in repo-root SQLite
-`data/nhip.db`. A postgres `DATABASE_URL` is ignored by the inbox store.
+Everything needs local Postgres: auth sessions and inbox threads share `DATABASE_URL`.
+Tests use `supastarter_test` on the same server (`TEST_DATABASE_URL` overrides it).
 
 ```bash
 brew services start postgresql@16   # or: docker compose up -d postgres
@@ -155,9 +155,10 @@ oRPC modules live under `packages/api/modules`. Procedures use `publicProcedure`
 `protectedProcedure`, or `adminProcedure`, with route metadata, Zod input validation,
 middleware, and a handler. Follow `packages/api/modules/organizations/procedures/`.
 
-Keep database access in `packages/database`. Prisma owns the Better Auth schema and
-migrations (`prisma/schema.prisma`); the inbox lives in `packages/database/inbox` as
-hand-written SQLite DDL plus zod schemas, with no ORM. The database package scripts are:
+Keep database access in `packages/database`. Prisma owns the whole schema
+(`prisma/schema.prisma`): the Better Auth tables and the `inbox_*` tables (ADR 0012). The
+inbox store in `packages/database/inbox` is the only writer of the inbox tables, with zod
+vocabularies for the open-ended fields. The database package scripts are:
 
 ```bash
 pnpm --filter @repo/database generate

@@ -1,8 +1,4 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
-import { createInboxStore, sqliteFilePath, sqlitePathFromEnv } from "@repo/database/inbox";
+import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
 import { mockInboxConfig } from "./config";
@@ -10,6 +6,7 @@ import { oneShot } from "./draft";
 import { noDraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
+import { resetTestInbox, testDb } from "./test-store";
 import { WALK_OFFICE_ID } from "./walk-user";
 
 afterEach(async () => {
@@ -50,12 +47,11 @@ test("demo threads extract; Japanese paperwork does not invent law", () => {
 	expect(vi.qualification.bedsOrHousehold).toBe("2 bed");
 });
 
-test("seed finds an adopted pre-tenancy thread by guest and does not write it twice", async () => {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
-	const store = createInboxStore(path.join(dir, "nhip.db"));
+test("seed finds an existing thread by guest and does not write it twice", async () => {
+	await resetTestInbox();
+	const store = createInboxStore(testDb);
 	setRuntimeForTests({ store, config: mockInboxConfig(), drafts: noDraftAdapter });
-	// A thread for Thảo that an earlier office adopted keeps its old-style id.
-	const legacy = await store.upsertInbound(
+	const earlier = await store.upsertInbound(
 		{
 			pipe: "zalo",
 			source: "guest",
@@ -69,7 +65,7 @@ test("seed finds an adopted pre-tenancy thread by guest and does not write it tw
 	const seeded = await seedInbox(WALK_OFFICE_ID);
 	expect(seeded).toHaveLength(4);
 	const thao = seeded.find((conversation) => conversation.guestId === "demo-vi-tayho");
-	expect(thao?.id).toBe(legacy.id);
+	expect(thao?.id).toBe(earlier.id);
 	expect(thao?.messages.map((message) => message.text)).toEqual(["old message"]);
 	expect(await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID })).toHaveLength(
 		4,
@@ -77,9 +73,9 @@ test("seed finds an adopted pre-tenancy thread by guest and does not write it tw
 });
 
 test("seed writes invented threads once", async () => {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-"));
+	await resetTestInbox();
 	setRuntimeForTests({
-		store: createInboxStore(path.join(dir, "nhip.db")),
+		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
 		drafts: noDraftAdapter,
 	});
@@ -106,34 +102,4 @@ test("seed writes invented threads once", async () => {
 	const again = await seedInbox(WALK_OFFICE_ID);
 	expect(again.map((conversation) => conversation.id).sort(byId)).toEqual(firstIds);
 	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(4);
-});
-
-test("sqlite file URLs resolve under the repo root", () => {
-	const prev = process.env.DATABASE_URL;
-	try {
-		process.env.DATABASE_URL = "file:./data/nhip.db";
-		const resolved = sqlitePathFromEnv();
-		let repoRoot = process.cwd();
-		while (!fs.existsSync(path.join(repoRoot, "pnpm-workspace.yaml"))) {
-			const parent = path.dirname(repoRoot);
-			if (parent === repoRoot) {
-				break;
-			}
-			repoRoot = parent;
-		}
-		expect(resolved).toBe(path.join(repoRoot, "data", "nhip.db"));
-		expect(path.basename(path.dirname(resolved))).toBe("data");
-		expect(path.basename(resolved)).toBe("nhip.db");
-		expect(path.isAbsolute(resolved)).toBe(true);
-		expect(sqliteFilePath("/tmp/nhip-absolute.db")).toBe("/tmp/nhip-absolute.db");
-
-		process.env.DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/supastarter";
-		expect(sqlitePathFromEnv()).toBe(path.join(repoRoot, "data", "nhip.db"));
-	} finally {
-		if (prev === undefined) {
-			delete process.env.DATABASE_URL;
-		} else {
-			process.env.DATABASE_URL = prev;
-		}
-	}
 });

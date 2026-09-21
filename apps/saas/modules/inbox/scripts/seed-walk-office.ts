@@ -1,7 +1,6 @@
 import { ensureOrganizationMembership, getUserByEmail } from "@repo/database";
 
 import {
-	canUseKitAuthDatabase,
 	WALK_ADMIN_EMAIL,
 	WALK_OFFICE_ID,
 	WALK_OFFICE_NAME,
@@ -9,7 +8,7 @@ import {
 	WALK_USER_EMAIL,
 } from "../lib/walk-user";
 
-export type WalkOfficeSeedResult = "created" | "exists" | "skipped";
+export type WalkOfficeSeedResult = "created" | "exists";
 
 /**
  * The walk office (ADRs 0008, 0010): the kit organization with a fixed id, the walk admin
@@ -17,12 +16,7 @@ export type WalkOfficeSeedResult = "created" | "exists" | "skipped";
  * Idempotent. In the pilot a real office is created the same way by the admin in
  * `/admin/organizations`, and agents join through its invitation.
  */
-export async function seedWalkOffice(
-	databaseUrl = process.env.DATABASE_URL,
-): Promise<WalkOfficeSeedResult> {
-	if (!canUseKitAuthDatabase(databaseUrl)) {
-		return "skipped";
-	}
+export async function seedWalkOffice(): Promise<WalkOfficeSeedResult> {
 	const admin = await getUserByEmail(WALK_ADMIN_EMAIL);
 	const agent = await getUserByEmail(WALK_USER_EMAIL);
 	if (!admin || !agent) {

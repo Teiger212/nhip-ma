@@ -132,13 +132,8 @@ export type Conversation = {
 	pipe: Pipe;
 	guestId: string;
 	guestName: string | null;
-	/**
-	 * The office (ADR 0008) this thread belongs to: the kit organization's id. Threads are
-	 * shared within the office and invisible outside it. `null` only on files written
-	 * before tenancy; `adoptUnownedThreads` gives those an office, and nothing new is
-	 * written without one.
-	 */
-	officeId: string | null;
+	/** The office (ADR 0008) this thread belongs to: the kit organization's id. Required (ADR 0012). */
+	officeId: string;
 	messages: Message[];
 	lastGuestInboundAt: string | null;
 	/** When the office last sent through Nhịp. Not terminal: the guest may write back. */
@@ -185,16 +180,10 @@ export type PipeConnection = {
 export type InboxViewer = { userId: string; officeId: string };
 
 export type InboxStore = {
-	filePath: string;
 	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
 	/** Files the message under `officeId`; a thread that already has an office keeps it. */
 	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
-	/**
-	 * Give every thread without an office (pre-tenancy files) to this one, except a thread
-	 * whose guest already has one there. Returns how many were adopted.
-	 */
-	adoptUnownedThreads: (officeId: string) => Promise<number>;
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
 	listPipeConnections: () => Promise<PipeConnection[]>;
@@ -227,5 +216,6 @@ export type InboxStore = {
 	 * `since`, counted in SQL inside the office; no thread leaves the store for a count.
 	 */
 	funnel: (viewer: InboxViewer, window: { since: Date }) => Promise<Funnel>;
+	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

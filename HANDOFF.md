@@ -31,13 +31,19 @@ created by `pnpm seed` when `DATABASE_URL` is Postgres, password `walkthrough`:
 admin area where offices are created and agents invited). There is no auth bypass, and
 public sign-up is closed (ADR 0010).
 
-`pnpm seed` writes four invented threads (Minji, Yuki, Alexei, Thảo) to `data/nhip.db`
-once. Delete the file for a fresh set. `POST /dev/inbound` injects an inbound locally
-(404 in production). Default `SEND_MODE=mock`; only the exact value `live` talks to a
-vendor, and live needs the webhook secrets set or inbound is refused.
+`pnpm seed` writes four invented threads (Minji, Yuki, Alexei, Thảo) into the walk office
+once. Delete that office's threads in the database for a fresh set. `POST /dev/inbound`
+injects an inbound locally (404 in production). Default `SEND_MODE=mock`; only the exact
+value `live` talks to a vendor, and live needs the webhook secrets set or inbound is
+refused.
+
+Tests need a second database on the same server, `supastarter_test` by default
+(`TEST_DATABASE_URL` overrides it). The vitest global setup creates it and pushes the
+schema; every store test truncates the inbox tables before it runs. A schema change that
+would lose data there is not accepted silently: `dropdb supastarter_test` and run again.
 
 Gates before a commit: `pnpm format`, `pnpm lint`, `pnpm type-check`, `pnpm --filter
-saas test`. Do not commit untracked local scripts or `data/`.
+saas test`. Do not commit untracked local scripts.
 
 ## Key paths
 
@@ -56,7 +62,7 @@ saas test`. Do not commit untracked local scripts or `data/`.
 | `apps/saas/modules/inbox/lib/{config,runtime}.ts`                        | Validated config, runtime singleton                |
 | `apps/saas/app/api/conversations/`                                       | List, detail, approve, draft (session-gated)       |
 | `apps/saas/app/webhooks/{whatsapp,zalo}/route.ts`                        | Inbound (signature-verified, fail closed)          |
-| `packages/database/inbox/`                                               | SQLite store, DDL, zod vocabulary                  |
+| `packages/database/inbox/`                                               | Prisma inbox store, zod vocabulary, test helpers   |
 | `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                                     |
 | `apps/saas/modules/shared/lib/walk-nav.ts`                               | Sidebar rows                                       |
 | `apps/saas/proxy.ts`, `apps/saas/modules/i18n/routing.ts`                | Locale routing (`en`, `vi`)                        |
@@ -82,6 +88,8 @@ saas test`. Do not commit untracked local scripts or `data/`.
   invisible outside it. Webhooks file under the office that owns the pipe
   (`pnpm --filter saas pipe:connect`), inbound on an unconnected pipe is dropped, and a
   reply is refused when the thread's number is not the one the credentials belong to.
+  Every thread has an office from birth and the inbox tables live in the same Postgres
+  as the office (ADR 0012); deleting an office deletes its threads.
 - Never message real guests or agents from a dev or demo environment. Never put customer
   data on a public link.
 - The operator note never invents Vietnamese law.
@@ -131,5 +139,6 @@ The office itself (ADR 0008) is created in-app, by seed or signup, not with any 
   reverse proxy, set `advanced.ipAddress.ipAddressHeaders` and `trustedProxies` in
   `packages/auth/auth.ts` so limits key on the client IP. Only configure the social
   providers the office will use; unconfigured ones are not offered.
-- Run on one long-lived Node process with a real disk. The inbox store is SQLite and does
-  not run on serverless functions.
+- Before the first production deploy, baseline the schema with `prisma migrate` (ADR 0012
+  keeps `db push` for development only) and point `DATABASE_URL` at the production
+  Postgres. The inbox and the auth tables live in the same database.

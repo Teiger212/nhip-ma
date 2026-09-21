@@ -8,7 +8,7 @@ Local development uses invented threads only. Nothing here is a real guest. Prod
 
 ## Run it locally
 
-SaaS listens on **port 3010**. Auth sessions use local Postgres. Inbox threads live in repo-root SQLite `data/nhip.db`.
+SaaS listens on **port 3010**. Auth sessions and inbox threads live in the same local Postgres.
 
 ```bash
 pnpm install
@@ -29,7 +29,7 @@ Open:
 
 Sign in as `walk@nhip.local` / `walkthrough`. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send).
 
-`pnpm seed` writes those threads into `data/nhip.db` and creates the walk user when `DATABASE_URL` is Postgres. Re-run skips existing IDs. Delete `data/nhip.db` for a fresh thread set. Default `SEND_MODE=mock`.
+`pnpm seed` writes those threads into the walk office and creates the walk logins. Re-run skips existing threads. Delete the office's threads in the database for a fresh set. Default `SEND_MODE=mock`.
 
 The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) requires a signed-in session and returns 401 otherwise. Approve claims the thread atomically before sending, so a double tap sends once. Inbound webhooks are rejected until `WHATSAPP_APP_SECRET` / `ZALO_OA_SECRET_KEY` are set. CI runs lint, format, type-check, and tests on every PR (`.github/workflows/ci.yml`).
 

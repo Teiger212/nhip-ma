@@ -7,9 +7,7 @@ import { getRuntime } from "../lib/runtime";
  * filed under that office. Until a pipe is connected, its inbounds are dropped.
  *
  *   pnpm --filter saas pipe:connect -- --pipe whatsapp --external-id <phone_number_id> --office <organization id>
- *   pnpm --filter saas pipe:connect -- --pipe zalo --external-id <oa id> --office <organization id> --adopt-unowned
- *
- * `--adopt-unowned` also gives every thread from before tenancy to that office.
+ *   pnpm --filter saas pipe:connect -- --pipe zalo --external-id <oa id> --office <organization id>
  */
 function arg(name: string): string | undefined {
 	const index = process.argv.indexOf(`--${name}`);
@@ -22,16 +20,12 @@ async function main(): Promise<void> {
 	const officeId = arg("office");
 	if (!pipe.success || !externalId || !officeId) {
 		console.error(
-			`usage: --pipe (${Pipe.options.join("|")}) --external-id <vendor id of the office's number or OA> --office <organization id> [--adopt-unowned]`,
+			`usage: --pipe (${Pipe.options.join("|")}) --external-id <vendor id of the office's number or OA> --office <organization id>`,
 		);
 		process.exit(2);
 	}
 	const { store } = getRuntime();
 	await store.connectPipe({ pipe: pipe.data, externalId, officeId });
-	if (process.argv.includes("--adopt-unowned")) {
-		const adopted = await store.adoptUnownedThreads(officeId);
-		console.info(`${adopted} thread(s) without an office now belong to ${officeId}.`);
-	}
 	console.info("Pipe connections:");
 	for (const connection of await store.listPipeConnections()) {
 		console.info(`  ${connection.pipe}  ${connection.externalId}  ->  ${connection.officeId}`);

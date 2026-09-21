@@ -38,7 +38,8 @@ pipe_not_configured`) when the thread's number is not the one this deployment's
 - `Conversation.id` for new threads is `office:pipe:guest`; the unique index is on the
   triple. Pre-tenancy threads keep their `pipe:guest` ids and are adopted by an office
   unless that guest already has a thread there, in which case they stay unowned and are
-  reported.
+  reported. Superseded on this point by ADR 0012: `officeId` is required and there is no
+  adopt path; every thread has an office from birth.
 - `Message.pipeExternalId` is the office's endpoint per message. `ZALO_OA_ID` names the
   OA the Zalo token belongs to; unset means the Zalo check is skipped.
 - The seed creates two logins: the agent (`walk@nhip.local`) and the platform admin

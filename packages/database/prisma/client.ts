@@ -7,12 +7,6 @@ const prismaClientSingleton = () => {
 		throw new Error("DATABASE_URL is not set");
 	}
 
-	if (process.env.DATABASE_URL.startsWith("file:")) {
-		throw new Error(
-			"Postgres Prisma is unused for the inbox SQLite walkthrough. Inbox data lives in packages/database/inbox.",
-		);
-	}
-
 	const adapter = new PrismaPg({
 		connectionString: process.env.DATABASE_URL,
 	});

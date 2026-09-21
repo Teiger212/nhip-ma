@@ -1,33 +1,8 @@
-import fs from "node:fs";
-import { createRequire } from "node:module";
-import os from "node:os";
-import path from "node:path";
-
-import { conversationId, createInboxStore } from "@repo/database/inbox";
+import { conversationId } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
-
-// better-sqlite3 is a dependency of @repo/database, not of this app. Resolve it from there
-// so this test can inspect the raw file without adding a native dependency to apps/saas.
-type RawDatabase = {
-	pragma: (sql: string, options?: { simple: boolean }) => unknown;
-	prepare: (sql: string) => {
-		all: () => unknown[];
-		get: () => unknown;
-		run: (...args: unknown[]) => unknown;
-	};
-	exec: (sql: string) => void;
-	close: () => void;
-};
-const requireFromApp = createRequire(import.meta.url);
-const requireFromDatabase = createRequire(requireFromApp.resolve("@repo/database/inbox"));
-const Database = requireFromDatabase("better-sqlite3") as new (file: string) => RawDatabase;
-
-function tempDb(): string {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nhip-store-"));
-	return path.join(dir, "nhip.db");
-}
+import { testDb, testInboxStore } from "./test-store";
 
 const OFFICE = "office-a";
 const OTHER_OFFICE = "office-b";
@@ -51,53 +26,29 @@ const mockSend = (to: string) => ({
 	vendorMessageId: `mock-${to}`,
 });
 
+type Store = Awaited<ReturnType<typeof testInboxStore>>;
+
 /** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
-async function answer(
-	store: ReturnType<typeof createInboxStore>,
-	conversationId: string,
-	inboundId: string,
-	text: string,
-) {
+async function answer(store: Store, conversationId: string, inboundId: string, text: string) {
 	const begun = await store.beginAnswer({ conversationId, inboundId, text, operatorId: "agent-1" });
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
 	return store.completeAnswer(begun.answer.id, mockSend(conversationId.split(":").at(-1) ?? ""));
 }
 
-function indexNames(sqlite: RawDatabase, table: string): string[] {
-	return (sqlite.prepare(`PRAGMA index_list("${table}")`).all() as Array<{ name: string }>).map(
-		(index) => index.name,
-	);
-}
-
-function columnNames(sqlite: RawDatabase, table: string): string[] {
-	return (sqlite.prepare(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>).map(
-		(column) => column.name,
-	);
-}
-
-test("store opens in WAL mode with a busy timeout and one send per guest message", async () => {
-	const store = createInboxStore(tempDb());
-	const sqlite = new Database(store.filePath);
-	expect(sqlite.pragma("journal_mode", { simple: true })).toBe("wal");
-	expect(sqlite.pragma("busy_timeout", { simple: true })).toBe(5000);
-	const indexes = sqlite.prepare(`PRAGMA index_list("Answer")`).all() as Array<{
-		name: string;
-		unique: number;
-	}>;
-	expect(indexes.some((index) => index.name === "Answer_inboundId_key" && index.unique)).toBe(true);
-	const tables = (
-		sqlite.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
-			name: string;
-		}>
-	).map((table) => table.name);
-	expect(tables).not.toContain("Send");
-	expect(tables).not.toContain("Approval");
-	sqlite.close();
+test("one Answer per guest message: two approvals in the same instant let one in", async () => {
+	const store = await testInboxStore();
+	const conv = await store.upsertInbound(inbound("race"), OFFICE);
+	const inboundId = conv.unansweredInboundId!;
+	const input = { conversationId: zalo("race"), inboundId, text: "reply", operatorId: "agent-1" };
+	const [first, second] = await Promise.all([store.beginAnswer(input), store.beginAnswer(input)]);
+	const outcomes = [first, second].map((r) => (r.ok ? "ok" : r.reason)).sort();
+	expect(outcomes).toEqual(["in_progress", "ok"]);
+	expect(await testDb.answer.count({ where: { inboundId } })).toBe(1);
 	await store.close();
 });
 
 test("message ids are unique cuids, not COUNT(*)+1", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	await store.upsertInbound(inbound("g1"), OFFICE);
 	const conv = await store.upsertInbound(inbound("g1"), OFFICE);
 	expect(conv.messages).toHaveLength(2);
@@ -110,7 +61,7 @@ test("message ids are unique cuids, not COUNT(*)+1", async () => {
 });
 
 test("threads belong to one office, are shared inside it and invisible outside it", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	await store.upsertInbound(inbound("ours"), OFFICE);
 	await store.upsertInbound(inbound("theirs"), OTHER_OFFICE);
 
@@ -132,7 +83,7 @@ test("threads belong to one office, are shared inside it and invisible outside i
 });
 
 test("one thread per guest per office: the same guest at two offices never merges", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const atA = await store.upsertInbound(inbound("same-guest", "private A"), OFFICE);
 	const atB = await store.upsertInbound(inbound("same-guest", "private B"), OTHER_OFFICE);
 	expect(atA.id).toBe(zalo("same-guest"));
@@ -149,7 +100,7 @@ test("one thread per guest per office: the same guest at two offices never merge
 });
 
 test("each message remembers the office endpoint it travelled through", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("ep", "hi", "oa-1"), OFFICE);
 	expect(conv.messages[0].pipeExternalId).toBe("oa-1");
 	const sent = await answer(store, conv.id, conv.messages[0].id, "hello");
@@ -162,7 +113,7 @@ test("each message remembers the office endpoint it travelled through", async ()
 });
 
 test("a pipe endpoint maps to the office that owns it", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	expect(await store.officeForPipe("whatsapp", "phone-1")).toBeNull();
 	await store.connectPipe({ pipe: "whatsapp", externalId: "phone-1", officeId: OFFICE });
 	await store.connectPipe({ pipe: "zalo", externalId: "oa-1", officeId: OFFICE });
@@ -181,7 +132,7 @@ test("a pipe endpoint maps to the office that owns it", async () => {
 });
 
 test("your turn is derived from the messages: the guest spoke last and nothing answers it", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const fresh = await store.upsertInbound(inbound("turn"), OFFICE);
 	const firstInbound = fresh.messages[0].id;
 	expect(fresh.unansweredInboundId).toBe(firstInbound);
@@ -210,7 +161,7 @@ test("your turn is derived from the messages: the guest spoke last and nothing a
 });
 
 test("an Answer is on record from approval and carries the send's lifecycle", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("life", "hi", "oa-1"), OFFICE);
 	const inboundId = conv.unansweredInboundId!;
 	const input = { conversationId: zalo("life"), inboundId, text: "reply", operatorId: "agent-1" };
@@ -284,7 +235,7 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 });
 
 test("an Answer of unknown outcome blocks every further approval of that message", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("unknown"), OFFICE);
 	const inboundId = conv.unansweredInboundId!;
 	const input = { conversationId: zalo("unknown"), inboundId, text: "reply", operatorId: null };
@@ -301,7 +252,7 @@ test("an Answer of unknown outcome blocks every further approval of that message
 });
 
 test("your turn reads the Answers, not message order: a guest message mid-send stays open", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("mid", "M1"), OFFICE);
 	const m1 = conv.unansweredInboundId!;
 	const begun = await store.beginAnswer({
@@ -330,7 +281,7 @@ test("your turn reads the Answers, not message order: a guest message mid-send s
 });
 
 test("translations are stored per message per operator language and read back", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("tr", "안녕하세요"), OFFICE);
 	const id = conv.messages[0].id;
 	expect(conv.messages[0].translations).toEqual({});
@@ -343,7 +294,7 @@ test("translations are stored per message per operator language and read back", 
 });
 
 test("the suggested reply records which guest message it answers and where it came from", async () => {
-	const store = createInboxStore(tempDb());
+	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("draft", "Looking to rent in Tay Ho"), OFFICE);
 	const inboundId = conv.unansweredInboundId!;
 	const shot = await store.setOneShot(
@@ -366,183 +317,13 @@ test("the suggested reply records which guest message it answers and where it ca
 	await store.close();
 });
 
-test("a file from before tenancy drops the person column; its threads wait for an office", async () => {
-	const file = tempDb();
-	const legacy = new Database(file);
-	legacy.exec(`CREATE TABLE "Conversation" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "pipe" TEXT NOT NULL,
-    "guestId" TEXT NOT NULL,
-    "guestName" TEXT,
-    "ownerUserId" TEXT,
-    "language" TEXT,
-    "lastGuestInboundAt" DATETIME,
-    "sentAt" DATETIME,
-    "updatedAt" DATETIME NOT NULL
-  )`);
-	legacy.exec(
-		`CREATE UNIQUE INDEX "Conversation_pipe_guestId_key" ON "Conversation"("pipe", "guestId")`,
-	);
-	const insert = legacy.prepare(
-		`INSERT INTO "Conversation" ("id", "pipe", "guestId", "ownerUserId", "updatedAt") VALUES (?, ?, ?, ?, ?)`,
-	);
-	insert.run("zalo:old", "zalo", "old", null, new Date().toISOString());
-	insert.run("zalo:owned", "zalo", "owned", "some-user", new Date().toISOString());
-	insert.run("zalo:taken", "zalo", "taken", null, new Date().toISOString());
-	legacy.close();
-
-	const store = createInboxStore(file);
-	const sqlite = new Database(store.filePath);
-	expect(columnNames(sqlite, "Conversation")).toContain("officeId");
-	expect(columnNames(sqlite, "Conversation")).not.toContain("ownerUserId");
-	expect(indexNames(sqlite, "Conversation")).toContain("Conversation_officeId_pipe_guestId_key");
-	expect(indexNames(sqlite, "Conversation")).not.toContain("Conversation_pipe_guestId_key");
-	sqlite.close();
-
-	// A user id was never an office id: the threads are unowned and invisible to any viewer.
-	const viewer = { userId: "anyone", officeId: OFFICE };
-	expect((await store.getConversation("zalo:old"))?.officeId).toBeNull();
-	expect((await store.getConversation("zalo:owned"))?.officeId).toBeNull();
-	expect(await store.listConversations(viewer)).toEqual([]);
-
-	// The guest "taken" already has a thread in office A, so that legacy thread cannot be
-	// adopted without merging histories; it stays unowned and the other two are adopted.
-	await store.upsertInbound(inbound("taken", "fresh"), OFFICE);
-	expect(await store.adoptUnownedThreads(OFFICE)).toBe(2);
-	expect((await store.listConversations(viewer)).map((c) => c.guestId).sort()).toEqual([
-		"old",
-		"owned",
-		"taken",
-	]);
-	expect((await store.getConversation("zalo:taken"))?.officeId).toBeNull();
-	// An office with no thread for that guest may still adopt it; then nothing is left.
-	expect(await store.adoptUnownedThreads(OTHER_OFFICE)).toBe(1);
-	expect((await store.getConversation("zalo:taken"))?.officeId).toBe(OTHER_OFFICE);
-	expect(await store.adoptUnownedThreads(OTHER_OFFICE)).toBe(0);
-
-	// An adopted legacy thread keeps its old id and receives the guest's next message.
-	const next = await store.upsertInbound(inbound("old", "still here"), OFFICE);
-	expect(next.id).toBe("zalo:old");
-	expect(next.messages.map((m) => m.text)).toEqual(["still here"]);
+test("deleting an office deletes its threads and pipe connections", async () => {
+	const store = await testInboxStore();
+	await store.upsertInbound(inbound("gone"), OFFICE);
+	await store.connectPipe({ pipe: "zalo", externalId: "oa-gone", officeId: OFFICE });
+	await store.upsertInbound(inbound("stays"), OTHER_OFFICE);
+	await testDb.organization.delete({ where: { id: OFFICE } });
+	expect(await store.listConversations()).toHaveLength(1);
+	expect(await store.officeForPipe("zalo", "oa-gone")).toBeNull();
 	await store.close();
-});
-
-test("a file from before the Answer folds its sends into Answers and learns what they answered", async () => {
-	const file = tempDb();
-	const legacy = new Database(file);
-	legacy.exec(`CREATE TABLE "Conversation" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "pipe" TEXT NOT NULL,
-    "guestId" TEXT NOT NULL,
-    "guestName" TEXT,
-    "ownerUserId" TEXT,
-    "language" TEXT,
-    "lastGuestInboundAt" DATETIME,
-    "sentAt" DATETIME,
-    "updatedAt" DATETIME NOT NULL
-  )`);
-	legacy.exec(`CREATE TABLE "Message" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "conversationId" TEXT NOT NULL,
-    "direction" TEXT NOT NULL,
-    "source" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-    "at" DATETIME NOT NULL,
-    "vendorMessageId" TEXT,
-    "mock" BOOLEAN NOT NULL DEFAULT 0
-  )`);
-	legacy.exec(
-		`CREATE TABLE "Draft" ("conversationId" TEXT NOT NULL PRIMARY KEY, "reply" TEXT NOT NULL)`,
-	);
-	legacy.exec(`CREATE TABLE "Approval" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "conversationId" TEXT NOT NULL,
-    "reply" TEXT NOT NULL,
-    "at" DATETIME NOT NULL
-  )`);
-	legacy.exec(`CREATE TABLE "Send" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "conversationId" TEXT NOT NULL,
-    "mock" BOOLEAN NOT NULL,
-    "pipe" TEXT NOT NULL,
-    "to" TEXT NOT NULL,
-    "text" TEXT,
-    "vendorMessageId" TEXT,
-    "at" DATETIME NOT NULL
-  )`);
-	legacy.exec(`CREATE UNIQUE INDEX "Send_conversationId_key" ON "Send"("conversationId")`);
-	const t0 = "2026-09-01T10:00:00.000Z";
-	const t1 = "2026-09-01T11:00:00.000Z";
-	const t2 = "2026-09-02T09:00:00.000Z";
-	legacy
-		.prepare(
-			`INSERT INTO "Conversation" ("id", "pipe", "guestId", "lastGuestInboundAt", "sentAt", "updatedAt") VALUES (?, ?, ?, ?, ?, ?)`,
-		)
-		.run("zalo:legacy", "zalo", "legacy", t2, t1, t2);
-	const insertMessage = legacy.prepare(
-		`INSERT INTO "Message" ("id", "conversationId", "direction", "source", "text", "at") VALUES (?, ?, ?, ?, ?, ?)`,
-	);
-	insertMessage.run("m-in-1", "zalo:legacy", "in", "guest", "hello", t0);
-	insertMessage.run("m-out-1", "zalo:legacy", "out", "nhip", "hi there", t1);
-	insertMessage.run("m-in-2", "zalo:legacy", "in", "guest", "still there?", t2);
-	legacy
-		.prepare(`INSERT INTO "Draft" ("conversationId", "reply") VALUES (?, ?)`)
-		.run("zalo:legacy", "hi there");
-	legacy
-		.prepare(`INSERT INTO "Approval" ("id", "conversationId", "reply", "at") VALUES (?, ?, ?, ?)`)
-		.run("a-1", "zalo:legacy", "hi there", t1);
-	legacy
-		.prepare(
-			`INSERT INTO "Send" ("id", "conversationId", "mock", "pipe", "to", "text", "at") VALUES (?, ?, 1, 'zalo', 'legacy', 'hi there', ?)`,
-		)
-		.run("s-1", "zalo:legacy", t1);
-	legacy.close();
-
-	const store = createInboxStore(file);
-	const sqlite = new Database(store.filePath);
-	const tables = (
-		sqlite.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
-			name: string;
-		}>
-	).map((table) => table.name);
-	expect(tables).toContain("Answer");
-	expect(tables).not.toContain("Send");
-	expect(tables).not.toContain("Approval");
-	expect(columnNames(sqlite, "Message")).not.toContain("claimedAt");
-	sqlite.close();
-
-	// The old send is a sent Answer to the last inbound before it, with the approved text.
-	const conv = await store.getConversation("zalo:legacy");
-	expect(conv?.answers).toHaveLength(1);
-	expect(conv?.lastAnswer).toMatchObject({
-		id: "s-1",
-		inboundId: "m-in-1",
-		text: "hi there",
-		status: "sent",
-		mock: true,
-		pipe: "zalo",
-		to: "legacy",
-		operatorId: null,
-		approvedAt: t1,
-		sentAt: t1,
-	});
-	// The guest who wrote back after that old send is Your turn, which the old rule forbade.
-	expect(conv?.unansweredInboundId).toBe("m-in-2");
-	expect(conv?.sentAt).toBe(t1);
-	expect(conv?.officeId).toBeNull();
-	expect(conv?.messages.map((message) => message.pipeExternalId)).toEqual([null, null, null]);
-	expect(conv?.messages.map((message) => message.translations)).toEqual([{}, {}, {}]);
-	// And it can be answered.
-	const begun = await store.beginAnswer({
-		conversationId: "zalo:legacy",
-		inboundId: "m-in-2",
-		text: "still here",
-		operatorId: null,
-	});
-	expect(begun.ok).toBe(true);
-	// Reopening the file is a no-op: nothing to fold twice.
-	await store.close();
-	const reopened = createInboxStore(file);
-	expect((await reopened.getConversation("zalo:legacy"))?.answers).toHaveLength(2);
-	await reopened.close();
 });

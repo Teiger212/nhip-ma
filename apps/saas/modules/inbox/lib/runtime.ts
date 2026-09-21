@@ -1,4 +1,5 @@
-import { createInboxStore, sqlitePathFromEnv, type InboxStore } from "@repo/database/inbox";
+import { db } from "@repo/database";
+import { createInboxStore, type InboxStore } from "@repo/database/inbox";
 
 import { type InboxConfig, inboxConfigFromEnv, validateInboxEnv } from "./config";
 import { type DraftAdapter, draftAdapterFromConfig } from "./drafts";
@@ -39,7 +40,7 @@ export function getRuntime(): Runtime {
 	if (!g.__nhipRuntime) {
 		const config = resolveConfig();
 		g.__nhipRuntime = {
-			store: createInboxStore(sqlitePathFromEnv()),
+			store: createInboxStore(db),
 			config,
 			drafts: draftAdapterFromConfig(config),
 		};

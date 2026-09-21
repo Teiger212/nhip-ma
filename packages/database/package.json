@@ -5,7 +5,8 @@
 	"types": "./**/.tsx",
 	"exports": {
 		".": "./index.ts",
-		"./inbox": "./inbox/index.ts"
+		"./inbox": "./inbox/index.ts",
+		"./inbox/testing": "./inbox/testing.ts"
 	},
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
@@ -19,13 +20,11 @@
 		"@paralleldrive/cuid2": "^3.3.0",
 		"@prisma/adapter-pg": "catalog:",
 		"@prisma/client": "catalog:",
-		"better-sqlite3": "^12.4.1",
 		"pg": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
-		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "catalog:",
 		"dotenv": "catalog:",
 		"dotenv-cli": "catalog:",

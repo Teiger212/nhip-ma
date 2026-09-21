@@ -9,17 +9,8 @@ export const WALK_ADMIN_NAME = "Walk Admin";
 
 /**
  * The walk office (ADR 0008): the kit organization the walk operator belongs to and the
- * invented threads are filed under. Its id is fixed so the SQLite inbox and the Postgres
- * organization agree without a lookup, and so seeding is idempotent.
+ * invented threads are filed under. Its id is fixed so seeding is idempotent.
  */
 export const WALK_OFFICE_ID = "walk-office";
 export const WALK_OFFICE_NAME = "Walk Office";
 export const WALK_OFFICE_SLUG = "walk";
-
-export function isPostgresDatabaseUrl(databaseUrl: string | undefined): boolean {
-	return Boolean(databaseUrl && /^(postgres(ql)?:)/i.test(databaseUrl));
-}
-
-export function canUseKitAuthDatabase(databaseUrl = process.env.DATABASE_URL): boolean {
-	return isPostgresDatabaseUrl(databaseUrl);
-}

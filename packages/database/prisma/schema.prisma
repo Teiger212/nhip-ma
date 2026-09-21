@@ -40,6 +40,7 @@ model User {
   twofactors               TwoFactor[]
   notifications            Notification[]
   notificationPreferences  UserNotificationPreference[]
+  answers                  Answer[]
 
   @@unique([email])
   @@map("user")
@@ -147,6 +148,8 @@ model Organization {
   members            Member[]
   invitations        Invitation[]
   purchases          Purchase[]
+  conversations      Conversation[]
+  pipeConnections    PipeConnection[]
 
   @@unique([slug])
   @@map("organization")
@@ -243,4 +246,166 @@ model UserNotificationPreference {
 
   @@unique([userId, type, target])
   @@map("user_notification_preference")
+}
+
+// ---------------------------------------------------------------------------
+// The inbox (ADR 0012): threads, messages, extraction, drafts, Answers and pipe
+// connections, in the same database as the offices they belong to. Table names carry
+// the inbox_ prefix so they never collide with the kit's. Closed vocabularies are
+// enums; languages and rent-or-buy stay text validated by zod in packages/database/inbox.
+// ---------------------------------------------------------------------------
+
+enum Pipe {
+  zalo
+  whatsapp
+}
+
+enum MessageDirection {
+  in
+  out
+}
+
+/// `oa_echo` is the on-disk spelling of the domain's `oa-echo` (an agent replying from
+/// the OA app); the store translates at its boundary.
+enum MessageSource {
+  guest
+  oa_echo
+  nhip
+}
+
+enum DraftSource {
+  template
+  model
+}
+
+/// The lifecycle of an Answer (ADR 0011).
+enum AnswerStatus {
+  sending
+  sent
+  failed
+  unknown
+}
+
+/// One thread per guest per office (ADR 0010). The id is `office:pipe:guest` because it
+/// is part of every route; the unique key is the triple.
+model Conversation {
+  id                 String         @id
+  pipe               Pipe
+  guestId            String
+  guestName          String?
+  officeId           String
+  office             Organization   @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  language           String?
+  lastGuestInboundAt DateTime?
+  sentAt             DateTime?
+  updatedAt          DateTime
+  messages           Message[]
+  qualification      Qualification?
+  draft              Draft?
+  paperwork          Paperwork?
+  answers            Answer[]
+
+  @@unique([officeId, pipe, guestId])
+  @@index([officeId])
+  @@map("inbox_conversation")
+}
+
+model Message {
+  id              String           @id
+  seq             Int              @unique @default(autoincrement())
+  conversationId  String
+  conversation    Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction       MessageDirection
+  source          MessageSource
+  text            String
+  at              DateTime
+  vendorMessageId String?
+  mock            Boolean          @default(false)
+  pipeExternalId  String?
+  translations    Translation[]
+  answer          Answer?
+
+  @@index([conversationId])
+  @@map("inbox_message")
+}
+
+model Translation {
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  locale    String
+  text      String
+
+  @@id([messageId, locale])
+  @@map("inbox_translation")
+}
+
+model Qualification {
+  conversationId  String       @id
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  areaOfInterest  String?
+  nationality     String?
+  inVietnamNow    Boolean?
+  rentOrBuy       String?
+  timeframe       String?
+  budgetBand      String?
+  bedsOrHousehold String?
+
+  @@map("inbox_qualification")
+}
+
+model Draft {
+  conversationId   String       @id
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reply            String
+  answersMessageId String?
+  source           DraftSource  @default(template)
+
+  @@map("inbox_draft")
+}
+
+model Paperwork {
+  conversationId String       @id
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  mentioned      Boolean
+  flag           String?
+
+  @@map("inbox_paperwork")
+}
+
+/// The Answer (ADR 0011): one row per answered guest message, carrying the send's whole
+/// lifecycle. The operator link is set-null so the record outlives the account.
+model Answer {
+  id              String       @id
+  seq             Int          @unique @default(autoincrement())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  inboundId       String       @unique
+  inbound         Message      @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  text            String
+  operatorId      String?
+  operator        User?        @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  status          AnswerStatus
+  mock            Boolean      @default(false)
+  pipe            Pipe
+  to              String
+  pipeExternalId  String?
+  vendorMessageId String?
+  approvedAt      DateTime
+  sentAt          DateTime?
+  failedAt        DateTime?
+  failureReason   String?
+
+  @@index([conversationId])
+  @@map("inbox_answer")
+}
+
+/// Which office owns a pipe endpoint (ADR 0008). Webhook-created threads take this office.
+model PipeConnection {
+  pipe       Pipe
+  externalId String
+  officeId   String
+  office     Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  @@id([pipe, externalId])
+  @@map("inbox_pipe_connection")
 }
