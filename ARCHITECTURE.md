@@ -59,7 +59,7 @@ Sign-up is invitation only (`enableSignup: false`, the kit's invitation-only plu
 
 | Path                                                       | Role                                |
 | ---------------------------------------------------------- | ----------------------------------- |
-| `apps/saas/modules/inbox/components/Inbox.tsx`             | List + detail UI                    |
+| `apps/saas/modules/inbox/components/`                      | Inbox shell, list, thread, reply    |
 | `apps/saas/modules/inbox/lib/extract.ts`                   | One-shot extract from inbound       |
 | `apps/saas/modules/inbox/lib/draft.ts`                     | Template replies (first, follow-up) |
 | `apps/saas/modules/inbox/lib/queue.ts`                     | Your turn, quiet, view order        |
