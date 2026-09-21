@@ -83,16 +83,16 @@ It shipped in three builds on a sequence ADR 0009 fixed: the conversation loop, 
 
 ## Reading order to rebuild the mental model
 
-1. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/PRODUCT.md`
-2. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/CONTEXT.md`
-3. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/docs/adr/0009-build-order.md`
-4. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/docs/adr/0011-answer-is-the-record-of-a-send.md`
-5. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/packages/database/prisma/schema.prisma`
-6. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/packages/database/inbox/store.ts`
-7. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/apps/saas/modules/inbox/lib/inbox.ts`
-8. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/apps/saas/modules/inbox/lib/require-session.ts`
-9. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/apps/saas/modules/inbox/lib/pipes/webhook.ts`
-10. `/Users/eyal/Dev/nhip-ma/.claude/worktrees/onboarding-read/apps/saas/modules/inbox/lib/loop.test.ts`
+1. `PRODUCT.md`
+2. `CONTEXT.md`
+3. `docs/adr/0009-build-order.md`
+4. `docs/adr/0011-answer-is-the-record-of-a-send.md`
+5. `packages/database/prisma/schema.prisma`
+6. `packages/database/inbox/store.ts`
+7. `apps/saas/modules/inbox/lib/inbox.ts`
+8. `apps/saas/modules/inbox/lib/require-session.ts`
+9. `apps/saas/modules/inbox/lib/pipes/webhook.ts`
+10. `apps/saas/modules/inbox/lib/loop.test.ts`
 
 ## Glossary
 
