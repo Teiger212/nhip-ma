@@ -25,7 +25,8 @@ is renamed.
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home.
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
-  role does not matter ("Operator note", "Your turn").
+  role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
+  the membership ends, the account ends, except the platform admin's (ADR 0013).
 - **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
   Threads are shared: any agent in the office can work any thread. One agency, one
   office is the MVP; multi-office agencies later.
@@ -70,7 +71,8 @@ is renamed.
   unprompted sends (nudges deferred, ADR 0006).
 - **Answer**: the record of one send, the office's reply to exactly one guest message,
   on file from the moment the operator approves it and through `sending`, `sent`,
-  `failed` or `unknown` (ADR 0011). One per inbound.
+  `failed` or `unknown` (ADR 0011). One per inbound. Keeps the sender's name after the
+  sender's account is gone (ADR 0013).
 - **SEND_MODE**: `mock` (no vendor call, the default) or exactly `live`.
 
 ## Drafting
