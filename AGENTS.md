@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Canonical agent entry for this repository: setup, gates, aliases, and conventions.
+Canonical agent entry: setup, gates, aliases, and conventions.
 Product intention: [PRODUCT.md](./PRODUCT.md). System shape: [ARCHITECTURE.md](./ARCHITECTURE.md). Cold start: [HANDOFF.md](./HANDOFF.md).
 
-Mirror existing conventions and prefer nearby canonical implementations.
-Explicit user instructions win; if a documented command fails, report it rather than inventing a workaround.
+Mirror existing conventions and nearby canonical implementations.
+Explicit user instructions win; if a documented command fails, report it instead of inventing a workaround.
 
 ## Stack
 
@@ -17,14 +17,14 @@ Explicit user instructions win; if a documented command fails, report it rather 
 
 ### Environment
 
-Copy `.env.local.example` to `.env.local`. For local development set
-`DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"` and
-`NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`. Set `BETTER_AUTH_SECRET` (32+
-characters) and a dummy `RESEND_API_KEY` so password login can import Resend.
-Everything needs local Postgres: auth sessions and inbox threads share `DATABASE_URL`.
-Tests use `supastarter_test` on the same server (`TEST_DATABASE_URL` overrides it).
+Everything runs on local Postgres: auth sessions and inbox threads share `DATABASE_URL`.
+In `.env.local` set
+`DATABASE_URL="postgresql://postgres:postgres@localhost:5432/supastarter"`,
+`NEXT_PUBLIC_SAAS_URL="http://localhost:3010"`, `BETTER_AUTH_SECRET` (32+ characters)
+and a dummy `RESEND_API_KEY` so password login can import Resend.
 
 ```bash
+cp .env.local.example .env.local
 brew services start postgresql@16   # or: docker compose up -d postgres
 pnpm install
 pnpm --filter @repo/database generate
@@ -33,18 +33,27 @@ pnpm seed
 pnpm --filter saas dev
 ```
 
-Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox.
-`/` goes to `/en/inbox`. Bare `/inbox` goes to `/{locale}/inbox`. Locale
-prefixes are required; cookie-only locale without a path prefix is rejected.
-Local login is `walk@nhip.local` / `walkthrough`, seeded by `pnpm seed`. There
-is no auth bypass route; sign in normally. Inbox stays invented threads +
+Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. Locale prefixes
+are required; the redirects and the rejected cookie-only locale are in
+[ARCHITECTURE.md](./ARCHITECTURE.md), with layout and data details.
+
+`pnpm seed` (when `DATABASE_URL` is Postgres) creates two logins with password
+`walkthrough`: `walk@nhip.local`, the agent (a member of the walk office, sees Inbox and
+Home), and `admin@nhip.local`, the platform admin (owner of the walk office, also sees the
+kit's admin area where offices are created and agents invited). It writes four invented
+threads (Minji, Yuki, Alexei, Thảo) into the walk office once; a re-run skips existing
+threads, so delete the office's threads in the database for a fresh set. There is no auth
+bypass route and public sign-up is closed (ADR 0010). Inbox stays invented threads +
 `SEND_MODE=mock`.
 
-This walk only needs `apps/saas` on port 3010. Do not build or ship marketing
-or admin. Layout, data, and i18n details: [ARCHITECTURE.md](./ARCHITECTURE.md).
+Tests use `supastarter_test` on the same server (`TEST_DATABASE_URL` overrides it). The
+vitest global setup creates it and pushes the schema; every store test truncates the inbox
+tables first. A schema change that would lose data there is not accepted silently:
+`dropdb supastarter_test` and run again.
 
-`pnpm dev` still runs the workspace Turbo tasks. The `postgres` service is
-PostgreSQL 16 on port 5432. Compose also defines MinIO when storage is used.
+This walk only needs `apps/saas` on port 3010. Do not build or ship marketing or admin.
+The compose `postgres` service is PostgreSQL 16 on port 5432; compose also defines MinIO
+for storage.
 
 ### Install and run
 
@@ -74,7 +83,7 @@ Required gates:
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.
 3. Run the relevant tests before considering the change complete.
-4. CI (`.github/workflows/ci.yml`) runs the same lint, format:check, type-check, and test gates on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
+4. CI (`.github/workflows/ci.yml`) runs lint, format:check, type-check, and tests on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
@@ -158,7 +167,7 @@ middleware, and a handler. Follow `packages/api/modules/organizations/procedures
 Keep database access in `packages/database`. Prisma owns the whole schema
 (`prisma/schema.prisma`): the Better Auth tables and the `inbox_*` tables (ADR 0012). The
 inbox store in `packages/database/inbox` is the only writer of the inbox tables, with zod
-vocabularies for the open-ended fields. The database package scripts are:
+vocabularies for the open-ended fields. Database package scripts:
 
 ```bash
 pnpm --filter @repo/database generate
@@ -167,9 +176,9 @@ pnpm --filter @repo/database migrate
 pnpm --filter @repo/database studio
 ```
 
-Edit `packages/database/prisma/schema.prisma` for Prisma schema changes, then use
-the appropriate database command. Do not hand-edit generated Prisma client output
-or `packages/database/prisma/zod/index.ts`.
+Change the schema in `packages/database/prisma/schema.prisma`, then run the matching
+command. Do not hand-edit generated Prisma client output or
+`packages/database/prisma/zod/index.ts`.
 
 ### Notifications
 
@@ -183,9 +192,9 @@ For client data fetching, use the oRPC helpers in
 
 ### Client cache invalidation
 
-After every successful mutation that affects a list or detail query—whether
-oRPC, `authClient`, or any other write—invalidate the matching TanStack Query
-keys before showing success UI. Do not rely on a full page reload.
+After every successful mutation that affects a list or detail query (oRPC,
+`authClient`, or any other write), invalidate the matching TanStack Query keys
+before showing success UI. Do not rely on a full page reload.
 
 - Prefer `queryClient.invalidateQueries({ queryKey: orpc.<module>.list.key() })`
   for oRPC lists. Prefix keys refresh every filtered/paginated page.
@@ -231,11 +240,11 @@ Canonical auth examples:
 - SaaS server: `apps/saas/modules/shared/lib/permix.ts` (`permix/next`). Call
   `setupPermissions` once early in the authenticated layout, then
   `permix.check(...)` in server components that run after that setup. Nested
-  layouts/pages may render before the parent layout finishes setup — use
+  layouts/pages may render before the parent layout finishes setup; use
   `checkPermission(...)` there (or call `setupPermissions` first when org
-  context differs). Nested `setup()` replaces request rules — only re-setup
-  when checking a different org context, and always pass membership; do not
-  call membership-less setup in nested layouts.
+  context differs). Nested `setup()` replaces request rules, so re-setup only
+  for a different org context, always with membership; never call
+  membership-less setup in nested layouts.
 - SaaS client: dehydrate in the authenticated layout into `PermixProvider` /
   `PermixHydrate`, then `useSetupClientPermissions` (hydrate alone does not set
   `isReady`). Use `usePermissions().check(...)` for active-organization UI
@@ -267,15 +276,15 @@ Canonical auth examples:
 
 ## Config & environment variables
 
-Keep server-only variables unprefixed. Browser-visible variables use `NEXT_PUBLIC_`.
-Use `.env.local` for local secrets and never commit it. App runtime configuration
-and aliases belong in the relevant app config/tsconfig rather than a package.
+Server-only variables are unprefixed; browser-visible ones use `NEXT_PUBLIC_`. Local
+secrets go in `.env.local`, which is never committed. App runtime configuration and
+aliases belong in the app's config/tsconfig, not a package.
 
 ## Dependencies & supply chain
 
-`pnpm-workspace.yaml` sets `minimumReleaseAge: 1440`; installing a release younger
-than 24 hours can fail. Use existing `catalog:` versions where available and add
-dependencies to the workspace package that imports them.
+`pnpm-workspace.yaml` sets `minimumReleaseAge: 1440`, so installing a release younger
+than 24 hours can fail. Use existing `catalog:` versions and add dependencies to the
+workspace package that imports them.
 
 ## Change management
 

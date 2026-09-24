@@ -2,40 +2,17 @@
 
 Working name only: pulse of the first reply. Not a brand lock.
 
-Nhịp is for Hà Nội real-estate agents on expat and luxury inbound. A lead writes the agency. Nhịp drafts a useful first reply in the guest’s language (EN, JP, KO, RU, and others), does not promise deals Vietnamese law will not allow, flags foreigner paperwork, and waits. A human taps **Approve and send**. Then the reply goes out on the same pipe. The guest still sees the agency number. Never auto-send. Nhịp is all-hours first reply, not night-only.
+Nhịp is for Hà Nội real-estate agents on expat and luxury inbound. A lead writes the agency. Nhịp drafts a useful first reply in the guest’s language (EN, JP, KO, RU, and others), does not promise deals Vietnamese law will not allow, flags foreigner paperwork, and waits. A human taps **Approve and send**, and the reply goes out on the same pipe; the guest still sees the agency number. Never auto-send. Nhịp is all-hours first reply, not night-only.
 
-Local development uses invented threads only. Nothing here is a real guest. Product intention: [PRODUCT.md](./PRODUCT.md); vocabulary: [CONTEXT.md](./CONTEXT.md).
+Local development uses invented threads only; nothing here is a real guest. Product intention: [PRODUCT.md](./PRODUCT.md); vocabulary: [CONTEXT.md](./CONTEXT.md).
 
 ## Run it locally
 
-SaaS listens on **port 3010**. Auth sessions and inbox threads live in the same local Postgres.
+SaaS listens on **port 3010**, and auth sessions and inbox threads live in the same local Postgres. Setup, environment, commands and the seeded logins are in [AGENTS.md](./AGENTS.md); locale routing is in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-```bash
-pnpm install
-cp .env.local.example .env.local
-brew services start postgresql@16   # or: docker compose up -d postgres
-pnpm --filter @repo/database generate
-pnpm --filter @repo/database push
-pnpm seed
-pnpm --filter saas dev
-```
+Sign in as `walk@nhip.local` / `walkthrough` at http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send). There is no auth bypass; every route behind `(authenticated)` requires a real session.
 
-Open:
-
-- English: http://localhost:3010/en/inbox
-- Vietnamese: http://localhost:3010/vi/inbox
-
-`/` goes to `/en/inbox`. Bare `/inbox` goes to `/{locale}/inbox`. Walk language is **en** and **vi** only (`vi`, not `vn`). Cookie-only locale without a path prefix is rejected.
-
-Sign in as `walk@nhip.local` / `walkthrough`. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send).
-
-`pnpm seed` writes those threads into the walk office and creates the walk logins. Re-run skips existing threads. Delete the office's threads in the database for a fresh set. Default `SEND_MODE=mock`.
-
-The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) requires a signed-in session and returns 401 otherwise. Approve claims the thread atomically before sending, so a double tap sends once. Inbound webhooks are rejected until `WHATSAPP_APP_SECRET` / `ZALO_OA_SECRET_KEY` are set. CI runs lint, format, type-check, and tests on every PR (`.github/workflows/ci.yml`).
-
-Set `BETTER_AUTH_SECRET` (32+ characters) and a dummy `RESEND_API_KEY` so password login can start. `NEXT_PUBLIC_SAAS_URL` must be `http://localhost:3010` locally.
-
-Sign in with the walk login above. There is no auth bypass; every route behind `(authenticated)` requires a real session.
+The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) returns 401 without a signed-in session. Approve claims the thread atomically before sending, so a double tap sends once.
 
 Marketing, docs, admin, billing, and organizations are unused kit scaffolding; leave them unless asked.
 

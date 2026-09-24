@@ -1,46 +1,22 @@
 # Handoff
 
-Read this if you are picking up Nhịp cold (any agent or LLM). What the product is and
-where it is going: [PRODUCT.md](./PRODUCT.md). How the repo is shaped:
-[ARCHITECTURE.md](./ARCHITECTURE.md). Setup, gates, and conventions:
-[AGENTS.md](./AGENTS.md). This file is only how to run it and where things are.
+Read this if you are picking up Nhịp cold (any agent or LLM). Product and direction:
+[PRODUCT.md](./PRODUCT.md). Repo shape: [ARCHITECTURE.md](./ARCHITECTURE.md). Setup,
+gates, and conventions: [AGENTS.md](./AGENTS.md). This file is how to run it and where
+things are.
 
 ## Repo
 
-- GitHub: `Teiger212/nhip-ma`. Source of truth: `main`.
-- CI (`.github/workflows/ci.yml`) runs lint, format:check, type-check, and tests on every
-  PR and push to `main`. Merge through PRs.
+- GitHub: `Teiger212/nhip-ma`. Source of truth: `main`. Merge through PRs; CI gates every
+  PR and push to `main` (see AGENTS.md).
 - The audit that shaped the current code is `reports/2026-09-06-handoff-analysis.md`.
 
 ## Run locally
 
-```bash
-pnpm install
-cp .env.local.example .env.local
-brew services start postgresql@16   # or: docker compose up -d postgres
-pnpm --filter @repo/database generate
-pnpm --filter @repo/database push
-pnpm seed
-pnpm --filter saas dev
-```
-
-Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. Two logins, both
-created by `pnpm seed` when `DATABASE_URL` is Postgres, password `walkthrough`:
-`walk@nhip.local` is the agent (a member of the walk office, sees Inbox and Home) and
-`admin@nhip.local` is the platform admin (owner of the walk office, also sees the kit's
-admin area where offices are created and agents invited). There is no auth bypass, and
-public sign-up is closed (ADR 0010).
-
-`pnpm seed` writes four invented threads (Minji, Yuki, Alexei, Thảo) into the walk office
-once. Delete that office's threads in the database for a fresh set. `POST /dev/inbound`
-injects an inbound locally (404 in production). Default `SEND_MODE=mock`; only the exact
-value `live` talks to a vendor, and live needs the webhook secrets set or inbound is
-refused.
-
-Tests need a second database on the same server, `supastarter_test` by default
-(`TEST_DATABASE_URL` overrides it). The vitest global setup creates it and pushes the
-schema; every store test truncates the inbox tables before it runs. A schema change that
-would lose data there is not accepted silently: `dropdb supastarter_test` and run again.
+Setup, the two seeded logins (`walk@nhip.local`, the agent; `admin@nhip.local`, the
+platform admin) and the test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
+injects an inbound locally (404 in production). Only the exact `SEND_MODE` value `live`
+talks to a vendor, and live needs the webhook secrets set or inbound is refused.
 
 Gates before a commit: `pnpm format`, `pnpm lint`, `pnpm type-check`, `pnpm --filter
 saas test`. Do not commit untracked local scripts.
@@ -73,40 +49,38 @@ saas test`. Do not commit untracked local scripts.
 - Never auto-send. Approve and send is the only send path. It names the guest message it
   answers and the exact text, and writes the Answer before any vendor call (ADR 0011).
   Reply-only: one Answer per inbound; a thread is "Your turn" whenever the guest's latest
-  message has no Answer (ADRs 0004, 0006). An Answer of unknown outcome is never retried
-  by the app; a person checks the vendor first.
-- Home's funnel is counted from Answers inside the store, for guests whose first message
-  landed in the last 30 days: engaged is a `sent` Answer, in conversation a guest message
-  after it, response time first inbound to first `sentAt` (ADRs 0002, 0011). Closings and
-  lost only ever come from the CRM adapter (ADR 0003); until one is connected they say so.
+  message has no Answer (ADRs 0004, 0006). The app never retries an Answer of unknown
+  outcome; a person checks the vendor first.
+- Home's funnel is counted from Answers inside the store (ADRs 0002, 0011); engaged means a
+  `sent` Answer, and the stages, response time and the 30-day window are defined in
+  CONTEXT.md. Closings and lost only
+  ever come from the CRM adapter (ADR 0003); until one is connected they say so.
 - Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
   draft that touches paperwork is dropped by the post-check and the template stands.
 - The office is the tenant (ADR 0008) and Nhịp assigns it (ADR 0010): one operator, one
   office, read from the membership table on every request, never from the session's
-  active organization. Threads are one per guest per office, shared inside it and
-  invisible outside it. Webhooks file under the office that owns the pipe
-  (`pnpm --filter saas pipe:connect`), inbound on an unconnected pipe is dropped, and a
-  reply is refused when the thread's number is not the one the credentials belong to.
-  Every thread has an office from birth and the inbox tables live in the same Postgres
-  as the office (ADR 0012); deleting an office deletes its threads. An operator whose
-  membership ends loses the account; their Answers keep their name (ADR 0013).
+  active organization. Threads are one per guest per
+  office, shared inside it and invisible outside it; deleting an office deletes its
+  threads (ADR 0012), and an operator whose membership ends loses the account while their
+  Answers keep their name (ADR 0013). Pipe mapping and the send refusal are in
+  ARCHITECTURE.md.
 - Never message real guests or agents from a dev or demo environment. Never put customer
   data on a public link.
 - The operator note never invents Vietnamese law.
 - SaaS routes are locale-prefixed (`/en/...`, `/vi/...`); cookie-only locale was tried
   and rejected. The operator language switch offers `en` and `vi` only.
 - User-facing strings need translations under `inbox.*`.
-- `apps/marketing`, `apps/docs`, admin, and billing are unused kit scaffolding. Leave
-  them unless asked. The kit organization is in use: it is the office, with its switcher
-  hidden while one agency is one office.
+- `apps/marketing`, `apps/docs`, admin, and billing are unused kit scaffolding; leave
+  them unless asked. The kit organization is in use as the office, its switcher hidden
+  while one agency is one office.
 
 ## Before going live
 
 ### Accounts to create
 
-Better Auth is a library and needs no account. These do. Two of them require the company
-entity, so start those first.
+Better Auth is a library and needs no account. These do; start the two that require the
+company entity first.
 
 | Service                                                | Used for                                                            | Needs the company entity                               |
 | ------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -129,17 +103,17 @@ The office itself (ADR 0008) is created in-app, by seed or signup, not with any 
 --office <organization id>` (and the same for the Zalo OA id). Add `--adopt-unowned`
   once to give threads from before tenancy to that office.
 - Set `ZALO_OA_ID` to the OA the Zalo token belongs to, so replies on any other OA are
-  refused rather than sent from the wrong identity.
+  refused instead of sent from the wrong identity.
 - Remove `walk@nhip.local` and `admin@nhip.local` from any shared database; create the
   real platform admin by setting `role = "admin"` on your own user, then create the
   office and invite agents from `/admin/organizations`.
 - Auth (Better Auth 1.6): generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32`;
   `NEXT_PUBLIC_SAAS_URL` must be the public https origin (it is the auth base URL and the
   only trusted origin); leave `AUTH_TRUSTED_ORIGINS` and `BETTER_AUTH_URL` unset. Rate
-  limiting is on by default with a memory store, which is right for one process; behind a
+  limiting is on by default with a memory store, right for one process; behind a
   reverse proxy, set `advanced.ipAddress.ipAddressHeaders` and `trustedProxies` in
-  `packages/auth/auth.ts` so limits key on the client IP. Only configure the social
+  `packages/auth/auth.ts` so limits key on the client IP. Configure only the social
   providers the office will use; unconfigured ones are not offered.
 - Before the first production deploy, baseline the schema with `prisma migrate` (ADR 0012
   keeps `db push` for development only) and point `DATABASE_URL` at the production
-  Postgres. The inbox and the auth tables live in the same database.
+  Postgres, which holds both the inbox and the auth tables.

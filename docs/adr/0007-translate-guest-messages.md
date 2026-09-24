@@ -4,12 +4,11 @@ Date: 2026-09-17. Status: accepted.
 
 ## Context
 
-The operator note is written in the operator's language, but it only carries what the
+The operator note is written in the operator's language, but it carries only what the
 regex extractor recognised (nationality, area, rent or buy, budget, dates, paperwork
-flag). The guest's actual sentence is shown in the original language and never
-translated. For a Korean, Japanese, or Russian guest the agent cannot read what was
-said; a message like "the last agent promised a discount if I sign this week" becomes
-"nationality Korean". The language bridge was one-way.
+flag). The guest's actual sentence is shown untranslated. For a Korean, Japanese, or
+Russian guest the agent cannot read what was said; "the last agent promised a discount
+if I sign this week" becomes "nationality Korean". The language bridge was one-way.
 
 ## Decision
 
@@ -20,7 +19,7 @@ said; a message like "the last agent promised a discount if I sign this week" be
   and is stored on the message so it is not recomputed per view or per operator locale
   change; a locale the office has not used yet is translated on first request.
 - The **operator note** stays as it is: facts and flags, not a translation. Its job is
-  "what do I need to know", the translation's job is "what did they say".
+  "what do I need to know"; the translation's job is "what did they say".
 - The AI suggested reply (ADR 0005) reads the originals; the translation is for the
   human.
 - Guest languages remain EN, VI, JA, KO, RU. Anything else is detected as best effort
@@ -32,7 +31,7 @@ said; a message like "the last agent promised a discount if I sign this week" be
   and the list API change; existing files migrate on open with empty maps.
 - Ingest becomes async where it was synchronous: a message may exist before its
   translation does. The UI shows the original immediately and the translation when it
-  lands; no send is blocked on translation.
+  lands; translation never blocks a send.
 - Translation is untrusted-input-in, text-out: guest text is framed as data in the
   prompt, and the translation is rendered as text, never as markup.
 - Cost: one model call per inbound message, on the cheapest model that translates VI, JA,
