@@ -1,3 +1,5 @@
+import { backfillAnswerOperatorNames } from "@repo/database";
+
 import { settleBackgroundWork } from "../lib/background";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
@@ -25,6 +27,8 @@ async function main(): Promise<void> {
 	console.info(
 		`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}\n`,
 	);
+	const named = await backfillAnswerOperatorNames();
+	if (named > 0) console.info(`Answers given their sender's name (ADR 0013): ${named}\n`);
 
 	const owned = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
 	const existing = DEMO_THREADS.filter((thread) =>

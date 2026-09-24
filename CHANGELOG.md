@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-24 (operators end with their office)
+
+### Changed
+
+#### No office, no account (ADR 0013)
+
+- When an operator's membership ends (the office is deleted, they are removed, or they leave), their account is deleted with its sessions, credentials and sent invitations. The platform admin keeps theirs.
+- `Answer.operatorName` keeps the sender's name at approval, so a reply still says who sent it after the account is gone. `pnpm seed` fills it on existing Answers.
+
 ## 2026-09-20 (send contract)
 
 ### Changed

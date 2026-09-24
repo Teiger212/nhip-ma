@@ -1,3 +1,4 @@
+import { backfillAnswerOperatorNames } from "@repo/database";
 import { conversationId } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
@@ -325,5 +326,45 @@ test("deleting an office deletes its threads and pipe connections", async () => 
 	await testDb.organization.delete({ where: { id: OFFICE } });
 	expect(await store.listConversations()).toHaveLength(1);
 	expect(await store.officeForPipe("zalo", "oa-gone")).toBeNull();
+	await store.close();
+});
+
+test("an Answer keeps its sender's name after the account is deleted (ADR 0013)", async () => {
+	const store = await testInboxStore();
+	const now = new Date();
+	await testDb.user.create({
+		data: {
+			id: "leaver",
+			name: "Lan",
+			email: "lan@test.nhip.local",
+			emailVerified: true,
+			createdAt: now,
+			updatedAt: now,
+		},
+	});
+	const conv = await store.upsertInbound(inbound("price"), OFFICE);
+	const begun = await store.beginAnswer({
+		conversationId: zalo("price"),
+		inboundId: conv.unansweredInboundId!,
+		text: "The price is 2,000 USD a month.",
+		operatorId: "leaver",
+	});
+	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
+	expect(begun.answer.operatorName).toBe("Lan");
+	await testDb.user.delete({ where: { id: "leaver" } });
+	const kept = await testDb.answer.findUniqueOrThrow({ where: { id: begun.answer.id } });
+	expect(kept).toMatchObject({ operatorId: null, operatorName: "Lan" });
+	await store.close();
+});
+
+test("Answers approved before ADR 0013 get their sender's name filled in", async () => {
+	const store = await testInboxStore();
+	const conv = await store.upsertInbound(inbound("old"), OFFICE);
+	await answer(store, zalo("old"), conv.unansweredInboundId!, "reply");
+	await testDb.answer.updateMany({ data: { operatorName: null } });
+	expect(await backfillAnswerOperatorNames(testDb)).toBe(1);
+	expect(await backfillAnswerOperatorNames(testDb)).toBe(0);
+	const filled = await testDb.answer.findFirstOrThrow();
+	expect(filled.operatorName).toBe("agent-1");
 	await store.close();
 });

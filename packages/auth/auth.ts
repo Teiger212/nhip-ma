@@ -25,6 +25,7 @@ import { twoFactor } from "better-auth/plugins/two-factor";
 import { parseCookie as parseCookies } from "cookie";
 
 import { config } from "./config";
+import { officeEndHooks } from "./lib/offboarding";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
@@ -64,6 +65,8 @@ const github = socialProvider(
 	process.env.GITHUB_CLIENT_SECRET,
 	(credentials) => ({ ...credentials, scope: ["user:email"] }),
 );
+
+const officeEnd = officeEndHooks();
 
 export const auth = betterAuth({
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
@@ -146,6 +149,18 @@ export const auth = betterAuth({
 				}
 
 				await updateSeatsInOrganizationSubscription(organizationId);
+			} else if (ctx.path.startsWith("/organization/leave")) {
+				// The kit's leave route fires no organization hook; it returns the member that
+				// left, or an error when the leave was refused.
+				const left = ctx.context.returned;
+				if (
+					left &&
+					typeof left === "object" &&
+					"userId" in left &&
+					typeof left.userId === "string"
+				) {
+					await officeEnd.afterLeave(left.userId);
+				}
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
@@ -283,6 +298,11 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			organizationHooks: {
+				beforeDeleteOrganization: officeEnd.beforeDeleteOrganization,
+				afterDeleteOrganization: officeEnd.afterDeleteOrganization,
+				afterRemoveMember: officeEnd.afterRemoveMember,
+			},
 			sendInvitationEmail: async ({ email, id, organization }, request) => {
 				const locale = getLocaleFromRequest(request);
 				const existingUser = await getUserByEmail(email);

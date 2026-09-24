@@ -89,7 +89,8 @@ saas test`. Do not commit untracked local scripts.
   (`pnpm --filter saas pipe:connect`), inbound on an unconnected pipe is dropped, and a
   reply is refused when the thread's number is not the one the credentials belong to.
   Every thread has an office from birth and the inbox tables live in the same Postgres
-  as the office (ADR 0012); deleting an office deletes its threads.
+  as the office (ADR 0012); deleting an office deletes its threads. An operator whose
+  membership ends loses the account; their Answers keep their name (ADR 0013).
 - Never message real guests or agents from a dev or demo environment. Never put customer
   data on a public link.
 - The operator note never invents Vietnamese law.

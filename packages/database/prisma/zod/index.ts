@@ -120,7 +120,7 @@ export type PaperworkScalarFieldEnum = z.infer<typeof PaperworkScalarFieldEnumSc
 
 // File: AnswerScalarFieldEnum.schema.ts
 
-export const AnswerScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'inboundId', 'text', 'operatorId', 'status', 'mock', 'pipe', 'to', 'pipeExternalId', 'vendorMessageId', 'approvedAt', 'sentAt', 'failedAt', 'failureReason'])
+export const AnswerScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'inboundId', 'text', 'operatorId', 'operatorName', 'status', 'mock', 'pipe', 'to', 'pipeExternalId', 'vendorMessageId', 'approvedAt', 'sentAt', 'failedAt', 'failureReason'])
 
 export type AnswerScalarFieldEnum = z.infer<typeof AnswerScalarFieldEnumSchema>;
 
@@ -503,6 +503,7 @@ export const AnswerSchema = z.object({
   inboundId: z.string(),
   text: z.string(),
   operatorId: z.string().nullish(),
+  operatorName: z.string().nullish(),
   status: AnswerStatusSchema,
   mock: z.boolean(),
   pipe: PipeSchema,

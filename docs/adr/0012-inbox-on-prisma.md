@@ -75,4 +75,4 @@ choice, and that the funnel (PR #24) lands first so its tests can prove the move
   `packages/database/prisma/queries/inbox.ts` (a re-export of the SQLite store) goes.
 - Deleting an office now deletes its threads. Deleting its operators is a separate
   decision (a later ADR); until then a removed operator has a login and no office, and
-  the gate refuses them as today.
+  the gate refuses them as today. Settled by ADR 0013: the account ends with the office.

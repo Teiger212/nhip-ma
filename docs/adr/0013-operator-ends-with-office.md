@@ -21,13 +21,14 @@ would erase who sent the office's replies, because `Answer.operatorId` is set-nu
   membership. The rule never deletes them.
 - **In the kit's organization hooks, not in the schema.** Before an office is deleted, its
   members' user ids are read; after the delete, the non-admin ones are deleted. Removing a
-  member and leaving do the same for that one user. Nothing cascades from `Member` to
-  `User` in the database.
+  member does the same for that one user. The kit's leave route fires no organization
+  hook, so leaving goes through the auth after-hook on `/organization/leave`. Nothing
+  cascades from `Member` to `User` in the database.
 - **The Answer keeps the sender's name.** `Answer.operatorName` is written when the
   operator approves: `User.name`, or the email when the name is empty. It is never
   updated afterwards. `operatorId` stays as the live link while the account exists and is
   set to null once the account is gone. Existing rows are backfilled from their linked
-  user.
+  user by `pnpm seed`.
 - **Rehiring means a new account.** A person who comes back is invited again and gets a
   new account. Their old Answers keep the name but are not linked to the new account.
 
