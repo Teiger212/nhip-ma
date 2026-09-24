@@ -16,7 +16,7 @@ import { cancelSubscription } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { openAPI } from "better-auth/plugins";
 import { admin } from "better-auth/plugins/admin";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -190,7 +190,9 @@ export const auth = betterAuth({
 			// accept an invitation into another. The gate would refuse it as ambiguous anyway;
 			// refusing here keeps the membership table true.
 			if (ctx.path.startsWith("/organization/accept-invitation")) {
-				const userId = ctx.context.session?.session.userId;
+				// Before-hooks run ahead of the endpoint's session middleware, so
+				// `ctx.context.session` is empty here; read it from the request.
+				const userId = (await getSessionFromCtx(ctx))?.session.userId;
 				if (userId) {
 					const memberships = await getOrganizationMembershipsForUser(userId);
 					if (memberships.length > 0) {

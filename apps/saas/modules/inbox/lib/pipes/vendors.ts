@@ -230,15 +230,20 @@ export function verifyWhatsAppSignature(
 	return hexEqual(provided, expected);
 }
 
+/** How far a signed Zalo timestamp may be from now before the request counts as a replay. */
+export const ZALO_SIGNATURE_WINDOW_MS = 15 * 60 * 1000;
+
 /**
  * Zalo OA signs webhooks as `X-ZEvent-Signature: mac=sha256(appId + rawBody + timestamp + OAsecretKey)`
  * where `appId` and `timestamp` are the `app_id` and `timestamp` fields of the body.
- * Fails closed: no secret means no inbound.
+ * Fails closed: no secret means no inbound. A timestamp (milliseconds) outside
+ * `ZALO_SIGNATURE_WINDOW_MS` of `now` is refused, so a captured request cannot be replayed.
  */
 export function verifyZaloSignature(
 	rawBody: string,
 	signatureHeader: string | null,
 	oaSecretKey: string | undefined,
+	now: number = Date.now(),
 ): boolean {
 	if (!oaSecretKey) return false;
 	if (!signatureHeader) return false;
@@ -251,6 +256,10 @@ export function verifyZaloSignature(
 	const appId = asId(body.app_id);
 	const timestamp = asId(body.timestamp);
 	if (!appId || !timestamp) return false;
+	const signedAt = Number(timestamp);
+	if (!Number.isFinite(signedAt) || Math.abs(now - signedAt) > ZALO_SIGNATURE_WINDOW_MS) {
+		return false;
+	}
 	const provided = signatureHeader.replace(/^mac=/, "").trim();
 	const expected = crypto
 		.createHash("sha256")

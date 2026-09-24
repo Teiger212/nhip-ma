@@ -92,7 +92,13 @@ export async function transmit(input: {
 	const pipe = input.conversation.pipe;
 	const to = input.conversation.guestId;
 	if (input.config.sendMode !== "live") {
-		return { mock: true, pipe, to, text: input.text, vendorMessageId: `mock-${Date.now()}` };
+		return {
+			mock: true,
+			pipe,
+			to,
+			text: input.text,
+			vendorMessageId: `mock-${crypto.randomUUID()}`,
+		};
 	}
 	return pipeAdapter(pipe).send({ to, text: input.text, config: input.config });
 }

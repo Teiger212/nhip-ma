@@ -16,7 +16,8 @@ import { handleInboundWebhook } from "./webhook";
  */
 const OA_SECRET = "oa-secret-key";
 const APP_ID = "123456";
-const TS = "1725600000000";
+/** Signed now: Zalo requests outside the replay window are refused. */
+const TS = String(Date.now());
 
 function zaloRequest(guestId: string, text: string, oaId = "oa-1"): Request {
 	const body = JSON.stringify({
