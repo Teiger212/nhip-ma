@@ -24,6 +24,10 @@ would erase who sent the office's replies, because `Answer.operatorId` is set-nu
   member does the same for that one user. The kit's leave route fires no organization
   hook, so leaving goes through the auth after-hook on `/organization/leave`. Nothing
   cascades from `Member` to `User` in the database.
+- **Deleted the way Better Auth deletes.** Accounts go through `internalAdapter.deleteUser`,
+  the path the admin's "Remove user" takes, so `databaseHooks.user.delete` runs. That hook
+  cancels the account's subscriptions on every delete path; the kit had it on self-delete
+  only.
 - **The Answer keeps the sender's name.** `Answer.operatorName` is written when the
   operator approves: `User.name`, or the email when the name is empty. It is never
   updated afterwards. `operatorId` stays as the live link while the account exists and is

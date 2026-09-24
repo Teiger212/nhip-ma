@@ -332,6 +332,7 @@ test("deleting an office deletes its threads and pipe connections", async () => 
 test("an Answer keeps its sender's name after the account is deleted (ADR 0013)", async () => {
 	const store = await testInboxStore();
 	const now = new Date();
+	await testDb.user.deleteMany({ where: { id: "leaver" } });
 	await testDb.user.create({
 		data: {
 			id: "leaver",

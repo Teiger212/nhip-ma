@@ -17,11 +17,10 @@ export async function getOfficeMemberIds(officeId: string, client: Client = db):
 }
 
 /**
- * No office, no account (ADR 0013): of the given users, delete the ones left in no office.
- * The platform admin is skipped. Sessions, credentials and sent invitations cascade; their
- * Answers keep `operatorName`. Returns the ids deleted.
+ * No office, no account (ADR 0013): of the given users, the ones left in no office, the
+ * platform admin excepted. The caller deletes them through Better Auth.
  */
-export async function endAccountsWithoutOffice(
+export async function findAccountsWithoutOffice(
 	userIds: string[],
 	client: Client = db,
 ): Promise<string[]> {
@@ -30,9 +29,7 @@ export async function endAccountsWithoutOffice(
 		where: { id: { in: userIds }, members: { none: {} } },
 		select: { id: true, role: true },
 	});
-	const ended = officeless.filter((user) => !isPlatformAdmin(user.role)).map((user) => user.id);
-	if (ended.length > 0) await client.user.deleteMany({ where: { id: { in: ended } } });
-	return ended;
+	return officeless.filter((user) => !isPlatformAdmin(user.role)).map((user) => user.id);
 }
 
 /** The name an Answer keeps for its sender: the account name, else the email (ADR 0013). */

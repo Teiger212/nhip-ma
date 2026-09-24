@@ -4,7 +4,13 @@ import { beforeEach, expect, test } from "vitest";
 import { testDb } from "../../inbox/lib/test-store";
 
 /** No office, no account (ADR 0013), through each path that ends a membership. */
-const hooks = officeEndHooks(testDb);
+/** Stands in for Better Auth's user delete; the schema cascades the rest. */
+const hooks = officeEndHooks({
+	client: testDb,
+	deleteAccount: async (userId) => {
+		await testDb.user.delete({ where: { id: userId } });
+	},
+});
 const OFFICE = "office-end-a";
 const OTHER_OFFICE = "office-end-b";
 const now = new Date();
@@ -67,9 +73,11 @@ test("deleting an office ends its operators' accounts, not the platform admin's"
 	await join("end-admin", OFFICE, "owner");
 	await join("end-agent-1", OFFICE);
 	await join("end-agent-2", OFFICE);
+	// Sent into another office, so only the account's deletion can remove it.
+	await office(OTHER_OFFICE);
 	await testDb.invitation.create({
 		data: {
-			organizationId: OFFICE,
+			organizationId: OTHER_OFFICE,
 			email: "new@test.nhip.local",
 			status: "pending",
 			expiresAt: new Date(now.getTime() + 3_600_000),
