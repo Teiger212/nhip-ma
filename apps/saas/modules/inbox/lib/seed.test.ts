@@ -4,6 +4,7 @@ import { afterEach, expect, test } from "vitest";
 import { mockInboxConfig } from "./config";
 import { oneShot } from "./draft";
 import { noDraftAdapter } from "./drafts";
+import { isQuiet } from "./queue";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
 import { resetTestInbox, testDb } from "./test-store";
@@ -102,4 +103,37 @@ test("seed writes invented threads once", async () => {
 	const again = await seedInbox(WALK_OFFICE_ID);
 	expect(again.map((conversation) => conversation.id).sort(byId)).toEqual(firstIds);
 	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(4);
+});
+
+test("the fresh pair lands in Your turn, the other two in Quiet", async () => {
+	await resetTestInbox();
+	setRuntimeForTests({
+		store: createInboxStore(testDb),
+		config: mockInboxConfig(),
+		drafts: noDraftAdapter,
+	});
+	const now = Date.now();
+	const seeded = await seedInbox(WALK_OFFICE_ID, { now });
+	const quiet = seeded
+		.filter((conversation) => isQuiet(conversation, now))
+		.map((conversation) => conversation.guestName)
+		.sort();
+	expect(quiet).toEqual(["Alexei", "Yuki"]);
+});
+
+test("reset rewrites the demo threads as of now", async () => {
+	await resetTestInbox();
+	setRuntimeForTests({
+		store: createInboxStore(testDb),
+		config: mockInboxConfig(),
+		drafts: noDraftAdapter,
+	});
+	const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+	await seedInbox(WALK_OFFICE_ID, { now: threeDaysAgo });
+	const now = Date.now();
+	const reseeded = await seedInbox(WALK_OFFICE_ID, { reset: true, now });
+	expect(reseeded).toHaveLength(4);
+	expect(reseeded.every((conversation) => conversation.messages.length === 1)).toBe(true);
+	const minji = reseeded.find((conversation) => conversation.guestName === "Minji");
+	expect(minji && isQuiet(minji, now)).toBe(false);
 });
