@@ -15,7 +15,7 @@ slips through that gap:
 - One `try/catch` covered the vendor call and the record. A vendor success followed by a
   record failure released the claim, and the retry sent the same message twice.
 - "Your turn" was read off message order. A guest message arriving mid-send was hidden
-  the moment the outbound answering the earlier message was stored last.
+  once the outbound answering the earlier message was stored last.
 
 ## Decision
 
@@ -27,8 +27,8 @@ slips through that gap:
   the exact text; a target that is no longer the open message is `409 stale_target`, a
   missing target `400 inbound_required`, an empty reply `400 empty_reply`. The reply box
   keys the operator's edit by the guest message, so a new message empties it.
-- **The row is written before the vendor is called.** A concurrent approval of the same
-  message is refused by the unique index. A definite refusal from the vendor, or missing
+- **The row is written before the vendor is called.** The unique index refuses a
+  concurrent approval of the same message. A definite vendor refusal, or missing
   credentials, is `failed` and may be approved again on the same row. A network failure
   or timeout, or a vendor success whose record failed, is `unknown`: never retried
   automatically, and refused (`409 delivery_unknown`) until a person has reconciled it

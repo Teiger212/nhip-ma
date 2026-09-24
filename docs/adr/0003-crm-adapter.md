@@ -4,9 +4,9 @@ Date: 2026-09-17. Status: accepted.
 
 ## Context
 
-Nhịp sees messages, not deals. A closing is a fact the office already records somewhere,
-and different offices use different CRMs. Asking agents to mark outcomes by hand inside
-Nhịp duplicates that record and drifts from it. Inferring outcomes from chat text is
+Nhịp sees messages, not deals. The office already records each closing somewhere, and
+different offices use different CRMs. Having agents mark outcomes by hand inside Nhịp
+duplicates that record and drifts from it. Inferring outcomes from chat text is
 invention, which the product refuses to do.
 
 ## Decision
@@ -15,14 +15,14 @@ Introduce a **CRM adapter** seam, shaped like the existing pipe adapters
 (`apps/saas/modules/inbox/lib/pipes/`): one interface, one implementation per CRM,
 product code never names a vendor.
 
-The interface is small and read-mostly at first:
+The interface starts small and read-mostly:
 
 - `findLeadForConversation(conversation)`: match a guest (phone, Zalo id, name) to a CRM
   contact or deal.
 - `outcomeFor(lead)`: open, won, or lost, with a date and an optional reason.
 - `listOutcomes(period)`: what Home needs for the funnel without one call per thread.
 
-Writing back (creating a lead when a guest first writes in) is a second step, behind the
+Writing back (creating a lead when a guest first writes in) comes second, behind the
 same seam, once one CRM is read-integrated end to end.
 
 Two adapters justify the seam: the first real CRM an office uses, and a **mock adapter**
@@ -38,7 +38,7 @@ a working funnel. The mock is also the fallback when matching fails.
   its CRM yet; Attio is the placeholder because it has a clean REST API, phone and email
   attributes on people, and deals as a first-class object). Swap it when a pilot office
   says otherwise; the seam is the point.
-- **Matching rule**: phone number normalised to E.164 first. No match means the thread
+- **Matching rule**: phone number normalised to E.164 first. With no match, the thread
   shows a manual "link to CRM lead" action; the agent picks the lead once and Nhịp
   remembers it. No name matching, ever: it is wrong often enough to poison the funnel.
   Zalo guests, who often carry only a Zalo user id, will usually take the manual path
