@@ -2,6 +2,7 @@ import { createId as cuid } from "@paralleldrive/cuid2";
 import { z } from "zod";
 
 import type { Prisma, PrismaClient } from "../prisma/generated/client";
+import { operatorNameOf } from "../prisma/queries/operators";
 import {
 	AnswerStatus,
 	DbMessageSource,
@@ -120,6 +121,7 @@ function mapAnswer(row: AnswerRecord): Answer {
 		inboundId: row.inboundId,
 		text: row.text,
 		operatorId: row.operatorId,
+		operatorName: row.operatorName,
 		status: row.status,
 		mock: row.mock,
 		pipe: row.pipe,
@@ -374,6 +376,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						throw new Error("Inbox store: beginAnswer needs a guest message on this thread.");
 					}
 					const existing = await tx.answer.findUnique({ where: { inboundId: input.inboundId } });
+					const operator = input.operatorId
+						? await tx.user.findUnique({
+								where: { id: input.operatorId },
+								select: { name: true, email: true },
+							})
+						: null;
+					const operatorName = operator ? operatorNameOf(operator) : null;
 					const now = new Date();
 					if (existing) {
 						if (existing.status === "sent") return { ok: false, reason: "already_answered" };
@@ -386,6 +395,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 								status: "sending",
 								text: input.text,
 								operatorId: input.operatorId,
+								operatorName,
 								approvedAt: now,
 								failedAt: null,
 								failureReason: null,
@@ -401,6 +411,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							inboundId: input.inboundId,
 							text: input.text,
 							operatorId: input.operatorId,
+							operatorName,
 							status: "sending",
 							pipe: inbound.conversation.pipe,
 							to: inbound.conversation.guestId,

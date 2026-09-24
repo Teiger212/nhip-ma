@@ -8,12 +8,12 @@ is renamed.
 
 - **Nhịp**: a speed-to-lead product for high-end apartments in Vietnam. Turns an inbound
   lead on WhatsApp or Zalo into a human-approved reply in the guest's language, at any
-  hour, with the agency's own number.
+  hour, from the agency's own number.
 - **Language bridge**: the durable value. Agents who work in Vietnamese and some English
   serve multinational guests (JA, KO, RU, EN today) without a translator in the loop.
   Two-way: every guest message is translated into the operator's language (ADR 0007),
   and every reply is drafted in the guest's language.
-- **Listing match**: the horizon. Searching the office's own pool of properties against
+- **Listing match**: the horizon. The office's own pool of properties searched against
   what the guest said, so the reply carries the best few matches. Not built.
 
 ## People
@@ -25,7 +25,8 @@ is renamed.
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home.
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
-  role does not matter ("Operator note", "Your turn").
+  role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
+  the membership ends, the account ends, except the platform admin's (ADR 0013).
 - **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
   Threads are shared: any agent in the office can work any thread. One agency, one
   office is the MVP; multi-office agencies later.
@@ -37,8 +38,8 @@ is renamed.
 
 ## Queue
 
-- **Your turn**: the guest spoke last, i.e. there is an unanswered inbound. The only
-  pending state. A fact, not a judgment.
+- **Your turn**: the guest spoke last (there is an unanswered inbound). The only pending
+  state. A fact, not a judgment.
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
 - **Sent**: the office spoke last.
@@ -64,13 +65,14 @@ is renamed.
 
 ## Sending
 
-- **Approve and send**: the single send action. A human approving one suggested reply for
+- **Approve and send**: the single send action: a human approving one suggested reply for
   one inbound message. Never automatic.
 - **Reply-only**: every send answers exactly one guest message; one send per inbound; no
   unprompted sends (nudges deferred, ADR 0006).
 - **Answer**: the record of one send, the office's reply to exactly one guest message,
   on file from the moment the operator approves it and through `sending`, `sent`,
-  `failed` or `unknown` (ADR 0011). One per inbound.
+  `failed` or `unknown` (ADR 0011). One per inbound. Keeps the sender's name after the
+  sender's account is gone (ADR 0013).
 - **SEND_MODE**: `mock` (no vendor call, the default) or exactly `live`.
 
 ## Drafting
@@ -83,7 +85,7 @@ is renamed.
 - **Draft adapter**: one interface, one implementation per model provider, with the
   template drafter as fallback.
 - **Operator note**: the agent-language summary of facts and flags. Not shown to the
-  guest. Never invents Vietnamese law. It is not a translation.
+  guest, never invents Vietnamese law, and is not a translation.
 - **Translation**: the guest message rendered in the operator's language, shown under the
   original. Stored per message per operator locale (ADR 0007).
 - **Operator language**: EN or VI, from the operator's locale setting. The target for
@@ -102,7 +104,7 @@ is renamed.
 
 ## Deliberately not
 
-Nhịp is not, and is not becoming, any of these. Recorded so they do not creep in.
+Nhịp is not, and is not becoming, any of these; recorded so they do not creep in.
 
 - **Not a guest-facing bot.** Guests talk to the agency; every message they receive was
   approved by a human.

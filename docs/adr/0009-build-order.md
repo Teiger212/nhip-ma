@@ -4,10 +4,10 @@ Date: 2026-09-17. Status: accepted.
 
 ## Context
 
-ADRs 0001 to 0008 imply five pieces of work. They are not independent: the funnel (0002)
-counts sends per inbound, which needs per-message approval (0006); the CRM adapter (0003)
-needs an office to belong to (0008); translation (0007) and AI drafts (0005) share a
-seam.
+ADRs 0001 to 0008 imply five pieces of work, and they depend on each other: the funnel
+(0002) counts sends per inbound, which needs per-message approval (0006); the CRM adapter
+(0003) needs an office to belong to (0008); translation (0007) and AI drafts (0005)
+share a seam.
 
 ## Decision
 
@@ -38,5 +38,5 @@ adapter and mock CRM (0003). Listing match remains the horizon.
   ADRs 0005 and 0006, with a 60-turn cap.
 - The draft adapter is built once (step 2) and reused (step 3); pick the cheapest model
   that translates VI, JA, KO, RU reliably and produces an acceptable follow-up.
-- Home's "connect your CRM" empty state is the first thing the second build ships, so the
-  screen exists before the numbers do.
+- The second build ships Home's "connect your CRM" empty state first, so the screen
+  exists before the numbers do.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-24 (operators end with their office)
+
+### Changed
+
+#### No office, no account (ADR 0013)
+
+- When an operator's membership ends (the office is deleted, they are removed, or they leave), their account is deleted with its sessions, credentials and sent invitations. The platform admin keeps theirs.
+- Deleting any account cancels its subscriptions, whichever path deletes it (self, admin, or the above); the kit did this on self-delete only.
+- `Answer.operatorName` keeps the sender's name at approval, so a reply still says who sent it after the account is gone. `pnpm seed` fills it on existing Answers.
+
 ## 2026-09-20 (send contract)
 
 ### Changed
@@ -19,12 +29,12 @@
 
 #### Office tenancy and the Home screen (ADRs 0001, 0002, 0008)
 
-- **The office is the tenant.** `Conversation.ownerUserId` becomes `officeId`, the kit organization's id. The store lists and reads strictly by office; the "unowned is visible to everyone" fallback is gone. Files from before tenancy migrate on open (the column is dropped) and their threads wait unowned until `adoptUnownedThreads` runs; the seed does that for the walk office.
-- **Session gate resolves the office.** `requireInboxSession` returns `{ userId, officeId }`: the session's active organization, else the first membership, else `403 no_office`. `POST /dev/inbound` now needs a session and files under that office.
+- **The office is the tenant.** `Conversation.ownerUserId` becomes `officeId`, the kit organization's id. The store lists and reads strictly by office, and the "unowned is visible to everyone" fallback is gone. Files from before tenancy migrate on open (the column is dropped) and their threads wait unowned until `adoptUnownedThreads` runs; the seed does that for the walk office.
+- **Session gate resolves the office.** `requireInboxSession` returns `{ userId, officeId }`: the session's active organization, else the first membership, else `403 no_office`. `POST /dev/inbound` needs a session and files under that office.
 - **Pipe-to-office mapping.** `PipeConnection` (pipe + vendor id of the number or OA → office) replaces `INBOX_OWNER_USER_ID`. Webhook events carry `pipeExternalId` (WhatsApp `phone_number_id`, Zalo OA id) and are filed under the office that owns it; inbound on an unconnected pipe is dropped with a log line. `pnpm --filter saas pipe:connect` sets a mapping.
 - **Walk office.** `pnpm seed` creates organization `walk-office` with the walk user as owner and active organization, and files the invented threads under it.
 - **Home.** `/home` is enabled in the sidebar: the five funnel stages as cards, closings and lost showing "Connect your CRM", the rest and response time marked as coming next. No number on the screen looks like a fact yet.
-- **Office assignment (ADR 0010).** The gate reads the operator's memberships on every request and never the session's active organization (a client-writable field); none is `403 no_office`, more than one `403 ambiguous_office`. Thread identity is (office, pipe, guest) with a unique index on the triple, so the same guest at two offices is two threads. Each message records the office endpoint it travelled through; a live send is refused with `409 pipe_not_configured` when the thread's number is not the one the credentials belong to (`ZALO_OA_ID` names the Zalo OA). Public sign-up is closed, operators cannot create organizations, and accepting a second office's invitation is refused. The seed adds `admin@nhip.local` (platform admin, owner of the walk office); the sidebar shows **Admin** for platform admins.
+- **Office assignment (ADR 0010).** The gate reads the operator's memberships on every request and never the session's active organization (a client-writable field); none is `403 no_office`, more than one `403 ambiguous_office`. Thread identity is (office, pipe, guest) with a unique index on the triple, so the same guest at two offices is two threads. Each message records the office endpoint it travelled through; a live send is refused with `409 pipe_not_configured` when the thread's number is not the one the credentials belong to (`ZALO_OA_ID` names the Zalo OA). Public sign-up is closed, operators cannot create organizations, and accepting a second office's invitation is refused. The seed adds `admin@nhip.local` (platform admin, owner of the walk office), and the sidebar shows **Admin** to platform admins.
 - GPT-6-Astra architecture audit recorded in `reports/2026-09-20-gpt6-astra-architecture-audit.md`; its tenancy findings are addressed here, the send-contract findings go to the next PR.
 
 ## 2026-09-18
@@ -46,41 +56,41 @@
 
 #### Inbox walk UI (apps/saas, packages/ui, tooling/tailwind)
 
-- Targeted visual upgrade of the walk inbox (list, detail, sticky approve bar) and shared chrome (`NavBar`, `UserMenu`, `WalkLocaleToggle`). Routes, nav labels, en+vi language control, and disabled Home / International stay the same.
-- Sidebar rail keeps collapse-on-click only and uses a pointer cursor (no `w-resize` / `e-resize`). Mobile header shows the full **Nhịp** wordmark next to the logo instead of truncating it.
-- Theme FOUC script no longer renders inside a client React tree. `@repo/ui` `ThemeProvider` / `useTheme` wrap `@teispace/next-themes`; layouts inject `getThemeScript()` in `<head>` with `noScript` so React 19 does not warn about `next-themes`' inline `<script>`. Light/dark/system toggle API is unchanged.
-- Color mode toggle uses `cursor-pointer` / `resize-none` on the pill and every system/light/dark button, matching the walk language toggle. The user-menu color-mode row is `cursor-default resize-none` so the sidebar rail cannot show a resize cursor between light and dark.
-- Root docs are product-first: `README.md`, `PRODUCT.md`, `ARCHITECTURE.md`, and `HANDOFF.md`. Locale-prefixed inbox routes stay the rule. Agent entry remains `AGENTS.md`.
-- SaaS type stack is Be Vietnam Pro + IBM Plex Mono (Vietnamese-capable, not Inter). Olive tokens stay one green family; `--touch` remains the single accent. Buttons keep the kit pill rule; inbox rows stay square; panels use the 8px radius.
-- Thread rows use squircle initials, tabular timestamps, and compact status flags. Extract / crib / reply drop generic cards for hairline sections. Loading uses list-shaped skeletons; load errors offer **Try again**.
-- Sidebar wordmark uses `inbox.brand` (Nhịp) instead of Acme.
-- Inbox search is `h-12` with more padding. Desktop thread list is a locked `22rem` column (`flex: 0 0 22rem`) so long detail content cannot change its width.
+- Visual upgrade of the walk inbox (list, detail, sticky approve bar) and shared chrome (`NavBar`, `UserMenu`, `WalkLocaleToggle`). Routes, nav labels, the en+vi language control, and disabled Home / International are unchanged.
+- The sidebar rail only collapses on click and uses a pointer cursor (no `w-resize` / `e-resize`). The mobile header shows the full **Nhịp** wordmark next to the logo, untruncated.
+- The theme FOUC script no longer renders inside a client React tree. `@repo/ui` `ThemeProvider` / `useTheme` wrap `@teispace/next-themes`; layouts inject `getThemeScript()` in `<head>` with `noScript` so React 19 does not warn about `next-themes`' inline `<script>`. The light/dark/system toggle API is unchanged.
+- The color mode toggle uses `cursor-pointer` / `resize-none` on the pill and every system/light/dark button, like the walk language toggle. The user-menu color-mode row is `cursor-default resize-none` so the sidebar rail cannot show a resize cursor between light and dark.
+- Root docs are product-first: `README.md`, `PRODUCT.md`, `ARCHITECTURE.md`, and `HANDOFF.md`. Locale-prefixed inbox routes stay the rule; `AGENTS.md` stays the agent entry.
+- The SaaS type stack is Be Vietnam Pro + IBM Plex Mono (Vietnamese-capable, not Inter). Olive tokens stay one green family, with `--touch` the single accent. Buttons keep the kit pill rule; inbox rows stay square; panels use the 8px radius.
+- Thread rows use squircle initials, tabular timestamps, and compact status flags. Extract / crib / reply use hairline sections instead of generic cards. Loading uses list-shaped skeletons; load errors offer **Try again**.
+- The sidebar wordmark is `inbox.brand` (Nhịp), not Acme.
+- Inbox search is `h-12` with more padding. The desktop thread list is a locked `22rem` column (`flex: 0 0 22rem`) so long detail content cannot change its width.
 - Walk-visible `inbox.*` and operator menu copy: EN chips use sentence case (`Needs approval`, `Sent`, `Demo send`). Crib is **Operator note**. VI is full Vietnamese (no Draft / inbound / interviewer leftovers; user menu is Cài đặt tài khoản / Giao diện / Đăng xuất).
-- Sticky detail bar is **Approve and send** plus **Edit reply**. Idle **Not sent** stays an accessible live region but is visually hidden so it does not look like a second button. Progress, errors, and **Sent {at}** stay muted under the row. Edit reply scrolls `#inbox-reply` into view and focuses it.
+- The sticky detail bar is **Approve and send** plus **Edit reply**. Idle **Not sent** stays an accessible live region but is visually hidden, so it does not look like a second button. Progress, errors, and **Sent {at}** stay muted under the row. Edit reply scrolls `#inbox-reply` into view and focuses it.
 - SaaS uses next-intl locale prefixes (`/en/inbox`, `/vi/inbox`) with `defineRouting`, `createNavigation`, and `proxy.ts`. Cookie-only locale (no path prefix) is rejected for this walk. Bare `/inbox` and `/` go to a prefixed inbox. The walk language toggle navigates `/en/inbox` ↔ `/vi/inbox`. Walk bypass lands on `/{locale}/inbox`.
-- `NextIntlClientProvider` now receives `locale` on the `[locale]` layout so extract labels follow EN↔VI. English rent/buy values are **Rent** / **Buy** (not raw codes). Extract fields remount with `useLocale()`.
+- `NextIntlClientProvider` receives `locale` on the `[locale]` layout so extract labels follow EN↔VI. English rent/buy values are **Rent** / **Buy** (not raw codes). Extract fields remount with `useLocale()`.
 
 ### Added
 
 #### Walk / tunnel (apps/saas)
 
 - `allowedDevOrigins: ["*.trycloudflare.com"]` so Cloudflare quick tunnels can load `/_next/*` during `next dev`.
-- Optional local/tunnel walk flag `WALK_BYPASS_AUTH=1` (off by default, commented in `.env.local.example`) signs in the invented `walk@nhip.local` demo session at `GET /api/walk-bypass` and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. Refuses in `NODE_ENV=production`. Not an open door and not “no login”. Inbox stays invented threads + mock send. Better Auth stays enabled.
+- Optional local/tunnel walk flag `WALK_BYPASS_AUTH=1` (off by default, commented in `.env.local.example`) signs in the invented `walk@nhip.local` demo session at `GET /api/walk-bypass` and redirects to `NEXT_PUBLIC_SAAS_URL` + `/inbox`. It refuses in `NODE_ENV=production`; it is not an open door or “no login”. Inbox stays invented threads + mock send, and Better Auth stays enabled.
 
 ### Changed
 
 #### Walk language (apps/saas)
 
-- Walk chrome language lives in the Walk Operator **User menu**, immediately under **Account settings**, as **Language** / **Ngôn ngữ** with **EN** / **VI** toggles only. Kit `de` / `es` / `fr` stay in `@repo/i18n` config but are not offered in the walk selector. The sidebar Account settings submenu no longer includes Language. Login still uses the kit `LocaleSwitch`. Choosing a language still writes `NEXT_LOCALE` and refreshes.
+- Walk chrome language lives in the Walk Operator **User menu**, directly under **Account settings**, as **Language** / **Ngôn ngữ** with **EN** / **VI** toggles only. Kit `de` / `es` / `fr` stay in `@repo/i18n` config but are not offered in the walk selector. The sidebar Account settings submenu drops Language. Login still uses the kit `LocaleSwitch`, and choosing a language still writes `NEXT_LOCALE` and refreshes.
 
 #### Walk nav placeholders (apps/saas)
 
 - **Start** is labeled **Home** / **Trang chủ** and stays in the sidebar as a disabled placeholder (`aria-disabled`, not clickable).
-- **AI Chatbot** is labeled **International** / **Quốc tế** and stays as a disabled placeholder. Inbox remains the only working nav job. Account settings stays.
+- **AI Chatbot** is labeled **International** / **Quốc tế** and stays as a disabled placeholder. Inbox remains the only working nav job; Account settings stays.
 
 #### Inbox chrome experiment (apps/saas, packages/ui)
 
-- Reversible look-only branch: kit `AppWrapper` / `NavBar` now compose shadcn-style `Sidebar*` primitives from `@repo/ui` (provider, header/content/footer, grouped menus, icon collapse, mobile sheet). Inbox stays the only working job. Nav furniture is Home (disabled), Inbox, International (disabled), and Account settings.
+- Reversible look-only branch: kit `AppWrapper` / `NavBar` compose shadcn-style `Sidebar*` primitives from `@repo/ui` (provider, header/content/footer, grouped menus, icon collapse, mobile sheet). Inbox stays the only working job. Nav furniture is Home (disabled), Inbox, International (disabled), and Account settings.
 - Sidebar tokens use a cooler sage palette (`--sidebar*`) so chrome reads differently from the olive page tokens. Landed on `main` with beautify and product-first docs in PR #8.
 
 ## 2026-09-05
@@ -89,30 +99,28 @@
 
 #### Inbox (apps/saas)
 
-- Inbox is a first-class authenticated account route at `/inbox` (`(account)/inbox`, same pattern as chatbot). It uses kit `AppWrapper` / `NavBar` (mobile hamburger Sheet, desktop collapsible sidebar). The custom `InboxShell` rail is gone.
-- `/` redirects to `/inbox`. Unauthenticated visits hit kit login; `redirectAfterSignIn` is `/inbox`. `pnpm seed` still writes invented threads to `data/nhip.db` and adds walk login `walk@nhip.local` / `walkthrough` when `DATABASE_URL` is Postgres. Organizations are not required. Kit `hideOrganization` keeps org switcher / create-org out of NavBar. Reports, International, billing, and orgs are not product features.
-- Walk language sits in the Walk Operator user menu under Account settings (**EN** / **VI**). Inbox list/detail no longer duplicate the Language control.
-
+- Inbox is a first-class authenticated account route at `/inbox` (`(account)/inbox`, like chatbot), using kit `AppWrapper` / `NavBar` (mobile hamburger Sheet, desktop collapsible sidebar). The custom `InboxShell` rail is gone.
+- `/` redirects to `/inbox`. Unauthenticated visits hit kit login; `redirectAfterSignIn` is `/inbox`. `pnpm seed` still writes invented threads to `data/nhip.db` and adds walk login `walk@nhip.local` / `walkthrough` when `DATABASE_URL` is Postgres. Organizations are not required; kit `hideOrganization` keeps the org switcher / create-org out of NavBar. Reports, International, billing, and orgs are not product features.
+- Walk language sits in the Walk Operator user menu under Account settings (**EN** / **VI** only). Inbox list/detail no longer duplicate the Language control.
 - Below Tailwind `md`, the inbox shows either the thread list or the selected thread. Detail opens from a list row and returns with an in-app **Back** control; the detail header shows the guest name. Desktop two-pane layout is unchanged.
-- **Language** / **Ngôn ngữ** lives in the Walk Operator user menu under Account settings (**EN** / **VI** only).
-- **Approve and send** (full label) and send status pin to a sticky detail bar so the operator does not scroll past extract, crib, and reply. Reply stays editable above. One send path.
+- **Approve and send** (full label) and send status pin to a sticky detail bar, so the operator does not scroll past extract, crib, and reply. Reply stays editable above. One send path.
 - Extract keeps the nine-field model, lists filled facts first, and collapses `(missing)` / `none mentioned` rows. Mentioned paperwork stays visible.
 - Message and `sentAt` display use localized relative or local datetime. Storage stays ISO.
 - Send status uses `role="status"` with `aria-live="polite"` and `aria-atomic="true"`.
 - **For you** is omitted when there is no one-shot crib; empty extracts use `inbox.crib.emptyFacts`.
-- Search now sits in a full-width chrome row above the thread list and conversation pane (same width as list + detail, not the left shell nav).
+- Search sits in a full-width chrome row above the thread list and conversation pane (the width of list + detail, not the left shell nav).
 - Kit `NavBar` adds **Inbox** as the live account job next to existing kit items. Reports and International are not shipped as nav.
-- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. Walk chrome language is **Language** / **Ngôn ngữ** in the Walk Operator user menu under Account settings (**EN** / **VI** only). It writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
+- Inbox UI strings live under `inbox.*` in `packages/i18n/translations/{en,de,es,fr,vi}/saas.json`. Vietnamese is registered as BCP-47 `vi` in `packages/i18n/config.ts`. The **Language** / **Ngôn ngữ** control writes the kit `NEXT_LOCALE` cookie via `updateLocale`. Unknown codes such as `vn` fall back to English.
 - **For you** crib body is formatted at read time from `inbox.crib` templates (not the seeded English-only string). Guest **Reply** stays in the guest's language. Inbox UI uses `useTranslations("inbox")` plus nested keys (`crib.body`, `fields.*`) so next-intl does not throw `MISSING_MESSAGE` for `inbox.crib`. Message JSON is imported statically from `@repo/i18n`.
-- Vietnamese list states: `inbox.loading` (`Đang tải cuộc hội thoại…`) and `inbox.loadError` (`Không tải được cuộc hội thoại.`) match the English loading / load-error keys.
+- Vietnamese list states `inbox.loading` (`Đang tải cuộc hội thoại…`) and `inbox.loadError` (`Không tải được cuộc hội thoại.`) match the English keys.
 
 ### Fixed
 
 #### Inbox (apps/saas)
 
-- **Approve and send** refuses a second send on a thread that already has `sentAt` (`409 already_sent`). The button is disabled after a mock send so a double tap cannot transmit twice.
+- **Approve and send** refuses a second send on a thread that already has `sentAt` (`409 already_sent`). The button is disabled after a mock send, so a double tap cannot transmit twice.
 - Inbox list shows a loading and load-error state instead of a false “No conversations.” when `/api/conversations` is still in flight or fails.
-- Seed output reports fresh write vs skipped existing IDs. Docs and `.env.local.example` state the repo-root SQLite path and that `SEND_MODE` defaults to mock unless it is exactly `live`.
+- Seed output reports fresh writes vs skipped existing IDs. Docs and `.env.local.example` state the repo-root SQLite path and that `SEND_MODE` is mock unless exactly `live`.
 
 ## 2026-08-30
 
@@ -120,8 +128,8 @@
 
 #### Inbox (apps/saas)
 
-- Ported the Nhịp inbox into `apps/saas`: thread list search, layman extract, **For you** (crib, not sent to the guest) above **Reply**, paperwork flag, **Approve and send** (mock). Default URL is the inbox on port **3010**. Auth is bypassed for the local walkthrough. Seed four invented threads with `pnpm seed` (Minji, Yuki, Alexei, Thảo).
-- New Prisma / Drizzle models in `packages/database`: `Pipe`, `Conversation`, `Message`, `Qualification`, `Draft`, `Paperwork`, `Approval`, `Send`. Walkthrough uses SQLite (`file:./data/nhip.db`). Inbox rows are not stored on User / Org / Plan / Subscription.
+- Ported the Nhịp inbox into `apps/saas`: thread list search, layman extract, **For you** (crib, not sent to the guest) above **Reply**, paperwork flag, **Approve and send** (mock). The default URL is the inbox on port **3010**. Auth is bypassed for the local walkthrough. `pnpm seed` seeds four invented threads (Minji, Yuki, Alexei, Thảo).
+- New Prisma / Drizzle models in `packages/database`: `Pipe`, `Conversation`, `Message`, `Qualification`, `Draft`, `Paperwork`, `Approval`, `Send`. The walkthrough uses SQLite (`file:./data/nhip.db`). Inbox rows are not stored on User / Org / Plan / Subscription.
 
 ## 2026-08-18
 
@@ -129,7 +137,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `es-toolkit` to `^1.51.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `es-toolkit` to `^1.51.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ## 2026-08-17
 
@@ -137,11 +145,11 @@
 
 #### UI
 
-- **Toasts now use Base UI**: `packages/ui/components/toast.tsx` is rebuilt on `@base-ui/react/toast` (following the shadcn Base UI toast) and `sonner` was removed from the workspace. The `toastSuccess`, `toastError`, `toastInfo`, `toastWarning`, `toastLoading`, `toastPromise` and `dismiss` helpers were removed; use the exported `toast` manager directly (`toast.add({ title, description, type: "success" })`, `toast.close(id)`, `toast.promise(promise, { loading: { title }, success: { title }, error: { title } })`). `Toaster` still accepts `position` and takes a translated `closeLabel` for the dismiss button (`common.aria.closeToast`), and the toast primitives (`Toast`, `ToastContent`, `ToastTitle`, `ToastDescription`, `ToastAction`, `ToastClose`, `ToastViewport`, ...) are exported for custom toasts. Run `pnpm install` after pulling.
+- **Toasts now use Base UI**: `packages/ui/components/toast.tsx` is rebuilt on `@base-ui/react/toast` (after the shadcn Base UI toast) and `sonner` is removed from the workspace. The `toastSuccess`, `toastError`, `toastInfo`, `toastWarning`, `toastLoading`, `toastPromise` and `dismiss` helpers are gone; use the exported `toast` manager (`toast.add({ title, description, type: "success" })`, `toast.close(id)`, `toast.promise(promise, { loading: { title }, success: { title }, error: { title } })`). `Toaster` still accepts `position` and takes a translated `closeLabel` for the dismiss button (`common.aria.closeToast`); the toast primitives (`Toast`, `ToastContent`, `ToastTitle`, `ToastDescription`, `ToastAction`, `ToastClose`, `ToastViewport`, ...) are exported for custom toasts. Run `pnpm install` after pulling.
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@hookform/resolvers` to `^5.9.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@hookform/resolvers` to `^5.9.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ## 2026-08-16
 
@@ -149,7 +157,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.66`, `@ai-sdk/openai` to `^4.0.42`, `@ai-sdk/react` to `^4.0.69`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1111.0`, `better-auth` and `@better-auth/passkey` to `1.6.29`, and `prisma-zod-generator` to `3.3.0`. **Development dependencies**: Bumped `turbo` to `^2.10.10`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.66`, `@ai-sdk/openai` to `^4.0.42`, `@ai-sdk/react` to `^4.0.69`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1111.0`, `better-auth` and `@better-auth/passkey` to `1.6.29`, and `prisma-zod-generator` to `3.3.0`. **Development dependencies**: Bumped `turbo` to `^2.10.10`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ## 2026-08-15
 
@@ -157,7 +165,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.65`, `@ai-sdk/react` to `^4.0.68`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1110.0`, `@hookform/resolvers` to `^5.8.0`, `@next/third-parties` and `next` to `16.3.1`, `better-auth` and `@better-auth/passkey` to `1.6.28`, `fumadocs-core` and `fumadocs-ui` to `16.14.4`, `hono` to `^4.13.2`, `dodopayments` to `^2.46.0`, and `resend` to `^6.20.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.65`, `@ai-sdk/react` to `^4.0.68`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1110.0`, `@hookform/resolvers` to `^5.8.0`, `@next/third-parties` and `next` to `16.3.1`, `better-auth` and `@better-auth/passkey` to `1.6.28`, `fumadocs-core` and `fumadocs-ui` to `16.14.4`, `hono` to `^4.13.2`, `dodopayments` to `^2.46.0`, and `resend` to `^6.20.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ## 2026-08-14
 
@@ -165,7 +173,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.64`, `@ai-sdk/openai` to `^4.0.41`, `@ai-sdk/react` to `^4.0.67`, and `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1109.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.64`, `@ai-sdk/openai` to `^4.0.41`, `@ai-sdk/react` to `^4.0.67`, and `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1109.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ## 2026-08-13
 
@@ -173,37 +181,37 @@
 
 #### Page titles
 
-- **Document title**: Marketing and SaaS now use `{page} – {appName}` (en dash) instead of a pipe. Every SaaS page sets a title so tabs read like `Welcome back – supastarter for Next.js Demo` rather than the product name alone.
-- **Blog list**: The tab title and page-header eyebrow now say `Blog`. The H1 stays `Notes from the product`.
-- **Hero preview**: The dashboard mock’s drop shadow is no longer clipped at the bottom. The section no longer uses `overflow-x-hidden` around the preview, and the mock has enough bottom padding for the full blur.
+- **Document title**: Marketing and SaaS use `{page} – {appName}` (en dash) instead of a pipe. Every SaaS page sets a title, so tabs read like `Welcome back – supastarter for Next.js Demo` rather than the product name alone.
+- **Blog list**: The tab title and page-header eyebrow say `Blog`; the H1 stays `Notes from the product`.
+- **Hero preview**: The dashboard mock’s drop shadow is no longer clipped at the bottom. The section drops `overflow-x-hidden` around the preview, and the mock has enough bottom padding for the full blur.
 
 #### UI
 
-- **Mail templates**: The shared mail wrapper is a bit wider (640px) with more padding and 16px body copy, so transactional emails are less cramped. The primary button matches that scale.
-- **Form controls**: Inputs, selects, and textareas use `rounded-xl` so their corners sit closer to the pill buttons and other rounder surfaces.
-- **Alerts**: Feedback alerts use `rounded-xl` to match the form controls. Success, error, and warning now use Tailwind `green-800`/`green-400`, `red-700`/`red-400`, and `yellow-700`/`yellow-500` instead of custom oklch values.
+- **Mail templates**: The shared mail wrapper is wider (640px) with more padding and 16px body copy, so transactional emails are less cramped. The primary button matches that scale.
+- **Form controls**: Inputs, selects, and textareas use `rounded-xl` to sit closer to the pill buttons and other rounder surfaces.
+- **Alerts**: Feedback alerts use `rounded-xl` to match the form controls. Success, error, and warning use Tailwind `green-800`/`green-400`, `red-700`/`red-400`, and `yellow-700`/`yellow-500` instead of custom oklch values.
 - **Logo**: The middle bar of the shared Acme mark uses the chromatic olive touch color.
-- **App icon**: Replaced the rocket `icon.png` in marketing, SaaS, and docs with the three-bar Acme mark. The middle bar uses the chromatic olive touch color.
-- **SaaS touch color**: The chromatic olive is used as a state hint in the product: active nav icons, settings/tab underlines, checked switches, unread notification badges, active/recommended plans, the chat send control, and organization logo placeholders.
-- **Marketing type scale**: Replaced one-off font sizes (`text-[2.5rem]`, `text-[11px]`, and similar) with the nearest Tailwind tokens so marketing type stays on the shared scale.
-- **Docs typography**: The docs app now uses the same pairing as marketing—Inter for body copy and DM Sans for headings and the wordmark.
+- **App icon**: Replaced the rocket `icon.png` in marketing, SaaS, and docs with the three-bar Acme mark, whose middle bar uses the chromatic olive touch color.
+- **SaaS touch color**: The chromatic olive marks state in the product: active nav icons, settings/tab underlines, checked switches, unread notification badges, active/recommended plans, the chat send control, and organization logo placeholders.
+- **Marketing type scale**: Replaced one-off font sizes (`text-[2.5rem]`, `text-[11px]`, and similar) with the nearest Tailwind tokens to keep marketing type on the shared scale.
+- **Docs typography**: The docs app uses the marketing pairing—Inter for body copy and DM Sans for headings and the wordmark.
 - **Accordion**: FAQ panels animate height with `--accordion-panel-height` and a longer ease, so open/close no longer snaps.
-- **Locale switch**: Moved the duplicated marketing/SaaS language pickers into `@repo/ui`. Apps pass locales, the current value, and a persist callback so the UI package stays free of `@repo/i18n`.
-- **Feature headlines**: Product feature spreads no longer show an icon above the top-level title; the three-up benefit grid still does.
-- **Inner pages**: Blog, changelog, and contact use the same left-aligned header as the homepage (olive eyebrow, stacked title and lede). Changelog is a dated timeline with six example releases; the journal has product-shaped sample posts.
-- **Marketing container**: The marketing `container` max-width steps down from `7xl` to `6xl` so the public pages sit a bit narrower.
+- **Locale switch**: Moved the duplicated marketing/SaaS language pickers into `@repo/ui`. Apps pass locales, the current value, and a persist callback, keeping the UI package free of `@repo/i18n`.
+- **Feature headlines**: Product feature spreads drop the icon above the top-level title; the three-up benefit grid keeps it.
+- **Inner pages**: Blog, changelog, and contact use the homepage’s left-aligned header (olive eyebrow, stacked title and lede). Changelog is a dated timeline with six example releases; the journal has product-shaped sample posts.
+- **Marketing container**: The marketing `container` max-width steps down from `7xl` to `6xl`, narrowing the public pages.
 - **SaaS logo**: The authenticated app and auth screens show only the three-bar mark, without the Acme wordmark.
-- **Blog covers**: Each sample journal post now has a product-frame cover. The list shows it to the left of the title at full container width; the article page already used the same `image` field.
+- **Blog covers**: Each sample journal post has a product-frame cover, shown left of the title at full container width in the list; the article page already used the same `image` field.
 - **Blog tags**: The journal list filters with `?tag=`. Tags on the list and article pages are links; the active tag (or All) clears the query.
 - **Hero grid**: Removed the faint grid overlay from the marketing hero.
-- **Trial copy**: FAQ and the billing journal post now say 7-day trials, matching `trialPeriodDays` in the payments config.
+- **Trial copy**: FAQ and the billing journal post say 7-day trials, matching `trialPeriodDays` in the payments config.
 - **Hero highlights**: Removed the Authentication / Organizations / Billing row under the homepage preview.
-- **Headline wrapping**: Left-aligned headlines and subtitles use `text-pretty` so the last line is less likely to leave a single word hanging. Centered headings still use `text-balance`.
-- **Homepage sections**: Slightly tighter vertical padding so features, testimonials, pricing, FAQ, and the CTA sit closer together.
+- **Headline wrapping**: Left-aligned headlines and subtitles use `text-pretty` so the last line rarely leaves a single word hanging. Centered headings keep `text-balance`.
+- **Homepage sections**: Tighter vertical padding brings features, testimonials, pricing, FAQ, and the CTA closer together.
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.62`, `@ai-sdk/openai` to `^4.0.40`, `@ai-sdk/react` to `^4.0.65`, `better-auth` and `@better-auth/passkey` to `1.6.27`, and `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1108.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.62`, `@ai-sdk/openai` to `^4.0.40`, `@ai-sdk/react` to `^4.0.65`, `better-auth` and `@better-auth/passkey` to `1.6.27`, and `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1108.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -213,7 +221,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.59`, `@ai-sdk/openai` to `^4.0.37`, `@ai-sdk/react` to `^4.0.62`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1107.0`, `next-intl` to `4.13.6`, `use-intl` to `^4.13.6`, `resend` to `^6.19.0`, and `stripe` to `^22.5.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.59`, `@ai-sdk/openai` to `^4.0.37`, `@ai-sdk/react` to `^4.0.62`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1107.0`, `next-intl` to `4.13.6`, `use-intl` to `^4.13.6`, `resend` to `^6.19.0`, and `stripe` to `^22.5.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `@shikijs/rehype` to `^4.4.3`, `oxlint` to `^1.78.0`, and `oxfmt` to `^0.63.0`.
 
 ---
@@ -224,17 +232,17 @@
 
 #### Marketing redesign
 
-- **Typography**: Marketing uses Inter for body copy and DM Sans for headlines (including the wordmark). `text-balance` is only on centered headlines and subtitles. The SaaS app uses Inter throughout.
-- **Color scheme**: Shared tokens sit on Tailwind’s olive scale—warm olive-50 paper, olive-tinted borders, and olive-950 actions—so the high-contrast ink look picks up a quiet color, in the same family as the Oatmeal olive theme.
-- **Marketing visual language**: Refreshed the public site toward a quieter Linear/Notion-like layout with UserJot-inspired structure—more vertical air, a left-aligned hero, stacked section titles with the lede underneath, a single bordered pricing table, and shared medium-weight page headers across blog, changelog, contact, and legal pages. A chromatic olive-green touch color is used like UserJot’s orange: a “New” pill, section labels, larger unboxed icons, checks, and secondary links. The faint hero grid stays; scroll reveals and hero fade-ins are gone.
-- **Landing sections**: Added testimonials and a closing CTA band on the marketing homepage, with richer example copy across marketing locales plus clearer shared pricing descriptions.
-- **Visual polish**: Hero uses a live dashboard wireframe (sidebar, stats, placeholder) instead of screenshots, feature placeholders are CSS product frames with dummy portraits and plan icons, testimonials include example headshots, pricing leads with the amount, and the newsletter is a compact closer instead of a second CTA.
+- **Typography**: Marketing uses Inter for body copy and DM Sans for headlines (including the wordmark), with `text-balance` only on centered headlines and subtitles. The SaaS app uses Inter throughout.
+- **Color scheme**: Shared tokens sit on Tailwind’s olive scale—warm olive-50 paper, olive-tinted borders, and olive-950 actions—giving the high-contrast ink look a quiet color in the Oatmeal olive theme’s family.
+- **Marketing visual language**: Moved the public site toward a quieter Linear/Notion-like layout with UserJot-inspired structure—more vertical air, a left-aligned hero, stacked section titles with the lede underneath, a single bordered pricing table, and shared medium-weight page headers across blog, changelog, contact, and legal pages. A chromatic olive-green touch color plays the role of UserJot’s orange: a “New” pill, section labels, larger unboxed icons, checks, and secondary links. The faint hero grid stays; scroll reveals and hero fade-ins are gone.
+- **Landing sections**: Added testimonials and a closing CTA band to the marketing homepage, richer example copy across marketing locales, and clearer shared pricing descriptions.
+- **Visual polish**: The hero uses a live dashboard wireframe (sidebar, stats, placeholder) instead of screenshots, feature placeholders are CSS product frames with dummy portraits and plan icons, testimonials include example headshots, pricing leads with the amount, and the newsletter is a compact closer instead of a second CTA.
 - **Logo**: Replaced the layered hex SVG with a stacked three-bar Acme mark (thin rounded bars forming a pyramid) and a semibold wordmark in the shared `Logo` component.
-- **Color mode toggle**: Moved the duplicated marketing/SaaS pickers into `@repo/ui`. Apps pass translated labels as props so the UI package stays free of `@repo/i18n`. The active option no longer uses a drop shadow.
+- **Color mode toggle**: Moved the duplicated marketing/SaaS pickers into `@repo/ui`. Apps pass translated labels as props, keeping the UI package free of `@repo/i18n`. The active option drops its drop shadow.
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `lucide-react` to `^1.31.0`, `react-dropzone` to `^20.1.0`, and `sonner` to `^2.0.8`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `lucide-react` to `^1.31.0`, `react-dropzone` to `^20.1.0`, and `sonner` to `^2.0.8`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.14.3`, `fumadocs-mdx` to `15.2.3`, and `tsx` to `^4.23.12`.
 
 ---
@@ -245,7 +253,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@orpc/*` to `1.15.0`, `pg` to `^8.23.0`, and `@tanstack/react-table` to `^9.1.2`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@orpc/*` to `1.15.0`, `pg` to `^8.23.0`, and `@tanstack/react-table` to `^9.1.2`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -255,7 +263,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.58`, `@ai-sdk/openai` to `^4.0.36`, `@ai-sdk/react` to `^4.0.61`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1106.0`, `@tanstack/react-table` to `^9.1.0`, `dodopayments` to `^2.45.1`, `hono` to `^4.13.1`, `lucide-react` to `^1.30.0`, `nodemailer` to `^9.0.5`, `react-email` to `^6.9.2`, and `react-hook-form` to `^7.85.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.58`, `@ai-sdk/openai` to `^4.0.36`, `@ai-sdk/react` to `^4.0.61`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1106.0`, `@tanstack/react-table` to `^9.1.0`, `dodopayments` to `^2.45.1`, `hono` to `^4.13.1`, `lucide-react` to `^1.30.0`, `nodemailer` to `^9.0.5`, `react-email` to `^6.9.2`, and `react-hook-form` to `^7.85.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.14.2`, `@types/node` to `26.2.0`, `tsx` to `^4.23.11`, and `turbo` to `^2.10.9`.
 
 ---
@@ -266,8 +274,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.56`, `@ai-sdk/openai` to `^4.0.34`, `@ai-sdk/react` to `^4.0.59`, `@orpc/*` to `1.14.15`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1105.0`, and `lucide-react` to `^1.29.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
-- **Development dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.14.1`, `postcss` to `8.5.26`, `tsx` to `^4.23.9`, and `typescript` to `7.0.2` (major upgrade: enabled `experimental.useTypeScriptCli` in Next.js app configs because TypeScript 7 no longer ships the JavaScript compiler API). Updated `@repo/logs` to import `createConsola` from `consola/core` for stricter TypeScript 7 module resolution.
+- **Production dependencies**: Bumped `ai` to `^7.0.56`, `@ai-sdk/openai` to `^4.0.34`, `@ai-sdk/react` to `^4.0.59`, `@orpc/*` to `1.14.15`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1105.0`, and `lucide-react` to `^1.29.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
+- **Development dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.14.1`, `postcss` to `8.5.26`, `tsx` to `^4.23.9`, and `typescript` to `7.0.2` (major upgrade: enabled `experimental.useTypeScriptCli` in Next.js app configs because TypeScript 7 drops the JavaScript compiler API). `@repo/logs` imports `createConsola` from `consola/core` for TypeScript 7's stricter module resolution.
 
 ---
 
@@ -277,16 +285,16 @@
 
 #### Auth
 
-- **Social sign-in errors**: Failed OAuth/social sign-in API calls on the login and signup pages now show an error toast instead of failing silently.
+- **Social sign-in errors**: Failed OAuth/social sign-in API calls on the login and signup pages show an error toast instead of failing silently.
 
 #### Admin
 
-- **User list after delete**: Invalidate the admin users query after removing a user so the deleted row leaves the list without a manual refresh.
+- **User list after delete**: Removing a user invalidates the admin users query, so the deleted row leaves the list without a manual refresh.
 - **Organization list caches**: Admin organization create/update/delete also invalidates the user organization switcher list.
 
 #### Organizations
 
-- **Leave organization**: Removing a member (including leave) refreshes both the members query and the organization list used by the switcher.
+- **Leave organization**: Removing a member (including leave) refreshes both the members query and the switcher's organization list.
 
 #### Settings
 
@@ -294,17 +302,17 @@
 
 #### Organizations
 
-- **Invitation accept button**: The organization invitation modal Accept action now uses the primary button variant so it is visually distinct from Decline.
+- **Invitation accept button**: The organization invitation modal's Accept action uses the primary button variant, setting it apart from Decline.
 
 #### Permissions
 
-- **Admin layout Permix race**: Nested admin layout no longer calls `permix.check` before the authenticated layout may have finished `setup()`. Uses `checkPermission` for the user-scoped `admin.access` gate instead.
+- **Admin layout Permix race**: The nested admin layout no longer calls `permix.check` before the authenticated layout may have finished `setup()`; it uses `checkPermission` for the user-scoped `admin.access` gate instead.
 
 ### Changed
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.54`, `@ai-sdk/openai` to `^4.0.31`, `@ai-sdk/react` to `^4.0.57`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1104.0`, `dodopayments` to `^2.45.0`, and `nuqs` to `^2.9.5`. Skipped `typescript` `7.x` (Next.js 16.3.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.54`, `@ai-sdk/openai` to `^4.0.31`, `@ai-sdk/react` to `^4.0.57`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1104.0`, `dodopayments` to `^2.45.0`, and `nuqs` to `^2.9.5`. Skipped `typescript` `7.x` (Next.js 16.3.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `tsx` to `^4.23.8`.
 
 ---
@@ -315,7 +323,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.52`, `@ai-sdk/openai` to `^4.0.30`, `@ai-sdk/react` to `^4.0.55`, `better-auth` and `@better-auth/passkey` to `1.6.26`, `next-intl` and `use-intl` to `4.13.5`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1103.0`, `@base-ui/react` to `^1.7.0`, `nodemailer` to `^9.0.4`, and `@tanstack/react-table` to `^9.0.0` (migrated table components to `useTable` with explicit `tableFeatures`). Skipped `typescript` `7.x` (Next.js 16.3.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.52`, `@ai-sdk/openai` to `^4.0.30`, `@ai-sdk/react` to `^4.0.55`, `better-auth` and `@better-auth/passkey` to `1.6.26`, `next-intl` and `use-intl` to `4.13.5`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1103.0`, `@base-ui/react` to `^1.7.0`, `nodemailer` to `^9.0.4`, and `@tanstack/react-table` to `^9.0.0` (table components migrated to `useTable` with explicit `tableFeatures`). Skipped `typescript` `7.x` (Next.js 16.3.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `@shikijs/rehype` to `^4.4.2` and `tsx` to `^4.23.6`.
 
 ---
@@ -326,7 +334,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.50`, `@ai-sdk/openai` to `^4.0.28`, `@ai-sdk/react` to `^4.0.53`, `@orpc/*` to `1.14.14`, `nanoid` to `^6.0.1`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1102.0`, `hono` to `^4.13.0`, `next` to `^16.3.0`, and `@next/third-parties` to `16.3.0`. Removed deprecated `@types/uuid` stub (the `uuid` package ships its own TypeScript definitions). Skipped `typescript` `7.x` (Next.js 16.3.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.50`, `@ai-sdk/openai` to `^4.0.28`, `@ai-sdk/react` to `^4.0.53`, `@orpc/*` to `1.14.14`, `nanoid` to `^6.0.1`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1102.0`, `hono` to `^4.13.0`, `next` to `^16.3.0`, and `@next/third-parties` to `16.3.0`. Removed the deprecated `@types/uuid` stub (`uuid` ships its own TypeScript definitions). Skipped `typescript` `7.x` (Next.js 16.3.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `oxlint` to `^1.77.0` and `oxfmt` to `^0.62.0`.
 
 ---
@@ -337,21 +345,21 @@
 
 #### Admin
 
-- **User bans**: Added admin controls to ban users with an internal reason and optional expiration, review active ban details, and unban users.
+- **User bans**: Admin controls to ban users with an internal reason and optional expiration, review active ban details, and unban users.
 
 #### Developer tooling
 
-- **Agent skills**: Added repository-scoped agent skills for common feature, auth, payments, database, docs, testing, and verification workflows.
+- **Agent skills**: Repository-scoped agent skills for common feature, auth, payments, database, docs, testing, and verification workflows.
 
 #### Permissions
 
-- **Permix authorization**: Introduced `@repo/permissions` with a typed permission matrix and `createPermissionRules` / `checkPermission` helpers. Wired Permix into oRPC (`permix/orpc`) for `adminProcedure` and organization/payment gates, and into the SaaS app via `permix/next` (server setup + dehydrate) and a client `PermixProvider` following the official Next.js integration (`setup` early, `dehydrate` → `PermixHydrate`, client `setup` for `isReady`, nested `setup` only when org context changes). UI guards use `permix.check` / `usePermissions().check` instead of scattered role string comparisons. `isOrganizationAdmin` / `isOrganizationOwner` remain as thin wrappers. Better Auth `organization.*` client endpoints stay on Better Auth's own access control. oRPC `protectedProcedure` sets user-scoped rules only (no per-request active-org membership fetch); org-scoped API checks resolve membership for the target organization. `checkPermission` reads the boolean matrix directly without constructing a Permix instance per call.
+- **Permix authorization**: Introduced `@repo/permissions` with a typed permission matrix and `createPermissionRules` / `checkPermission` helpers. Permix is wired into oRPC (`permix/orpc`) for `adminProcedure` and organization/payment gates, and into the SaaS app via `permix/next` (server setup + dehydrate) and a client `PermixProvider` per the official Next.js integration (`setup` early, `dehydrate` → `PermixHydrate`, client `setup` for `isReady`, nested `setup` only when org context changes). UI guards use `permix.check` / `usePermissions().check` instead of scattered role string comparisons; `isOrganizationAdmin` / `isOrganizationOwner` remain as thin wrappers. Better Auth `organization.*` client endpoints stay on Better Auth's own access control. oRPC `protectedProcedure` sets user-scoped rules only (no per-request active-org membership fetch); org-scoped API checks resolve membership for the target organization. `checkPermission` reads the boolean matrix directly rather than constructing a Permix instance per call.
 
 ### Changed
 
 #### Dependencies
 
-- **Production dependencies**: Added `permix` `^4.1.2`. Bumped `@hookform/resolvers` to `^5.7.1`, `hono` to `^4.12.34`, and `react-dropzone` to `^20.0.0` (major upgrade: Node.js 22+ required, ESM-first package layout). Synced the lockfile for `fumadocs-mdx` `15.2.2`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Added `permix` `^4.1.2`. Bumped `@hookform/resolvers` to `^5.7.1`, `hono` to `^4.12.34`, and `react-dropzone` to `^20.0.0` (major upgrade: Node.js 22+ required, ESM-first package layout). Synced the lockfile for `fumadocs-mdx` `15.2.2`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `tsx` to `^4.23.5`.
 
 ---
@@ -362,7 +370,7 @@
 
 #### Auth
 
-- **Login tab order**: Repositioned the forgot-password link so keyboard navigation moves from the password field to the password visibility toggle before leaving the field group.
+- **Login tab order**: Moved the forgot-password link so keyboard navigation goes from the password field to the password visibility toggle before leaving the field group.
 
 #### UI
 
@@ -372,8 +380,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.48`, `@ai-sdk/react` to `^4.0.51`, `@hookform/resolvers` to `^5.6.0`, and `react-dropzone` to `^19.2.0`. Synced the lockfile to the catalog (including prior bumps for `ai` `^7.0.47`, `@ai-sdk/openai` `^4.0.27`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` `3.1101.0`, `dodopayments` `^2.44.0`, `hono` `^4.12.33`, `nuqs` `^2.9.4`, and `react-hook-form` `^7.84.0`). Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
-- **Development dependencies**: Bumped `start-server-and-test` to `^3.0.12`. Synced the lockfile (including prior bumps for `@shikijs/rehype` `^4.4.1`, `prisma-zod-generator` `3.1.0`, and `turbo` `^2.10.8`).
+- **Production dependencies**: Bumped `ai` to `^7.0.48`, `@ai-sdk/react` to `^4.0.51`, `@hookform/resolvers` to `^5.6.0`, and `react-dropzone` to `^19.2.0`. Synced the lockfile to the catalog, including prior bumps for `ai` `^7.0.47`, `@ai-sdk/openai` `^4.0.27`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` `3.1101.0`, `dodopayments` `^2.44.0`, `hono` `^4.12.33`, `nuqs` `^2.9.4`, and `react-hook-form` `^7.84.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
+- **Development dependencies**: Bumped `start-server-and-test` to `^3.0.12`. Synced the lockfile, including prior bumps for `@shikijs/rehype` `^4.4.1`, `prisma-zod-generator` `3.1.0`, and `turbo` `^2.10.8`.
 
 ---
 
@@ -383,7 +391,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.47`, `@ai-sdk/openai` to `^4.0.27`, `@ai-sdk/react` to `^4.0.50`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1101.0`, `dodopayments` to `^2.44.0`, `hono` to `^4.12.33`, `nuqs` to `^2.9.4`, and `react-hook-form` to `^7.84.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.47`, `@ai-sdk/openai` to `^4.0.27`, `@ai-sdk/react` to `^4.0.50`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1101.0`, `dodopayments` to `^2.44.0`, `hono` to `^4.12.33`, `nuqs` to `^2.9.4`, and `react-hook-form` to `^7.84.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `@shikijs/rehype` to `^4.4.1`, `prisma-zod-generator` to `3.1.0`, and `turbo` to `^2.10.8`.
 
 ---
@@ -392,25 +400,25 @@
 
 ### Fixed
 
-- **Auth redirects**: Restricted login, signup, OTP, and onboarding redirects to normalized root-relative SaaS paths, preventing untrusted `redirectTo` values from navigating users to external sites.
-- **SaaS indexing**: Added app-wide `noindex, nofollow` robots metadata so authentication and protected SaaS pages are not included in search results.
+- **Auth redirects**: Login, signup, OTP, and onboarding redirects are restricted to normalized root-relative SaaS paths, so untrusted `redirectTo` values cannot send users to external sites.
+- **SaaS indexing**: Added app-wide `noindex, nofollow` robots metadata to keep authentication and protected SaaS pages out of search results.
 
 ### Changed
 
 #### Headless UI library: Radix UI → Base UI
 
-- **Breaking**: `packages/ui` now builds on `@base-ui/react` instead of `radix-ui`, matching the TanStack Start version. Composition uses Base UI's `render` prop; the Radix `asChild` prop has been removed from all components (no compatibility shim).
+- **Breaking**: `packages/ui` builds on `@base-ui/react` instead of `radix-ui`, matching the TanStack Start version. Composition uses Base UI's `render` prop; the Radix `asChild` prop is removed from all components (no compatibility shim).
   - `<Button asChild><Link href="/" /></Button>` becomes `<Button render={(props) => <Link {...props} href="/" />} />`.
   - `<DropdownMenuTrigger asChild><Button /></DropdownMenuTrigger>` becomes `<DropdownMenuTrigger render={<Button />} />`.
   - `DropdownMenuItem` rendering a link needs `nativeButton={false}` alongside `render`.
-- **State attributes**: Radix `data-[state=open|closed|checked]` variants are replaced by Base UI `data-[open]`, `data-[closed]`, `data-[checked]`, `data-[starting-style]`, and `data-[ending-style]`. Custom styles targeting the old attributes must be updated.
+- **State attributes**: Base UI `data-[open]`, `data-[closed]`, `data-[checked]`, `data-[starting-style]`, and `data-[ending-style]` replace Radix `data-[state=open|closed|checked]` variants. Update custom styles that target the old attributes.
 - **CSS variables**: `--radix-accordion-content-height` → `--collapsible-panel-height`, `--radix-dropdown-menu-trigger-width` → `--anchor-width`.
 - **Component API deltas**: `Tabs` uses `Tab`/`Panel` instead of `Trigger`/`Content`, `Accordion` takes `multiple`/`defaultValue` instead of `type`/`collapsible`, `TooltipProvider` takes `delay` instead of `delayDuration`, `DropdownMenuItem` uses `closeOnClick={false}` instead of `onSelect` + `preventDefault`, and `Select` accepts an `items` prop so `SelectValue` renders labels instead of raw values.
-- **Dependencies**: Removed `radix-ui`, added `@base-ui/react` to the workspace catalog and `@repo/ui`.
+- **Dependencies**: Removed `radix-ui`; added `@base-ui/react` to the workspace catalog and `@repo/ui`.
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.42`, `@ai-sdk/openai` to `^4.0.24`, `@ai-sdk/react` to `^4.0.45`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1098.0`, `nuqs` to `^2.9.3`, `postcss` to `8.5.25`, and `stripe` to `^22.4.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.42`, `@ai-sdk/openai` to `^4.0.24`, `@ai-sdk/react` to `^4.0.45`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1098.0`, `nuqs` to `^2.9.3`, `postcss` to `8.5.25`, and `stripe` to `^22.4.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -420,7 +428,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.41`, `@ai-sdk/openai` to `^4.0.23`, `@ai-sdk/react` to `^4.0.44`, `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/tanstack-query`, and `@orpc/zod` to `1.14.13`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1097.0`, and `postcss` to `8.5.24`. Synced the lockfile to the catalog (including prior bumps for `@prisma/adapter-pg`, `@prisma/client`, `@prisma/nextjs-monorepo-workaround-plugin`, and `prisma` `7.9.1`, and `fumadocs-core` / `fumadocs-ui` `16.13.0`). Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.41`, `@ai-sdk/openai` to `^4.0.23`, `@ai-sdk/react` to `^4.0.44`, `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/tanstack-query`, and `@orpc/zod` to `1.14.13`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1097.0`, and `postcss` to `8.5.24`. Synced the lockfile to the catalog, including prior bumps for `@prisma/adapter-pg`, `@prisma/client`, `@prisma/nextjs-monorepo-workaround-plugin`, and `prisma` `7.9.1`, and `fumadocs-core` / `fumadocs-ui` `16.13.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `resend` to `^6.18.1` in `@repo/mail`.
 
 ---
@@ -431,7 +439,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.40`, `@ai-sdk/openai` to `^4.0.22`, `@ai-sdk/react` to `^4.0.43`, `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/tanstack-query`, and `@orpc/zod` to `1.14.12`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1096.0`, `@prisma/adapter-pg`, `@prisma/client`, `@prisma/nextjs-monorepo-workaround-plugin`, and `prisma` to `7.9.1`, and `fumadocs-core` / `fumadocs-ui` to `16.13.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.40`, `@ai-sdk/openai` to `^4.0.22`, `@ai-sdk/react` to `^4.0.43`, `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/tanstack-query`, and `@orpc/zod` to `1.14.12`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1096.0`, `@prisma/adapter-pg`, `@prisma/client`, `@prisma/nextjs-monorepo-workaround-plugin`, and `prisma` to `7.9.1`, and `fumadocs-core` / `fumadocs-ui` to `16.13.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `@types/node` to `26.1.2`, `oxlint` to `^1.76.0`, and `oxfmt` to `^0.61.0`.
 
 ---
@@ -442,7 +450,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/tanstack-query`, and `@orpc/zod` to `1.14.10`, and `@hookform/resolvers` to `^5.5.7`. Upgraded `prisma-zod-generator` to `3.0.1` (major) and regenerated Prisma Zod schemas. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/tanstack-query`, and `@orpc/zod` to `1.14.10`, and `@hookform/resolvers` to `^5.5.7`. Upgraded `prisma-zod-generator` to `3.0.1` (major) and regenerated Prisma Zod schemas. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `turbo` to `^2.10.7`.
 
 ---
@@ -453,7 +461,7 @@
 
 #### API
 
-- **Organization billing authorization**: Require organization membership when listing purchases and an owner or administrator role when creating organization checkout sessions. Inaccessible customer portal purchases now return `NOT_FOUND` to prevent resource enumeration.
+- **Organization billing authorization**: Listing purchases requires organization membership, and creating organization checkout sessions requires an owner or administrator role. Inaccessible customer portal purchases return `NOT_FOUND` to prevent resource enumeration.
 - **Payment redirects**: Restrict checkout and customer portal return URLs to the configured SaaS application origin.
 - **AI message validation**: Validate incoming UI messages with the AI SDK before converting them or invoking the model.
 
@@ -465,11 +473,11 @@
 
 #### SaaS app
 
-- **Organization role select**: Removed secondary role descriptions from the organization role select and the unused translation keys so the selector shows only compact role names.
+- **Organization role select**: Removed secondary role descriptions and their unused translation keys from the organization role select, which shows only compact role names.
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@ai-sdk/anthropic` to `^4.0.21`, `next` to `^16.2.12`, `@next/third-parties` to `16.2.12`, `lucide-react` to `^1.27.0`, `radix-ui` to `^1.6.7`, and `recharts` to `^3.10.1`. Synced the lockfile to the catalog (including prior bumps for `ai` `^7.0.37`, `@ai-sdk/openai` `^4.0.20`, `@ai-sdk/react` `^4.0.40`, `@aws-sdk/client-s3` / `@aws-sdk/s3-request-presigner` `3.1095.0`, `better-auth` `1.6.25`, `hono` `^4.12.32`, `next-intl` `4.13.4`, `fumadocs-core` / `fumadocs-ui` `16.12.1`, and related catalog entries). Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships), `@types/uuid` (deprecated), `@orpc/*` `1.14.10`, `@hookform/resolvers` `5.5.3`, `prisma-zod-generator` `2.8.1`, and `turbo` `2.10.7` (published within the one-day `minimumReleaseAge` window). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@ai-sdk/anthropic` to `^4.0.21`, `next` to `^16.2.12`, `@next/third-parties` to `16.2.12`, `lucide-react` to `^1.27.0`, `radix-ui` to `^1.6.7`, and `recharts` to `^3.10.1`. Synced the lockfile to the catalog, including prior bumps for `ai` `^7.0.37`, `@ai-sdk/openai` `^4.0.20`, `@ai-sdk/react` `^4.0.40`, `@aws-sdk/client-s3` / `@aws-sdk/s3-request-presigner` `3.1095.0`, `better-auth` `1.6.25`, `hono` `^4.12.32`, `next-intl` `4.13.4`, `fumadocs-core` / `fumadocs-ui` `16.12.1`, and related catalog entries. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7), `@types/uuid` (deprecated), and `@orpc/*` `1.14.10`, `@hookform/resolvers` `5.5.3`, `prisma-zod-generator` `2.8.1`, and `turbo` `2.10.7` (published within the one-day `minimumReleaseAge` window). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -479,7 +487,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1095.0`, `hono` to `^4.12.32`, `@ai-sdk/anthropic` to `^4.0.20`, `dodopayments` to `^2.43.0`, `es-toolkit` to `^1.50.0`, `react-hook-form` to `^7.83.0`, and `nuqs` to `^2.9.2`. Synced the lockfile to the catalog (including prior bumps for `ai` `^7.0.37`, `@ai-sdk/openai` `^4.0.20`, `@ai-sdk/react` `^4.0.40`, `better-auth` `1.6.25`, `lucide-react` `^1.26.0`, `next-intl` `4.13.4`, `fumadocs-core` / `fumadocs-ui` `16.12.1`, and `react-email` `^6.9.1`). Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships), `@types/uuid` (deprecated), `@ai-sdk/anthropic` `4.0.21` and `turbo` `2.10.7` (published within the one-day `minimumReleaseAge` window). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1095.0`, `hono` to `^4.12.32`, `@ai-sdk/anthropic` to `^4.0.20`, `dodopayments` to `^2.43.0`, `es-toolkit` to `^1.50.0`, `react-hook-form` to `^7.83.0`, and `nuqs` to `^2.9.2`. Synced the lockfile to the catalog, including prior bumps for `ai` `^7.0.37`, `@ai-sdk/openai` `^4.0.20`, `@ai-sdk/react` `^4.0.40`, `better-auth` `1.6.25`, `lucide-react` `^1.26.0`, `next-intl` `4.13.4`, `fumadocs-core` / `fumadocs-ui` `16.12.1`, and `react-email` `^6.9.1`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7), `@types/uuid` (deprecated), and `@ai-sdk/anthropic` `4.0.21` and `turbo` `2.10.7` (published within the one-day `minimumReleaseAge` window). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `postcss` to `8.5.23` and `@playwright/test` to `^1.62.0`.
 
 ---
@@ -490,7 +498,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.37`, `@ai-sdk/anthropic` to `^4.0.19`, `@ai-sdk/openai` to `^4.0.20`, `@ai-sdk/react` to `^4.0.40`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1094.0`, `better-auth` to `1.6.25`, `@better-auth/passkey` to `^1.6.25`, `lucide-react` to `^1.26.0`, `next-intl` to `4.13.4`, `use-intl` to `^4.13.4`, `openai` to `^6.49.0`, `fumadocs-core` / `fumadocs-ui` to `16.12.1`, and `react-email` to `^6.9.1`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.37`, `@ai-sdk/anthropic` to `^4.0.19`, `@ai-sdk/openai` to `^4.0.20`, `@ai-sdk/react` to `^4.0.40`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1094.0`, `better-auth` to `1.6.25`, `@better-auth/passkey` to `^1.6.25`, `lucide-react` to `^1.26.0`, `next-intl` to `4.13.4`, `use-intl` to `^4.13.4`, `openai` to `^6.49.0`, `fumadocs-core` / `fumadocs-ui` to `16.12.1`, and `react-email` to `^6.9.1`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Synced `postcss` to `8.5.22`, `radix-ui` to `^1.6.5`, and `turbo` to `^2.10.6` in the lockfile.
 
 ---
@@ -501,7 +509,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.35`, `@ai-sdk/openai` to `^4.0.18`, `@ai-sdk/react` to `^4.0.38`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1093.0`, `better-auth` to `1.6.24`, `@better-auth/passkey` to `^1.6.24`, `postcss` to `8.5.22`, `radix-ui` to `^1.6.5`, and `fumadocs-core` / `fumadocs-ui` to `16.12.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.35`, `@ai-sdk/openai` to `^4.0.18`, `@ai-sdk/react` to `^4.0.38`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1093.0`, `better-auth` to `1.6.24`, `@better-auth/passkey` to `^1.6.24`, `postcss` to `8.5.22`, `radix-ui` to `^1.6.5`, and `fumadocs-core` / `fumadocs-ui` to `16.12.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `turbo` to `^2.10.6`.
 
 ---
@@ -510,7 +518,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.34`, `@ai-sdk/openai` to `^4.0.17`, `@ai-sdk/react` to `^4.0.37`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1092.0`, `next` to `^16.2.11`, `@next/third-parties` to `16.2.11`, `next-intl` to `4.13.3`, `use-intl` to `^4.13.3`, `postcss` to `8.5.21`, `react` and `react-dom` to `19.2.8`, `@tanstack/react-query` to `^5.101.4`, and `resend` to `^6.18.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.34`, `@ai-sdk/openai` to `^4.0.17`, `@ai-sdk/react` to `^4.0.37`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1092.0`, `next` to `^16.2.11`, `@next/third-parties` to `16.2.11`, `next-intl` to `4.13.3`, `use-intl` to `^4.13.3`, `postcss` to `8.5.21`, `react` and `react-dom` to `19.2.8`, `@tanstack/react-query` to `^5.101.4`, and `resend` to `^6.18.0`. Skipped `typescript` `7.x` (Next.js 16.2.x still probes `typescript/lib/typescript.js`, dropped in TypeScript 7) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `oxlint` to `^1.75.0`, `oxfmt` to `^0.60.0`, and `oxlint-tsgolint` to `^7.0.2001` (major upgrade).
 
 ---
@@ -521,8 +529,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.32`, `@ai-sdk/react` to `^4.0.35`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1091.0`, `@prisma/adapter-pg`, `@prisma/client`, and `@prisma/nextjs-monorepo-workaround-plugin` to `7.9.0`, `prisma` to `7.9.0`, `radix-ui` to `^1.6.4`, `recharts` to `^3.10.0`, `@tanstack/react-query` to `^5.101.3`, and `@polar-sh/sdk` to `^0.49.0`. Skipped `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
-- **Development dependencies**: Reverted `typescript` to `6.0.3` because Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 no longer ships; this caused `next typegen` to fail in CI and left generated route types (`PageProps`, `LayoutProps`, `RouteContext`) undefined.
+- **Production dependencies**: Bumped `ai` to `^7.0.32`, `@ai-sdk/react` to `^4.0.35`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1091.0`, `@prisma/adapter-pg`, `@prisma/client`, and `@prisma/nextjs-monorepo-workaround-plugin` to `7.9.0`, `prisma` to `7.9.0`, `radix-ui` to `^1.6.4`, `recharts` to `^3.10.0`, `@tanstack/react-query` to `^5.101.3`, and `@polar-sh/sdk` to `^0.49.0`. Skipped `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
+- **Development dependencies**: Reverted `typescript` to `6.0.3`: Next.js 16.2.x still probes `typescript/lib/typescript.js`, which TypeScript 7 drops, so `next typegen` failed in CI and left generated route types (`PageProps`, `LayoutProps`, `RouteContext`) undefined.
 
 ---
 
@@ -533,7 +541,7 @@
 #### Dependencies
 
 - **Production dependencies**: Bumped `nuqs` to `^2.9.1`, `postcss` to `8.5.20`, and `react-dropzone` to `^19.1.1`. Skipped `radix-ui` `1.6.3` (published within the one-day `minimumReleaseAge` window) and `@types/uuid` (deprecated).
-- **Development dependencies**: Kept `typescript` on `6.0.3` because Next.js 16.2.x is not yet compatible with TypeScript 7's native package layout. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Development dependencies**: Kept `typescript` on `6.0.3` because Next.js 16.2.x does not yet support TypeScript 7's native package layout. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -543,7 +551,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `hono` to `^4.12.31` and `react-dropzone` to `^19.0.2` (major upgrade: accepts in-limit files instead of rejecting the whole batch). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `hono` to `^4.12.31` and `react-dropzone` to `^19.0.2` (major upgrade: accepts in-limit files instead of rejecting the whole batch). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -553,7 +561,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.31`, `@ai-sdk/anthropic` to `^4.0.16`, `@ai-sdk/openai` to `^4.0.16`, `@ai-sdk/react` to `^4.0.34`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1090.0`, `lucide-react` to `^1.25.0`, and `react-hook-form` to `^7.82.0`. Synced the lockfile for catalog upgrades from the previous run (including `fumadocs` 16.11.5/15.2.0, `react-email` 6.9.0, `stripe` 22.3.2, and `tailwindcss` 4.3.3). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.31`, `@ai-sdk/anthropic` to `^4.0.16`, `@ai-sdk/openai` to `^4.0.16`, `@ai-sdk/react` to `^4.0.34`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1090.0`, `lucide-react` to `^1.25.0`, and `react-hook-form` to `^7.82.0`. Synced the lockfile for the previous run's catalog upgrades (including `fumadocs` 16.11.5/15.2.0, `react-email` 6.9.0, `stripe` 22.3.2, and `tailwindcss` 4.3.3). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Synced `oxlint-tsgolint` to `^0.25.0`.
 
 ---
@@ -564,7 +572,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.30`, `@ai-sdk/openai` to `^4.0.15`, `@ai-sdk/react` to `^4.0.33`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1089.0`, `fumadocs-core` and `fumadocs-ui` to `16.11.5`, `fumadocs-mdx` to `15.2.0`, `react-email` to `^6.9.0`, and `stripe` to `^22.3.2`. Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.30`, `@ai-sdk/openai` to `^4.0.15`, `@ai-sdk/react` to `^4.0.33`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1089.0`, `fumadocs-core` and `fumadocs-ui` to `16.11.5`, `fumadocs-mdx` to `15.2.0`, `react-email` to `^6.9.0`, and `stripe` to `^22.3.2`. Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `@tailwindcss/postcss` to `^4.3.3`, `tailwindcss` to `4.3.3`, and `oxlint-tsgolint` to `^0.25.0`.
 
 ---
@@ -575,7 +583,7 @@
 
 #### Apps
 
-- **Favicons**: Aligned the marketing and docs favicon assets with the updated SaaS app icon so all shipped apps use the same rocket icon.
+- **Favicons**: Aligned the marketing and docs favicons with the updated SaaS app icon, so all shipped apps use the same rocket icon.
 
 ---
 
@@ -583,7 +591,7 @@
 
 ### Fixed
 
-- **Avatar crop dialog**: Contained the Cropper.js canvas and shade inside the dialog so resizing the crop area no longer overflows the modal. The initial crop selection is 95% of the available area so drag handles stay visible by default.
+- **Avatar crop dialog**: The Cropper.js canvas and shade stay inside the dialog, so resizing the crop area no longer overflows the modal. The initial crop selection covers 95% of the available area, keeping drag handles visible.
 
 ### Changed
 
@@ -591,16 +599,16 @@
 
 - **Font**: Replaced Figtree with Plus Jakarta Sans in the SaaS and marketing app layouts.
 - **Color tokens**: Switched the shared theme from stone to zinc neutrals, with slate primary accents in light and dark mode (`tooling/tailwind/theme.css`).
-- **Buttons**: Hover states use `color-mix` for primary/secondary/destructive, and outline buttons use foreground-based borders and hover fills.
+- **Buttons**: Hover states use `color-mix` for primary/secondary/destructive; outline buttons use foreground-based borders and hover fills.
 - **Dialogs and menus**: Alert dialogs use `bg-card` with larger radius; dialogs use `rounded-2xl`; dropdown menus use `rounded-xl`.
 - **Logo**: Slightly smaller default logo mark (`size-8`).
 
 #### SaaS app
 
-- **App shell**: Removed the floating content card. Navbar and main content share the same background and are separated by a border; content padding aligns with the navbar.
-- **Navbar collapse**: Replaced the header toggle with a Vercel-style edge drag strip (hover chip) to expand/collapse the sidebar. Active nav items use a muted background instead of a bordered card. Expanded mode shows the logo label.
-- **Organization select**: Card-styled trigger with tighter padding; dropdown uses a regular width with the trigger as min-width, and opens to the right when the sidebar is collapsed. Plan label line-height is tightened so the trigger height stays stable. Personal account uses a user icon (instead of the profile photo), drops the group title, and shows the “Personal account” label as the row text.
-- **Organization grid**: Organization logos use rounded corners to match the refreshed card styling.
+- **App shell**: Removed the floating content card. Navbar and main content share one background, separated by a border; content padding aligns with the navbar.
+- **Navbar collapse**: Replaced the header toggle with a Vercel-style edge drag strip (hover chip) that expands/collapses the sidebar. Active nav items use a muted background instead of a bordered card. Expanded mode shows the logo label.
+- **Organization select**: Card-styled trigger with tighter padding; the dropdown uses a regular width with the trigger as min-width and opens to the right when the sidebar is collapsed. A tighter plan label line-height keeps the trigger height stable. Personal account uses a user icon (instead of the profile photo), drops the group title, and shows the “Personal account” label as the row text.
+- **Organization grid**: Organization logos use rounded corners to match the refreshed cards.
 - **User menu**: Dropdown uses a regular width with the trigger as min-width; opens above (expanded), to the right (collapsed desktop), or below and right-aligned (mobile).
 - **Auth screens**: Removed the bordered auth card wrapper; titles and subtitles are centered. Login/signup divider labels use `bg-background`.
 - **Settings**: Simplified active sessions and connected accounts rows (no bordered cards); settings item headers get consistent bottom padding on wide layouts.
@@ -608,8 +616,8 @@
 
 #### Marketing
 
-- **Hero**: Dropped the primary-tinted gradient background; hero media frame uses `bg-muted`.
-- **Consent banner**: Allow action uses the primary button variant explicitly.
+- **Hero**: Dropped the primary-tinted gradient background; the hero media frame uses `bg-muted`.
+- **Consent banner**: The Allow action explicitly uses the primary button variant.
 
 #### Database
 
@@ -617,7 +625,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.28`, `@ai-sdk/anthropic` to `^4.0.15`, `@ai-sdk/openai` to `^4.0.14`, `@ai-sdk/react` to `^4.0.30`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1087.0`, and `openai` to `^6.47.0`. Synced the lockfile for catalog upgrades from previous runs (including major upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, `cropperjs` 2.x, `nanoid` 6.x, and `react-dropzone` 17.x). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.28`, `@ai-sdk/anthropic` to `^4.0.15`, `@ai-sdk/openai` to `^4.0.14`, `@ai-sdk/react` to `^4.0.30`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1087.0`, and `openai` to `^6.47.0`. Synced the lockfile for earlier runs' catalog upgrades (including major upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, `cropperjs` 2.x, `nanoid` 6.x, and `react-dropzone` 17.x). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `oxlint` to `^1.74.0`, `oxfmt` to `^0.59.0`, and `turbo` to `^2.10.5`.
 
 ---
@@ -626,18 +634,18 @@
 
 ### Fixed
 
-- Removed the stale `cropperjs/dist/cropper.css` import from the SaaS app root layout. Cropper.js v2 ships its styles inside its web components, and the CSS file no longer exists in the package, which broke the Next.js production build. Aligned the avatar crop dialog with the TanStack Start implementation, including shade clipping and layout styles for the Cropper.js v2 web component API.
+- Removed the stale `cropperjs/dist/cropper.css` import from the SaaS app root layout; the file no longer exists in the package (Cropper.js v2 ships its styles inside its web components), which broke the Next.js production build. Aligned the avatar crop dialog with the TanStack Start implementation, including shade clipping and layout styles for the Cropper.js v2 web component API.
 
 ### Changed
 
 #### Mail
 
-- **Default provider**: Switched the default mail provider export from Plunk to Resend. The Plunk provider implementation and `PLUNK_API_KEY` example environment variable were removed.
+- **Default provider**: Switched the default mail provider export from Plunk to Resend and removed the Plunk provider and the `PLUNK_API_KEY` example environment variable.
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.11.4`, `fumadocs-mdx` to `15.1.1`, and `react-email` to `^6.8.1`. Skipped `ai` `7.0.26`, `@ai-sdk/*` `4.0.13`/`4.0.14`/`4.0.27`, and `@aws-sdk/*` `3.1086.0` because they were published within the last 24 hours, plus `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
-- **Development dependencies**: Bumped `postcss` to `8.5.19`. Skipped `turbo` `2.10.5` because it was published within the last 24 hours.
+- **Production dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.11.4`, `fumadocs-mdx` to `15.1.1`, and `react-email` to `^6.8.1`. Skipped `ai` `7.0.26`, `@ai-sdk/*` `4.0.13`/`4.0.14`/`4.0.27`, and `@aws-sdk/*` `3.1086.0` (under 24 hours old), plus `typescript` `7.x` (major upgrade awaiting ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
+- **Development dependencies**: Bumped `postcss` to `8.5.19`. Skipped `turbo` `2.10.5` (under 24 hours old).
 
 ---
 
@@ -647,7 +655,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@orpc/*` to `1.14.8`, `hono` to `^4.12.30`, `nanoid` to `^6.0.0`, and `react-dropzone` to `^17.0.0`. Synced the lockfile for catalog upgrades from previous runs (including `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x). Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@orpc/*` to `1.14.8`, `hono` to `^4.12.30`, `nanoid` to `^6.0.0`, and `react-dropzone` to `^17.0.0`. Synced the lockfile for earlier catalog upgrades (including `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x). Skipped `typescript` `7.x` (major upgrade awaiting ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `postcss` to `8.5.18` and `tsx` to `^4.23.1`.
 
 ---
@@ -658,7 +666,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.11.3`. Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `fumadocs-core` and `fumadocs-ui` to `16.11.3`. Skipped `typescript` `7.x` (major upgrade awaiting ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `postcss` to `8.5.17`.
 
 ---
@@ -669,7 +677,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.22`, `@ai-sdk/anthropic` to `^4.0.12`, `@ai-sdk/react` to `^4.0.23`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1085.0`, `hono` to `^4.12.29`, `next-intl` to `4.13.2`, `use-intl` to `^4.13.2`, `fumadocs-core` / `fumadocs-ui` to `16.11.2`, and `react-email` to `^6.7.0`. Synced the lockfile for catalog upgrades from the previous run. Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.22`, `@ai-sdk/anthropic` to `^4.0.12`, `@ai-sdk/react` to `^4.0.23`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1085.0`, `hono` to `^4.12.29`, `next-intl` to `4.13.2`, `use-intl` to `^4.13.2`, `fumadocs-core` / `fumadocs-ui` to `16.11.2`, and `react-email` to `^6.7.0`. Synced the lockfile for the previous run's catalog upgrades. Skipped `typescript` `7.x` (major upgrade awaiting ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `oxfmt` to `0.58.0`, `oxlint` to `1.73.0`, `turbo` to `2.10.4`, and `@types/node` to `26.1.1`.
 
 ---
@@ -680,7 +688,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.19`, `@ai-sdk/anthropic` to `^4.0.11`, `@ai-sdk/openai` to `^4.0.11`, `@ai-sdk/react` to `^4.0.20`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1084.0`, `dodopayments` to `^2.42.2`, `lucide-react` to `^1.24.0`, `openai` to `^6.46.0`, `react-email` to `^6.6.9`, and `stripe` to `^22.3.1`. Skipped `typescript` `7.x` (major upgrade pending ecosystem support) and `@types/uuid` (deprecated). Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.19`, `@ai-sdk/anthropic` to `^4.0.11`, `@ai-sdk/openai` to `^4.0.11`, `@ai-sdk/react` to `^4.0.20`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1084.0`, `dodopayments` to `^2.42.2`, `lucide-react` to `^1.24.0`, `openai` to `^6.46.0`, `react-email` to `^6.6.9`, and `stripe` to `^22.3.1`. Skipped `typescript` `7.x` (major upgrade awaiting ecosystem support) and `@types/uuid` (deprecated). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -691,7 +699,7 @@
 #### Dependencies
 
 - **Production dependencies**: Synced the lockfile with the catalog major upgrades (`ai` `^7.0.16`, `@ai-sdk/*` `^4.0.x`, `cookie` `^2.0.1`, `cropperjs` `2.1.1`, `resend` `^6.17.2`, `nodemailer` `^9.0.3`, and related packages). Bumped `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1083.0`.
-- **Development dependencies**: Bumped `@types/node` to `26.1.1`. Skipped `ai` `7.0.18`, `@ai-sdk/react` `4.0.19`, `@ai-sdk/openai` `4.0.9`, and `@aws-sdk/*` `3.1084.0` because they were published within the last 24 hours. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Development dependencies**: Bumped `@types/node` to `26.1.1`. Skipped `ai` `7.0.18`, `@ai-sdk/react` `4.0.19`, `@ai-sdk/openai` `4.0.9`, and `@aws-sdk/*` `3.1084.0` (under 24 hours old). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -701,8 +709,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Synced the lockfile with the catalog major upgrades (`ai` `^7.0.16`, `@ai-sdk/*` `^4.0.x`, `cookie` `^2.0.1`, `cropperjs` `2.1.1`, `resend` `^6.17.1`, `nodemailer` `^9.0.3`, and related packages). Bumped `dodopayments` to `^2.42.1`, `react-email` to `^6.6.8`, and `fumadocs-core` / `fumadocs-ui` to `16.11.1` and `fumadocs-mdx` to `15.1.0`.
-- **Development dependencies**: Bumped `vitest` and `@vitest/coverage-v8` to `^4.1.10`, `turbo` to `^2.10.4`, `oxlint` to `^1.73.0`, and `oxfmt` to `^0.58.0`. Skipped `ai` `7.0.17`, `@ai-sdk/react` `4.0.18`, and `@aws-sdk/*` `3.1081.0` because they were published within the last 24 hours. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Synced the lockfile with the catalog major upgrades (`ai` `^7.0.16`, `@ai-sdk/*` `^4.0.x`, `cookie` `^2.0.1`, `cropperjs` `2.1.1`, `resend` `^6.17.1`, `nodemailer` `^9.0.3`, and related packages). Bumped `dodopayments` to `^2.42.1`, `react-email` to `^6.6.8`, `fumadocs-core` / `fumadocs-ui` to `16.11.1`, and `fumadocs-mdx` to `15.1.0`.
+- **Development dependencies**: Bumped `vitest` and `@vitest/coverage-v8` to `^4.1.10`, `turbo` to `^2.10.4`, `oxlint` to `^1.73.0`, and `oxfmt` to `^0.58.0`. Skipped `ai` `7.0.17`, `@ai-sdk/react` `4.0.18`, and `@aws-sdk/*` `3.1081.0` (under 24 hours old). Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -710,12 +718,12 @@
 
 ### Changed
 
-- **Dependabot**: Removed the `.github/dependabot.yml` configuration. Dependency updates are now manual or can be automated with AI agent tools such as Cursor Automations or Claude Code Routines. `pnpm-workspace.yaml` still enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Dependabot**: Removed the `.github/dependabot.yml` configuration. Dependency updates are manual or can be automated with AI agent tools such as Cursor Automations or Claude Code Routines. `pnpm-workspace.yaml` still enforces `minimumReleaseAge: 1440` (one day) on install.
 
 #### Dependencies
 
 - **Production dependencies**: Bumped `ai` to `^7.0.16`, `@ai-sdk/react` to `^4.0.17`, `@orpc/*` to `1.14.7`, `hono` to `^4.12.28`, `dodopayments` to `^2.42.0`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1080.0`, and `radix-ui` to `^1.6.2`.
-- **Development dependencies**: Bumped `vitest` and `@vitest/coverage-v8` to `^4.1.10`, `turbo` to `^2.10.4`, `oxlint` to `^1.73.0`, and `oxfmt` to `^0.58.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Development dependencies**: Bumped `vitest` and `@vitest/coverage-v8` to `^4.1.10`, `turbo` to `^2.10.4`, `oxlint` to `^1.73.0`, and `oxfmt` to `^0.58.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -725,7 +733,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@ai-sdk/openai` to `^4.0.8`. Other available updates (`ai` 7.0.16, `@ai-sdk/react` 4.0.17, `dodopayments` 2.42.0, `hono` 4.12.28, `@aws-sdk/client-s3` 3.1080.0, `oxlint` 1.73.0, `oxfmt` 0.58.0, and `turbo` 2.10.4) were skipped because they were published within the last 24 hours. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@ai-sdk/openai` to `^4.0.8`. Skipped the other available updates (`ai` 7.0.16, `@ai-sdk/react` 4.0.17, `dodopayments` 2.42.0, `hono` 4.12.28, `@aws-sdk/client-s3` 3.1080.0, `oxlint` 1.73.0, `oxfmt` 0.58.0, and `turbo` 2.10.4) as under 24 hours old. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -735,7 +743,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.15`, `@ai-sdk/anthropic` to `^4.0.8`, `@ai-sdk/react` to `^4.0.16`, `react-hook-form` to `^7.81.0`, and `dodopayments` to `^2.41.0`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.15`, `@ai-sdk/anthropic` to `^4.0.8`, `@ai-sdk/react` to `^4.0.16`, `react-hook-form` to `^7.81.0`, and `dodopayments` to `^2.41.0`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -746,7 +754,7 @@
 #### Dependencies
 
 - **Production dependencies**: Bumped `recharts` to `^3.9.2` and `resend` to `^6.17.1`.
-- **Development dependencies**: Bumped `@shikijs/rehype` to `^4.3.1`, `tsx` to `^4.23.0`, and `turbo` to `^2.10.3`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Development dependencies**: Bumped `@shikijs/rehype` to `^4.3.1`, `tsx` to `^4.23.0`, and `turbo` to `^2.10.3`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -756,7 +764,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.14`, `@ai-sdk/anthropic` to `^4.0.7`, `@ai-sdk/openai` to `^4.0.7`, `@ai-sdk/react` to `^4.0.15`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1079.0`, and `react-email` to `^6.6.6`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.14`, `@ai-sdk/anthropic` to `^4.0.7`, `@ai-sdk/openai` to `^4.0.7`, `@ai-sdk/react` to `^4.0.15`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1079.0`, and `react-email` to `^6.6.6`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `tsx` to `^4.22.5`.
 
 ---
@@ -767,7 +775,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.11`, `@ai-sdk/anthropic` to `^4.0.5`, `@ai-sdk/openai` to `^4.0.5`, `@ai-sdk/react` to `^4.0.12`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1078.0`, `next` to `^16.2.10`, `@next/third-parties` to `16.2.10`, `next-intl` and `use-intl` to `4.13.1`, `lucide-react` to `^1.23.0`, `nuqs` to `^2.9.0`, `radix-ui` to `^1.6.1`, `recharts` to `^3.9.1`, `nodemailer` to `^9.0.3`, and `sharp` to `^0.35.3`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.11`, `@ai-sdk/anthropic` to `^4.0.5`, `@ai-sdk/openai` to `^4.0.5`, `@ai-sdk/react` to `^4.0.12`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1078.0`, `next` to `^16.2.10`, `@next/third-parties` to `16.2.10`, `next-intl` and `use-intl` to `4.13.1`, `lucide-react` to `^1.23.0`, `nuqs` to `^2.9.0`, `radix-ui` to `^1.6.1`, `recharts` to `^3.9.1`, `nodemailer` to `^9.0.3`, and `sharp` to `^0.35.3`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `@types/node` to `26.1.0`, `turbo` to `^2.10.2`, and `oxlint-tsgolint` to `^0.24.0`.
 
 ---
@@ -778,7 +786,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `ai` to `^7.0.7`, `@ai-sdk/anthropic` to `^4.0.2`, `@ai-sdk/openai` to `^4.0.3`, `@ai-sdk/react` to `^4.0.8`, Better Auth to `1.6.23`, `@better-auth/passkey` to `^1.6.23`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1076.0`, `fumadocs-core` and `fumadocs-ui` to `16.10.7`, and `tailwindcss` to `4.3.2`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `ai` to `^7.0.7`, `@ai-sdk/anthropic` to `^4.0.2`, `@ai-sdk/openai` to `^4.0.3`, `@ai-sdk/react` to `^4.0.8`, Better Auth to `1.6.23`, `@better-auth/passkey` to `^1.6.23`, `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to `3.1076.0`, `fumadocs-core` and `fumadocs-ui` to `16.10.7`, and `tailwindcss` to `4.3.2`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 - **Development dependencies**: Bumped `oxlint` to `^1.72.0`, `oxfmt` to `^0.57.0`, and `turbo` to `^2.10.1`.
 
 ---
@@ -789,7 +797,7 @@
 
 #### Dependencies
 
-- **Development dependencies**: Bumped `oxlint-tsgolint` to `0.24.0` and Turborepo to `2.10.2`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Development dependencies**: Bumped `oxlint-tsgolint` to `0.24.0` and Turborepo to `2.10.2`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -799,7 +807,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Major upgrades — `ai` to `^7.0.4`, `@ai-sdk/anthropic` to `^4.0.1`, `@ai-sdk/openai` to `^4.0.2`, `@ai-sdk/react` to `^4.0.5`, `cookie` to `^2.0.0`, and `cropperjs` to `2.1.1`. Removed `react-cropper` in favor of native Cropper.js v2 integration in the avatar crop dialog. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Major upgrades — `ai` to `^7.0.4`, `@ai-sdk/anthropic` to `^4.0.1`, `@ai-sdk/openai` to `^4.0.2`, `@ai-sdk/react` to `^4.0.5`, `cookie` to `^2.0.0`, and `cropperjs` to `2.1.1`. Replaced `react-cropper` with native Cropper.js v2 integration in the avatar crop dialog. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -809,8 +817,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@ai-sdk/anthropic` to `^3.0.89`, `@ai-sdk/openai` to `^3.0.77`, `@ai-sdk/react` to `^3.0.216`, and `ai` to `^6.0.214`. Major-version upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x were intentionally skipped pending migration work.
-- **Development dependencies**: Bumped `@types/node` to `26.0.1` and `prettier` to `3.9.3`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@ai-sdk/anthropic` to `^3.0.89`, `@ai-sdk/openai` to `^3.0.77`, `@ai-sdk/react` to `^3.0.216`, and `ai` to `^6.0.214`. Skipped major upgrades to `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x pending migration work.
+- **Development dependencies**: Bumped `@types/node` to `26.0.1` and `prettier` to `3.9.3`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -820,8 +828,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `lucide-react` to `1.22.0`, `date-fns` to `4.4.0`, `openai` to `6.45.0`, `postcss` to `8.5.16`, `autoprefixer` to `10.5.2`, `uuid` to `14.0.1`, and `start-server-and-test` to `3.0.11`. Major-version upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x were intentionally skipped pending migration work.
-- **Development dependencies**: Bumped `@types/node` to `25.9.4` and `@types/js-cookie` to `3.0.6`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `lucide-react` to `1.22.0`, `date-fns` to `4.4.0`, `openai` to `6.45.0`, `postcss` to `8.5.16`, `autoprefixer` to `10.5.2`, `uuid` to `14.0.1`, and `start-server-and-test` to `3.0.11`. Skipped major upgrades to `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x pending migration work.
+- **Development dependencies**: Bumped `@types/node` to `25.9.4` and `@types/js-cookie` to `3.0.6`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -831,7 +839,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped `@tanstack/react-query` to `5.101.2`, `dodopayments` to `2.40.1`, `fumadocs-core` to `16.10.6`, `fumadocs-mdx` to `15.0.13`, and `fumadocs-ui` to `16.10.6`. Major-version upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x were intentionally skipped pending migration work. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped `@tanstack/react-query` to `5.101.2`, `dodopayments` to `2.40.1`, `fumadocs-core` to `16.10.6`, `fumadocs-mdx` to `15.0.13`, and `fumadocs-ui` to `16.10.6`. Skipped major upgrades to `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x pending migration work. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -841,7 +849,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped Better Auth to `1.6.22`, `@better-auth/passkey` to `1.6.22`, `es-toolkit` to `1.49.0`, and `resend` to `6.16.0`. Major-version upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x were intentionally skipped pending migration work. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped Better Auth to `1.6.22`, `@better-auth/passkey` to `1.6.22`, `es-toolkit` to `1.49.0`, and `resend` to `6.16.0`. Skipped major upgrades to `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x pending migration work. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -851,8 +859,8 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped 40+ production packages, including Next.js `16.2.9`, Better Auth `1.6.20`, oRPC `1.14.6`, Tailwind CSS `4.3.1`, AWS SDK S3 clients `3.1075.0`, Radix UI `1.6.0`, and other workspace runtime dependencies. Major-version upgrades for `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x were intentionally skipped pending migration work.
-- **Development dependencies**: Bumped Turborepo to `2.10.0`, Oxlint to `1.71.0`, Oxfmt to `0.56.0`, Vitest to `4.1.9`, and Playwright to `1.61.1`. Refresh the lockfile with `pnpm install` after pulling. `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day) at install time.
+- **Production dependencies**: Bumped 40+ packages, including Next.js `16.2.9`, Better Auth `1.6.20`, oRPC `1.14.6`, Tailwind CSS `4.3.1`, AWS SDK S3 clients `3.1075.0`, and Radix UI `1.6.0`. Skipped major upgrades to `ai` 7.x, `@ai-sdk/*` 4.x, `cookie` 2.x, and `cropperjs` 2.x pending migration work.
+- **Development dependencies**: Bumped Turborepo to `2.10.0`, Oxlint to `1.71.0`, Oxfmt to `0.56.0`, Vitest to `4.1.9`, and Playwright to `1.61.1`. Run `pnpm install` after pulling; `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (one day).
 
 ---
 
@@ -872,7 +880,7 @@
 
 #### SaaS app
 
-- **Organization members**: Removed the role permissions summary box from the members settings page. Role descriptions now appear only inside the role select dropdown (capped to one line), and the select trigger shows only the role label for a compact layout.
+- **Organization members**: Removed the role permissions summary box from the members settings page. Role descriptions appear only in the role select dropdown (capped to one line), and the select trigger shows just the role label.
 
 ### Changed
 
@@ -899,7 +907,7 @@
 
 #### Dependencies
 
-- **Production dependencies**: Bumped 29 production packages, including Next.js `16.2.7`, React and React DOM `19.2.7`, Better Auth `1.6.14`, Vitest `4.1.8`, `next-intl` `4.13.0`, and other workspace runtime and tooling dependencies. Refresh the lockfile with `pnpm install` after pulling.
+- **Production dependencies**: Bumped 29 packages, including Next.js `16.2.7`, React and React DOM `19.2.7`, Better Auth `1.6.14`, Vitest `4.1.8`, and `next-intl` `4.13.0`. Refresh the lockfile with `pnpm install` after pulling.
 
 ---
 
@@ -909,7 +917,7 @@
 
 #### SaaS app
 
-- **Organization settings**: Only organization owners now see the delete organization section in general settings. Admins still retain access to the rest of organization settings.
+- **Organization settings**: Only organization owners see the delete organization section in general settings; admins keep access to the rest of organization settings.
 
 ---
 
@@ -917,7 +925,7 @@
 
 #### Auth
 
-- **Username plugin**: Removed the Better Auth `username()` plugin along with the `username` and `displayUsername` columns from the Prisma and Drizzle user schemas. This eliminates the unauthenticated `POST /api/auth/is-username-available` endpoint, which allowed anonymous username enumeration. Apply the schema change with `pnpm --filter @repo/database push` (this drops the two columns).
+- **Username plugin**: Removed the Better Auth `username()` plugin and the `username` and `displayUsername` columns from the Prisma and Drizzle user schemas. This eliminates the unauthenticated `POST /api/auth/is-username-available` endpoint, which allowed anonymous username enumeration. Apply the schema change with `pnpm --filter @repo/database push` (drops the two columns).
 
 ---
 
@@ -927,9 +935,9 @@
 
 #### Infrastructure
 
-- **Node.js and pnpm**: The workspace now requires Node.js `>=22` and pins `pnpm@11.3.0`. Turborepo was upgraded to the latest 2.9.x release.
-- **Dependabot**: Removed the open-pull-requests limit and Dependabot cooldown so daily upgrade PRs are no longer capped at two concurrent updates. `pnpm-workspace.yaml` still enforces `minimumReleaseAge: 1440` (one day) at install time.
-- **Lint tooling**: Moved `oxlint-tsgolint` from root dependencies to devDependencies so it is only installed for development workflows.
+- **Node.js and pnpm**: The workspace requires Node.js `>=22` and pins `pnpm@11.3.0`. Upgraded Turborepo to the latest 2.9.x release.
+- **Dependabot**: Removed the open-pull-requests limit and Dependabot cooldown, so daily upgrade PRs are no longer capped at two. `pnpm-workspace.yaml` still enforces `minimumReleaseAge: 1440` (one day) on install.
+- **Lint tooling**: Moved `oxlint-tsgolint` from root dependencies to devDependencies so it installs only for development.
 
 ---
 
@@ -939,15 +947,15 @@
 
 #### Payments
 
-- **Stripe one-time checkout**: Creating a checkout link for a user or organization that already has a Stripe customer no longer sends `customer_creation` alongside `customer`, which Stripe rejects with a parameter conflict error.
+- **Stripe one-time checkout**: Checkout links for a user or organization with an existing Stripe customer no longer send `customer_creation` alongside `customer`, which Stripe rejects as a parameter conflict.
 
 #### Marketing and SaaS apps
 
-- **Theme toggle**: `ColorModeToggle` defers reading `next-themes` until after mount so the marketing and SaaS toggles render consistent server markup and client hydration without `suppressHydrationWarning`, fixing the active indicator jumping or mismatching on first paint.
+- **Theme toggle**: `ColorModeToggle` defers reading `next-themes` until after mount, so the marketing and SaaS toggles render matching server markup and client hydration without `suppressHydrationWarning`; the active indicator no longer jumps or mismatches on first paint.
 
 #### Marketing
 
-- **Content Collections**: `content-collections` config now uses the `content` option instead of the deprecated `collections` field (0.14+ migration), keeping the marketing content pipeline on the supported API.
+- **Content Collections**: `content-collections` config uses the `content` option instead of the deprecated `collections` field (0.14+ migration), keeping the marketing content pipeline on the supported API.
 
 ---
 
@@ -967,13 +975,13 @@
 
 #### Mail
 
-- **NewUser template**: Removed the unused `NewUser` email template, its `mailTemplates` wiring, orphaned per-locale `mail.json` entries, and the `common.otp` string that was only referenced there. Signup and email changes continue to use the email verification template.
+- **NewUser template**: Removed the unused `NewUser` email template, its `mailTemplates` wiring, orphaned per-locale `mail.json` entries, and the `common.otp` string used only there. Signup and email changes keep using the email verification template.
 
 ### Changed
 
 #### Dependencies
 
-- **Workspace prune**: Dropped direct dependencies that were never imported from their package trees, removed the `openapi-schema` helper that only supported the removed `openapi-merge` dependency, and refreshed the lockfile so installs stay lean while type-check and tests keep passing.
+- **Workspace prune**: Dropped direct dependencies never imported from their package trees, removed the `openapi-schema` helper that only supported the removed `openapi-merge` dependency, and refreshed the lockfile; type-check and tests still pass.
 
 ---
 
@@ -983,7 +991,7 @@
 
 #### Mail
 
-- **React Email 6**: The mail workspace now uses the unified `react-email` package (v6). Separate `@react-email/components` and `@react-email/render` dependencies were removed in favor of imports from `react-email`. The mail preview app replaces `@react-email/preview-server` with `@react-email/ui` per the v6 upgrade guide. Email templates were reformatted with oxfmt.
+- **React Email 6**: The mail workspace uses the unified `react-email` package (v6), replacing the separate `@react-email/components` and `@react-email/render` dependencies. Per the v6 upgrade guide, the mail preview app replaces `@react-email/preview-server` with `@react-email/ui`. Email templates were reformatted with oxfmt.
 
 ---
 
@@ -993,12 +1001,12 @@
 
 #### Infrastructure
 
-- **Dependency minimum release age**: A 1-day minimum release age is now enforced at two levels to reduce supply chain attack exposure. Dependabot is configured with `cooldown: default-days: 1` so upgrade PRs are not opened immediately for freshly published versions. `pnpm-workspace.yaml` sets `settings.minimumReleaseAge: 1440` (minutes) so pnpm v11+ will also refuse to install any package version younger than one day, including transitive dependencies. Together these ensure a community-detection window before newly published — potentially compromised — versions reach the project.
-- **pnpm v11**: The monorepo now targets pnpm `11.1.1`, with package-manager-only build settings moved from the root `package.json` into `pnpm-workspace.yaml` so installs and CI behave correctly on the v11 toolchain.
+- **Dependency minimum release age**: A 1-day minimum release age is enforced at two levels to reduce supply chain attack exposure. Dependabot's `cooldown: default-days: 1` delays upgrade PRs for freshly published versions, and `pnpm-workspace.yaml` sets `settings.minimumReleaseAge: 1440` (minutes) so pnpm v11+ refuses to install any package version younger than one day, including transitive dependencies. This gives the community time to detect newly published, potentially compromised versions before they reach the project.
+- **pnpm v11**: The monorepo targets pnpm `11.1.1`; package-manager-only build settings moved from the root `package.json` into `pnpm-workspace.yaml` so installs and CI work on the v11 toolchain.
 
 #### Marketing and SaaS apps
 
-- **Theme toggle**: Light/dark controls in the marketing and SaaS apps render with correct server markup and no longer rely on a client-only placeholder that hid the toggle before hydration.
+- **Theme toggle**: Light/dark controls in the marketing and SaaS apps render correct server markup and no longer rely on a client-only placeholder that hid the toggle before hydration.
 
 ---
 
@@ -1008,7 +1016,7 @@
 
 #### Database
 
-- **Two-factor authentication schema**: Added the missing Better Auth `verified` flag to the `TwoFactor` Prisma model, generated Prisma Zod schema, and PostgreSQL, MySQL, and SQLite Drizzle schemas so two-factor enrollment state is represented consistently across database adapters.
+- **Two-factor authentication schema**: Added the missing Better Auth `verified` flag to the `TwoFactor` Prisma model, the generated Prisma Zod schema, and the PostgreSQL, MySQL, and SQLite Drizzle schemas, so every database adapter represents two-factor enrollment state the same way.
 
 ---
 
@@ -1018,7 +1026,7 @@
 
 #### SaaS app
 
-- **Account security settings**: Passkeys can now be renamed from the passkey list, and the rename dialog opens automatically after creating a new passkey. The passkey list shows user-defined names without the device type prefix and falls back to “Unnamed passkey” for legacy passkeys without a saved name. The two-factor authentication block remains visible when a password has not been configured and now explains that a password is required before two-factor authentication can be enabled.
+- **Account security settings**: Passkeys can be renamed from the passkey list, and the rename dialog opens automatically after creating a passkey. The list shows user-defined names without the device type prefix, falling back to “Unnamed passkey” for legacy passkeys without a saved name. The two-factor authentication block stays visible when no password is set and explains that a password is required before enabling two-factor authentication.
 
 ---
 
@@ -1028,7 +1036,7 @@
 
 #### SaaS app
 
-- **Organization general settings**: Organization name field now syncs when client data loads; success and error toasts use dedicated `organizations.settings` i18n keys. After renaming, the organization list query is refetched, the active organization is refreshed, and the name form resets to the saved value. The organization switcher no longer briefly shows “Personal account” when opening account settings with an active organization (active-org query keeps previous data across route key changes).
+- **Organization general settings**: The organization name field syncs when client data loads; success and error toasts use dedicated `organizations.settings` i18n keys. After a rename, the organization list query is refetched, the active organization refreshed, and the name form reset to the saved value. The organization switcher no longer briefly shows “Personal account” when opening account settings with an active organization (the active-org query keeps previous data across route key changes).
 
 ---
 
@@ -1038,13 +1046,13 @@
 
 #### Database
 
-- **Drizzle notifications and schema**: Notification persistence (preferences, insert support, listing rows, unread counts, mark read) is implemented in `@repo/database` for both Prisma and Drizzle, so the Drizzle scaffold no longer mixes in Prisma-style `db` calls. The Drizzle schema barrel (`drizzle/schema/index.ts`) re-exports the PostgreSQL schema (aligned with the Drizzle client) and exposes `NotificationType` / `NotificationTarget` for type-safe consumers.
-- **`user.lastActiveOrganizationId` in Drizzle**: Added on PostgreSQL, MySQL, and SQLite user tables so Drizzle schemas match the Prisma user model and auth hooks that read this field.
-- **Organization lookups (Drizzle)**: `findFirst`-based helpers now normalize missing rows to `null`, matching Prisma `findUnique` behavior for tests and callers.
+- **Drizzle notifications and schema**: Notification persistence (preferences, inserts, listing rows, unread counts, mark read) lives in `@repo/database` for both Prisma and Drizzle, so the Drizzle scaffold no longer mixes in Prisma-style `db` calls. The Drizzle schema barrel (`drizzle/schema/index.ts`) re-exports the PostgreSQL schema (aligned with the Drizzle client) and exposes `NotificationType` / `NotificationTarget` for type-safe consumers.
+- **`user.lastActiveOrganizationId` in Drizzle**: Added to the PostgreSQL, MySQL, and SQLite user tables so Drizzle schemas match the Prisma user model and the auth hooks that read this field.
+- **Organization lookups (Drizzle)**: `findFirst`-based helpers normalize missing rows to `null`, matching Prisma `findUnique` behavior for tests and callers.
 
 #### Packages
 
-- **`@repo/notifications`**: Dropped the thin `list`, `mark-read`, and `preferences` modules; the package index re-exports the shared notification query helpers from `@repo/database` next to create/welcome/resolve-link.
+- **`@repo/notifications`**: Dropped the thin `list`, `mark-read`, and `preferences` modules; the package index re-exports the shared notification query helpers from `@repo/database` alongside create/welcome/resolve-link.
 
 #### API
 
@@ -1052,7 +1060,7 @@
 
 #### SaaS app
 
-- **Notification center**: Removed interval-based refetching of notifications from the notification center UI.
+- **Notification center**: Removed interval-based notification refetching from the notification center UI.
 
 Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/2395) (Drizzle + Postgres scaffold parity).
 
@@ -1072,13 +1080,13 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 #### API
 
-- **Notifications oRPC**: Procedures to list notifications, get unread count, mark one or all as read, and read/update notification preferences.
+- **Notifications oRPC**: Procedures to list notifications, get the unread count, mark one or all as read, and read/update notification preferences.
 
 #### SaaS app
 
 - **Notification Center**: Navbar UI to view notifications and mark them read.
-- **Notification preferences**: Account settings page and form for per-channel preferences; server-only notification logic is kept out of the client bundle for the preferences form.
-- **Auth**: Database hook after user creation creates a welcome in-app notification via `@repo/notifications`.
+- **Notification preferences**: Account settings page and form for per-channel preferences; server-only notification logic stays out of the preferences form's client bundle.
+- **Auth**: A database hook after user creation creates a welcome in-app notification via `@repo/notifications`.
 
 #### Mail and i18n
 
@@ -1092,7 +1100,7 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 #### SaaS settings
 
-- **Account and organization settings**: Removed nested `settings/layout.tsx` for account and org routes; settings sub-pages (general, billing, security, members, etc.) are updated to match the flatter structure. New **Notifications** route under account settings.
+- **Account and organization settings**: Removed nested `settings/layout.tsx` for account and org routes and updated settings sub-pages (general, billing, security, members, etc.) to the flatter structure. New **Notifications** route under account settings.
 
 #### NavBar and theming
 
@@ -1104,9 +1112,9 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 ### Testing
 
-- **Vitest setup**: Added Vitest configuration (`vitest.config.ts`) to `apps/saas`, `apps/marketing`, and `packages/api` so unit tests can be run with `pnpm test` in each workspace package.
-- **Unit tests**: Added initial unit test suites covering `base-url` helpers in both apps, content utilities in the marketing app, and organization membership logic, slug generation, and oRPC procedure wiring in the API package.
-- **CI integration**: Added a unit test job to the GitHub Actions workflow so all unit tests run on every pull request; the Turbo `test` task no longer depends on `build`.
+- **Vitest setup**: Added Vitest configuration (`vitest.config.ts`) to `apps/saas`, `apps/marketing`, and `packages/api` so each workspace package runs unit tests with `pnpm test`.
+- **Unit tests**: Added initial suites covering `base-url` helpers in both apps, content utilities in the marketing app, and organization membership logic, slug generation, and oRPC procedure wiring in the API package.
+- **CI integration**: Added a unit test job to the GitHub Actions workflow so unit tests run on every pull request; the Turbo `test` task no longer depends on `build`.
 
 ---
 
@@ -1116,7 +1124,7 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 #### SaaS app
 
-- **Checkout return after payment**: After Stripe checkout, users are redirected to `/checkout-return`, which polls `listPurchases` until an active plan appears (avoiding a race with webhook processing). The pricing table passes `organizationId` in the return URL when applicable. If confirmation does not arrive within the timeout, users are sent to `/choose-plan`. Added `checkoutReturn` copy in English, German, Spanish, and French.
+- **Checkout return after payment**: After Stripe checkout, users land on `/checkout-return`, which polls `listPurchases` until an active plan appears (avoiding a race with webhook processing). The pricing table passes `organizationId` in the return URL when applicable. If confirmation does not arrive before the timeout, users are sent to `/choose-plan`. Added `checkoutReturn` copy in English, German, Spanish, and French.
 
 ---
 
@@ -1125,7 +1133,7 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 ### Tooling
 
 - **Lint and format stack**: Replaced Biome with [Oxlint](https://oxc.rs/docs/guide/usage/linter) and [Oxfmt](https://oxc.rs/docs/guide/usage/formatter) for faster linting and formatting across the monorepo.
-- **Workspace layout**: Consolidated Oxlint/Oxfmt dependencies at the repository root (pnpm catalog) and removed redundant per-package Biome configs; lockfile and many source files were updated to match the new rules and formatter output.
+- **Workspace layout**: Consolidated Oxlint/Oxfmt dependencies at the repository root (pnpm catalog) and removed redundant per-package Biome configs; updated the lockfile and many source files to the new rules and formatter output.
 
 ---
 
@@ -1135,7 +1143,7 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 #### Organizations
 
-- **Persist last active organization**: A new `lastActiveOrganizationId` field is stored on the user record whenever the active organization changes. On next sign-in, the session is automatically restored to that organization via a better-auth `databaseHook`, so users no longer land on a default/empty organization after logging back in.
+- **Persist last active organization**: A new `lastActiveOrganizationId` field on the user record is updated whenever the active organization changes. On the next sign-in, a better-auth `databaseHook` restores the session to that organization, so users no longer land on a default/empty organization.
 
 ---
 
@@ -1145,8 +1153,8 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 #### Marketing app
 
-- **Tailwind Typography**: Added `@tailwindcss/typography` plugin to the marketing app so `prose` and `prose-invert` classes render styled content correctly (blog posts, legal pages, changelogs)
-- **Page spacing**: Normalized top padding across marketing pages (blog list, blog post, changelog, contact, legal) from `pt-24 pb-16` to `py-16` for consistent vertical rhythm
+- **Tailwind Typography**: Added the `@tailwindcss/typography` plugin to the marketing app so `prose` and `prose-invert` classes style content correctly (blog posts, legal pages, changelogs)
+- **Page spacing**: Normalized top padding on marketing pages (blog list, blog post, changelog, contact, legal) from `pt-24 pb-16` to `py-16` for consistent vertical rhythm
 - **Image hostname**: Added `picsum.photos` to the allowed remote image hostnames in `next.config.ts` for blog placeholder images
 
 ---
@@ -1157,18 +1165,18 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 #### i18n and translation usage
 
-- **Single `useTranslations()` per component**: Removed redundant `useTranslations()` hooks (e.g. `tSignup`, `tLogin`, `tSettings`, `tPricing`, `tActions`, `tAria`, `tAvatar`, `tOrgSettings`) across marketing and SaaS components. Components now use a single `t` for all translation keys.
-- **Color mode labels**: Marketing and SaaS `ColorModeToggle` now use the full key path `common.colorMode.${option.value}` for option labels.
-- **Organization and settings keys**: `ChangeOrganizationNameForm` now uses `organizations.settings.changeName.notifications.success` / `error` and `settings.save` via the shared `t`; other organization and settings forms (delete org, logo, change email/name/password, two-factor) use the single `t` for their copy.
+- **Single `useTranslations()` per component**: Removed redundant `useTranslations()` hooks (e.g. `tSignup`, `tLogin`, `tSettings`, `tPricing`, `tActions`, `tAria`, `tAvatar`, `tOrgSettings`) across marketing and SaaS components, which use a single `t` for all translation keys.
+- **Color mode labels**: Marketing and SaaS `ColorModeToggle` use the full key path `common.colorMode.${option.value}` for option labels.
+- **Organization and settings keys**: `ChangeOrganizationNameForm` uses `organizations.settings.changeName.notifications.success` / `error` and `settings.save` via the shared `t`; the other organization and settings forms (delete org, logo, change email/name/password, two-factor) use the single `t` for their copy.
 
 #### Payments and purchases
 
-- **List purchases enrichment**: `listPurchases` (packages/api) now returns each purchase with resolved `planId` and `planPrice` from the payments helper, so clients receive plan data without extra lookups.
-- **Purchase helper**: `createPurchasesHelper` and `getActivePlanFromPurchases` in `packages/payments` now accept a `ResolvedPurchase` type (with optional `planId` and `planPrice`) and use `resolvePurchasePlan` / `resolvePurchasePlanId` to avoid duplicate provider price resolution when purchases are already enriched.
+- **List purchases enrichment**: `listPurchases` (packages/api) returns each purchase with resolved `planId` and `planPrice` from the payments helper, so clients get plan data without extra lookups.
+- **Purchase helper**: `createPurchasesHelper` and `getActivePlanFromPurchases` in `packages/payments` accept a `ResolvedPurchase` type (with optional `planId` and `planPrice`) and use `resolvePurchasePlan` / `resolvePurchasePlanId` to skip duplicate provider price resolution for already-enriched purchases.
 
 #### UI
 
-- **SaaS NavBar**: Nav link list uses `flex-nowrap`, `overflow-x-auto`, and responsive `md:overflow-visible md:flex-wrap` so links scroll horizontally on small screens and wrap on larger ones; sidebar layout keeps `md:flex-nowrap` for the vertical nav.
+- **SaaS NavBar**: The nav link list uses `flex-nowrap`, `overflow-x-auto`, and responsive `md:overflow-visible md:flex-wrap` so links scroll horizontally on small screens and wrap on larger ones; the sidebar layout keeps `md:flex-nowrap` for the vertical nav.
 
 ---
 
@@ -1176,73 +1184,73 @@ Related: [issue #2395](https://github.com/supastarter/supastarter-nextjs/issues/
 
 ### Major architectural changes and breaking updates
 
-This release restructures the monorepo around separate marketing and SaaS applications, expands localization, and reworks billing configuration. The major version bump reflects multiple breaking changes to app paths, imports, route structure, configuration, and payment data.
+The monorepo is restructured around separate marketing and SaaS apps, with expanded localization and reworked billing configuration. The major version reflects breaking changes to app paths, imports, routes, configuration, and payment data.
 
 #### Summary of breaking changes
 
-- **App split**: The former `apps/web` application has been split into dedicated `apps/marketing` and `apps/saas` Next.js apps
+- **App split**: The former `apps/web` app is split into dedicated `apps/marketing` and `apps/saas` Next.js apps
 - **Route changes**: Marketing routes and SaaS auth/app routes moved into new App Router layouts and path groups
-- **Config scoping**: Marketing and SaaS now use app-local `config.ts`, `types.ts`, and i18n request/config helpers instead of sharing `apps/web` config
-- **Payments model**: Billing now uses plan-based configuration and provider `priceId` values instead of client-facing `productId`
-- **Purchase schema**: Purchase records were renamed from `productId` to `priceId` across Prisma, Drizzle, and generated Zod schemas
-- **i18n split**: Translations are now split by scope (`marketing`, `saas`, `mail`, `shared`) and loaded through a new `getMessagesForLocale` helper
-- **Translation key updates**: Marketing and SaaS UI copy now uses full-length translation keys consistently across forms, nav, pricing, settings, admin, and auth flows
+- **Config scoping**: Marketing and SaaS use app-local `config.ts`, `types.ts`, and i18n request/config helpers instead of the shared `apps/web` config
+- **Payments model**: Billing uses plan-based configuration and provider `priceId` values instead of client-facing `productId`
+- **Purchase schema**: Purchase `productId` is renamed to `priceId` across Prisma, Drizzle, and generated Zod schemas
+- **i18n split**: Translations are split by scope (`marketing`, `saas`, `mail`, `shared`) and loaded through a new `getMessagesForLocale` helper
+- **Translation key updates**: Marketing and SaaS copy uses full-length translation keys across forms, nav, pricing, settings, admin, and auth flows
 - **API removals**: The contact and newsletter API routers were removed from `packages/api`
-- **Mail changes**: Newsletter signup email/template support was removed and mail rendering now resolves scoped translations from `@repo/i18n`
-- **UI moves**: Several SaaS-specific UI primitives were moved out of `@repo/ui` into `apps/saas/modules/shared`
-- **Workspace tooling**: The workspace now relies on a pnpm catalog for shared dependency versions
+- **Mail changes**: Newsletter signup email/template support was removed, and mail rendering resolves scoped translations from `@repo/i18n`
+- **UI moves**: Several SaaS-specific UI primitives moved from `@repo/ui` into `apps/saas/modules/shared`
+- **Workspace tooling**: Shared dependency versions come from a pnpm catalog
 
 #### Dedicated marketing and SaaS applications
 
-- **New apps**: Added standalone `apps/marketing` and `apps/saas` applications with their own `package.json`, `next.config.ts`, `tsconfig.json`, global styles, robots, layouts, config, and Playwright setup
-- **Marketing app**: Public pages now live in `apps/marketing`, including home, blog index and post routes, changelog, contact, legal pages, sitemap generation, locale switching, and refreshed home-page sections
-- **SaaS app**: Protected application routes now live in `apps/saas`, with separate authenticated and unauthenticated layouts, account dashboards, organization settings, onboarding, auth pages, and API routes
-- **Removed**: Deleted the old combined `apps/web` app and its shared layouts, proxy, sitemap, and duplicated feature modules
+- **New apps**: Standalone `apps/marketing` and `apps/saas` apps, each with its own `package.json`, `next.config.ts`, `tsconfig.json`, global styles, robots, layouts, config, and Playwright setup
+- **Marketing app**: Public pages live in `apps/marketing`: home, blog index and post routes, changelog, contact, legal pages, sitemap generation, locale switching, and refreshed home-page sections
+- **SaaS app**: Protected routes live in `apps/saas`, with separate authenticated and unauthenticated layouts, account dashboards, organization settings, onboarding, auth pages, and API routes
+- **Removed**: The old combined `apps/web` app and its shared layouts, proxy, sitemap, and duplicated feature modules
 
 **Migration steps:**
 
-1. Update any scripts, deploy targets, env vars, or local workflows that referenced `apps/web`
+1. Update scripts, deploy targets, env vars, or local workflows that referenced `apps/web`
 2. Point public-site work to `apps/marketing` and protected-product work to `apps/saas`
-3. Update route assumptions for auth pages (`/login`, `/signup`, etc.) and SaaS app layouts if you maintain custom links or middleware
+3. Update route assumptions for auth pages (`/login`, `/signup`, etc.) and SaaS layouts if you maintain custom links or middleware
 
 #### Localization and content restructuring
 
-- **Scoped translations**: Split locale files into `packages/i18n/translations/{locale}/marketing.json`, `saas.json`, `mail.json`, and `shared.json`
-- **New locales**: Added Spanish (`es`) and French (`fr`) alongside English and German
-- **Typed config**: Added typed i18n config/interfaces and exported `config`, `Locale`, and scoped message types from `@repo/i18n`
-- **Message loading**: Added `getMessagesForLocale(locale, scope)` with shared-message merging and default-locale fallback behavior
-- **Key normalization**: Updated marketing and SaaS components to use explicit full-length translation keys instead of shorter or ambiguous key paths
-- **App wiring**: Marketing and SaaS now each own their locale request/update helpers and locale-aware providers
+- **Scoped translations**: Locale files are split into `packages/i18n/translations/{locale}/marketing.json`, `saas.json`, `mail.json`, and `shared.json`
+- **New locales**: Spanish (`es`) and French (`fr`) join English and German
+- **Typed config**: Typed i18n config/interfaces; `@repo/i18n` exports `config`, `Locale`, and scoped message types
+- **Message loading**: `getMessagesForLocale(locale, scope)` merges shared messages and falls back to the default locale
+- **Key normalization**: Marketing and SaaS components use explicit full-length translation keys instead of short or ambiguous key paths
+- **App wiring**: Marketing and SaaS each own their locale request/update helpers and locale-aware providers
 
 **Migration steps:**
 
-1. Move any custom translation keys into the new scoped translation files
+1. Move custom translation keys into the new scoped translation files
 2. Replace imports of old flat message utilities with `getMessagesForLocale`
-3. Rename any custom UI translation lookups that still rely on older short-form key paths
-4. Update any code that assumed only `en` and `de` locales exist
+3. Rename custom UI translation lookups that rely on old short-form key paths
+4. Update code that assumed only `en` and `de` locales exist
 
 #### Payments, auth, and data model updates
 
-- **Plan-based checkout**: `createCheckoutLink` now accepts `planId`, `type`, and optional `interval`, then resolves provider price IDs server-side
-- **Payments config**: Replaced `productId` pricing config with typed plan definitions, `priceId` fields, `requireActiveSubscription`, and reusable plan lookup helpers
-- **Purchase queries**: `listPurchases` now accepts an optional input object by default, simplifying direct server/client calls
-- **Database schema**: Renamed purchase `productId` to `priceId` in Prisma and generated validation output
-- **Auth updates**: Better Auth now uses the SaaS base URL, raises the minimum password length to 8, reserves `chatbot` as an organization slug, and updates invitation redirects to `/login` and `/signup`
+- **Plan-based checkout**: `createCheckoutLink` accepts `planId`, `type`, and optional `interval`, then resolves provider price IDs server-side
+- **Payments config**: Typed plan definitions, `priceId` fields, `requireActiveSubscription`, and reusable plan lookup helpers replace the `productId` pricing config
+- **Purchase queries**: `listPurchases` accepts an optional input object by default, simplifying direct server/client calls
+- **Database schema**: Purchase `productId` is renamed to `priceId` in Prisma and generated validation output
+- **Auth updates**: Better Auth uses the SaaS base URL, raises the minimum password length to 8, reserves `chatbot` as an organization slug, and redirects invitations to `/login` and `/signup`
 
 **Migration steps:**
 
-1. Rename any custom purchase schema usage from `productId` to `priceId`
-2. Update payment integrations to pass `planId` and `interval` rather than provider product IDs
+1. Rename custom purchase schema usage from `productId` to `priceId`
+2. Update payment integrations to pass `planId` and `interval` instead of provider product IDs
 3. Regenerate and apply database migrations if your environment still uses the old purchase column name
-4. Verify `NEXT_PUBLIC_SAAS_URL` and payment provider price env vars are set for the new split-app setup
+4. Verify `NEXT_PUBLIC_SAAS_URL` and payment provider price env vars are set for the split-app setup
 
 #### Mail, API, and shared component cleanup
 
-- **Removed API endpoints**: Deleted the contact and newsletter oRPC modules from `packages/api`
-- **Mail package refactor**: Moved mail helpers into `packages/mail/lib`, added scoped mail translation loading, and removed the newsletter signup template/export
-- **Marketing forms**: Marketing contact/newsletter flows were refactored along with the new app split rather than continuing to rely on the removed shared API modules
-- **SaaS UI ownership**: Moved password input, settings list/item, page header, and related shared components into the SaaS app to avoid over-generalizing them in `@repo/ui`
-- **Workspace cleanup**: Added pnpm catalog version management and refreshed package wiring across apps and packages
+- **Removed API endpoints**: The contact and newsletter oRPC modules are deleted from `packages/api`
+- **Mail package refactor**: Mail helpers moved into `packages/mail/lib`, scoped mail translation loading was added, and the newsletter signup template/export was removed
+- **Marketing forms**: Contact/newsletter flows were refactored with the app split and no longer rely on the removed shared API modules
+- **SaaS UI ownership**: Password input, settings list/item, page header, and related components moved into the SaaS app rather than being over-generalized in `@repo/ui`
+- **Workspace cleanup**: pnpm catalog version management and refreshed package wiring across apps and packages
 
 ---
 
@@ -1252,10 +1260,10 @@ This release restructures the monorepo around separate marketing and SaaS applic
 
 #### oRPC server-side client and payments
 
-- **Server-side oRPC**: Introduced a server-only oRPC client that calls the API router directly (no HTTP) during SSR. Added `@orpc/server` (1.13.6) to `apps/web`, new `orpc.server.ts` that sets `globalThis.$orpcClient` via `createRouterClient(router, ...)`, and `instrumentation.ts` plus root layout import so the server client is registered before use.
-- **orpc-client**: Client now throws on the server ("RPCLink is not allowed on the server side") and uses `window.location.origin` for the RPC URL; exports `orpcClient` as `globalThis.$orpcClient ?? createORPCClient(link)` so server code uses the direct router client.
-- **API**: `packages/api` now exports `router`; `payments.listPurchases` procedure returns the purchases array directly instead of `{ purchases }`.
-- **Payments**: Removed `getPurchases` and `apps/web/modules/saas/payments/lib/server.ts`. Account and organization billing pages and choose-plan page now call `orpcClient.payments.listPurchases()` directly; removed `attemptAsync` (es-toolkit) in favor of direct `await`. `usePurchases` hook updated to use `data ?? []` to match the new procedure return shape.
+- **Server-side oRPC**: A server-only oRPC client calls the API router directly (no HTTP) during SSR. Adds `@orpc/server` (1.13.6) to `apps/web`, a new `orpc.server.ts` that sets `globalThis.$orpcClient` via `createRouterClient(router, ...)`, and `instrumentation.ts` plus a root layout import so the server client is registered before use.
+- **orpc-client**: The client throws on the server ("RPCLink is not allowed on the server side") and uses `window.location.origin` for the RPC URL; it exports `orpcClient` as `globalThis.$orpcClient ?? createORPCClient(link)` so server code uses the direct router client.
+- **API**: `packages/api` exports `router`; the `payments.listPurchases` procedure returns the purchases array directly instead of `{ purchases }`.
+- **Payments**: Removed `getPurchases` and `apps/web/modules/saas/payments/lib/server.ts`. The account and organization billing pages and the choose-plan page call `orpcClient.payments.listPurchases()` directly, with a plain `await` replacing `attemptAsync` (es-toolkit). The `usePurchases` hook uses `data ?? []` to match the new return shape.
 
 ---
 
@@ -1265,7 +1273,7 @@ This release restructures the monorepo around separate marketing and SaaS applic
 
 #### SaaS app layout – purchase list organization scoping
 
-- **Payments / organizations**: When redirecting unsubscribed users to the choose-plan page, `organizationId` is now only passed to the payments list when organizations are enabled **and** billing is attached to the organization (`billingAttachedTo === "organization"`). Previously, `organizationId` was passed whenever organizations were enabled, which could incorrectly scope or look up purchases by organization when billing was configured at the user level and cause a redirect loop.
+- **Payments / organizations**: When redirecting unsubscribed users to the choose-plan page, `organizationId` is passed to the payments list only when organizations are enabled **and** billing is attached to the organization (`billingAttachedTo === "organization"`). Previously it was passed whenever organizations were enabled, which could scope purchase lookups by organization when billing was user-level and cause a redirect loop.
 
 ---
 
@@ -1276,8 +1284,8 @@ This release restructures the monorepo around separate marketing and SaaS applic
 #### oRPC upgrade
 
 - **@orpc packages**: Upgraded from 1.13.2 to 1.13.6 across the monorepo
-- **apps/web**: Updated `@orpc/client` to 1.13.6
-- **packages/api**: Updated `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, and `@orpc/zod` to 1.13.6
+- **apps/web**: `@orpc/client` to 1.13.6
+- **packages/api**: `@orpc/client`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, and `@orpc/zod` to 1.13.6
 
 ---
 
@@ -1287,40 +1295,40 @@ This release restructures the monorepo around separate marketing and SaaS applic
 
 #### Unified Radix UI package migration
 
-- **Major dependency update**: Migrated from individual `@radix-ui/react-*` packages to unified `radix-ui` package (v1.4.3)
-- **Consolidated dependencies**: Replaced 13 separate Radix UI packages with a single `radix-ui` package
-- **Updated all UI components** to use new unified package imports:
-  - `accordion.tsx`: Updated to use `Accordion` from `radix-ui`
-  - `alert-dialog.tsx`: Updated to use `AlertDialog` from `radix-ui`
-  - `avatar.tsx`: Updated to use `Avatar` from `radix-ui`
-  - `button.tsx`: Updated to use `Slot` and `Slottable` from `radix-ui`
-  - `dialog.tsx`: Updated to use `Dialog` from `radix-ui`
-  - `dropdown-menu.tsx`: Updated to use `DropdownMenu` from `radix-ui`
-  - `form.tsx`: Updated to use `Label` and `Slot` from `radix-ui`
-  - `label.tsx`: Updated to use `Label` from `radix-ui`
-  - `progress.tsx`: Updated to use `Progress` from `radix-ui`
-  - `select.tsx`: Updated to use `Select` from `radix-ui` and migrated icons to Lucide
-  - `sheet.tsx`: Updated to use `Sheet` from `radix-ui`
-  - `tabs.tsx`: Updated to use `Tabs` from `radix-ui`
-  - `tooltip.tsx`: Updated to use `Tooltip` from `radix-ui`
+- **Major dependency update**: Migrated from individual `@radix-ui/react-*` packages to the unified `radix-ui` package (v1.4.3)
+- **Consolidated dependencies**: 13 separate Radix UI packages become one
+- **Updated all UI components** to import from the unified `radix-ui` package:
+  - `accordion.tsx`: `Accordion`
+  - `alert-dialog.tsx`: `AlertDialog`
+  - `avatar.tsx`: `Avatar`
+  - `button.tsx`: `Slot` and `Slottable`
+  - `dialog.tsx`: `Dialog`
+  - `dropdown-menu.tsx`: `DropdownMenu`
+  - `form.tsx`: `Label` and `Slot`
+  - `label.tsx`: `Label`
+  - `progress.tsx`: `Progress`
+  - `select.tsx`: `Select`, with icons migrated to Lucide
+  - `sheet.tsx`: `Sheet`
+  - `tabs.tsx`: `Tabs`
+  - `tooltip.tsx`: `Tooltip`
 
 #### Icon migration
 
 - **Replaced Radix icons**: Migrated from `@radix-ui/react-icons` to Lucide icons
-- **Features component**: Replaced `MobileIcon` from Radix with `SmartphoneIcon` from Lucide
-- **Select component**: Replaced `CheckIcon` from Radix with Lucide's `CheckIcon`
-- Removed `@radix-ui/react-icons` dependency
+- **Features component**: Radix `MobileIcon` replaced by Lucide `SmartphoneIcon`
+- **Select component**: Radix `CheckIcon` replaced by Lucide's `CheckIcon`
+- Removed the `@radix-ui/react-icons` dependency
 
 #### Package updates
 
-- **UI package**: Updated `packages/ui/package.json` to use unified `radix-ui` package
-- **Web app**: Updated `apps/web/package.json` to use unified `radix-ui` package
-- **Dependencies**: Reduced from 13 separate Radix packages to 1 unified package
+- **UI package**: `packages/ui/package.json` uses the unified `radix-ui` package
+- **Web app**: `apps/web/package.json` uses the unified `radix-ui` package
+- **Dependencies**: Reduced from 13 Radix packages to 1
 
 **Benefits:**
 
-- Simplified dependency management with single package
-- Reduced bundle size and faster install times
+- Simpler dependency management
+- Smaller bundle and faster installs
 - Consistent versioning across all Radix UI components
 - Easier maintenance and updates
 
@@ -1332,26 +1340,26 @@ This release restructures the monorepo around separate marketing and SaaS applic
 
 #### AI Chat simplification
 
-- **Major refactoring**: Simplified AI chat feature to streaming-only interface, removing chat persistence
+- **Major refactoring**: AI chat is simplified to a streaming-only interface without chat persistence
 - **Removed**: Chat storage and CRUD operations (create, list, find, update, delete, add-message procedures)
-- **Removed**: `AiChat` database model from all schemas (Prisma, Drizzle MySQL/PostgreSQL/SQLite)
-- **Removed**: Database queries for AI chats (`ai-chats.ts` files)
-- **Simplified**: AI router now only exposes a single `stream` endpoint for real-time AI responses
-- **Refactored**: `AiChat` component to use streaming without persistence, using `@ai-sdk/react`'s `useChat` hook
-- **Simplified**: Chatbot pages removed prefetching logic for chat lists and individual chats
-- **New**: `stream-message` procedure that streams AI responses without storing conversations
+- **Removed**: The `AiChat` database model from all schemas (Prisma, Drizzle MySQL/PostgreSQL/SQLite)
+- **Removed**: AI chat database queries (`ai-chats.ts` files)
+- **Simplified**: The AI router exposes a single `stream` endpoint for real-time AI responses
+- **Refactored**: The `AiChat` component streams without persistence, using `@ai-sdk/react`'s `useChat` hook
+- **Simplified**: Chatbot pages no longer prefetch chat lists or individual chats
+- **New**: A `stream-message` procedure streams AI responses without storing conversations
 
 **Breaking changes:**
 
-- Any code using `orpcClient.ai.chats.*` endpoints will need to be updated
-- Database migrations will need to drop the `ai_chat` table if it exists
-- Chat history persistence is no longer available - conversations are session-only
+- Code using `orpcClient.ai.chats.*` endpoints must be updated
+- Database migrations must drop the `ai_chat` table if it exists
+- Chat history no longer persists - conversations are session-only
 
 #### UI component improvements
 
-- **NavBar**: Added conditional bottom border when scrolled (`border-b` when `!isTop`)
+- **NavBar**: Conditional bottom border when scrolled (`border-b` when `!isTop`)
 - **Button component**: Removed icon opacity styling (`[&>svg]:opacity-60`) for better icon visibility
-- **Global styles**: Added consistent Lucide icon stroke-width (`1.75`) for improved icon rendering
+- **Global styles**: Consistent Lucide icon stroke-width (`1.75`) for better icon rendering
 
 ---
 
@@ -1361,40 +1369,38 @@ This release restructures the monorepo around separate marketing and SaaS applic
 
 #### Toast component redesign
 
-- **Major enhancement**: Complete redesign of the toast component with custom styling and improved UX
-- Added custom `Toast` component with support for different types (success, error, info, warning, loading, default)
-- Added automatic icons for each toast type using Lucide icons
-- Added helper functions: `toastSuccess`, `toastError`, `toastInfo`, `toastWarning`, `toastLoading`
-- Added `toastPromise` function for handling async operations with loading/success/error states
-- Improved visual design with type-specific border colors and icons
-- Added support for action and cancel buttons in toasts
-- All form components updated to use the new toast API
+- **Major enhancement**: The toast component is redesigned with custom styling and improved UX
+- Custom `Toast` component supporting types (success, error, info, warning, loading, default)
+- Automatic Lucide icons for each toast type
+- Helper functions: `toastSuccess`, `toastError`, `toastInfo`, `toastWarning`, `toastLoading`
+- `toastPromise` handles async operations with loading/success/error states
+- Type-specific border colors
+- Action and cancel buttons in toasts
 
 #### Color mode toggle redesign
 
-- **Redesigned**: Changed from dropdown menu to a modern segmented control/toggle button style
-- Added smooth sliding indicator animation for active state
-- Replaced dropdown menu with inline toggle buttons for better UX
-- Added tooltips for each color mode option (System, Light, Dark)
-- Improved accessibility with proper ARIA labels and pressed states
-- Added translations for color mode labels (`common.colorMode.system`, `common.colorMode.light`, `common.colorMode.dark`)
-- Updated icon from `HardDriveIcon` to `MonitorCogIcon` for system mode
+- **Redesigned**: A segmented toggle-button control replaces the dropdown menu
+- Sliding indicator animation for the active state
+- Tooltips for each color mode option (System, Light, Dark)
+- ARIA labels and pressed states for accessibility
+- Translations for color mode labels (`common.colorMode.system`, `common.colorMode.light`, `common.colorMode.dark`)
+- System mode icon changed from `HardDriveIcon` to `MonitorCogIcon`
 
 #### User menu improvements
 
-- **Simplified**: Removed inline color mode selection submenu from user menu
-- Color mode toggle now uses the standalone `ColorModeToggle` component
+- **Simplified**: Removed the inline color mode submenu from the user menu
+- Color mode uses the standalone `ColorModeToggle` component
 - Cleaner menu structure with better separation of concerns
 
 #### Component styling updates
 
-- **Select component**: Updated border radius from `rounded-md` to `rounded-lg` for consistency with design system
-- **SettingsItem component**: Increased left column width from `280px` to `320px` for better content spacing
-- **Theme colors**: Updated muted background color from `#1d1e1e` to `#191b1b` for improved contrast
+- **Select component**: Border radius changed from `rounded-md` to `rounded-lg` to match the design system
+- **SettingsItem component**: Left column widened from `280px` to `320px` for better content spacing
+- **Theme colors**: Muted background changed from `#1d1e1e` to `#191b1b` for better contrast
 
 #### Form components
 
-- Updated all SaaS form components to use the new toast API:
+- All SaaS form components use the new toast API:
   - Organization forms (Create, Change Name, Delete, Logo, Invite Member)
   - Settings forms (Change Email, Change Name, Change Password, Set Password, Delete Account, User Avatar, User Language)
   - Admin components (Organization Form, Organization List, User List)
@@ -1408,23 +1414,21 @@ This release restructures the monorepo around separate marketing and SaaS applic
 
 ### Major architectural changes and breaking updates
 
-This release introduces significant architectural changes that require migration steps. The major version bump reflects multiple breaking changes across the codebase. All existing code has been updated to use the new structure, but custom code will need manual migration.
+The major version reflects breaking architectural changes across the codebase. Existing code is updated to the new structure; custom code needs manual migration.
 
 #### Summary of breaking changes
 
-- **Docs application**: Moved from web app to standalone Next.js app (`apps/docs`)
+- **Docs application**: Moved from the web app to a standalone Next.js app (`apps/docs`)
 - **UI components**: Moved from `apps/web/modules/ui/` to `packages/ui/`
-- **Configuration**: Removed centralized `config/` package, now scoped to individual packages
-- **Shared components**: Moved `Logo` and `Spinner` components to `@repo/ui`
-- **Mail package**: Restructured directory layout (removed `src/`), removed Logo component and custom provider
-- **Payments package**: Moved helper utilities from `src/lib/` to `lib/`
-- **Mail preview app**: New `apps/mail-preview` application added for email previewing
-- **Not-found pages**: New dedicated not-found pages for marketing and SaaS routes
-- **Import paths**: All imports updated throughout codebase (275+ files changed)
+- **Configuration**: Removed the centralized `config/` package; config is scoped per package
+- **Shared components**: `Logo` and `Spinner` moved to `@repo/ui`
+- **Mail package**: Flattened directory layout (no `src/`); Logo component and custom provider removed
+- **Payments package**: Helper utilities moved from `src/lib/` to `lib/`
+- **Mail preview app**: New `apps/mail-preview` app for previewing emails
+- **Not-found pages**: Dedicated not-found pages for marketing and SaaS routes
+- **Import paths**: Imports updated throughout the codebase (275+ files changed)
 
 #### Dedicated docs application
-
-Documentation has been moved from the web app to a standalone Next.js application using fumadocs.
 
 **Breaking changes:**
 
@@ -1432,72 +1436,69 @@ Documentation has been moved from the web app to a standalone Next.js applicatio
 - Removed docs API route `apps/web/app/api/docs-search/route.ts`
 - Removed `apps/web/app/docs-source.ts`
 - Removed all docs content from `apps/web/content/docs/` (including `getting-started/` and `index.mdx`)
-- Removed `TableOfContents` component from marketing shared components
-- Removed docs image from `apps/web/public/images/docs/login.png`
-- Updated `apps/web/content-collections.ts` to exclude docs content
-- Updated `apps/web/app/sitemap.ts` to exclude docs routes
+- Removed the `TableOfContents` component from marketing shared components
+- Removed the docs image `apps/web/public/images/docs/login.png`
+- `apps/web/content-collections.ts` excludes docs content
+- `apps/web/app/sitemap.ts` excludes docs routes
 
 **New structure:**
 
-- Created new `apps/docs` application using fumadocs
-- Docs now run as a separate Next.js app (default port 3001)
-- Docs content moved to `apps/docs/content/docs/`
-- Uses fumadocs-ui for improved documentation experience
-- Includes AI-powered page actions component
-- New docs app has its own `package.json`, `tsconfig.json`, and `next.config.ts`
+- New `apps/docs` app, a separate Next.js app built on fumadocs (default port 3001)
+- Docs content lives in `apps/docs/content/docs/`
+- Uses fumadocs-ui
+- Includes an AI-powered page actions component
+- The docs app has its own `package.json`, `tsconfig.json`, and `next.config.ts`
 
 **Migration steps:**
 
-1. If you have custom docs content, migrate it to `apps/docs/content/docs/`
-2. Update any links pointing to `/docs/*` routes - docs are now served from the separate app
-3. Remove any imports of `TableOfContents` component
-4. Run `pnpm dev` in the `apps/docs` directory to start the docs server (or use `pnpm --filter @repo/docs dev`)
-5. Update any CI/CD pipelines that build or deploy docs
+1. Migrate custom docs content to `apps/docs/content/docs/`
+2. Update links to `/docs/*` routes - docs are served from the separate app
+3. Remove imports of the `TableOfContents` component
+4. Run `pnpm dev` in `apps/docs` to start the docs server (or `pnpm --filter @repo/docs dev`)
+5. Update CI/CD pipelines that build or deploy docs
 
 #### UI components moved to packages
 
-All UI components have been moved from the web app to a shared package for better reusability across the monorepo.
+UI components moved to a shared package for reuse across the monorepo.
 
 **Breaking changes:**
 
 - Removed all UI components from `apps/web/modules/ui/components/` (25+ components including accordion, alert, button, card, dialog, form, input, select, etc.)
 - Removed `apps/web/modules/ui/lib/index.ts`
 - Removed `apps/web/components.json` (shadcn config file)
-- All component imports throughout the codebase have been updated
 
 **New structure:**
 
-- Created `packages/ui` package containing all UI components
-- Components now imported from `@repo/ui/components/[component-name]`
-- Shared utilities (like `cn`) available from `@repo/ui`
+- New `packages/ui` package containing all UI components
+- Components are imported from `@repo/ui/components/[component-name]`
+- Shared utilities (like `cn`) come from `@repo/ui`
 - `components.json` moved to `packages/ui/components.json`
-- Package includes all Radix UI dependencies and styling utilities
+- The package includes all Radix UI dependencies and styling utilities
 
 **Migration steps:**
 
-1. Update all imports from `apps/web/modules/ui/components/*` to `@repo/ui/components/*`
-2. Update imports of `cn` utility from `apps/web/modules/ui` to `@repo/ui`
-3. Remove any references to `components.json` in the web app
-4. Install `@repo/ui` as a dependency if using UI components in other packages
-5. Update TypeScript path aliases if you had custom ones pointing to the old location
+1. Update imports from `apps/web/modules/ui/components/*` to `@repo/ui/components/*`
+2. Update `cn` imports from `apps/web/modules/ui` to `@repo/ui`
+3. Remove references to `components.json` in the web app
+4. Add `@repo/ui` as a dependency to other packages that use UI components
+5. Update custom TypeScript path aliases that pointed to the old location
 
 #### Configuration restructuring
 
-The centralized config package has been removed in favor of scoped configuration files for better package isolation.
+Scoped config files replace the centralized config package for better package isolation.
 
 **Breaking changes:**
 
-- Removed `config/` package entirely:
+- Removed the `config/` package entirely:
   - `config/index.ts`
   - `config/package.json`
   - `config/tsconfig.json`
   - `config/types.ts`
-- All imports from `@repo/config` or `config` will fail
-- Config is now scoped to individual packages
+- Imports from `@repo/config` or `config` will fail
 
 **New structure:**
 
-- Each package now has its own `config.ts` file:
+- Each package has its own `config.ts` file:
   - `apps/web/config.ts` - Web app configuration
   - `packages/api/config.ts` - API configuration
   - `packages/auth/config.ts` - Auth configuration
@@ -1505,98 +1506,87 @@ The centralized config package has been removed in favor of scoped configuration
   - `packages/mail/config.ts` - Mail configuration
   - `packages/payments/config.ts` - Payments configuration
   - `packages/storage/config.ts` - Storage configuration
-- Root `config.ts` file for shared configuration
+- A root `config.ts` file holds shared configuration
 
 **Migration steps:**
 
 1. Update imports from `@repo/config` or `config` to package-specific configs:
-   - `import { config } from "@config"` for web app
+   - `import { config } from "@config"` for the web app
    - `import { config as i18nConfig } from "@repo/i18n/config"` for package configs
-2. Update any code referencing the old config package structure
-3. Review each package's config file to understand what configuration is available
-4. Update environment variable usage if config structure changed
+2. Update code that references the old config package structure
+3. Review each package's config file for the available options
+4. Update environment variable usage if the config structure changed
 
 #### Shared components cleanup
 
-Removed unused shared components that are now available in the UI package.
+Removed shared components that the UI package now provides.
 
 **Breaking changes:**
 
 - Removed `apps/web/modules/shared/components/Logo.tsx`
 - Removed `apps/web/modules/shared/components/Spinner.tsx`
-- All imports of these components throughout the codebase have been updated
 
 **Migration steps:**
 
-1. Replace any imports of `Logo` from `@shared/components/Logo` - Logo is now available from `@repo/ui`
-2. Replace any imports of `Spinner` - use skeleton components from `@repo/ui` instead
-3. Update any custom code that imports these components
+1. Replace imports of `Logo` from `@shared/components/Logo` - Logo comes from `@repo/ui`
+2. Replace imports of `Spinner` - use skeleton components from `@repo/ui` instead
+3. Update custom code that imports these components
 
 #### Mail package restructuring
-
-Mail package has been restructured with a flatter directory structure and improved organization.
 
 **Breaking changes:**
 
 - Removed `packages/mail/src/components/Logo.tsx` (use `@repo/ui` instead)
-- Removed `packages/mail/src/provider/custom.ts` provider
-- Restructured mail package directory layout:
+- Removed the `packages/mail/src/provider/custom.ts` provider
+- Restructured the mail package directory layout:
   - `src/components/` → `components/` (PrimaryButton, Wrapper moved)
   - `src/provider/` → `provider/` (all providers moved)
   - `src/util/` → `util/` (send, templates, translations moved)
-- Updated all mail provider implementations to use new config structure
-- Updated all mail email templates to use new import paths
+- Mail providers use the new config structure, and email templates use the new import paths
 
 **New structure:**
 
-- Flatter directory structure without `src/` directory
-- Components, providers, and utilities at package root level
+- Components, providers, and utilities sit at the package root, without a `src/` directory
 - New `packages/mail/config.ts` for mail configuration
-- New `apps/mail-preview` application for email previewing (runs on port 3005)
 
 **Migration steps:**
 
-1. If using the Logo component in mail templates, import from `@repo/ui` instead:
+1. If mail templates use the Logo component, import it from `@repo/ui`:
    ```typescript
    import { Logo } from "@repo/ui";
    ```
-2. If using custom mail provider, migrate to one of the supported providers:
+2. If you use a custom mail provider, migrate to a supported provider:
    - Resend
    - Nodemailer
    - Mailgun
    - Postmark
    - Plunk
    - Console (for development)
-3. Update mail provider configuration to use `packages/mail/config.ts`
-4. Update any imports from `packages/mail/src/*` to `packages/mail/*`
-5. Use `apps/mail-preview` app for previewing emails during development
+3. Configure the mail provider in `packages/mail/config.ts`
+4. Update imports from `packages/mail/src/*` to `packages/mail/*`
+5. Use the `apps/mail-preview` app to preview emails during development
 
 #### Payments package restructuring
-
-Payments package has been restructured with helper utilities moved to a new location.
 
 **Breaking changes:**
 
 - Moved `packages/payments/src/lib/customer.ts` → `packages/payments/lib/customer.ts`
-- Moved `packages/payments/src/lib/helper.ts` → `packages/payments/lib/helper.ts` (new location)
-- Removed old `packages/payments/src/lib/helper.ts` (duplicate removed)
+- Moved `packages/payments/src/lib/helper.ts` → `packages/payments/lib/helper.ts`
+- Removed the old duplicate `packages/payments/src/lib/helper.ts`
 - Updated payment provider implementations (Stripe, LemonSqueezy, DodoPayments, Polar)
-- Updated payment procedures to use new config structure
+- Payment procedures use the new config structure
 
 **New structure:**
 
-- Helper utilities now in `packages/payments/lib/` (without `src/` prefix)
 - New `packages/payments/config.ts` for payment configuration
 
 **Migration steps:**
 
 1. Update imports from `packages/payments/src/lib/*` to `packages/payments/lib/*`
-2. Update payment configuration to use `packages/payments/config.ts`
-3. Review `packages/payments/lib/` directory for helper functions
+2. Configure payments in `packages/payments/config.ts`
+3. Review `packages/payments/lib/` for helper functions
 
 #### Import path updates
-
-All components and modules have been updated to use the new import paths throughout the entire codebase.
 
 **Affected areas:**
 
@@ -1608,27 +1598,24 @@ All components and modules have been updated to use the new import paths through
 
 **Migration steps:**
 
-1. Run `pnpm install` to ensure all workspace dependencies are linked correctly
-2. Update any custom code using old import paths:
+1. Run `pnpm install` to link all workspace dependencies
+2. Update custom code that uses old import paths:
    - `apps/web/modules/ui/*` → `@repo/ui/*`
    - `@repo/config` → package-specific configs
    - `@shared/components/Logo` → `@repo/ui`
-3. Run type checking: `pnpm type-check` to identify any remaining import issues
-4. Update any custom scripts or build tools that reference old paths
+3. Run type checking with `pnpm type-check` to find remaining import issues
+4. Update custom scripts or build tools that reference old paths
 
 #### Workspace configuration updates
 
-The workspace structure has been updated to reflect the new package organization.
-
 **Breaking changes:**
 
-- `pnpm-workspace.yaml` still references `config` package (which was removed) - this should be updated manually
-- Workspace now includes new `apps/docs` application
-- Workspace includes new `packages/ui` package
+- `pnpm-workspace.yaml` still references the removed `config` package - update it manually
+- The workspace includes the new `apps/docs` app and `packages/ui` package
 
 **Migration steps:**
 
-1. Update `pnpm-workspace.yaml` to remove the `config` entry:
+1. Remove the `config` entry from `pnpm-workspace.yaml`:
    ```yaml
    packages:
      - apps/*
@@ -1636,111 +1623,94 @@ The workspace structure has been updated to reflect the new package organization
      - tooling/*
    ```
 2. Run `pnpm install` to refresh workspace links
-3. Verify all packages are properly linked with `pnpm list --depth=0`
+3. Verify all packages are linked with `pnpm list --depth=0`
 
 #### Biome configuration standardization
 
-All Biome configurations have been standardized across the monorepo for consistency.
-
 **Changes:**
 
-- Updated all Biome configurations across packages to use consistent settings
-- Standardized Biome config format: all package-level configs now extend root config with `"extends": "//"`
-- Root `biome.json` contains shared configuration
-- Package-specific `biome.json` files only override when needed
-- Database package excludes Prisma-generated zod files from linting
+- All package-level Biome configs extend the root config with `"extends": "//"`
+- Root `biome.json` holds the shared configuration
+- Package-specific `biome.json` files override only when needed
+- The database package excludes Prisma-generated zod files from linting
 
 **Migration steps:**
 
-1. If you have custom Biome rules, ensure they follow the new pattern:
+1. Make custom Biome rules follow the new pattern:
    ```json
    {
    	"root": false,
    	"extends": "//"
    }
    ```
-2. Run `pnpm format` to apply new formatting rules
-3. Run `pnpm lint` to check for any linting issues with new config
+2. Run `pnpm format` to apply the new formatting rules
+3. Run `pnpm lint` to check for linting issues under the new config
 
 #### Package dependencies and workspace structure
-
-Package dependencies have been updated to reflect the new architecture.
 
 **Changes:**
 
 - Added `@repo/ui` as a workspace dependency where needed
-- Updated `pnpm-lock.yaml` with new workspace structure (2760+ lines changed)
-- Removed dependencies on deleted `config` package
-- Updated all package `package.json` files to reflect new structure
-- Added `@repo/docs` workspace package
+- Updated `pnpm-lock.yaml` for the new workspace structure (2760+ lines changed)
+- Removed dependencies on the deleted `config` package
+- Updated every package's `package.json` to the new structure
+- Added the `@repo/docs` workspace package
 - Updated tooling packages (scripts, tailwind, typescript) with new dependencies
-- Updated i18n translations (en.json, de.json) with new messages
+- Added new messages to i18n translations (en.json, de.json)
 
 **Migration steps:**
 
-1. Run `pnpm install` to ensure all workspace dependencies are linked correctly
+1. Run `pnpm install` to link all workspace dependencies
 2. Verify workspace structure with `pnpm list --depth=0`
-3. Check for any remaining references to `@repo/config` in `package.json` files
+3. Check for remaining references to `@repo/config` in `package.json` files
 
 #### Monorepo organization improvements
 
-The monorepo structure has been improved for better organization and maintainability.
-
 **Changes:**
 
-- Improved package boundaries and separation of concerns
-- Better isolation between apps and packages
-- Clearer dependency relationships
-- New `apps/docs` application added to workspace
-- New `apps/mail-preview` application added to workspace
-- New `packages/ui` package for shared UI components
-- Removed `config/` package in favor of scoped configs
-- Flattened directory structures in mail and payments packages (removed `src/` directories)
+- Improved package boundaries, separation of concerns, isolation between apps and packages, and dependency relationships
 
 **Benefits:**
 
 - Better code organization and discoverability
 - Clearer separation between application code and shared packages
-- Easier to understand dependencies between packages
+- Easier-to-understand dependencies between packages
 - Better support for independent package versioning
 
 #### Other updates
 
 **Documentation:**
 
-- Updated `agents.md` to reflect new architecture and import paths
-- Updated coding guidelines to reference new package structure
-- Updated import examples to use new `@repo/ui` package
+- `agents.md` reflects the new architecture and import paths
+- Coding guidelines reference the new package structure
+- Import examples use the new `@repo/ui` package
 
 **Configuration:**
 
-- Updated `.env.local.example` with new configuration structure
+- `.env.local.example` reflects the new configuration structure
 - Updated environment variable documentation
 
 **Build and deployment:**
 
-- Updated sitemap generation to exclude docs routes
-- Updated content collections configuration to exclude docs
 - Updated image proxy route configuration
-- Updated `turbo.json` to use TUI interface (`"ui": "tui"`)
+- `turbo.json` uses the TUI interface (`"ui": "tui"`)
 
 **New applications:**
 
-- Added `apps/docs` - Standalone documentation application using fumadocs
-- Added `apps/mail-preview` - Email preview application for development (port 3005)
+- `apps/docs` - Standalone fumadocs documentation app
+- `apps/mail-preview` - Email preview app for development (port 3005)
 
 **Not-found pages:**
 
-- Added dedicated `not-found.tsx` pages for marketing routes (`apps/web/app/(marketing)/[locale]/not-found.tsx`)
-- Added dedicated `not-found.tsx` pages for SaaS routes (`apps/web/app/(saas)/app/not-found.tsx`)
-- Removed `NotFound` component from marketing shared components (now using Next.js not-found pages)
+- Dedicated `not-found.tsx` pages for marketing routes (`apps/web/app/(marketing)/[locale]/not-found.tsx`) and SaaS routes (`apps/web/app/(saas)/app/not-found.tsx`)
+- Removed the `NotFound` component from marketing shared components in favor of Next.js not-found pages
 
 **TypeScript:**
 
 - Updated TypeScript configurations across packages
 - Updated path aliases in `tsconfig.json` files
-- Added new type definitions for UI package exports
-- Added TypeScript configs for new apps (docs, mail-preview)
+- Added type definitions for UI package exports
+- Added TypeScript configs for the new apps (docs, mail-preview)
 
 ---
 
@@ -1750,24 +1720,24 @@ The monorepo structure has been improved for better organization and maintainabi
 
 #### Visual design updates
 
-- Updated color scheme: replaced `bg-card` with `bg-background` in navigation and app wrapper for better contrast
-- Changed newsletter section background from `bg-primary/5` to `bg-muted` for consistency
-- Removed borders from card components and dropdown menus for a cleaner look
-- Updated button styles: changed from `rounded-md` to `rounded-full` for a more modern appearance
-- Increased container max-width from `--container-6xl` to `--container-7xl` for better use of screen space
+- Replaced `bg-card` with `bg-background` in navigation and the app wrapper for better contrast
+- Changed the newsletter section background from `bg-primary/5` to `bg-muted`
+- Removed borders from cards and dropdown menus
+- Changed buttons from `rounded-md` to `rounded-full`
+- Increased container max-width from `--container-6xl` to `--container-7xl`
 
 #### Typography improvements
 
 - Increased heading sizes across marketing pages (Hero, Features sections)
-- Adjusted letter spacing from `-0.02em` to `-0.01em` for improved readability
-- Added max-width constraint to hero paragraph for better text flow
+- Changed letter spacing from `-0.02em` to `-0.01em` for readability
+- Added a max-width to the hero paragraph
 
 #### Component enhancements
 
-- Enhanced changelog component: added title field to changelog items with improved layout
-- Updated changelog section styling: switched to `rounded-3xl` with `bg-muted` background
-- Improved dropdown menu styling: updated border radius and shadow for better visual hierarchy
-- Updated settings item component: removed explicit border and rounded corners for cleaner appearance
+- Added a title field and improved layout to changelog items
+- Switched the changelog section to `rounded-3xl` with a `bg-muted` background
+- Updated dropdown menu border radius and shadow
+- Removed the explicit border and rounded corners from the settings item component
 
 ---
 
@@ -1775,7 +1745,7 @@ The monorepo structure has been improved for better organization and maintainabi
 
 ### Enhanced organization dashboard with visual trend charts
 
-The organization dashboard now includes interactive trend charts to make the UI more visual.
+The organization dashboard has interactive trend charts.
 
 ---
 
@@ -1783,17 +1753,17 @@ The organization dashboard now includes interactive trend charts to make the UI 
 
 ### Consolidated agent rules into single agents.md file
 
-All coding agent guidelines have been consolidated into a single, comprehensive `agents.md` file in the repository root.
+All coding agent guidelines are consolidated into one `agents.md` file in the repository root.
 
 #### Removed files
 
-- `claude.md` - Previous Claude-specific coding guide
+- `claude.md` - Previous Claude-specific guide
 - `.windsurfrules` - Windsurf editor rules
-- `.cursor/rules/*.mdc` - All Cursor IDE rule files (7 files)
+- `.cursor/rules/*.mdc` - All 7 Cursor IDE rule files
 
 #### New files
 
-- `agents.md` - Comprehensive 679-line guide covering:
+- `agents.md` - 679-line guide covering:
   - Technology stack overview
   - Monorepo architecture and directory structure
   - Import conventions and path aliases
@@ -1810,7 +1780,7 @@ All coding agent guidelines have been consolidated into a single, comprehensive 
   - Code review checklist
 - `claude.md` - Symlink to `agents.md` for Claude Code compatibility
 
-This consolidation provides a single source of truth for all AI coding agents working with the codebase, regardless of the IDE or tool being used.
+It is the single source of truth for all AI coding agents, whatever the IDE or tool.
 
 ---
 
@@ -1818,11 +1788,11 @@ This consolidation provides a single source of truth for all AI coding agents wo
 
 #### Package updates
 
-- Updated all ORPC packages (`@orpc/client`, `@orpc/tanstack-query`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/zod`) from `^1.11.2` to `1.13.2`
+- Updated ORPC packages (`@orpc/client`, `@orpc/tanstack-query`, `@orpc/json-schema`, `@orpc/openapi`, `@orpc/server`, `@orpc/zod`) from `^1.11.2` to `1.13.2`
 
 #### Code changes
 
-- Removed experimental prefix from `SmartCoercionPlugin` import in `packages/api/orpc/handler.ts` (changed from `experimental_SmartCoercionPlugin` to `SmartCoercionPlugin`)
+- Changed the `experimental_SmartCoercionPlugin` import in `packages/api/orpc/handler.ts` to `SmartCoercionPlugin`
 
 ---
 
@@ -1830,22 +1800,22 @@ This consolidation provides a single source of truth for all AI coding agents wo
 
 ### Drizzle schema update for better-auth
 
-Updated all drizzle schema files to be aligned with the changes in the latest better-auth version.
+Aligned all drizzle schema files with the latest better-auth version.
 
 #### Schema updates
 
-- **User table**: Added `displayUsername` field and `twoFactorEnabled` field with default value
-- **Passkey table**: Added `aaguid` field for authenticator attestation GUID
-- **Organization table**: Made `slug` field required (`notNull()`) and unique
-- **Member table**: Added default value `"member"` for `role` field and added `cuid()` default function for `id` field
-- **Invitation table**: Added `createdAt` field with default timestamp and default value `"pending"` for `status` field
-- Added performance indexes on `invitation.organizationId` and `invitation.email` fields
+- **User table**: Added `displayUsername` and `twoFactorEnabled` (with a default value) fields
+- **Passkey table**: Added the `aaguid` field (authenticator attestation GUID)
+- **Organization table**: Made `slug` required (`notNull()`) and unique
+- **Member table**: Added default `"member"` for `role` and default `cuid()` for `id`
+- **Invitation table**: Added `createdAt` with a default timestamp, and default `"pending"` for `status`
+- Added indexes on `invitation.organizationId` and `invitation.email`
 
 #### Relation updates
 
-- Updated `userRelations` to include `members` relation
+- Added the `members` relation to `userRelations`
 - Changed `invitationRelations` from `inviter` to `user` for consistency with PostgreSQL schema
-- Reorganized relation definitions to match PostgreSQL structure
+- Reorganized relation definitions to match the PostgreSQL structure
 
 ---
 
@@ -1853,7 +1823,7 @@ Updated all drizzle schema files to be aligned with the changes in the latest be
 
 ### New design
 
-- The UI design has been updated to a new, more modern look.
+- The UI has a new, more modern design.
 
 ---
 
@@ -1863,12 +1833,11 @@ Updated all drizzle schema files to be aligned with the changes in the latest be
 
 #### Script updates
 
-- Removed explicit `--schema=./prisma/schema.prisma` flags from all Prisma scripts (generate, push, migrate, studio)
-- Scripts now use Prisma's default schema location, simplifying configuration
+- Removed the explicit `--schema=./prisma/schema.prisma` flag from all Prisma scripts (generate, push, migrate, studio); they use Prisma's default schema location
 
 #### Configuration cleanup
 
-- Moved `prisma.config.ts` file to the root of the database package
+- Moved `prisma.config.ts` to the root of the database package
 
 ---
 
@@ -1876,7 +1845,7 @@ Updated all drizzle schema files to be aligned with the changes in the latest be
 
 ### Update dependencies
 
-Updated next, react and react-dom to the latest versions.
+Updated next, react and react-dom to latest.
 
 ---
 
@@ -1884,7 +1853,7 @@ Updated next, react and react-dom to the latest versions.
 
 ### Fixed settings item component
 
-Fixed an issue where the settings item component didn't apply the correct layout.
+The settings item component now applies the correct layout.
 
 ---
 
@@ -1892,7 +1861,7 @@ Fixed an issue where the settings item component didn't apply the correct layout
 
 ### Updated Prisma database push script
 
-- Updated database `push` script to remove the deprecated `--skip-generate` flag
+- Removed the deprecated `--skip-generate` flag from the database `push` script
 
 ---
 
@@ -1908,8 +1877,8 @@ Fixed an issue where the settings item component didn't apply the correct layout
 
 #### Prisma configuration changes
 
-- Moved `DATABASE_URL` configuration from `schema.prisma` datasource block to `prisma.config.ts` file
-- The `url` field is now managed through the Prisma config file for better configuration management
+- Moved `DATABASE_URL` configuration from the `schema.prisma` datasource block to `prisma.config.ts`
+- The `url` field is managed in the Prisma config file
 
 #### Better-auth updates
 
@@ -1924,17 +1893,17 @@ Fixed an issue where the settings item component didn't apply the correct layout
 
 #### Type safety enhancements
 
-- Added explicit type assertions in Creem payment provider for better type safety
+- Added explicit type assertions in the Creem payment provider
 
 #### TypeScript config updates
 
-- Added `jsx: "preserve"` to base TypeScript configuration
-- Added `DOM.Iterable` to React library TypeScript configuration for better DOM type support
+- Added `jsx: "preserve"` to the base TypeScript configuration
+- Added `DOM.Iterable` to the React library TypeScript configuration
 
 #### Cleanup
 
-- Removed unused `test:webhook` script from payments package
-- Removed unnecessary `type-check` script from tailwind config package
+- Removed the unused `test:webhook` script from the payments package
+- Removed the unnecessary `type-check` script from the tailwind config package
 
 ---
 
@@ -1952,7 +1921,7 @@ Fixed an issue where the settings item component didn't apply the correct layout
 
 ### Fixed prisma-zod-generator version
 
-Pinned `prisma-zod-generator` to version `1.32.1` to prevent automatic upgrades to `1.32.2`, which contains breaking changes and is deprecated for Prisma 6.
+Pinned `prisma-zod-generator` to `1.32.1` to block automatic upgrades to `1.32.2`, which has breaking changes and is deprecated for Prisma 6.
 
 ---
 
@@ -1962,18 +1931,18 @@ Pinned `prisma-zod-generator` to version `1.32.1` to prevent automatic upgrades 
 
 #### SDK upgrade
 
-- Updated `dodopayments` package from `^2.5.0` to `^2.8.0`
+- Updated `dodopayments` from `^2.5.0` to `^2.8.0`
 
 #### Webhook improvements
 
-- Refactored webhook handler to use SDK's built-in webhook verification instead of manual signature verification
+- The webhook handler uses the SDK's built-in verification instead of manual signature verification
 - Moved webhook secret configuration to client initialization for better security
-- Updated webhook event types to match new SDK version:
+- Updated webhook event types to match the new SDK:
   - `checkout.session.completed` → `payment.succeeded`
   - `subscription.created` → `subscription.active`
   - `subscription.cancelled` → `subscription.expired`
-  - Added support for `subscription.plan_changed` event
-- Updated product ID extraction to use `product_cart` array structure from new SDK
+  - Added the `subscription.plan_changed` event
+- Product ID extraction uses the new SDK's `product_cart` array
 
 ---
 
@@ -1983,22 +1952,21 @@ Pinned `prisma-zod-generator` to version `1.32.1` to prevent automatic upgrades 
 
 #### API changes
 
-- Updated pagination parameters from `itemsPerPage`/`currentPage` to `limit`/`offset` for better consistency
-- Changed `searchTerm` parameter to `query` across admin list endpoints
-- Count functions now respect search queries, providing accurate pagination totals when filtering
+- Changed pagination parameters from `itemsPerPage`/`currentPage` to `limit`/`offset`
+- Renamed the `searchTerm` parameter to `query` across admin list endpoints
+- Count functions respect search queries, so pagination totals are accurate when filtering
 
 #### Search improvements
 
-- **Users list**: Now searches both name and email fields (case-insensitive)
-- **Organizations list**: Improved to use case-insensitive search
-- Search queries are now properly applied to both data fetching and count queries
+- **Users list**: Searches name and email (case-insensitive)
+- **Organizations list**: Search is case-insensitive
+- Search queries apply to both data fetching and count queries
 
 #### UI improvements
 
-- Replaced loading spinner with skeleton loaders for better visual feedback during data fetching
-- Fixed pagination reset logic to prevent unnecessary page resets on initial component mount
-- Improved loading state display with skeleton rows matching the table structure
-- Fixed pagination display condition to properly check for total count
+- Replaced the loading spinner with skeleton rows matching the table structure
+- Fixed pagination reset logic so the page no longer resets on initial mount
+- Fixed the pagination display condition to check the total count
 
 ---
 
@@ -2006,9 +1974,9 @@ Pinned `prisma-zod-generator` to version `1.32.1` to prevent automatic upgrades 
 
 ### Updated next, react and react-dom for security updates
 
-A critical-severity vulnerability was found in react server components. We updated the related dependencies to the latest versions to fix the issue.
+A critical-severity vulnerability was found in react server components. We updated the related dependencies to latest to fix it.
 
-Read more about the issue here: https://vercel.com/changelog/cve-2025-55182
+Details: https://vercel.com/changelog/cve-2025-55182
 
 ---
 
@@ -2024,13 +1992,13 @@ Fixed type issues in ForgotPasswordForm, SetPasswordForm, ChangePasswordForm, an
 
 ### Better-auth 1.4 upgrade
 
-Upgraded `better-auth` from version `1.3.34` to `1.4.4`. This version introduces several breaking changes and improvements.
+Upgraded `better-auth` from `1.3.34` to `1.4.4`, which brings breaking changes and improvements.
 
 #### Migration steps
 
 1. **Update dependencies:**
    - Update `better-auth` to `1.4.4` in both `apps/web/package.json` and `packages/auth/package.json`
-   - Add `@better-auth/passkey` package (version `^1.4.4`) to `packages/auth/package.json`
+   - Add `@better-auth/passkey` (`^1.4.4`) to `packages/auth/package.json`
 
 2. **Update passkey plugin imports:**
    - In `packages/auth/auth.ts`: Change `import { passkey } from "better-auth/plugins/passkey"` to `import { passkey } from "@better-auth/passkey"`
@@ -2038,10 +2006,10 @@ Upgraded `better-auth` from version `1.3.34` to `1.4.4`. This version introduces
 
 3. **Update magicLink callback signature:**
    - Change the `sendMagicLink` callback from `async ({ email, url }, request)` to `async ({ email, url }, ctx)`
-   - Extract the request object from context: `const request = ctx?.request as Request`
+   - Get the request from context: `const request = ctx?.request as Request`
 
 4. **Update database schema:**
-   - Run `pnpm db:push` or create a migration to add the following indexes:
+   - Run `pnpm db:push` or create a migration to add these indexes:
      - `Session`: `@@index([userId])`
      - `Account`: `@@index([userId])`
      - `Verification`: `@@index([identifier])`
@@ -2049,9 +2017,9 @@ Upgraded `better-auth` from version `1.3.34` to `1.4.4`. This version introduces
      - `TwoFactor`: `@@index([secret])` and `@@index([userId])`
      - `Member`: `@@index([organizationId])` and `@@index([userId])`
      - `Invitation`: `@@index([organizationId])` and `@@index([email])`
-   - Add `createdAt DateTime @default(now())` field to the `Invitation` model
+   - Add a `createdAt DateTime @default(now())` field to the `Invitation` model
 
-These changes improve database query performance through additional indexes and align with better-auth 1.4's new plugin architecture where passkey functionality is now a separate package.
+The indexes improve query performance, and the changes align with better-auth 1.4's plugin architecture, where passkey is a separate package.
 
 ---
 
@@ -2059,7 +2027,7 @@ These changes improve database query performance through additional indexes and 
 
 ### Fix OpenAPI schema
 
-Fixed was an issue that would cause custom OpenAPI endpoints to not be reachable throught the `/api` path.
+Custom OpenAPI endpoints are reachable through the `/api` path again.
 
 ---
 
@@ -2067,7 +2035,7 @@ Fixed was an issue that would cause custom OpenAPI endpoints to not be reachable
 
 ### Fix active sessions block
 
-Fixed an issue where the removing the current session from the active sessions block was causing a redirect loop on the login page.
+Removing the current session from the active sessions block no longer causes a redirect loop on the login page.
 
 ---
 
@@ -2075,7 +2043,7 @@ Fixed an issue where the removing the current session from the active sessions b
 
 ### Fix missing organization settings item in navbar
 
-When in the config file the `hideOrganization` option is set to true, the organization settings item was missing in the navbar.
+The organization settings item was missing from the navbar when the config's `hideOrganization` option was true.
 
 ---
 
@@ -2083,11 +2051,11 @@ When in the config file the `hideOrganization` option is set to true, the organi
 
 ### Remove unnecessary font-sans variable
 
-Removed the unnecessary `--font-sans` variable from the theme.css file as it is already defined the the `layout.tsx` file where the font is imported and injected to the html element.
+Removed the `--font-sans` variable from theme.css; `layout.tsx` already defines it where it imports the font and injects it into the html element.
 
 ### Updated dependencies
 
-All production and development dependencies have been updated to the latest versions.
+Updated all production and development dependencies to latest.
 
 ---
 
@@ -2095,8 +2063,7 @@ All production and development dependencies have been updated to the latest vers
 
 ### Add claude.md file
 
-For a better coding experience with Claude Code, we have added a `claude.md` file to the root of the repository.
-This file contains the coding guidelines for the project, and is used by Claude Code to generate code.
+Added a `claude.md` file to the repository root with the project's coding guidelines, which Claude Code uses to generate code.
 
 ---
 
@@ -2104,7 +2071,7 @@ This file contains the coding guidelines for the project, and is used by Claude 
 
 ### Fix passkeys reload issue
 
-Fixed an issue where the passkeys list was not being reloaded correctly after adding or deleting a passkey.
+The passkeys list now reloads correctly after adding or deleting a passkey.
 
 ---
 
@@ -2112,8 +2079,7 @@ Fixed an issue where the passkeys list was not being reloaded correctly after ad
 
 ### Fix missing fields in auth schema
 
-Added missing fields (`aaguid` for Passkey and `displayUsername` for User) in the schema.
-This was causing the passkeys creation to fail.
+Added the missing `aaguid` (Passkey) and `displayUsername` (User) fields to the schema; their absence made passkey creation fail.
 
 ---
 
@@ -2121,7 +2087,7 @@ This was causing the passkeys creation to fail.
 
 ### Fixed mobile menu closing issue
 
-Fixed an issue where the mobile menu was not closing when clicking on a menu item.
+The mobile menu now closes when a menu item is clicked.
 
 ---
 
@@ -2129,16 +2095,16 @@ Fixed an issue where the mobile menu was not closing when clicking on a menu ite
 
 ### Fix content-collections schema
 
-The content-collections schema will soon require the `content` field to be present in the schema, which previously was automatically generated.
-We have added it to the schema to avoid breaking changes with the upcoming content-collections version.
+The upcoming content-collections version requires the `content` field, which was previously generated automatically.
+We added it to the schema to avoid breaking changes.
 
 ### Updated production dependencies
 
-All production dependencies have been updated to the latest versions.
+Updated all production dependencies to latest.
 
 ### Fixed AI chat component
 
-Fixed a validation issue in the AI chat component that was causing the `addMessageToChat` procedure to fail.
+Fixed a validation issue in the AI chat component that made the `addMessageToChat` procedure fail.
 
 ---
 
@@ -2146,11 +2112,11 @@ Fixed a validation issue in the AI chat component that was causing the `addMessa
 
 ### Fix formatting
 
-Ran `pnpm format` to fix formatting issues in the codebase.
+Ran `pnpm format` to fix formatting.
 
 ### Updated all dependencies
 
-Production and development dependencies have been updated to the latest versions.
+Updated production and development dependencies to latest.
 
 ---
 
@@ -2162,11 +2128,11 @@ Fixed a type issue in the AI chat component.
 
 ### Fixed Tailwind CSS wrapper component in mail templates
 
-As reported in #2173, some Tailwind CSS classes were not being applied correctly in the email wrapper.
+As reported in #2173, some Tailwind CSS classes were not applied correctly in the email wrapper.
 
 ### Added typescript as dev dependency to web app
 
-Added typescript as dev dependency to fix the `pnpm type-check` command.
+This fixes the `pnpm type-check` command.
 
 ---
 
@@ -2174,7 +2140,7 @@ Added typescript as dev dependency to fix the `pnpm type-check` command.
 
 ### Fixed schema error in addMessageToChat procedure
 
-Fixed a schema error in the `addMessageToChat` procedure that was causing the OpenAPI schema to be invalid.
+Fixed a schema error in the `addMessageToChat` procedure that made the OpenAPI schema invalid.
 
 ---
 
@@ -2188,17 +2154,17 @@ Fixed a schema error in the `addMessageToChat` procedure that was causing the Op
 
 ### Updated React type definitions
 
-Updated `@types/react` and `@types/react-dom` from version 19.0.0 to 19.2.2 to include the latest type definitions and bug fixes for React 19.
+Updated `@types/react` and `@types/react-dom` from 19.0.0 to 19.2.2 for the latest React 19 type definitions and fixes.
 
-The pnpm overrides have been consolidated to the root `package.json` for better consistency across the monorepo.
+The pnpm overrides are consolidated in the root `package.json`.
 
 ### Optimized pnpm dependency installation
 
-Added `onlyBuiltDependencies` configuration to pnpm settings to optimize installation time by only building Prisma-related packages (`@prisma/client`, `prisma`, and `prisma-zod-generator`) when needed. This reduces unnecessary rebuilds and speeds up dependency installation in the monorepo.
+Added `onlyBuiltDependencies` to the pnpm settings so only the Prisma packages (`@prisma/client`, `prisma`, and `prisma-zod-generator`) are built, which avoids unnecessary rebuilds and speeds up installation.
 
 ### Added pg dependency
 
-Added `pg` (PostgreSQL client) as a dependency to support the Prisma Rust-free client migration. The `pg` package is required by the Prisma database adapter for PostgreSQL connections.
+Added `pg` (PostgreSQL client) as a dependency for the Prisma Rust-free client; the Prisma adapter needs it for PostgreSQL connections.
 
 ---
 
@@ -2206,17 +2172,17 @@ Added `pg` (PostgreSQL client) as a dependency to support the Prisma Rust-free c
 
 ### Prisma client migration to Rust-free client
 
-In order to reduce the bundle size of the client and improve performance, we have migrated to the Rust-free Prisma client.
+We migrated to the Rust-free Prisma client to reduce client bundle size and improve performance.
 
 #### Migration steps
 
-If you are upgrading your supastarter project to this version, you need to update the way your prisma client is generated:
+To upgrade a supastarter project to this version, change how the prisma client is generated:
 
 1. Update `prisma` and `@prisma/client` to the latest version.
 
 2. In the `schema.prisma` file, change the `provider` to `prisma-client`, the `output` to `./generated` and set the `engineType` to `client`.
 
-3. Update the `packages/database/prisma/client.ts` like this:
+3. Update `packages/database/prisma/client.ts` like this:
 
 ```ts
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -2248,29 +2214,29 @@ if (process.env.NODE_ENV !== "production") {
 export { prisma as db };
 ```
 
-In case are using a different database than PostgreSQL, see the following documentation on which adapter to use: https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/no-rust-engine#3-install-the-driver-adapter
+For a database other than PostgreSQL, see which adapter to use: https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/no-rust-engine#3-install-the-driver-adapter
 
 ### Next.js 16 migration
 
-If you are updating an existing project, work through the following steps to align with the new Next.js 16 defaults and Supastarter conventions:
+To align an existing project with the Next.js 16 defaults and Supastarter conventions:
 
 1. Upgrade `next`, `react`, and `react-dom` to their latest stable releases in both `package.json` files (`package.json` at the root and `apps/web/package.json` if it exists).
 
 2. Rename the middleware entry point:
    - Move `apps/web/middleware.ts` to `apps/web/proxy.ts`.
-   - Inside the renamed file update the exported handler to `export function proxy(...)` (it was previously `middleware`).
+   - In the renamed file, rename the exported handler from `middleware` to `export function proxy(...)`.
 
 3. Remove the inline ESLint configuration from `apps/web/next.config.ts`
 
-4. Update the marketing docs layout `apps/web/app/(marketing)/[locale]/docs/[[...path]]/layout.tsx`, by changing the `DocsLayout` prop from `disableThemeSwitch` to `themeSwitch={{ enabled: true }}`.
+4. In the marketing docs layout `apps/web/app/(marketing)/[locale]/docs/[[...path]]/layout.tsx`, change the `DocsLayout` prop from `disableThemeSwitch` to `themeSwitch={{ enabled: true }}`.
 
-See https://nextjs.org/docs/app/guides/upgrading/version-16 for full migration guide (beyond the supastarter codebase).
+See https://nextjs.org/docs/app/guides/upgrading/version-16 for the full migration guide (beyond the supastarter codebase).
 
 ---
 
 ### Biome 2.3 upgrade
 
-We have upgraded to Biome 2.3 which introduces some changes to how CSS files are handled and it currently doesn't support the format in which Tailwind CSS 4 is configured, so you need to update the `biome.json` file to ignore the `globals.css` file for now:
+Biome 2.3 changes how CSS files are handled and doesn't yet support the Tailwind CSS 4 config format, so update `biome.json` to ignore `globals.css` for now:
 
 ```jsonc
 {

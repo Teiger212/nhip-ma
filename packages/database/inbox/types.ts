@@ -100,8 +100,10 @@ export type Answer = {
 	inboundId: string;
 	/** Exactly what the operator approved. */
 	text: string;
-	/** Who approved. `null` on rows migrated from before ADR 0011. */
+	/** Who approved. `null` on rows migrated from before ADR 0011, or once the account is gone. */
 	operatorId: string | null;
+	/** The approver's name at approval; kept after the account is deleted (ADR 0013). */
+	operatorName: string | null;
 	status: AnswerStatus;
 	mock: boolean;
 	pipe: Pipe;

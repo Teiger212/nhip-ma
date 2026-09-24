@@ -25,6 +25,7 @@ import { twoFactor } from "better-auth/plugins/two-factor";
 import { parseCookie as parseCookies } from "cookie";
 
 import { config } from "./config";
+import { officeEndHooks } from "./lib/offboarding";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
@@ -65,6 +66,24 @@ const github = socialProvider(
 	(credentials) => ({ ...credentials, scope: ["user:email"] }),
 );
 
+/** Cancel the subscriptions among these purchases (the kit's rule, on every delete path). */
+async function cancelSubscriptions(purchases: Awaited<ReturnType<typeof getPurchasesByUserId>>) {
+	for (const purchase of purchases) {
+		if (purchase.type === "SUBSCRIPTION" && purchase.subscriptionId !== null) {
+			await cancelSubscription(purchase.subscriptionId);
+		}
+	}
+}
+
+const officeEnd = officeEndHooks({
+	// The path the admin's "Remove user" takes, so `databaseHooks.user.delete` runs.
+	deleteAccount: async (userId) => {
+		const { internalAdapter } = await auth.$context;
+		await internalAdapter.deleteUserSessions(userId);
+		await internalAdapter.deleteUser(userId);
+	},
+});
+
 export const auth = betterAuth({
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
@@ -99,6 +118,12 @@ export const auth = betterAuth({
 			},
 		},
 		user: {
+			delete: {
+				// Every path that deletes an account (self, admin, ADR 0013) cancels its billing.
+				before: async (user) => {
+					await cancelSubscriptions(await getPurchasesByUserId(user.id));
+				},
+			},
 			create: {
 				after: async (createdUser) => {
 					if (!createdUser?.id) {
@@ -146,6 +171,18 @@ export const auth = betterAuth({
 				}
 
 				await updateSeatsInOrganizationSubscription(organizationId);
+			} else if (ctx.path.startsWith("/organization/leave")) {
+				// The kit's leave route fires no organization hook; it returns the member that
+				// left, or an error when the leave was refused.
+				const left = ctx.context.returned;
+				if (
+					left &&
+					typeof left === "object" &&
+					"userId" in left &&
+					typeof left.userId === "string"
+				) {
+					await officeEnd.afterLeave(left.userId);
+				}
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
@@ -164,27 +201,10 @@ export const auth = betterAuth({
 					}
 				}
 			}
-			if (ctx.path.startsWith("/delete-user") || ctx.path.startsWith("/organization/delete")) {
-				const userId = ctx.context.session?.session.userId;
+			if (ctx.path.startsWith("/organization/delete")) {
 				const { organizationId } = ctx.body;
-
-				if (userId || organizationId) {
-					const purchases = organizationId
-						? await getPurchasesByOrganizationId(organizationId)
-						: // oxlint-disable-next-line typescript/no-non-null-assertion -- This is a valid case
-							await getPurchasesByUserId(userId!);
-					const subscriptions = purchases.filter(
-						(purchase) => purchase.type === "SUBSCRIPTION" && purchase.subscriptionId !== null,
-					);
-
-					if (subscriptions.length > 0) {
-						for (const subscription of subscriptions) {
-							await cancelSubscription(
-								// oxlint-disable-next-line typescript/no-non-null-assertion -- This is a valid case
-								subscription.subscriptionId!,
-							);
-						}
-					}
+				if (organizationId) {
+					await cancelSubscriptions(await getPurchasesByOrganizationId(organizationId));
 				}
 			}
 		}),
@@ -283,6 +303,11 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			organizationHooks: {
+				beforeDeleteOrganization: officeEnd.beforeDeleteOrganization,
+				afterDeleteOrganization: officeEnd.afterDeleteOrganization,
+				afterRemoveMember: officeEnd.afterRemoveMember,
+			},
 			sendInvitationEmail: async ({ email, id, organization }, request) => {
 				const locale = getLocaleFromRequest(request);
 				const existingUser = await getUserByEmail(email);

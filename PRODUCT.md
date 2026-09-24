@@ -7,8 +7,8 @@ Working name only (pulse of the first reply). Not a brand lock. Terms are define
 
 A speed-to-lead product for high-end apartments in Vietnam. A lead writes an agency on
 WhatsApp or Zalo, often in Japanese, Korean, Russian, or English. Nhịp turns that inbound
-into a reply in the guest's language within minutes, at any hour, with a human agent
-approving every message before it goes out. The guest only ever sees the agency's own
+into a reply in the guest's language within minutes, at any hour, and a human agent
+approves every message before it goes out. The guest only ever sees the agency's own
 number.
 
 The wedge is the first reply. The durable value is the **language bridge**, and it runs
@@ -19,14 +19,12 @@ colleague will be in touch".
 
 ## Who
 
-- **Agent**: answers guests, mostly in Vietnamese with some English, on a phone. The
-  user. Lives in the Inbox.
-- **Manager**: office manager or agency owner. The customer; pays for faster responses
-  and fewer lost multinational leads. Reads Home.
-- **Office**: the tenant. Owns its pipes, its CRM connection, its agents, and its
-  threads. Threads are shared inside the office. One agency, one office is the MVP.
+- **Agent**: the user. Lives in the Inbox.
+- **Manager**: the customer. Reads Home.
+- **Office**: the tenant; threads are shared inside it.
 
-Not mass-market brokerage. Not a rental operator. Not a marketplace.
+Full definitions are in CONTEXT.md. Not mass-market brokerage. Not a rental operator. Not
+a marketplace.
 
 ## The job, in order
 
@@ -38,12 +36,12 @@ Not mass-market brokerage. Not a rental operator. Not a marketplace.
    **operator note** in the agent's language with the facts and flags. The first reply is
    a template today; follow-ups are AI-drafted from the whole conversation. Neither ever
    invents Vietnamese law or states a listing fact the office has not provided.
-4. **Queue.** The inbox is a queue. A thread is **Your turn** when the guest spoke last.
-   Oldest waiting guest first. Whether to reply is the agent's call. Threads untouched
-   for 48 hours drop into a quiet section. There is no dismiss.
+4. **Queue.** The inbox is a queue, oldest waiting guest first. A thread is **Your turn**
+   when the guest spoke last; whether to reply is the agent's call. Threads untouched for
+   48 hours drop into a quiet section. There is no dismiss.
 5. **Approve.** The agent edits if needed and taps **Approve and send**. Every send
-   answers exactly one guest message. Nothing is ever sent without a human approving
-   that specific message. No nudges yet.
+   answers exactly one guest message, and nothing is sent without a human approving that
+   message. No nudges yet.
 6. **Send.** On the same pipe the guest used, from the agency's number.
 7. **Follow up.** When the guest writes back, the thread returns to Your turn with a
    translated message and a follow-up draft that does not re-greet them.
