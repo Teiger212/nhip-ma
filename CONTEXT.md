@@ -102,6 +102,15 @@ is renamed.
 - **CRM link**: the stored association between a conversation and a CRM lead. Made
   automatically by phone number (E.164), or by the agent through "link to CRM lead".
 
+## Billing
+
+- **Seat**: one operator in an office, the unit the office pays for (ADR 0014). The
+  platform admin is never a seat.
+- **Lapsed**: an office whose paid period ended without renewal. Locked for operators;
+  guest messages keep landing and wait for it.
+- **Closing**: an office that asked to be deleted. Locked and unbilled, restorable for 30
+  days, then purged with its threads and its operators' accounts.
+
 ## Deliberately not
 
 Nhịp is not, and is not becoming, any of these; recorded so they do not creep in.
