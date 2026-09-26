@@ -41,8 +41,9 @@ are required; the redirects and the rejected cookie-only locale are in
 `walkthrough`: `walk@nhip.local`, the agent (a member of the walk office, sees Inbox and
 Home), and `admin@nhip.local`, the platform admin (owner of the walk office, also sees the
 kit's admin area where offices are created and agents invited). It writes four invented
-threads (Minji, Yuki, Alexei, Thảo) into the walk office once; a re-run skips existing
-threads, so delete the office's threads in the database for a fresh set. There is no auth
+threads into the walk office once: Minji and Thảo as just written (Your turn), Yuki and
+Alexei three days old (Quiet). A re-run skips existing threads; `pnpm seed --reset`
+rewrites them as of now, which the fresh pair needs after 48 hours. There is no auth
 bypass route and public sign-up is closed (ADR 0010). Inbox stays invented threads +
 `SEND_MODE=mock`.
 

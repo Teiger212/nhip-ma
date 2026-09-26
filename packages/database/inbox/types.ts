@@ -189,6 +189,8 @@ export type InboxStore = {
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
 	listPipeConnections: () => Promise<PipeConnection[]>;
+	/** Delete these threads of the office with everything under them. Returns how many went. */
+	deleteConversations: (officeId: string, ids: string[]) => Promise<number>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
 	setDraft: (id: string, draft: Draft) => Promise<Conversation | null>;

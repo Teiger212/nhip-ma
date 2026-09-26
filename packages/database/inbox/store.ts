@@ -311,6 +311,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return (await load(id)) as Conversation;
 		},
 
+		async deleteConversations(officeId, ids) {
+			const { count } = await db.conversation.deleteMany({ where: { officeId, id: { in: ids } } });
+			return count;
+		},
+
 		async setOneShot(id, shot: OneShot) {
 			if (!(await exists(id))) {
 				return null;

@@ -30,11 +30,14 @@ async function main(): Promise<void> {
 	const named = await backfillAnswerOperatorNames();
 	if (named > 0) console.info(`Answers given their sender's name (ADR 0013): ${named}\n`);
 
-	const owned = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
+	const reset = process.argv.includes("--reset");
+	const owned = reset
+		? []
+		: await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
 	const existing = DEMO_THREADS.filter((thread) =>
 		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
 	).length;
-	const conversations = await seedInbox(WALK_OFFICE_ID);
+	const conversations = await seedInbox(WALK_OFFICE_ID, { reset });
 	for (const conv of conversations) {
 		const q = conv.oneShot?.qualification;
 		const paper = conv.oneShot?.paperwork?.mentioned ? "paperwork flagged" : "no paperwork";
@@ -48,7 +51,7 @@ async function main(): Promise<void> {
 			(existing ? ` (wrote ${created}, skipped ${existing} existing)` : " (fresh write)"),
 	);
 	console.info(
-		"Re-run skips threads that already exist. Delete the office's threads in the database for a fresh set.",
+		"Re-run skips threads that already exist. `pnpm seed --reset` rewrites them as of now (the fresh pair goes Quiet after 48 hours).",
 	);
 	console.info("Open http://localhost:3010 — sign in, then Inbox. Nothing here is a real guest.");
 	// Translations (ADR 0007) run in the background after each inbound; let them land
