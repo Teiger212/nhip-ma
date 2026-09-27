@@ -1,7 +1,8 @@
 import { db } from "@repo/database";
-import { createInboxStore, type InboxStore } from "@repo/database/inbox";
+import { type CrmKind, createInboxStore, type InboxStore } from "@repo/database/inbox";
 
 import { type InboxConfig, inboxConfigFromEnv, validateInboxEnv } from "./config";
+import type { CrmAdapter } from "./crm/types";
 import { type DraftAdapter, draftAdapterFromConfig } from "./drafts";
 
 export type Runtime = {
@@ -9,6 +10,11 @@ export type Runtime = {
 	config: InboxConfig;
 	/** The model seam for translation and follow-up drafts (ADR 0005). */
 	drafts: DraftAdapter;
+	/** Tests swap the CRM adapter here; the app uses `crmAdapterFor` (ADR 0003). */
+	crm?: (
+		connection: { kind: CrmKind },
+		deps: { store: InboxStore; officeId: string },
+	) => CrmAdapter;
 };
 
 type GlobalRuntime = typeof globalThis & { __nhipRuntime?: Runtime; __nhipConfig?: InboxConfig };
