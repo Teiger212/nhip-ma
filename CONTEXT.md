@@ -52,14 +52,16 @@ is renamed.
 ## Funnel
 
 - **Lead**: a guest who wrote in. One per conversation.
-- **Engaged**: a lead who received at least one approved send.
-- **In conversation**: a lead with more than one exchange (a guest message after an
-  approved send).
+- **Engaged**: a lead who received at least one office reply: an approved send, or a reply
+  an agent sent from the WhatsApp or Zalo app itself. Mock sends count only in a mock
+  deployment.
+- **In conversation**: a lead with more than one exchange (a guest message after the
+  office's first reply).
 - **Closing**: a lead that became a signed lease or a completed sale. Known only through
   the CRM adapter, never inferred from chat.
 - **Lost**: a lead the office marked lost in its CRM, with reason where known.
-- **Response time**: first inbound to first approved send (the first `sent` Answer's
-  `sentAt`). Supporting metric: median and 90th percentile over the answered leads.
+- **Response time**: first inbound to the office's first reply (the first `sent` Answer's
+  `sentAt`, or the first reply from the vendor's app, whichever came first). Supporting metric: median and 90th percentile over the answered leads.
 - **Window**: Home counts the leads whose first message landed in the last 30 days, and
   engaged and in conversation inside that cohort, so the funnel never widens.
 

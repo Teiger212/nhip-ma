@@ -252,61 +252,71 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 
 		async upsertInbound(event: InboundEvent, officeId: string) {
 			const at = new Date(nowIso(event.at));
-			const id = await db.$transaction(async (tx) => {
-				// The thread is found by (office, pipe, guest), never by the id's shape.
-				const existing = await tx.conversation.findUnique({
-					where: { officeId_pipe_guestId: { officeId, pipe: event.pipe, guestId: event.guestId } },
-					select: { id: true, guestName: true },
-				});
-				const threadId = existing?.id ?? conversationId(officeId, event.pipe, event.guestId);
-				if (existing) {
-					await tx.conversation.update({
-						where: { id: threadId },
-						data: { guestName: existing.guestName ?? (event.guestName || null), updatedAt: at },
+			const write = () =>
+				db.$transaction(async (tx) => {
+					// The thread is found by (office, pipe, guest), never by the id's shape.
+					const existing = await tx.conversation.findUnique({
+						where: {
+							officeId_pipe_guestId: { officeId, pipe: event.pipe, guestId: event.guestId },
+						},
+						select: { id: true, guestName: true },
 					});
-				} else {
-					await tx.conversation.create({
+					const threadId = existing?.id ?? conversationId(officeId, event.pipe, event.guestId);
+					if (existing) {
+						await tx.conversation.update({
+							where: { id: threadId },
+							data: { guestName: existing.guestName ?? (event.guestName || null), updatedAt: at },
+						});
+					} else {
+						await tx.conversation.create({
+							data: {
+								id: threadId,
+								pipe: event.pipe,
+								guestId: event.guestId,
+								guestName: event.guestName || null,
+								officeId,
+								updatedAt: at,
+							},
+						});
+					}
+
+					if (event.vendorMessageId) {
+						const duplicate = await tx.message.findFirst({
+							where: { conversationId: threadId, vendorMessageId: event.vendorMessageId },
+							select: { id: true },
+						});
+						if (duplicate) {
+							return threadId;
+						}
+					}
+
+					await tx.message.create({
 						data: {
-							id: threadId,
-							pipe: event.pipe,
-							guestId: event.guestId,
-							guestName: event.guestName || null,
-							officeId,
-							updatedAt: at,
+							id: cuid(),
+							conversationId: threadId,
+							direction: event.source === "guest" ? "in" : "out",
+							source: toDbSource(event.source),
+							text: event.text,
+							at,
+							vendorMessageId: event.vendorMessageId || null,
+							pipeExternalId: event.pipeExternalId ?? null,
 						},
 					});
-				}
 
-				if (event.vendorMessageId) {
-					const duplicate = await tx.message.findFirst({
-						where: { conversationId: threadId, vendorMessageId: event.vendorMessageId },
-						select: { id: true },
-					});
-					if (duplicate) {
-						return threadId;
+					if (event.source === "guest") {
+						await tx.conversation.update({
+							where: { id: threadId },
+							data: { lastGuestInboundAt: at, updatedAt: at },
+						});
 					}
-				}
-
-				await tx.message.create({
-					data: {
-						id: cuid(),
-						conversationId: threadId,
-						direction: event.source === "guest" ? "in" : "out",
-						source: toDbSource(event.source),
-						text: event.text,
-						at,
-						vendorMessageId: event.vendorMessageId || null,
-						pipeExternalId: event.pipeExternalId ?? null,
-					},
+					return threadId;
 				});
-
-				if (event.source === "guest") {
-					await tx.conversation.update({
-						where: { id: threadId },
-						data: { lastGuestInboundAt: at, updatedAt: at },
-					});
-				}
-				return threadId;
+			// A vendor retry or a guest's first two messages can race here. The loser hits a
+			// unique index (thread per guest, message per vendor id); run again and it finds
+			// the winner's row.
+			const id = await write().catch((error: unknown) => {
+				if (isUniqueViolation(error)) return write();
+				throw error;
 			});
 			return (await load(id)) as Conversation;
 		},
@@ -394,8 +404,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						if (existing.status === "sending") return { ok: false, reason: "in_progress" };
 						if (existing.status === "unknown") return { ok: false, reason: "unknown" };
 						// A definite failure is retried on the same row: one Answer per inbound, always.
-						const retried = await tx.answer.update({
-							where: { id: existing.id },
+						// Guarded on `failed`: of two approvals racing the retry, the second waits on the
+						// row lock, then matches nothing and is refused.
+						const retried = await tx.answer.updateMany({
+							where: { id: existing.id, status: "failed" },
 							data: {
 								status: "sending",
 								text: input.text,
@@ -407,7 +419,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 								vendorMessageId: null,
 							},
 						});
-						return { ok: true, answer: mapAnswer(retried) };
+						if (retried.count === 0) return { ok: false, reason: "in_progress" };
+						const answer = await tx.answer.findUniqueOrThrow({ where: { id: existing.id } });
+						return { ok: true, answer: mapAnswer(answer) };
 					}
 					const created = await tx.answer.create({
 						data: {
@@ -539,8 +553,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					FROM "inbox_message" WHERE "direction" = 'in' GROUP BY "conversationId"
 				),
 				"reached" AS (
-					SELECT "conversationId", MIN("sentAt") AS "firstSentAt"
-					FROM "inbox_answer" WHERE "status" = 'sent' GROUP BY "conversationId"
+					SELECT "conversationId", MIN("at") AS "firstSentAt" FROM (
+						SELECT "conversationId", "sentAt" AS "at" FROM "inbox_answer"
+						WHERE "status" = 'sent' AND (${window.countMock} OR NOT "mock")
+						UNION ALL
+						SELECT "conversationId", "at" FROM "inbox_message"
+						WHERE "direction" = 'out' AND "source" = 'oa_echo'
+					) "replies" GROUP BY "conversationId"
 				)
 				SELECT "first"."firstInboundAt" AS "firstInboundAt",
 				       "reached"."firstSentAt" AS "firstSentAt",

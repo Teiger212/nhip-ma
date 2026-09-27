@@ -20,11 +20,13 @@ const inbound = (guestId: string, text = "Xin chào", pipeExternalId: string | n
 	pipeExternalId,
 });
 
+let sends = 0;
+/** Vendor ids are unique per message, as a real vendor's are. */
 const mockSend = (to: string) => ({
 	mock: true,
 	pipe: "zalo" as const,
 	to,
-	vendorMessageId: `mock-${to}`,
+	vendorMessageId: `mock-${to}-${++sends}`,
 });
 
 type Store = Awaited<ReturnType<typeof testInboxStore>>;
@@ -367,5 +369,48 @@ test("Answers approved before ADR 0013 get their sender's name filled in", async
 	expect(await backfillAnswerOperatorNames(testDb)).toBe(0);
 	const filled = await testDb.answer.findFirstOrThrow();
 	expect(filled.operatorName).toBe("agent-1");
+	await store.close();
+});
+
+test("two approvals racing the retry of a failed Answer let one in", async () => {
+	const store = await testInboxStore();
+	const conv = await store.upsertInbound(inbound("retry-race"), OFFICE);
+	const inboundId = conv.unansweredInboundId!;
+	const input = {
+		conversationId: zalo("retry-race"),
+		inboundId,
+		text: "reply",
+		operatorId: "agent-1",
+	};
+	const begun = await store.beginAnswer(input);
+	if (!begun.ok) throw new Error(begun.reason);
+	await store.failAnswer(begun.answer.id, "token expired");
+	const [first, second] = await Promise.all([
+		store.beginAnswer({ ...input, operatorId: "agent-1" }),
+		store.beginAnswer({ ...input, operatorId: "agent-2" }),
+	]);
+	const outcomes = [first, second].map((r) => (r.ok ? "ok" : r.reason)).sort();
+	expect(outcomes).toEqual(["in_progress", "ok"]);
+	expect(await testDb.answer.count({ where: { inboundId } })).toBe(1);
+	await store.close();
+});
+
+test("a vendor retry of one message is stored once, even when both land at the same time", async () => {
+	const store = await testInboxStore();
+	const event = { ...inbound("retried"), vendorMessageId: "vendor-m1" };
+	await Promise.all([store.upsertInbound(event, OFFICE), store.upsertInbound(event, OFFICE)]);
+	const conv = await store.getConversation(zalo("retried"));
+	expect(conv?.messages).toHaveLength(1);
+	await store.close();
+});
+
+test("a new guest's first two messages at the same time make one thread", async () => {
+	const store = await testInboxStore();
+	await Promise.all([
+		store.upsertInbound({ ...inbound("twin", "one"), vendorMessageId: "v-1" }, OFFICE),
+		store.upsertInbound({ ...inbound("twin", "two"), vendorMessageId: "v-2" }, OFFICE),
+	]);
+	const conv = await store.getConversation(zalo("twin"));
+	expect(conv?.messages.map((message) => message.text).sort()).toEqual(["one", "two"]);
 	await store.close();
 });

@@ -33,9 +33,10 @@ test("live mode delegates to the pipe adapter, which refuses without credentials
 });
 
 test("each adapter verifies its own header with its own secret and fails closed", () => {
-	const body = JSON.stringify({ app_id: "1", timestamp: "2", entry: [] });
+	const ts = String(Date.now());
+	const body = JSON.stringify({ app_id: "1", timestamp: ts, entry: [] });
 	const waSig = `sha256=${crypto.createHmac("sha256", "wa").update(body).digest("hex")}`;
-	const zaloSig = `mac=${crypto.createHash("sha256").update(`1${body}2oa`).digest("hex")}`;
+	const zaloSig = `mac=${crypto.createHash("sha256").update(`1${body}${ts}oa`).digest("hex")}`;
 	const config = mockInboxConfig({ whatsapp: { appSecret: "wa" }, zalo: { oaSecretKey: "oa" } });
 
 	expect(

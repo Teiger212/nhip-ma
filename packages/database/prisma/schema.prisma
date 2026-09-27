@@ -325,6 +325,7 @@ model Message {
   translations    Translation[]
   answer          Answer?
 
+  @@unique([conversationId, vendorMessageId])
   @@index([conversationId])
   @@map("inbox_message")
 }
