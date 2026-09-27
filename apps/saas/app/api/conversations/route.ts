@@ -1,3 +1,5 @@
+import { runInBackground } from "@inbox/lib/background";
+import { refreshCrm } from "@inbox/lib/crm/sync";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { getRuntime } from "@inbox/lib/runtime";
 import { scheduleMissingTranslations } from "@inbox/lib/translate";
@@ -21,5 +23,10 @@ export async function GET(request: Request): Promise<Response> {
 	if (locale.success) {
 		scheduleMissingTranslations(runtime, conversations, locale.data);
 	}
+	// Fetch on view (ADR 0003): links and outcomes land by the next poll; the list never
+	// waits on the CRM.
+	void runInBackground("crm-refresh", async () => {
+		await refreshCrm(runtime, gate.viewer.officeId);
+	});
 	return NextResponse.json(conversations);
 }
