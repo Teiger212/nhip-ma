@@ -145,7 +145,7 @@ test("the walk office's mock CRM: four leads, Thảo linked open, Alexei linked 
 	await seedInbox(WALK_OFFICE_ID);
 	await seedCrm(WALK_OFFICE_ID);
 	await seedCrm(WALK_OFFICE_ID); // idempotent
-	expect(await store.getCrmConnection(WALK_OFFICE_ID)).toEqual({ kind: "mock" });
+	expect(await store.getCrmConnection(WALK_OFFICE_ID)).toEqual({ kind: "mock", failedAt: null });
 	expect(await testDb.mockCrmLead.count({ where: { officeId: WALK_OFFICE_ID } })).toBe(4);
 	const list = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
 	const crmOf = (name: string) => list.find((c) => c.guestName === name)?.crm;

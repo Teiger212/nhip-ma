@@ -1,5 +1,5 @@
 import { conversationId, createInboxStore } from "@repo/database/inbox";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
@@ -168,4 +168,98 @@ test("a lead the CRM no longer knows loses its outcome instead of being re-read 
 	});
 	await refreshCrm(runtimeWith(adapter), OFFICE, now + 1000);
 	expect(calls.outcomes).toBe(1);
+});
+
+test("an agent's link made while a refresh is looking up the phone survives the refresh", async () => {
+	await resetTestInbox();
+	await store.setCrmConnection(OFFICE, "mock");
+	await store.upsertInbound(whatsapp("84901234567"), OFFICE);
+	const id = conversationId(OFFICE, "whatsapp", "84901234567");
+	const racing: CrmAdapter = {
+		...fakeCrm({}, {}).adapter,
+		async findLeadForConversation() {
+			// The agent links by hand while the CRM is being asked.
+			await store.saveCrmLink(id, {
+				kind: "mock",
+				leadId: "picked",
+				leadName: "Picked",
+				method: "manual",
+				checkedAt: new Date(),
+			});
+			return { id: "phone-match", name: "By phone", phone: null };
+		},
+	};
+	await refreshCrm(runtimeWith(racing), OFFICE);
+	expect((await store.getConversation(id))?.crm).toMatchObject({
+		leadId: "picked",
+		method: "manual",
+	});
+});
+
+test("an outcome read for the old lead is not written onto a lead the agent picked meanwhile", async () => {
+	await resetTestInbox();
+	await store.setCrmConnection(OFFICE, "mock");
+	await store.upsertInbound(whatsapp("84901234567"), OFFICE);
+	const id = conversationId(OFFICE, "whatsapp", "84901234567");
+	const past = new Date(Date.now() - 2 * CRM_TTL_MS);
+	await store.saveCrmLink(id, {
+		kind: "mock",
+		leadId: "old",
+		leadName: "Old",
+		method: "phone",
+		checkedAt: past,
+	});
+	const racing: CrmAdapter = {
+		...fakeCrm({}, {}).adapter,
+		async outcomesFor() {
+			await store.saveCrmLink(id, {
+				kind: "mock",
+				leadId: "new",
+				leadName: "New",
+				method: "manual",
+				checkedAt: new Date(),
+			});
+			return { old: { status: "lost", at: null, reason: "price" } };
+		},
+	};
+	await refreshCrm(runtimeWith(racing), OFFICE);
+	expect((await store.getConversation(id))?.crm).toMatchObject({ leadId: "new", outcome: null });
+});
+
+test("concurrent refreshes of one office make one pass over the CRM", async () => {
+	await resetTestInbox();
+	await store.setCrmConnection(OFFICE, "mock");
+	await store.upsertInbound(whatsapp("84900000000"), OFFICE);
+	const { adapter, calls } = fakeCrm({}, {});
+	const runtime = runtimeWith(adapter);
+	const results = await Promise.all([
+		refreshCrm(runtime, OFFICE),
+		refreshCrm(runtime, OFFICE),
+		refreshCrm(runtime, OFFICE),
+	]);
+	expect(results.every((result) => result.status === "ok")).toBe(true);
+	expect(calls.find).toBe(1);
+});
+
+test("after a CRM failure the office waits out the TTL instead of retrying every poll, and says so", async () => {
+	await resetTestInbox();
+	await store.setCrmConnection(OFFICE, "mock");
+	await store.upsertInbound(whatsapp("84901234567"), OFFICE);
+	let tries = 0;
+	const broken: CrmAdapter = {
+		...fakeCrm({}, {}).adapter,
+		findLeadForConversation: async () => {
+			tries += 1;
+			throw new Error("503");
+		},
+	};
+	const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+	const now = Date.now();
+	expect((await refreshCrm(runtimeWith(broken), OFFICE, now)).status).toBe("failed");
+	expect((await refreshCrm(runtimeWith(broken), OFFICE, now + 10_000)).status).toBe("failed");
+	expect(tries).toBe(1);
+	expect(warn).toHaveBeenCalledTimes(1);
+	await refreshCrm(runtimeWith(broken), OFFICE, now + CRM_TTL_MS + 1);
+	expect(tries).toBe(2);
+	warn.mockRestore();
 });

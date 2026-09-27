@@ -132,7 +132,7 @@ export type PipeConnectionScalarFieldEnum = z.infer<typeof PipeConnectionScalarF
 
 // File: CrmConnectionScalarFieldEnum.schema.ts
 
-export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'updatedAt'])
+export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'failedAt', 'updatedAt'])
 
 export type CrmConnectionScalarFieldEnum = z.infer<typeof CrmConnectionScalarFieldEnumSchema>;
 
@@ -571,6 +571,7 @@ export type PipeConnectionType = z.infer<typeof PipeConnectionSchema>;
 export const CrmConnectionSchema = z.object({
   officeId: z.string(),
   kind: CrmKindSchema,
+  failedAt: z.date().nullish(),
   updatedAt: z.date(),
 });
 

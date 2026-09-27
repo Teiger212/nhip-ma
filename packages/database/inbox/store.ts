@@ -644,21 +644,34 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		async getCrmConnection(officeId) {
 			const row = await db.crmConnection.findUnique({
 				where: { officeId },
-				select: { kind: true },
+				select: { kind: true, failedAt: true },
 			});
-			return row ? { kind: row.kind } : null;
+			return row ? { kind: row.kind, failedAt: isoOrNull(row.failedAt) } : null;
 		},
 
 		async setCrmConnection(officeId, kind) {
-			if (kind === null) {
-				await db.crmConnection.deleteMany({ where: { officeId } });
-				return;
-			}
-			await db.crmConnection.upsert({
-				where: { officeId },
-				create: { officeId, kind },
-				update: { kind },
+			await db.$transaction(async (tx) => {
+				const current = await tx.crmConnection.findUnique({
+					where: { officeId },
+					select: { kind: true },
+				});
+				if ((current?.kind ?? null) === kind) return;
+				// Another CRM's leads, or none: the links and their cached outcomes go.
+				await tx.crmLink.deleteMany({ where: { officeId } });
+				if (kind === null) {
+					await tx.crmConnection.deleteMany({ where: { officeId } });
+					return;
+				}
+				await tx.crmConnection.upsert({
+					where: { officeId },
+					create: { officeId, kind },
+					update: { kind, failedAt: null },
+				});
 			});
+		},
+
+		async markCrmFailure(officeId, at) {
+			await db.crmConnection.updateMany({ where: { officeId }, data: { failedAt: at } });
 		},
 
 		async crmWork(officeId, staleBefore) {
@@ -677,7 +690,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}));
 		},
 
-		async saveCrmLink(conversationId, link) {
+		async saveCrmLink(conversationId, link, expected) {
 			const conversation = await db.conversation.findUniqueOrThrow({
 				where: { id: conversationId },
 				select: { officeId: true, crmLink: { select: { leadId: true } } },
@@ -693,18 +706,41 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				// Another lead's outcome is not this lead's.
 				...(sameLead ? {} : { outcome: null, outcomeAt: null, outcomeReason: null }),
 			};
+			if (expected === null) {
+				// Only if nobody linked the thread since it was read.
+				const { count } = await db.crmLink.createMany({
+					data: [{ conversationId, ...data }],
+					skipDuplicates: true,
+				});
+				return count > 0;
+			}
+			if (expected) {
+				const { count } = await db.crmLink.updateMany({
+					where: {
+						conversationId,
+						leadId: expected.leadId,
+						checkedAt: new Date(expected.checkedAt),
+					},
+					data,
+				});
+				return count > 0;
+			}
 			await db.crmLink.upsert({
 				where: { conversationId },
 				create: { conversationId, ...data },
 				update: data,
 			});
+			return true;
 		},
 
 		async saveCrmOutcomes(updates, checkedAt) {
 			await db.$transaction(
 				updates.map((update) =>
-					db.crmLink.update({
-						where: { conversationId: update.conversationId },
+					db.crmLink.updateMany({
+						where: {
+							conversationId: update.conversationId,
+							...(update.leadId ? { leadId: update.leadId } : {}),
+						},
 						data: {
 							outcome: update.outcome,
 							outcomeAt: update.outcomeAt,

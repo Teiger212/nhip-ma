@@ -18,7 +18,7 @@ test("an office has at most one CRM connection, and clearing it removes it", asy
 	const store = await testInboxStore();
 	expect(await store.getCrmConnection(OFFICE)).toBeNull();
 	await store.setCrmConnection(OFFICE, "mock");
-	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock" });
+	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock", failedAt: null });
 	await store.setCrmConnection(OFFICE, null);
 	expect(await store.getCrmConnection(OFFICE)).toBeNull();
 	await store.close();
@@ -167,5 +167,36 @@ test("deleting an office deletes its CRM connection, links and mock leads", asyn
 	await testDb.organization.delete({ where: { id: OTHER_OFFICE } });
 	expect(await store.getCrmConnection(OTHER_OFFICE)).toBeNull();
 	expect(await testDb.mockCrmLead.count({ where: { officeId: OTHER_OFFICE } })).toBe(0);
+	await store.close();
+});
+
+test("disconnecting or changing the office's CRM drops its thread links", async () => {
+	const store = await testInboxStore();
+	await store.upsertInbound(inbound("g1"), OFFICE);
+	await store.upsertInbound(inbound("g2"), OTHER_OFFICE);
+	const id = conversationId(OFFICE, "whatsapp", "g1");
+	const other = conversationId(OTHER_OFFICE, "whatsapp", "g2");
+	const at = new Date();
+	await store.setCrmConnection(OFFICE, "mock");
+	await store.setCrmConnection(OTHER_OFFICE, "mock");
+	await store.saveCrmLink(id, {
+		kind: "mock",
+		leadId: "a",
+		leadName: "A",
+		method: "manual",
+		checkedAt: at,
+	});
+	await store.saveCrmLink(other, {
+		kind: "mock",
+		leadId: "b",
+		leadName: "B",
+		method: "manual",
+		checkedAt: at,
+	});
+	await store.setCrmConnection(OFFICE, "mock"); // same kind: links stay
+	expect((await store.getConversation(id))?.crm?.leadId).toBe("a");
+	await store.setCrmConnection(OFFICE, null);
+	expect((await store.getConversation(id))?.crm).toBeNull();
+	expect((await store.getConversation(other))?.crm?.leadId).toBe("b");
 	await store.close();
 });

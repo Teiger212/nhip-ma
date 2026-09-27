@@ -438,6 +438,8 @@ model CrmConnection {
   officeId  String       @id
   office    Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
   kind      CrmKind
+  /// When the CRM last failed; refreshes wait out the cache TTL after it instead of retrying.
+  failedAt  DateTime?
   updatedAt DateTime     @updatedAt
 
   @@map("inbox_crm_connection")

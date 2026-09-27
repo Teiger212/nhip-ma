@@ -264,13 +264,25 @@ export type InboxStore = {
 	 * yes in a mock deployment (the demo), never in a live one.
 	 */
 	funnel: (viewer: InboxViewer, window: { since: Date; countMock: boolean }) => Promise<Funnel>;
-	/** The office's CRM (ADR 0003), or null when none is connected. */
-	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
-	/** Connect the office to a CRM kind, or disconnect it with `null`. */
+	/** The office's CRM (ADR 0003) and when it last failed, or null when none is connected. */
+	getCrmConnection: (
+		officeId: string,
+	) => Promise<{ kind: CrmKind; failedAt: string | null } | null>;
+	/**
+	 * Connect the office to a CRM kind, or disconnect it with `null`. Disconnecting or
+	 * changing the kind drops the office's thread links: another CRM's leads mean nothing.
+	 */
 	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
+	/** Record that the office's CRM failed (or recovered, with `null`). */
+	markCrmFailure: (officeId: string, at: Date | null) => Promise<void>;
 	/** The office's threads with no CRM link yet, or one checked before `staleBefore`. */
 	crmWork: (officeId: string, staleBefore: Date) => Promise<CrmWorkItem[]>;
-	/** Link a thread to a lead (or record a miss with `leadId: null`); a new lead drops the old outcome. */
+	/**
+	 * Link a thread to a lead (or record a miss with `leadId: null`); a new lead drops the old
+	 * outcome. With `expected`, write only if the link is still what was read (null: no link
+	 * yet), so a background refresh never overwrites an agent's link made meanwhile. Returns
+	 * whether it wrote.
+	 */
 	saveCrmLink: (
 		conversationId: string,
 		link: {
@@ -280,11 +292,17 @@ export type InboxStore = {
 			method: CrmLinkMethod;
 			checkedAt: Date;
 		},
-	) => Promise<void>;
-	/** Cache what the CRM said about linked threads' leads, as of `checkedAt`. */
+		expected?: { leadId: string | null; checkedAt: string } | null,
+	) => Promise<boolean>;
+	/**
+	 * Cache what the CRM said about linked threads' leads, as of `checkedAt`. An update that
+	 * names `leadId` is skipped when the thread now links another lead; a link gone
+	 * meanwhile is skipped too.
+	 */
 	saveCrmOutcomes: (
 		updates: Array<{
 			conversationId: string;
+			leadId?: string;
 			outcome: CrmOutcomeStatus | null;
 			outcomeAt: Date | null;
 			outcomeReason: string | null;
