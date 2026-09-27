@@ -147,15 +147,26 @@ export async function Home() {
 					))}
 					{FROM_CRM.map((stage, index) => (
 						<Stage key={stage} index={COUNTED.length + index + 1} label={t(`funnel.${stage}`)}>
-							<div className="mt-auto">
-								<p className="text-sm font-semibold text-foreground">{t("connectCrm")}</p>
-								<p className="mt-1 text-xs text-pretty text-muted-foreground">
-									{t("connectCrmHint")}
-								</p>
-							</div>
+							{funnel?.crm ? (
+								<Count
+									value={funnel.crm[stage]}
+									of={funnel.leadsIn}
+									hint={t("fromCrm", { linked: funnel.crm.linked, leads: funnel.leadsIn })}
+								/>
+							) : (
+								<div className="mt-auto">
+									<p className="text-sm font-semibold text-foreground">{t("connectCrm")}</p>
+									<p className="mt-1 text-xs text-pretty text-muted-foreground">
+										{t("connectCrmHint")}
+									</p>
+								</div>
+							)}
 						</Stage>
 					))}
 				</ol>
+				{loaded.crmStale ? (
+					<p className="mt-2 text-xs text-pretty text-muted-foreground">{t("crmStale")}</p>
+				) : null}
 			</section>
 			{funnel ? <ResponseTime funnel={funnel} locale={locale} t={t} /> : null}
 		</div>

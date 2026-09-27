@@ -713,7 +713,7 @@
 		"connectCrm": "Kết nối CRM",
 		"connectCrmHint": "Chốt và mất lấy từ CRM của văn phòng, không bao giờ suy ra từ chat.",
 		"responseTime": "Thời gian phản hồi",
-		"responseTimeHint": "Từ tin đầu tiên của khách đến lần gửi đầu tiên được duyệt.",
+		"responseTimeHint": "Từ tin nhắn đầu tiên của khách đến câu trả lời đầu tiên của văn phòng.",
 		"median": "trung vị",
 		"p90": "p90 {value}",
 		"answered": "{count} khách đã được trả lời",
@@ -721,7 +721,9 @@
 		"denied": {
 			"no_office": "Tài khoản này chưa thuộc văn phòng nào nên không có gì để đếm.",
 			"ambiguous_office": "Tài khoản này thuộc nhiều hơn một văn phòng. Hãy nhờ Nhịp sửa."
-		}
+		},
+		"fromCrm": "Từ CRM của bạn · {linked}/{leads} khách đã liên kết",
+		"crmStale": "CRM chưa phản hồi kịp. Số chốt và mất có thể chưa cập nhật."
 	},
 	"inbox": {
 		"brand": "Nhịp",

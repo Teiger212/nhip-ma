@@ -102,5 +102,16 @@ export const Funnel = z.object({
 	/** Leads who wrote again after their first sent Answer. */
 	inConversation: z.number().int().nonnegative(),
 	responseTime: ResponseTime.nullable(),
+	/**
+	 * From the office's CRM (ADR 0003), inside the same cohort. Distinct leads, so one deal
+	 * on two threads counts once. null: no CRM connected, which Home shows as such.
+	 */
+	crm: z
+		.object({
+			linked: z.number().int().nonnegative(),
+			closings: z.number().int().nonnegative(),
+			lost: z.number().int().nonnegative(),
+		})
+		.nullable(),
 });
 export type Funnel = z.infer<typeof Funnel>;

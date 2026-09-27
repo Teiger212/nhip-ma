@@ -592,6 +592,30 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				LEFT JOIN "reached" ON "reached"."conversationId" = "c"."id"
 				WHERE "c"."officeId" = ${viewer.officeId} AND "first"."firstInboundAt" >= ${since}
 			`;
+			const connected = await db.crmConnection.findUnique({
+				where: { officeId: viewer.officeId },
+				select: { officeId: true },
+			});
+			let crm: Funnel["crm"] = null;
+			if (connected) {
+				const [row] = await db.$queryRaw<Array<{ linked: bigint; closings: bigint; lost: bigint }>>`
+					SELECT COUNT(*) FILTER (WHERE "l"."leadId" IS NOT NULL) AS "linked",
+					       COUNT(DISTINCT "l"."leadId") FILTER (WHERE "l"."outcome" = 'won') AS "closings",
+					       COUNT(DISTINCT "l"."leadId") FILTER (WHERE "l"."outcome" = 'lost') AS "lost"
+					FROM "inbox_crm_link" "l"
+					JOIN "inbox_conversation" "c" ON "c"."id" = "l"."conversationId"
+					WHERE "c"."officeId" = ${viewer.officeId}
+					  AND (
+					    SELECT MIN("m"."at") FROM "inbox_message" "m"
+					    WHERE "m"."conversationId" = "c"."id" AND "m"."direction" = 'in'
+					  ) >= ${since}
+				`;
+				crm = {
+					linked: Number(row.linked),
+					closings: Number(row.closings),
+					lost: Number(row.lost),
+				};
+			}
 			const durations = leads
 				.flatMap((lead) =>
 					lead.firstSentAt ? [lead.firstSentAt.getTime() - lead.firstInboundAt.getTime()] : [],
@@ -612,6 +636,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 								medianMs: nearestRank(durations, 0.5),
 								p90Ms: nearestRank(durations, 0.9),
 							},
+				crm,
 			};
 			return funnel;
 		},

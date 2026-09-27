@@ -209,3 +209,35 @@ test("a live deployment's funnel leaves mock sends out", async () => {
 	expect(live).toMatchObject({ leadsIn: 1, engaged: 0, responseTime: null });
 	await store.close();
 });
+
+test("closings and lost count distinct CRM leads in the cohort; no CRM means null", async () => {
+	const store = await testInboxStore();
+	const now = Date.now();
+	for (const guestId of ["a", "b", "c", "d"]) {
+		await store.upsertInbound(inbound(guestId, now - 60 * MINUTE), OFFICE);
+	}
+	const window = { since: new Date(now - DAY), countMock: true };
+	expect((await store.funnel(viewer, window)).crm).toBeNull();
+
+	await store.setCrmConnection(OFFICE, "mock");
+	const at = new Date(now);
+	const link = async (guestId: string, leadId: string, outcome: "open" | "won" | "lost") => {
+		const id = conversationId(OFFICE, "zalo", guestId);
+		await store.saveCrmLink(id, {
+			kind: "mock",
+			leadId,
+			leadName: leadId,
+			method: "manual",
+			checkedAt: at,
+		});
+		await store.saveCrmOutcomes(
+			[{ conversationId: id, outcome, outcomeAt: at, outcomeReason: null }],
+			at,
+		);
+	};
+	await link("a", "deal-1", "won");
+	await link("b", "deal-1", "won"); // the same guest on another thread: one deal
+	await link("c", "deal-2", "lost");
+	expect((await store.funnel(viewer, window)).crm).toEqual({ linked: 3, closings: 1, lost: 1 });
+	await store.close();
+});
