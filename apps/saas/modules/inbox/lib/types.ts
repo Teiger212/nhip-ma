@@ -5,6 +5,9 @@
  * client component still pulls none of `@repo/database/inbox` into its bundle.
  */
 export {
+	CrmKind,
+	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -16,6 +19,7 @@ export {
 } from "@repo/database/inbox";
 export type {
 	Conversation,
+	ConversationCrm,
 	Draft,
 	InboundEvent,
 	InboxStore as Store,
