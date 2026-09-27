@@ -31,3 +31,21 @@ Seed: `pnpm seed --reset` (walk office, mock CRM). Logins: `walk@nhip.local` (ag
 8. **The admin connects an office.** As the platform admin, Admin → Organizations → walk
    office → CRM: choose None; the agent's Home shows "Connect your CRM". Choose Mock CRM;
    the numbers return. A non-admin calling the admin CRM procedure is refused.
+
+## Auth (red team batch A, `reports/audit-2026-09-27/`)
+
+1. **An invitee joins.** Open the invitation email's link, sign up; the account is signed in,
+   its email counts as verified, and it lands in the office. (Before: a new invitee could
+   not accept at all.)
+2. **Registering someone else's invited email fails.** Sign-up with an invited email but no
+   invitation link (or someone else's, or an expired one) is refused (T1).
+3. **No account without an invitation.** A magic link or Google/GitHub sign-in for an email
+   with no account creates nothing (T4).
+4. **Only the platform admin creates offices.** An agent calling organization create gets
+   403; the platform admin succeeds (T3).
+5. **One office, even at once.** One account accepting two offices' invitations at the same
+   moment ends in exactly one office; the other accept answers `ONE_OFFICE_PER_OPERATOR`
+   (T5).
+6. **Deleting an office needs permission first.** An unauthenticated or non-owner delete
+   request is refused before anything (subscriptions included) is touched (T2).
+7. **Only a manager replaces the logo.** A member asking for a logo upload URL gets 403 (T6).

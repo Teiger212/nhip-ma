@@ -4,7 +4,7 @@ import { getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
-import { verifyOrganizationMembership } from "../lib/membership";
+import { verifyOrganizationManagement } from "../lib/membership";
 
 export const createLogoUploadUrl = protectedProcedure
 	.route({
@@ -32,7 +32,8 @@ export const createLogoUploadUrl = protectedProcedure
 			throw new ORPCError("BAD_REQUEST");
 		}
 
-		const membership = await verifyOrganizationMembership(organizationId, user.id);
+		// Replacing the logo is editing the office: owner or admin only (red team T6).
+		const membership = await verifyOrganizationManagement(organizationId, user.id);
 
 		if (!membership) {
 			throw new ORPCError("FORBIDDEN");

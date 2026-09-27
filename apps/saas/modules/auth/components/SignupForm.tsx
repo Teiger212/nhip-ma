@@ -80,6 +80,8 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 						password,
 						name,
 						callbackURL: redirectPath,
+						// Sign-up redeems the invitation itself (ADR 0010, red team T1).
+						fetchOptions: { headers: { "x-invitation-id": invitationId ?? "" } },
 					})
 				: authClient.signIn.magicLink({
 						email,

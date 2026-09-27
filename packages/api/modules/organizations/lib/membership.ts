@@ -25,6 +25,14 @@ export async function verifyOrganizationMembership(organizationId: string, userI
 	};
 }
 
+export async function verifyOrganizationManagement(organizationId: string, userId: string) {
+	const membership = await verifyOrganizationMembership(organizationId, userId);
+	if (!membership || !checkPermission({ membershipRole: membership.role }, "organization.manage")) {
+		return null;
+	}
+	return membership;
+}
+
 export async function verifyOrganizationBillingManagement(organizationId: string, userId: string) {
 	const membership = await verifyOrganizationMembership(organizationId, userId);
 

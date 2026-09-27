@@ -52,3 +52,21 @@ export async function backfillAnswerOperatorNames(client: Client = db): Promise<
 	}
 	return answers.length;
 }
+
+/**
+ * One operator, one office (ADR 0010), held even when two invitations are accepted at the
+ * same moment: keep the oldest membership (ties broken by id, so every caller agrees) and
+ * drop the rest. The platform admin is exempt. Returns the ids of the memberships dropped.
+ */
+export async function keepOldestMembership(userId: string, client: Client = db): Promise<string[]> {
+	const user = await client.user.findUnique({ where: { id: userId }, select: { role: true } });
+	if (!user || isPlatformAdmin(user.role)) return [];
+	const memberships = await client.member.findMany({
+		where: { userId },
+		orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+		select: { id: true },
+	});
+	const dropped = memberships.slice(1).map((membership) => membership.id);
+	if (dropped.length > 0) await client.member.deleteMany({ where: { id: { in: dropped } } });
+	return dropped;
+}

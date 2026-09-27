@@ -7,6 +7,7 @@ import {
 	getPurchasesByUserId,
 	getUserByEmail,
 	getUserById,
+	keepOldestMembership,
 } from "@repo/database";
 import { config as i18nConfig, type Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -58,13 +59,19 @@ function socialProvider<T extends object>(
 const google = socialProvider(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET,
-	(credentials) => ({ ...credentials, scope: ["email", "profile"] }),
+	// Sign-in only: accounts come from invitations (ADR 0010), never from a provider.
+	(credentials) => ({ ...credentials, scope: ["email", "profile"], disableImplicitSignUp: true }),
 );
 const github = socialProvider(
 	process.env.GITHUB_CLIENT_ID,
 	process.env.GITHUB_CLIENT_SECRET,
-	(credentials) => ({ ...credentials, scope: ["user:email"] }),
+	(credentials) => ({ ...credentials, scope: ["user:email"], disableImplicitSignUp: true }),
 );
+
+/** The platform admin (`role` "admin", alone or in a comma list). */
+function isPlatformAdmin(role: string | null | undefined): boolean {
+	return role?.split(",").includes("admin") ?? false;
+}
 
 /** Cancel the subscriptions among these purchases (the kit's rule, on every delete path). */
 async function cancelSubscriptions(purchases: Awaited<ReturnType<typeof getPurchasesByUserId>>) {
@@ -203,12 +210,6 @@ export const auth = betterAuth({
 					}
 				}
 			}
-			if (ctx.path.startsWith("/organization/delete")) {
-				const { organizationId } = ctx.body;
-				if (organizationId) {
-					await cancelSubscriptions(await getPurchasesByOrganizationId(organizationId));
-				}
-			}
 		}),
 	},
 	user: {
@@ -289,7 +290,8 @@ export const auth = betterAuth({
 		admin(),
 		passkey(),
 		magicLink({
-			disableSignUp: false,
+			// Sign-in only: a magic link to an unknown email creates nothing (ADR 0010).
+			disableSignUp: true,
 			sendMagicLink: async ({ email, url }, ctx) => {
 				const request = ctx?.request as Request;
 
@@ -305,8 +307,25 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			// Offices are created by the platform admin only (ADR 0010); the kit's
+			// `enableUsersToCreateOrganizations` flag never reached Better Auth.
+			allowUserToCreateOrganization: (user) => isPlatformAdmin(user.role),
 			organizationHooks: {
-				beforeDeleteOrganization: officeEnd.beforeDeleteOrganization,
+				// Runs after Better Auth checked the caller's membership and delete permission.
+				beforeDeleteOrganization: async (data) => {
+					await cancelSubscriptions(await getPurchasesByOrganizationId(data.organization.id));
+					await officeEnd.beforeDeleteOrganization(data);
+				},
+				// One operator, one office, even when two invitations are accepted at once.
+				afterAcceptInvitation: async ({ member, user }) => {
+					const dropped = await keepOldestMembership(user.id);
+					if (dropped.includes(member.id)) {
+						throw new APIError("FORBIDDEN", {
+							code: "ONE_OFFICE_PER_OPERATOR",
+							message: "This account already belongs to an office.",
+						});
+					}
+				},
 				afterDeleteOrganization: officeEnd.afterDeleteOrganization,
 				afterRemoveMember: officeEnd.afterRemoveMember,
 			},
