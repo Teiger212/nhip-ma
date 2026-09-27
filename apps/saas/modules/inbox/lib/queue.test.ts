@@ -4,7 +4,9 @@ import {
 	buildQueueView,
 	inView,
 	isInboxView,
+	inQueue,
 	isQuiet,
+	isResolved,
 	nextSelection,
 	QUIET_AFTER_MS,
 } from "./queue";
@@ -155,4 +157,54 @@ test("view parsing", () => {
 	expect(isInboxView("sent")).toBe(true);
 	expect(isInboxView("yourTurn")).toBe(true);
 	expect(isInboxView("needsReply")).toBe(false);
+});
+
+const crm = (outcome: "open" | "won" | "lost", outcomeAt: string) => ({
+	kind: "mock" as const,
+	leadId: "lead-1",
+	leadName: "Lead",
+	method: "phone" as const,
+	outcome,
+	outcomeAt,
+	outcomeReason: null,
+	checkedAt: outcomeAt,
+});
+
+test("a won or lost lead leaves the queue and shows under Sent and All", () => {
+	const lost = conv({
+		id: "lost",
+		guestName: "L",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z"),
+	});
+	const open = conv({
+		id: "open",
+		guestName: "O",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("open", "2026-09-04T11:00:00.000Z"),
+	});
+	expect(isResolved(lost)).toBe(true);
+	expect(inQueue(lost)).toBe(false);
+	expect(inQueue(open)).toBe(true);
+	const queue = buildQueueView([lost, open], "yourTurn", "", NOW);
+	expect(queue.visible.map((c) => c.id)).toEqual(["open"]);
+	expect(queue.counts).toEqual({ yourTurn: 1, sent: 1, all: 2 });
+	expect(buildQueueView([lost, open], "sent", "", NOW).visible.map((c) => c.id)).toEqual(["lost"]);
+});
+
+test("a guest who writes after the outcome is back in the queue", () => {
+	const wroteBack = conv({
+		id: "back",
+		guestName: "B",
+		lastGuestInboundAt: "2026-09-04T12:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z"),
+	});
+	expect(isResolved(wroteBack)).toBe(false);
+	expect(inQueue(wroteBack)).toBe(true);
+});
+
+test("an unlinked or open thread is untouched by the CRM", () => {
+	const plain = conv({ id: "plain", guestName: "P" });
+	expect(isResolved(plain)).toBe(false);
+	expect(inQueue(plain)).toBe(true);
 });

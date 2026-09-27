@@ -26,21 +26,36 @@ function time(value: string | null): number {
 	return value ? new Date(value).getTime() : 0;
 }
 
-/** Still Your turn, but the guest last wrote more than 48 hours ago. */
-export function isQuiet(
-	conversation: Pick<Conversation, "unansweredInboundId" | "lastGuestInboundAt">,
-	now: number = Date.now(),
+type QueueFields = Pick<Conversation, "unansweredInboundId" | "crm" | "lastGuestInboundAt">;
+
+/**
+ * The CRM reports the lead won or lost (CONTEXT, "Resolved"), and the guest has not written
+ * since. A guest who writes after the outcome is back in the queue: a lost lead writing
+ * again is exactly who the agent must see.
+ */
+export function isResolved(
+	conversation: Pick<Conversation, "crm" | "lastGuestInboundAt">,
 ): boolean {
-	const last = time(conversation.lastGuestInboundAt);
-	return yourTurn(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
+	const crm = conversation.crm;
+	if (!crm?.leadId || (crm.outcome !== "won" && crm.outcome !== "lost")) return false;
+	if (!crm.outcomeAt || !conversation.lastGuestInboundAt) return true;
+	return time(conversation.lastGuestInboundAt) <= time(crm.outcomeAt);
 }
 
-export function inView(
-	conversation: Pick<Conversation, "unansweredInboundId">,
-	view: InboxView,
-): boolean {
+/** In the queue: Your turn and not resolved. */
+export function inQueue(conversation: QueueFields): boolean {
+	return yourTurn(conversation) && !isResolved(conversation);
+}
+
+/** Still in the queue, but the guest last wrote more than 48 hours ago. */
+export function isQuiet(conversation: QueueFields, now: number = Date.now()): boolean {
+	const last = time(conversation.lastGuestInboundAt);
+	return inQueue(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
+}
+
+export function inView(conversation: QueueFields, view: InboxView): boolean {
 	if (view === "all") return true;
-	return view === "sent" ? !yourTurn(conversation) : yourTurn(conversation);
+	return view === "sent" ? !inQueue(conversation) : inQueue(conversation);
 }
 
 /** Oldest waiting guest first in the queue; most recent activity first elsewhere. */
@@ -75,7 +90,7 @@ export function buildQueueView(
 	const matching = conversations.filter((conversation) => matchesThreadSearch(conversation, query));
 	const counts: QueueCounts = { yourTurn: 0, sent: 0, all: matching.length };
 	for (const conversation of matching) {
-		if (yourTurn(conversation)) counts.yourTurn += 1;
+		if (inQueue(conversation)) counts.yourTurn += 1;
 		else counts.sent += 1;
 	}
 	const inOrder = matching
