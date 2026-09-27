@@ -86,6 +86,14 @@ Required gates:
 3. Run the relevant tests before considering the change complete.
 4. CI (`.github/workflows/ci.yml`) runs lint, format:check, type-check, and tests on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
+**What gets a test (decided 2026-09-27).** Anything a person does (an agent or admin
+clicking, linking, approving, configuring) is tested end to end, not with unit tests;
+the E2E tools and architecture are still to be planned, so until then such a flow gets a
+written scenario in `docs/e2e-scenarios.md` instead of a unit test. Vitest covers what has
+no user in it: verifiable utility functions, store queries, rules such as the queue and
+the funnel, and background work such as CRM refresh. Existing tests stay until the E2E
+plan replaces them.
+
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
 are per app: use `pnpm --filter marketing e2e`, `pnpm --filter marketing e2e:ci`,
