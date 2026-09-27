@@ -101,6 +101,12 @@ spec. After every staging deploy a Playwright smoke run hits the staging URL, wi
 messages from synthetic webhooks signed with staging's secret. Each release checklist includes
 one real round trip from a phone over WhatsApp and Zalo.
 
+**Neon (staging and prod, ADR 0016).** This folder is linked to Neon project
+`lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Dev stays on
+local Postgres: pass `--no-env-pull` to every `neon link`, `neon deploy` and `neon checkout`,
+or the CLI writes the linked branch's `DATABASE_URL` into `.env.local` and points dev at that
+database.
+
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
 are per app: use `pnpm --filter marketing e2e`, `pnpm --filter marketing e2e:ci`,
