@@ -32,7 +32,15 @@
 			"loading": "Loading organizations...",
 			"membersCount": "{count} {count, plural, one {member} other {members}}",
 			"search": "Search for an organization...",
-			"title": "Manage organizations"
+			"title": "Manage organizations",
+			"crm": {
+				"title": "CRM",
+				"hint": "Số chốt và mất trên trang Home lấy từ CRM này. Khóa API nằm trong biến môi trường của bản triển khai.",
+				"none": "Không có",
+				"mock": "CRM mô phỏng (phát triển và demo)",
+				"saved": "Đã lưu CRM",
+				"failed": "Không lưu được CRM"
+			}
 		},
 		"title": "Administration",
 		"users": {

@@ -32,7 +32,15 @@
 			"loading": "Cargando organizaciones...",
 			"membersCount": "{count} {count, plural, one {miembro} other {miembros}}",
 			"search": "Buscar una organización...",
-			"title": "Gestionar organizaciones"
+			"title": "Gestionar organizaciones",
+			"crm": {
+				"title": "CRM",
+				"hint": "Los cierres y las pérdidas de Home vienen de este CRM. Las claves de API están en el entorno del despliegue.",
+				"none": "Ninguno",
+				"mock": "CRM simulado (desarrollo y demo)",
+				"saved": "CRM guardado",
+				"failed": "No se pudo guardar el CRM"
+			}
 		},
 		"title": "Administración",
 		"users": {

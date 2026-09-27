@@ -32,7 +32,15 @@
 			"loading": "Loading organizations...",
 			"membersCount": "{count} {count, plural, one {member} other {members}}",
 			"search": "Search for an organization...",
-			"title": "Manage organizations"
+			"title": "Manage organizations",
+			"crm": {
+				"title": "CRM",
+				"hint": "Closings and lost on Home come from this CRM. API keys live in the deployment's environment.",
+				"none": "None",
+				"mock": "Mock CRM (development and demo)",
+				"saved": "CRM saved",
+				"failed": "Could not save the CRM"
+			}
 		},
 		"title": "Administration",
 		"users": {

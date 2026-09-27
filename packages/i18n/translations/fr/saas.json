@@ -32,7 +32,15 @@
 			"loading": "Chargement des organisations...",
 			"membersCount": "{count} {count, plural, one {membre} other {membres}}",
 			"search": "Rechercher une organisation...",
-			"title": "Gérer les organisations"
+			"title": "Gérer les organisations",
+			"crm": {
+				"title": "CRM",
+				"hint": "Les ventes conclues et perdues de Home viennent de ce CRM. Les clés d'API sont dans l'environnement du déploiement.",
+				"none": "Aucun",
+				"mock": "CRM fictif (développement et démo)",
+				"saved": "CRM enregistré",
+				"failed": "Impossible d'enregistrer le CRM"
+			}
 		},
 		"title": "Administration",
 		"users": {

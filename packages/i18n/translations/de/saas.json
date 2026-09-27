@@ -32,7 +32,15 @@
 			"loading": "Organisationen laden...",
 			"membersCount": "{count} {count, plural, one {Mitglied} other {Mitglieder}}",
 			"search": "Suche nach einer Organisation...",
-			"title": "Verwalten von Organisationen"
+			"title": "Verwalten von Organisationen",
+			"crm": {
+				"title": "CRM",
+				"hint": "Abschlüsse und Verluste auf Home kommen aus diesem CRM. API-Schlüssel liegen in der Umgebung des Deployments.",
+				"none": "Keins",
+				"mock": "Mock-CRM (Entwicklung und Demo)",
+				"saved": "CRM gespeichert",
+				"failed": "CRM konnte nicht gespeichert werden"
+			}
 		},
 		"title": "Administration",
 		"users": {
