@@ -811,6 +811,22 @@
 		"viewSent": "View sent",
 		"sentTo": "Sent to {name}",
 		"sendFailed": "Send failed.",
-		"deliveryUnknown": "The last reply was sent but the vendor did not confirm it. Check whether it arrived before sending again."
+		"deliveryUnknown": "The last reply was sent but the vendor did not confirm it. Check whether it arrived before sending again.",
+		"crm": {
+			"won": "Won",
+			"lost": "Lost",
+			"inCrm": "In CRM: {name}",
+			"link": "Link to CRM lead",
+			"searchPlaceholder": "Search the CRM by name or phone",
+			"searchHint": "Type at least 2 letters.",
+			"noResults": "No lead matches.",
+			"unlink": "Unlink",
+			"errors": {
+				"crm_not_connected": "This office has no CRM connected.",
+				"lead_not_found": "That lead is not in this office's CRM.",
+				"not_found": "This thread is no longer here.",
+				"lead_required": "Pick a lead first."
+			}
+		}
 	}
 }

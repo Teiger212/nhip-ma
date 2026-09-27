@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { displayName } from "../lib/display-name";
 import type { SendStatus } from "../lib/send-status";
 import type { Conversation, DraftSource } from "../lib/types";
+import { CrmLink } from "./CrmLink";
 import { ExtractFields } from "./ExtractFields";
 import { ReplyBox } from "./ReplyBox";
 import { SendBar } from "./SendBar";
@@ -60,6 +61,7 @@ export function ThreadDetail({
 				<GuestMark name={displayName(conversation)} />
 				<p className="font-semibold tracking-tight font-heading">{displayName(conversation)}</p>
 				<ThreadFlags conversation={conversation} />
+				<CrmLink conversation={conversation} />
 			</header>
 			<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 				<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">

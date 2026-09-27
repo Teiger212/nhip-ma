@@ -24,25 +24,20 @@ export function GuestMark({ name }: { name: string }) {
 	);
 }
 
-function CompactFlag({
-	children,
-	tone,
-}: {
-	children: ReactNode;
-	tone: "neutral" | "warning" | "success";
-}) {
-	return (
-		<span
-			className={cn(
-				"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
-				tone === "neutral" && "bg-muted text-muted-foreground",
-				tone === "warning" && "bg-warning/12 text-warning",
-				tone === "success" && "bg-success/12 text-success",
-			)}
-		>
-			{children}
-		</span>
+export type FlagTone = "neutral" | "warning" | "success";
+
+/** The look of a header flag, shared by the static flags and the CRM chip that opens a picker. */
+export function flagClass(tone: FlagTone): string {
+	return cn(
+		"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
+		tone === "neutral" && "bg-muted text-muted-foreground",
+		tone === "warning" && "bg-warning/12 text-warning",
+		tone === "success" && "bg-success/12 text-success",
 	);
+}
+
+function CompactFlag({ children, tone }: { children: ReactNode; tone: FlagTone }) {
+	return <span className={flagClass(tone)}>{children}</span>;
 }
 
 /** The pipe and the turn (Your turn / Sent), on a row and on the thread header alike. */

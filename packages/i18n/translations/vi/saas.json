@@ -811,6 +811,22 @@
 		"viewSent": "Xem đã gửi",
 		"sentTo": "Đã gửi cho {name}",
 		"sendFailed": "Gửi không thành công.",
-		"deliveryUnknown": "Tin trả lời gần nhất đã gửi nhưng nhà cung cấp chưa xác nhận. Kiểm tra xem đã đến chưa trước khi gửi lại."
+		"deliveryUnknown": "Tin trả lời gần nhất đã gửi nhưng nhà cung cấp chưa xác nhận. Kiểm tra xem đã đến chưa trước khi gửi lại.",
+		"crm": {
+			"won": "Chốt",
+			"lost": "Mất",
+			"inCrm": "Trong CRM: {name}",
+			"link": "Liên kết với khách trong CRM",
+			"searchPlaceholder": "Tìm trong CRM theo tên hoặc số điện thoại",
+			"searchHint": "Nhập ít nhất 2 ký tự.",
+			"noResults": "Không có khách nào khớp.",
+			"unlink": "Bỏ liên kết",
+			"errors": {
+				"crm_not_connected": "Văn phòng này chưa kết nối CRM.",
+				"lead_not_found": "Khách này không có trong CRM của văn phòng.",
+				"not_found": "Cuộc trò chuyện này không còn nữa.",
+				"lead_required": "Hãy chọn một khách trước."
+			}
+		}
 	}
 }

@@ -771,6 +771,22 @@
 		"allCaughtUp": "Todo al día.",
 		"viewSent": "Ver enviados",
 		"sentTo": "Enviado a {name}",
-		"sendFailed": "No se pudo enviar."
+		"sendFailed": "No se pudo enviar.",
+		"crm": {
+			"won": "Ganado",
+			"lost": "Perdido",
+			"inCrm": "En el CRM: {name}",
+			"link": "Vincular con un lead del CRM",
+			"searchPlaceholder": "Buscar en el CRM por nombre o teléfono",
+			"searchHint": "Escribe al menos 2 letras.",
+			"noResults": "Ningún lead coincide.",
+			"unlink": "Desvincular",
+			"errors": {
+				"crm_not_connected": "Esta oficina no tiene un CRM conectado.",
+				"lead_not_found": "Ese lead no está en el CRM de esta oficina.",
+				"not_found": "Esta conversación ya no está.",
+				"lead_required": "Elige un lead primero."
+			}
+		}
 	}
 }

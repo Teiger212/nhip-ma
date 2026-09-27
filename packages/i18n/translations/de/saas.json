@@ -773,6 +773,22 @@
 		"allCaughtUp": "Alles erledigt.",
 		"viewSent": "Gesendete anzeigen",
 		"sentTo": "Gesendet an {name}",
-		"sendFailed": "Senden fehlgeschlagen."
+		"sendFailed": "Senden fehlgeschlagen.",
+		"crm": {
+			"won": "Gewonnen",
+			"lost": "Verloren",
+			"inCrm": "Im CRM: {name}",
+			"link": "Mit CRM-Lead verknüpfen",
+			"searchPlaceholder": "CRM nach Name oder Telefon durchsuchen",
+			"searchHint": "Mindestens 2 Zeichen eingeben.",
+			"noResults": "Kein Lead gefunden.",
+			"unlink": "Verknüpfung lösen",
+			"errors": {
+				"crm_not_connected": "Für dieses Büro ist kein CRM verbunden.",
+				"lead_not_found": "Dieser Lead ist nicht im CRM dieses Büros.",
+				"not_found": "Dieser Verlauf ist nicht mehr da.",
+				"lead_required": "Zuerst einen Lead wählen."
+			}
+		}
 	}
 }

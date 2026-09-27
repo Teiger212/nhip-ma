@@ -71,3 +71,39 @@ export function useRegenerateDraft() {
 		mutateAsync: ({ id }: { id: string }) => mutation.mutateAsync({ id }),
 	};
 }
+
+/** The office CRM's leads for the "link to CRM lead" picker (ADR 0003); asks from 2 letters. */
+export function useCrmLeadSearch(query: string) {
+	const trimmed = query.trim();
+	return useQuery({
+		queryKey: ["inbox", "crm-leads", trimmed],
+		queryFn: () =>
+			api<{ leads: Array<{ id: string; name: string; phone: string | null }> }>(
+				`/api/crm/leads?q=${encodeURIComponent(trimmed)}`,
+			),
+		enabled: trimmed.length >= 2,
+		staleTime: 30_000,
+	});
+}
+
+export function useLinkCrmLead() {
+	const mutation = useConversationMutation("crm-link");
+	return {
+		...mutation,
+		mutateAsync: ({ id, leadId }: { id: string; leadId: string }) =>
+			mutation.mutateAsync({ id, body: { leadId } }),
+	};
+}
+
+export function useUnlinkCrmLead() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id }: { id: string }) =>
+			api<{ conversation: Conversation }>(`/api/conversations/${encodeURIComponent(id)}/crm-link`, {
+				method: "DELETE",
+			}),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+		},
+	});
+}
