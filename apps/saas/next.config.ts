@@ -24,7 +24,13 @@ function repoRootFromCwd(): string {
 
 const repoRoot = repoRootFromCwd();
 dotenv.config({ path: path.join(repoRoot, ".env") });
-dotenv.config({ path: path.join(repoRoot, ".env.local"), override: true });
+// The E2E run (E2E=1) is a production build with its own env and database; it never reads
+// the developer's .env.local, and anything CI sets explicitly wins over .env.e2e.
+if (process.env.E2E === "1") {
+	dotenv.config({ path: path.join(repoRoot, ".env.e2e") });
+} else {
+	dotenv.config({ path: path.join(repoRoot, ".env.local"), override: true });
+}
 
 const withNextIntl = nextIntlPlugin("./modules/i18n/request.ts");
 

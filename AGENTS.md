@@ -101,6 +101,27 @@ spec. After every staging deploy a Playwright smoke run hits the staging URL, wi
 messages from synthetic webhooks signed with staging's secret. Each release checklist includes
 one real round trip from a phone over WhatsApp and Zalo.
 
+**Test quality (decided 2026-09-27).** A test proves intent, not the code in front of it.
+
+- Every test names what it proves: a scenario in `docs/e2e-scenarios.md`, or a rule in
+  `CONTEXT.md` / an ADR. A test with no source behind it is not merged.
+- Every new test is seen failing for the right reason first: against the code without the
+  behaviour, or with the rule broken. A test that was never red proves nothing.
+- Assert what a person sees or what the rule promises; never internal calls, and never mock
+  the thing under test.
+- E2E specs are written by the `test-author` agent (`.claude/agents/test-author.md`), which
+  preloads `writing-e2e-tests` (this repo's conventions) and `playwright-best-practices`, and
+  may not read application source; a hook enforces it.
+- No retries. A new spec passes `--repeat-each=3` before merge; a flaky spec is fixed or
+  deleted.
+- How E2E runs today: `pnpm --filter saas exec playwright test` builds production on
+  `:3000` with `.env.e2e` against its own `supastarter_e2e` database (pushed and seeded
+  fresh); `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast
+  iteration. **Temporary:** the E2E profile relaxes one startup check (HTTP allowed only
+  with `E2E=1` on localhost). Replace it with proper environments (a preview/staging
+  deployment on HTTPS with its own Neon branch, per ADR 0016) as part of milestone 1's
+  staging work, then remove the exception.
+
 **Neon (staging and prod, ADR 0016).** This folder is linked to Neon project
 `lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Dev stays on
 local Postgres: pass `--no-env-pull` to every `neon link`, `neon deploy` and `neon checkout`,

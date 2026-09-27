@@ -3,7 +3,10 @@ import { Resend } from "resend";
 import { config } from "../config";
 import type { SendEmailHandler } from "../types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Created on first send, not at import: a production build loads every route, and one
+// that never sends mail (the E2E build) must not need the key.
+let client: Resend | undefined;
+const resend = () => (client ??= new Resend(process.env.RESEND_API_KEY));
 
 export const send: SendEmailHandler = async ({
 	to,
@@ -15,7 +18,7 @@ export const send: SendEmailHandler = async ({
 	html,
 	text,
 }) => {
-	await resend.emails.send({
+	await resend().emails.send({
 		from: from ?? config.mailFrom,
 		to: [to],
 		cc,

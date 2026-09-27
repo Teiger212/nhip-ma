@@ -55,3 +55,38 @@ test("the base URL is any absolute http(s) endpoint, trimmed", () => {
 test("the test config has no model behind it", () => {
 	expect(draftAdapterFromConfig(mockInboxConfig()).provider).toBe("none");
 });
+
+/** A production-shaped env that passes except for the URL under test. */
+const PROD = {
+	...BASE,
+	NODE_ENV: "production",
+	BETTER_AUTH_SECRET: "e2e-only-not-a-secret-0123456789abcdef-nhip",
+} as unknown as NodeJS.ProcessEnv;
+
+const urlErrors = (env: NodeJS.ProcessEnv) => {
+	const result = validateInboxEnv(env);
+	return result.ok ? [] : result.errors.filter((error) => error.includes("NEXT_PUBLIC_SAAS_URL"));
+};
+
+test("production still requires https, including on localhost without the E2E flag", () => {
+	expect(urlErrors({ ...PROD, NEXT_PUBLIC_SAAS_URL: "http://localhost:3000" })).toHaveLength(1);
+	expect(urlErrors({ ...PROD, NEXT_PUBLIC_SAAS_URL: "https://app.nhip.vn" })).toHaveLength(0);
+});
+
+test("the E2E flag allows http only on localhost, never on a real host", () => {
+	expect(
+		urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: "http://localhost:3000" }),
+	).toHaveLength(0);
+	expect(
+		urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: "http://127.0.0.1:3000" }),
+	).toHaveLength(0);
+	expect(
+		urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: "http://staging.nhip.vn" }),
+	).toHaveLength(1);
+	expect(
+		urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: "http://localhost.evil.com" }),
+	).toHaveLength(1);
+	expect(
+		urlErrors({ ...PROD, E2E: "yes", NEXT_PUBLIC_SAAS_URL: "http://localhost:3000" }),
+	).toHaveLength(1);
+});
