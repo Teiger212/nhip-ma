@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { guestInitials } from "../lib/guest-initials";
-import { yourTurn } from "../lib/queue";
+import { threadStatus } from "../lib/queue";
 import type { Conversation, OperatorLanguage } from "../lib/types";
 
 /** SaaS routing only serves the operator locales (`modules/i18n/routing.ts`). */
@@ -40,15 +40,22 @@ function CompactFlag({ children, tone }: { children: ReactNode; tone: FlagTone }
 	return <span className={flagClass(tone)}>{children}</span>;
 }
 
-/** The pipe and the turn (Your turn / Sent), on a row and on the thread header alike. */
+const STATUS_TONE: Record<ReturnType<typeof threadStatus>, FlagTone> = {
+	yourTurn: "warning",
+	sent: "success",
+	won: "success",
+	lost: "neutral",
+};
+
+/** The pipe and the status (Your turn / Sent, or the CRM's Won / Lost), on a row and the header alike. */
 export function ThreadFlags({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
-	const turn = yourTurn(conversation);
+	const status = threadStatus(conversation);
 	return (
 		<>
 			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
-			<CompactFlag tone={turn ? "warning" : "success"}>
-				{turn ? t("yourTurn") : t("sent")}
+			<CompactFlag tone={STATUS_TONE[status]}>
+				{status === "won" || status === "lost" ? t(`crm.${status}`) : t(status)}
 			</CompactFlag>
 		</>
 	);

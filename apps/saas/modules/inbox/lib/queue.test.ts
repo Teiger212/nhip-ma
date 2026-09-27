@@ -7,6 +7,7 @@ import {
 	inQueue,
 	isQuiet,
 	isResolved,
+	threadStatus,
 	nextSelection,
 	QUIET_AFTER_MS,
 } from "./queue";
@@ -207,4 +208,33 @@ test("an unlinked or open thread is untouched by the CRM", () => {
 	const plain = conv({ id: "plain", guestName: "P" });
 	expect(isResolved(plain)).toBe(false);
 	expect(inQueue(plain)).toBe(true);
+});
+
+test("a thread's status flag: the outcome while resolved, the turn otherwise", () => {
+	const lost = conv({
+		id: "l",
+		guestName: "L",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z"),
+	});
+	const won = conv({
+		id: "w",
+		guestName: "W",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("won", "2026-09-04T11:00:00.000Z"),
+	});
+	const back = conv({
+		id: "b",
+		guestName: "B",
+		lastGuestInboundAt: "2026-09-04T12:00:00.000Z",
+		crm: crm("won", "2026-09-04T11:00:00.000Z"),
+	});
+	const answered = conv({ id: "a", guestName: "A", unansweredInboundId: null });
+	expect([lost, won, back, answered, conv({ id: "p", guestName: "P" })].map(threadStatus)).toEqual([
+		"lost",
+		"won",
+		"yourTurn",
+		"sent",
+		"yourTurn",
+	]);
 });

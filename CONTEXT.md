@@ -43,7 +43,8 @@ is renamed.
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
 - **Sent**: the office spoke last.
-- **Resolved**: the CRM reports won or lost. Leaves the queue; visible under Sent / All.
+- **Resolved**: the CRM reports won or lost. Leaves the queue until the guest writes again;
+  visible under Sent / All.
 - There is no dismiss. The queue empties through sends and outcomes (ADR 0004).
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not
   gated by role. Office-level only. The headline is the **funnel** (ADR 0002); response
@@ -102,7 +103,8 @@ is renamed.
   backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
   become a CRM. First real adapter: **Attio** (provisional).
 - **CRM link**: the stored association between a conversation and a CRM lead. Made
-  automatically by phone number (E.164), or by the agent through "link to CRM lead".
+  automatically by phone number (E.164), or by the agent through "link to CRM lead". An
+  agent's unlink is remembered; phone matching never relinks it.
 
 ## Deliberately not
 

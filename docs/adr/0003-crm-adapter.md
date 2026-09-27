@@ -45,3 +45,18 @@ a working funnel. The mock is also the fallback when matching fails.
   until the office stores Zalo ids in the CRM.
 - Credentials per CRM follow the pattern in `config.ts`: validated at startup, settled
   fields, no raw env reads downstream.
+
+## Decided when building (2026-09-27)
+
+- **Fetch on view.** No scheduler: the conversation list refreshes links in the background and
+  Home waits up to 3 s. A link's outcome, and a phone miss, is trusted for 10 minutes.
+- **The platform admin sets the office's CRM kind** in the admin area, as Nhịp assigns the
+  office itself (ADR 0010). API keys stay in env for the pilot.
+- **`listOutcomes(period)` became `outcomesFor(leadIds)`.** Home counts the cohort's linked
+  leads, so the adapter is asked about those leads, not about a period.
+- **Resolved leaves the queue until the guest writes again.** A lost lead who writes back is
+  exactly who the agent must see.
+- **Closings and lost count distinct leads.** One deal on two threads (WhatsApp and Zalo)
+  counts once.
+- **Attio is the next PR**, built from its API docs with recorded fixtures; the mock is the
+  only kind until then.

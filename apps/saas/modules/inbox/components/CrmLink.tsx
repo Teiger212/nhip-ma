@@ -11,6 +11,7 @@ import {
 	useLinkCrmLead,
 	useUnlinkCrmLead,
 } from "../lib/inbox-queries";
+import { isResolved } from "../lib/queue";
 import type { Conversation } from "../lib/types";
 import { type FlagTone, flagClass } from "./ThreadParts";
 
@@ -27,14 +28,16 @@ export function CrmLink({ conversation }: { conversation: Conversation }) {
 	if (!crm) return null;
 
 	const linked = crm.leadId !== null;
-	const tone: FlagTone =
-		crm.outcome === "won" ? "success" : crm.outcome === "lost" ? "neutral" : "neutral";
-	const label =
-		crm.outcome === "won"
-			? `${t("won")} · ${crm.leadName}`
-			: crm.outcome === "lost"
-				? `${t("lost")} · ${crm.leadName}`
-				: t("inCrm", { name: crm.leadName ?? "" });
+	// A resolved thread already shows Won / Lost as its status flag; the chip names the lead.
+	// A lead whose guest wrote after the outcome keeps the outcome here, so it is not lost.
+	const outcome =
+		!isResolved(conversation) && (crm.outcome === "won" || crm.outcome === "lost")
+			? crm.outcome
+			: null;
+	const tone: FlagTone = outcome === "won" ? "success" : "neutral";
+	const label = outcome
+		? `${t(outcome)} · ${crm.leadName}`
+		: t("inCrm", { name: crm.leadName ?? "" });
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>

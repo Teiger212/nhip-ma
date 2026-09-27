@@ -86,3 +86,85 @@ export async function seedInbox(
 	}
 	return result;
 }
+
+type DemoCrmLead = {
+	id: string;
+	name: string;
+	phone: string | null;
+	outcome: "open" | "won" | "lost";
+	reason: string | null;
+	/** The demo thread (guest id) an agent already linked it to; null leaves it to link by hand. */
+	link: string | null;
+};
+
+/**
+ * The demo's mock CRM (ADR 0003). Thảo is linked and open; Alexei is linked and lost, so he
+ * leaves the queue. Minji and Yuki stay unlinked so the walk shows "Link to CRM lead".
+ */
+export const DEMO_CRM_LEADS: DemoCrmLead[] = [
+	{
+		id: "demo-lead-minji",
+		name: "Minji Park",
+		phone: "+84901234567",
+		outcome: "open",
+		reason: null,
+		link: null,
+	},
+	{
+		id: "demo-lead-yuki",
+		name: "Yuki Tanaka",
+		phone: null,
+		outcome: "open",
+		reason: null,
+		link: null,
+	},
+	{
+		id: "demo-lead-alexei",
+		name: "Alexei Volkov",
+		phone: "+84907654321",
+		outcome: "lost",
+		reason: "Chose a Ciputra villa from another agency",
+		link: "demo-ru-ciputra",
+	},
+	{
+		id: "demo-lead-thao",
+		name: "Nguyễn Thị Thảo",
+		phone: null,
+		outcome: "open",
+		reason: null,
+		link: "demo-vi-tayho",
+	},
+];
+
+/** Connects `officeId` to the mock CRM with the demo leads and links. Safe to re-run. */
+export async function seedCrm(officeId: string): Promise<void> {
+	const { store } = getRuntime();
+	await store.setCrmConnection(officeId, "mock");
+	const now = new Date();
+	for (const lead of DEMO_CRM_LEADS) {
+		const outcomeAt = lead.outcome === "open" ? null : now;
+		await store.upsertMockCrmLead({
+			id: lead.id,
+			officeId,
+			name: lead.name,
+			phone: lead.phone,
+			outcome: lead.outcome,
+			outcomeAt: outcomeAt?.toISOString() ?? null,
+			outcomeReason: lead.reason,
+		});
+		const thread = lead.link ? DEMO_THREADS.find((t) => t.guestId === lead.link) : undefined;
+		if (!thread) continue;
+		const id = conversationId(officeId, thread.pipe, thread.guestId);
+		await store.saveCrmLink(id, {
+			kind: "mock",
+			leadId: lead.id,
+			leadName: lead.name,
+			method: "manual",
+			checkedAt: now,
+		});
+		await store.saveCrmOutcomes(
+			[{ conversationId: id, outcome: lead.outcome, outcomeAt, outcomeReason: lead.reason }],
+			now,
+		);
+	}
+}

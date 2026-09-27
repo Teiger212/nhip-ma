@@ -43,7 +43,9 @@ Home), and `admin@nhip.local`, the platform admin (owner of the walk office, als
 kit's admin area where offices are created and agents invited). It writes four invented
 threads into the walk office once: Minji and Thảo as just written (Your turn), Yuki and
 Alexei three days old (Quiet). A re-run skips existing threads; `pnpm seed --reset`
-rewrites them as of now, which the fresh pair needs after 48 hours. There is no auth
+rewrites them as of now, which the fresh pair needs after 48 hours. The walk office also gets
+the mock CRM with four leads: Thảo linked (open), Alexei linked (lost, so he is under Sent),
+Minji and Yuki to link by hand. There is no auth
 bypass route and public sign-up is closed (ADR 0010). Inbox stays invented threads +
 `SEND_MODE=mock`.
 

@@ -47,6 +47,18 @@ export function inQueue(conversation: QueueFields): boolean {
 	return yourTurn(conversation) && !isResolved(conversation);
 }
 
+/**
+ * The one status a thread shows (on its row and header): the CRM's outcome while resolved,
+ * otherwise whose turn it is. A resolved thread is not the agent's turn, even if the guest
+ * spoke last before the outcome.
+ */
+export function threadStatus(conversation: QueueFields): "yourTurn" | "sent" | "won" | "lost" {
+	if (isResolved(conversation) && conversation.crm?.outcome) {
+		return conversation.crm.outcome === "won" ? "won" : "lost";
+	}
+	return yourTurn(conversation) ? "yourTurn" : "sent";
+}
+
 /** Still in the queue, but the guest last wrote more than 48 hours ago. */
 export function isQuiet(conversation: QueueFields, now: number = Date.now()): boolean {
 	const last = time(conversation.lastGuestInboundAt);

@@ -6,7 +6,7 @@ import { oneShot } from "./draft";
 import { noDraftAdapter } from "./drafts";
 import { isQuiet } from "./queue";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import { DEMO_THREADS, seedInbox } from "./seed";
+import { DEMO_THREADS, seedCrm, seedInbox } from "./seed";
 import { resetTestInbox, testDb } from "./test-store";
 import { WALK_OFFICE_ID } from "./walk-user";
 
@@ -136,4 +136,20 @@ test("reset rewrites the demo threads as of now", async () => {
 	expect(reseeded.every((conversation) => conversation.messages.length === 1)).toBe(true);
 	const minji = reseeded.find((conversation) => conversation.guestName === "Minji");
 	expect(minji && isQuiet(minji, now)).toBe(false);
+});
+
+test("the walk office's mock CRM: four leads, Thảo linked open, Alexei linked lost", async () => {
+	await resetTestInbox();
+	const store = createInboxStore(testDb);
+	setRuntimeForTests({ store, config: mockInboxConfig(), drafts: noDraftAdapter });
+	await seedInbox(WALK_OFFICE_ID);
+	await seedCrm(WALK_OFFICE_ID);
+	await seedCrm(WALK_OFFICE_ID); // idempotent
+	expect(await store.getCrmConnection(WALK_OFFICE_ID)).toEqual({ kind: "mock" });
+	expect(await testDb.mockCrmLead.count({ where: { officeId: WALK_OFFICE_ID } })).toBe(4);
+	const list = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
+	const crmOf = (name: string) => list.find((c) => c.guestName === name)?.crm;
+	expect(crmOf("Thảo")).toMatchObject({ method: "manual", outcome: "open" });
+	expect(crmOf("Alexei")).toMatchObject({ method: "manual", outcome: "lost" });
+	expect(crmOf("Minji")).toBeNull();
 });

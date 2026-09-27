@@ -2,7 +2,7 @@ import { backfillAnswerOperatorNames } from "@repo/database";
 
 import { settleBackgroundWork } from "../lib/background";
 import { getRuntime } from "../lib/runtime";
-import { DEMO_THREADS, seedInbox } from "../lib/seed";
+import { DEMO_THREADS, seedCrm, seedInbox } from "../lib/seed";
 import {
 	WALK_ADMIN_EMAIL,
 	WALK_OFFICE_ID,
@@ -38,6 +38,7 @@ async function main(): Promise<void> {
 		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
 	).length;
 	const conversations = await seedInbox(WALK_OFFICE_ID, { reset });
+	await seedCrm(WALK_OFFICE_ID);
 	for (const conv of conversations) {
 		const q = conv.oneShot?.qualification;
 		const paper = conv.oneShot?.paperwork?.mentioned ? "paperwork flagged" : "no paperwork";
@@ -52,6 +53,9 @@ async function main(): Promise<void> {
 	);
 	console.info(
 		"Re-run skips threads that already exist. `pnpm seed --reset` rewrites them as of now (the fresh pair goes Quiet after 48 hours).",
+	);
+	console.info(
+		"Mock CRM: 4 leads; Thảo linked (open), Alexei linked (lost, leaves the queue); Minji and Yuki to link by hand.",
 	);
 	console.info("Open http://localhost:3010 — sign in, then Inbox. Nothing here is a real guest.");
 	// Translations (ADR 0007) run in the background after each inbound; let them land

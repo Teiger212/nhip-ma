@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-27 (CRM seam)
+
+### Added
+
+- **The office's CRM (ADR 0003).** The platform admin connects an office to a CRM in Admin → Organizations; the mock CRM is the first kind, Attio follows.
+- **Threads link to CRM leads.** A WhatsApp guest is linked automatically by phone (E.164); any thread can be linked by hand from its header ("Link to CRM lead"), never by name. An agent's unlink is remembered.
+- **Won and lost come from the CRM.** The thread header shows the lead and its outcome; a won or lost thread leaves the queue until the guest writes again. Outcomes are cached for 10 minutes; a CRM that fails leaves the cached ones in place.
+- **Home shows Closings and Lost** from the CRM, counted per deal, with how many leads are linked. Without a CRM it still says "Connect your CRM".
+- **Seed.** The walk office gets the mock CRM: Thảo linked and open, Alexei linked and lost.
+
 ## 2026-09-27 (send safety)
 
 ### Fixed
