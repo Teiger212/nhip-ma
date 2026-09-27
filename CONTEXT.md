@@ -21,15 +21,20 @@ is renamed.
 - **Guest**: the person who wrote in. A prospective tenant or buyer, or someone writing
   on their behalf (HR, a relocation firm). Never sees Nhịp; sees the agency number.
 - **Agent**: the person who answers guests. The **user** of the queue. Works mostly in
-  Vietnamese, some English, on a phone.
+  Vietnamese, some English, on a phone. Sees the office's pool and the threads they own
+  (ADR 0015).
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
-  responses and fewer lost multinational leads. Reads Home.
+  responses and fewer lost multinational leads. Reads Home, sees every thread in the
+  office, reassigns owners, and invites the office's agents (ADR 0015).
+- **Platform admin**: Nhịp's own staff. Creates offices and invites each office's first
+  manager; never a member of an office, so never a seat and never sees guests' threads
+  (ADR 0015).
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
   role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
   the membership ends, the account ends, except the platform admin's (ADR 0013).
 - **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
-  Threads are shared: any agent in the office can work any thread. One agency, one
-  office is the MVP; multi-office agencies later.
+  A thread starts in the office's pool and belongs to its owner once answered (ADR 0015).
+  One agency, one office is the MVP; multi-office agencies later.
 
 ## Surfaces
 
@@ -43,6 +48,10 @@ is renamed.
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
 - **Sent**: the office spoke last.
+- **Pool**: the office's threads no agent owns yet. Every agent in the office sees them,
+  so a new guest is answered by whoever is available (ADR 0015).
+- **Owner**: the agent who sent a thread's first reply. From then on the thread is in
+  that agent's queue only (and every manager's); a manager can reassign it.
 - **Resolved**: the CRM reports won or lost. Leaves the queue; visible under Sent / All.
 - There is no dismiss. The queue empties through sends and outcomes (ADR 0004).
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not

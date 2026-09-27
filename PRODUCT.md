@@ -20,8 +20,9 @@ colleague will be in touch".
 ## Who
 
 - **Agent**: the user. Lives in the Inbox.
-- **Manager**: the customer. Reads Home.
-- **Office**: the tenant; threads are shared inside it.
+- **Manager**: the customer. Reads Home, sees every thread, invites the agents.
+- **Office**: the tenant. A thread starts in its pool and belongs to the agent who answers it
+  (ADR 0015).
 
 Full definitions are in CONTEXT.md. Not mass-market brokerage. Not a rental operator. Not
 a marketplace.
@@ -57,12 +58,77 @@ a marketplace.
   reads outcomes; it does not become the CRM.
 - **Drafting**: one adapter per model provider, with the template drafter as fallback.
 
+## Advanced MVP
+
+The next stage (decided 2026-09-27). **Every MVP feature runs end to end on real
+infrastructure, and Eyal dogfoods it on staging before an agency sees it.** It is a technical
+line, not a sales one: signing beta agencies runs alongside and only shapes it lightly (a beta
+agency can be onboarded without an engineer).
+
+**Environments** (ADR 0016): dev on each machine with mock sends; staging and prod on Vercel
+and Neon in Singapore. Staging runs real WhatsApp and Zalo pipes with test identities. main
+deploys to staging; prod ships by GitHub Release of a commit staging already ran.
+
+**In scope**
+
+- Everything built: capture, translate, extract, draft, queue, approve and send, follow-up,
+  Home, office tenancy, invitations, the account lifecycle, the CRM seam with its mock.
+- Pool then owner inside an office; managers invite their own agents; offices, pipes and
+  managers set up in the admin area without a script (ADR 0015).
+- Each office sends from its own numbers (per-connection pipe credentials).
+- New-message alerts (web push, installable app); photos and voice notes shown in threads,
+  images sent; the WhatsApp reopen template for guests past the 24-hour window.
+- Drafts that cannot invent a fact or be steered by a guest: a decision-model spike (Jev,
+  Laya or an LLM behind one seam) for typed guardrail checks; a per-office model cost guard.
+- Billing, minimal: per seat and the lapse lock (ADR 0014); the 30-day close by hand.
+- Error tracking, logs, uptime and a webhook delivery log; rate limits on public endpoints;
+  a tested backup restore; deleting a guest's data on request.
+- English and Vietnamese only.
+
+**Later, shown as "Coming soon"**: saved replies (a decision model picks from the office's
+approved replies and fills the reply box when confident; no popup list), the weekly digest,
+CSV export, Attio (built when a beta agency names its CRM).
+
+**Later, not shown**: internal notes, an admin audit log, a per-office AI kill switch,
+listing match, writing back to the CRM, per-agent performance, nudges.
+
+**"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
+live, and only if we are confident it ships. It names the feature, never a date.
+
+**Trust bar**
+
+- Before staging's public URL goes live: the red team's auth lockdown (batch A), rate
+  limits, staging secrets only in the platform.
+- Before a beta agency's real guests reach prod: every critical and high finding fixed and
+  proven; the remaining red-team surfaces run, then a re-run on the release candidate; every
+  medium fixed or accepted in writing; observability, the restore drill and guest-data
+  deletion in place.
+- Afterwards: a PR touching auth, tenancy, the send path or webhooks gets a focused red-team
+  run before release.
+
+**Done** (AGENTS.md, "What gets a test"): logic has Vitest tests; user flows have Playwright
+specs that run in CI; a Playwright smoke run passes on staging after each deploy; the release
+checklist includes a real round trip from a phone.
+
 ## Build order
 
-1. **Conversation loop** (next): Your turn and per-message approval, then translation,
-   then AI follow-ups. Done line in ADR 0009.
-2. **Office and Home**: office tenancy, the funnel, the Attio and mock CRM adapters.
-3. **Listing match**: depends on a listings source the office already keeps.
+Each milestone leaves staging better than it found it.
+
+1. **Foundations, staging live**: CI (lint, types, Vitest, Playwright on a Neon branch), the
+   `prisma migrate` baseline, Vercel and Neon staging, background work on `after()`,
+   observability, rate limits, the red team's auth lockdown, English and Vietnamese only.
+2. **Offices and people**: office setup in the admin area, managers invite agents, the
+   platform admin out of offices, pool then owner, per-connection pipe credentials.
+3. **Send and model safety**: the red team's send-path fixes, guest-proof drafts through the
+   decision-model spike, the model cost guard.
+4. **Reaching the agent**: alerts, photos and voice, the WhatsApp reopen template.
+5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
+   "Coming soon" controls.
+6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
+   dogfood checklist, the first GitHub Release to prod.
+
+Shipped before this stage: the conversation loop (ADR 0009), office tenancy and Home, the
+account lifecycle (ADR 0013). Listing match stays the horizon.
 
 ## Deliberately not
 
