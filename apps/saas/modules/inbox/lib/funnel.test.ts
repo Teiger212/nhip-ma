@@ -110,14 +110,14 @@ test("the funnel counts leads, engaged and in conversation for one office in the
 	await sent(store, elsewhere, await lastInboundId(store, elsewhere));
 	await store.upsertInbound(inbound("elsewhere", now + MINUTE, "Back"), OTHER_OFFICE);
 
-	const funnel = await store.funnel(viewer, { since: new Date(since) });
+	const funnel = await store.funnel(viewer, { since: new Date(since), countMock: true });
 	expect(Funnel.parse(funnel)).toEqual(funnel);
 	expect(funnel).toMatchObject({ leadsIn: 4, engaged: 2, inConversation: 1 });
 	expect(funnel.since).toBe(new Date(since).toISOString());
 
 	const other = await store.funnel(
 		{ userId: "agent-2", officeId: OTHER_OFFICE },
-		{ since: new Date(since) },
+		{ since: new Date(since), countMock: true },
 	);
 	expect(other).toMatchObject({ leadsIn: 1, engaged: 1, inConversation: 1 });
 	await store.close();
@@ -142,7 +142,7 @@ test("response time is first inbound to first sent Answer, median and p90 over a
 	// An unanswered lead has no response time and does not drag the numbers.
 	await store.upsertInbound(inbound("f", now - 5 * DAY), OFFICE);
 
-	const funnel = await store.funnel(viewer, { since: new Date(now - 30 * DAY) });
+	const funnel = await store.funnel(viewer, { since: new Date(now - 30 * DAY), countMock: true });
 	expect(funnel.leadsIn).toBe(6);
 	expect(funnel.responseTime).not.toBeNull();
 	const { answered, medianMs, p90Ms } = funnel.responseTime ?? {
@@ -161,10 +161,51 @@ test("an office with nobody answered has no response time, and an empty window i
 	const store = await testInboxStore();
 	const now = Date.now();
 	await store.upsertInbound(inbound("quiet", now - 1 * DAY), OFFICE);
-	const funnel = await store.funnel(viewer, { since: new Date(now - 30 * DAY) });
+	const funnel = await store.funnel(viewer, { since: new Date(now - 30 * DAY), countMock: true });
 	expect(funnel).toMatchObject({ leadsIn: 1, engaged: 0, inConversation: 0, responseTime: null });
 
-	const empty = await store.funnel(viewer, { since: new Date(now) });
+	const empty = await store.funnel(viewer, { since: new Date(now), countMock: true });
 	expect(empty).toMatchObject({ leadsIn: 0, engaged: 0, inConversation: 0, responseTime: null });
+	await store.close();
+});
+
+test("a reply from the vendor's own app reaches the lead, and the earliest reply sets the time", async () => {
+	const store = await testInboxStore();
+	const now = Date.now();
+	await store.upsertInbound(inbound("phone", now - 60 * MINUTE), OFFICE);
+	await store.upsertInbound(
+		{ ...inbound("phone", now - 50 * MINUTE, "Da, em gui anh can nay"), source: "oa-echo" },
+		OFFICE,
+	);
+	const both = conversationId(OFFICE, "zalo", "both");
+	await store.upsertInbound(inbound("both", now - 60 * MINUTE), OFFICE);
+	await store.upsertInbound(
+		{ ...inbound("both", now - 30 * MINUTE, "from the phone"), source: "oa-echo" },
+		OFFICE,
+	);
+	await sent(store, both, await lastInboundId(store, both));
+
+	const funnel = await store.funnel(viewer, { since: new Date(now - DAY), countMock: true });
+	expect(funnel).toMatchObject({ leadsIn: 2, engaged: 2 });
+	// "phone" answered in 10 minutes from the app; "both" first answered from the app at 30.
+	expect(funnel.responseTime).toMatchObject({
+		answered: 2,
+		medianMs: 10 * MINUTE,
+		p90Ms: 30 * MINUTE,
+	});
+	await store.close();
+});
+
+test("a live deployment's funnel leaves mock sends out", async () => {
+	const store = await testInboxStore();
+	const now = Date.now();
+	const id = conversationId(OFFICE, "zalo", "mocked");
+	await store.upsertInbound(inbound("mocked", now - 60 * MINUTE), OFFICE);
+	await sent(store, id, await lastInboundId(store, id));
+
+	const demo = await store.funnel(viewer, { since: new Date(now - DAY), countMock: true });
+	const live = await store.funnel(viewer, { since: new Date(now - DAY), countMock: false });
+	expect(demo).toMatchObject({ leadsIn: 1, engaged: 1 });
+	expect(live).toMatchObject({ leadsIn: 1, engaged: 0, responseTime: null });
 	await store.close();
 });

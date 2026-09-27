@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-27 (send safety)
+
+### Fixed
+
+- **A failed reply is retried once.** Two approvals racing the retry of a `failed` Answer could both transmit; the retry is now guarded on `failed` and the loser gets `409 in_progress`.
+- **A vendor retry is stored once.** A unique index on (thread, vendor message id), and one retry of the inbound write on a unique violation, so the same webhook landing twice, or a new guest's first two messages landing together, make one row and one thread.
+- **Zalo replays are refused.** A signed Zalo timestamp more than 15 minutes from now fails verification.
+- **One office per operator holds (ADR 0010).** The accept-invitation guard read a session that is empty in a before-hook and never fired; it reads the request's session now.
+
+### Changed
+
+- **Home counts replies sent from the vendor's app.** Engaged, in conversation and response time use the office's first reply, whether approved in Nhịp or sent from the WhatsApp or Zalo app. A live deployment leaves mock sends out.
+
 ## 2026-09-24 (operators end with their office)
 
 ### Changed

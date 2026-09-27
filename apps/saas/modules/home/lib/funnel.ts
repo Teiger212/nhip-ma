@@ -26,9 +26,10 @@ export async function loadHomeFunnel(): Promise<HomeFunnel> {
 		return { denied: office.denied };
 	}
 	const since = new Date(Date.now() - FUNNEL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-	const funnel = await getRuntime().store.funnel(
+	const runtime = getRuntime();
+	const funnel = await runtime.store.funnel(
 		{ userId: session.user.id, officeId: office.officeId },
-		{ since },
+		{ since, countMock: runtime.config.sendMode !== "live" },
 	);
 	return { funnel };
 }

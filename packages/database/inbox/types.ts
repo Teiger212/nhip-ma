@@ -218,8 +218,11 @@ export type InboxStore = {
 	/**
 	 * The office funnel (ADR 0002) for leads whose first message landed on or after
 	 * `since`, counted in SQL inside the office; no thread leaves the store for a count.
+	 * A lead is reached by the office's first reply: a sent Answer, or a reply an agent sent
+	 * from the vendor's own app (`oa-echo`). `countMock` decides whether mock sends count:
+	 * yes in a mock deployment (the demo), never in a live one.
 	 */
-	funnel: (viewer: InboxViewer, window: { since: Date }) => Promise<Funnel>;
+	funnel: (viewer: InboxViewer, window: { since: Date; countMock: boolean }) => Promise<Funnel>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

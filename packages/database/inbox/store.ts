@@ -553,8 +553,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					FROM "inbox_message" WHERE "direction" = 'in' GROUP BY "conversationId"
 				),
 				"reached" AS (
-					SELECT "conversationId", MIN("sentAt") AS "firstSentAt"
-					FROM "inbox_answer" WHERE "status" = 'sent' GROUP BY "conversationId"
+					SELECT "conversationId", MIN("at") AS "firstSentAt" FROM (
+						SELECT "conversationId", "sentAt" AS "at" FROM "inbox_answer"
+						WHERE "status" = 'sent' AND (${window.countMock} OR NOT "mock")
+						UNION ALL
+						SELECT "conversationId", "at" FROM "inbox_message"
+						WHERE "direction" = 'out' AND "source" = 'oa_echo'
+					) "replies" GROUP BY "conversationId"
 				)
 				SELECT "first"."firstInboundAt" AS "firstInboundAt",
 				       "reached"."firstSentAt" AS "firstSentAt",
