@@ -150,6 +150,8 @@ model Organization {
   purchases          Purchase[]
   conversations      Conversation[]
   pipeConnections    PipeConnection[]
+  crmConnection      CrmConnection?
+  mockCrmLeads       MockCrmLead[]
 
   @@unique([slug])
   @@map("organization")
@@ -305,6 +307,8 @@ model Conversation {
   paperwork          Paperwork?
   answers            Answer[]
 
+  crmLink         CrmLink?
+
   @@unique([officeId, pipe, guestId])
   @@index([officeId])
   @@map("inbox_conversation")
@@ -411,4 +415,65 @@ model PipeConnection {
 
   @@id([pipe, externalId])
   @@map("inbox_pipe_connection")
+}
+
+enum CrmKind {
+  mock
+}
+
+enum CrmOutcomeStatus {
+  open
+  won
+  lost
+}
+
+enum CrmLinkMethod {
+  phone
+  manual
+}
+
+/// The office's CRM (ADR 0003). One per office; set by the platform admin. Secrets stay in
+/// env for the pilot; this row only names the kind.
+model CrmConnection {
+  officeId  String       @id
+  office    Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind      CrmKind
+  updatedAt DateTime     @updatedAt
+
+  @@map("inbox_crm_connection")
+}
+
+/// A thread's link to a CRM lead, with the lead's outcome cached as of `checkedAt`.
+/// `leadId` null: a phone lookup found nothing, or an agent unlinked it (method manual,
+/// which automatic matching never overrides).
+model CrmLink {
+  conversationId String            @id
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId       String
+  kind           CrmKind
+  leadId         String?
+  leadName       String?
+  method         CrmLinkMethod
+  outcome        CrmOutcomeStatus?
+  outcomeAt      DateTime?
+  outcomeReason  String?
+  checkedAt      DateTime
+
+  @@index([officeId, checkedAt])
+  @@map("inbox_crm_link")
+}
+
+/// The mock CRM's leads (ADR 0003): development, tests and the demo. Phones are E.164.
+model MockCrmLead {
+  id            String           @id
+  officeId      String
+  office        Organization     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String?
+  outcome       CrmOutcomeStatus @default(open)
+  outcomeAt     DateTime?
+  outcomeReason String?
+
+  @@index([officeId, phone])
+  @@map("inbox_mock_crm_lead")
 }

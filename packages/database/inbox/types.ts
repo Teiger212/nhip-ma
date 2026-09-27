@@ -1,6 +1,9 @@
 import type {
 	Funnel,
 	AnswerStatus,
+	CrmKind,
+	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -153,7 +156,45 @@ export type Conversation = {
 	answers: Answer[];
 	/** The most recent Answer, whatever its status. */
 	lastAnswer: Answer | null;
+	/**
+	 * The thread's CRM lead and its cached outcome (ADR 0003); null until the office has a
+	 * CRM and the thread was looked up.
+	 */
+	crm: ConversationCrm | null;
 	updatedAt: string;
+};
+
+export type ConversationCrm = {
+	kind: CrmKind;
+	/** null: a phone lookup found nothing, or an agent unlinked it (method `manual`). */
+	leadId: string | null;
+	leadName: string | null;
+	method: CrmLinkMethod;
+	outcome: CrmOutcomeStatus | null;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
+	/** When the CRM was last asked about this thread; the cache is trusted for 10 minutes. */
+	checkedAt: string;
+};
+
+/** A thread `refreshCrm` has to look at: never looked up, or looked up too long ago. */
+export type CrmWorkItem = {
+	conversationId: string;
+	pipe: Pipe;
+	guestId: string;
+	crm: ConversationCrm | null;
+};
+
+/** A lead in the mock CRM (ADR 0003). */
+export type MockCrmLeadRecord = {
+	id: string;
+	officeId: string;
+	name: string;
+	/** E.164, or null. */
+	phone: string | null;
+	outcome: CrmOutcomeStatus;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
 };
 
 export type InboundEvent = {
@@ -223,6 +264,40 @@ export type InboxStore = {
 	 * yes in a mock deployment (the demo), never in a live one.
 	 */
 	funnel: (viewer: InboxViewer, window: { since: Date; countMock: boolean }) => Promise<Funnel>;
+	/** The office's CRM (ADR 0003), or null when none is connected. */
+	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
+	/** Connect the office to a CRM kind, or disconnect it with `null`. */
+	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
+	/** The office's threads with no CRM link yet, or one checked before `staleBefore`. */
+	crmWork: (officeId: string, staleBefore: Date) => Promise<CrmWorkItem[]>;
+	/** Link a thread to a lead (or record a miss with `leadId: null`); a new lead drops the old outcome. */
+	saveCrmLink: (
+		conversationId: string,
+		link: {
+			kind: CrmKind;
+			leadId: string | null;
+			leadName: string | null;
+			method: CrmLinkMethod;
+			checkedAt: Date;
+		},
+	) => Promise<void>;
+	/** Cache what the CRM said about linked threads' leads, as of `checkedAt`. */
+	saveCrmOutcomes: (
+		updates: Array<{
+			conversationId: string;
+			outcome: CrmOutcomeStatus | null;
+			outcomeAt: Date | null;
+			outcomeReason: string | null;
+		}>,
+		checkedAt: Date,
+	) => Promise<void>;
+	/** Write a mock CRM lead (ADR 0003): seed and tests. */
+	upsertMockCrmLead: (lead: MockCrmLeadRecord) => Promise<void>;
+	/** The office's mock CRM leads by E.164 phone, by name, or by id; at most 20. */
+	findMockCrmLeads: (
+		officeId: string,
+		where: { phone?: string; query?: string; ids?: string[] },
+	) => Promise<MockCrmLeadRecord[]>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

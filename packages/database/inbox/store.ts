@@ -16,6 +16,7 @@ import type {
 	Answer,
 	BeginAnswerResult,
 	Conversation,
+	ConversationCrm,
 	Draft,
 	InboundEvent,
 	InboxStore,
@@ -55,6 +56,7 @@ const CONVERSATION_INCLUDE = {
 	draft: true,
 	paperwork: true,
 	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
+	crmLink: true,
 } satisfies Prisma.ConversationInclude;
 
 type ConversationRecord = Prisma.ConversationGetPayload<{ include: typeof CONVERSATION_INCLUDE }>;
@@ -86,6 +88,21 @@ function vocab<Schema extends z.ZodType>(
 
 const iso = (at: Date): string => at.toISOString();
 const isoOrNull = (at: Date | null): string | null => (at ? at.toISOString() : null);
+
+type CrmLinkRecord = NonNullable<ConversationRecord["crmLink"]>;
+
+function mapCrmLink(row: CrmLinkRecord): ConversationCrm {
+	return {
+		kind: row.kind,
+		leadId: row.leadId,
+		leadName: row.leadName,
+		method: row.method,
+		outcome: row.outcome,
+		outcomeAt: isoOrNull(row.outcomeAt),
+		outcomeReason: row.outcomeReason,
+		checkedAt: iso(row.checkedAt),
+	};
+}
 
 function toDbSource(source: MessageSource): DbMessageSource {
 	return source === "oa-echo" ? "oa_echo" : source;
@@ -200,6 +217,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		oneShot,
 		answers,
 		lastAnswer: answers.length > 0 ? answers[answers.length - 1] : null,
+		crm: record.crmLink ? mapCrmLink(record.crmLink) : null,
 		updatedAt: iso(record.updatedAt),
 	};
 }
@@ -596,6 +614,119 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							},
 			};
 			return funnel;
+		},
+
+		async getCrmConnection(officeId) {
+			const row = await db.crmConnection.findUnique({
+				where: { officeId },
+				select: { kind: true },
+			});
+			return row ? { kind: row.kind } : null;
+		},
+
+		async setCrmConnection(officeId, kind) {
+			if (kind === null) {
+				await db.crmConnection.deleteMany({ where: { officeId } });
+				return;
+			}
+			await db.crmConnection.upsert({
+				where: { officeId },
+				create: { officeId, kind },
+				update: { kind },
+			});
+		},
+
+		async crmWork(officeId, staleBefore) {
+			const rows = await db.conversation.findMany({
+				where: {
+					officeId,
+					OR: [{ crmLink: { is: null } }, { crmLink: { checkedAt: { lt: staleBefore } } }],
+				},
+				select: { id: true, pipe: true, guestId: true, crmLink: true },
+			});
+			return rows.map((row) => ({
+				conversationId: row.id,
+				pipe: row.pipe,
+				guestId: row.guestId,
+				crm: row.crmLink ? mapCrmLink(row.crmLink) : null,
+			}));
+		},
+
+		async saveCrmLink(conversationId, link) {
+			const conversation = await db.conversation.findUniqueOrThrow({
+				where: { id: conversationId },
+				select: { officeId: true, crmLink: { select: { leadId: true } } },
+			});
+			const sameLead = conversation.crmLink?.leadId === link.leadId;
+			const data = {
+				officeId: conversation.officeId,
+				kind: link.kind,
+				leadId: link.leadId,
+				leadName: link.leadName,
+				method: link.method,
+				checkedAt: link.checkedAt,
+				// Another lead's outcome is not this lead's.
+				...(sameLead ? {} : { outcome: null, outcomeAt: null, outcomeReason: null }),
+			};
+			await db.crmLink.upsert({
+				where: { conversationId },
+				create: { conversationId, ...data },
+				update: data,
+			});
+		},
+
+		async saveCrmOutcomes(updates, checkedAt) {
+			await db.$transaction(
+				updates.map((update) =>
+					db.crmLink.update({
+						where: { conversationId: update.conversationId },
+						data: {
+							outcome: update.outcome,
+							outcomeAt: update.outcomeAt,
+							outcomeReason: update.outcomeReason,
+							checkedAt,
+						},
+					}),
+				),
+			);
+		},
+
+		async upsertMockCrmLead(lead) {
+			const data = {
+				officeId: lead.officeId,
+				name: lead.name,
+				phone: lead.phone,
+				outcome: lead.outcome,
+				outcomeAt: lead.outcomeAt ? new Date(lead.outcomeAt) : null,
+				outcomeReason: lead.outcomeReason,
+			};
+			await db.mockCrmLead.upsert({
+				where: { id: lead.id },
+				create: { id: lead.id, ...data },
+				update: data,
+			});
+		},
+
+		async findMockCrmLeads(officeId, where) {
+			const rows = await db.mockCrmLead.findMany({
+				where: {
+					officeId,
+					...(where.phone ? { phone: where.phone } : {}),
+					...(where.ids ? { id: { in: where.ids } } : {}),
+					...(where.query ? { name: { contains: where.query, mode: "insensitive" } } : {}),
+				},
+				orderBy: { name: "asc" },
+				take: 20,
+			});
+			return rows.map((row) => ({
+				id: row.id,
+				officeId: row.officeId,
+				name: row.name,
+				phone: row.phone,
+				outcome: row.outcome,
+				outcomeAt: isoOrNull(row.outcomeAt),
+				outcomeReason: row.outcomeReason,
+			}));
 		},
 
 		async close() {

@@ -38,6 +38,7 @@ function conv(
 		oneShot: null,
 		answers: [],
 		lastAnswer: null,
+		crm: null,
 		updatedAt: at,
 		...partial,
 	};

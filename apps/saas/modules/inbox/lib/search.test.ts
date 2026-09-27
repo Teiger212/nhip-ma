@@ -17,6 +17,7 @@ function conv(partial: Partial<Conversation> & Pick<Conversation, "id">): Conver
 		oneShot: null,
 		answers: [],
 		lastAnswer: null,
+		crm: null,
 		updatedAt: new Date().toISOString(),
 		...partial,
 	};

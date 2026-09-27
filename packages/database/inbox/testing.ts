@@ -60,7 +60,9 @@ export async function resetInboxTables(
 	db: PrismaClient,
 	{ offices = [], operators = [] }: { offices?: string[]; operators?: string[] } = {},
 ): Promise<void> {
-	await db.$executeRawUnsafe(`TRUNCATE "inbox_conversation", "inbox_pipe_connection" CASCADE`);
+	await db.$executeRawUnsafe(
+		`TRUNCATE "inbox_conversation", "inbox_pipe_connection", "inbox_crm_connection", "inbox_mock_crm_lead" CASCADE`,
+	);
 	const now = new Date();
 	for (const id of offices) {
 		await db.organization.upsert({
