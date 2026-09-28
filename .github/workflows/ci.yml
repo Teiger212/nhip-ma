@@ -52,6 +52,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Lint is type-aware; without the generated client, Prisma types read as errors.
+      - name: Generate Prisma client
+        run: pnpm --filter @repo/database generate
+
       - name: Lint
         run: pnpm lint
 
