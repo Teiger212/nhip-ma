@@ -139,8 +139,8 @@ never seeded: the seed's password is public).
 **Vercel (ADR 0016).** Project `nhip` (team `teiger212s-projects`): root `apps/saas`, build
 `turbo run build --filter=saas` (runs `^generate`), Node 22, functions in `sin1`. Staging is
 `main`'s deployment at `https://nhip-staging.vercel.app`, with its env vars scoped to Preview
-on branch `main`; the production branch is `production`, which nothing pushes to (prod ships by
-release). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
+on branch `main`. The production branch is `production`: a GitHub ruleset blocks every push
+and deletion, and only the release workflow (milestone 6) moves it to a commit staging ran. Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
 Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
 Firewall rule of 300 requests/min per IP on `/api/`.
 
