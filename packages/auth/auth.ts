@@ -100,10 +100,11 @@ export const authOptions = {
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
 	trustedOrigins: [appUrl, ...extraTrustedOrigins],
-	// Rate limiting is on by default in production (memory store, 100/10s, sign-in 3/10s).
-	// Nhịp runs as one long-lived process, so the memory store is correct; behind a
-	// reverse proxy set advanced.ipAddress.ipAddressHeaders and trustedProxies so limits
-	// key on the client IP rather than the proxy.
+	// Rate limiting is on in production (100/10s per IP and path; sign-in 3/10s). Counters
+	// live in the database (the rateLimit table): on Vercel each serverless instance has its
+	// own memory, so an in-memory count would not hold. The client IP comes from
+	// x-forwarded-for, which Vercel sets.
+	rateLimit: { storage: "database" },
 	database: prismaAdapter(db, {
 		provider: "postgresql",
 	}),
