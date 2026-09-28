@@ -1,4 +1,5 @@
 import { Inbox } from "@inbox/components/Inbox";
+import { sendPlatformAdminToAdminArea } from "@shared/lib/platform-admin";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
@@ -8,6 +9,7 @@ export async function generateMetadata() {
 	};
 }
 
-export default function InboxPage() {
+export default async function InboxPage() {
+	await sendPlatformAdminToAdminArea();
 	return <Inbox />;
 }

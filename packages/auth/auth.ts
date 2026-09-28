@@ -28,6 +28,7 @@ import { parseCookie as parseCookies } from "cookie";
 import { config } from "./config";
 import { officeEndHooks } from "./lib/offboarding";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import { isPlatformAdmin } from "./lib/roles";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
 const getLocaleFromRequest = (request?: Request) => {
@@ -67,11 +68,6 @@ const github = socialProvider(
 	process.env.GITHUB_CLIENT_SECRET,
 	(credentials) => ({ ...credentials, scope: ["user:email"], disableImplicitSignUp: true }),
 );
-
-/** The platform admin (`role` "admin", alone or in a comma list). */
-function isPlatformAdmin(role: string | null | undefined): boolean {
-	return role?.split(",").includes("admin") ?? false;
-}
 
 /** Cancel the subscriptions among these purchases (the kit's rule, on every delete path). */
 async function cancelSubscriptions(purchases: Awaited<ReturnType<typeof getPurchasesByUserId>>) {

@@ -31,7 +31,19 @@ export function buildWalkNav(
 	pathname: string,
 	options: { isAdmin: boolean } = { isAdmin: false },
 ): WalkNavItem[] {
-	const items: WalkNavItem[] = [
+	// The platform admin works in the admin area only: no office screens (ADR 0015).
+	if (options.isAdmin) {
+		return [
+			{
+				id: "admin",
+				href: "/admin/organizations",
+				iconName: "shield",
+				isActive: isAdminPath(pathname),
+				disabled: false,
+			},
+		];
+	}
+	return [
 		{
 			id: "home",
 			href: "/home",
@@ -48,16 +60,6 @@ export function buildWalkNav(
 		},
 		{ id: "international", href: "/chatbot", iconName: "globe", isActive: false, disabled: true },
 	];
-	if (options.isAdmin) {
-		items.push({
-			id: "admin",
-			href: "/admin/organizations",
-			iconName: "shield",
-			isActive: isAdminPath(pathname),
-			disabled: false,
-		});
-	}
-	return items;
 }
 
 export function isSettingsPath(pathname: string): boolean {

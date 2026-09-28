@@ -11,6 +11,7 @@ type SessionGate =
 const DENIALS = {
 	no_office: "This account does not belong to an office yet.",
 	ambiguous_office: "This account belongs to more than one office. Ask Nhịp to fix it.",
+	platform_admin: "The platform admin works in the admin area, not in an office's inbox.",
 } as const;
 
 /**
@@ -24,7 +25,7 @@ export async function requireInboxSession(request: Request): Promise<SessionGate
 	if (!session) {
 		return { denied: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
 	}
-	const office = await resolveOffice(session.user.id);
+	const office = await resolveOffice(session.user);
 	if (office.denied) {
 		return {
 			denied: NextResponse.json(

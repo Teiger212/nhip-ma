@@ -1,6 +1,6 @@
 import "server-only";
 import { getSession } from "@auth/lib/server";
-import { resolveOffice } from "@inbox/lib/office";
+import { type OfficeDenial, resolveOffice } from "@inbox/lib/office";
 import { getRuntime } from "@inbox/lib/runtime";
 import type { Funnel } from "@repo/database/inbox";
 
@@ -9,7 +9,7 @@ export const FUNNEL_WINDOW_DAYS = 30;
 
 export type HomeFunnel =
 	| { funnel: Funnel; denied?: undefined }
-	| { funnel?: undefined; denied: "no_office" | "ambiguous_office" };
+	| { funnel?: undefined; denied: OfficeDenial };
 
 /**
  * The office funnel for the signed-in operator, resolved the way the API gate resolves it
@@ -21,7 +21,7 @@ export async function loadHomeFunnel(): Promise<HomeFunnel> {
 	if (!session) {
 		return { denied: "no_office" };
 	}
-	const office = await resolveOffice(session.user.id);
+	const office = await resolveOffice(session.user);
 	if (office.denied) {
 		return { denied: office.denied };
 	}

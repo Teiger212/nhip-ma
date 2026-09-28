@@ -720,7 +720,8 @@
 		"noResponseTime": "Chưa trả lời khách nào trong khoảng này.",
 		"denied": {
 			"no_office": "Tài khoản này chưa thuộc văn phòng nào nên không có gì để đếm.",
-			"ambiguous_office": "Tài khoản này thuộc nhiều hơn một văn phòng. Hãy nhờ Nhịp sửa."
+			"ambiguous_office": "Tài khoản này thuộc nhiều hơn một văn phòng. Hãy nhờ Nhịp sửa.",
+			"platform_admin": "Quản trị viên nền tảng làm việc trong khu quản trị, không xem số liệu của văn phòng."
 		}
 	},
 	"inbox": {

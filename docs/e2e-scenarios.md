@@ -49,3 +49,17 @@ Seed: `pnpm seed --reset` (walk office, mock CRM). Logins: `walk@nhip.local` (ag
 6. **Deleting an office needs permission first.** An unauthenticated or non-owner delete
    request is refused before anything (subscriptions included) is touched (T2). Spec: `apps/saas/tests/auth-join.spec.ts` (Auth 6; subscriptions untouched is not observable from outside).
 7. **Only a manager replaces the logo.** A member asking for a logo upload URL gets 403 (T6). Spec: `apps/saas/tests/auth-join.spec.ts` (Auth 7).
+
+## Roles (ADR 0015, ADR 0018)
+
+The seed makes the platform admin the owner of the walk office (the kit makes whoever
+creates an office its owner). That membership must open nothing.
+
+1. **The platform admin lands in the admin area.** Signing in as the platform admin opens
+   Admin → Organizations, not the Inbox. The sidebar offers the admin area only: no Inbox,
+   no Home. Spec: `apps/saas/tests/roles.spec.ts` (Roles 1).
+2. **A platform admin's membership opens no guests.** As the platform admin, opening
+   `/inbox`, `/home` or `/` lands in the admin area, and the inbox's conversations API
+   answers 403. The agent of the same office still lands in the Inbox and sees its threads.
+   Spec: `apps/saas/tests/roles.spec.ts` (Roles 2; also a thread of the office,
+   `/api/conversations/:id`, answers 403).
