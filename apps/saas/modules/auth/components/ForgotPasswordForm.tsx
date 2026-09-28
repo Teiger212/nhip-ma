@@ -17,7 +17,6 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 

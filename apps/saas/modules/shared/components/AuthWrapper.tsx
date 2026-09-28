@@ -1,4 +1,3 @@
-import { config } from "@config";
 import { cn, ColorModeToggle, Logo } from "@repo/ui";
 import { getTranslations } from "next-intl/server";
 import type { PropsWithChildren } from "react";

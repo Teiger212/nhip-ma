@@ -21,7 +21,6 @@ import { passwordSchema } from "@repo/utils";
 import { PasswordInput } from "@shared/components/PasswordInput";
 import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";

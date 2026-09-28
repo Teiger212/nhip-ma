@@ -25,7 +25,6 @@ import {
 import { getSafeRedirectPath } from "@shared/lib/redirect";
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
