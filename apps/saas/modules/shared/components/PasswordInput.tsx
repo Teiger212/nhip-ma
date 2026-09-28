@@ -66,6 +66,7 @@ export function PasswordInput({
 	name = "password",
 	showGenerateButton = false,
 	showPasswordCriteria = false,
+	...fieldProps
 }: {
 	value?: string;
 	onChange: (value: string) => void;
@@ -75,6 +76,10 @@ export function PasswordInput({
 	name?: string;
 	showGenerateButton?: boolean;
 	showPasswordCriteria?: boolean;
+	/** From `FormControl`: the id its label points at, and the field's error wiring. */
+	id?: string;
+	"aria-describedby"?: string;
+	"aria-invalid"?: boolean;
 }) {
 	const t = useTranslations();
 	const [showPassword, setShowPassword] = React.useState(false);
@@ -98,6 +103,7 @@ export function PasswordInput({
 					onChange={(e) => onChange(e.target.value)}
 					autoComplete={autoComplete}
 					name={name}
+					{...fieldProps}
 				/>
 				<div className="inset-y-0 right-0 pr-2 absolute flex items-center">
 					{showGenerateButton && (

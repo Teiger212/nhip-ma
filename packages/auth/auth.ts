@@ -91,9 +91,25 @@ const officeEnd = officeEndHooks({
 	},
 });
 
+/**
+ * The E2E run signs many people in and up from one address in seconds. Better Auth's rate
+ * limit (on in production) would refuse it, so it is off there and only there: E2E=1 and an
+ * app URL on localhost, which a real deployment never has. Temporary with the E2E profile.
+ */
+const e2eOnLocalhost = (() => {
+	if (process.env.E2E !== "1") return false;
+	try {
+		const host = new URL(appUrl).hostname;
+		return host === "localhost" || host === "127.0.0.1";
+	} catch {
+		return false;
+	}
+})();
+
 export const auth = betterAuth({
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
+	rateLimit: e2eOnLocalhost ? { enabled: false } : undefined,
 	trustedOrigins: [appUrl, ...extraTrustedOrigins],
 	// Rate limiting is on by default in production (memory store, 100/10s, sign-in 3/10s).
 	// Nhịp runs as one long-lived process, so the memory store is correct; behind a
@@ -319,7 +335,12 @@ export const auth = betterAuth({
 				// One operator, one office, even when two invitations are accepted at once.
 				afterAcceptInvitation: async ({ member, user }) => {
 					const dropped = await keepOldestMembership(user.id);
-					if (dropped.includes(member.id)) {
+					// A simultaneous accept may already have dropped this (newer) membership, in
+					// which case `dropped` is empty here; check that this one actually survived.
+					const kept =
+						!dropped.includes(member.id) &&
+						(await db.member.count({ where: { id: member.id } })) > 0;
+					if (!kept) {
 						throw new APIError("FORBIDDEN", {
 							code: "ONE_OFFICE_PER_OPERATOR",
 							message: "This account already belongs to an office.",
