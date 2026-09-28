@@ -133,6 +133,16 @@ one real round trip from a phone over WhatsApp and Zalo.
 local Postgres: pass `--no-env-pull` to every `neon link`, `neon deploy` and `neon checkout`,
 or the CLI writes the linked branch's `DATABASE_URL` into `.env.local` and points dev at that
 database.
+Neon branches: `production` (default) and `staging` (schema from `prisma migrate deploy`,
+never seeded: the seed's password is public).
+
+**Vercel (ADR 0016).** Project `nhip` (team `teiger212s-projects`): root `apps/saas`, build
+`turbo run build --filter=saas` (runs `^generate`), Node 22, functions in `sin1`. Staging is
+`main`'s deployment at `https://nhip-staging.vercel.app`, with its env vars scoped to Preview
+on branch `main`; the production branch is `production`, which nothing pushes to (prod ships by
+release). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
+Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
+Firewall rule of 300 requests/min per IP on `/api/`.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
