@@ -143,7 +143,7 @@ export function LoginForm() {
 			<p className="mt-1 mb-6 text-center text-foreground/60">{t("auth.login.subtitle")}</p>
 
 			{form.formState.isSubmitSuccessful && signinMode === "magic-link" ? (
-				<Alert variant="success">
+				<Alert variant="success" data-test="login-link-sent">
 					<MailboxIcon />
 					<AlertTitle>{t("auth.login.hints.linkSent.title")}</AlertTitle>
 					<AlertDescription>{t("auth.login.hints.linkSent.message")}</AlertDescription>
@@ -162,7 +162,7 @@ export function LoginForm() {
 							)}
 
 							{form.formState.isSubmitted && form.formState.errors.root?.message && (
-								<Alert variant="error">
+								<Alert variant="error" data-test="login-error">
 									<AlertTriangleIcon />
 									<AlertTitle>{form.formState.errors.root.message}</AlertTitle>
 								</Alert>
@@ -175,7 +175,7 @@ export function LoginForm() {
 									<FormItem>
 										<FormLabel>{t("auth.signup.email")}</FormLabel>
 										<FormControl>
-											<Input {...field} autoComplete="email" />
+											<Input {...field} autoComplete="email" data-test="login-email" />
 										</FormControl>
 									</FormItem>
 								)}
@@ -195,6 +195,7 @@ export function LoginForm() {
 														className="pr-10"
 														{...field}
 														autoComplete="current-password"
+														data-test="login-password"
 													/>
 												</FormControl>
 												<button
@@ -224,6 +225,7 @@ export function LoginForm() {
 								className="w-full"
 								type="submit"
 								variant="primary"
+								data-test="login-submit"
 								loading={form.formState.isSubmitting}
 							>
 								{signinMode === "magic-link"

@@ -67,6 +67,7 @@ export function ThreadList({
 	if (failed) {
 		return (
 			<ThreadListState
+				testId="inbox-load-error"
 				title={t("loadError")}
 				action={
 					<Button type="button" variant="outline" className="mt-3 min-h-11" onClick={onRetry}>
@@ -80,6 +81,9 @@ export function ThreadList({
 		const title = total === 0 ? t("empty") : queue.caughtUp ? t("allCaughtUp") : t("noMatches");
 		return (
 			<ThreadListState
+				testId={
+					total === 0 ? "inbox-empty" : queue.caughtUp ? "inbox-caught-up" : "inbox-no-matches"
+				}
 				title={title}
 				action={
 					queue.caughtUp && queue.counts.sent > 0 ? (

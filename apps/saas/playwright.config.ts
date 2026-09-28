@@ -41,6 +41,8 @@ export default defineConfig({
 	workers: process.env.CI ? 1 : undefined,
 	reporter: [["html"]],
 	use: {
+		// The kit already uses `data-test`; getByTestId follows it.
+		testIdAttribute: "data-test",
 		baseURL: devServer ?? "http://localhost:3000",
 		trace: "retain-on-failure",
 		video: {

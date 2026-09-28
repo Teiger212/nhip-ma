@@ -145,7 +145,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 									<FormItem>
 										<FormLabel>{t("auth.signup.name")}</FormLabel>
 										<FormControl>
-											<Input {...field} />
+											<Input {...field} data-test="signup-name" />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -159,7 +159,12 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 									<FormItem>
 										<FormLabel>{t("auth.signup.email")}</FormLabel>
 										<FormControl>
-											<Input {...field} autoComplete="email" readOnly={!!prefillEmail} />
+											<Input
+												{...field}
+												autoComplete="email"
+												readOnly={!!prefillEmail}
+												data-test="signup-email"
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -175,6 +180,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 											<FormLabel>{t("auth.signup.password")}</FormLabel>
 											<FormControl>
 												<PasswordInput
+													data-test="signup-password"
 													autoComplete="new-password"
 													showGenerateButton
 													showPasswordCriteria
@@ -187,7 +193,11 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 								/>
 							)}
 
-							<Button variant="primary" loading={form.formState.isSubmitting}>
+							<Button
+								variant="primary"
+								loading={form.formState.isSubmitting}
+								data-test="signup-submit"
+							>
 								{t("auth.signup.submit")}
 							</Button>
 						</form>

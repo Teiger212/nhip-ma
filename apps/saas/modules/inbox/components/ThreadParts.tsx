@@ -60,9 +60,21 @@ export function ThreadFlags({ conversation }: { conversation: Conversation }) {
 }
 
 /** A centred sentence for a column with nothing to show, with an optional action under it. */
-export function ThreadListState({ title, action }: { title: string; action?: ReactNode }) {
+export function ThreadListState({
+	title,
+	action,
+	testId,
+}: {
+	title: string;
+	action?: ReactNode;
+	/** For E2E: which state this is, independent of its wording. */
+	testId?: string;
+}) {
 	return (
-		<div className="px-4 py-10 flex flex-col items-center justify-center text-center">
+		<div
+			className="px-4 py-10 flex flex-col items-center justify-center text-center"
+			data-test={testId}
+		>
 			<p className="text-sm max-w-[22ch] text-pretty text-muted-foreground">{title}</p>
 			{action}
 		</div>

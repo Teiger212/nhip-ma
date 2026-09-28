@@ -222,6 +222,7 @@ export function OrganizationList() {
 				/>
 			</div>
 			<Input
+				data-test="admin-organizations-search"
 				type="search"
 				placeholder={t("admin.organizations.search")}
 				value={searchTerm}
@@ -267,7 +268,7 @@ export function OrganizationList() {
 						) : (
 							<TableRow>
 								<TableCell colSpan={columns.length} className="h-24 text-center">
-									<p>No results.</p>
+									<p data-test="admin-no-results">No results.</p>
 								</TableCell>
 							</TableRow>
 						)}
