@@ -1,9 +1,26 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { expect, test } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 
-/** On the login page: the sign-in form is there (AGENTS.md: no auth bypass route). */
-async function expectLoginForm(page: Page) {
-	await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+type Locale = "en" | "vi";
+
+/** The sign-in button each language ships (packages/i18n/translations/<locale>/saas.json). */
+function signInLabel(locale: Locale): string {
+	const file = path.resolve(__dirname, `../../../packages/i18n/translations/${locale}/saas.json`);
+	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
+		auth: { login: { submit: string } };
+	};
+	return saas.auth.login.submit;
+}
+
+/**
+ * On the login page: the sign-in form is there (AGENTS.md: no auth bypass route), in the
+ * page's language (PRODUCT.md "English and Vietnamese only").
+ */
+async function expectLoginForm(page: Page, locale: Locale) {
+	await expect(page.getByRole("button", { name: signInLabel(locale), exact: true })).toBeVisible();
 }
 
 /** The operator's remembered language (ARCHITECTURE.md "Locale routing": cookie `NEXT_LOCALE`). */
@@ -22,12 +39,12 @@ test.describe("ARCHITECTURE.md locale routing — signed-out inbox entry", () =>
 	}) => {
 		await page.goto("/inbox");
 		await expect(page).toHaveURL(/\/en\/login/);
-		await expectLoginForm(page);
+		await expectLoginForm(page, "en");
 
 		await rememberVietnamese(context, baseURL);
 		await page.goto("/inbox");
 		await expect(page).toHaveURL(/\/vi\/login/);
-		await expectLoginForm(page);
+		await expectLoginForm(page, "vi");
 	});
 
 	// rule: locale prefixes are required and kept.
@@ -48,6 +65,6 @@ test.describe("ARCHITECTURE.md locale routing — signed-out inbox entry", () =>
 		await rememberVietnamese(context, baseURL);
 		await page.goto("/");
 		await expect(page).toHaveURL(/\/en\/login/);
-		await expectLoginForm(page);
+		await expectLoginForm(page, "en");
 	});
 });

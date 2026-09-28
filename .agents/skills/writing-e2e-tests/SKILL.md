@@ -28,8 +28,8 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 
 - Specs live in `apps/saas/tests` or `apps/marketing/tests` as `*.spec.ts` (not `e2e/`).
 - `playwright.config.ts` (per app) is authoritative: Chromium; SaaS on `http://localhost:3000`,
-  marketing on `3001`; the `webServer` block builds and starts production mode and reuses a
-  running server locally. No retries anywhere: a flaky spec is fixed, not retried.
+  marketing on `3001`; the `webServer` block always builds and starts production mode fresh
+  (a reused server silently tests stale code; use `E2E_BASE_URL` to target a running one). No retries anywhere: a flaky spec is fixed, not retried.
 - Routes are locale-prefixed: navigate to `/en/…` or `/vi/…`; bare paths redirect.
 - Locators: `getByRole`, `getByLabel`, `getByText` for what users read; a `data-test`
   attribute only when nothing user-facing is stable (add it to the component deliberately).

@@ -69,7 +69,9 @@ export default defineConfig({
 				].join(" && "),
 				url: "http://localhost:3000",
 				env: { E2E: "1" },
-				reuseExistingServer: !process.env.CI,
+				// Always a fresh build: a reused server silently tests stale code. Use
+				// E2E_BASE_URL to run against a server you already have.
+				reuseExistingServer: false,
 				stdout: "pipe",
 				timeout: 300 * 1000,
 			},
