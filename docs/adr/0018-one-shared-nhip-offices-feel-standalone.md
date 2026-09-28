@@ -14,7 +14,9 @@ Every office lives in one shared deployment per environment (ADR 0016), and each
 feels standalone: office setup is one platform-admin step (create the office, invite its
 first manager); operators never create, switch or leave offices; the office's name is the
 app's name; later, each office gets its own subdomain on Nhịp's own domain. Nothing may
-assume a single hostname.
+assume a single hostname. The platform admin works in the same app, in its admin area: no
+separate back office while Nhịp's staff is one person. That account is guarded instead (2FA,
+very few admins; restricting the admin area by IP through the Vercel Firewall if needed).
 
 ## Considered options
 
