@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { LoginCopy } from "./support/copy";
 import { loginCopy } from "./support/copy";
+import { expect, test } from "./support/fixtures";
 import { AGENT } from "./support/seed";
 
 const en = loginCopy("en");

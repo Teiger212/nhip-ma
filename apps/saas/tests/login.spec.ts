@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "./support/fixtures";
 import { LoginPage } from "./support/login-page";
 
 // rule: docs/adr/0010-office-assignment.md (sign-up closed); PRODUCT.md (English and Vietnamese only)

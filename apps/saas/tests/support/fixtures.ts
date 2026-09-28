@@ -6,7 +6,8 @@ import type { Office } from "./offices";
 import { deleteOffice, tryCreateOffice } from "./offices";
 import { PLATFORM_ADMIN, WALK_OFFICE_ID } from "./seed";
 import type { Api } from "./session";
-import { signInApi, withOrigin } from "./session";
+import { clientIpHeaders, withOrigin } from "./session";
+import { signInContext } from "./session-state";
 
 /** The admin lists load after the page and again after each search; the dev server is slow. */
 const ADMIN_LIST = { timeout: 20_000 };
@@ -38,12 +39,18 @@ export type Admin = {
 };
 
 export const test = base.extend<{ admin: Admin }>({
+	// Each test is its own client to Better Auth's per-IP rate limit (clientIpHeaders).
+	// oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured first argument
+	extraHTTPHeaders: async ({}, use) => {
+		await use(clientIpHeaders());
+	},
 	admin: async ({ browser }, use) => {
-		const context = await browser.newContext();
+		const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders("admin") });
+		// Signed in by a minted session (setup, not a flow under test); the page and the API
+		// share the context's cookies.
+		await signInContext(context, PLATFORM_ADMIN);
 		const page = await context.newPage();
-		// The page shares the context's cookies, so signing in its API signs in the page too.
 		const api = withOrigin(context.request);
-		await signInApi(api, PLATFORM_ADMIN);
 
 		const offices: string[] = [];
 		const invitations: string[] = [];

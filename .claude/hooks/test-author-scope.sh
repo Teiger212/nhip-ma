@@ -19,10 +19,12 @@ readable = rel == "." or tests or under(
     "packages/i18n/translations/",
     "node_modules/@playwright/", "package.json", "apps/saas/package.json", "apps/marketing/package.json",
 ) or rel.startswith("..") and "/.claude/skills/" in path
-writable = tests or rel == "docs/e2e-scenarios.md"
+# The test-only auth instance mints sessions with privileged helpers; the main session owns it.
+privileged = rel in ("apps/saas/tests/support/test-auth.ts", "apps/saas/tests/sessions.setup.ts")
+writable = (tests and not privileged) or rel == "docs/e2e-scenarios.md"
 if tool in ("Write", "Edit"):
     if writable: sys.exit(0)
-    print(f"test-author writes only specs (apps/*/tests/) and docs/e2e-scenarios.md, not {rel}.", file=sys.stderr); sys.exit(2)
+    print(f"test-author writes only specs (apps/*/tests/, except the session minting files) and docs/e2e-scenarios.md, not {rel}.", file=sys.stderr); sys.exit(2)
 if readable: sys.exit(0)
 print(f"test-author works from intent and may not read {rel}. Use the scenario, the docs and the running app; ask the main session for a data-test hook if one is needed.", file=sys.stderr); sys.exit(2)
 '

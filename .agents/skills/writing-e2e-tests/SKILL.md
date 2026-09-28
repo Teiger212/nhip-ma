@@ -43,8 +43,8 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   `.env.e2e` and its own `supastarter_e2e` database, pushed and seeded fresh. Use it for CI and
   the before-merge `--repeat-each=3` check. If port 3000 is taken, set `E2E_PORT` (e.g. `E2E_PORT=3100`); the
   app URL follows it.
-- Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (the `admin` fixture:
-  create offices, invite, clean up), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
+- Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (`test`, `expect`, the
+  `admin` fixture: create offices, invite, clean up), `session-state.ts` (`signInContext`), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
   `offices.ts`, `data.ts` (`uniqueEmail`), `seed.ts` (seed logins), `copy.ts` (UI copy per
   locale). Import from there; don't redefine sign-in or invitation helpers in a spec.
 - Locate flow elements with `getByTestId` (`data-test`, set in the config). Use roles and
@@ -60,9 +60,16 @@ test <file>` against your running dev server (no build).
   `pnpm --filter @repo/database push`, demo data via `pnpm seed --reset` (walk office, four
   demo threads). Specs must not depend on each other or on order.
 - Logins come from the seed (`apps/saas/modules/inbox/lib/walk-user.ts`): the agent
-  `walk@nhip.local` and the platform admin `admin@nhip.local`, password `walkthrough`. Sign in
-  through the login page as a user would; if many specs need the same session, add a
-  `*.setup.ts` with a `storageState` file kept out of Git, and wire the project dependency.
+  `walk@nhip.local` and the platform admin `admin@nhip.local`, password `walkthrough`.
+- Starting signed in is setup: `signInContext(context, AGENT)` (`support/session-state.ts`),
+  the `admin` fixture, or `apiAs(AGENT)`. They use sessions minted before the run
+  (`tests/sessions.setup.ts`), never the sign-in endpoint. Drive the login page only when
+  signing in is what the spec proves. `test-auth.ts` and `sessions.setup.ts` are not yours to
+  edit; ask the main session if a spec needs another seeded login.
+- Import `test` and `expect` from `support/fixtures`, never from `@playwright/test`: the
+  fixture gives each test its own client IP, so Better Auth's rate limit (on in E2E, 3
+  sign-ins per 10 s per IP) never sees two tests as one person. A spec proving the limit
+  itself repeats requests inside one test.
 - A spec that needs its own guest creates it with `POST /dev/inbound` (signed in, dev only)
   using a unique guest id, e.g. `e2e-${test.info().testId}`, so parallel specs never share a
   thread.

@@ -114,6 +114,12 @@ one real round trip from a phone over WhatsApp and Zalo.
   may not read application source; a hook enforces it.
 - No retries. A new spec passes `--repeat-each=3` before merge; a flaky spec is fixed or
   deleted.
+- Setup is not the flow under test. Seeded logins start signed in from sessions minted once
+  per run by Better Auth's `testUtils` in a test-only auth instance
+  (`apps/saas/tests/support/test-auth.ts`, run by `tests/sessions.setup.ts`); it never ships
+  in the app. Sign in through the login page only where signing in is what the test proves.
+  The app's rate limit stays on in E2E: each test is its own client (`clientIpHeaders` in
+  `tests/support/session.ts` sets `x-forwarded-for`, which Better Auth keys the limit on).
 - How E2E runs today: `pnpm --filter saas exec playwright test` builds production on
   `:3000` with `.env.e2e` against its own `supastarter_e2e` database (pushed and seeded
   fresh); `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast

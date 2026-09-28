@@ -15,7 +15,7 @@ import { sendEmail } from "@repo/mail";
 import { createWelcomeNotification } from "@repo/notifications";
 import { cancelSubscription } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { openAPI } from "better-auth/plugins";
@@ -92,24 +92,13 @@ const officeEnd = officeEndHooks({
 });
 
 /**
- * The E2E run signs many people in and up from one address in seconds. Better Auth's rate
- * limit (on in production) would refuse it, so it is off there and only there: E2E=1 and an
- * app URL on localhost, which a real deployment never has. Temporary with the E2E profile.
+ * The app's auth configuration. `auth` below is built from it; the E2E suite builds a
+ * test-only instance from the same options plus Better Auth's testUtils
+ * (apps/saas/tests/support/test-auth.ts), so its sessions are the app's own.
  */
-const e2eOnLocalhost = (() => {
-	if (process.env.E2E !== "1") return false;
-	try {
-		const host = new URL(appUrl).hostname;
-		return host === "localhost" || host === "127.0.0.1";
-	} catch {
-		return false;
-	}
-})();
-
-export const auth = betterAuth({
+export const authOptions = {
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
-	rateLimit: e2eOnLocalhost ? { enabled: false } : undefined,
 	trustedOrigins: [appUrl, ...extraTrustedOrigins],
 	// Rate limiting is on by default in production (memory store, 100/10s, sign-in 3/10s).
 	// Nhịp runs as one long-lived process, so the memory store is correct; behind a
@@ -382,7 +371,9 @@ export const auth = betterAuth({
 			logger.error(error, { ctx });
 		},
 	},
-});
+} satisfies BetterAuthOptions;
+
+export const auth = betterAuth(authOptions);
 
 export * from "./lib/organization";
 

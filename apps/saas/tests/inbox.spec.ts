@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 
 import type { Locale } from "./support/copy";
 import { loginCopy } from "./support/copy";
+import { expect, test } from "./support/fixtures";
 import { LoginPage } from "./support/login-page";
 import { appOrigin } from "./support/session";
 

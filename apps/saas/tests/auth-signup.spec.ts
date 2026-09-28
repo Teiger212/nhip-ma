@@ -4,7 +4,8 @@ import { submitSignUp } from "./support/invitee";
 import { LoginPage } from "./support/login-page";
 import { deleteOffice, tryCreateOffice } from "./support/offices";
 import { AGENT, NEW_PASSWORD } from "./support/seed";
-import { expectCannotSignIn, expectSignedOut, signIn, withOrigin } from "./support/session";
+import { expectCannotSignIn, expectSignedOut, withOrigin } from "./support/session";
+import { signInContext } from "./support/session-state";
 
 // Each test has the admin and an agent or attacker, and drives several pages (the admin's lists
 // among them); against the dev server under parallel load that outgrows the 30 s default.
@@ -121,7 +122,7 @@ test.describe("Auth 4 — only the platform admin creates offices", () => {
 	}) => {
 		const agentOffice = uniqueName("agent office");
 
-		await signIn(page, AGENT);
+		await signInContext(page.context(), AGENT);
 		const agent = withOrigin(page.request);
 		const refused = await tryCreateOffice(agent, agentOffice);
 		try {
