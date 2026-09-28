@@ -16,10 +16,10 @@ export function LoginModeSwitch({
 	return (
 		<Tabs value={activeMode} onValueChange={onChange} className={className}>
 			<TabsList className="w-full">
-				<TabsTrigger value="password" className="flex-1">
+				<TabsTrigger value="password" className="flex-1" data-test="login-mode-password">
 					{t("auth.login.modes.password")}
 				</TabsTrigger>
-				<TabsTrigger value="magic-link" className="flex-1">
+				<TabsTrigger value="magic-link" className="flex-1" data-test="login-mode-magic-link">
 					{t("auth.login.modes.magicLink")}
 				</TabsTrigger>
 			</TabsList>

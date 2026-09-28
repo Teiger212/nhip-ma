@@ -6,7 +6,7 @@
 		"dev": "dotenv -c -- turbo dev --concurrency 15",
 		"type-check": "dotenv -c -- turbo type-check",
 		"start": "dotenv -c -- turbo start",
-		"lint": "oxlint .",
+		"lint": "oxlint --deny-warnings .",
 		"lint:fix": "oxlint --fix .",
 		"clean": "turbo clean",
 		"test": "dotenv -c -- turbo test",
@@ -15,6 +15,8 @@
 		"seed": "dotenv -c -- pnpm --filter saas seed"
 	},
 	"devDependencies": {
+		"@neon/config": "^1.8.2",
+		"@neon/env": "^1.4.7",
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"dotenv-cli": "catalog:",

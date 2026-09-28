@@ -4,6 +4,7 @@ import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LocaleLink } from "@i18n/routing";
 import { useLocaleRouter } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
@@ -20,7 +21,6 @@ import { passwordSchema } from "@repo/utils";
 import { PasswordInput } from "@shared/components/PasswordInput";
 import { AlertTriangleIcon, ArrowLeftIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -114,10 +114,10 @@ export function ResetPasswordForm() {
 			)}
 
 			<div className="mt-6 text-sm text-center">
-				<Link href="/login">
+				<LocaleLink href="/login">
 					<ArrowLeftIcon className="mr-1 size-4 inline align-middle" />
 					{t("auth.resetPassword.backToSignin")}
-				</Link>
+				</LocaleLink>
 			</div>
 		</>
 	);

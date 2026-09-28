@@ -34,6 +34,12 @@ export const VerificationScalarFieldEnumSchema = z.enum(['id', 'identifier', 'va
 
 export type VerificationScalarFieldEnum = z.infer<typeof VerificationScalarFieldEnumSchema>;
 
+// File: RateLimitScalarFieldEnum.schema.ts
+
+export const RateLimitScalarFieldEnumSchema = z.enum(['id', 'key', 'count', 'lastRequest'])
+
+export type RateLimitScalarFieldEnum = z.infer<typeof RateLimitScalarFieldEnumSchema>;
+
 // File: PasskeyScalarFieldEnum.schema.ts
 
 export const PasskeyScalarFieldEnumSchema = z.enum(['id', 'name', 'publicKey', 'userId', 'credentialID', 'counter', 'deviceType', 'backedUp', 'transports', 'aaguid', 'createdAt'])
@@ -284,6 +290,18 @@ export const VerificationSchema = z.object({
 });
 
 export type VerificationType = z.infer<typeof VerificationSchema>;
+
+
+// File: RateLimit.schema.ts
+
+export const RateLimitSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  count: z.number().int(),
+  lastRequest: z.bigint(),
+});
+
+export type RateLimitType = z.infer<typeof RateLimitSchema>;
 
 
 // File: Passkey.schema.ts

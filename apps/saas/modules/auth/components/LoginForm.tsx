@@ -4,7 +4,7 @@ import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { sessionQueryKey } from "@auth/lib/api";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocaleRouter } from "@i18n/routing";
+import { LocaleLink, useLocaleRouter } from "@i18n/routing";
 import { OrganizationInvitationAlert } from "@organizations/components/OrganizationInvitationAlert";
 import { authClient } from "@repo/auth/client";
 import { config as authConfig } from "@repo/auth/config";
@@ -143,7 +143,7 @@ export function LoginForm() {
 			<p className="mt-1 mb-6 text-center text-foreground/60">{t("auth.login.subtitle")}</p>
 
 			{form.formState.isSubmitSuccessful && signinMode === "magic-link" ? (
-				<Alert variant="success">
+				<Alert variant="success" data-test="login-link-sent">
 					<MailboxIcon />
 					<AlertTitle>{t("auth.login.hints.linkSent.title")}</AlertTitle>
 					<AlertDescription>{t("auth.login.hints.linkSent.message")}</AlertDescription>
@@ -162,7 +162,7 @@ export function LoginForm() {
 							)}
 
 							{form.formState.isSubmitted && form.formState.errors.root?.message && (
-								<Alert variant="error">
+								<Alert variant="error" data-test="login-error">
 									<AlertTriangleIcon />
 									<AlertTitle>{form.formState.errors.root.message}</AlertTitle>
 								</Alert>
@@ -175,7 +175,7 @@ export function LoginForm() {
 									<FormItem>
 										<FormLabel>{t("auth.signup.email")}</FormLabel>
 										<FormControl>
-											<Input {...field} autoComplete="email" />
+											<Input {...field} autoComplete="email" data-test="login-email" />
 										</FormControl>
 									</FormItem>
 								)}
@@ -188,33 +188,34 @@ export function LoginForm() {
 									render={({ field }) => (
 										<FormItem className="relative">
 											<FormLabel>{t("auth.signup.password")}</FormLabel>
-											<FormControl>
-												<div className="relative">
+											<div className="relative">
+												<FormControl>
 													<Input
 														type={showPassword ? "text" : "password"}
 														className="pr-10"
 														{...field}
 														autoComplete="current-password"
+														data-test="login-password"
 													/>
-													<button
-														type="button"
-														onClick={() => setShowPassword(!showPassword)}
-														className="inset-y-0 right-0 pr-4 text-xl absolute flex items-center text-primary"
-													>
-														{showPassword ? (
-															<EyeOffIcon className="size-4" />
-														) : (
-															<EyeIcon className="size-4" />
-														)}
-													</button>
-												</div>
-											</FormControl>
-											<Link
+												</FormControl>
+												<button
+													type="button"
+													onClick={() => setShowPassword(!showPassword)}
+													className="inset-y-0 right-0 pr-4 text-xl absolute flex items-center text-primary"
+												>
+													{showPassword ? (
+														<EyeOffIcon className="size-4" />
+													) : (
+														<EyeIcon className="size-4" />
+													)}
+												</button>
+											</div>
+											<LocaleLink
 												href="/forgot-password"
 												className="top-0 right-0 text-xs absolute text-foreground/60"
 											>
 												{t("auth.login.forgotPassword")}
-											</Link>
+											</LocaleLink>
 										</FormItem>
 									)}
 								/>
@@ -224,6 +225,7 @@ export function LoginForm() {
 								className="w-full"
 								type="submit"
 								variant="primary"
+								data-test="login-submit"
 								loading={form.formState.isSubmitting}
 							>
 								{signinMode === "magic-link"

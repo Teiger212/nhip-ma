@@ -14,7 +14,10 @@
 		"push": "dotenv -c -e ../../.env -- prisma db push",
 		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"migrate:deploy": "dotenv -c -e ../../.env -- prisma migrate deploy",
+		"migrate:check": "dotenv -c -e ../../.env -- ./scripts/migrations.sh check",
+		"migrate:new": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new"
 	},
 	"dependencies": {
 		"@paralleldrive/cuid2": "^3.3.0",

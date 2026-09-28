@@ -1,4 +1,3 @@
-import { config } from "@config";
 import { cn, ColorModeToggle, Logo } from "@repo/ui";
 import { getTranslations } from "next-intl/server";
 import type { PropsWithChildren } from "react";
@@ -17,7 +16,7 @@ export async function AuthWrapper({
 			<div className="gap-8 flex w-full flex-col items-center justify-between">
 				<div className="container">
 					<div className="flex items-center justify-between">
-						<a href={config.marketingUrl ?? "/"} className="block">
+						<a href="/" className="block" aria-label="Nhịp">
 							<Logo withLabel={false} />
 						</a>
 

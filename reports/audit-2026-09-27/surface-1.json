@@ -1,0 +1,86 @@
+{
+	"surface": "tenancy and authentication",
+	"summary": "Six confirmed findings: account takeover during invitation onboarding, unauthenticated subscription cancellation, unrestricted office creation, public registration bypasses, concurrent acceptance of two offices, and unauthorized logo replacement. Reviewed commit 7baa32d and installed Better Auth 1.6.29 sources. Source tracing only; no files changed, servers started, database mutations, or external calls.",
+	"findings": [
+		{
+			"id": "T1",
+			"severity": "critical",
+			"confidence": "confirmed",
+			"title": "Attackers can plant credentials on an invitee’s account before email ownership is proven",
+			"location": "packages/auth/plugins/invitation-only/index.ts:22; packages/auth/auth.ts:252; packages/auth/node_modules/@better-auth/passkey/dist/index.mjs:305; packages/auth/node_modules/better-auth/dist/db/revoke-unproven-account-access.mjs:19",
+			"attack": "Before an invitee registers, POST /api/auth/sign-up/email with their invited email and an attacker-chosen password. No invitation ID or mailbox access is required. Use the returned session to register an attacker-controlled passkey through /passkey/generate-register-options and /passkey/verify-registration. When the invitee signs in using a magic link and accepts their invitation, authenticate with the planted passkey. The resulting session accesses the invitee’s office.",
+			"why_it_works": "The signup hook checks only getPendingInvitationByEmail(email); that query checks status='pending' without token possession or expiry. Configuration sets autoSignIn: !config.enableSignup and requireEmailVerification: config.enableSignup, issuing an unverified session. Passkey registration requires a fresh session but never emailVerified. Magic-link verification promotes the same user after revokeUnprovenAccountAccess, which deletes only accounts whose providerId === 'credential' and existing sessions; it leaves Passkey rows intact. Passkey authentication then calls createSession(passkey.userId). The separate /verify-email path also promotes the account without clearing the attacker’s original password or sessions.",
+			"impact": "Persistent account takeover and access to the invited office’s threads, Answers, Home data, and sending privileges. The attack requires the invitee subsequently to verify their mailbox; the attacker never needs to read that mailbox.",
+			"fix": "Require valid, unexpired invitation redemption and mailbox ownership before issuing an authenticated session or enrolling credentials. Reject passkey enrollment for unverified users, and remove all pre-verification authentication material when recovering an existing unverified account."
+		},
+		{
+			"id": "T2",
+			"severity": "critical",
+			"confidence": "confirmed",
+			"title": "Organization deletion cancels subscriptions before authenticating or authorizing the caller",
+			"location": "packages/auth/auth.ts:206; packages/auth/node_modules/better-auth/dist/api/dispatch.mjs:207; packages/auth/node_modules/better-auth/dist/plugins/organization/routes/crud-org.mjs:260; packages/payments/provider/stripe/index.ts:119",
+			"attack": "For an office with a recorded Stripe subscription, send an unauthenticated POST /api/auth/organization/delete containing {\"organizationId\":\"victim-office-id\"}. Use a valid JSON request with the application Origin. The subscription is cancelled even though the organization endpoint subsequently rejects the request.",
+			"why_it_works": "The global before-hook executes await cancelSubscriptions(await getPurchasesByOrganizationId(organizationId)) without a session or permission check. Better Auth dispatch runs before-hooks before the endpoint, where session, membership, and organization.delete checks occur. The configured payment provider executes stripeClient.subscriptions.cancel(id), an immediate external side effect that the later authorization failure cannot undo.",
+			"impact": "An unauthenticated attacker knowing an office ID can cancel that office’s paid subscriptions. Exploitation requires configured Stripe credentials and an existing subscription purchase.",
+			"fix": "Move cancellation into organizationHooks.beforeDeleteOrganization, which Better Auth invokes after membership and delete-permission checks. Compose it with the existing offboarding hook."
+		},
+		{
+			"id": "T3",
+			"severity": "high",
+			"confidence": "confirmed",
+			"title": "Any authenticated user can create offices and evade offboarding",
+			"location": "packages/auth/auth.ts:307; packages/auth/config.ts:24; packages/auth/node_modules/better-auth/dist/plugins/organization/routes/crud-org.mjs:56; packages/database/prisma/queries/operators.ts:29",
+			"attack": "As an ordinary agent, POST /api/auth/organization/create with a name and unused slug. The response creates a second office and gives the agent its owner membership. When the original office removes the agent, or is deleted, the agent’s account survives because it still belongs to the attacker-created office. An officeless account obtained through T4 can similarly create its first office.",
+			"why_it_works": "enableUsersToCreateOrganizations: false is an application configuration flag that is never passed to Better Auth. The organization plugin defaults allowUserToCreateOrganization to true and creatorRole to 'owner'. The one-office hook matches only /organization/accept-invitation. Offboarding selects users with members: { none: {} }, so the extra membership prevents deletion.",
+			"impact": "Bypasses platform-admin-only provisioning, grants unauthorized office-owner capabilities, and defeats ADR 0013 account deletion. Membership-based inbox checks still prevent access to the original office after removal.",
+			"fix": "Configure allowUserToCreateOrganization to permit only platform admins. Enforce the operator membership invariant across all membership-creation paths, rather than only invitation acceptance."
+		},
+		{
+			"id": "T4",
+			"severity": "high",
+			"confidence": "confirmed",
+			"title": "Magic links and configured OAuth providers bypass invitation-only registration",
+			"location": "packages/auth/auth.ts:284; packages/auth/auth.ts:292; packages/auth/plugins/invitation-only/index.ts:13; packages/auth/node_modules/better-auth/dist/plugins/magic-link/index.mjs:159; packages/auth/node_modules/better-auth/dist/oauth2/link-account.mjs:79",
+			"attack": "Without any invitation, POST /api/auth/sign-in/magic-link using an attacker-controlled mailbox, then follow the delivered link. This creates a verified user and session. When Google or GitHub credentials are configured, signing in with a new provider identity also creates an account without an invitation.",
+			"why_it_works": "The invitation plugin matches only paths starting with '/sign-up/email'. Magic links explicitly set disableSignUp: false; verification calls createUser when no user exists. Social-provider configuration supplies neither disableSignUp nor an invitation-aware creation guard, so the OAuth handler reaches createOAuthUser.",
+			"impact": "Public users can obtain authenticated accounts despite closed signup, access session-only APIs, and combine this with T3 to provision offices. Removed operators can also recreate accounts without being rehired.",
+			"fix": "Apply invitation authorization consistently at account creation across password, magic-link, and OAuth flows. Disable implicit public creation until each supported flow carries validated invitation redemption."
+		},
+		{
+			"id": "T5",
+			"severity": "high",
+			"confidence": "confirmed",
+			"title": "Concurrent invitation acceptance bypasses the one-office check",
+			"location": "packages/auth/auth.ts:195; packages/auth/node_modules/better-auth/dist/plugins/organization/routes/crud-invites.mjs:285; packages/auth/node_modules/better-auth/dist/plugins/organization/adapter.mjs:185; packages/database/prisma/schema.prisma:167",
+			"attack": "Use a verified account with no membership and two pending invitations to different offices. Send both /api/auth/organization/accept-invitation requests concurrently so both before-hooks read zero memberships before either inserts one. Both invitations can be accepted and both memberships persisted.",
+			"why_it_works": "The application performs getOrganizationMembershipsForUser followed by if (memberships.length > 0) outside the membership write. Better Auth atomically claims each individual invitation, but the invitations are different rows. createMember performs an ordinary insert, and the only membership uniqueness constraint is @@unique([organizationId, userId]), which permits the same user in two offices.",
+			"impact": "Defeats ADR 0010 independently of unrestricted office creation. Inbox and Home fail closed with ambiguous_office, but organization APIs recognize both memberships, and removal from one office leaves the account alive through the other.",
+			"fix": "Serialize membership creation per user and perform the membership check and insert in one transaction. Apply the same guard to every creation path, with an explicit policy for platform admins."
+		},
+		{
+			"id": "T6",
+			"severity": "medium",
+			"confidence": "confirmed",
+			"title": "Ordinary members can overwrite an office’s existing logo",
+			"location": "packages/api/modules/organizations/procedures/create-logo-upload-url.ts:35; packages/api/modules/organizations/lib/membership.ts:16; packages/storage/provider/s3/index.ts:52",
+			"attack": "As a member of an office with an uploaded logo, POST /api/organizations/logo-upload-url with that office’s ID. PUT a replacement image to the returned signed URL. No successful organization.update request is necessary.",
+			"why_it_works": "The procedure authorizes through verifyOrganizationMembership, which checks only 'organization.read'. It then signs a PutObjectCommand for the fixed key `${organizationId}.png`. Replacing that object changes the already-referenced logo, bypassing Better Auth’s owner/admin requirement for organization updates.",
+			"impact": "Any ordinary member can deface the office’s existing branding when storage is configured, despite lacking organization-management permission.",
+			"fix": "Require organization.manage for the target membership before issuing the upload URL."
+		}
+	],
+	"checked_ok": [
+		"Inbox list, detail, draft, and approval routes require a session and resolve exactly one current membership; forged lastActiveOrganizationId values do not grant office access.",
+		"Conversation reads enforce viewer.officeId before returning threads and Answers; approval binds the inbound ID to the authorized conversation.",
+		"Home resolves membership independently and filters its aggregate query by officeId.",
+		"Conversation identity and uniqueness include office, pipe, and guest, preserving separation when the same guest contacts two offices.",
+		"Organization ID and slug reads, member lists, invitation lists, updates, removals, and role changes enforce target-office membership and applicable permissions in Better Auth.",
+		"Invitation acceptance rejects expired, non-pending, and wrong-recipient invitations. With generateId:false, the installed plugin also requires verified email; this blocks immediate acceptance by an unverified signup alone.",
+		"Sequential second-office invitation acceptance is rejected; replaying the same accepted invitation does not create another membership.",
+		"oRPC admin procedures and the admin layout check the authenticated user’s platform role. Better Auth admin endpoints separately enforce permissions, including user creation, deletion, role changes, and impersonation.",
+		"Signup and update-user cannot set platform role, ban fields, or impersonatedBy through ordinary client input.",
+		"Successful single-office removal, leave, and office deletion target the affected account; offboarding excludes platform-admin roles. Self-delete targets the session user, and deletion callbacks bind the token to that user.",
+		"Session cookie caching is not enabled; session cookies are HttpOnly and SameSite=Lax, with Secure under HTTPS. Production startup rejects non-HTTPS application URLs and extra trusted origins.",
+		"Better Auth validates origins on cookie-authenticated mutations and validates auth callback URLs. Client redirectTo values pass through getSafeRedirectPath; oRPC’s default strict-GET plugin rejects GET requests to mutation procedures."
+	]
+}

@@ -1,118 +1,118 @@
 {
 	"admin": {
 		"menu": {
-			"organizations": "Organizations",
-			"users": "Users"
+			"organizations": "Văn phòng",
+			"users": "Người dùng"
 		},
 		"organizations": {
-			"backToList": "Back to organizations",
+			"backToList": "Quay lại danh sách văn phòng",
 			"confirmDelete": {
-				"confirm": "Delete",
-				"message": "Are you sure you want to delete this organization? This action cannot be undone.",
-				"title": "Delete organization"
+				"confirm": "Xóa",
+				"message": "Bạn có chắc muốn xóa văn phòng này? Không thể hoàn tác thao tác này.",
+				"title": "Xóa văn phòng"
 			},
-			"create": "Create",
-			"delete": "Delete",
+			"create": "Tạo",
+			"delete": "Xóa",
 			"deleteOrganization": {
-				"deleted": "Organization has been deleted successfully!",
-				"deleting": "Deleting organization...",
-				"notDeleted": "Organization could not be deleted. Please try again."
+				"deleted": "Đã xóa văn phòng.",
+				"deleting": "Đang xóa văn phòng...",
+				"notDeleted": "Không xóa được văn phòng. Vui lòng thử lại."
 			},
-			"edit": "Edit",
+			"edit": "Sửa",
 			"form": {
-				"createTitle": "Create an organization",
-				"name": "Organization name",
+				"createTitle": "Tạo văn phòng",
+				"name": "Tên văn phòng",
 				"notifications": {
-					"error": "Could not save the organization. Please try again later.",
-					"success": "Organization has been saved."
+					"error": "Không lưu được văn phòng. Vui lòng thử lại sau.",
+					"success": "Đã lưu văn phòng."
 				},
-				"save": "Save",
-				"updateTitle": "Edit organization"
+				"save": "Lưu",
+				"updateTitle": "Sửa văn phòng"
 			},
-			"loading": "Loading organizations...",
-			"membersCount": "{count} {count, plural, one {member} other {members}}",
-			"search": "Search for an organization...",
-			"title": "Manage organizations"
+			"loading": "Đang tải danh sách văn phòng...",
+			"membersCount": "{count} {count, plural, one {thành viên} other {thành viên}}",
+			"search": "Tìm văn phòng...",
+			"title": "Quản lý văn phòng"
 		},
-		"title": "Administration",
+		"title": "Quản trị",
 		"users": {
 			"ban": {
 				"actions": {
-					"ban": "Ban user",
-					"banning": "Banning user...",
-					"confirmBan": "Ban user",
-					"unban": "Unban user"
+					"ban": "Khóa người dùng",
+					"banning": "Đang khóa người dùng...",
+					"confirmBan": "Khóa người dùng",
+					"unban": "Mở khóa người dùng"
 				},
 				"dialog": {
-					"description": "Prevent {name} from signing in and revoke all active sessions.",
-					"title": "Ban user"
+					"description": "Chặn {name} đăng nhập và thu hồi mọi phiên đang hoạt động.",
+					"title": "Khóa người dùng"
 				},
 				"fields": {
-					"expiration": "Expiration date (optional)",
-					"reason": "Reason"
+					"expiration": "Ngày hết hạn (không bắt buộc)",
+					"reason": "Lý do"
 				},
 				"notifications": {
-					"banError": "User could not be banned. Please try again.",
-					"banSuccess": "User has been banned.",
-					"unbanError": "User could not be unbanned. Please try again.",
-					"unbanSuccess": "User has been unbanned.",
-					"unbanning": "Unbanning user..."
+					"banError": "Không khóa được người dùng. Vui lòng thử lại.",
+					"banSuccess": "Đã khóa người dùng.",
+					"unbanError": "Không mở khóa được người dùng. Vui lòng thử lại.",
+					"unbanSuccess": "Đã mở khóa người dùng.",
+					"unbanning": "Đang mở khóa người dùng..."
 				},
 				"status": {
-					"banned": "Banned",
-					"expires": "Expires: {date}",
-					"permanent": "Permanent ban",
-					"reason": "Reason: {reason}"
+					"banned": "Đã khóa",
+					"expires": "Hết hạn: {date}",
+					"permanent": "Khóa vĩnh viễn",
+					"reason": "Lý do: {reason}"
 				},
 				"validation": {
-					"expirationFuture": "Choose today or a future date.",
-					"reasonRequired": "Enter a reason for the ban."
+					"expirationFuture": "Chọn hôm nay hoặc một ngày trong tương lai.",
+					"reasonRequired": "Nhập lý do khóa."
 				}
 			},
 			"confirmDelete": {
-				"confirm": "Delete",
-				"message": "Are you sure you want to delete this user? This action cannot be undone.",
-				"title": "Delete user"
+				"confirm": "Xóa",
+				"message": "Bạn có chắc muốn xóa người dùng này? Không thể hoàn tác thao tác này.",
+				"title": "Xóa người dùng"
 			},
-			"delete": "Delete",
+			"delete": "Xóa",
 			"deleteUser": {
-				"deleted": "User has been deleted successfully!",
-				"deleting": "Deleting user...",
-				"notDeleted": "User could not be deleted. Please try again."
+				"deleted": "Đã xóa người dùng.",
+				"deleting": "Đang xóa người dùng...",
+				"notDeleted": "Không xóa được người dùng. Vui lòng thử lại."
 			},
 			"emailVerified": {
-				"verified": "Email verified",
-				"waiting": "Email waiting for verification"
+				"verified": "Email đã xác minh",
+				"waiting": "Email đang chờ xác minh"
 			},
-			"impersonate": "Impersonate",
+			"impersonate": "Đăng nhập thay",
 			"impersonation": {
-				"impersonating": "Impersonating as {name}..."
+				"impersonating": "Đang đăng nhập với tư cách {name}..."
 			},
-			"loading": "Loading users...",
+			"loading": "Đang tải danh sách người dùng...",
 			"resendVerificationMail": {
-				"error": "Could not resend verification mail. Please try again.",
-				"submitting": "Resending verification mail...",
-				"success": "Verification mail has been sent.",
-				"title": "Resend verification mail"
+				"error": "Không gửi lại được email xác minh. Vui lòng thử lại.",
+				"submitting": "Đang gửi lại email xác minh...",
+				"success": "Đã gửi email xác minh.",
+				"title": "Gửi lại email xác minh"
 			},
-			"search": "Search for name or email...",
-			"title": "Manage users",
-			"assignAdminRole": "Assign admin role",
-			"removeAdminRole": "Remove admin role"
+			"search": "Tìm theo tên hoặc email...",
+			"title": "Quản lý người dùng",
+			"assignAdminRole": "Cấp quyền quản trị",
+			"removeAdminRole": "Gỡ quyền quản trị"
 		},
-		"description": "Manage your application."
+		"description": "Quản lý ứng dụng của bạn."
 	},
 	"app": {
 		"menu": {
 			"accountSettings": "Cài đặt tài khoản",
-			"admin": "Admin",
-			"aiChatbot": "AI Chatbot",
-			"collapseSidebar": "Collapse sidebar",
-			"expandSidebar": "Expand sidebar",
+			"admin": "Quản trị",
+			"aiChatbot": "Chatbot AI",
+			"collapseSidebar": "Thu gọn thanh bên",
+			"expandSidebar": "Mở rộng thanh bên",
 			"navigationTitle": "Menu",
-			"openNavigation": "Open navigation",
-			"organizationSettings": "Organization settings",
-			"start": "Start",
+			"openNavigation": "Mở menu điều hướng",
+			"organizationSettings": "Cài đặt văn phòng",
+			"start": "Bắt đầu",
 			"home": "Trang chủ",
 			"inbox": "Hộp thư",
 			"international": "Quốc tế",
@@ -128,572 +128,572 @@
 			"logout": "Đăng xuất"
 		},
 		"notifications": {
-			"title": "Notifications",
-			"empty": "No notifications yet.",
-			"markAllRead": "Mark all as read",
-			"fallbackTitle": "Notification",
+			"title": "Thông báo",
+			"empty": "Chưa có thông báo nào.",
+			"markAllRead": "Đánh dấu tất cả là đã đọc",
+			"fallbackTitle": "Thông báo",
 			"aria": {
-				"open": "Open notifications"
+				"open": "Mở thông báo"
 			}
 		}
 	},
 	"auth": {
 		"errors": {
-			"invalidEmailOrPassword": "The credentials you entered are invalid. Please check them and try again.",
-			"unknown": "Something went wrong. Please try again.",
-			"userNotFound": "This user does not exists",
-			"failedToCreateUser": "Could not create user. Please try again.",
-			"failedToCreateSession": "Could not create a session. Please try again.",
-			"failedToUpdateUser": "Could not update user. Please try again.",
-			"failedToGetSession": "Could not get the session.",
-			"invalidPassword": "The entered password is incorrect.",
-			"invalidEmail": "The entered email is invalid.",
-			"invalidToken": "The token you entered is invalid or has expired.",
-			"credentialAccountNotFound": "Account not found.",
-			"emailCanNotBeUpdated": "Email could not be updated. Please try again.",
-			"emailNotVerified": "Please verify your email first before logging in.",
-			"failedToGetUserInfo": "Could not load user information.",
-			"idTokenNotSupported": "ID token is not supported.",
-			"passwordTooLong": "Password is too long.",
-			"passwordTooShort": "Password is too short.",
-			"providerNotFound": "This provider is not suppported.",
-			"socialAccountAlreadyLinked": "This account is already linked to a user.",
-			"userEmailNotFound": "Email not found.",
-			"userAlreadyExists": "This user already exists.",
-			"userAlreadyExistsUseAnotherEmail": "User already exists. Use another email.",
-			"invalidInvitation": "The invitation is invalid or expired.",
-			"sessionExpired": "The session has expired.",
-			"failedToUnlinkLastAccount": "Failed to unlink account",
-			"accountNotFound": "Account not found"
+			"invalidEmailOrPassword": "Thông tin đăng nhập không hợp lệ. Vui lòng kiểm tra và thử lại.",
+			"unknown": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+			"userNotFound": "Người dùng này không tồn tại.",
+			"failedToCreateUser": "Không tạo được người dùng. Vui lòng thử lại.",
+			"failedToCreateSession": "Không tạo được phiên đăng nhập. Vui lòng thử lại.",
+			"failedToUpdateUser": "Không cập nhật được người dùng. Vui lòng thử lại.",
+			"failedToGetSession": "Không lấy được phiên đăng nhập.",
+			"invalidPassword": "Mật khẩu không đúng.",
+			"invalidEmail": "Email không hợp lệ.",
+			"invalidToken": "Mã không hợp lệ hoặc đã hết hạn.",
+			"credentialAccountNotFound": "Không tìm thấy tài khoản.",
+			"emailCanNotBeUpdated": "Không cập nhật được email. Vui lòng thử lại.",
+			"emailNotVerified": "Vui lòng xác minh email trước khi đăng nhập.",
+			"failedToGetUserInfo": "Không tải được thông tin người dùng.",
+			"idTokenNotSupported": "Không hỗ trợ ID token.",
+			"passwordTooLong": "Mật khẩu quá dài.",
+			"passwordTooShort": "Mật khẩu quá ngắn.",
+			"providerNotFound": "Nhà cung cấp này không được hỗ trợ.",
+			"socialAccountAlreadyLinked": "Tài khoản này đã được liên kết với một người dùng khác.",
+			"userEmailNotFound": "Không tìm thấy email.",
+			"userAlreadyExists": "Người dùng này đã tồn tại.",
+			"userAlreadyExistsUseAnotherEmail": "Người dùng đã tồn tại. Hãy dùng email khác.",
+			"invalidInvitation": "Lời mời không hợp lệ hoặc đã hết hạn.",
+			"sessionExpired": "Phiên đăng nhập đã hết hạn.",
+			"failedToUnlinkLastAccount": "Không hủy liên kết được tài khoản",
+			"accountNotFound": "Không tìm thấy tài khoản"
 		},
 		"forgotPassword": {
-			"backToSignin": "Back to signin",
+			"backToSignin": "Quay lại đăng nhập",
 			"email": "Email",
 			"hints": {
 				"linkNotSent": {
-					"message": "We are sorry, but we were unable to send you a link to reset your password. Please try again later.",
-					"title": "Link not sent"
+					"message": "Rất tiếc, chúng tôi không gửi được liên kết đặt lại mật khẩu. Vui lòng thử lại sau.",
+					"title": "Chưa gửi được liên kết"
 				},
 				"linkSent": {
-					"message": "We have sent you a link to continue. Please check your inbox.",
-					"title": "Link sent"
+					"message": "Chúng tôi đã gửi cho bạn một liên kết để tiếp tục. Vui lòng kiểm tra hộp thư.",
+					"title": "Đã gửi liên kết"
 				}
 			},
-			"message": "Please enter your email address and we will send you a link to reset your password.",
-			"submit": "Send link",
-			"title": "Forgot your password?"
+			"message": "Nhập địa chỉ email của bạn, chúng tôi sẽ gửi liên kết để đặt lại mật khẩu.",
+			"submit": "Gửi liên kết",
+			"title": "Quên mật khẩu?"
 		},
 		"login": {
-			"continueWith": "Or continue with",
-			"createAnAccount": "Create an account",
-			"dontHaveAnAccount": "Don't have an account yet?",
-			"forgotPassword": "Forgot password?",
+			"continueWith": "Hoặc tiếp tục với",
+			"createAnAccount": "Tạo tài khoản",
+			"dontHaveAnAccount": "Chưa có tài khoản?",
+			"forgotPassword": "Quên mật khẩu?",
 			"hints": {
-				"invalidCredentials": "The email or password you entered are invalid. Please try again.",
-				"socialSigninFailed": "Could not sign in. Please try again.",
+				"invalidCredentials": "Email hoặc mật khẩu không hợp lệ. Vui lòng thử lại.",
+				"socialSigninFailed": "Không đăng nhập được. Vui lòng thử lại.",
 				"linkSent": {
-					"message": "We have sent you a link to continue. Please check your inbox.",
-					"title": "Link sent"
+					"message": "Chúng tôi đã gửi cho bạn một liên kết để tiếp tục. Vui lòng kiểm tra hộp thư.",
+					"title": "Đã gửi liên kết"
 				}
 			},
-			"loginWithPasskey": "Login with passkey",
+			"loginWithPasskey": "Đăng nhập bằng khóa truy cập (passkey)",
 			"modes": {
-				"magicLink": "Magic link",
-				"password": "Password"
+				"magicLink": "Liên kết đăng nhập",
+				"password": "Mật khẩu"
 			},
-			"submit": "Sign in",
-			"subtitle": "Please enter your credentials to sign in.",
-			"title": "Welcome back",
-			"sendMagicLink": "Send magic link"
+			"submit": "Đăng nhập",
+			"subtitle": "Nhập thông tin của bạn để đăng nhập.",
+			"title": "Chào mừng bạn trở lại",
+			"sendMagicLink": "Gửi liên kết đăng nhập"
 		},
 		"resetPassword": {
-			"backToSignin": "Back to signin",
+			"backToSignin": "Quay lại đăng nhập",
 			"hints": {
-				"error": "We are sorry, but we were unable to reset your password. Please try again.",
-				"success": "Your password has been reset successfully."
+				"error": "Rất tiếc, chúng tôi không đặt lại được mật khẩu của bạn. Vui lòng thử lại.",
+				"success": "Đã đặt lại mật khẩu thành công."
 			},
-			"message": "Please enter a new password.",
-			"newPassword": "New password",
-			"submit": "Reset password",
-			"title": "Reset your password"
+			"message": "Nhập mật khẩu mới.",
+			"newPassword": "Mật khẩu mới",
+			"submit": "Đặt lại mật khẩu",
+			"title": "Đặt lại mật khẩu"
 		},
 		"signup": {
-			"alreadyHaveAccount": "Already have an account?",
+			"alreadyHaveAccount": "Đã có tài khoản?",
 			"email": "Email",
 			"hints": {
-				"signupFailed": "We are sorry, but we were unable to create your account. Please try again later.",
-				"verifyEmail": "We have sent you a link to verify your email. Please check your inbox."
+				"signupFailed": "Rất tiếc, chúng tôi không tạo được tài khoản của bạn. Vui lòng thử lại sau.",
+				"verifyEmail": "Chúng tôi đã gửi liên kết xác minh email. Vui lòng kiểm tra hộp thư."
 			},
-			"message": "We are happy that you want to join us. Please fill in the form below to create your account.",
-			"name": "Name",
-			"password": "Password",
-			"signIn": "Sign in",
-			"submit": "Create account",
-			"title": "Create an account"
+			"message": "Rất vui khi bạn tham gia. Điền thông tin bên dưới để tạo tài khoản.",
+			"name": "Tên",
+			"password": "Mật khẩu",
+			"signIn": "Đăng nhập",
+			"submit": "Tạo tài khoản",
+			"title": "Tạo tài khoản"
 		},
 		"verify": {
-			"title": "Verify your account",
-			"code": "One-time password",
-			"submit": "Verify",
-			"backToSignin": "Back to login",
-			"message": "Enter the one-time password from your authenticator app to continue."
+			"title": "Xác minh tài khoản",
+			"code": "Mã dùng một lần",
+			"submit": "Xác minh",
+			"backToSignin": "Quay lại đăng nhập",
+			"message": "Nhập mã dùng một lần từ ứng dụng xác thực để tiếp tục."
 		}
 	},
 	"choosePlan": {
-		"title": "Choose your plan",
-		"description": "To continue, please select a plan."
+		"title": "Chọn gói của bạn",
+		"description": "Chọn một gói để tiếp tục."
 	},
 	"documentation": {
-		"title": "Documentation"
+		"title": "Tài liệu"
 	},
 	"notFound": {
 		"code": "404",
-		"title": "Page not found",
-		"goToDashboard": "Go to dashboard",
-		"goToHomepage": "Go to homepage"
+		"title": "Không tìm thấy trang",
+		"goToDashboard": "Về bảng điều khiển",
+		"goToHomepage": "Về trang chủ"
 	},
 	"onboarding": {
 		"account": {
-			"avatar": "Avatar",
-			"avatarDescription": "Click the circle or drop an image to it to upload your avatar.",
-			"name": "Name"
+			"avatar": "Ảnh đại diện",
+			"avatarDescription": "Nhấn vào hình tròn hoặc kéo ảnh vào đó để tải ảnh đại diện lên.",
+			"name": "Tên"
 		},
-		"continue": "Continue",
-		"message": "Just a few quick steps to get you started.",
+		"continue": "Tiếp tục",
+		"message": "Chỉ vài bước nhanh để bắt đầu.",
 		"notifications": {
-			"accountSetupFailed": "We are sorry, but we were unable to set up your account. Please try again later."
+			"accountSetupFailed": "Rất tiếc, chúng tôi không thiết lập được tài khoản của bạn. Vui lòng thử lại sau."
 		},
 		"pricing": {
-			"planSelected": "Your plan has been selected successfully.",
-			"skip": "Skip for now"
+			"planSelected": "Đã chọn gói thành công.",
+			"skip": "Để sau"
 		},
-		"step": "Step {step} / {total}",
-		"title": "Set up your account"
+		"step": "Bước {step} / {total}",
+		"title": "Thiết lập tài khoản"
 	},
 	"organizations": {
 		"createForm": {
-			"name": "Organization name",
+			"name": "Tên văn phòng",
 			"notifications": {
-				"error": "We are sorry, but we were unable to create your organization. Please try again later.",
-				"success": "Your organization has been created. You can now invite members."
+				"error": "Rất tiếc, chúng tôi không thể tạo văn phòng của bạn. Vui lòng thử lại sau.",
+				"success": "Đã tạo văn phòng của bạn. Giờ bạn có thể mời thành viên."
 			},
-			"submit": "Create organization",
-			"subtitle": "Enter a name for your organization to get started. You can change the name later in the organization settings.",
-			"title": "Create an organization"
+			"submit": "Tạo văn phòng",
+			"subtitle": "Nhập tên văn phòng để bắt đầu. Bạn có thể đổi tên sau trong phần cài đặt văn phòng.",
+			"title": "Tạo văn phòng"
 		},
 		"invitationAlert": {
-			"description": "You need to sign in or create an account to join the organization.",
-			"title": "You have been invited to join an organization."
+			"description": "Bạn cần đăng nhập hoặc tạo tài khoản để tham gia văn phòng.",
+			"title": "Bạn được mời tham gia một văn phòng."
 		},
 		"invitationModal": {
-			"accept": "Accept",
-			"decline": "Decline",
-			"description": "You have been invited to join the organization {organizationName}. Do you want to accept the invitation and join the organization?",
-			"title": "Join the organization"
+			"accept": "Chấp nhận",
+			"decline": "Từ chối",
+			"description": "Bạn được mời tham gia văn phòng {organizationName}. Bạn có muốn chấp nhận lời mời và tham gia văn phòng không?",
+			"title": "Tham gia văn phòng"
 		},
 		"organizationSelect": {
-			"createNewOrganization": "Create new organization",
-			"organizations": "Organizations",
-			"personalAccount": "Personal account"
+			"createNewOrganization": "Tạo văn phòng mới",
+			"organizations": "Văn phòng",
+			"personalAccount": "Tài khoản cá nhân"
 		},
 		"organizationsGrid": {
-			"createNewOrganization": "Create new organization",
-			"title": "Your organizations"
+			"createNewOrganization": "Tạo văn phòng mới",
+			"title": "Văn phòng của bạn"
 		},
 		"roles": {
-			"admin": "Admin",
-			"member": "Member",
-			"owner": "Owner",
+			"admin": "Quản trị viên",
+			"member": "Thành viên",
+			"owner": "Chủ sở hữu",
 			"info": {
-				"description": "Roles are listed from least to most access:",
-				"title": "Role permissions"
+				"description": "Các vai trò được liệt kê từ ít quyền nhất đến nhiều quyền nhất:",
+				"title": "Quyền theo vai trò"
 			}
 		},
 		"settings": {
 			"changeName": {
 				"notifications": {
-					"error": "Could not update organization name",
-					"success": "Organization name was updated successfully"
+					"error": "Không cập nhật được tên văn phòng",
+					"success": "Đã cập nhật tên văn phòng"
 				},
-				"title": "Organization name"
+				"title": "Tên văn phòng"
 			},
 			"deleteOrganization": {
-				"confirmation": "Are you sure you want to delete your organization?",
-				"description": "Permanently delete your organization. Once you delete your organization, there is no going back. To confirm, please enter your password below:",
-				"submit": "Delete organization",
-				"title": "Delete organization"
+				"confirmation": "Bạn có chắc muốn xóa văn phòng của mình không?",
+				"description": "Xóa vĩnh viễn văn phòng của bạn. Sau khi xóa sẽ không thể khôi phục. Để xác nhận, vui lòng nhập mật khẩu bên dưới:",
+				"submit": "Xóa văn phòng",
+				"title": "Xóa văn phòng"
 			},
 			"logo": {
-				"description": "Upload a logo for your organization.",
-				"title": "Organization logo"
+				"description": "Tải lên logo cho văn phòng của bạn.",
+				"title": "Logo văn phòng"
 			},
 			"members": {
-				"activeMembers": "Active members",
-				"description": "See all active members and the pending invites of your organization.",
+				"activeMembers": "Thành viên đang hoạt động",
+				"description": "Xem tất cả thành viên đang hoạt động và các lời mời đang chờ của văn phòng.",
 				"invitations": {
-					"empty": "You have not invited any members yet.",
-					"expiresAt": "Expires at {date}",
+					"empty": "Bạn chưa mời thành viên nào.",
+					"expiresAt": "Hết hạn vào {date}",
 					"invitationStatus": {
-						"accepted": "Accepted",
-						"canceled": "Canceled",
-						"pending": "Pending",
-						"rejected": "Rejected"
+						"accepted": "Đã chấp nhận",
+						"canceled": "Đã hủy",
+						"pending": "Đang chờ",
+						"rejected": "Đã từ chối"
 					},
-					"revoke": "Revoke invitation",
-					"resend": "Resend invitation"
+					"revoke": "Thu hồi lời mời",
+					"resend": "Gửi lại lời mời"
 				},
 				"inviteMember": {
-					"description": "To invite a new member, send them an invitation.",
+					"description": "Để mời thành viên mới, hãy gửi lời mời cho họ.",
 					"email": "Email",
 					"notifications": {
 						"error": {
-							"description": "We were unable to invite the member. Please try again later.",
-							"title": "Could not invite member"
+							"description": "Chúng tôi không thể mời thành viên này. Vui lòng thử lại sau.",
+							"title": "Không mời được thành viên"
 						},
 						"success": {
-							"description": "The member has been invited.",
-							"title": "Member invited"
+							"description": "Đã gửi lời mời cho thành viên.",
+							"title": "Đã mời thành viên"
 						}
 					},
-					"role": "Role",
-					"submit": "Invite",
-					"title": "Invite member"
+					"role": "Vai trò",
+					"submit": "Mời",
+					"title": "Mời thành viên"
 				},
-				"leaveOrganization": "Leave organization",
+				"leaveOrganization": "Rời văn phòng",
 				"notifications": {
 					"removeMember": {
 						"error": {
-							"description": "Could not remove the member from your organization. Please try again."
+							"description": "Không xóa được thành viên khỏi văn phòng. Vui lòng thử lại."
 						},
 						"loading": {
-							"description": "Removing member from organization..."
+							"description": "Đang xóa thành viên khỏi văn phòng..."
 						},
 						"success": {
-							"description": "The member has been successfully removed from your organization."
+							"description": "Đã xóa thành viên khỏi văn phòng của bạn."
 						}
 					},
 					"revokeInvitation": {
 						"error": {
-							"description": "The invitation could not be revoked. Please try again later."
+							"description": "Không thu hồi được lời mời. Vui lòng thử lại sau."
 						},
 						"loading": {
-							"description": "Revoking invitation..."
+							"description": "Đang thu hồi lời mời..."
 						},
 						"success": {
-							"description": "The invitation has been revoked."
+							"description": "Đã thu hồi lời mời."
 						}
 					},
 					"updateMembership": {
 						"error": {
-							"description": "Could not update organization membership. Please try again."
+							"description": "Không cập nhật được tư cách thành viên. Vui lòng thử lại."
 						},
 						"loading": {
-							"description": "Updating membership..."
+							"description": "Đang cập nhật tư cách thành viên..."
 						},
 						"success": {
-							"description": "Membership was updated successfully"
+							"description": "Đã cập nhật tư cách thành viên"
 						}
 					},
 					"resendInvitation": {
 						"loading": {
-							"description": "Resending invitation..."
+							"description": "Đang gửi lại lời mời..."
 						},
 						"success": {
-							"description": "Invitation sent"
+							"description": "Đã gửi lời mời"
 						},
 						"error": {
-							"description": "Could not sent invitation. Please try again."
+							"description": "Không gửi được lời mời. Vui lòng thử lại."
 						}
 					}
 				},
-				"pendingInvitations": "Pending invitations",
-				"removeMember": "Remove member",
-				"title": "Members"
+				"pendingInvitations": "Lời mời đang chờ",
+				"removeMember": "Xóa thành viên",
+				"title": "Thành viên"
 			},
 			"notifications": {
-				"organizationDeleted": "Your organization has been deleted.",
-				"organizationNameNotUpdated": "We were unable to update your organization name. Please try again later.",
-				"organizationNameUpdated": "Your organization name has been updated.",
-				"organizationNotDeleted": "We were unable to delete your organization. Please try again later."
+				"organizationDeleted": "Đã xóa văn phòng của bạn.",
+				"organizationNameNotUpdated": "Chúng tôi không thể cập nhật tên văn phòng của bạn. Vui lòng thử lại sau.",
+				"organizationNameUpdated": "Đã cập nhật tên văn phòng của bạn.",
+				"organizationNotDeleted": "Chúng tôi không thể xóa văn phòng của bạn. Vui lòng thử lại sau."
 			},
-			"subtitle": "Manage the settings of the organization.",
-			"title": "Organization",
+			"subtitle": "Quản lý cài đặt của văn phòng.",
+			"title": "Văn phòng",
 			"dangerZone": {
-				"title": "Danger zone"
+				"title": "Vùng nguy hiểm"
 			}
 		},
 		"start": {
-			"subtitle": "Welcome to the start page of this organization!"
+			"subtitle": "Chào mừng bạn đến trang bắt đầu của văn phòng này!"
 		}
 	},
 	"settings": {
 		"account": {
 			"avatar": {
-				"description": "To change your avatar click the picture in this block and select a file from your computer to upload.",
+				"description": "Để đổi ảnh đại diện, bấm vào ảnh trong khung này và chọn một tệp từ máy tính để tải lên.",
 				"notifications": {
-					"error": "Could not update avatar",
-					"success": "Avatar was updated successfully"
+					"error": "Không cập nhật được ảnh đại diện",
+					"success": "Đã cập nhật ảnh đại diện"
 				},
-				"title": "Your avatar"
+				"title": "Ảnh đại diện"
 			},
 			"changeEmail": {
-				"description": "To change your email, enter the new email and hit save. You will have to confirm the new email before it will become active.",
+				"description": "Để đổi email, nhập email mới rồi bấm lưu. Bạn cần xác nhận email mới trước khi nó có hiệu lực.",
 				"notifications": {
-					"error": "Could not update email",
-					"success": "Email was updated successfully"
+					"error": "Không cập nhật được email",
+					"success": "Đã cập nhật email"
 				},
-				"title": "Your email"
+				"title": "Email của bạn"
 			},
 			"changeName": {
 				"notifications": {
-					"error": "Could not update name",
-					"success": "Name was updated successfully"
+					"error": "Không cập nhật được tên",
+					"success": "Đã cập nhật tên"
 				},
-				"title": "Your name"
+				"title": "Tên của bạn"
 			},
 			"deleteAccount": {
-				"confirmation": "Are you sure you want to delete your account?",
-				"description": "Permanently delete your account. Once you delete your account, there is no going back. To confirm, please enter your password below:",
+				"confirmation": "Bạn có chắc muốn xóa tài khoản không?",
+				"description": "Xóa vĩnh viễn tài khoản của bạn. Sau khi xóa sẽ không thể khôi phục. Để xác nhận, vui lòng nhập mật khẩu bên dưới:",
 				"notifications": {
-					"error": "Could not delete account",
-					"success": "Account was deleted successfully"
+					"error": "Không xóa được tài khoản",
+					"success": "Đã xóa tài khoản"
 				},
-				"submit": "Delete account",
-				"title": "Delete account"
+				"submit": "Xóa tài khoản",
+				"title": "Xóa tài khoản"
 			},
 			"language": {
-				"description": "To change the language of the app for your account, select a language from the list and click save.",
+				"description": "Để đổi ngôn ngữ ứng dụng cho tài khoản của bạn, chọn một ngôn ngữ trong danh sách rồi bấm lưu.",
 				"notifications": {
-					"error": "Could not update language",
-					"success": "Language was updated successfully"
+					"error": "Không cập nhật được ngôn ngữ",
+					"success": "Đã cập nhật ngôn ngữ"
 				},
-				"title": "Your language"
+				"title": "Ngôn ngữ của bạn"
 			},
 			"security": {
 				"activeSessions": {
-					"description": "These are all the active sessions of your account. Click the X to end a specifc session.",
-					"title": "Active sessions",
+					"description": "Đây là tất cả phiên đăng nhập đang hoạt động của tài khoản bạn. Bấm X để kết thúc một phiên.",
+					"title": "Phiên đang hoạt động",
 					"notifications": {
 						"revokeSession": {
-							"success": "Session revoked"
+							"success": "Đã kết thúc phiên"
 						}
 					},
-					"currentSession": "Current session"
+					"currentSession": "Phiên hiện tại"
 				},
 				"changePassword": {
-					"currentPassword": "Current password",
-					"newPassword": "New password",
+					"currentPassword": "Mật khẩu hiện tại",
+					"newPassword": "Mật khẩu mới",
 					"notifications": {
-						"error": "Could not update password",
-						"success": "Password was updated successfully"
+						"error": "Không cập nhật được mật khẩu",
+						"success": "Đã cập nhật mật khẩu"
 					},
-					"title": "Your password"
+					"title": "Mật khẩu của bạn"
 				},
 				"connectedAccounts": {
-					"connect": "Connect",
-					"connected": "Connected",
-					"disconnect": "Disconnect",
-					"title": "Connected accounts"
+					"connect": "Kết nối",
+					"connected": "Đã kết nối",
+					"disconnect": "Ngắt kết nối",
+					"title": "Tài khoản đã kết nối"
 				},
 				"passkeys": {
-					"addPasskey": "Add passkey",
-					"deletePasskey": "Delete passkey",
-					"description": "Use passkeys as a secure alternative to passwords.",
+					"addPasskey": "Thêm khóa truy cập",
+					"deletePasskey": "Xóa khóa truy cập",
+					"description": "Dùng khóa truy cập (passkey) như một cách an toàn thay cho mật khẩu.",
 					"dialog": {
 						"editPasskey": {
-							"description": "Choose a recognizable name so you can identify this passkey later.",
-							"label": "Passkey name",
-							"placeholder": "Work laptop",
-							"title": "Name passkey"
+							"description": "Đặt một tên dễ nhận biết để sau này bạn nhận ra khóa truy cập này.",
+							"label": "Tên khóa truy cập",
+							"placeholder": "Laptop công việc",
+							"title": "Đặt tên khóa truy cập"
 						}
 					},
-					"editPasskey": "Edit passkey",
-					"fallbackName": "Unnamed passkey",
+					"editPasskey": "Sửa khóa truy cập",
+					"fallbackName": "Khóa truy cập chưa đặt tên",
 					"notifications": {
 						"addPasskey": {
 							"error": {
-								"title": "Could not add passkey"
+								"title": "Không thêm được khóa truy cập"
 							},
 							"success": {
-								"title": "Passkey added"
+								"title": "Đã thêm khóa truy cập"
 							}
 						},
 						"deletePasskey": {
 							"error": {
-								"title": "Could not delete passkey"
+								"title": "Không xóa được khóa truy cập"
 							},
 							"loading": {
-								"title": "Deleting passkey..."
+								"title": "Đang xóa khóa truy cập..."
 							},
 							"success": {
-								"title": "Passkey deleted"
+								"title": "Đã xóa khóa truy cập"
 							}
 						},
 						"updatePasskey": {
 							"error": {
-								"title": "Could not update passkey"
+								"title": "Không cập nhật được khóa truy cập"
 							},
 							"success": {
-								"title": "Passkey updated"
+								"title": "Đã cập nhật khóa truy cập"
 							}
 						}
 					},
-					"title": "Passkeys"
+					"title": "Khóa truy cập (passkey)"
 				},
 				"setPassword": {
-					"description": "You have not set a password yet. To set one, you need to go through the password reset flow. Click the button below to send an email to reset your password and follow the instructions in the email.",
+					"description": "Bạn chưa đặt mật khẩu. Để đặt mật khẩu, bạn cần đi qua bước đặt lại mật khẩu. Bấm nút bên dưới để nhận email đặt lại mật khẩu và làm theo hướng dẫn trong email.",
 					"notifications": {
-						"error": "Could not send link to set password. Please try again.",
-						"success": "Check your inbox for the link to set your password."
+						"error": "Không gửi được liên kết đặt mật khẩu. Vui lòng thử lại.",
+						"success": "Kiểm tra hộp thư để lấy liên kết đặt mật khẩu."
 					},
-					"submit": "Set password",
-					"title": "Your password"
+					"submit": "Đặt mật khẩu",
+					"title": "Mật khẩu của bạn"
 				},
-				"title": "Security",
+				"title": "Bảo mật",
 				"twoFactor": {
-					"title": "Two-factor authentication",
-					"description": "Add an extra layer of security to your account.",
+					"title": "Xác thực hai lớp",
+					"description": "Thêm một lớp bảo mật cho tài khoản của bạn.",
 					"dialog": {
 						"password": {
-							"title": "Verify with password",
-							"description": "Please verify your account by entering your password:",
-							"label": "Your password:"
+							"title": "Xác minh bằng mật khẩu",
+							"description": "Vui lòng xác minh tài khoản bằng cách nhập mật khẩu:",
+							"label": "Mật khẩu của bạn:"
 						},
 						"totpUrl": {
-							"description": "Use your preferred authenticator app and scan the QR code with it or enter the secret below manually to set up two-factor authentication.",
-							"code": "Enter 6-digit code to verify the setup:",
-							"title": "Enable two-factor authentication"
+							"description": "Dùng ứng dụng xác thực bạn quen dùng để quét mã QR, hoặc nhập thủ công mã bí mật bên dưới để thiết lập xác thực hai lớp.",
+							"code": "Nhập mã 6 chữ số để xác minh thiết lập:",
+							"title": "Bật xác thực hai lớp"
 						}
 					},
-					"enable": "Enable two-factor authentication",
+					"enable": "Bật xác thực hai lớp",
 					"notifications": {
 						"verify": {
 							"success": {
-								"title": "Two-factor authentication has been enabled successfully."
+								"title": "Đã bật xác thực hai lớp."
 							}
 						},
 						"enable": {
 							"error": {
-								"title": "Could not verify your account with the provided password. Please try again."
+								"title": "Không xác minh được tài khoản với mật khẩu đã nhập. Vui lòng thử lại."
 							}
 						},
 						"disable": {
 							"success": {
-								"title": "Two-factor authentication has been disabled successfully."
+								"title": "Đã tắt xác thực hai lớp."
 							}
 						}
 					},
 					"passwordRequired": {
-						"description": "Set a password before enabling two-factor authentication. Your password is required to verify changes to this security setting.",
-						"title": "Password required"
+						"description": "Hãy đặt mật khẩu trước khi bật xác thực hai lớp. Mật khẩu dùng để xác minh các thay đổi cho cài đặt bảo mật này.",
+						"title": "Cần có mật khẩu"
 					},
-					"disable": "Disable two-factor authentication",
-					"enabled": "You have two-factor authentication enabled for your account."
+					"disable": "Tắt xác thực hai lớp",
+					"enabled": "Tài khoản của bạn đã bật xác thực hai lớp."
 				}
 			},
-			"subtitle": "Manage the settings of your personal account.",
-			"title": "Account settings"
+			"subtitle": "Quản lý cài đặt tài khoản cá nhân của bạn.",
+			"title": "Cài đặt tài khoản"
 		},
 		"billing": {
 			"createCustomerPortal": {
-				"label": "Manage billing",
+				"label": "Quản lý thanh toán",
 				"notifications": {
 					"error": {
-						"title": "Could not create a customer portal session. Please try again."
+						"title": "Không mở được cổng thanh toán khách hàng. Vui lòng thử lại."
 					}
 				}
 			},
 			"activePlan": {
 				"status": {
-					"active": "Active",
-					"canceled": "Canceled",
-					"expired": "Expired",
-					"incomplete": "Incomplete",
-					"past_due": "Past due",
-					"paused": "Paused",
-					"trialing": "Trialing",
-					"unpaid": "Unpaid"
+					"active": "Đang hoạt động",
+					"canceled": "Đã hủy",
+					"expired": "Đã hết hạn",
+					"incomplete": "Chưa hoàn tất",
+					"past_due": "Quá hạn thanh toán",
+					"paused": "Tạm dừng",
+					"trialing": "Đang dùng thử",
+					"unpaid": "Chưa thanh toán"
 				},
-				"title": "Your plan"
+				"title": "Gói của bạn"
 			},
 			"changePlan": {
-				"description": "Choose a plan to subscribe to.",
-				"title": "Change your plan"
+				"description": "Chọn gói để đăng ký.",
+				"title": "Đổi gói"
 			},
-			"title": "Billing"
+			"title": "Thanh toán"
 		},
 		"notificationsPage": {
-			"title": "Notifications",
-			"description": "Choose how you receive notifications. Disabled options are stored; everything is enabled by default.",
+			"title": "Thông báo",
+			"description": "Chọn cách bạn nhận thông báo. Các tùy chọn đã tắt sẽ được lưu lại; mặc định tất cả đều bật.",
 			"groups": {
 				"general": {
-					"title": "General"
+					"title": "Chung"
 				}
 			},
 			"types": {
 				"APP_UPDATE": {
-					"label": "App updates"
+					"label": "Cập nhật ứng dụng"
 				}
 			},
 			"columns": {
-				"type": "Notification",
-				"inApp": "In-app",
+				"type": "Thông báo",
+				"inApp": "Trong ứng dụng",
 				"email": "Email"
 			}
 		},
 		"menu": {
 			"account": {
-				"billing": "Billing",
-				"dangerZone": "Danger zone",
-				"general": "General",
+				"billing": "Thanh toán",
+				"dangerZone": "Vùng nguy hiểm",
+				"general": "Chung",
 				"language": "Ngôn ngữ",
-				"notifications": "Notifications",
-				"security": "Security",
-				"title": "Account"
+				"notifications": "Thông báo",
+				"security": "Bảo mật",
+				"title": "Tài khoản"
 			},
 			"organization": {
-				"billing": "Billing",
-				"general": "General",
-				"members": "Members",
-				"title": "Organization",
-				"dangerZone": "Danger zone"
+				"billing": "Thanh toán",
+				"general": "Chung",
+				"members": "Thành viên",
+				"title": "Văn phòng",
+				"dangerZone": "Vùng nguy hiểm"
 			}
 		},
-		"save": "Save"
+		"save": "Lưu"
 	},
 	"start": {
-		"subtitle": "See the latest stats of your awesome business.",
-		"welcome": "Welcome {name}!"
+		"subtitle": "Xem số liệu mới nhất về hoạt động kinh doanh của bạn.",
+		"welcome": "Chào mừng {name}!"
 	},
 	"common": {
 		"confirmation": {
-			"cancel": "Cancel",
-			"confirm": "Confirm"
+			"cancel": "Hủy",
+			"confirm": "Xác nhận"
 		},
 		"actions": {
-			"continue": "Continue",
-			"verify": "Verify"
+			"continue": "Tiếp tục",
+			"verify": "Xác minh"
 		},
 		"aria": {
 			"closeToast": "Đóng thông báo",
 			"language": "Ngôn ngữ"
 		},
 		"colorMode": {
-			"system": "System",
-			"light": "Light",
-			"dark": "Dark"
+			"system": "Theo hệ thống",
+			"light": "Sáng",
+			"dark": "Tối"
 		},
 		"passwordCriteria": {
-			"minLength": "Min. 8 characters",
-			"upperAndLowercase": "Upper & lowercase",
-			"number": "Number",
-			"specialCharacter": "Special character"
+			"minLength": "Tối thiểu 8 ký tự",
+			"upperAndLowercase": "Chữ hoa và chữ thường",
+			"number": "Chữ số",
+			"specialCharacter": "Ký tự đặc biệt"
 		}
 	},
 	"checkoutReturn": {
-		"title": "Processing your purchase",
-		"description": "Please wait while we confirm your payment.",
-		"loading": "Confirming your purchase, please wait..."
+		"title": "Đang xử lý giao dịch",
+		"description": "Vui lòng chờ trong khi chúng tôi xác nhận thanh toán.",
+		"loading": "Đang xác nhận giao dịch, vui lòng chờ..."
 	},
 	"home": {
 		"title": "Trang chủ",

@@ -117,7 +117,7 @@ test("the fresh pair lands in Your turn, the other two in Quiet", async () => {
 	const quiet = seeded
 		.filter((conversation) => isQuiet(conversation, now))
 		.map((conversation) => conversation.guestName)
-		.sort();
+		.sort((a, b) => (a ?? "").localeCompare(b ?? ""));
 	expect(quiet).toEqual(["Alexei", "Yuki"]);
 });
 

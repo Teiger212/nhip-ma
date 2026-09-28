@@ -44,6 +44,8 @@ const envSchema = z
 		NEXT_PUBLIC_SAAS_URL: trimmed,
 		AUTH_TRUSTED_ORIGINS: trimmed,
 		NODE_ENV: z.string().optional(),
+		/** Set only by the E2E run (`.env.e2e`): a production build served on localhost. */
+		E2E: trimmed,
 	})
 	.superRefine((env, ctx) => {
 		if (env.SEND_MODE !== undefined && env.SEND_MODE !== "mock" && env.SEND_MODE !== "live") {
@@ -101,7 +103,15 @@ const envSchema = z
 				message: `NEXT_PUBLIC_SAAS_URL must be an absolute http(s) URL, got "${env.NEXT_PUBLIC_SAAS_URL}"`,
 			});
 		} else {
-			if (env.NODE_ENV === "production" && !env.NEXT_PUBLIC_SAAS_URL.startsWith("https://")) {
+			// The one exception is the E2E run: a production build on this machine, where no
+			// certificate exists. It needs E2E=1 and a localhost URL, so a real host never
+			// qualifies. Temporary until E2E runs on a proper environment (AGENTS.md).
+			const e2eOnLocalhost = env.E2E === "1" && isLocalhostUrl(env.NEXT_PUBLIC_SAAS_URL);
+			if (
+				env.NODE_ENV === "production" &&
+				!env.NEXT_PUBLIC_SAAS_URL.startsWith("https://") &&
+				!e2eOnLocalhost
+			) {
 				ctx.addIssue({
 					code: "custom",
 					path: ["NEXT_PUBLIC_SAAS_URL"],
@@ -157,6 +167,15 @@ const envSchema = z
  * Everything the inbox reads from the environment, settled once. Route handlers and
  * send adapters read these fields; nothing downstream touches `process.env`.
  */
+function isLocalhostUrl(value: string): boolean {
+	try {
+		const host = new URL(value).hostname;
+		return host === "localhost" || host === "127.0.0.1";
+	} catch {
+		return false;
+	}
+}
+
 export type InboxConfig = {
 	/** Only the exact value `live` talks to WhatsApp/Zalo. Anything else is mock. */
 	sendMode: SendMode;

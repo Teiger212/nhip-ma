@@ -75,7 +75,11 @@ export function LocaleSwitch<Value extends string = string>({
 					}}
 				>
 					{locales.map((locale) => (
-						<DropdownMenuRadioItem key={locale.value} value={locale.value}>
+						<DropdownMenuRadioItem
+							key={locale.value}
+							value={locale.value}
+							data-test={`locale-option-${locale.value}`}
+						>
 							{locale.label}
 						</DropdownMenuRadioItem>
 					))}

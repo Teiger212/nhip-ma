@@ -7,6 +7,7 @@ import {
 	getPurchasesByUserId,
 	getUserByEmail,
 	getUserById,
+	keepOldestMembership,
 } from "@repo/database";
 import { config as i18nConfig, type Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -14,7 +15,7 @@ import { sendEmail } from "@repo/mail";
 import { createWelcomeNotification } from "@repo/notifications";
 import { cancelSubscription } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { openAPI } from "better-auth/plugins";
@@ -58,13 +59,19 @@ function socialProvider<T extends object>(
 const google = socialProvider(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET,
-	(credentials) => ({ ...credentials, scope: ["email", "profile"] }),
+	// Sign-in only: accounts come from invitations (ADR 0010), never from a provider.
+	(credentials) => ({ ...credentials, scope: ["email", "profile"], disableImplicitSignUp: true }),
 );
 const github = socialProvider(
 	process.env.GITHUB_CLIENT_ID,
 	process.env.GITHUB_CLIENT_SECRET,
-	(credentials) => ({ ...credentials, scope: ["user:email"] }),
+	(credentials) => ({ ...credentials, scope: ["user:email"], disableImplicitSignUp: true }),
 );
+
+/** The platform admin (`role` "admin", alone or in a comma list). */
+function isPlatformAdmin(role: string | null | undefined): boolean {
+	return role?.split(",").includes("admin") ?? false;
+}
 
 /** Cancel the subscriptions among these purchases (the kit's rule, on every delete path). */
 async function cancelSubscriptions(purchases: Awaited<ReturnType<typeof getPurchasesByUserId>>) {
@@ -84,14 +91,20 @@ const officeEnd = officeEndHooks({
 	},
 });
 
-export const auth = betterAuth({
+/**
+ * The app's auth configuration. `auth` below is built from it; the E2E suite builds a
+ * test-only instance from the same options plus Better Auth's testUtils
+ * (apps/saas/tests/support/test-auth.ts), so its sessions are the app's own.
+ */
+export const authOptions = {
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
 	trustedOrigins: [appUrl, ...extraTrustedOrigins],
-	// Rate limiting is on by default in production (memory store, 100/10s, sign-in 3/10s).
-	// Nhịp runs as one long-lived process, so the memory store is correct; behind a
-	// reverse proxy set advanced.ipAddress.ipAddressHeaders and trustedProxies so limits
-	// key on the client IP rather than the proxy.
+	// Rate limiting is on in production (100/10s per IP and path; sign-in 3/10s). Counters
+	// live in the database (the rateLimit table): on Vercel each serverless instance has its
+	// own memory, so an in-memory count would not hold. The client IP comes from
+	// x-forwarded-for, which Vercel sets.
+	rateLimit: { storage: "database" },
 	database: prismaAdapter(db, {
 		provider: "postgresql",
 	}),
@@ -203,12 +216,6 @@ export const auth = betterAuth({
 					}
 				}
 			}
-			if (ctx.path.startsWith("/organization/delete")) {
-				const { organizationId } = ctx.body;
-				if (organizationId) {
-					await cancelSubscriptions(await getPurchasesByOrganizationId(organizationId));
-				}
-			}
 		}),
 	},
 	user: {
@@ -289,7 +296,8 @@ export const auth = betterAuth({
 		admin(),
 		passkey(),
 		magicLink({
-			disableSignUp: false,
+			// Sign-in only: a magic link to an unknown email creates nothing (ADR 0010).
+			disableSignUp: true,
 			sendMagicLink: async ({ email, url }, ctx) => {
 				const request = ctx?.request as Request;
 
@@ -305,8 +313,30 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			// Offices are created by the platform admin only (ADR 0010); the kit's
+			// `enableUsersToCreateOrganizations` flag never reached Better Auth.
+			allowUserToCreateOrganization: (user) => isPlatformAdmin(user.role),
 			organizationHooks: {
-				beforeDeleteOrganization: officeEnd.beforeDeleteOrganization,
+				// Runs after Better Auth checked the caller's membership and delete permission.
+				beforeDeleteOrganization: async (data) => {
+					await cancelSubscriptions(await getPurchasesByOrganizationId(data.organization.id));
+					await officeEnd.beforeDeleteOrganization(data);
+				},
+				// One operator, one office, even when two invitations are accepted at once.
+				afterAcceptInvitation: async ({ member, user }) => {
+					const dropped = await keepOldestMembership(user.id);
+					// A simultaneous accept may already have dropped this (newer) membership, in
+					// which case `dropped` is empty here; check that this one actually survived.
+					const kept =
+						!dropped.includes(member.id) &&
+						(await db.member.count({ where: { id: member.id } })) > 0;
+					if (!kept) {
+						throw new APIError("FORBIDDEN", {
+							code: "ONE_OFFICE_PER_OPERATOR",
+							message: "This account already belongs to an office.",
+						});
+					}
+				},
 				afterDeleteOrganization: officeEnd.afterDeleteOrganization,
 				afterRemoveMember: officeEnd.afterRemoveMember,
 			},
@@ -342,7 +372,9 @@ export const auth = betterAuth({
 			logger.error(error, { ctx });
 		},
 	},
-});
+} satisfies BetterAuthOptions;
+
+export const auth = betterAuth(authOptions);
 
 export * from "./lib/organization";
 

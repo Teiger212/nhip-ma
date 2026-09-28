@@ -86,6 +86,66 @@ Required gates:
 3. Run the relevant tests before considering the change complete.
 4. CI (`.github/workflows/ci.yml`) runs lint, format:check, type-check, and tests on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
+**What gets a test (decided 2026-09-27).** Anything a person does (an agent or admin
+clicking, linking, approving, configuring) is tested end to end, not with unit tests;
+the E2E tools and architecture are still to be planned, so until then such a flow gets a
+written scenario in `docs/e2e-scenarios.md` instead of a unit test. Vitest covers what has
+no user in it: verifiable utility functions, store queries, rules such as the queue and
+the funnel, and background work such as CRM refresh. Existing tests stay until the E2E
+plan replaces them.
+
+**Done means tested (decided 2026-09-27, PRODUCT.md "Advanced MVP").** Logic has Vitest
+tests. User flows have Playwright specs (`apps/saas/tests`) that CI runs on every PR against
+a throwaway Neon branch with mock pipes; each scenario in `docs/e2e-scenarios.md` becomes a
+spec. After every staging deploy a Playwright smoke run hits the staging URL, with inbound
+messages from synthetic webhooks signed with staging's secret. Each release checklist includes
+one real round trip from a phone over WhatsApp and Zalo.
+
+**Test quality (decided 2026-09-27).** A test proves intent, not the code in front of it.
+
+- Every test names what it proves: a scenario in `docs/e2e-scenarios.md`, or a rule in
+  `CONTEXT.md` / an ADR. A test with no source behind it is not merged.
+- Every new test is seen failing for the right reason first: against the code without the
+  behaviour, or with the rule broken. A test that was never red proves nothing.
+- Assert what a person sees or what the rule promises; never internal calls, and never mock
+  the thing under test.
+- E2E specs are written by the `test-author` agent (`.claude/agents/test-author.md`), which
+  preloads `writing-e2e-tests` (this repo's conventions) and `playwright-best-practices`, and
+  may not read application source; a hook enforces it.
+- No retries. A new spec passes `--repeat-each=3` before merge; a flaky spec is fixed or
+  deleted.
+- Setup is not the flow under test. Seeded logins start signed in from sessions minted once
+  per run by Better Auth's `testUtils` in a test-only auth instance
+  (`apps/saas/tests/support/test-auth.ts`, run by `tests/sessions.setup.ts`); it never ships
+  in the app. Sign in through the login page only where signing in is what the test proves.
+  The app's rate limit stays on in E2E: each test is its own client (`clientIpHeaders` in
+  `tests/support/session.ts` sets `x-forwarded-for`, which Better Auth keys the limit on).
+- How E2E runs today: `pnpm --filter saas exec playwright test` builds production on
+  `:3000` with `.env.e2e` against its own `supastarter_e2e` database (pushed and seeded
+  fresh); `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast
+  iteration. **Temporary:** the E2E profile relaxes one startup check (HTTP allowed only
+  with `E2E=1` on localhost). Replace it with proper environments (a preview/staging
+  deployment on HTTPS with its own Neon branch, per ADR 0016) as part of milestone 1's
+  staging work, then remove the exception.
+
+**Neon (staging and prod, ADR 0016).** This folder is linked to Neon project
+`lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Dev stays on
+local Postgres: pass `--no-env-pull` to every `neon link`, `neon deploy` and `neon checkout`,
+or the CLI writes the linked branch's `DATABASE_URL` into `.env.local` and points dev at that
+database.
+Neon branches: `production` (default) and `staging` (schema from `prisma migrate deploy`,
+never seeded: the seed's password is public).
+
+**Vercel (ADR 0016).** Project `nhip` (team `teiger212s-projects`): root `apps/saas`, build
+`turbo run build --filter=saas` (runs `^generate`), Node 22, functions in `sin1`. Staging is
+`main`'s deployment at `https://nhip-staging.vercel.app`, with its env vars scoped to Preview
+on branch `main`. The production branch is `production`: a GitHub ruleset blocks every push
+and deletion, and only the release workflow (milestone 6) moves it to a commit staging ran. Vercel
+builds only `main` (staging) and `production` (Ignored Build Step); PR previews wait for a
+database of their own (phase B). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
+Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
+Firewall rule of 300 requests/min per IP on `/api/`.
+
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
 are per app: use `pnpm --filter marketing e2e`, `pnpm --filter marketing e2e:ci`,
