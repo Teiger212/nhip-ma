@@ -10,7 +10,8 @@
 	"dependencies": {
 		"@repo/auth": "workspace:*",
 		"@repo/database": "workspace:*",
-		"@repo/logs": "workspace:*"
+		"@repo/logs": "workspace:*",
+		"consola": "^3.4.2"
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",

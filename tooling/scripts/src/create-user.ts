@@ -1,31 +1,33 @@
 import { auth } from "@repo/auth";
 import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
 import { logger } from "@repo/logs";
+// The shared logger is consola/core, which cannot prompt; the full consola can.
+import { consola } from "consola";
 import { nanoid } from "nanoid";
 
 async function main() {
 	logger.info("Let's create a new user for your application!");
 
-	const email = await logger.prompt("Enter an email:", {
+	const email = await consola.prompt("Enter an email:", {
 		required: true,
 		placeholder: "admin@example.com",
 		type: "text",
 	});
 
-	const name = await logger.prompt("Enter a name:", {
+	const name = await consola.prompt("Enter a name:", {
 		required: true,
 		placeholder: "Adam Admin",
 		type: "text",
 	});
 
-	const isAdmin = await logger.prompt("Should user be an admin?", {
+	const isAdmin = await consola.prompt("Should user be an admin?", {
 		required: true,
 		type: "confirm",
 		default: false,
 	});
 
 	const passwordInput = (
-		await logger.prompt("Enter a password:", {
+		await consola.prompt("Enter a password:", {
 			type: "text",
 			placeholder: "leave blank to auto-generate",
 		})
