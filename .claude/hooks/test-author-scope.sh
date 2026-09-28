@@ -16,6 +16,7 @@ readable = rel == "." or tests or under(
     "docs/", "CONTEXT.md", "PRODUCT.md", "ARCHITECTURE.md", "AGENTS.md", "CLAUDE.md", "README.md",
     "apps/saas/playwright.config.ts", "apps/marketing/playwright.config.ts",
     "apps/saas/modules/inbox/lib/walk-user.ts", ".agents/skills/", ".claude/skills/",
+    "packages/i18n/translations/",
     "node_modules/@playwright/", "package.json", "apps/saas/package.json", "apps/marketing/package.json",
 ) or rel.startswith("..") and "/.claude/skills/" in path
 writable = tests or rel == "docs/e2e-scenarios.md"

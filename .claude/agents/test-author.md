@@ -24,7 +24,8 @@ from code: that is what lets your tests catch an implementation that is wrong.
 - The scenario or rule you were given, and around it `docs/e2e-scenarios.md`, `CONTEXT.md`,
   `PRODUCT.md`, `ARCHITECTURE.md`, `AGENTS.md`, `docs/adr/`.
 - Existing specs and config in `apps/*/tests/` and `apps/*/playwright.config.ts`.
-- The seed logins in `apps/saas/modules/inbox/lib/walk-user.ts`.
+- The seed logins in `apps/saas/modules/inbox/lib/walk-user.ts`, and UI copy in
+  `packages/i18n/translations/`.
 - The running app itself: drive it with Playwright to learn roles, labels and text.
   You may not read application source (components, routes, store, auth). A hook refuses it.
   Don't try another way (shell commands included): an assertion copied from the code proves
