@@ -26,20 +26,26 @@ is renamed.
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
   office, reassigns owners, and invites the office's agents (ADR 0015).
-- **Platform admin**: Nhịp's own staff. Creates offices and invites each office's first
-  manager; never a member of an office, so never a seat and never sees guests' threads
-  (ADR 0015).
+- **Platform admin**: Nhịp's own staff. Creates offices, connects each office's pipes and
+  invites each office's first manager; never a member of an office, so never a seat and
+  never sees guests' threads (ADR 0015).
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
   role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
   the membership ends, the account ends, except the platform admin's (ADR 0013).
 - **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
   A thread starts in the office's pool and belongs to its owner once answered (ADR 0015).
-  One agency, one office is the MVP; multi-office agencies later.
+  One agency, one office is the MVP; multi-office agencies later. Every office lives in
+  one shared Nhịp, yet each feels standalone: its own address (a subdomain), its own name,
+  and no sign that other offices exist.
+- **Office setup**: the platform admin's single step that creates an office and invites
+  its first manager. Operators never create, switch or leave offices.
 
 ## Surfaces
 
-- **Inbox**: the agent's screen. A **queue**, not a mailbox: the default view is what
-  waits on the operator, oldest waiting guest first.
+- **Inbox**: the agent's screen, and where every operator lands. A **queue**, not a
+  mailbox: the default view is what waits on the operator, oldest waiting guest first.
+- **Admin area**: the platform admin's screens, and the only ones they see: offices, each
+  office's pipe connections and status, and its members. Where the platform admin lands.
 
 ## Queue
 
@@ -84,7 +90,11 @@ is renamed.
   on file from the moment the operator approves it and through `sending`, `sent`,
   `failed` or `unknown` (ADR 0011). One per inbound. Keeps the sender's name after the
   sender's account is gone (ADR 0013).
-- **SEND_MODE**: `mock` (no vendor call, the default) or exactly `live`.
+- **Live send**: a send that reaches the vendor. Happens only when the deployment is live
+  and the thread's endpoint has a connected pipe connection; every other send is a **mock
+  send** (demo threads, fake guests in dev, a pipe the office has not connected).
+- **SEND_MODE**: the deployment-wide switch: `mock` (never a live send; dev) or exactly
+  `live` (staging and prod).
 
 ## Drafting
 
@@ -107,6 +117,16 @@ is renamed.
 
 - **Pipe**: a messaging channel the guest uses (WhatsApp, Zalo). One **pipe adapter** per
   pipe owns verify, parse, send window, and send.
+- **Pipe connection**: an office's link to one of its own endpoints on a pipe: a WhatsApp
+  number or a Zalo OA. Made by the platform admin in the admin area, with the agency person
+  who owns that number or OA present to approve it on the vendor's screen. Inbound on the
+  endpoint files to the office; replies go out from it. An endpoint belongs to one office
+  at a time. **Disconnecting** it (platform admin) ends sending and stops filing new
+  messages to the office; its threads stay, read-only on that pipe.
+- **Disconnected**: a pipe connection that can no longer send (its vendor authorization
+  lapsed or was revoked). Guests' messages still arrive; replies on that pipe are blocked
+  with the reason shown, and the platform admin is alerted to reconnect it with the owner.
+  Other pipes of the office are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
   backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
   become a CRM. First real adapter: **Attio** (provisional).

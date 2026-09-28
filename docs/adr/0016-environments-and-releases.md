@@ -40,3 +40,19 @@ one webhook URL, so a real pipe can feed exactly one environment.
 
 - A second set of WhatsApp/Zalo test apps is needed for staging; prod gets its own.
 - Model calls, not hosting, are the expected cost driver.
+
+## Amendment (2026-09-28): PR previews
+
+- Each PR gets a Vercel preview on a Neon branch created by CI from `staging`,
+  **schema-only** (no staging data), migrated and seeded, and deleted when the PR closes.
+  The Neon–Vercel integration is not used: it branches from the default branch, which is
+  prod.
+- Previews always run `SEND_MODE=mock`, have no pipe connections, and get their own auth
+  secret and encryption key.
+- Previews sit behind Vercel's protection; CI reaches them with the bypass secret. Only on
+  previews, Better Auth keys its rate limit on an `x-e2e-client` header before the real IP,
+  so each E2E test is its own client while the limit stays on. Staging and prod never read
+  it.
+- Staging and prod: one Vercel project. `main` builds staging (env vars scoped to Preview on
+  `main`); the `production` branch builds prod, guarded by a ruleset so only the release
+  workflow moves it.
