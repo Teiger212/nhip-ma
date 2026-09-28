@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// The password input has no accessible name (its "Password" label is not associated), so it is
-// found by its semantic autocomplete attribute.
-const PASSWORD_INPUT = 'input[autocomplete="current-password"]';
+import { LoginPage } from "./support/login-page";
 
 // rule: docs/adr/0010-office-assignment.md (sign-up closed); PRODUCT.md (English and Vietnamese only)
 test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI", () => {
@@ -10,12 +8,13 @@ test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI
 	// because it was invited into an office." Also AGENTS.md: password login for the seed logins,
 	// and ADR 0013: a login can reset its password.
 	test("ADR 0010 — offers signing in, never creating an account", async ({ page }) => {
-		await page.goto("/en/login");
+		const login = new LoginPage(page);
+		await login.goto("en");
 
-		await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
-		await page.getByRole("tab", { name: "Password" }).click();
-		await expect(page.locator(PASSWORD_INPUT)).toBeVisible();
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+		await expect(login.email).toBeVisible();
+		await login.switchMode("password");
+		await expect(login.password).toBeVisible();
+		await expect(login.submit).toHaveText("Sign in");
 		await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
 
 		// Public sign-up is closed: nothing on the page leads to creating an account.
@@ -28,21 +27,20 @@ test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI
 	// rule: AGENTS.md password login; docs/e2e-scenarios.md Auth 3 names the magic link as a way
 	// to sign in (for an existing account only).
 	test("password and magic link are both ways to sign in", async ({ page }) => {
-		await page.goto("/en/login");
+		const login = new LoginPage(page);
+		await login.goto("en");
 
-		const passwordInput = page.locator(PASSWORD_INPUT);
+		await login.switchMode("password");
+		await expect(login.submit).toHaveText("Sign in");
+		await expect(login.password).toBeVisible();
 
-		await page.getByRole("tab", { name: "Password" }).click();
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-		await expect(passwordInput).toBeVisible();
+		await login.switchMode("magic-link");
+		await expect(login.submit).toHaveText("Send magic link");
+		await expect(login.password).toBeHidden();
 
-		await page.getByRole("tab", { name: "Magic link" }).click();
-		await expect(page.getByRole("button", { name: "Send magic link" })).toBeVisible();
-		await expect(passwordInput).toBeHidden();
-
-		await page.getByRole("tab", { name: "Password" }).click();
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-		await expect(passwordInput).toBeVisible();
+		await login.switchMode("password");
+		await expect(login.submit).toHaveText("Sign in");
+		await expect(login.password).toBeVisible();
 	});
 
 	// rule: PRODUCT.md "English and Vietnamese only."
@@ -51,13 +49,13 @@ test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI
 
 		await page.getByRole("button", { name: "Language" }).click();
 
+		const vietnamese = page.getByRole("menuitemradio", { name: "Tiếng Việt" });
 		await expect(page.getByRole("menuitemradio", { name: "English" })).toBeVisible();
-		await expect(page.getByRole("menuitemradio", { name: "Tiếng Việt" })).toBeVisible();
-		await expect(page.getByRole("menuitemradio", { name: "Deutsch" })).toHaveCount(0);
-		await expect(page.getByRole("menuitemradio", { name: "Español" })).toHaveCount(0);
-		await expect(page.getByRole("menuitemradio", { name: "Français" })).toHaveCount(0);
+		await expect(vietnamese).toBeVisible();
+		// Both named options are there; nothing else is (no Deutsch, Español, Français…).
+		await expect(page.getByRole("menuitemradio")).toHaveCount(2);
 
-		await page.getByRole("menuitemradio", { name: "Tiếng Việt" }).click();
+		await vietnamese.click();
 		await expect(page).toHaveURL(/\/vi\/login/);
 	});
 });

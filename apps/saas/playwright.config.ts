@@ -12,8 +12,13 @@ import dotenv from "dotenv";
  *   build. The final `--repeat-each=3` check still runs the default way.
  */
 const devServer = process.env.E2E_BASE_URL;
+/** Port for the production build (default 3000, as in CI); set E2E_PORT when 3000 is taken. */
+const e2ePort = Number(process.env.E2E_PORT ?? 3000);
+const e2eUrl = `http://localhost:${e2ePort}`;
 if (!devServer) {
 	dotenv.config({ path: path.resolve(__dirname, "../../.env.e2e") });
+	// The app's own URL is baked into the build, so it follows the port.
+	if (process.env.E2E_PORT) process.env.NEXT_PUBLIC_SAAS_URL = e2eUrl;
 	// Same server and credentials as dev, its own database: like the unit-test database, the
 	// E2E one is dev's DATABASE_URL renamed. CI sets DATABASE_URL itself and skips this.
 	if (!process.env.DATABASE_URL) {
@@ -43,7 +48,7 @@ export default defineConfig({
 	use: {
 		// The kit already uses `data-test`; getByTestId follows it.
 		testIdAttribute: "data-test",
-		baseURL: devServer ?? "http://localhost:3000",
+		baseURL: devServer ?? e2eUrl,
 		trace: "retain-on-failure",
 		video: {
 			mode: "retain-on-failure",
@@ -69,8 +74,8 @@ export default defineConfig({
 					"pnpm --filter saas run build",
 					"pnpm --filter saas run start",
 				].join(" && "),
-				url: "http://localhost:3000",
-				env: { E2E: "1" },
+				url: e2eUrl,
+				env: { E2E: "1", PORT: String(e2ePort) },
 				// Always a fresh build: a reused server silently tests stale code. Use
 				// E2E_BASE_URL to run against a server you already have.
 				reuseExistingServer: false,

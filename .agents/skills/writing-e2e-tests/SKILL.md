@@ -41,7 +41,14 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 
 - Default: `pnpm --filter saas exec playwright test` builds production on `:3000` with
   `.env.e2e` and its own `supastarter_e2e` database, pushed and seeded fresh. Use it for CI and
-  the before-merge `--repeat-each=3` check.
+  the before-merge `--repeat-each=3` check. If port 3000 is taken, set `E2E_PORT` (e.g. `E2E_PORT=3100`); the
+  app URL follows it.
+- Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (the `admin` fixture:
+  create offices, invite, clean up), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
+  `offices.ts`, `data.ts` (`uniqueEmail`), `seed.ts` (seed logins), `copy.ts` (UI copy per
+  locale). Import from there; don't redefine sign-in or invitation helpers in a spec.
+- Locate flow elements with `getByTestId` (`data-test`, set in the config). Use roles and
+  labels only where the text or accessibility is what the test proves.
 - While writing a spec: `E2E_BASE_URL=http://localhost:3010 pnpm --filter saas exec playwright
 test <file>` against your running dev server (no build).
 - The E2E profile is temporary (AGENTS.md): it moves to a proper HTTPS environment with its

@@ -1,34 +1,14 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-/** The login copy each language ships (packages/i18n/translations/<locale>/saas.json). */
-type LoginCopy = {
-	title: string;
-	submit: string;
-	modes: { password: string; magicLink: string };
-	password: string;
-};
-
-function loginCopy(locale: "en" | "vi"): LoginCopy {
-	const file = path.resolve(__dirname, `../../../packages/i18n/translations/${locale}/saas.json`);
-	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
-		auth: {
-			login: Omit<LoginCopy, "password">;
-			signup: { password: string };
-		};
-	};
-	return { ...saas.auth.login, password: saas.auth.signup.password };
-}
+import type { LoginCopy } from "./support/copy";
+import { loginCopy } from "./support/copy";
+import { AGENT } from "./support/seed";
 
 const en = loginCopy("en");
 const vi = loginCopy("vi");
 
-// Seed login (apps/saas/modules/inbox/lib/walk-user.ts).
-const AGENT = { email: "walk@nhip.local", password: "walkthrough" };
-
+/** Signs in by what each field says, in the page's language: the labels are the point here. */
 async function signInByLabels(page: Page, copy: LoginCopy) {
 	await page.getByRole("tab", { name: copy.modes.password }).click();
 	await page.getByLabel("Email", { exact: true }).fill(AGENT.email);
