@@ -178,6 +178,16 @@ export type PipeConnection = {
 	officeId: string;
 };
 
+/**
+ * A pipe endpoint's vendor tokens as the store keeps them: opaque strings (the app encrypts
+ * them before they get here) and when the access token stops working.
+ */
+export type StoredPipeCredential = {
+	accessToken: string;
+	refreshToken: string;
+	accessTokenExpiresAt: Date;
+};
+
 /** Who is reading: an operator and the office they act for. Threads are visible only inside it. */
 export type InboxViewer = { userId: string; officeId: string };
 
@@ -189,6 +199,26 @@ export type InboxStore = {
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
 	listPipeConnections: () => Promise<PipeConnection[]>;
+	/** Store an endpoint's tokens (after the vendor's authorization). The connection must exist. */
+	savePipeCredential: (
+		pipe: Pipe,
+		externalId: string,
+		credential: StoredPipeCredential,
+	) => Promise<void>;
+	hasPipeCredential: (pipe: Pipe, externalId: string) => Promise<boolean>;
+	/**
+	 * Run `work` holding a row lock on the endpoint's credential, so two instances never
+	 * refresh at once (a Zalo refresh token works once). `save` writes the new tokens inside
+	 * the same transaction. `current` is null when the endpoint has no credential.
+	 */
+	withPipeCredentialLock: <T>(
+		pipe: Pipe,
+		externalId: string,
+		work: (
+			current: StoredPipeCredential | null,
+			save: (next: StoredPipeCredential) => Promise<void>,
+		) => Promise<T>,
+	) => Promise<T>;
 	/** Delete these threads of the office with everything under them. Returns how many went. */
 	deleteConversations: (officeId: string, ids: string[]) => Promise<number>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;

@@ -36,6 +36,7 @@ export type {
 	Qualification,
 	SendMode,
 	SendResult,
+	StoredPipeCredential,
 	Translations,
 } from "./types";
 export { conversationId, createInboxStore, nowIso } from "./store";

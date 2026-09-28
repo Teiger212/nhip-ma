@@ -23,6 +23,7 @@ import type {
 	Message,
 	OneShot,
 	SendResult,
+	StoredPipeCredential,
 	Translations,
 } from "./types";
 
@@ -528,6 +529,43 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			});
 			return connections.sort(
 				(a, b) => a.pipe.localeCompare(b.pipe) || a.externalId.localeCompare(b.externalId),
+			);
+		},
+
+		async savePipeCredential(pipe, externalId, credential) {
+			await db.pipeCredential.upsert({
+				where: { pipe_externalId: { pipe, externalId } },
+				create: { pipe, externalId, ...credential },
+				update: credential,
+			});
+		},
+
+		async hasPipeCredential(pipe, externalId) {
+			const found = await db.pipeCredential.findUnique({
+				where: { pipe_externalId: { pipe, externalId } },
+				select: { pipe: true },
+			});
+			return found !== null;
+		},
+
+		async withPipeCredentialLock(pipe, externalId, work) {
+			return db.$transaction(
+				async (tx) => {
+					const rows = await tx.$queryRaw<StoredPipeCredential[]>`
+						SELECT "accessToken", "refreshToken", "accessTokenExpiresAt"
+						FROM "inbox_pipe_credential"
+						WHERE "pipe" = ${pipe}::"Pipe" AND "externalId" = ${externalId}
+						FOR UPDATE`;
+					const save = async (next: StoredPipeCredential) => {
+						await tx.pipeCredential.update({
+							where: { pipe_externalId: { pipe, externalId } },
+							data: next,
+						});
+					};
+					return work(rows[0] ?? null, save);
+				},
+				// The work may call the vendor; its own timeout is shorter than this.
+				{ maxWait: 10_000, timeout: 20_000 },
 			);
 		},
 
