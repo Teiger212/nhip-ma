@@ -1,62 +1,62 @@
 {
 	"pricing": {
-		"badge": "Pricing",
-		"choosePlan": "Choose plan",
-		"contactSales": "Contact sales",
-		"description": "Simple plans that scale with your team. Upgrade when you are ready.",
-		"getStarted": "Get started",
-		"month": "{count, plural, one {month} other {{count} months}}",
-		"monthly": "Monthly",
+		"badge": "Bảng giá",
+		"choosePlan": "Chọn gói",
+		"contactSales": "Liên hệ tư vấn",
+		"description": "Các gói đơn giản, mở rộng theo đội ngũ của bạn. Nâng cấp khi bạn sẵn sàng.",
+		"getStarted": "Bắt đầu",
+		"month": "{count, plural, one {tháng} other {{count} tháng}}",
+		"monthly": "Theo tháng",
 		"products": {
 			"basic": {
-				"description": "For solo founders validating the first release.",
+				"description": "Dành cho nhà sáng lập một mình đang thử nghiệm phiên bản đầu tiên.",
 				"features": {
-					"anotherFeature": "Core product features",
-					"limitedSupport": "Community support"
+					"anotherFeature": "Tính năng cốt lõi",
+					"limitedSupport": "Hỗ trợ từ cộng đồng"
 				},
-				"title": "Basic"
+				"title": "Cơ bản"
 			},
 			"enterprise": {
-				"description": "Security, support, and terms tailored to your organization.",
+				"description": "Bảo mật, hỗ trợ và điều khoản riêng cho văn phòng của bạn.",
 				"features": {
-					"enterpriseSupport": "Dedicated support",
-					"unlimitedProjects": "Unlimited workspaces"
+					"enterpriseSupport": "Hỗ trợ riêng",
+					"unlimitedProjects": "Không giới hạn không gian làm việc"
 				},
-				"title": "Enterprise"
+				"title": "Doanh nghiệp"
 			},
 			"free": {
-				"description": "Explore the product with no commitment.",
+				"description": "Trải nghiệm sản phẩm, không ràng buộc.",
 				"features": {
-					"anotherFeature": "Core product features",
-					"limitedSupport": "Community support"
+					"anotherFeature": "Tính năng cốt lõi",
+					"limitedSupport": "Hỗ trợ từ cộng đồng"
 				},
-				"title": "Free"
+				"title": "Miễn phí"
 			},
 			"lifetime": {
-				"description": "Pay once and keep access as the product grows.",
+				"description": "Trả một lần, dùng mãi khi sản phẩm phát triển.",
 				"features": {
-					"extendSupport": "Priority support window",
-					"noRecurringCosts": "No recurring fees"
+					"extendSupport": "Thời gian hỗ trợ ưu tiên",
+					"noRecurringCosts": "Không phí định kỳ"
 				},
-				"title": "Lifetime"
+				"title": "Trọn đời"
 			},
 			"pro": {
-				"description": "For teams collaborating across workspaces.",
+				"description": "Dành cho đội ngũ cộng tác trên nhiều không gian làm việc.",
 				"features": {
-					"anotherFeature": "Advanced product features",
-					"fiveMembers": "Up to 5 members",
-					"fullSupport": "Email support"
+					"anotherFeature": "Tính năng nâng cao",
+					"fiveMembers": "Tối đa 5 thành viên",
+					"fullSupport": "Hỗ trợ qua email"
 				},
 				"title": "Pro"
 			}
 		},
-		"purchase": "Purchase",
-		"recommended": "Recommended",
-		"subscribe": "Subscribe",
-		"title": "Pricing",
-		"trialPeriod": "{days} {days, plural, one {day} other {days}} free trial",
-		"year": "{count, plural, one {year} other {{count} years}}",
-		"yearly": "Yearly",
-		"perSeat": "seat"
+		"purchase": "Mua",
+		"recommended": "Đề xuất",
+		"subscribe": "Đăng ký",
+		"title": "Bảng giá",
+		"trialPeriod": "Dùng thử miễn phí {days} {days, plural, one {ngày} other {ngày}}",
+		"year": "{count, plural, one {năm} other {{count} năm}}",
+		"yearly": "Theo năm",
+		"perSeat": "ghế"
 	}
 }

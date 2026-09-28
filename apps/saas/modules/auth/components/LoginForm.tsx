@@ -4,7 +4,7 @@ import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { sessionQueryKey } from "@auth/lib/api";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocaleRouter } from "@i18n/routing";
+import { LocaleLink, useLocaleRouter } from "@i18n/routing";
 import { OrganizationInvitationAlert } from "@organizations/components/OrganizationInvitationAlert";
 import { authClient } from "@repo/auth/client";
 import { config as authConfig } from "@repo/auth/config";
@@ -188,33 +188,33 @@ export function LoginForm() {
 									render={({ field }) => (
 										<FormItem className="relative">
 											<FormLabel>{t("auth.signup.password")}</FormLabel>
-											<FormControl>
-												<div className="relative">
+											<div className="relative">
+												<FormControl>
 													<Input
 														type={showPassword ? "text" : "password"}
 														className="pr-10"
 														{...field}
 														autoComplete="current-password"
 													/>
-													<button
-														type="button"
-														onClick={() => setShowPassword(!showPassword)}
-														className="inset-y-0 right-0 pr-4 text-xl absolute flex items-center text-primary"
-													>
-														{showPassword ? (
-															<EyeOffIcon className="size-4" />
-														) : (
-															<EyeIcon className="size-4" />
-														)}
-													</button>
-												</div>
-											</FormControl>
-											<Link
+												</FormControl>
+												<button
+													type="button"
+													onClick={() => setShowPassword(!showPassword)}
+													className="inset-y-0 right-0 pr-4 text-xl absolute flex items-center text-primary"
+												>
+													{showPassword ? (
+														<EyeOffIcon className="size-4" />
+													) : (
+														<EyeIcon className="size-4" />
+													)}
+												</button>
+											</div>
+											<LocaleLink
 												href="/forgot-password"
 												className="top-0 right-0 text-xs absolute text-foreground/60"
 											>
 												{t("auth.login.forgotPassword")}
-											</Link>
+											</LocaleLink>
 										</FormItem>
 									)}
 								/>

@@ -3,6 +3,7 @@
 import { useAuthErrorMessages } from "@auth/hooks/errors-messages";
 import { config } from "@config";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LocaleLink } from "@i18n/routing";
 import { useLocaleRouter } from "@i18n/routing";
 import { authClient } from "@repo/auth/client";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
@@ -126,10 +127,10 @@ export function OtpForm() {
 			</Form>
 
 			<div className="mt-6 text-sm text-center">
-				<Link href="/login">
+				<LocaleLink href="/login">
 					<ArrowLeftIcon className="mr-1 size-4 inline align-middle" />
 					{t("auth.verify.backToSignin")}
-				</Link>
+				</LocaleLink>
 			</div>
 		</>
 	);

@@ -141,7 +141,7 @@
 		"errors": {
 			"invalidEmailOrPassword": "The credentials you entered are invalid. Please check them and try again.",
 			"unknown": "Something went wrong. Please try again.",
-			"userNotFound": "This user does not exists",
+			"userNotFound": "This user does not exist",
 			"failedToCreateUser": "Could not create user. Please try again.",
 			"failedToCreateSession": "Could not create a session. Please try again.",
 			"failedToUpdateUser": "Could not update user. Please try again.",
@@ -156,7 +156,7 @@
 			"idTokenNotSupported": "ID token is not supported.",
 			"passwordTooLong": "Password is too long.",
 			"passwordTooShort": "Password is too short.",
-			"providerNotFound": "This provider is not suppported.",
+			"providerNotFound": "This provider is not supported.",
 			"socialAccountAlreadyLinked": "This account is already linked to a user.",
 			"userEmailNotFound": "Email not found.",
 			"userAlreadyExists": "This user already exists.",
@@ -167,7 +167,7 @@
 			"accountNotFound": "Account not found"
 		},
 		"forgotPassword": {
-			"backToSignin": "Back to signin",
+			"backToSignin": "Back to sign in",
 			"email": "Email",
 			"hints": {
 				"linkNotSent": {
@@ -207,7 +207,7 @@
 			"sendMagicLink": "Send magic link"
 		},
 		"resetPassword": {
-			"backToSignin": "Back to signin",
+			"backToSignin": "Back to sign in",
 			"hints": {
 				"error": "We are sorry, but we were unable to reset your password. Please try again.",
 				"success": "Your password has been reset successfully."
@@ -402,7 +402,7 @@
 							"description": "Invitation sent"
 						},
 						"error": {
-							"description": "Could not sent invitation. Please try again."
+							"description": "Could not send invitation. Please try again."
 						}
 					}
 				},
@@ -471,7 +471,7 @@
 			},
 			"security": {
 				"activeSessions": {
-					"description": "These are all the active sessions of your account. Click the X to end a specifc session.",
+					"description": "These are all the active sessions of your account. Click the X to end a specific session.",
 					"title": "Active sessions",
 					"notifications": {
 						"revokeSession": {
