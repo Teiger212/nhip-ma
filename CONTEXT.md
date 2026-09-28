@@ -27,8 +27,8 @@ is renamed.
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
   office, reassigns owners, and invites the office's agents (ADR 0015).
 - **Platform admin**: Nhịp's own staff. Creates offices, connects each office's pipes and
-  invites each office's first manager; never a member of an office, so never a seat and
-  never sees guests' threads (ADR 0015).
+  invites each office's first manager; never an operator: the membership the kit gives the
+  office's creator opens no guests' threads, no Inbox or Home, and is not a seat (ADR 0015).
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
   role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
   the membership ends, the account ends, except the platform admin's (ADR 0013).
