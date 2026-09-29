@@ -144,7 +144,7 @@ and deletion, and only the release workflow (milestone 6) moves it to a commit s
 builds only `main` (staging) and `production` (Ignored Build Step); PR previews wait for a
 database of their own (phase B). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
 Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
-Firewall rule of 300 requests/min per IP on `/api/`.
+Firewall rule of 300 requests/min per IP on `/api/` and `/webhooks/`.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts

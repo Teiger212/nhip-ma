@@ -1084,6 +1084,9 @@ importers:
       '@repo/logs':
         specifier: workspace:*
         version: link:../../packages/logs
+      consola:
+        specifier: ^3.4.2
+        version: 3.4.2
     devDependencies:
       '@repo/tsconfig':
         specifier: workspace:*

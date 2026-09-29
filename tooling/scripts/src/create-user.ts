@@ -3,30 +3,25 @@ import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
 import { logger } from "@repo/logs";
 import { nanoid } from "nanoid";
 
+import { prompt } from "./lib/prompt";
+
 async function main() {
 	logger.info("Let's create a new user for your application!");
 
-	const email = await logger.prompt("Enter an email:", {
+	const email = await prompt.text("Enter an email:", {
 		required: true,
 		placeholder: "admin@example.com",
-		type: "text",
 	});
 
-	const name = await logger.prompt("Enter a name:", {
+	const name = await prompt.text("Enter a name:", {
 		required: true,
 		placeholder: "Adam Admin",
-		type: "text",
 	});
 
-	const isAdmin = await logger.prompt("Should user be an admin?", {
-		required: true,
-		type: "confirm",
-		default: false,
-	});
+	const isAdmin = await prompt.confirm("Should user be an admin?", { default: false });
 
 	const passwordInput = (
-		await logger.prompt("Enter a password:", {
-			type: "text",
+		await prompt.text("Enter a password:", {
 			placeholder: "leave blank to auto-generate",
 		})
 	).trim();

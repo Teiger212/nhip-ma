@@ -18,7 +18,9 @@ export const send: SendEmailHandler = async ({
 	html,
 	text,
 }) => {
-	await resend().emails.send({
+	// Resend reports a rejected send in `error` rather than throwing; throw it so sendEmail
+	// logs it instead of treating the email as sent.
+	const { error } = await resend().emails.send({
 		from: from ?? config.mailFrom,
 		to: [to],
 		cc,
@@ -28,4 +30,7 @@ export const send: SendEmailHandler = async ({
 		html,
 		text,
 	});
+	if (error) {
+		throw new Error(`Resend refused the email: ${error.name}: ${error.message}`);
+	}
 };
