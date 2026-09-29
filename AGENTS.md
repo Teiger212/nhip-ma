@@ -138,6 +138,9 @@ database.
 Neon branches: `production` (default) and `staging` (schema from `prisma migrate deploy`,
 never seeded: the seed's password is public).
 
+**What Eyal sets by hand** (accounts, secrets, vendor settings) is tracked in
+[docs/setup-checklist.md](docs/setup-checklist.md); add to it whenever work needs one.
+
 **Vercel (ADR 0016).** Project `nhip` (team `teiger212s-projects`): root `apps/saas`, build
 `turbo run build --filter=saas` (runs `^generate`), Node 22, functions in `sin1`. Staging is
 `main`'s deployment at `https://nhip-staging.vercel.app`, with its env vars scoped to Preview
