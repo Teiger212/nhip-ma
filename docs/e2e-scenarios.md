@@ -108,12 +108,17 @@ It runs against the deployment itself, signs nobody in, and writes nothing.
 
 For "the guest says they wrote, but nothing arrived". A delivery log holds when each webhook
 came, on which pipe and endpoint, whether its signature held, and what became of its messages;
-never message text or who the guest is.
+never message text or who the guest is. A refused (unsigned) delivery records only its pipe and
+time: nothing in it can be trusted.
 
 1. **Every delivery is on record.** As the platform admin, Admin → Webhooks lists the latest
    deliveries, newest first: a signed message to a connected Zalo OA shows as filed to its
    office; one to an OA no office holds shows as dropped (no office); an unsigned one shows
-   as refused (bad signature).
+   as refused (bad signature). Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 1;
+   a refused delivery carries no endpoint or message id, so the spec knows its own by where it
+   sits between two signed ones).
 2. **No guest data in the log.** The page never shows a message's text or the guest's id.
+   Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 2; the API's answer too).
 3. **Only the platform admin sees it.** An agent sees no Webhooks page; its API refuses the
-   agent (403) and a visitor who is signed out (401).
+   agent (403) and a visitor who is signed out (401). Spec: `apps/saas/tests/webhooks.spec.ts`
+   (Webhook deliveries 3).
