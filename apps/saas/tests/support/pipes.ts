@@ -6,6 +6,16 @@ export function connectZaloOa(officeId: string, oaId: string, state?: "disconnec
 	run(["connect", officeId, oaId, ...(state ? [state] : [])]);
 }
 
+/**
+ * Setup: the office holds the E2E env's WhatsApp number, so signed WhatsApp webhooks to it
+ * are filed there. Idempotent for the same office; one office at a time holds a number.
+ */
+export function connectWhatsAppNumber(officeId: string) {
+	const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+	if (!phoneNumberId) throw new Error("WHATSAPP_PHONE_NUMBER_ID is not set (the E2E env sets it)");
+	run(["connect-whatsapp", officeId, phoneNumberId]);
+}
+
 /** Setup/cleanup: the office no longer holds the OA. */
 export function releaseZaloOa(oaId: string) {
 	run(["release", oaId]);

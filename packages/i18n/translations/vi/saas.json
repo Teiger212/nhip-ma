@@ -116,7 +116,7 @@
 			},
 			"confirmDisconnect": {
 				"title": "Ngắt kết nối Zalo OA",
-				"message": "Trả lời trên OA này sẽ dừng, và tin nhắn mới của khách gửi tới OA sẽ không còn vào văn phòng này. Các cuộc trò chuyện vẫn giữ nguyên."
+				"message": "Trả lời trên OA {oa} sẽ dừng, và tin nhắn mới của khách gửi tới OA sẽ không còn vào văn phòng này. Các cuộc trò chuyện vẫn giữ nguyên."
 			},
 			"outcome": {
 				"connected": "Đã kết nối Zalo OA.",

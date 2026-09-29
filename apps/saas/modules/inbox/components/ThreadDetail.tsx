@@ -5,7 +5,7 @@ import { ChevronLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { displayName } from "../lib/display-name";
-import { useDisconnectedPipes } from "../lib/inbox-queries";
+import { replyEndpoint, useDisconnectedEndpoints } from "../lib/inbox-queries";
 import { PIPE_NAMES } from "../lib/pipe-names";
 import type { SendStatus } from "../lib/send-status";
 import type { Conversation, DraftSource } from "../lib/types";
@@ -46,7 +46,11 @@ export function ThreadDetail({
 	onBack: () => void;
 }) {
 	const t = useTranslations("inbox");
-	const disconnected = useDisconnectedPipes();
+	const disconnected = useDisconnectedEndpoints();
+	const endpoint = replyEndpoint(conversation);
+	const blocked = disconnected.some(
+		(item) => item.pipe === conversation.pipe && item.externalId === endpoint,
+	);
 	return (
 		<>
 			<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40 bg-muted/60">
@@ -91,9 +95,7 @@ export function ThreadDetail({
 			</div>
 			<SendBar
 				blockedReason={
-					disconnected.includes(conversation.pipe)
-						? t("pipeDisconnected", { pipe: PIPE_NAMES[conversation.pipe] })
-						: undefined
+					blocked ? t("pipeDisconnected", { pipe: PIPE_NAMES[conversation.pipe] }) : undefined
 				}
 				status={reply.status}
 				canApprove={reply.canApprove}

@@ -116,7 +116,7 @@
 			},
 			"confirmDisconnect": {
 				"title": "Disconnect Zalo OA",
-				"message": "Replies on this OA stop, and new guest messages to it will no longer reach this office. Its threads stay."
+				"message": "Replies on OA {oa} stop, and new guest messages to it will no longer reach this office. Its threads stay."
 			},
 			"outcome": {
 				"connected": "Zalo OA connected.",

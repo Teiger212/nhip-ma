@@ -10,7 +10,7 @@ import { displayName } from "../lib/display-name";
 import {
 	useApproveAndSend,
 	useConversations,
-	useDisconnectedPipes,
+	useDisconnectedEndpoints,
 	useRegenerateDraft,
 } from "../lib/inbox-queries";
 import { PIPE_NAMES } from "../lib/pipe-names";
@@ -35,7 +35,7 @@ const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("yourTurn");
  */
 export function Inbox() {
 	const t = useTranslations("inbox");
-	const disconnected = useDisconnectedPipes();
+	const disconnectedPipes = [...new Set(useDisconnectedEndpoints().map((item) => item.pipe))];
 	const conversationsQuery = useConversations();
 	const approve = useApproveAndSend();
 	const regenerate = useRegenerateDraft();
@@ -103,13 +103,13 @@ export function Inbox() {
 
 	return (
 		<div className="min-h-0 text-sm flex h-full flex-col bg-background text-foreground">
-			{disconnected.length > 0 ? (
+			{disconnectedPipes.length > 0 ? (
 				<output
 					data-test="pipe-disconnected-banner"
 					className="px-3 py-2 text-sm font-medium block border-b bg-destructive/10 text-destructive"
 				>
 					{t("pipeDisconnectedBanner", {
-						pipes: disconnected.map((pipe) => PIPE_NAMES[pipe]).join(", "),
+						pipes: disconnectedPipes.map((pipe) => PIPE_NAMES[pipe]).join(", "),
 					})}
 				</output>
 			) : null}

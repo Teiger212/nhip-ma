@@ -40,14 +40,28 @@ export function useConversations() {
 	});
 }
 
-/** The office's disconnected pipes (ADR 0017): their replies cannot be sent until reconnected. */
-export function useDisconnectedPipes(): Pipe[] {
+export type DisconnectedEndpoint = { pipe: Pipe; externalId: string };
+
+/**
+ * The office's disconnected endpoints (ADR 0017): replies that would go out from one of them
+ * cannot be sent until the platform admin reconnects it.
+ */
+export function useDisconnectedEndpoints(): DisconnectedEndpoint[] {
 	const query = useQuery({
 		queryKey: ["inbox", "pipes", "status"],
-		queryFn: () => api<{ disconnected: Pipe[] }>("/api/pipes/status"),
+		queryFn: () => api<{ disconnected: DisconnectedEndpoint[] }>("/api/pipes/status"),
 		refetchInterval: 60_000,
 	});
 	return query.data?.disconnected ?? [];
+}
+
+/** The endpoint a reply on this thread goes out from: the one the guest last wrote to. */
+export function replyEndpoint(conversation: Conversation): string | null {
+	for (let i = conversation.messages.length - 1; i >= 0; i -= 1) {
+		const message = conversation.messages[i];
+		if (message.direction === "in") return message.pipeExternalId;
+	}
+	return null;
 }
 
 function useConversationMutation(path: string) {

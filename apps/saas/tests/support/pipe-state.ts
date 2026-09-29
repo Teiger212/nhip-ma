@@ -6,6 +6,7 @@
  *
  *   tsx tests/support/pipe-state.ts connect <officeId> <oaId> [disconnected]
  *   tsx tests/support/pipe-state.ts release <oaId>
+ *   tsx tests/support/pipe-state.ts connect-whatsapp <officeId> <phoneNumberId>
  */
 import { db } from "@repo/database";
 import { createInboxStore } from "@repo/database/inbox";
@@ -30,6 +31,16 @@ async function main(): Promise<void> {
 		if (state === "disconnected") {
 			await store.markPipeDisconnected("zalo", oaId, "E2E: refresh refused");
 		}
+	} else if (command === "connect-whatsapp") {
+		const [officeId, phoneNumberId] = args;
+		if (!officeId || !phoneNumberId) throw new Error("connect-whatsapp <officeId> <phoneNumberId>");
+		// WhatsApp still sends from the deployment's own number (env); the office only holds it.
+		const claimed = await store.claimPipe({
+			pipe: "whatsapp",
+			externalId: phoneNumberId,
+			officeId,
+		});
+		if (!claimed.ok) throw new Error(`number ${phoneNumberId} is held by office ${claimed.heldBy}`);
 	} else if (command === "release") {
 		const [oaId] = args;
 		if (!oaId) throw new Error("release <oaId>");

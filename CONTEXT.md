@@ -125,9 +125,9 @@ is renamed.
   at a time. **Disconnecting** it (platform admin) ends sending and stops filing new
   messages to the office; its threads stay, read-only on that pipe.
 - **Disconnected**: a pipe connection that can no longer send (its vendor authorization
-  lapsed or was revoked). Guests' messages still arrive; replies on that pipe are blocked
-  with the reason shown, and the platform admin is alerted to reconnect it with the owner.
-  Other pipes of the office are unaffected.
+  lapsed or was revoked). Guests' messages still arrive; replies that would go out from it
+  are blocked with the reason shown, and the platform admin is alerted to reconnect it with
+  the owner. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
   backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
   become a CRM. First real adapter: **Attio** (provisional).
