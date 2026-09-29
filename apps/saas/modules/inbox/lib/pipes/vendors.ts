@@ -376,6 +376,21 @@ export function exchangeZaloCode(input: {
 	});
 }
 
+/** The OA a fresh access token belongs to (its id and display name). */
+export async function zaloOaProfile(
+	accessToken: string,
+): Promise<{ oaId: string; name: string | null }> {
+	const res = await fetch("https://openapi.zalo.me/v2.0/oa/getoa", {
+		headers: { access_token: accessToken },
+		signal: AbortSignal.timeout(10_000),
+	});
+	const body = (await res.json().catch(() => ({}))) as Json;
+	const data = asRecord(body.data);
+	const oaId = asId(data.oa_id);
+	if (!oaId) throw new Error("Zalo did not say which OA this token belongs to");
+	return { oaId, name: typeof data.name === "string" ? data.name : null };
+}
+
 /** Where the OA admin consents to this app acting for the OA (PKCE, S256). */
 export function zaloPermissionUrl(input: {
 	appId: string;

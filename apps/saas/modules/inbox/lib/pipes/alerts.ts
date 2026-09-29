@@ -2,9 +2,8 @@ import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { db } from "@repo/database";
 import { sendEmail } from "@repo/mail";
 
+import { PIPE_NAMES } from "../pipe-names";
 import type { Pipe } from "../types";
-
-const PIPE_NAMES: Record<Pipe, string> = { whatsapp: "WhatsApp", zalo: "Zalo" };
 
 /**
  * A pipe connection stopped working (ADR 0017): every platform admin is emailed, since only

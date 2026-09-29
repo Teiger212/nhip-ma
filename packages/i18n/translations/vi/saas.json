@@ -100,7 +100,32 @@
 			"assignAdminRole": "Cấp quyền quản trị",
 			"removeAdminRole": "Gỡ quyền quản trị"
 		},
-		"description": "Quản lý ứng dụng của bạn."
+		"description": "Quản lý ứng dụng của bạn.",
+		"connections": {
+			"title": "Kết nối",
+			"connectZalo": "Kết nối Zalo OA",
+			"reconnect": "Kết nối lại",
+			"disconnect": "Ngắt kết nối",
+			"disconnectFailed": "Không ngắt kết nối được. Hãy thử lại.",
+			"zaloNotConfigured": "Bản triển khai này chưa cấu hình ứng dụng Zalo.",
+			"whatsappLater": "WhatsApp hiện chạy trên số của Nhịp; văn phòng sẽ kết nối số riêng sau.",
+			"status": {
+				"none": "Chưa kết nối",
+				"connected": "Đã kết nối",
+				"needsReconnect": "Cần kết nối lại"
+			},
+			"confirmDisconnect": {
+				"title": "Ngắt kết nối Zalo OA",
+				"message": "Trả lời trên OA này sẽ dừng, và tin nhắn mới của khách gửi tới OA sẽ không còn vào văn phòng này. Các cuộc trò chuyện vẫn giữ nguyên."
+			},
+			"outcome": {
+				"connected": "Đã kết nối Zalo OA.",
+				"held": "OA này đang kết nối với văn phòng khác.",
+				"expired": "Lần kết nối đã hết hạn. Hãy bắt đầu lại.",
+				"refused": "Zalo không chấp thuận kết nối.",
+				"failed": "Kết nối thất bại. Hãy thử lại."
+			}
+		}
 	},
 	"app": {
 		"menu": {
@@ -812,6 +837,8 @@
 		"viewSent": "Xem đã gửi",
 		"sentTo": "Đã gửi cho {name}",
 		"sendFailed": "Gửi không thành công.",
-		"deliveryUnknown": "Tin trả lời gần nhất đã gửi nhưng nhà cung cấp chưa xác nhận. Kiểm tra xem đã đến chưa trước khi gửi lại."
+		"deliveryUnknown": "Tin trả lời gần nhất đã gửi nhưng nhà cung cấp chưa xác nhận. Kiểm tra xem đã đến chưa trước khi gửi lại.",
+		"pipeDisconnected": "{pipe} đã mất kết nối nên không gửi được trả lời trên {pipe}. Nhịp đã được thông báo.",
+		"pipeDisconnectedBanner": "{pipes} đã mất kết nối nên chưa gửi được trả lời trên đó. Nhịp đã được thông báo."
 	}
 }

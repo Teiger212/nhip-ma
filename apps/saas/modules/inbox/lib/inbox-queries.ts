@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
 
-import type { Conversation } from "./types";
+import type { Conversation, Pipe } from "./types";
 
 /** Server data for the inbox lives in TanStack Query; nothing else caches it. */
 export const conversationsQueryKey = ["inbox", "conversations"] as const;
@@ -38,6 +38,16 @@ export function useConversations() {
 		queryFn: () => api<Conversation[]>(`/api/conversations?locale=${encodeURIComponent(locale)}`),
 		refetchInterval: POLL_INTERVAL_MS,
 	});
+}
+
+/** The office's disconnected pipes (ADR 0017): their replies cannot be sent until reconnected. */
+export function useDisconnectedPipes(): Pipe[] {
+	const query = useQuery({
+		queryKey: ["inbox", "pipes", "status"],
+		queryFn: () => api<{ disconnected: Pipe[] }>("/api/pipes/status"),
+		refetchInterval: 60_000,
+	});
+	return query.data?.disconnected ?? [];
 }
 
 function useConversationMutation(path: string) {
