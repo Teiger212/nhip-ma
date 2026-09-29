@@ -142,6 +142,12 @@ export const PipeCredentialScalarFieldEnumSchema = z.enum(['pipe', 'externalId',
 
 export type PipeCredentialScalarFieldEnum = z.infer<typeof PipeCredentialScalarFieldEnumSchema>;
 
+// File: WebhookDeliveryScalarFieldEnum.schema.ts
+
+export const WebhookDeliveryScalarFieldEnumSchema = z.enum(['id', 'pipe', 'receivedAt', 'outcome', 'endpoints', 'officeIds', 'filed', 'dropped', 'vendorMessageIds', 'errorKind'])
+
+export type WebhookDeliveryScalarFieldEnum = z.infer<typeof WebhookDeliveryScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -568,4 +574,22 @@ export const PipeCredentialSchema = z.object({
 });
 
 export type PipeCredentialType = z.infer<typeof PipeCredentialSchema>;
+
+
+// File: WebhookDelivery.schema.ts
+
+export const WebhookDeliverySchema = z.object({
+  id: z.string(),
+  pipe: PipeSchema,
+  receivedAt: z.date(),
+  outcome: z.string(),
+  endpoints: z.array(z.string()),
+  officeIds: z.array(z.string()),
+  filed: z.number().int(),
+  dropped: z.number().int(),
+  vendorMessageIds: z.array(z.string()),
+  errorKind: z.string().nullish(),
+});
+
+export type WebhookDeliveryType = z.infer<typeof WebhookDeliverySchema>;
 

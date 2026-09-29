@@ -25,6 +25,7 @@ import type {
 	SendResult,
 	PipeCredentialState,
 	Translations,
+	WebhookDelivery,
 } from "./types";
 
 export function nowIso(at?: number | string | Date): string {
@@ -639,6 +640,30 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				// The work may call the vendor; its own timeout is shorter than this.
 				{ maxWait: 10_000, timeout: 20_000 },
 			);
+		},
+
+		async recordWebhookDelivery(delivery) {
+			await db.webhookDelivery.create({ data: delivery });
+		},
+
+		async listWebhookDeliveries({ limit, pipe }) {
+			const rows = await db.webhookDelivery.findMany({
+				where: pipe ? { pipe } : {},
+				orderBy: { receivedAt: "desc" },
+				take: limit,
+			});
+			return rows.map((row) => ({
+				...row,
+				outcome: row.outcome as WebhookDelivery["outcome"],
+				receivedAt: row.receivedAt.toISOString(),
+			}));
+		},
+
+		async pruneWebhookDeliveries(before) {
+			const { count } = await db.webhookDelivery.deleteMany({
+				where: { receivedAt: { lt: before } },
+			});
+			return count;
 		},
 
 		async guestInboundText(id) {

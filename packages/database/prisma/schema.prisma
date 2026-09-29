@@ -443,3 +443,28 @@ model PipeCredential {
   @@id([pipe, externalId])
   @@map("inbox_pipe_credential")
 }
+
+/// One incoming webhook (ADR 0017), for "the guest says they wrote, but nothing arrived":
+/// when, which pipe and endpoint, whether its signature held, what became of its messages.
+/// Never message text or who the guest is. Kept 30 days.
+model WebhookDelivery {
+  id               String   @id @default(cuid())
+  pipe             Pipe
+  receivedAt       DateTime @default(now())
+  /// refused (bad signature) | processed | failed (ingest threw; the vendor will retry)
+  outcome          String
+  /// The office endpoints (WhatsApp number ids, Zalo OA ids) its messages were addressed to.
+  endpoints        String[]
+  /// Offices its messages were filed to.
+  officeIds        String[]
+  filed            Int      @default(0)
+  /// Messages to an endpoint no office holds.
+  dropped          Int      @default(0)
+  vendorMessageIds String[]
+  /// The error's kind when ingest failed (no message: it can carry guest data).
+  errorKind        String?
+
+  @@index([receivedAt])
+  @@map("inbox_webhook_delivery")
+}
+

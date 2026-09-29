@@ -40,5 +40,7 @@ export type {
 	PipeCredentialState,
 	StoredPipeCredential,
 	Translations,
+	WebhookDelivery,
+	WebhookDeliveryRecord,
 } from "./types";
 export { conversationId, createInboxStore, nowIso } from "./store";

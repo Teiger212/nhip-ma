@@ -205,6 +205,20 @@ export type OfficePipe = {
 /** Who is reading: an operator and the office they act for. Threads are visible only inside it. */
 export type InboxViewer = { userId: string; officeId: string };
 
+/** One incoming webhook as the delivery log keeps it (no message text, no guest id). */
+export type WebhookDeliveryRecord = {
+	pipe: Pipe;
+	outcome: "refused" | "processed" | "failed";
+	endpoints: string[];
+	officeIds: string[];
+	filed: number;
+	dropped: number;
+	vendorMessageIds: string[];
+	errorKind: string | null;
+};
+
+export type WebhookDelivery = WebhookDeliveryRecord & { id: string; receivedAt: string };
+
 export type InboxStore = {
 	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
@@ -280,6 +294,11 @@ export type InboxStore = {
 	 * yes in a mock deployment (the demo), never in a live one.
 	 */
 	funnel: (viewer: InboxViewer, window: { since: Date; countMock: boolean }) => Promise<Funnel>;
+	recordWebhookDelivery: (delivery: WebhookDeliveryRecord) => Promise<void>;
+	/** The latest deliveries, newest first. */
+	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
+	/** Delete deliveries received before `before`; returns how many went. */
+	pruneWebhookDeliveries: (before: Date) => Promise<number>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };
