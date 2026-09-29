@@ -30,8 +30,11 @@ function stripSlash(value: string): string {
 /** Each pipe's app-level settings: all set, or none (then the pipe never sends live). */
 const PIPE_SETTINGS = {
 	whatsapp: ["WHATSAPP_APP_SECRET", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
-	zalo: ["ZALO_APP_ID", "ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY", "PIPE_SECRETS_KEY"],
+	zalo: ["ZALO_APP_ID", "ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY"],
 } as const;
+
+/** Pipes that keep per-office tokens, which PIPE_SECRETS_KEY encrypts (set on its own is fine). */
+const PIPES_WITH_STORED_TOKENS = ["zalo"] as const;
 
 const envSchema = z
 	.object({
@@ -92,6 +95,15 @@ const envSchema = z
 						message: `${key} is the E2E profile's test value and must not be used when SEND_MODE=live`,
 					});
 				}
+			}
+		}
+		for (const pipe of PIPES_WITH_STORED_TOKENS) {
+			if (PIPE_SETTINGS[pipe].some((key) => env[key]) && !env.PIPE_SECRETS_KEY) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["PIPE_SECRETS_KEY"],
+					message: `PIPE_SECRETS_KEY must be set: ${pipe} stores each office's tokens encrypted with it`,
+				});
 			}
 		}
 		if (env.PIPE_SECRETS_KEY && !isValidSecretsKey(env.PIPE_SECRETS_KEY)) {
