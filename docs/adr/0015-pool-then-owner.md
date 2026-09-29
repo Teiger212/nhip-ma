@@ -39,3 +39,11 @@ which is the product: a new guest who belongs to one offline agent waits.
 - A reply sent from the vendor's app (OA echo) claims nothing: the thread stays in the pool
   until a manager assigns it or an agent answers in Nhịp.
 - The seed moves the platform admin out of the walk office and adds a manager login.
+
+## Amendment (2026-09-28): the platform admin's membership is inert
+
+The kit (Better Auth) makes whoever creates an office its owner member, and has no way to
+create an office without one. Rather than replace the kit's office flows, the platform
+admin keeps that membership, and it opens nothing: no Inbox, Home or threads (the inbox
+refuses them before resolving an office), not a seat, not listed among the office's members,
+and they land in the admin area. "Never a member" in this ADR reads as "never an operator".

@@ -127,6 +127,11 @@ Each milestone leaves staging better than it found it.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, the first GitHub Release to prod.
 
+**Pulled forward (2026-09-28)**, so staging can dogfood a real pipe: from milestone 2,
+roles and landing (the platform admin lands in the admin area; office setup is one step,
+ADR 0018) and pipe connections, Zalo first (ADR 0017); then PR previews (ADR 0016); then
+WhatsApp once its number exists. Milestone 1's observability runs alongside.
+
 Shipped before this stage: the conversation loop (ADR 0009), office tenancy and Home, the
 account lifecycle (ADR 0013). Listing match stays the horizon.
 
