@@ -18,9 +18,9 @@ Marketing, docs, admin, billing, and organizations are unused kit scaffolding; l
 
 ## Docs
 
-| File                                 | What it is                            |
-| ------------------------------------ | ------------------------------------- |
-| [PRODUCT.md](./PRODUCT.md)           | Locked product intention              |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | How this repo is shaped               |
-| [HANDOFF.md](./HANDOFF.md)           | Cold start for any other agent or LLM |
-| [AGENTS.md](./AGENTS.md)             | Setup, gates, conventions             |
+| File                                 | What it is                                       |
+| ------------------------------------ | ------------------------------------------------ |
+| [PRODUCT.md](./PRODUCT.md)           | Locked product intention                         |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System shape: tenancy, pipes, data, environments |
+| [HANDOFF.md](./HANDOFF.md)           | Cold start for any other agent or LLM            |
+| [AGENTS.md](./AGENTS.md)             | Setup, gates, conventions                        |

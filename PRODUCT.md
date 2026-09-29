@@ -1,7 +1,8 @@
 # Nhịp
 
 Working name only (pulse of the first reply). Not a brand lock. Terms are defined once in
-[CONTEXT.md](./CONTEXT.md); decisions and their reasons are in [docs/adr](./docs/adr).
+[CONTEXT.md](./CONTEXT.md); decisions and their reasons are in [docs/adr](./docs/adr); how
+the system is built today is [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## What it is
 
