@@ -90,3 +90,16 @@ not driven here; a test sets up a connected or disconnected OA directly, as setu
    Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 4; a new office with an invited member who
    watches the inbox; the confirmation names the OA; the thread stays, the same guest's next
    message and a new guest's first message do not arrive).
+
+## Staging smoke (ADR 0016)
+
+After every staging deploy, a read-only check that the deployed app is up and still guarded.
+It runs against the deployment itself, signs nobody in, and writes nothing.
+
+1. **The app answers.** The login page loads in English and Vietnamese with its sign-in
+   button; the auth API says it is up. Spec: `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 1).
+2. **Guests' data stays guarded.** Signed out, the inbox's conversations and pipe status
+   APIs refuse (401), and the admin area sends the visitor to login. Spec:
+   `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 2; red: staging answers 404 for the pipe status API, 2026-09-29).
+3. **Webhooks fail closed.** An unsigned WhatsApp or Zalo webhook is refused (403). Spec:
+   `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 3).
