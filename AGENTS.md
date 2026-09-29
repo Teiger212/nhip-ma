@@ -25,7 +25,7 @@ and a dummy `RESEND_API_KEY` so password login can import Resend.
 
 ```bash
 cp .env.local.example .env.local
-brew services start postgresql@16   # or: docker compose up -d postgres
+brew services start postgresql@16   # or: docker compose up -d postgres (hosted and CI run 18)
 pnpm install
 pnpm --filter @repo/database generate
 pnpm --filter @repo/database push
@@ -52,7 +52,8 @@ vitest global setup creates it and pushes the schema; every store test truncates
 tables first. A schema change that would lose data there is not accepted silently:
 `dropdb supastarter_test` and run again.
 
-This walk only needs `apps/saas` on port 3010. Do not build or ship marketing or admin.
+This walk only needs `apps/saas` on port 3010, including its admin area (offices, pipe
+connections, webhook deliveries). Do not build or ship `apps/marketing`.
 The compose `postgres` service is PostgreSQL 16 on port 5432; compose also defines MinIO
 for storage.
 
@@ -84,7 +85,7 @@ Required gates:
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.
 3. Run the relevant tests before considering the change complete.
-4. CI (`.github/workflows/ci.yml`) runs lint, format:check, type-check, and tests on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
+4. CI (`.github/workflows/ci.yml`) runs lint (warnings fail), format:check, type-check, Vitest, `migrate:check`, `seed:check` and the E2E suite on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
 **What gets a test (decided 2026-09-27).** Anything a person does (an agent or admin
 clicking, linking, approving, configuring) is tested end to end, not with unit tests;
@@ -95,10 +96,10 @@ the funnel, and background work such as CRM refresh. Existing tests stay until t
 plan replaces them.
 
 **Done means tested (decided 2026-09-27, PRODUCT.md "Advanced MVP").** Logic has Vitest
-tests. User flows have Playwright specs (`apps/saas/tests`) that CI runs on every PR against
-a throwaway Neon branch with mock pipes; each scenario in `docs/e2e-scenarios.md` becomes a
-spec. After every staging deploy a Playwright smoke run hits the staging URL, with inbound
-messages from synthetic webhooks signed with staging's secret. Each release checklist includes
+tests. User flows have Playwright specs (`apps/saas/tests`) that CI runs on every PR on the
+runner (a production build behind a local HTTPS proxy, its own Postgres 18, mock pipes); each scenario in `docs/e2e-scenarios.md` becomes a
+spec. After every staging deploy a read-only Playwright smoke run checks the deployment
+(`tests/smoke/`). Each release checklist includes
 one real round trip from a phone over WhatsApp and Zalo.
 
 **Test quality (decided 2026-09-27).** A test proves intent, not the code in front of it.

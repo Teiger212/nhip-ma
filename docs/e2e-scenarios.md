@@ -100,6 +100,6 @@ It runs against the deployment itself, signs nobody in, and writes nothing.
    button; the auth API says it is up. Spec: `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 1).
 2. **Guests' data stays guarded.** Signed out, the inbox's conversations and pipe status
    APIs refuse (401), and the admin area sends the visitor to login. Spec:
-   `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 2; red: staging answers 404 for the pipe status API, 2026-09-29).
+   `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 2).
 3. **Webhooks fail closed.** An unsigned WhatsApp or Zalo webhook is refused (403). Spec:
    `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 3).
