@@ -16,7 +16,8 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"type-check": "next typegen && tsc --noEmit",
-		"smoke": "playwright test --config playwright.smoke.config.ts"
+		"smoke": "playwright test --config playwright.smoke.config.ts",
+		"build:vercel": "bash scripts/vercel-build.sh"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "catalog:",
