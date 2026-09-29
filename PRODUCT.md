@@ -84,7 +84,9 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
   Laya or an LLM behind one seam) for typed guardrail checks; a per-office model cost guard.
 - Billing, minimal: per seat and the lapse lock (ADR 0014); the 30-day close by hand.
 - Error tracking, logs, uptime and a webhook delivery log; rate limits on public endpoints;
-  a tested backup restore; deleting a guest's data on request.
+  a tested backup restore; deleting a guest's data on request. Error reports never carry a
+  guest's personal data: message text, names and phone numbers are scrubbed before anything
+  leaves the app.
 - English and Vietnamese only.
 
 **Later, shown as "Coming soon"**: saved replies (a decision model picks from the office's
@@ -118,7 +120,8 @@ Each milestone leaves staging better than it found it.
 
 1. **Foundations, staging live**: CI (lint, types, Vitest, Playwright over HTTPS), the
    `prisma migrate` baseline, Vercel and Neon staging, background work on `after()`,
-   observability, rate limits, the red team's auth lockdown, English and Vietnamese only.
+   observability (error tracking on PostHog Cloud, **personal data scrubbed from day one**,
+   due 2026-09-30; the PostHog project set to discard client IPs), rate limits, the red team's auth lockdown, English and Vietnamese only.
 2. **Offices and people**: office setup in the admin area, managers invite agents, the
    platform admin out of offices, pool then owner, per-connection pipe credentials.
 3. **Send and model safety**: the red team's send-path fixes, guest-proof drafts through the
@@ -127,7 +130,9 @@ Each milestone leaves staging better than it found it.
 5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
    "Coming soon" controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
-   dogfood checklist, the first GitHub Release to prod.
+   dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
+   impact assessment filed with A05 for hosting in Singapore and the model providers,
+   confirmed with a Vietnamese lawyer), the first GitHub Release to prod.
 
 **Pulled forward (2026-09-28)**, so staging can dogfood a real pipe: from milestone 2,
 roles and landing (the platform admin lands in the admin area; office setup is one step,
