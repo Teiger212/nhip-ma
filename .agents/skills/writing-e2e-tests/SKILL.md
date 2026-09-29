@@ -74,9 +74,9 @@ test <file>` against your running dev server (no build).
   up with `connectZaloOa(officeId, oaId, "disconnected"?)` and remove it with
   `releaseZaloOa(oaId)` (`support/pipes.ts`); use a unique OA id per test. A guest message on
   that OA arrives as Zalo sends it: `POST /webhooks/zalo` with a JSON body `{ app_id,
-  event_name: "user_send_text", timestamp (ms, string), sender: { id: guest }, recipient: { id:
-  oaId }, message: { text, msg_id } }` and header `X-ZEvent-Signature: mac=<sha256 hex of
-  app_id + raw body + timestamp + ZALO_OA_SECRET_KEY>` (the E2E env's value).
+event_name: "user_send_text", timestamp (ms, string), sender: { id: guest }, recipient: { id:
+oaId }, message: { text, msg_id } }` and header `X-ZEvent-Signature: mac=<sha256 hex of
+app_id + raw body + timestamp + ZALO_OA_SECRET_KEY>` (the E2E env's value).
 - A spec that needs its own guest creates it with `POST /dev/inbound` (signed in, dev only)
   using a unique guest id, e.g. `e2e-${test.info().testId}`, so parallel specs never share a
   thread.

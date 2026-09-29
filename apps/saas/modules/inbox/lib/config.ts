@@ -77,6 +77,23 @@ const envSchema = z
 				}
 			}
 		}
+		// The E2E profile commits test-only pipe secrets (.env.e2e); a live deployment refuses them.
+		if (env.SEND_MODE === "live") {
+			for (const key of ["ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY", "PIPE_SECRETS_KEY"] as const) {
+				const value = env[key];
+				const plain =
+					key === "PIPE_SECRETS_KEY" && value
+						? Buffer.from(value, "base64").toString("latin1")
+						: value;
+				if (plain?.includes("e2e-only")) {
+					ctx.addIssue({
+						code: "custom",
+						path: [key],
+						message: `${key} is the E2E profile's test value and must not be used when SEND_MODE=live`,
+					});
+				}
+			}
+		}
 		if (env.PIPE_SECRETS_KEY && !isValidSecretsKey(env.PIPE_SECRETS_KEY)) {
 			ctx.addIssue({
 				code: "custom",

@@ -10,7 +10,7 @@
 import { db } from "@repo/database";
 import { createInboxStore } from "@repo/database/inbox";
 
-import { encryptSecret } from "../../modules/inbox/lib/pipes/secrets";
+import { encryptSecret, tokenContext } from "../../modules/inbox/lib/pipes/secrets";
 
 async function main(): Promise<void> {
 	const [command, ...args] = process.argv.slice(2);
@@ -23,8 +23,8 @@ async function main(): Promise<void> {
 		const claimed = await store.claimPipe({ pipe: "zalo", externalId: oaId, officeId });
 		if (!claimed.ok) throw new Error(`OA ${oaId} is held by office ${claimed.heldBy}`);
 		await store.savePipeCredential("zalo", oaId, {
-			accessToken: encryptSecret("e2e-access-token", key),
-			refreshToken: encryptSecret("e2e-refresh-token", key),
+			accessToken: encryptSecret("e2e-access-token", key, tokenContext("zalo", oaId, "access")),
+			refreshToken: encryptSecret("e2e-refresh-token", key, tokenContext("zalo", oaId, "refresh")),
 			accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
 		});
 		if (state === "disconnected") {

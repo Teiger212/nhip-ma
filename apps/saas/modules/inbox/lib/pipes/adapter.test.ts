@@ -8,8 +8,11 @@ import { pipeAdapter, transmit } from "./index";
 
 const conversation = { pipe: "whatsapp", guestId: "16315551181" } as Conversation;
 
-/** Only `pipeCredentialState` is read on these paths; nothing is connected. */
-const store = { pipeCredentialState: async () => null } as unknown as Store;
+/** Only these are read on these paths; nothing is connected. */
+const store = {
+	pipeCredentialState: async () => null,
+	officeForPipe: async () => null,
+} as unknown as Store;
 
 test("transmit stays mock unless the send mode is exactly live, even with credentials", async () => {
 	const result = await transmit({
@@ -24,13 +27,14 @@ test("transmit stays mock unless the send mode is exactly live, even with creden
 	expect(result.to).toBe("16315551181");
 });
 
-test("a live deployment mocks a thread with no endpoint and refuses an unconnected one", async () => {
+test("a live deployment refuses a thread with no endpoint or an unconnected one, never mocks it", async () => {
 	const live = mockInboxConfig({ sendMode: "live" });
-	const demo = await transmit({ conversation, text: "hello", from: null, store, config: live });
-	expect(demo.mock).toBe(true);
+	await expect(
+		transmit({ conversation, text: "hello", from: null, store, config: live }),
+	).rejects.toThrow(/connected number or OA/);
 	await expect(
 		transmit({ conversation, text: "hello", from: "phone-b", store, config: live }),
-	).rejects.toThrow(/not connected/);
+	).rejects.toThrow(/connected number or OA/);
 	await expect(
 		transmit({
 			conversation: { pipe: "zalo", guestId: "z1" } as Conversation,
@@ -39,7 +43,7 @@ test("a live deployment mocks a thread with no endpoint and refuses an unconnect
 			store,
 			config: live,
 		}),
-	).rejects.toThrow(/not connected/);
+	).rejects.toThrow(/connected number or OA/);
 });
 
 test("each adapter verifies its own header with its own secret and fails closed", () => {

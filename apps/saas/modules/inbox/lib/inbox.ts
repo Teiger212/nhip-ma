@@ -1,7 +1,7 @@
 import { runInBackground } from "./background";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
-import { pipeAdapter, SendError, transmit } from "./pipes";
+import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
 import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
@@ -264,13 +264,14 @@ export async function approveAndSend(
 	// connected refuses too, rather than recording a mock send the guest never receives.
 	const endpoint = latestGuestEndpoint(conv);
 	if (endpoint) {
-		const connection = await adapter.connection(endpoint, { config, store });
+		const connection = await connectionFor(conv.pipe, endpoint, conv.officeId, { config, store });
 		if (connection.state === "disconnected") {
 			return {
 				ok: false,
 				status: 409,
 				error: "pipe_disconnected",
-				message: `This ${conv.pipe} connection is disconnected, so replies on it cannot be sent. Nhịp has been notified.`,
+				message:
+					"This connection is disconnected, so replies on it cannot be sent. Nhịp has been notified.",
 			};
 		}
 		if (config.sendMode === "live" && connection.state === "not_connected") {
@@ -278,9 +279,16 @@ export async function approveAndSend(
 				ok: false,
 				status: 409,
 				error: "pipe_not_connected",
-				message: `This thread arrived on a ${conv.pipe} number or OA the office has not connected.`,
+				message: "This thread arrived on a number or OA the office has not connected.",
 			};
 		}
+	} else if (config.sendMode === "live") {
+		return {
+			ok: false,
+			status: 409,
+			error: "pipe_not_connected",
+			message: "This thread has no number or OA to answer from.",
+		};
 	}
 
 	// The Answer is written before the vendor call. Its unique inbound is the guard against

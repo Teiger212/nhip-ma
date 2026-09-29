@@ -24,7 +24,6 @@ import type {
 	OneShot,
 	SendResult,
 	PipeCredentialState,
-	StoredPipeCredential,
 	Translations,
 } from "./types";
 
@@ -542,19 +541,33 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async claimPipe(connection) {
-			return db.$transaction(async (tx) => {
-				const held = await tx.pipeConnection.findUnique({
-					where: {
-						pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId },
-					},
-					select: { officeId: true },
+			return db
+				.$transaction(async (tx) => {
+					const held = await tx.pipeConnection.findUnique({
+						where: {
+							pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId },
+						},
+						select: { officeId: true },
+					});
+					if (held && held.officeId !== connection.officeId) {
+						return { ok: false as const, heldBy: held.officeId };
+					}
+					if (!held) await tx.pipeConnection.create({ data: connection });
+					return { ok: true as const };
+				})
+				.catch(async (err: unknown) => {
+					// Two offices claiming the same endpoint at once: the primary key lets one win.
+					if ((err as { code?: string }).code !== "P2002") throw err;
+					const winner = await db.pipeConnection.findUnique({
+						where: {
+							pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId },
+						},
+						select: { officeId: true },
+					});
+					return winner && winner.officeId !== connection.officeId
+						? { ok: false as const, heldBy: winner.officeId }
+						: { ok: true as const };
 				});
-				if (held && held.officeId !== connection.officeId) {
-					return { ok: false as const, heldBy: held.officeId };
-				}
-				if (!held) await tx.pipeConnection.create({ data: connection });
-				return { ok: true as const };
-			});
 		},
 
 		async releasePipe(pipe, externalId) {
@@ -598,10 +611,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async markPipeDisconnected(pipe, externalId, reason) {
-			await db.pipeCredential.updateMany({
+			const { count } = await db.pipeCredential.updateMany({
 				where: { pipe, externalId, disconnectedAt: null },
 				data: { disconnectedAt: new Date(), disconnectedReason: reason },
 			});
+			return count === 1;
 		},
 
 		async withPipeCredentialLock(pipe, externalId, work) {
@@ -614,7 +628,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						FROM "inbox_pipe_credential"
 						WHERE "pipe" = ${pipe}::"Pipe" AND "externalId" = ${externalId}
 						FOR UPDATE`;
-					const save = async (next: StoredPipeCredential) => {
+					const save = async (next: Partial<PipeCredentialState>) => {
 						await tx.pipeCredential.update({
 							where: { pipe_externalId: { pipe, externalId } },
 							data: next,

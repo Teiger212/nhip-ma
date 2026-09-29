@@ -23,7 +23,7 @@ import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
 import { noDraftAdapter } from "./drafts";
-import { encryptSecret } from "./pipes/secrets";
+import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import type { Conversation } from "./types";
@@ -70,8 +70,8 @@ async function connectZaloOa(oaId: string, { disconnected = false } = {}): Promi
 	const store = peekTestRuntime()!.store;
 	await store.claimPipe({ pipe: "zalo", externalId: oaId, officeId: "walk-office" });
 	await store.savePipeCredential("zalo", oaId, {
-		accessToken: encryptSecret("access-1", SECRETS_KEY),
-		refreshToken: encryptSecret("refresh-1", SECRETS_KEY),
+		accessToken: encryptSecret("access-1", SECRETS_KEY, tokenContext("zalo", oaId, "access")),
+		refreshToken: encryptSecret("refresh-1", SECRETS_KEY, tokenContext("zalo", oaId, "refresh")),
 		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
 	});
 	if (disconnected) await store.markPipeDisconnected("zalo", oaId, "refresh refused");
@@ -645,4 +645,23 @@ test("approve does not echo vendor error bodies", async () => {
 	const after = await runtime.store.getConversation(conv.id);
 	expect(after?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
+});
+
+test("an office cannot send as an OA it no longer holds, whatever tokens the OA has", async () => {
+	const runtime = peekTestRuntime()!;
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	// The walk office answered guests on oa-1; the OA was then released and connected to office-a.
+	const conv = await arriveOn("zalo", "oa-1", "guest-old-office");
+	await runtime.store.claimPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
+	await runtime.store.savePipeCredential("zalo", "oa-1", {
+		accessToken: encryptSecret("access-a", SECRETS_KEY, tokenContext("zalo", "oa-1", "access")),
+		refreshToken: encryptSecret("refresh-a", SECRETS_KEY, tokenContext("zalo", "oa-1", "refresh")),
+		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+	});
+	const fetchSpy = vi.fn();
+	vi.stubGlobal("fetch", fetchSpy);
+	const refused = await approveReply(conv);
+	expect(refused.res.status).toBe(409);
+	expect(refused.body.error).toBe("pipe_not_connected");
+	expect(fetchSpy).not.toHaveBeenCalled();
 });

@@ -325,10 +325,19 @@ export type ZaloTokens = { accessToken: string; refreshToken: string; expiresInS
  * answers failures with an error body (often HTTP 200), so success is an `access_token` in
  * the body, nothing else. Each call returns a new refresh token; the one sent is spent.
  */
+/** Zalo definitely refused (an error body): the token sent is dead, not merely unanswered. */
+export class ZaloTokenRefused extends Error {
+	constructor(detail: string) {
+		super(`Zalo refused the token request: ${detail}`);
+		this.name = "ZaloTokenRefused";
+	}
+}
+
 async function zaloTokenRequest(
 	appSecret: string,
 	fields: Record<string, string>,
 ): Promise<ZaloTokens> {
+	// Network errors and timeouts propagate as they are: Zalo may never have seen the request.
 	const res = await fetch(`${ZALO_OAUTH}/access_token`, {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded", secret_key: appSecret },
@@ -336,7 +345,10 @@ async function zaloTokenRequest(
 		// Shorter than the credential lock's transaction timeout (20 s).
 		signal: AbortSignal.timeout(10_000),
 	});
-	const body = (await res.json().catch(() => ({}))) as Json;
+	const body = (await res.json().catch(() => null)) as Json | null;
+	if (res.status >= 500 || !body) {
+		throw new Error(`Zalo token endpoint unavailable (HTTP ${res.status})`);
+	}
 	const accessToken = typeof body.access_token === "string" ? body.access_token : null;
 	const refreshToken = typeof body.refresh_token === "string" ? body.refresh_token : null;
 	const expiresInSec = Number(body.expires_in);
@@ -344,7 +356,7 @@ async function zaloTokenRequest(
 		const error =
 			typeof body.error === "number" || typeof body.error === "string" ? body.error : res.status;
 		const message = typeof body.message === "string" ? body.message : "no token in response";
-		throw new Error(`Zalo token request refused: ${String(error)} ${message}`.trim());
+		throw new ZaloTokenRefused(`${String(error)} ${message}`.trim());
 	}
 	return { accessToken, refreshToken, expiresInSec };
 }

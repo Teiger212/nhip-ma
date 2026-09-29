@@ -38,7 +38,7 @@ export type PipeAdapter = {
 	parseInbound(body: unknown): InboundEvent[];
 	/** Vendor rules on when a free-form send is allowed (WhatsApp's 24h window). */
 	sendWindow(conversation: Conversation, now?: number): WindowState;
-	/** Where the office's endpoint (the number or OA the guest wrote to) stands. */
+	/** Where the endpoint stands for an office that holds it (see `connectionFor`). */
 	connection(externalId: string, ctx: PipeContext): Promise<ConnectionState>;
 	/** Talks to the vendor, from the office's endpoint. Only called for a connected endpoint. */
 	send(input: { to: string; from: string; text: string } & PipeContext): Promise<SendResult>;
@@ -88,8 +88,7 @@ const zalo: PipeAdapter = {
 		try {
 			accessToken = await zaloAccessToken({ store, config, oaId: from });
 		} catch (err) {
-			if (err instanceof ZaloDisconnectedError) {
-				await store.markPipeDisconnected("zalo", from, err.reason);
+			if (err instanceof ZaloDisconnectedError && err.newly) {
 				await notifyPipeDisconnected({ pipe: "zalo", externalId: from, reason: err.reason });
 			}
 			throw err;
@@ -105,9 +104,25 @@ export function pipeAdapter(pipe: Pipe): PipeAdapter {
 }
 
 /**
- * The mock | live seam (ADR 0017). A mock deployment, or a thread with no endpoint (demo
- * data), is a mock send. In a live deployment a send reaches the vendor from a connected
- * endpoint and is refused from any other (the approval path checks first and says why).
+ * Where an office's endpoint stands, for that office. An endpoint another office holds now
+ * (it was released and reconnected elsewhere) is not connected for this one, whatever
+ * tokens it has: an office never sends as an endpoint it no longer holds (ADR 0017).
+ */
+export async function connectionFor(
+	pipe: Pipe,
+	externalId: string,
+	officeId: string,
+	ctx: PipeContext,
+): Promise<ConnectionState> {
+	const holder = await ctx.store.officeForPipe(pipe, externalId);
+	if (holder !== officeId) return { state: "not_connected" };
+	return pipeAdapter(pipe).connection(externalId, ctx);
+}
+
+/**
+ * The mock | live seam (ADR 0017). Every send in a mock deployment is a mock send. In a live
+ * deployment a send reaches the vendor only from a connected endpoint the thread's office
+ * holds, and is refused otherwise (the approval path checks first and says why).
  */
 export async function transmit(
 	input: {
@@ -119,22 +134,7 @@ export async function transmit(
 ): Promise<SendResult> {
 	const pipe = input.conversation.pipe;
 	const to = input.conversation.guestId;
-	const adapter = pipeAdapter(pipe);
-	const connection =
-		input.config.sendMode === "live" && input.from
-			? await adapter.connection(input.from, input)
-			: ({ state: "not_connected" } as const);
-	if (connection.state === "disconnected") {
-		throw new SendError(
-			`The ${pipe} connection is disconnected: ${connection.reason}`,
-			null,
-			"config",
-		);
-	}
-	if (input.config.sendMode === "live" && input.from && connection.state === "not_connected") {
-		throw new SendError(`This ${pipe} endpoint is not connected`, null, "config");
-	}
-	if (connection.state === "not_connected" || !input.from) {
+	if (input.config.sendMode !== "live") {
 		return {
 			mock: true,
 			pipe,
@@ -143,7 +143,19 @@ export async function transmit(
 			vendorMessageId: `mock-${crypto.randomUUID()}`,
 		};
 	}
-	return adapter.send({
+	// Live: only from a connected endpoint the thread's office holds. No endpoint (a thread
+	// from before endpoints were recorded) is refused too, never mocked.
+	const connection = input.from
+		? await connectionFor(pipe, input.from, input.conversation.officeId, input)
+		: ({ state: "not_connected" } as const);
+	if (connection.state !== "connected" || !input.from) {
+		throw new SendError(
+			`This ${pipe} thread cannot be answered from a connected number or OA`,
+			null,
+			"config",
+		);
+	}
+	return pipeAdapter(pipe).send({
 		to,
 		from: input.from,
 		text: input.text,

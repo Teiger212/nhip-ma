@@ -6,6 +6,7 @@ import {
 } from "@inbox/lib/pipes/zalo-connect";
 import { requirePlatformAdmin } from "@inbox/lib/require-platform-admin";
 import { getRuntime } from "@inbox/lib/runtime";
+import { db } from "@repo/database";
 import { getBaseUrl } from "@repo/utils";
 import { NextResponse } from "next/server";
 
@@ -18,9 +19,22 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
 	const gate = await requirePlatformAdmin(request);
 	if (gate.denied) return gate.denied;
+	// Only from Nhịp's own admin page: a link on another site must not start a connect
+	// (the admin's Zalo session could approve an OA into an office the attacker chose).
+	const site = request.headers.get("sec-fetch-site");
+	if (site && site !== "same-origin" && site !== "none") {
+		return NextResponse.json({ error: "cross_site" }, { status: 403 });
+	}
 	const officeId = new URL(request.url).searchParams.get("officeId");
 	if (!officeId) {
 		return NextResponse.json({ error: "office_required" }, { status: 400 });
+	}
+	const office = await db.organization.findUnique({
+		where: { id: officeId },
+		select: { id: true },
+	});
+	if (!office) {
+		return NextResponse.json({ error: "office_not_found" }, { status: 404 });
 	}
 	const { config } = getRuntime();
 	if (!config.zalo.appId || !config.zalo.appSecret || !config.pipeSecretsKey) {

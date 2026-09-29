@@ -231,18 +231,19 @@ export type InboxStore = {
 	/** The endpoint's token state, or null when it holds no tokens. */
 	pipeCredentialState: (pipe: Pipe, externalId: string) => Promise<PipeCredentialState | null>;
 	/** The tokens stopped working; kept for the record until the platform admin reconnects. */
-	markPipeDisconnected: (pipe: Pipe, externalId: string, reason: string) => Promise<void>;
+	/** Returns whether this call recorded it (false when already disconnected or no tokens). */
+	markPipeDisconnected: (pipe: Pipe, externalId: string, reason: string) => Promise<boolean>;
 	/**
 	 * Run `work` holding a row lock on the endpoint's credential, so two instances never
-	 * refresh at once (a Zalo refresh token works once). `save` writes the new tokens inside
-	 * the same transaction. `current` is null when the endpoint has no credential.
+	 * refresh at once (a Zalo refresh token works once). `save` writes new tokens, or the
+	 * disconnect, inside the same transaction. `current` is null when the endpoint has no credential.
 	 */
 	withPipeCredentialLock: <T>(
 		pipe: Pipe,
 		externalId: string,
 		work: (
 			current: PipeCredentialState | null,
-			save: (next: StoredPipeCredential) => Promise<void>,
+			save: (next: Partial<PipeCredentialState>) => Promise<void>,
 		) => Promise<T>,
 	) => Promise<T>;
 	/** Delete these threads of the office with everything under them. Returns how many went. */
