@@ -10,6 +10,16 @@ from milestone 6.
 
 ## Now: staging
 
+### Migrations on build (PR #44)
+
+- [ ] **Vercel, staging, Sensitive:** `DIRECT_DATABASE_URL` = staging's direct (non-pooled)
+      Neon URL. Get it with
+      `neon connection-string staging --project-id lingering-bonus-85587787 --no-env-pull`
+      in your own terminal and paste it into Vercel; don't paste it in chat.
+- [ ] **Merge #44**, then tell Claude to switch the Build Command to `pnpm run build:vercel`.
+      Verify: the next staging build log shows "Applying migrations", and the staging smoke
+      run passes.
+
 ### Zalo (ADR 0017)
 
 - [ ] **Test OA** at oa.zalo.me, your Zalo account as admin (e.g. "Nhịp Staging Test").
@@ -55,8 +65,8 @@ from milestone 6.
 - [ ] **Nhịp's own domain**; verify it in Resend with SPF, DKIM **and DMARC**; `MAIL_FROM`
       moves to it (invitations landed in spam from `lanternroute.com`).
 - [ ] **Per-office subdomains** on that domain (ADR 0018).
-- [ ] **Prod env vars** (Production scope): every staging value above, each with prod's own
-      value (own Zalo app, own Meta app, own PostHog project or environment, a new
+- [ ] **Prod env vars** (Production scope): every staging value above (including
+      `DIRECT_DATABASE_URL`), each with prod's own value (own Zalo app, own Meta app, own PostHog project or environment, a new
       `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`, prod Neon branch `DATABASE_URL`).
 - [ ] **Vietnam's Personal Data Protection Law:** the cross-border transfer impact
       assessment filed with the Ministry of Public Security (A05) within 60 days of the first
