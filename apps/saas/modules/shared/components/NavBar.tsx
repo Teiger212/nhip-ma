@@ -2,6 +2,7 @@
 
 import { useSession } from "@auth/hooks/use-session";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { config as paymentsConfig } from "@repo/payments/config";
 import {
 	cn,
@@ -104,7 +105,8 @@ export function NavBar() {
 	const showLabels = isMobile || state === "expanded";
 
 	const { user } = useSession();
-	const items = buildWalkNav(pathname, { isAdmin: user?.role === "admin" });
+	const isAdmin = isPlatformAdmin(user?.role);
+	const items = buildWalkNav(pathname, { isAdmin });
 	const settingsSections = buildSettingsSections(pathname, {
 		billingAttachedToUser: paymentsConfig.billingAttachedTo === "user",
 	});
@@ -129,7 +131,11 @@ export function NavBar() {
 								size="lg"
 								tooltip={t("app.menu.start")}
 								render={(props) => (
-									<LocaleLink {...props} href="/inbox" prefetch>
+									<LocaleLink
+										{...props}
+										href={isAdmin ? "/admin/organizations" : "/inbox"}
+										prefetch
+									>
 										<Logo withLabel={false} className="text-sidebar-foreground" />
 										<span
 											className={cn(

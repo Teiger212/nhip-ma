@@ -63,3 +63,17 @@ test("more than one membership is refused, not picked from", async () => {
 	expect(await gate.denied?.json()).toMatchObject({ error: "ambiguous_office" });
 	expect(gate.viewer).toBeUndefined();
 });
+
+test("the platform admin is refused whatever office they are a member of (ADR 0015)", async () => {
+	vi.mocked(auth.api.getSession).mockResolvedValue({
+		session: { id: "s", activeOrganizationId: "office-a" },
+		user: { id: "platform-admin", role: "admin" },
+	} as never);
+	vi.mocked(getOrganizationMembershipsForUser).mockResolvedValue([
+		{ organizationId: "office-a" },
+	] as never);
+	const gate = await requireInboxSession(request);
+	expect(gate.denied?.status).toBe(403);
+	expect(await gate.denied?.json()).toMatchObject({ error: "platform_admin" });
+	expect(gate.viewer).toBeUndefined();
+});

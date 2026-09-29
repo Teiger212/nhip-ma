@@ -1,4 +1,5 @@
 import { Home } from "@home/components/Home";
+import { sendPlatformAdminToAdminArea } from "@shared/lib/platform-admin";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
@@ -8,6 +9,7 @@ export async function generateMetadata() {
 	};
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+	await sendPlatformAdminToAdminArea();
 	return <Home />;
 }
