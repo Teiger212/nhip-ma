@@ -27,7 +27,7 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 ## Where and how
 
 - Specs live in `apps/saas/tests` or `apps/marketing/tests` as `*.spec.ts` (not `e2e/`).
-- `playwright.config.ts` (per app) is authoritative: Chromium; SaaS on `http://localhost:3000`,
+- `playwright.config.ts` (per app) is authoritative: Chromium; SaaS on `https://localhost:3443` (a local HTTPS proxy in front of the build on `:3000`),
   marketing on `3001`; the `webServer` block always builds and starts production mode fresh
   (a reused server silently tests stale code; use `E2E_BASE_URL` to target a running one). No retries anywhere: a flaky spec is fixed, not retried.
 - Routes are locale-prefixed: navigate to `/en/…` or `/vi/…`; bare paths redirect.
@@ -51,11 +51,10 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   labels only where the text or accessibility is what the test proves.
 - While writing a spec: `E2E_BASE_URL=http://localhost:3010 pnpm --filter saas exec playwright
 test <file>` against your running dev server (no build).
-- The E2E profile is temporary (AGENTS.md): it moves to a proper HTTPS environment with its
-  own Neon branch during milestone 1's staging work.
-
-## Data and sign-in
-
+- The app is served over HTTPS (self-signed; `ignoreHTTPSErrors` is on), so cookies are
+  secure and the base URL is https. Never special-case http in a spec.
+- The staging smoke (`tests/smoke/`, `playwright.smoke.config.ts`) is read-only against a
+  deployment: no sessions, no writes, few requests.
 - Database: local Postgres (brew `postgresql@16`), schema via
   `pnpm --filter @repo/database push`, demo data via `pnpm seed --reset` (walk office, four
   demo threads). Specs must not depend on each other or on order.

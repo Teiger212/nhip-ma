@@ -1,0 +1,40 @@
+name: Staging smoke
+
+# After Vercel finishes a staging deployment (main), check the deployed app is up and still
+# guarded (docs/e2e-scenarios.md, "Staging smoke"). Read-only: no secrets, no data written.
+on:
+  deployment_status:
+
+jobs:
+  smoke:
+    # Vercel names the deployment's ref by commit, not branch. Only main builds as a Preview
+    # (the project's Ignored Build Step skips every other branch), so a successful Preview
+    # deployment is staging.
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter saas exec playwright install --with-deps chromium
+
+      - name: Smoke the deployment
+        run: pnpm --filter saas smoke
+        env:
+          SMOKE_BASE_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
