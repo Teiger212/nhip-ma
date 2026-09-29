@@ -31,3 +31,42 @@ export function loginCopy(locale: Locale): LoginCopy {
 		invalidCredentials: saas.auth.errors.invalidEmailOrPassword,
 	};
 }
+
+/** The pipe-connection copy (ADR 0017): the admin's Connections card and the inbox's blocked send. */
+export type PipeCopy = {
+	status: { none: string; connected: string; needsReconnect: string };
+	connectZalo: string;
+	disconnectTitle: string;
+	/** The reason a thread on a disconnected pipe cannot be sent. */
+	sendBlocked: (pipe: string) => string;
+	/** The inbox banner while a pipe of the office is disconnected. */
+	banner: (pipes: string) => string;
+};
+
+export function pipeCopy(locale: Locale): PipeCopy {
+	const file = path.resolve(
+		__dirname,
+		`../../../../packages/i18n/translations/${locale}/saas.json`,
+	);
+	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
+		admin: {
+			connections: {
+				status: PipeCopy["status"];
+				connectZalo: string;
+				confirmDisconnect: { title: string };
+			};
+		};
+		inbox: {
+			pipeDisconnected: string;
+			pipeDisconnectedBanner: string;
+		};
+	};
+	const { connections } = saas.admin;
+	return {
+		status: connections.status,
+		connectZalo: connections.connectZalo,
+		disconnectTitle: connections.confirmDisconnect.title,
+		sendBlocked: (pipe) => saas.inbox.pipeDisconnected.replaceAll("{pipe}", pipe),
+		banner: (pipes) => saas.inbox.pipeDisconnectedBanner.replaceAll("{pipes}", pipes),
+	};
+}

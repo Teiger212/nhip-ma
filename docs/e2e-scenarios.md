@@ -72,13 +72,21 @@ not driven here; a test sets up a connected or disconnected OA directly, as setu
 1. **The platform admin starts connecting a Zalo OA.** Admin → Organizations → an office →
    Connections lists Zalo and WhatsApp, each "Not connected". "Connect Zalo OA" takes the
    browser to Zalo's consent page for Nhịp's Zalo app, carrying Nhịp's callback address.
+   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 1; a new office, so nothing else connects to it).
 2. **Only the platform admin connects.** An agent sees no Connections; asking for the connect
    address as an agent is refused (403), and signed out it is refused too (401).
-3. **A disconnected pipe blocks its replies, and nothing else.** With the office's Zalo OA
-   disconnected, the agent's inbox says Zalo is disconnected and replies on Zalo cannot be
-   sent. On a Zalo thread the send button is disabled with that reason, and approving through
-   the API is refused (409). A new guest message on that OA still arrives in its thread. A
-   WhatsApp thread still sends. The platform admin's Connections shows Zalo as "Needs
-   reconnect".
+   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 2).
+3. **A disconnected pipe blocks its replies, and nothing else.** With one of the office's
+   Zalo OAs disconnected, the agent's inbox says Zalo is disconnected. On a thread whose
+   replies go out from that OA the send button is disabled with that reason, and approving
+   through the API is refused (409). A new guest message on that OA still arrives in its
+   thread. A thread on another, connected OA of the same office still sends, and so does a
+   WhatsApp thread. The platform admin's Connections shows that OA as "Needs reconnect" and
+   the other as "Connected". Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 3; in the walk
+   office, with its WhatsApp number; "still sends" is an approve that lands the reply under
+   Sent, a mock send in E2E).
 4. **Disconnecting.** The platform admin disconnects the office's Zalo OA: Connections shows
    it "Not connected", and a new guest message to that OA no longer arrives in the office.
+   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 4; a new office with an invited member who
+   watches the inbox; the confirmation names the OA; the thread stays, the same guest's next
+   message and a new guest's first message do not arrive).
