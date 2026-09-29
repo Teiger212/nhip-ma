@@ -31,3 +31,22 @@ export async function register() {
 		throw new Error(`Invalid environment configuration:\n${result.errors.join("\n")}`);
 	}
 }
+
+/**
+ * Unhandled server errors go to error tracking, scrubbed of personal data first
+ * (`@shared/lib/error-tracking`); a no-op unless NEXT_PUBLIC_POSTHOG_KEY is set.
+ */
+export async function onRequestError(
+	error: unknown,
+	request: { path: string; method: string },
+	context: { routeType?: string; routePath?: string },
+) {
+	if (process.env.NEXT_RUNTIME !== "nodejs") return;
+	const { captureServerError } = await import("@shared/lib/error-tracking");
+	await captureServerError(error, {
+		path: request.path,
+		method: request.method,
+		routeType: context.routeType,
+		routePath: context.routePath,
+	});
+}

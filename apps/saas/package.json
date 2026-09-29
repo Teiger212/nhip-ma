@@ -49,6 +49,8 @@
 		"nprogress": "catalog:",
 		"nuqs": "catalog:",
 		"permix": "catalog:",
+		"posthog-js": "^1.434.16",
+		"posthog-node": "^5.54.1",
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"react-dropzone": "catalog:",

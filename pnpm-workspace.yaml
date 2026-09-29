@@ -11,6 +11,8 @@ allowBuilds:
   "@prisma/engines": true
   "@swc/core": true
   better-sqlite3: true
+  # core-js (via posthog-js): its install script only prints a funding message.
+  core-js: false
   esbuild: true
   prisma: true
   prisma-zod-generator: true
