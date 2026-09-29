@@ -15,7 +15,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"type-check": "next typegen && tsc --noEmit"
+		"type-check": "next typegen && tsc --noEmit",
+		"smoke": "playwright test --config playwright.smoke.config.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "catalog:",

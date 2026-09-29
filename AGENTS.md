@@ -120,13 +120,15 @@ one real round trip from a phone over WhatsApp and Zalo.
   in the app. Sign in through the login page only where signing in is what the test proves.
   The app's rate limit stays on in E2E: each test is its own client (`clientIpHeaders` in
   `tests/support/session.ts` sets `x-forwarded-for`, which Better Auth keys the limit on).
-- How E2E runs today: `pnpm --filter saas exec playwright test` builds production on
-  `:3000` with `.env.e2e` against its own `supastarter_e2e` database (pushed and seeded
-  fresh); `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast
-  iteration. **Temporary:** the E2E profile relaxes one startup check (HTTP allowed only
-  with `E2E=1` on localhost). Replace it with proper environments (a preview/staging
-  deployment on HTTPS with its own Neon branch, per ADR 0016) as part of milestone 1's
-  staging work, then remove the exception.
+- How E2E runs: `pnpm --filter saas exec playwright test` builds production on `:3000`
+  with `.env.e2e` against its own `supastarter_e2e` database (pushed and seeded fresh),
+  behind a local HTTPS proxy on `:3443` (`tests/support/https-proxy.mjs`, a throwaway
+  self-signed certificate), so the app runs with an https URL and secure cookies and has no
+  E2E exception. `E2E_PORT` moves both ports (HTTPS is `E2E_PORT + 443`).
+  `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast
+  iteration.
+- After every staging deploy, `.github/workflows/staging-smoke.yml` runs the read-only
+  staging smoke (`pnpm --filter saas smoke`, `tests/smoke/`) against the deployment.
 
 **Neon (staging and prod, ADR 0016).** This folder is linked to Neon project
 `lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Dev stays on

@@ -14,15 +14,17 @@ import dotenv from "dotenv";
 const devServer = process.env.E2E_BASE_URL;
 /** Port for the production build (default 3000, as in CI); set E2E_PORT when 3000 is taken. */
 const e2ePort = Number(process.env.E2E_PORT ?? 3000);
-const e2eUrl = `http://localhost:${e2ePort}`;
+/** The app is reached over HTTPS, as when hosted: a local proxy in front of the build. */
+const httpsPort = Number(process.env.E2E_HTTPS_PORT ?? e2ePort + 443);
+const e2eUrl = `https://localhost:${httpsPort}`;
 // The test-only auth instance (tests/support/test-auth.ts) mints sessions for the server under
 // test, so the runner needs that server's database, secret and URL: dev's for a dev server.
 if (devServer) {
 	dotenv.config({ path: path.resolve(__dirname, "../../.env.local"), quiet: true });
 } else {
 	dotenv.config({ path: path.resolve(__dirname, "../../.env.e2e") });
-	// The app's own URL is baked into the build, so it follows the port.
-	if (process.env.E2E_PORT) process.env.NEXT_PUBLIC_SAAS_URL = e2eUrl;
+	// The app's own URL is baked into the build: the HTTPS address, whatever the ports.
+	process.env.NEXT_PUBLIC_SAAS_URL = e2eUrl;
 	// Same server and credentials as dev, its own database: like the unit-test database, the
 	// E2E one is dev's DATABASE_URL renamed. CI sets DATABASE_URL itself and skips this.
 	if (!process.env.DATABASE_URL) {
@@ -43,6 +45,8 @@ if (devServer) {
  */
 export default defineConfig({
 	testDir: "./tests",
+	// The staging smoke run has its own config (playwright.smoke.config.ts).
+	testIgnore: "smoke/**",
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	// No retries: a flaky spec is fixed, not retried (AGENTS.md, "Test quality").
@@ -52,6 +56,8 @@ export default defineConfig({
 	use: {
 		// The kit already uses `data-test`; getByTestId follows it.
 		testIdAttribute: "data-test",
+		// The E2E proxy's certificate is self-signed and made at start.
+		ignoreHTTPSErrors: true,
 		baseURL: devServer ?? e2eUrl,
 		trace: "retain-on-failure",
 		video: {
@@ -71,20 +77,29 @@ export default defineConfig({
 	],
 	webServer: devServer
 		? undefined
-		: {
-				command: [
-					"pnpm --filter saas exec tsx tests/support/ensure-e2e-db.ts",
-					"pnpm --filter @repo/database push",
-					"pnpm --filter saas seed -- --reset",
-					"pnpm --filter saas run build",
-					"pnpm --filter saas run start",
-				].join(" && "),
-				url: e2eUrl,
-				env: { E2E: "1", PORT: String(e2ePort) },
-				// Always a fresh build: a reused server silently tests stale code. Use
-				// E2E_BASE_URL to run against a server you already have.
-				reuseExistingServer: false,
-				stdout: "pipe",
-				timeout: 300 * 1000,
-			},
+		: [
+				{
+					command: [
+						"pnpm --filter saas exec tsx tests/support/ensure-e2e-db.ts",
+						"pnpm --filter @repo/database push",
+						"pnpm --filter saas seed -- --reset",
+						"pnpm --filter saas run build",
+						"pnpm --filter saas run start",
+					].join(" && "),
+					url: `http://localhost:${e2ePort}/api/auth/ok`,
+					env: { E2E: "1", PORT: String(e2ePort) },
+					// Always a fresh build: a reused server silently tests stale code. Use
+					// E2E_BASE_URL to run against a server you already have.
+					reuseExistingServer: false,
+					stdout: "pipe",
+					timeout: 300 * 1000,
+				},
+				{
+					command: `node tests/support/https-proxy.mjs ${httpsPort} ${e2ePort}`,
+					url: `${e2eUrl}/api/auth/ok`,
+					ignoreHTTPSErrors: true,
+					reuseExistingServer: false,
+					timeout: 30 * 1000,
+				},
+			],
 });

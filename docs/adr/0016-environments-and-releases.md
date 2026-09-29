@@ -41,18 +41,17 @@ one webhook URL, so a real pipe can feed exactly one environment.
 - A second set of WhatsApp/Zalo test apps is needed for staging; prod gets its own.
 - Model calls, not hosting, are the expected cost driver.
 
-## Amendment (2026-09-28): PR previews
+## Amendment (2026-09-28, revised 2026-09-29): E2E over HTTPS in CI, a smoke run on staging
 
-- Each PR gets a Vercel preview on a Neon branch created by CI from `staging`,
-  **schema-only** (no staging data), migrated and seeded, and deleted when the PR closes.
-  The Neon–Vercel integration is not used: it branches from the default branch, which is
-  prod.
-- Previews always run `SEND_MODE=mock`, have no pipe connections, and get their own auth
-  secret and encryption key.
-- Previews sit behind Vercel's protection; CI reaches them with the bypass secret. Only on
-  previews, Better Auth keys its rate limit on an `x-e2e-client` header before the real IP,
-  so each E2E test is its own client while the limit stays on. Staging and prod never read
-  it.
+- **No per-PR previews for now.** Vercel's protection covers every deployment except
+  production, and staging (a `main` preview) is public, so previews could not be protected
+  without locking staging. Instead, CI's E2E runs the production build behind a local HTTPS
+  proxy (a throwaway self-signed certificate): the app runs with an https URL and secure
+  cookies, and the app carries no E2E exception. Rate limits stay on; each test is its own
+  client by `x-forwarded-for`.
+- **After every staging deploy, a read-only smoke run** checks the deployed app (pages load,
+  signed-out APIs refuse, webhooks fail closed), which covers what only the platform shows.
+- Per-PR previews on Neon branches stay an option if staging keeps finding problems late.
 - Staging and prod: one Vercel project. `main` builds staging (env vars scoped to Preview on
   `main`); the `production` branch builds prod, guarded by a ruleset so only the release
   workflow moves it.
