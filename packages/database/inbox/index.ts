@@ -36,6 +36,8 @@ export type {
 	Qualification,
 	SendMode,
 	SendResult,
+	OfficePipe,
+	PipeCredentialState,
 	StoredPipeCredential,
 	Translations,
 } from "./types";

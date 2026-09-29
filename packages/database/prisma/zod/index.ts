@@ -138,7 +138,7 @@ export type PipeConnectionScalarFieldEnum = z.infer<typeof PipeConnectionScalarF
 
 // File: PipeCredentialScalarFieldEnum.schema.ts
 
-export const PipeCredentialScalarFieldEnumSchema = z.enum(['pipe', 'externalId', 'accessToken', 'refreshToken', 'accessTokenExpiresAt', 'updatedAt'])
+export const PipeCredentialScalarFieldEnumSchema = z.enum(['pipe', 'externalId', 'accessToken', 'refreshToken', 'accessTokenExpiresAt', 'disconnectedAt', 'disconnectedReason', 'updatedAt'])
 
 export type PipeCredentialScalarFieldEnum = z.infer<typeof PipeCredentialScalarFieldEnumSchema>;
 
@@ -562,6 +562,8 @@ export const PipeCredentialSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
   accessTokenExpiresAt: z.date(),
+  disconnectedAt: z.date().nullish(),
+  disconnectedReason: z.string().nullish(),
   updatedAt: z.date(),
 });
 

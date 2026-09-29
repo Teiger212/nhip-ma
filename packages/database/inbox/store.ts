@@ -23,6 +23,7 @@ import type {
 	Message,
 	OneShot,
 	SendResult,
+	PipeCredentialState,
 	StoredPipeCredential,
 	Translations,
 } from "./types";
@@ -536,23 +537,80 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			await db.pipeCredential.upsert({
 				where: { pipe_externalId: { pipe, externalId } },
 				create: { pipe, externalId, ...credential },
-				update: credential,
+				update: { ...credential, disconnectedAt: null, disconnectedReason: null },
 			});
 		},
 
-		async hasPipeCredential(pipe, externalId) {
-			const found = await db.pipeCredential.findUnique({
-				where: { pipe_externalId: { pipe, externalId } },
-				select: { pipe: true },
+		async claimPipe(connection) {
+			return db.$transaction(async (tx) => {
+				const held = await tx.pipeConnection.findUnique({
+					where: {
+						pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId },
+					},
+					select: { officeId: true },
+				});
+				if (held && held.officeId !== connection.officeId) {
+					return { ok: false as const, heldBy: held.officeId };
+				}
+				if (!held) await tx.pipeConnection.create({ data: connection });
+				return { ok: true as const };
 			});
-			return found !== null;
+		},
+
+		async releasePipe(pipe, externalId) {
+			await db.pipeConnection.deleteMany({ where: { pipe, externalId } });
+		},
+
+		async officePipes(officeId) {
+			const rows = await db.pipeConnection.findMany({
+				where: { officeId },
+				select: {
+					pipe: true,
+					externalId: true,
+					credential: { select: { disconnectedAt: true, disconnectedReason: true } },
+				},
+			});
+			return rows
+				.map((row) => ({
+					pipe: row.pipe,
+					externalId: row.externalId,
+					credential: !row.credential
+						? ("none" as const)
+						: row.credential.disconnectedAt
+							? ("disconnected" as const)
+							: ("connected" as const),
+					disconnectedReason: row.credential?.disconnectedReason ?? null,
+				}))
+				.sort((a, b) => a.pipe.localeCompare(b.pipe) || a.externalId.localeCompare(b.externalId));
+		},
+
+		async pipeCredentialState(pipe, externalId) {
+			return db.pipeCredential.findUnique({
+				where: { pipe_externalId: { pipe, externalId } },
+				select: {
+					accessToken: true,
+					refreshToken: true,
+					accessTokenExpiresAt: true,
+					disconnectedAt: true,
+					disconnectedReason: true,
+				},
+			});
+		},
+
+		async markPipeDisconnected(pipe, externalId, reason) {
+			await db.pipeCredential.updateMany({
+				where: { pipe, externalId, disconnectedAt: null },
+				data: { disconnectedAt: new Date(), disconnectedReason: reason },
+			});
 		},
 
 		async withPipeCredentialLock(pipe, externalId, work) {
 			return db.$transaction(
 				async (tx) => {
-					const rows = await tx.$queryRaw<StoredPipeCredential[]>`
-						SELECT "accessToken", "refreshToken", "accessTokenExpiresAt"
+					// Prisma has no row-lock API; this one read takes the lock (bound parameters).
+					const rows = await tx.$queryRaw<PipeCredentialState[]>`
+						SELECT "accessToken", "refreshToken", "accessTokenExpiresAt",
+							"disconnectedAt", "disconnectedReason"
 						FROM "inbox_pipe_credential"
 						WHERE "pipe" = ${pipe}::"Pipe" AND "externalId" = ${externalId}
 						FOR UPDATE`;

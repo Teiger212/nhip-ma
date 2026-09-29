@@ -77,38 +77,46 @@ describe("validateInboxEnv", () => {
 		}
 	});
 
-	it("requires WhatsApp and Zalo secrets when SEND_MODE=live", () => {
-		const result = validateInboxEnv(baseEnv({ SEND_MODE: "live" }));
+	it("a live deployment needs no pipe configured: an unconfigured pipe just never sends live", () => {
+		expect(validateInboxEnv(baseEnv({ SEND_MODE: "live" }))).toMatchObject({ ok: true });
+	});
+
+	it("a pipe is configured whole or not at all", () => {
+		const result = validateInboxEnv(
+			baseEnv({ SEND_MODE: "live", ZALO_APP_ID: "app", WHATSAPP_ACCESS_TOKEN: "token" }),
+		);
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.errors).toEqual([
-				"WHATSAPP_APP_SECRET must be set when SEND_MODE=live",
-				"WHATSAPP_ACCESS_TOKEN must be set when SEND_MODE=live",
-				"WHATSAPP_PHONE_NUMBER_ID must be set when SEND_MODE=live",
-				"ZALO_OA_ACCESS_TOKEN must be set when SEND_MODE=live",
-				"ZALO_OA_SECRET_KEY must be set when SEND_MODE=live",
+				"WHATSAPP_APP_SECRET must be set: whatsapp is configured only in part (WHATSAPP_ACCESS_TOKEN set)",
+				"WHATSAPP_PHONE_NUMBER_ID must be set: whatsapp is configured only in part (WHATSAPP_ACCESS_TOKEN set)",
+				"ZALO_APP_SECRET must be set: zalo is configured only in part (ZALO_APP_ID set)",
+				"ZALO_OA_SECRET_KEY must be set: zalo is configured only in part (ZALO_APP_ID set)",
+				"PIPE_SECRETS_KEY must be set: zalo is configured only in part (ZALO_APP_ID set)",
 			]);
 		}
 	});
 
-	it("treats a blank live secret the same as a missing one", () => {
+	it("treats a blank setting the same as a missing one, and checks the secrets key", () => {
 		const result = validateInboxEnv(
 			baseEnv({
-				SEND_MODE: "live",
-				WHATSAPP_APP_SECRET: "   ",
-				WHATSAPP_ACCESS_TOKEN: "token",
-				WHATSAPP_PHONE_NUMBER_ID: "id",
-				ZALO_OA_ACCESS_TOKEN: "token",
-				ZALO_OA_SECRET_KEY: "secret",
+				ZALO_APP_ID: "app",
+				ZALO_APP_SECRET: "   ",
+				ZALO_OA_SECRET_KEY: "oa",
+				PIPE_SECRETS_KEY: "too-short",
 			}),
 		);
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.errors).toEqual(["WHATSAPP_APP_SECRET must be set when SEND_MODE=live"]);
+			expect(result.errors).toEqual([
+				"ZALO_APP_SECRET must be set: zalo is configured only in part (ZALO_APP_ID, ZALO_OA_SECRET_KEY, PIPE_SECRETS_KEY set)",
+				"PIPE_SECRETS_KEY must be 32 random bytes, base64-encoded",
+			]);
 		}
 	});
 
-	it("passes when SEND_MODE=live and every secret is set", () => {
+	it("passes with every pipe configured whole", () => {
+		const key = Buffer.alloc(32, 1).toString("base64");
 		expect(
 			validateInboxEnv(
 				baseEnv({
@@ -116,8 +124,10 @@ describe("validateInboxEnv", () => {
 					WHATSAPP_APP_SECRET: "secret",
 					WHATSAPP_ACCESS_TOKEN: "token",
 					WHATSAPP_PHONE_NUMBER_ID: "id",
-					ZALO_OA_ACCESS_TOKEN: "token",
-					ZALO_OA_SECRET_KEY: "secret",
+					ZALO_APP_ID: "app",
+					ZALO_APP_SECRET: "app-secret",
+					ZALO_OA_SECRET_KEY: "oa-secret",
+					PIPE_SECRETS_KEY: key,
 				}),
 			),
 		).toMatchObject({
@@ -125,7 +135,8 @@ describe("validateInboxEnv", () => {
 			config: {
 				sendMode: "live",
 				whatsapp: { appSecret: "secret", accessToken: "token", phoneNumberId: "id" },
-				zalo: { accessToken: "token", oaSecretKey: "secret" },
+				zalo: { appId: "app", appSecret: "app-secret", oaSecretKey: "oa-secret" },
+				pipeSecretsKey: key,
 			},
 		});
 	});

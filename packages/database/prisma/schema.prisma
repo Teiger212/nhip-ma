@@ -434,6 +434,9 @@ model PipeCredential {
   accessToken          String         @db.Text
   refreshToken         String         @db.Text
   accessTokenExpiresAt DateTime
+  /// Set when the tokens stopped working (a refresh failed); the platform admin reconnects.
+  disconnectedAt       DateTime?
+  disconnectedReason   String?
   updatedAt            DateTime       @updatedAt
   connection           PipeConnection @relation(fields: [pipe, externalId], references: [pipe, externalId], onDelete: Cascade)
 

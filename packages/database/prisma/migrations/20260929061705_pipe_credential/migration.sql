@@ -5,6 +5,8 @@ CREATE TABLE "inbox_pipe_credential" (
     "accessToken" TEXT NOT NULL,
     "refreshToken" TEXT NOT NULL,
     "accessTokenExpiresAt" TIMESTAMP(3) NOT NULL,
+    "disconnectedAt" TIMESTAMP(3),
+    "disconnectedReason" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "inbox_pipe_credential_pkey" PRIMARY KEY ("pipe","externalId")

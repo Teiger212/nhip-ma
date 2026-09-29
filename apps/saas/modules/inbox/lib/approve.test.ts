@@ -23,6 +23,7 @@ import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
 import { noDraftAdapter } from "./drafts";
+import { encryptSecret } from "./pipes/secrets";
 import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import type { Conversation } from "./types";
@@ -51,6 +52,45 @@ async function arrive(body: Body): Promise<Conversation> {
 	const injected = await json(await inject(post("http://localhost/dev/inbound", body)));
 	expect(injected.res.status).toBe(200);
 	return injected.body.conversation as Conversation;
+}
+
+const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
+
+/** A live deployment with Nhịp's Zalo app configured (ADR 0017). */
+function liveZaloConfig() {
+	return mockInboxConfig({
+		sendMode: "live",
+		zalo: { appId: "app-1", appSecret: "app-secret", oaSecretKey: "oa-secret" },
+		pipeSecretsKey: SECRETS_KEY,
+	});
+}
+
+/** The walk office's Zalo OA, connected with a token good for a day (setup, not the flow). */
+async function connectZaloOa(oaId: string, { disconnected = false } = {}): Promise<void> {
+	const store = peekTestRuntime()!.store;
+	await store.claimPipe({ pipe: "zalo", externalId: oaId, officeId: "walk-office" });
+	await store.savePipeCredential("zalo", oaId, {
+		accessToken: encryptSecret("access-1", SECRETS_KEY),
+		refreshToken: encryptSecret("refresh-1", SECRETS_KEY),
+		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+	});
+	if (disconnected) await store.markPipeDisconnected("zalo", oaId, "refresh refused");
+}
+
+/** A guest message that arrived on the office's endpoint `pipeExternalId`. */
+async function arriveOn(pipe: "zalo" | "whatsapp", pipeExternalId: string, guestId: string) {
+	return peekTestRuntime()!.store.upsertInbound(
+		{
+			pipe,
+			source: "guest",
+			guestId,
+			guestName: null,
+			text: "Hello",
+			vendorMessageId: null,
+			pipeExternalId,
+		},
+		"walk-office",
+	);
 }
 
 /**
@@ -252,16 +292,11 @@ test("a vendor success whose record fails is never sent twice", async () => {
 
 test("a definite vendor refusal may be retried; an ambiguous transport failure may not", async () => {
 	const runtime = peekTestRuntime()!;
-	setRuntimeForTests({
-		...runtime,
-		config: mockInboxConfig({
-			sendMode: "live",
-			zalo: { accessToken: "token", oaSecretKey: "secret" },
-		}),
-	});
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	await connectZaloOa("oa-1");
 
 	// Vendor says no: failed, retry allowed, and the retry can succeed.
-	const refused = await arrive({ pipe: "zalo", guestId: "guest-refused", text: "Hello" });
+	const refused = await arriveOn("zalo", "oa-1", "guest-refused");
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => Response.json({ error: -216, message: "token expired" }, { status: 401 })),
@@ -289,7 +324,7 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	});
 
 	// The network fails: the vendor may have the message. Unknown, and not retried.
-	const lost = await arrive({ pipe: "zalo", guestId: "guest-lost", text: "Hello" });
+	const lost = await arriveOn("zalo", "oa-1", "guest-lost");
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => {
@@ -535,7 +570,7 @@ test("two concurrent approvals send exactly once", async () => {
 	expect(after?.answers).toHaveLength(1);
 });
 
-test("a live reply is refused when the thread arrived on a number these credentials do not own", async () => {
+test("a live reply is refused when the thread arrived on an endpoint the office has not connected", async () => {
 	const runtime = peekTestRuntime();
 	if (!runtime) throw new Error("runtime missing");
 	// The guest wrote to the office's second number; this deployment can only send from "phone-a".
@@ -560,7 +595,7 @@ test("a live reply is refused when the thread arrived on a number these credenti
 	});
 	const refused = await approveReply(conv, { reply: "Thanks" });
 	expect(refused.res.status).toBe(409);
-	expect(refused.body.error).toBe("pipe_not_configured");
+	expect(refused.body.error).toBe("pipe_not_connected");
 	// Nothing was recorded, nothing was sent.
 	const after = await runtime.store.getConversation(conv.id);
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
@@ -575,19 +610,39 @@ test("a live reply is refused when the thread arrived on a number these credenti
 	expect(sent.lastAnswer).toMatchObject({ pipeExternalId: "phone-b", status: "sent" });
 });
 
-test("approve does not echo vendor error bodies, and missing credentials are a definite failure", async () => {
-	const conv = await arrive({ pipe: "zalo", guestId: "guest-live", text: "Hello" });
-	const runtime = peekTestRuntime();
-	if (!runtime) throw new Error("runtime missing");
-	// Live mode with no token: transmit refuses before any network call.
-	setRuntimeForTests({ ...runtime, config: mockInboxConfig({ sendMode: "live" }) });
+test("a disconnected pipe refuses before anything is recorded, in a live or a mock deployment", async () => {
+	const runtime = peekTestRuntime()!;
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	await connectZaloOa("oa-1", { disconnected: true });
+	const conv = await arriveOn("zalo", "oa-1", "guest-blocked");
+	const fetchSpy = vi.fn();
+	vi.stubGlobal("fetch", fetchSpy);
+	for (const config of [liveZaloConfig(), mockInboxConfig()]) {
+		setRuntimeForTests({ ...runtime, config });
+		const refused = await approveReply(conv);
+		expect(refused.res.status).toBe(409);
+		expect(refused.body.error).toBe("pipe_disconnected");
+	}
+	expect(fetchSpy).not.toHaveBeenCalled();
+	const after = await runtime.store.getConversation(conv.id);
+	expect(after?.answers).toEqual([]);
+	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
+});
+
+test("approve does not echo vendor error bodies", async () => {
+	const runtime = peekTestRuntime()!;
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	await connectZaloOa("oa-1");
+	const conv = await arriveOn("zalo", "oa-1", "guest-live");
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => Response.json({ error: -201, message: "secret vendor detail" })),
+	);
 	const failed = await approveReply(conv);
 	expect(failed.res.status).toBe(502);
 	expect(failed.body.error).toBe("send_failed");
-	expect("detail" in failed.body).toBe(false);
-	// Nothing was sent, so the operator can retry once tokens exist.
+	expect(JSON.stringify(failed.body)).not.toContain("secret vendor detail");
 	const after = await runtime.store.getConversation(conv.id);
-	expect(after?.sentAt).toBeNull();
 	expect(after?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
 });

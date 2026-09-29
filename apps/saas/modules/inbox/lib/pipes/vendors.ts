@@ -325,7 +325,10 @@ export type ZaloTokens = { accessToken: string; refreshToken: string; expiresInS
  * answers failures with an error body (often HTTP 200), so success is an `access_token` in
  * the body, nothing else. Each call returns a new refresh token; the one sent is spent.
  */
-async function zaloTokenRequest(appSecret: string, fields: Record<string, string>): Promise<ZaloTokens> {
+async function zaloTokenRequest(
+	appSecret: string,
+	fields: Record<string, string>,
+): Promise<ZaloTokens> {
 	const res = await fetch(`${ZALO_OAUTH}/access_token`, {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded", secret_key: appSecret },
@@ -338,7 +341,8 @@ async function zaloTokenRequest(appSecret: string, fields: Record<string, string
 	const refreshToken = typeof body.refresh_token === "string" ? body.refresh_token : null;
 	const expiresInSec = Number(body.expires_in);
 	if (!accessToken || !refreshToken || !Number.isFinite(expiresInSec) || expiresInSec <= 0) {
-		const error = body.error ?? res.status;
+		const error =
+			typeof body.error === "number" || typeof body.error === "string" ? body.error : res.status;
 		const message = typeof body.message === "string" ? body.message : "no token in response";
 		throw new Error(`Zalo token request refused: ${String(error)} ${message}`.trim());
 	}

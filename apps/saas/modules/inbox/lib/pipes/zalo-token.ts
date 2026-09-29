@@ -11,9 +11,15 @@ export const ZALO_REFRESH_MARGIN_MS = 5 * 60 * 1000;
  * refresh token may be spent. Only a platform admin reconnecting the OA fixes it.
  */
 export class ZaloDisconnectedError extends SendError {
+	readonly reason: string;
 	constructor(oaId: string, reason: string) {
-		super(`Zalo OA ${oaId} is disconnected (${reason}); a platform admin must reconnect it`, null, "config");
+		super(
+			`Zalo OA ${oaId} is disconnected (${reason}); a platform admin must reconnect it`,
+			null,
+			"config",
+		);
 		this.name = "ZaloDisconnectedError";
+		this.reason = reason;
 	}
 }
 
@@ -41,6 +47,9 @@ export async function zaloAccessToken(input: {
 	}
 	return store.withPipeCredentialLock("zalo", oaId, async (current, save) => {
 		if (!current) throw new ZaloDisconnectedError(oaId, "never connected");
+		if (current.disconnectedAt) {
+			throw new ZaloDisconnectedError(oaId, current.disconnectedReason ?? "disconnected");
+		}
 		const now = input.now ?? Date.now();
 		if (current.accessTokenExpiresAt.getTime() - now > ZALO_REFRESH_MARGIN_MS) {
 			return decryptSecret(current.accessToken, key);
@@ -65,7 +74,10 @@ export async function zaloAccessToken(input: {
 			});
 		} catch (err) {
 			// Zalo spent the old refresh token; the new one is lost with this write.
-			console.error(`[zalo] OA ${oaId} refreshed but its new tokens were not saved; reconnect it`, err);
+			console.error(
+				`[zalo] OA ${oaId} refreshed but its new tokens were not saved; reconnect it`,
+				err,
+			);
 			throw new ZaloDisconnectedError(oaId, "new tokens not saved");
 		}
 		return fresh.accessToken;

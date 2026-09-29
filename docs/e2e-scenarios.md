@@ -63,3 +63,22 @@ creates an office its owner). That membership must open nothing.
    answers 403. The agent of the same office still lands in the Inbox and sees its threads.
    Spec: `apps/saas/tests/roles.spec.ts` (Roles 2; also a thread of the office,
    `/api/conversations/:id`, answers 403).
+
+## Pipe connections (ADR 0017)
+
+The consent on Zalo's own screens (the OA owner approving Nhịp's app) happens at Zalo and is
+not driven here; a test sets up a connected or disconnected OA directly, as setup.
+
+1. **The platform admin starts connecting a Zalo OA.** Admin → Organizations → an office →
+   Connections lists Zalo and WhatsApp, each "Not connected". "Connect Zalo OA" takes the
+   browser to Zalo's consent page for Nhịp's Zalo app, carrying Nhịp's callback address.
+2. **Only the platform admin connects.** An agent sees no Connections; asking for the connect
+   address as an agent is refused (403), and signed out it is refused too (401).
+3. **A disconnected pipe blocks its replies, and nothing else.** With the office's Zalo OA
+   disconnected, the agent's inbox says Zalo is disconnected and replies on Zalo cannot be
+   sent. On a Zalo thread the send button is disabled with that reason, and approving through
+   the API is refused (409). A new guest message on that OA still arrives in its thread. A
+   WhatsApp thread still sends. The platform admin's Connections shows Zalo as "Needs
+   reconnect".
+4. **Disconnecting.** The platform admin disconnects the office's Zalo OA: Connections shows
+   it "Not connected", and a new guest message to that OA no longer arrives in the office.

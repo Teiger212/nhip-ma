@@ -259,17 +259,28 @@ export async function approveAndSend(
 		};
 	}
 
-	// The reply goes out on the number the guest wrote to (ADR 0010). With process-wide
-	// credentials, a thread that arrived on any other number cannot be answered from here.
+	// The reply goes out from the office's endpoint the guest wrote to (ADR 0010, ADR 0017).
+	// A disconnected one refuses in any deployment; in a live one, an endpoint that is not
+	// connected refuses too, rather than recording a mock send the guest never receives.
 	const endpoint = latestGuestEndpoint(conv);
-	if (config.sendMode === "live" && endpoint && !adapter.ownsEndpoint(endpoint, config)) {
-		return {
-			ok: false,
-			status: 409,
-			error: "pipe_not_configured",
-			message:
-				"This thread arrived on a number or OA this deployment is not configured to send from.",
-		};
+	if (endpoint) {
+		const connection = await adapter.connection(endpoint, { config, store });
+		if (connection.state === "disconnected") {
+			return {
+				ok: false,
+				status: 409,
+				error: "pipe_disconnected",
+				message: `This ${conv.pipe} connection is disconnected, so replies on it cannot be sent. Nhịp has been notified.`,
+			};
+		}
+		if (config.sendMode === "live" && connection.state === "not_connected") {
+			return {
+				ok: false,
+				status: 409,
+				error: "pipe_not_connected",
+				message: `This thread arrived on a ${conv.pipe} number or OA the office has not connected.`,
+			};
+		}
 	}
 
 	// The Answer is written before the vendor call. Its unique inbound is the guard against
@@ -299,7 +310,7 @@ export async function approveAndSend(
 
 	let result: SendResult;
 	try {
-		result = await transmit({ conversation: conv, text, config });
+		result = await transmit({ conversation: conv, text, from: endpoint, config, store });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "send failed";
 		if (err instanceof SendError) {

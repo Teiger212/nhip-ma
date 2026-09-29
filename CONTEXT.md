@@ -91,8 +91,9 @@ is renamed.
   `failed` or `unknown` (ADR 0011). One per inbound. Keeps the sender's name after the
   sender's account is gone (ADR 0013).
 - **Live send**: a send that reaches the vendor. Happens only when the deployment is live
-  and the thread's endpoint has a connected pipe connection; every other send is a **mock
-  send** (demo threads, fake guests in dev, a pipe the office has not connected).
+  and the thread's endpoint has a connected pipe connection. A **mock send** reaches no one:
+  every send in a mock deployment (dev, previews), and demo threads. A live deployment
+  refuses a send from an endpoint that is not connected rather than mock it.
 - **SEND_MODE**: the deployment-wide switch: `mock` (never a live send; dev) or exactly
   `live` (staging and prod).
 

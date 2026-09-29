@@ -3,15 +3,20 @@ import crypto from "node:crypto";
 import { expect, test } from "vitest";
 
 import { mockInboxConfig } from "../config";
-import type { Conversation } from "../types";
+import type { Conversation, Store } from "../types";
 import { pipeAdapter, transmit } from "./index";
 
 const conversation = { pipe: "whatsapp", guestId: "16315551181" } as Conversation;
+
+/** Only `pipeCredentialState` is read on these paths; nothing is connected. */
+const store = { pipeCredentialState: async () => null } as unknown as Store;
 
 test("transmit stays mock unless the send mode is exactly live, even with credentials", async () => {
 	const result = await transmit({
 		conversation,
 		text: "hello",
+		from: "phone",
+		store,
 		config: mockInboxConfig({ whatsapp: { accessToken: "token", phoneNumberId: "phone" } }),
 	});
 	expect(result.mock).toBe(true);
@@ -19,17 +24,22 @@ test("transmit stays mock unless the send mode is exactly live, even with creden
 	expect(result.to).toBe("16315551181");
 });
 
-test("live mode delegates to the pipe adapter, which refuses without credentials", async () => {
+test("a live deployment mocks a thread with no endpoint and refuses an unconnected one", async () => {
+	const live = mockInboxConfig({ sendMode: "live" });
+	const demo = await transmit({ conversation, text: "hello", from: null, store, config: live });
+	expect(demo.mock).toBe(true);
 	await expect(
-		transmit({ conversation, text: "hello", config: mockInboxConfig({ sendMode: "live" }) }),
-	).rejects.toThrow(/WHATSAPP_ACCESS_TOKEN/);
+		transmit({ conversation, text: "hello", from: "phone-b", store, config: live }),
+	).rejects.toThrow(/not connected/);
 	await expect(
 		transmit({
 			conversation: { pipe: "zalo", guestId: "z1" } as Conversation,
 			text: "hello",
-			config: mockInboxConfig({ sendMode: "live" }),
+			from: "oa-1",
+			store,
+			config: live,
 		}),
-	).rejects.toThrow(/ZALO_OA_ACCESS_TOKEN/);
+	).rejects.toThrow(/not connected/);
 });
 
 test("each adapter verifies its own header with its own secret and fails closed", () => {

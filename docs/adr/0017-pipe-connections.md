@@ -19,9 +19,11 @@ refresh token works once. The pilot kept one set of credentials in env vars and 
   connecting one held by another office is refused. Disconnecting ends sending and stops
   filing new messages to the office.
 - **A send is live only when the deployment is live and the thread's endpoint has a
-  connected pipe connection.** Everything else is mocked: demo threads, fake guests in dev,
-  a pipe the office has not connected. `SEND_MODE` stays a deployment-wide switch only:
-  `mock` in dev, `live` on staging and prod.
+  connected pipe connection.** A mock deployment (dev, previews) mocks every send, and so
+  does a thread with no endpoint (demo data). In a live deployment, a guest's thread on an
+  endpoint that is not connected is refused, never mocked, so no guest silently goes
+  unanswered. `SEND_MODE` stays a deployment-wide switch only: `mock` in dev, `live` on
+  staging and prod.
 - **Secrets split by owner.** Nhịp's own vendor app registrations (Zalo app, Meta app,
   webhook secrets) are env vars per deployment. Each endpoint's tokens live on its
   connection in the database, encrypted with a key held only in the deployment's env.

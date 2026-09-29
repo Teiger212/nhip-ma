@@ -28,7 +28,9 @@ export function encryptSecret(plain: string, base64Key: string): string {
 	const iv = crypto.randomBytes(12);
 	const cipher = crypto.createCipheriv("aes-256-gcm", keyFrom(base64Key), iv);
 	const body = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-	return [VERSION, iv, cipher.getAuthTag(), body].map((p) => (typeof p === "string" ? p : p.toString("base64"))).join(":");
+	return [VERSION, iv, cipher.getAuthTag(), body]
+		.map((p) => (typeof p === "string" ? p : p.toString("base64")))
+		.join(":");
 }
 
 export function decryptSecret(sealed: string, base64Key: string): string {
@@ -36,7 +38,13 @@ export function decryptSecret(sealed: string, base64Key: string): string {
 	if (version !== VERSION || !iv || !tag || !body) {
 		throw new Error("Not a sealed pipe secret");
 	}
-	const decipher = crypto.createDecipheriv("aes-256-gcm", keyFrom(base64Key), Buffer.from(iv, "base64"));
+	const decipher = crypto.createDecipheriv(
+		"aes-256-gcm",
+		keyFrom(base64Key),
+		Buffer.from(iv, "base64"),
+	);
 	decipher.setAuthTag(Buffer.from(tag, "base64"));
-	return Buffer.concat([decipher.update(Buffer.from(body, "base64")), decipher.final()]).toString("utf8");
+	return Buffer.concat([decipher.update(Buffer.from(body, "base64")), decipher.final()]).toString(
+		"utf8",
+	);
 }
