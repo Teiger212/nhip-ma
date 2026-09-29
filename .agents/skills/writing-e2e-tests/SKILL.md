@@ -70,9 +70,24 @@ test <file>` against your running dev server (no build).
   fixture gives each test its own client IP, so Better Auth's rate limit (on in E2E, 3
   sign-ins per 10 s per IP) never sees two tests as one person. A spec proving the limit
   itself repeats requests inside one test.
-- A spec that needs its own guest creates it with `POST /dev/inbound` (signed in, dev only)
-  using a unique guest id, e.g. `e2e-${test.info().testId}`, so parallel specs never share a
-  thread.
+- A pipe connection (ADR 0017) cannot be made through Zalo's consent screen in a test. Set one
+  up with `connectZaloOa(officeId, oaId, "disconnected"?)` and remove it with
+  `releaseZaloOa(oaId)` (`support/pipes.ts`); use a unique OA id per test. A guest message on
+  that OA arrives as Zalo sends it: `POST /webhooks/zalo` with a JSON body `{ app_id,
+event_name: "user_send_text", timestamp (ms, string), sender: { id: guest }, recipient: { id:
+oaId }, message: { text, msg_id } }` and header `X-ZEvent-Signature: mac=<sha256 hex of
+app_id + raw body + timestamp + ZALO_OA_SECRET_KEY>` (the E2E env's value).
+- A spec that needs its own guest brings it in the way the vendor does, through a signed
+  webhook, with a unique guest id (e.g. from `test.info().testId`) so parallel specs never
+  share a thread. `/dev/inbound` is off in the E2E production build.
+  - Zalo: see above.
+  - WhatsApp: connect the E2E number to the office first (`connectWhatsAppNumber(officeId)` in
+    `support/pipes.ts`, the number is the E2E env's `WHATSAPP_PHONE_NUMBER_ID`), then `POST
+/webhooks/whatsapp` with `{ entry: [{ changes: [{ value: { metadata: { phone_number_id },
+contacts: [{ wa_id: guest, profile: { name } }], messages: [{ from: guest, id, timestamp
+(seconds, string), type: "text", text: { body } }] } }] }] }` and header
+    `X-Hub-Signature-256: sha256=<HMAC-SHA256 hex of the raw body with WHATSAPP_APP_SECRET>`.
+    Sends stay mock (the E2E env is `SEND_MODE=mock`).
 
 ## Done
 

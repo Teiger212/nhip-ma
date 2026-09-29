@@ -315,6 +315,109 @@ export async function sendWhatsApp(input: {
 	};
 }
 
+const ZALO_OAUTH = "https://oauth.zaloapp.com/v4/oa";
+
+/** What Zalo's OA token endpoint returns on success. */
+export type ZaloTokens = { accessToken: string; refreshToken: string; expiresInSec: number };
+
+/**
+ * Zalo's OA token endpoint: form-encoded, the app secret in a `secret_key` header. It
+ * answers failures with an error body (often HTTP 200), so success is an `access_token` in
+ * the body, nothing else. Each call returns a new refresh token; the one sent is spent.
+ */
+/** Zalo definitely refused (an error body): the token sent is dead, not merely unanswered. */
+export class ZaloTokenRefused extends Error {
+	constructor(detail: string) {
+		super(`Zalo refused the token request: ${detail}`);
+		this.name = "ZaloTokenRefused";
+	}
+}
+
+async function zaloTokenRequest(
+	appSecret: string,
+	fields: Record<string, string>,
+): Promise<ZaloTokens> {
+	// Network errors and timeouts propagate as they are: Zalo may never have seen the request.
+	const res = await fetch(`${ZALO_OAUTH}/access_token`, {
+		method: "POST",
+		headers: { "Content-Type": "application/x-www-form-urlencoded", secret_key: appSecret },
+		body: new URLSearchParams(fields).toString(),
+		// Shorter than the credential lock's transaction timeout (20 s).
+		signal: AbortSignal.timeout(10_000),
+	});
+	const body = (await res.json().catch(() => null)) as Json | null;
+	if (res.status >= 500 || !body) {
+		throw new Error(`Zalo token endpoint unavailable (HTTP ${res.status})`);
+	}
+	const accessToken = typeof body.access_token === "string" ? body.access_token : null;
+	const refreshToken = typeof body.refresh_token === "string" ? body.refresh_token : null;
+	const expiresInSec = Number(body.expires_in);
+	if (!accessToken || !refreshToken || !Number.isFinite(expiresInSec) || expiresInSec <= 0) {
+		const error =
+			typeof body.error === "number" || typeof body.error === "string" ? body.error : res.status;
+		const message = typeof body.message === "string" ? body.message : "no token in response";
+		throw new ZaloTokenRefused(`${String(error)} ${message}`.trim());
+	}
+	return { accessToken, refreshToken, expiresInSec };
+}
+
+export function refreshZaloToken(input: {
+	appId: string;
+	appSecret: string;
+	refreshToken: string;
+}): Promise<ZaloTokens> {
+	return zaloTokenRequest(input.appSecret, {
+		app_id: input.appId,
+		grant_type: "refresh_token",
+		refresh_token: input.refreshToken,
+	});
+}
+
+/** The authorization code from the OA admin's consent, exchanged for the first token pair. */
+export function exchangeZaloCode(input: {
+	appId: string;
+	appSecret: string;
+	code: string;
+	codeVerifier: string;
+}): Promise<ZaloTokens> {
+	return zaloTokenRequest(input.appSecret, {
+		app_id: input.appId,
+		grant_type: "authorization_code",
+		code: input.code,
+		code_verifier: input.codeVerifier,
+	});
+}
+
+/** The OA a fresh access token belongs to (its id and display name). */
+export async function zaloOaProfile(
+	accessToken: string,
+): Promise<{ oaId: string; name: string | null }> {
+	const res = await fetch("https://openapi.zalo.me/v2.0/oa/getoa", {
+		headers: { access_token: accessToken },
+		signal: AbortSignal.timeout(10_000),
+	});
+	const body = (await res.json().catch(() => ({}))) as Json;
+	const data = asRecord(body.data);
+	const oaId = asId(data.oa_id);
+	if (!oaId) throw new Error("Zalo did not say which OA this token belongs to");
+	return { oaId, name: typeof data.name === "string" ? data.name : null };
+}
+
+/** Where the OA admin consents to this app acting for the OA (PKCE, S256). */
+export function zaloPermissionUrl(input: {
+	appId: string;
+	redirectUri: string;
+	state: string;
+	codeChallenge: string;
+}): string {
+	const url = new URL(`${ZALO_OAUTH}/permission`);
+	url.searchParams.set("app_id", input.appId);
+	url.searchParams.set("redirect_uri", input.redirectUri);
+	url.searchParams.set("state", input.state);
+	url.searchParams.set("code_challenge", input.codeChallenge);
+	return url.toString();
+}
+
 export async function sendZalo(input: {
 	to: string;
 	text: string;

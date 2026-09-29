@@ -178,6 +178,30 @@ export type PipeConnection = {
 	officeId: string;
 };
 
+/**
+ * A pipe endpoint's vendor tokens as the store keeps them: opaque strings (the app encrypts
+ * them before they get here) and when the access token stops working.
+ */
+export type StoredPipeCredential = {
+	accessToken: string;
+	refreshToken: string;
+	accessTokenExpiresAt: Date;
+};
+
+/** A stored credential with its state: `disconnectedAt` is set once its tokens stopped working. */
+export type PipeCredentialState = StoredPipeCredential & {
+	disconnectedAt: Date | null;
+	disconnectedReason: string | null;
+};
+
+/** One of an office's pipe endpoints, with whether it holds tokens and whether they work. */
+export type OfficePipe = {
+	pipe: Pipe;
+	externalId: string;
+	credential: "none" | "connected" | "disconnected";
+	disconnectedReason: string | null;
+};
+
 /** Who is reading: an operator and the office they act for. Threads are visible only inside it. */
 export type InboxViewer = { userId: string; officeId: string };
 
@@ -189,6 +213,39 @@ export type InboxStore = {
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
 	listPipeConnections: () => Promise<PipeConnection[]>;
+	/** Store an endpoint's tokens (after the vendor's authorization), clearing any disconnect. The connection must exist. */
+	savePipeCredential: (
+		pipe: Pipe,
+		externalId: string,
+		credential: StoredPipeCredential,
+	) => Promise<void>;
+	/**
+	 * Give an endpoint to an office, unless another office holds it (ADR 0017: one endpoint,
+	 * one office at a time). Returns the holder's id when refused.
+	 */
+	claimPipe: (connection: PipeConnection) => Promise<{ ok: true } | { ok: false; heldBy: string }>;
+	/** End an office's hold on an endpoint; its tokens go with it. Threads stay. */
+	releasePipe: (pipe: Pipe, externalId: string) => Promise<void>;
+	/** The office's endpoints and the state of their tokens. */
+	officePipes: (officeId: string) => Promise<OfficePipe[]>;
+	/** The endpoint's token state, or null when it holds no tokens. */
+	pipeCredentialState: (pipe: Pipe, externalId: string) => Promise<PipeCredentialState | null>;
+	/** The tokens stopped working; kept for the record until the platform admin reconnects. */
+	/** Returns whether this call recorded it (false when already disconnected or no tokens). */
+	markPipeDisconnected: (pipe: Pipe, externalId: string, reason: string) => Promise<boolean>;
+	/**
+	 * Run `work` holding a row lock on the endpoint's credential, so two instances never
+	 * refresh at once (a Zalo refresh token works once). `save` writes new tokens, or the
+	 * disconnect, inside the same transaction. `current` is null when the endpoint has no credential.
+	 */
+	withPipeCredentialLock: <T>(
+		pipe: Pipe,
+		externalId: string,
+		work: (
+			current: PipeCredentialState | null,
+			save: (next: Partial<PipeCredentialState>) => Promise<void>,
+		) => Promise<T>,
+	) => Promise<T>;
 	/** Delete these threads of the office with everything under them. Returns how many went. */
 	deleteConversations: (officeId: string, ids: string[]) => Promise<number>;
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;

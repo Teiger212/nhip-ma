@@ -23,6 +23,7 @@ import type {
 	Message,
 	OneShot,
 	SendResult,
+	PipeCredentialState,
 	Translations,
 } from "./types";
 
@@ -528,6 +529,115 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			});
 			return connections.sort(
 				(a, b) => a.pipe.localeCompare(b.pipe) || a.externalId.localeCompare(b.externalId),
+			);
+		},
+
+		async savePipeCredential(pipe, externalId, credential) {
+			await db.pipeCredential.upsert({
+				where: { pipe_externalId: { pipe, externalId } },
+				create: { pipe, externalId, ...credential },
+				update: { ...credential, disconnectedAt: null, disconnectedReason: null },
+			});
+		},
+
+		async claimPipe(connection) {
+			return db
+				.$transaction(async (tx) => {
+					const held = await tx.pipeConnection.findUnique({
+						where: {
+							pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId },
+						},
+						select: { officeId: true },
+					});
+					if (held && held.officeId !== connection.officeId) {
+						return { ok: false as const, heldBy: held.officeId };
+					}
+					if (!held) await tx.pipeConnection.create({ data: connection });
+					return { ok: true as const };
+				})
+				.catch(async (err: unknown) => {
+					// Two offices claiming the same endpoint at once: the primary key lets one win.
+					if ((err as { code?: string }).code !== "P2002") throw err;
+					const winner = await db.pipeConnection.findUnique({
+						where: {
+							pipe_externalId: { pipe: connection.pipe, externalId: connection.externalId },
+						},
+						select: { officeId: true },
+					});
+					return winner && winner.officeId !== connection.officeId
+						? { ok: false as const, heldBy: winner.officeId }
+						: { ok: true as const };
+				});
+		},
+
+		async releasePipe(pipe, externalId) {
+			await db.pipeConnection.deleteMany({ where: { pipe, externalId } });
+		},
+
+		async officePipes(officeId) {
+			const rows = await db.pipeConnection.findMany({
+				where: { officeId },
+				select: {
+					pipe: true,
+					externalId: true,
+					credential: { select: { disconnectedAt: true, disconnectedReason: true } },
+				},
+			});
+			return rows
+				.map((row) => ({
+					pipe: row.pipe,
+					externalId: row.externalId,
+					credential: !row.credential
+						? ("none" as const)
+						: row.credential.disconnectedAt
+							? ("disconnected" as const)
+							: ("connected" as const),
+					disconnectedReason: row.credential?.disconnectedReason ?? null,
+				}))
+				.sort((a, b) => a.pipe.localeCompare(b.pipe) || a.externalId.localeCompare(b.externalId));
+		},
+
+		async pipeCredentialState(pipe, externalId) {
+			return db.pipeCredential.findUnique({
+				where: { pipe_externalId: { pipe, externalId } },
+				select: {
+					accessToken: true,
+					refreshToken: true,
+					accessTokenExpiresAt: true,
+					disconnectedAt: true,
+					disconnectedReason: true,
+				},
+			});
+		},
+
+		async markPipeDisconnected(pipe, externalId, reason) {
+			const { count } = await db.pipeCredential.updateMany({
+				where: { pipe, externalId, disconnectedAt: null },
+				data: { disconnectedAt: new Date(), disconnectedReason: reason },
+			});
+			return count === 1;
+		},
+
+		async withPipeCredentialLock(pipe, externalId, work) {
+			return db.$transaction(
+				async (tx) => {
+					// Prisma has no row-lock API; this one read takes the lock (bound parameters).
+					const rows = await tx.$queryRaw<PipeCredentialState[]>`
+						SELECT "accessToken", "refreshToken", "accessTokenExpiresAt",
+							"disconnectedAt", "disconnectedReason"
+						FROM "inbox_pipe_credential"
+						WHERE "pipe" = ${pipe}::"Pipe" AND "externalId" = ${externalId}
+						FOR UPDATE`;
+					const save = async (next: Partial<PipeCredentialState>) => {
+						await tx.pipeCredential.update({
+							where: { pipe_externalId: { pipe, externalId } },
+							data: next,
+						});
+					};
+					return work(rows[0] ?? null, save);
+				},
+				// The work may call the vendor; its own timeout is shorter than this.
+				{ maxWait: 10_000, timeout: 20_000 },
 			);
 		},
 

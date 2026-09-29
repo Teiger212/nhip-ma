@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isValidSecretsKey } from "./pipes/secrets";
 import type { SendMode } from "./types";
 
 /** The literal shipped in `.env.local.example`; never valid in a real deployment. */
@@ -26,6 +27,12 @@ function stripSlash(value: string): string {
 	return value.replace(/\/+$/, "");
 }
 
+/** Each pipe's app-level settings: all set, or none (then the pipe never sends live). */
+const PIPE_SETTINGS = {
+	whatsapp: ["WHATSAPP_APP_SECRET", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
+	zalo: ["ZALO_APP_ID", "ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY", "PIPE_SECRETS_KEY"],
+} as const;
+
 const envSchema = z
 	.object({
 		SEND_MODE: trimmed,
@@ -33,9 +40,10 @@ const envSchema = z
 		WHATSAPP_APP_SECRET: trimmed,
 		WHATSAPP_ACCESS_TOKEN: trimmed,
 		WHATSAPP_PHONE_NUMBER_ID: trimmed,
-		ZALO_OA_ACCESS_TOKEN: trimmed,
+		ZALO_APP_ID: trimmed,
+		ZALO_APP_SECRET: trimmed,
 		ZALO_OA_SECRET_KEY: trimmed,
-		ZALO_OA_ID: trimmed,
+		PIPE_SECRETS_KEY: trimmed,
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
@@ -55,22 +63,43 @@ const envSchema = z
 				message: `SEND_MODE must be "mock" or "live" when set, got "${env.SEND_MODE}"`,
 			});
 		}
-		if (env.SEND_MODE === "live") {
-			for (const key of [
-				"WHATSAPP_APP_SECRET",
-				"WHATSAPP_ACCESS_TOKEN",
-				"WHATSAPP_PHONE_NUMBER_ID",
-				"ZALO_OA_ACCESS_TOKEN",
-				"ZALO_OA_SECRET_KEY",
-			] as const) {
-				if (!env[key]) {
+		// A pipe is configured whole or not at all (ADR 0017): its app-level settings live here,
+		// each office's tokens on its pipe connection. A pipe left unconfigured never sends live.
+		for (const [pipe, keys] of Object.entries(PIPE_SETTINGS)) {
+			const set = keys.filter((key) => env[key]);
+			if (set.length > 0 && set.length < keys.length) {
+				for (const key of keys.filter((k) => !env[k])) {
 					ctx.addIssue({
 						code: "custom",
 						path: [key],
-						message: `${key} must be set when SEND_MODE=live`,
+						message: `${key} must be set: ${pipe} is configured only in part (${set.join(", ")} set)`,
 					});
 				}
 			}
+		}
+		// The E2E profile commits test-only pipe secrets (.env.e2e); a live deployment refuses them.
+		if (env.SEND_MODE === "live") {
+			for (const key of ["ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY", "PIPE_SECRETS_KEY"] as const) {
+				const value = env[key];
+				const plain =
+					key === "PIPE_SECRETS_KEY" && value
+						? Buffer.from(value, "base64").toString("latin1")
+						: value;
+				if (plain?.includes("e2e-only")) {
+					ctx.addIssue({
+						code: "custom",
+						path: [key],
+						message: `${key} is the E2E profile's test value and must not be used when SEND_MODE=live`,
+					});
+				}
+			}
+		}
+		if (env.PIPE_SECRETS_KEY && !isValidSecretsKey(env.PIPE_SECRETS_KEY)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["PIPE_SECRETS_KEY"],
+				message: "PIPE_SECRETS_KEY must be 32 random bytes, base64-encoded",
+			});
 		}
 		// A model id is never defaulted in code, where it would go stale; a key alone is a
 		// misconfiguration, not "no model".
@@ -177,7 +206,10 @@ function isLocalhostUrl(value: string): boolean {
 }
 
 export type InboxConfig = {
-	/** Only the exact value `live` talks to WhatsApp/Zalo. Anything else is mock. */
+	/**
+	 * The deployment-wide switch: nothing is sent live unless this is exactly `live`, and
+	 * then only on a connected pipe (ADR 0017, `transmit`).
+	 */
 	sendMode: SendMode;
 	whatsapp: {
 		verifyToken?: string;
@@ -185,12 +217,15 @@ export type InboxConfig = {
 		accessToken?: string;
 		phoneNumberId?: string;
 	};
+	/** Nhịp's Zalo app; each OA's tokens are on its pipe connection (ADR 0017). */
 	zalo: {
-		accessToken?: string;
+		appId?: string;
+		appSecret?: string;
+		/** Signs Zalo's webhooks. */
 		oaSecretKey?: string;
-		/** The OA the token belongs to; when set, sends from any other OA are refused. */
-		oaId?: string;
 	};
+	/** Encrypts vendor tokens at rest (`pipes/secrets.ts`). */
+	pipeSecretsKey?: string;
 	/**
 	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
 	 * a key there is no model: no translation is shown and every suggested reply is a
@@ -222,10 +257,11 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 			phoneNumberId: clean(env.WHATSAPP_PHONE_NUMBER_ID),
 		},
 		zalo: {
-			accessToken: clean(env.ZALO_OA_ACCESS_TOKEN),
+			appId: clean(env.ZALO_APP_ID),
+			appSecret: clean(env.ZALO_APP_SECRET),
 			oaSecretKey: clean(env.ZALO_OA_SECRET_KEY),
-			oaId: clean(env.ZALO_OA_ID),
 		},
+		pipeSecretsKey: clean(env.PIPE_SECRETS_KEY),
 		drafts: {
 			apiKey: clean(env.DRAFT_API_KEY),
 			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,

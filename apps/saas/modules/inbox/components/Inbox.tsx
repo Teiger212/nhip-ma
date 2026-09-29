@@ -7,7 +7,13 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { displayName } from "../lib/display-name";
-import { useApproveAndSend, useConversations, useRegenerateDraft } from "../lib/inbox-queries";
+import {
+	useApproveAndSend,
+	useConversations,
+	useDisconnectedEndpoints,
+	useRegenerateDraft,
+} from "../lib/inbox-queries";
+import { PIPE_NAMES } from "../lib/pipe-names";
 import { buildQueueView, INBOX_VIEWS, nextSelection } from "../lib/queue";
 import { sendStatusFor } from "../lib/send-status";
 import { replyKey, useReplyDraft } from "../lib/use-reply-draft";
@@ -29,6 +35,7 @@ const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("yourTurn");
  */
 export function Inbox() {
 	const t = useTranslations("inbox");
+	const disconnectedPipes = [...new Set(useDisconnectedEndpoints().map((item) => item.pipe))];
 	const conversationsQuery = useConversations();
 	const approve = useApproveAndSend();
 	const regenerate = useRegenerateDraft();
@@ -96,6 +103,16 @@ export function Inbox() {
 
 	return (
 		<div className="min-h-0 text-sm flex h-full flex-col bg-background text-foreground">
+			{disconnectedPipes.length > 0 ? (
+				<output
+					data-test="pipe-disconnected-banner"
+					className="px-3 py-2 text-sm font-medium block border-b bg-destructive/10 text-destructive"
+				>
+					{t("pipeDisconnectedBanner", {
+						pipes: disconnectedPipes.map((pipe) => PIPE_NAMES[pipe]).join(", "),
+					})}
+				</output>
+			) : null}
 			<InboxToolbar
 				query={query}
 				onQueryChange={(value) => void setQuery(value || null)}

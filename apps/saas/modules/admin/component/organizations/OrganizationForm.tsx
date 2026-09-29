@@ -30,6 +30,8 @@ import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { OfficeConnections } from "./OfficeConnections";
+
 const organizationFormSchema = z.object({
 	name: z.string().min(1),
 });
@@ -132,6 +134,7 @@ export function OrganizationForm({ organizationId }: { organizationId: string })
 
 			{organization && (
 				<>
+					<OfficeConnections officeId={organization.id} />
 					<OrganizationMembersBlock organizationId={organization.id} />
 					<InviteMemberForm organizationId={organization.id} />
 				</>

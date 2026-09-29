@@ -419,7 +419,27 @@ model PipeConnection {
   externalId String
   officeId   String
   office     Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  credential PipeCredential?
 
   @@id([pipe, externalId])
   @@map("inbox_pipe_connection")
+}
+
+/// A pipe endpoint's vendor tokens (Zalo OA today). Values are encrypted by the app before
+/// they reach this table; a refresh rewrites the row under a row lock, because Zalo's
+/// refresh token works once.
+model PipeCredential {
+  pipe                 Pipe
+  externalId           String
+  accessToken          String         @db.Text
+  refreshToken         String         @db.Text
+  accessTokenExpiresAt DateTime
+  /// Set when the tokens stopped working (a refresh failed); the platform admin reconnects.
+  disconnectedAt       DateTime?
+  disconnectedReason   String?
+  updatedAt            DateTime       @updatedAt
+  connection           PipeConnection @relation(fields: [pipe, externalId], references: [pipe, externalId], onDelete: Cascade)
+
+  @@id([pipe, externalId])
+  @@map("inbox_pipe_credential")
 }
