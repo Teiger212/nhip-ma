@@ -93,23 +93,35 @@ export async function afterGuestInbound(
  * (ADR 0008). An event from a pipe no office has connected is dropped, not filed under
  * nobody: tenancy fails closed, and the log says which pipe to connect.
  */
-export async function ingestEvents(runtime: Runtime, events: InboundEvent[]): Promise<void> {
+/** What became of a webhook's messages: where each was filed, and which found no office. */
+export type IngestSummary = {
+	filed: { endpoint: string; officeId: string; vendorMessageId: string | null }[];
+	dropped: { endpoint: string | null; vendorMessageId: string | null }[];
+};
+
+export async function ingestEvents(
+	runtime: Runtime,
+	events: InboundEvent[],
+): Promise<IngestSummary> {
+	const summary: IngestSummary = { filed: [], dropped: [] };
 	for (const event of events) {
-		const officeId = event.pipeExternalId
-			? await runtime.store.officeForPipe(event.pipe, event.pipeExternalId)
-			: null;
-		if (!officeId) {
+		const endpoint = event.pipeExternalId ?? null;
+		const officeId = endpoint ? await runtime.store.officeForPipe(event.pipe, endpoint) : null;
+		if (!endpoint || !officeId) {
 			console.warn("inbox: inbound dropped, no office owns this pipe", {
 				pipe: event.pipe,
-				pipeExternalId: event.pipeExternalId ?? null,
+				pipeExternalId: endpoint,
 			});
+			summary.dropped.push({ endpoint, vendorMessageId: event.vendorMessageId });
 			continue;
 		}
 		const conv = await runtime.store.upsertInbound(event, officeId);
+		summary.filed.push({ endpoint, officeId, vendorMessageId: event.vendorMessageId });
 		if (event.source === "guest") {
 			await afterGuestInbound(runtime, conv);
 		}
 	}
+	return summary;
 }
 
 export async function injectDevInbound(input: {

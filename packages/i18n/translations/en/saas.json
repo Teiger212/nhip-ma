@@ -2,7 +2,8 @@
 	"admin": {
 		"menu": {
 			"organizations": "Organizations",
-			"users": "Users"
+			"users": "Users",
+			"webhooks": "Webhooks"
 		},
 		"organizations": {
 			"backToList": "Back to organizations",
@@ -124,6 +125,19 @@
 				"expired": "The connect attempt expired. Start it again.",
 				"refused": "Zalo did not approve the connection.",
 				"failed": "Connecting failed. Try again."
+			}
+		},
+		"webhooks": {
+			"title": "Webhook deliveries",
+			"description": "Every incoming WhatsApp and Zalo webhook of the last 30 days, newest first. No message text or guest ids are kept.",
+			"empty": "No webhooks yet.",
+			"endpoint": "to {endpoints}",
+			"outcome": {
+				"filed": "Filed to {offices}",
+				"dropped": "Dropped: no office holds this number or OA",
+				"refused": "Refused: bad signature",
+				"failed": "Failed; the sender will retry",
+				"empty": "No messages in it"
 			}
 		}
 	},

@@ -4,7 +4,7 @@ import { checkPermission } from "@repo/permissions";
 import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
-import { Building2Icon, UsersIcon } from "lucide-react";
+import { Building2Icon, UsersIcon, WebhookIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -48,6 +48,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 										},
 									]
 								: []),
+							{
+								title: t("menu.webhooks"),
+								href: "/admin/webhooks",
+								icon: <WebhookIcon className="size-4 opacity-50" />,
+							},
 						],
 					},
 				]}

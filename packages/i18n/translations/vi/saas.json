@@ -2,7 +2,8 @@
 	"admin": {
 		"menu": {
 			"organizations": "Văn phòng",
-			"users": "Người dùng"
+			"users": "Người dùng",
+			"webhooks": "Webhook"
 		},
 		"organizations": {
 			"backToList": "Quay lại danh sách văn phòng",
@@ -124,6 +125,19 @@
 				"expired": "Lần kết nối đã hết hạn. Hãy bắt đầu lại.",
 				"refused": "Zalo không chấp thuận kết nối.",
 				"failed": "Kết nối thất bại. Hãy thử lại."
+			}
+		},
+		"webhooks": {
+			"title": "Webhook đã nhận",
+			"description": "Mọi webhook WhatsApp và Zalo gửi đến trong 30 ngày qua, mới nhất trước. Không lưu nội dung tin nhắn hay mã khách.",
+			"empty": "Chưa có webhook nào.",
+			"endpoint": "tới {endpoints}",
+			"outcome": {
+				"filed": "Đã vào {offices}",
+				"dropped": "Bị bỏ: chưa văn phòng nào giữ số hoặc OA này",
+				"refused": "Bị từ chối: chữ ký sai",
+				"failed": "Lỗi; bên gửi sẽ thử lại",
+				"empty": "Không có tin nhắn"
 			}
 		}
 	},
