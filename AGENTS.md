@@ -145,6 +145,9 @@ on branch `main`. The production branch is `production`: a GitHub ruleset blocks
 and deletion, and only the release workflow (milestone 6) moves it to a commit staging ran. Vercel
 builds only `main` (staging) and `production` (Ignored Build Step); PR previews wait for a
 database of their own (phase B). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
+Hosted builds run `pnpm run build:vercel` (`apps/saas/scripts/vercel-build.sh`): `prisma migrate
+deploy` against `DIRECT_DATABASE_URL` (the environment's direct Neon URL), then the build; a
+failed migration fails the build and the previous deployment keeps serving.
 Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
 Firewall rule of 300 requests/min per IP on `/api/` and `/webhooks/`.
 
