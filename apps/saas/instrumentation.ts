@@ -44,7 +44,6 @@ export async function onRequestError(
 	if (process.env.NEXT_RUNTIME !== "nodejs") return;
 	const { captureServerError } = await import("@shared/lib/error-tracking");
 	await captureServerError(error, {
-		path: request.path,
 		method: request.method,
 		routeType: context.routeType,
 		routePath: context.routePath,

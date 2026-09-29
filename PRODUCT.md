@@ -119,7 +119,7 @@ Each milestone leaves staging better than it found it.
 1. **Foundations, staging live**: CI (lint, types, Vitest, Playwright on a Neon branch), the
    `prisma migrate` baseline, Vercel and Neon staging, background work on `after()`,
    observability (error tracking on PostHog Cloud, **personal data scrubbed from day one**,
-   due 2026-09-30), rate limits, the red team's auth lockdown, English and Vietnamese only.
+   due 2026-09-30; the PostHog project set to discard client IPs), rate limits, the red team's auth lockdown, English and Vietnamese only.
 2. **Offices and people**: office setup in the admin area, managers invite agents, the
    platform admin out of offices, pool then owner, per-connection pipe credentials.
 3. **Send and model safety**: the red team's send-path fixes, guest-proof drafts through the

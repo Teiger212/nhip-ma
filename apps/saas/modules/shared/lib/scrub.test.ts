@@ -1,39 +1,121 @@
 import { expect, test } from "vitest";
 
-import { MAX_MESSAGE_LENGTH, scrubProperties, scrubText, scrubUrl } from "./scrub";
+import {
+	allowlistBrowserException,
+	MAX_MESSAGE_LENGTH,
+	scrubExceptionList,
+	scrubServerError,
+	scrubText,
+	scrubUrl,
+} from "./scrub";
 
-test("phone numbers and emails never survive, in any common format", () => {
-	for (const phone of ["+84 912 345 678", "0912345678", "(028) 3822-9999", "+1-631-555-1181"]) {
+test("phone numbers and emails never survive, in Vietnamese and international formats", () => {
+	for (const phone of [
+		"+84 912 345 678",
+		"0912345678",
+		"0912.345.678",
+		"(+84) 912 345 678",
+		"(028) 3822-9999",
+		"+1-631-555-1181",
+	]) {
 		expect(scrubText(`guest ${phone} wrote`), phone).toBe("guest [phone] wrote");
 	}
 	expect(scrubText("from yuki.tanaka+apt@example.co.jp")).toBe("from [email]");
 });
 
-test("long messages are capped, so quoted guest text is cut short", () => {
+test("quoted values are blanked: error messages quote the input they choke on", () => {
+	expect(scrubText('Invalid value: text: "Minji here, arriving 10pm"')).toBe(
+		'Invalid value: text: "…"',
+	);
+});
+
+test("long messages are capped, and a huge input is scrubbed quickly", () => {
 	const scrubbed = scrubText("x ".repeat(500));
 	expect(scrubbed.length).toBeLessThan(MAX_MESSAGE_LENGTH + 20);
 	expect(scrubbed).toMatch(/\[truncated\]$/);
+	const started = performance.now();
+	scrubText("a.".repeat(100_000));
+	expect(performance.now() - started).toBeLessThan(50);
 });
 
-test("URLs keep their path and lose their query and fragment", () => {
+test("URLs keep a scrubbed path and lose their query and fragment", () => {
 	expect(
 		scrubUrl("https://nhip-staging.vercel.app/en/signup?invitationId=abc&email=a@b.co#x"),
 	).toBe("https://nhip-staging.vercel.app/en/signup");
 	expect(scrubUrl("/api/conversations?locale=vi")).toBe("/api/conversations");
+	expect(scrubUrl("/en/inbox/cm1abcdefghijklmnopqrstu")).toBe("/en/inbox/[id]");
+	expect(scrubUrl("/en/users/a%40b.com")).toBe("/en/users/[email]");
 });
 
-test("properties: personal keys dropped, URLs cut, strings scrubbed, nesting walked", () => {
+test("exception lists: messages scrubbed, frame files cut to a path, source lines dropped", () => {
 	expect(
-		scrubProperties({
-			$ip: "113.161.1.1",
-			$current_url: "https://app/en/inbox?q=Minji",
-			reply: "Hello Minji, the apartment is free",
-			$exception_list: [{ type: "TypeError", value: "cannot read 0912345678 of undefined" }],
-			route: "/api/conversations/[id]/approve",
-		}),
-	).toEqual({
-		$current_url: "https://app/en/inbox",
-		$exception_list: [{ type: "TypeError", value: "cannot read [phone] of undefined" }],
-		route: "/api/conversations/[id]/approve",
+		scrubExceptionList([
+			{
+				type: "TypeError",
+				value: "cannot read 0912345678 of undefined",
+				stacktrace: {
+					frames: [
+						{
+							filename: "https://app/en/signup?invitationId=abc",
+							lineno: 3,
+							function: "submit",
+							context_line: 'const text = "Minji";',
+							pre_context: ["a"],
+							post_context: ["b"],
+						},
+					],
+				},
+			},
+		]),
+	).toEqual([
+		{
+			type: "TypeError",
+			value: "cannot read [phone] of undefined",
+			stacktrace: {
+				frames: [{ filename: "https://app/en/signup", lineno: 3, function: "submit" }],
+			},
+		},
+	]);
+});
+
+test("the browser event is rebuilt from an allowlist; ingest's token and id pass untouched", () => {
+	const token = "phc_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefg";
+	const distinctId = "01926f3e-8b2a-7c4d-9e1f-a2b3c4d5e6f7";
+	const properties = allowlistBrowserException({
+		token,
+		distinct_id: distinctId,
+		$lib: "web",
+		$lib_version: "1.434.16",
+		$pathname: "/en/inbox",
+		$session_entry_url: "https://app/en/signup?invitationId=cm1abc&name=Minji",
+		$initial_referrer: "https://mail.example/inbox?from=minji",
+		$exception_level: "error",
+		$exception_list: [{ type: "Error", value: "boom 0912345678" }],
 	});
+	expect(properties).toMatchObject({
+		token,
+		distinct_id: distinctId,
+		$lib_version: "1.434.16",
+		$pathname: "/en/inbox",
+		$exception_list: [{ type: "Error", value: "boom [phone]" }],
+		$process_person_profile: false,
+		$geoip_disable: true,
+	});
+	expect(properties).not.toHaveProperty("$session_entry_url");
+	expect(properties).not.toHaveProperty("$initial_referrer");
+});
+
+test("server errors: value-dumping errors keep only their kind, and a multi-line message makes no frames", () => {
+	const prisma = new Error(
+		'Invalid `prisma.message.create()` invocation:\n{ data: { text: "Minji here, I am at Ben Thanh at 0912 345 678" } }',
+	);
+	prisma.name = "PrismaClientValidationError";
+	const scrubbedPrisma = scrubServerError(prisma);
+	expect(scrubbedPrisma.message).not.toMatch(/Minji|Ben Thanh|0912/);
+	expect(scrubbedPrisma.stack).not.toMatch(/Minji|Ben Thanh|0912/);
+
+	const multiLine = new Error('Could not parse\ntext: "Minji here, at Ben Thanh"');
+	const lines = scrubServerError(multiLine).stack!.split("\n");
+	expect(lines.slice(1).every((line) => /^\s+at /.test(line))).toBe(true);
+	expect(lines.join("\n")).not.toMatch(/Minji|Ben Thanh/);
 });

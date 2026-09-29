@@ -1,14 +1,17 @@
 "use client";
 
 import posthog from "posthog-js";
+// Bundled rather than fetched from PostHog's CDN at run time (disable_external_dependency_loading).
+import "posthog-js/dist/exception-autocapture";
 import { useEffect } from "react";
 
-import { scrubProperties } from "../lib/scrub";
+import { allowlistBrowserException } from "../lib/scrub";
 
 /**
- * Browser-side error tracking (PostHog Cloud): uncaught errors only, scrubbed of personal data
- * before they leave (PRODUCT.md). No session replay (it would record guests' messages), no
- * autocapture, no pageviews, no person profiles. Off unless NEXT_PUBLIC_POSTHOG_KEY is set.
+ * Browser-side error tracking (PostHog Cloud): uncaught errors only, rebuilt from an
+ * allowlist and scrubbed before they leave (PRODUCT.md). No session replay (it would record
+ * guests' messages), no autocapture, pageviews, feature-flag calls or person profiles, and
+ * nothing stored on the device. Off unless NEXT_PUBLIC_POSTHOG_KEY is set.
  */
 export function ErrorTracking() {
 	useEffect(() => {
@@ -23,12 +26,21 @@ export function ErrorTracking() {
 			disable_session_recording: true,
 			disable_surveys: true,
 			person_profiles: "never",
+			// No /flags call: it would send the stored entry URL outside before_send.
+			advanced_disable_flags: true,
 			save_referrer: false,
+			save_campaign_params: false,
+			// No cookie or localStorage identifier.
+			persistence: "memory",
+			disable_external_dependency_loading: true,
 			before_send: (event) => {
-				if (!event) return null;
 				// Only errors leave the browser; anything else the SDK might send is dropped.
-				if (event.event !== "$exception") return null;
-				event.properties = scrubProperties(event.properties) as typeof event.properties;
+				if (!event || event.event !== "$exception") return null;
+				event.properties = allowlistBrowserException(
+					event.properties as Record<string, unknown>,
+				) as typeof event.properties;
+				delete event.$set;
+				delete event.$set_once;
 				return event;
 			},
 		});
