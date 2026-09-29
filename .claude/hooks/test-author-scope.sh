@@ -20,7 +20,7 @@ readable = rel == "." or tests or under(
     "node_modules/@playwright/", "package.json", "apps/saas/package.json", "apps/marketing/package.json",
 ) or rel.startswith("..") and "/.claude/skills/" in path
 # The test-only auth instance mints sessions with privileged helpers; the main session owns it.
-privileged = rel in ("apps/saas/tests/support/test-auth.ts", "apps/saas/tests/sessions.setup.ts")
+privileged = rel in ("apps/saas/tests/support/test-auth.ts", "apps/saas/tests/sessions.setup.ts", "apps/saas/tests/support/pipe-state.ts", "apps/saas/tests/support/pipes.ts")
 writable = (tests and not privileged) or rel == "docs/e2e-scenarios.md"
 if tool in ("Write", "Edit"):
     if writable: sys.exit(0)
