@@ -184,8 +184,11 @@ translation, qualification, draft, paperwork, answer, pipe_connection, pipe_cred
   from the `0_init` baseline in `prisma/migrations/`. After editing the schema, run
   `pnpm --filter @repo/database migrate:new <name>`, which replays the migrations into a
   throwaway database and writes the diff. `migrate:check` fails when the schema has changes
-  no migration covers; CI runs it. `migrate:deploy` applies them; nothing in CI or the
-  Vercel build runs it on `main` today.
+  no migration covers; CI runs it. `migrate:deploy` applies them. Staging is migrated by
+  hand today: before a PR with a migration merges, `migrate deploy` runs against the Neon
+  `staging` branch (direct, non-pooled URL). Migrations are additive and stay compatible with
+  the release before (ADR 0016), so applying one ahead of its code is safe. Automating this
+  is open.
 - **Tests** use `supastarter_test` (Vitest) and `supastarter_e2e` (Playwright) on the same
   server as dev.
 

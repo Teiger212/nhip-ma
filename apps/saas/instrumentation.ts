@@ -6,7 +6,7 @@
  * running while the operator fixes `.env.local`. On success the settled
  * config is handed to the inbox runtime so nothing downstream re-reads env.
  *
- * Next bundles this file for both runtimes. The inbox runtime opens SQLite, which
+ * Next bundles this file for both runtimes. The inbox runtime opens Postgres (Prisma), which
  * only exists on Node, so everything is imported lazily behind the runtime check.
  */
 export async function register() {

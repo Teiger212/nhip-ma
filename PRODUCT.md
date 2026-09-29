@@ -73,7 +73,8 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 **In scope**
 
 - Everything built: capture, translate, extract, draft, queue, approve and send, follow-up,
-  Home, office tenancy, invitations, the account lifecycle, the CRM seam with its mock.
+  Home, office tenancy, invitations, the account lifecycle; the CRM seam with its mock is
+  built on `feat/crm-seam`, merged in milestone 5.
 - Pool then owner inside an office; managers invite their own agents; offices, pipes and
   managers set up in the admin area without a script (ADR 0015).
 - Each office sends from its own numbers (per-connection pipe credentials).
@@ -115,7 +116,7 @@ checklist includes a real round trip from a phone.
 
 Each milestone leaves staging better than it found it.
 
-1. **Foundations, staging live**: CI (lint, types, Vitest, Playwright on a Neon branch), the
+1. **Foundations, staging live**: CI (lint, types, Vitest, Playwright over HTTPS), the
    `prisma migrate` baseline, Vercel and Neon staging, background work on `after()`,
    observability, rate limits, the red team's auth lockdown, English and Vietnamese only.
 2. **Offices and people**: office setup in the admin area, managers invite agents, the
