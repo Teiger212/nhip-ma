@@ -81,6 +81,12 @@ describe("validateInboxEnv", () => {
 		expect(validateInboxEnv(baseEnv({ SEND_MODE: "live" }))).toMatchObject({ ok: true });
 	});
 
+	it("the secrets key on its own configures no pipe, so it is fine alone", () => {
+		expect(
+			validateInboxEnv(baseEnv({ PIPE_SECRETS_KEY: Buffer.alloc(32, 2).toString("base64") })),
+		).toMatchObject({ ok: true });
+	});
+
 	it("a pipe is configured whole or not at all", () => {
 		const result = validateInboxEnv(
 			baseEnv({ SEND_MODE: "live", ZALO_APP_ID: "app", WHATSAPP_ACCESS_TOKEN: "token" }),
@@ -92,7 +98,7 @@ describe("validateInboxEnv", () => {
 				"WHATSAPP_PHONE_NUMBER_ID must be set: whatsapp is configured only in part (WHATSAPP_ACCESS_TOKEN set)",
 				"ZALO_APP_SECRET must be set: zalo is configured only in part (ZALO_APP_ID set)",
 				"ZALO_OA_SECRET_KEY must be set: zalo is configured only in part (ZALO_APP_ID set)",
-				"PIPE_SECRETS_KEY must be set: zalo is configured only in part (ZALO_APP_ID set)",
+				"PIPE_SECRETS_KEY must be set: zalo stores each office's tokens encrypted with it",
 			]);
 		}
 	});
@@ -109,7 +115,7 @@ describe("validateInboxEnv", () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.errors).toEqual([
-				"ZALO_APP_SECRET must be set: zalo is configured only in part (ZALO_APP_ID, ZALO_OA_SECRET_KEY, PIPE_SECRETS_KEY set)",
+				"ZALO_APP_SECRET must be set: zalo is configured only in part (ZALO_APP_ID, ZALO_OA_SECRET_KEY set)",
 				"PIPE_SECRETS_KEY must be 32 random bytes, base64-encoded",
 			]);
 		}
