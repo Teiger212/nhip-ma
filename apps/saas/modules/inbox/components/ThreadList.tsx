@@ -39,6 +39,7 @@ export function ThreadList({
 	onOpen,
 	onRetry,
 	onViewSent,
+	emptyTitle,
 }: {
 	queue: QueueView;
 	loading: boolean;
@@ -49,6 +50,8 @@ export function ThreadList({
 	onOpen: (id: string) => void;
 	onRetry: () => void;
 	onViewSent: () => void;
+	/** What an empty inbox says to this operator (an agent's is the pool, ADR 0015). */
+	emptyTitle?: string;
 }) {
 	const t = useTranslations("inbox");
 
@@ -78,7 +81,8 @@ export function ThreadList({
 		);
 	}
 	if (queue.visible.length === 0 && queue.quiet.length === 0) {
-		const title = total === 0 ? t("empty") : queue.caughtUp ? t("allCaughtUp") : t("noMatches");
+		const title =
+			total === 0 ? (emptyTitle ?? t("empty")) : queue.caughtUp ? t("allCaughtUp") : t("noMatches");
 		return (
 			<ThreadListState
 				testId={

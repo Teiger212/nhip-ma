@@ -41,6 +41,7 @@ model User {
   notifications            Notification[]
   notificationPreferences  UserNotificationPreference[]
   answers                  Answer[]
+  ownedConversations       Conversation[] @relation("ConversationOwner")
 
   @@unique([email])
   @@map("user")
@@ -309,6 +310,10 @@ model Conversation {
   language           String?
   lastGuestInboundAt DateTime?
   sentAt             DateTime?
+  /// The agent who answered first (ADR 0015); null = in the office's pool. An owner whose
+  /// account ends leaves the thread to the pool.
+  ownerId            String?
+  owner              User?          @relation("ConversationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   updatedAt          DateTime
   messages           Message[]
   qualification      Qualification?
@@ -318,6 +323,7 @@ model Conversation {
 
   @@unique([officeId, pipe, guestId])
   @@index([officeId])
+  @@index([officeId, ownerId])
   @@map("inbox_conversation")
 }
 

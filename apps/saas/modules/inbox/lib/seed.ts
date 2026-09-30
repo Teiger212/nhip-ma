@@ -62,7 +62,7 @@ export async function seedInbox(
 			DEMO_THREADS.map((thread) => conversationId(officeId, thread.pipe, thread.guestId)),
 		);
 	}
-	const owned = await store.listConversations({ userId: "seed", officeId });
+	const owned = await store.listConversations({ userId: "seed", officeId, role: "manager" });
 	const result: Conversation[] = [];
 	for (const thread of DEMO_THREADS) {
 		const existing = owned.find(

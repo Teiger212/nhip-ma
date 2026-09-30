@@ -25,7 +25,9 @@ is renamed.
   (ADR 0015).
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
-  office, reassigns owners, and invites the office's agents (ADR 0015).
+  office, reassigns owners, and invites the office's agents (ADR 0015). An office may have
+  several. (In the kit: a member with the role `owner` or `admin`; an agent is `member`.)
+  _Avoid_: admin, office admin (admin means the platform admin only).
 - **Platform admin**: Nhịp's own staff. Creates offices, connects each office's pipes and
   invites each office's first manager; never an operator: the membership the kit gives the
   office's creator opens no guests' threads, no Inbox or Home, and is not a seat (ADR 0015).
@@ -55,9 +57,15 @@ is renamed.
   at the bottom of the queue, still Your turn.
 - **Sent**: the office spoke last.
 - **Pool**: the office's threads no agent owns yet. Every agent in the office sees them,
-  so a new guest is answered by whoever is available (ADR 0015).
-- **Owner**: the agent who sent a thread's first reply. From then on the thread is in
-  that agent's queue only (and every manager's); a manager can reassign it.
+  so a new guest is answered by whoever is available (ADR 0015). An agent's Inbox is the
+  pool and their own threads, labelled "Pool" and "Yours"; a colleague's threads do not
+  exist for them (not listed, counted, searched or opened). Home stays office-level.
+- **Owner**: the operator who approved a thread's first reply in Nhịp: the thread is **claimed**
+  at that approval, even if the send then fails. From then on it is in that operator's queue
+  only (and every manager's). A reply sent from the WhatsApp or Zalo app itself claims
+  nothing. When the owner's account ends (ADR 0013), the thread returns to the pool.
+- **Reassign**: a manager gives a thread to another operator of the office, or back to the
+  pool. Only managers reassign; agents never hand threads on.
 - **Resolved**: the CRM reports won or lost. Leaves the queue; visible under Sent / All.
 - There is no dismiss. The queue empties through sends and outcomes (ADR 0004).
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not

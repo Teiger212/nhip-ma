@@ -122,3 +122,50 @@ time: nothing in it can be trusted.
 3. **Only the platform admin sees it.** An agent sees no Webhooks page; its API refuses the
    agent (403) and a visitor who is signed out (401). Spec: `apps/saas/tests/webhooks.spec.ts`
    (Webhook deliveries 3).
+
+## Pool then owner (ADR 0015)
+
+Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and a manager
+(`manager@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
+1's, Yuki is agent 2's, Alexei and Thảo are in the pool.
+
+1. **A new guest lands in the pool.** A guest writes to the office for the first time: both
+   agents see the thread in their Inbox, marked as in the pool, and so does the manager.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 1; a new Zalo guest on the test's own OA, in the list and the thread header).
+2. **The first agent to answer owns it.** Agent 1 approves a reply on a pool thread: it stays
+   in agent 1's Inbox, shown as theirs, and leaves agent 2's Inbox, counts and search. Agent 2
+   opening it by address, or through the API, finds nothing (404).
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 2; the Inbox has no per-thread address, so "by address" is
+   `GET /api/conversations/:id`; "counts and search" is searching the guest under All: every
+   count says 0. Agent 1's "Yours" is checked after reloading the Inbox: after a send in Your
+   turn, the Inbox moves on to the next waiting guest (the sent thread leaves Your turn), so
+   the header then shows that next thread).
+3. **Two agents answering at once end with one owner.** Agent 1 and agent 2 approve the same
+   pool thread at the same moment: one reply is sent, and the thread belongs to whoever sent it.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 3; both approvals fired at once through the API: exactly one
+   is 200, the manager sees only that reply and that sender as owner, the other agent 404).
+4. **The guest's next message goes to the owner.** The guest writes again on an owned thread:
+   it is Your turn for agent 1 only; agent 2 still does not see it.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 4).
+5. **The manager sees every thread and reassigns.** The manager sees pool threads and every
+   agent's threads, each marked with its owner. Reassigning agent 1's thread to agent 2 moves
+   it: agent 2 now has it, agent 1 no longer does. Returning it to the pool shows it to both
+   agents again. Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 5; owners shown on the test's own threads and,
+   read only, on the seed's Minji and Yuki; reassigning through the header's Owner control).
+6. **A reply from the vendor's own app claims nothing.** A reply the office sent from the
+   WhatsApp or Zalo app itself leaves the thread in the pool.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 6; Zalo only: an `oa_send_text` echo shows in the thread and
+   the thread stays Pool for both agents and the manager; the next agent to answer in Nhịp
+   owns it. The WhatsApp echo is not tested yet).
+7. **The manager filters by owner.** The manager's Inbox filter All / Pool / an operator shows
+   exactly those threads.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 7; under the All view: each filter lists its threads, not the
+   others, and every listed thread carries that owner).
+8. **A new agent's first day.** A newly joined agent sees only the pool; with nothing in it,
+   the Inbox says guests waiting for anyone appear there.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 8; one newcomer joins the walk office and sees only pool
+   threads; another joins a new office with no guests and sees the empty-pool text).
+9. **An agent cannot reassign.** An agent's thread has no Owner control, and the reassign API
+   refuses an agent (403).
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 9; the manager's control on the same thread is the positive
+   control; 403 for handing on, returning to the pool and taking a pool thread; nothing moves).

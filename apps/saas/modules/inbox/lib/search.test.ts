@@ -10,6 +10,7 @@ function conv(partial: Partial<Conversation> & Pick<Conversation, "id">): Conver
 		guestId: partial.guestId || "g1",
 		guestName: partial.guestName ?? "Minji",
 		officeId: "walk-office",
+		owner: null,
 		messages: partial.messages ?? [],
 		lastGuestInboundAt: null,
 		sentAt: null,

@@ -90,7 +90,7 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: ConversationScalarFieldEnum.schema.ts
 
-export const ConversationScalarFieldEnumSchema = z.enum(['id', 'pipe', 'guestId', 'guestName', 'officeId', 'language', 'lastGuestInboundAt', 'sentAt', 'updatedAt'])
+export const ConversationScalarFieldEnumSchema = z.enum(['id', 'pipe', 'guestId', 'guestName', 'officeId', 'language', 'lastGuestInboundAt', 'sentAt', 'ownerId', 'updatedAt'])
 
 export type ConversationScalarFieldEnum = z.infer<typeof ConversationScalarFieldEnumSchema>;
 
@@ -450,6 +450,7 @@ export const ConversationSchema = z.object({
   language: z.string().nullish(),
   lastGuestInboundAt: z.date().nullish(),
   sentAt: z.date().nullish(),
+  ownerId: z.string().nullish(),
   updatedAt: z.date(),
 });
 

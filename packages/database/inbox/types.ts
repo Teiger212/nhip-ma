@@ -153,6 +153,8 @@ export type Conversation = {
 	answers: Answer[];
 	/** The most recent Answer, whatever its status. */
 	lastAnswer: Answer | null;
+	/** The agent who owns the thread (ADR 0015), or null while it is in the office's pool. */
+	owner: { id: string; name: string } | null;
 	updatedAt: string;
 };
 
@@ -202,8 +204,12 @@ export type OfficePipe = {
 	disconnectedReason: string | null;
 };
 
-/** Who is reading: an operator and the office they act for. Threads are visible only inside it. */
-export type InboxViewer = { userId: string; officeId: string };
+/**
+ * Who is reading: an operator, the office they act for, and their role there (ADR 0015). An
+ * agent sees the office's pool and their own threads; a manager sees every thread of the
+ * office. No role reads as an agent.
+ */
+export type InboxViewer = { userId: string; officeId: string; role?: "agent" | "manager" };
 
 /** One incoming webhook as the delivery log keeps it (no message text, no guest id). */
 export type WebhookDeliveryRecord = {
@@ -294,6 +300,11 @@ export type InboxStore = {
 	 * yes in a mock deployment (the demo), never in a live one.
 	 */
 	funnel: (viewer: InboxViewer, window: { since: Date; countMock: boolean }) => Promise<Funnel>;
+	/**
+	 * Give a thread to an agent, or back to the pool (null). The new owner must be a member
+	 * of the thread's office; returns false when the thread or the member is not found.
+	 */
+	setOwner: (conversationId: string, ownerId: string | null, officeId: string) => Promise<boolean>;
 	recordWebhookDelivery: (delivery: WebhookDeliveryRecord) => Promise<void>;
 	/** The latest deliveries, newest first. */
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;

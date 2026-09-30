@@ -64,6 +64,42 @@ export function replyEndpoint(conversation: Conversation): string | null {
 	return null;
 }
 
+/** The signed-in operator and their role in the office (ADR 0015). */
+export function useOfficeRole(): { userId: string | null; role: "agent" | "manager" } {
+	const query = useQuery({
+		queryKey: ["inbox", "office"],
+		queryFn: () => api<{ userId: string; role: "agent" | "manager" }>("/api/office"),
+		staleTime: 5 * 60_000,
+	});
+	return { userId: query.data?.userId ?? null, role: query.data?.role ?? "agent" };
+}
+
+export type OfficeAgent = { id: string; name: string; manager: boolean };
+
+/** The office's operators a manager can give a thread to. */
+export function useOfficeAgents(enabled: boolean) {
+	return useQuery({
+		queryKey: ["inbox", "office", "agents"],
+		queryFn: () => api<OfficeAgent[]>("/api/office/agents"),
+		enabled,
+		staleTime: 60_000,
+	});
+}
+
+/** A manager gives a thread to an agent, or back to the pool (null). */
+export function useSetOwner() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, ownerId }: { id: string; ownerId: string | null }) =>
+			api<Conversation>(`/api/conversations/${encodeURIComponent(id)}/owner`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ ownerId }),
+			}),
+		onSettled: () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
+	});
+}
+
 function useConversationMutation(path: string) {
 	const queryClient = useQueryClient();
 	return useMutation({
