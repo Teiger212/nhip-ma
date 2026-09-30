@@ -1,0 +1,540 @@
+{
+	"schemaVersion": 2,
+	"generatedAt": "2026-09-30T13:57:07+00:00",
+	"title": "Design System: Nhịp",
+	"extensions": {
+		"colorMeta": {
+			"dispatch-blue": {
+				"role": "primary",
+				"displayName": "Dispatch Blue",
+				"canonical": "oklch(54.6% 0.215 262.9)",
+				"tonalRamp": [
+					"oklch(15% 0.107 262.9)",
+					"oklch(26% 0.186 262.9)",
+					"oklch(38% 0.215 262.9)",
+					"oklch(50% 0.215 262.9)",
+					"oklch(62% 0.204 262.9)",
+					"oklch(74% 0.14 262.9)",
+					"oklch(85% 0.081 262.9)",
+					"oklch(95% 0.027 262.9)"
+				]
+			},
+			"touch-blue": {
+				"role": "primary",
+				"displayName": "Touch Blue",
+				"canonical": "oklch(54.6% 0.215 262.9)",
+				"tonalRamp": [
+					"oklch(15% 0.107 262.9)",
+					"oklch(26% 0.186 262.9)",
+					"oklch(38% 0.215 262.9)",
+					"oklch(50% 0.215 262.9)",
+					"oklch(62% 0.204 262.9)",
+					"oklch(74% 0.14 262.9)",
+					"oklch(85% 0.081 262.9)",
+					"oklch(95% 0.027 262.9)"
+				]
+			},
+			"harbor-ink": {
+				"role": "neutral",
+				"displayName": "Harbor Ink",
+				"canonical": "oklch(20.8% 0.042 265.8)",
+				"tonalRamp": [
+					"oklch(15% 0.021 265.8)",
+					"oklch(26% 0.036 265.8)",
+					"oklch(38% 0.042 265.8)",
+					"oklch(50% 0.042 265.8)",
+					"oklch(62% 0.04 265.8)",
+					"oklch(74% 0.027 265.8)",
+					"oklch(85% 0.016 265.8)",
+					"oklch(95% 0.005 265.8)"
+				]
+			},
+			"slate-note": {
+				"role": "neutral",
+				"displayName": "Slate Note",
+				"canonical": "oklch(44.6% 0.043 257.3)",
+				"tonalRamp": [
+					"oklch(15% 0.021 257.3)",
+					"oklch(26% 0.037 257.3)",
+					"oklch(38% 0.043 257.3)",
+					"oklch(50% 0.043 257.3)",
+					"oklch(62% 0.041 257.3)",
+					"oklch(74% 0.028 257.3)",
+					"oklch(85% 0.016 257.3)",
+					"oklch(95% 0.005 257.3)"
+				]
+			},
+			"morning-wash": {
+				"role": "neutral",
+				"displayName": "Morning Wash",
+				"canonical": "oklch(97.2% 0.011 264)",
+				"tonalRamp": [
+					"oklch(15% 0.015 264)",
+					"oklch(26% 0.026 264)",
+					"oklch(38% 0.03 264)",
+					"oklch(50% 0.03 264)",
+					"oklch(62% 0.028 264)",
+					"oklch(74% 0.019 264)",
+					"oklch(85% 0.011 264)",
+					"oklch(95% 0.004 264)"
+				]
+			},
+			"deep-navy": {
+				"role": "neutral",
+				"displayName": "Deep Navy",
+				"canonical": "oklch(37.9% 0.146 265.5)",
+				"tonalRamp": [
+					"oklch(15% 0.073 265.5)",
+					"oklch(26% 0.127 265.5)",
+					"oklch(38% 0.146 265.5)",
+					"oklch(50% 0.146 265.5)",
+					"oklch(62% 0.139 265.5)",
+					"oklch(74% 0.095 265.5)",
+					"oklch(85% 0.055 265.5)",
+					"oklch(95% 0.018 265.5)"
+				]
+			},
+			"hairline-blue": {
+				"role": "neutral",
+				"displayName": "Hairline Blue",
+				"canonical": "oklch(94.1% 0.024 264)",
+				"tonalRamp": [
+					"oklch(15% 0.02 264)",
+					"oklch(26% 0.035 264)",
+					"oklch(38% 0.04 264)",
+					"oklch(50% 0.04 264)",
+					"oklch(62% 0.038 264)",
+					"oklch(74% 0.026 264)",
+					"oklch(85% 0.015 264)",
+					"oklch(95% 0.005 264)"
+				]
+			},
+			"field-edge": {
+				"role": "neutral",
+				"displayName": "Field Edge",
+				"canonical": "oklch(88.3% 0.045 265)",
+				"tonalRamp": [
+					"oklch(15% 0.03 265)",
+					"oklch(26% 0.052 265)",
+					"oklch(38% 0.06 265)",
+					"oklch(50% 0.06 265)",
+					"oklch(62% 0.057 265)",
+					"oklch(74% 0.039 265)",
+					"oklch(85% 0.022 265)",
+					"oklch(95% 0.007 265)"
+				]
+			},
+			"rail-paper": {
+				"role": "neutral",
+				"displayName": "Rail Paper",
+				"canonical": "oklch(98.4% 0.003 247.9)",
+				"tonalRamp": [
+					"oklch(15% 0.005 247.9)",
+					"oklch(26% 0.009 247.9)",
+					"oklch(38% 0.01 247.9)",
+					"oklch(50% 0.01 247.9)",
+					"oklch(62% 0.009 247.9)",
+					"oklch(74% 0.007 247.9)",
+					"oklch(85% 0.004 247.9)",
+					"oklch(95% 0.001 247.9)"
+				]
+			},
+			"background": {
+				"role": "neutral",
+				"displayName": "Plain White",
+				"canonical": "oklch(100% 0 0)",
+				"tonalRamp": [
+					"oklch(15% 0.0 0)",
+					"oklch(26% 0.0 0)",
+					"oklch(38% 0 0)",
+					"oklch(50% 0 0)",
+					"oklch(62% 0.0 0)",
+					"oklch(74% 0.0 0)",
+					"oklch(85% 0.0 0)",
+					"oklch(95% 0.0 0)"
+				]
+			},
+			"signal-red": {
+				"role": "error",
+				"displayName": "Signal Red",
+				"canonical": "oklch(57.7% 0.245 27.3)",
+				"tonalRamp": [
+					"oklch(15% 0.122 27.3)",
+					"oklch(26% 0.212 27.3)",
+					"oklch(38% 0.245 27.3)",
+					"oklch(50% 0.245 27.3)",
+					"oklch(62% 0.233 27.3)",
+					"oklch(74% 0.159 27.3)",
+					"oklch(85% 0.092 27.3)",
+					"oklch(95% 0.031 27.3)"
+				]
+			},
+			"sent-green": {
+				"role": "success",
+				"displayName": "Sent Green",
+				"canonical": "oklch(52.7% 0.154 150.1)",
+				"tonalRamp": [
+					"oklch(15% 0.077 150.1)",
+					"oklch(26% 0.133 150.1)",
+					"oklch(38% 0.154 150.1)",
+					"oklch(50% 0.154 150.1)",
+					"oklch(62% 0.146 150.1)",
+					"oklch(74% 0.1 150.1)",
+					"oklch(85% 0.058 150.1)",
+					"oklch(95% 0.019 150.1)"
+				]
+			},
+			"your-turn-amber": {
+				"role": "warning",
+				"displayName": "Your-Turn Amber",
+				"canonical": "oklch(55.5% 0.163 48.9)",
+				"tonalRamp": [
+					"oklch(15% 0.082 48.9)",
+					"oklch(26% 0.141 48.9)",
+					"oklch(38% 0.163 48.9)",
+					"oklch(50% 0.163 48.9)",
+					"oklch(62% 0.155 48.9)",
+					"oklch(74% 0.106 48.9)",
+					"oklch(85% 0.061 48.9)",
+					"oklch(95% 0.02 48.9)"
+				]
+			},
+			"night-desk": {
+				"role": "neutral",
+				"displayName": "Night Desk",
+				"canonical": "oklch(17.6% 0.031 264)",
+				"tonalRamp": [
+					"oklch(15% 0.015 264)",
+					"oklch(26% 0.027 264)",
+					"oklch(38% 0.031 264)",
+					"oklch(50% 0.031 264)",
+					"oklch(62% 0.029 264)",
+					"oklch(74% 0.02 264)",
+					"oklch(85% 0.012 264)",
+					"oklch(95% 0.004 264)"
+				]
+			},
+			"night-card": {
+				"role": "neutral",
+				"displayName": "Night Card",
+				"canonical": "oklch(21.6% 0.04 266)",
+				"tonalRamp": [
+					"oklch(15% 0.02 266)",
+					"oklch(26% 0.035 266)",
+					"oklch(38% 0.04 266)",
+					"oklch(50% 0.04 266)",
+					"oklch(62% 0.038 266)",
+					"oklch(74% 0.026 266)",
+					"oklch(85% 0.015 266)",
+					"oklch(95% 0.005 266)"
+				]
+			},
+			"night-wash": {
+				"role": "neutral",
+				"displayName": "Night Wash",
+				"canonical": "oklch(27.5% 0.046 264)",
+				"tonalRamp": [
+					"oklch(15% 0.023 264)",
+					"oklch(26% 0.04 264)",
+					"oklch(38% 0.046 264)",
+					"oklch(50% 0.046 264)",
+					"oklch(62% 0.044 264)",
+					"oklch(74% 0.03 264)",
+					"oklch(85% 0.017 264)",
+					"oklch(95% 0.006 264)"
+				]
+			},
+			"night-hairline": {
+				"role": "neutral",
+				"displayName": "Night Hairline",
+				"canonical": "oklch(32.5% 0.054 265)",
+				"tonalRamp": [
+					"oklch(15% 0.027 265)",
+					"oklch(26% 0.047 265)",
+					"oklch(38% 0.054 265)",
+					"oklch(50% 0.054 265)",
+					"oklch(62% 0.051 265)",
+					"oklch(74% 0.035 265)",
+					"oklch(85% 0.02 265)",
+					"oklch(95% 0.007 265)"
+				]
+			},
+			"night-ink": {
+				"role": "neutral",
+				"displayName": "Night Ink",
+				"canonical": "oklch(92.9% 0.013 255.5)",
+				"tonalRamp": [
+					"oklch(15% 0.006 255.5)",
+					"oklch(26% 0.011 255.5)",
+					"oklch(38% 0.013 255.5)",
+					"oklch(50% 0.013 255.5)",
+					"oklch(62% 0.012 255.5)",
+					"oklch(74% 0.008 255.5)",
+					"oklch(85% 0.005 255.5)",
+					"oklch(95% 0.002 255.5)"
+				]
+			},
+			"night-note": {
+				"role": "neutral",
+				"displayName": "Night Note",
+				"canonical": "oklch(71.1% 0.035 256.8)",
+				"tonalRamp": [
+					"oklch(15% 0.018 256.8)",
+					"oklch(26% 0.03 256.8)",
+					"oklch(38% 0.035 256.8)",
+					"oklch(50% 0.035 256.8)",
+					"oklch(62% 0.033 256.8)",
+					"oklch(74% 0.023 256.8)",
+					"oklch(85% 0.013 256.8)",
+					"oklch(95% 0.004 256.8)"
+				]
+			},
+			"night-blue": {
+				"role": "primary",
+				"displayName": "Night Blue",
+				"canonical": "oklch(62.3% 0.188 259.8)",
+				"tonalRamp": [
+					"oklch(15% 0.094 259.8)",
+					"oklch(26% 0.163 259.8)",
+					"oklch(38% 0.188 259.8)",
+					"oklch(50% 0.188 259.8)",
+					"oklch(62% 0.179 259.8)",
+					"oklch(74% 0.122 259.8)",
+					"oklch(85% 0.071 259.8)",
+					"oklch(95% 0.024 259.8)"
+				]
+			},
+			"night-touch": {
+				"role": "primary",
+				"displayName": "Night Touch",
+				"canonical": "oklch(70.7% 0.143 254.6)",
+				"tonalRamp": [
+					"oklch(15% 0.071 254.6)",
+					"oklch(26% 0.124 254.6)",
+					"oklch(38% 0.143 254.6)",
+					"oklch(50% 0.143 254.6)",
+					"oklch(62% 0.136 254.6)",
+					"oklch(74% 0.093 254.6)",
+					"oklch(85% 0.054 254.6)",
+					"oklch(95% 0.018 254.6)"
+				]
+			}
+		},
+		"typographyMeta": {
+			"headline": {
+				"displayName": "Headline",
+				"purpose": "Page titles; 1.25rem on a phone, 1.5rem from md."
+			},
+			"title": {
+				"displayName": "Title",
+				"purpose": "Card titles and section headers."
+			},
+			"thread-name": {
+				"displayName": "Thread Name",
+				"purpose": "The guest's name on a row and in the thread header."
+			},
+			"body": {
+				"displayName": "Body",
+				"purpose": "Message text, pre-wrap."
+			},
+			"body-small": {
+				"displayName": "Body Small",
+				"purpose": "Row previews, meta, hints."
+			},
+			"label": {
+				"displayName": "Label",
+				"purpose": "Flags and avatar initials (text-micro)."
+			},
+			"micro-caps": {
+				"displayName": "Micro Caps",
+				"purpose": "Translation label and tiny badges (text-2xs, uppercase)."
+			},
+			"clock": {
+				"displayName": "Clock",
+				"purpose": "Every timestamp, tabular figures."
+			}
+		},
+		"shadows": [
+			{
+				"name": "rail",
+				"value": "inset 2px 0 0 var(--sidebar-primary)",
+				"purpose": "Active item in the sidebar and user menu."
+			},
+			{
+				"name": "hairline",
+				"value": "inset 0 0 0 1px var(--border)",
+				"purpose": "A 1px border drawn inside, for chips and toggles on a tinted surface."
+			},
+			{
+				"name": "xs",
+				"value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+				"purpose": "Inputs only (kit default)."
+			}
+		],
+		"motion": [
+			{
+				"name": "state",
+				"value": "200ms ease-out",
+				"purpose": "Button color, fill and press-scale transitions; off under prefers-reduced-motion."
+			},
+			{
+				"name": "press",
+				"value": "scale(0.98)",
+				"purpose": "Button :active."
+			},
+			{
+				"name": "disclosure",
+				"value": "0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+				"purpose": "Accordion open/close."
+			}
+		],
+		"breakpoints": [
+			{
+				"name": "md",
+				"value": "768px",
+				"purpose": "List and thread side by side; sidebar leaves the sheet."
+			}
+		]
+	},
+	"components": [
+		{
+			"name": "Primary Button",
+			"kind": "button",
+			"refersTo": "button-primary",
+			"description": "The one action color: Send, Approve, Connect.",
+			"html": "<button class=\"ds-btn-primary\">Gửi · Send</button>",
+			"css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 9999px; border: none; cursor: pointer; transition: color .2s ease-out, background-color .2s ease-out, border-color .2s ease-out, transform .2s ease-out; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; background: var(--primary); color: var(--primary-foreground); } .ds-btn-primary:hover { background: color-mix(in srgb, var(--primary) 82%, var(--background)); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); } .ds-btn-primary:active { transform: scale(.98); }"
+		},
+		{
+			"name": "Secondary Button",
+			"kind": "button",
+			"refersTo": "button-secondary",
+			"description": "The kit's default variant: a quiet wash for everyday actions.",
+			"html": "<button class=\"ds-btn-secondary\">Save draft</button>",
+			"css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 9999px; border: none; cursor: pointer; transition: color .2s ease-out, background-color .2s ease-out, border-color .2s ease-out, transform .2s ease-out; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; background: var(--secondary); color: var(--secondary-foreground); } .ds-btn-secondary:hover { background: color-mix(in srgb, var(--secondary) 90%, black); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); } .ds-btn-secondary:active { transform: scale(.98); }"
+		},
+		{
+			"name": "Outline Button",
+			"kind": "button",
+			"refersTo": "button-outline",
+			"description": "Secondary action in empty and error states (Retry, View sent); 44px tap target.",
+			"html": "<button class=\"ds-btn-outline\">Retry</button>",
+			"css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 9999px; border: none; cursor: pointer; transition: color .2s ease-out, background-color .2s ease-out, border-color .2s ease-out, transform .2s ease-out; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; min-height: 44px; background: transparent; color: var(--foreground); border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent); } .ds-btn-outline:hover { background: color-mix(in srgb, var(--foreground) 10%, transparent); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); }"
+		},
+		{
+			"name": "Text Field",
+			"kind": "input",
+			"refersTo": "input",
+			"description": "36px field with a Field Edge stroke; 16px text so phones don't zoom.",
+			"html": "<input class=\"ds-input\" placeholder=\"Tìm khách · Search guests\" />",
+			"css": ".ds-input { height: 36px; width: 260px; padding: 4px 12px; border: 1px solid var(--input); border-radius: calc(var(--radius) * 1.4); background: var(--card); color: var(--foreground); font-family: var(--font-sans); font-size: 1rem; box-shadow: 0 1px 2px rgb(0 0 0 / .05); transition: border-color .15s; } .ds-input::placeholder { color: color-mix(in srgb, var(--foreground) 60%, transparent); } .ds-input:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 1px var(--ring); }"
+		},
+		{
+			"name": "Turn Flags",
+			"kind": "chip",
+			"refersTo": "flag-your-turn",
+			"description": "Pipe, then turn: amber while the guest waits, green once answered.",
+			"html": "<span class=\"ds-flags\"><span class=\"ds-flag ds-flag-pipe\">Zalo</span><span class=\"ds-flag ds-flag-turn\">Your turn</span><span class=\"ds-flag ds-flag-sent\">Sent</span></span>",
+			"css": ".ds-flags { display: inline-flex; gap: 4px; } .ds-flag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: calc(var(--radius) * .8); font-family: var(--font-sans); font-size: .6875rem; font-weight: 500; line-height: 1; } .ds-flag-pipe { background: var(--muted); color: var(--muted-foreground); } .ds-flag-turn { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); } .ds-flag-sent { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }"
+		},
+		{
+			"name": "Card",
+			"kind": "card",
+			"refersTo": "card",
+			"description": "Settings and admin containers: 13.2px corners, hairline border, no shadow.",
+			"html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Connections</h3><p class=\"ds-card-desc\">Zalo OA · connected</p></div>",
+			"css": ".ds-card { width: 300px; padding: 24px; border: 1px solid var(--border); border-radius: calc(var(--radius) * 2.2); background: var(--card); color: var(--card-foreground); } .ds-card-title { margin: 0 0 6px; font-family: var(--font-heading); font-size: 1.125rem; font-weight: 500; line-height: 1; } .ds-card-desc { margin: 0; font-family: var(--font-sans); font-size: .875rem; color: var(--muted-foreground); }"
+		},
+		{
+			"name": "Sidebar Item",
+			"kind": "nav",
+			"refersTo": "nav-item-active",
+			"description": "Active item: accent fill plus a 2px inset rail.",
+			"html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-active\" href=\"#\">Inbox</a><a class=\"ds-nav-item\" href=\"#\">Home</a><a class=\"ds-nav-item\" href=\"#\">Settings</a></nav>",
+			"css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 200px; padding: 8px; background: var(--sidebar); } .ds-nav-item { display: block; padding: 8px 10px; border-radius: calc(var(--radius) * .8); color: var(--sidebar-foreground); font-family: var(--font-sans); font-size: .875rem; text-decoration: none; transition: background .15s; } .ds-nav-item:hover { background: var(--sidebar-accent); } .ds-nav-item.is-active { background: var(--sidebar-accent); box-shadow: inset 2px 0 0 var(--sidebar-primary); font-weight: 500; } .ds-nav-item:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }"
+		},
+		{
+			"name": "Thread Row",
+			"kind": "custom",
+			"refersTo": "thread-row",
+			"description": "Signature: guest mark, name, tabular clock, two-line preview, flags; the active row takes the Touch rail.",
+			"html": "<div class=\"ds-list\"><button class=\"ds-row is-active\"><span class=\"ds-mark\">MJ</span><span class=\"ds-row-body\"><span class=\"ds-row-top\"><span class=\"ds-row-name\">Minji Park</span><time class=\"ds-row-time\">09:42</time></span><span class=\"ds-row-preview\">Căn 2PN ở Thảo Điền còn trống không ạ? Tôi muốn xem tuần này.</span><span class=\"ds-flag ds-flag-pipe\">Zalo</span> <span class=\"ds-flag ds-flag-turn\">Your turn</span></span></button><button class=\"ds-row\"><span class=\"ds-mark\">YT</span><span class=\"ds-row-body\"><span class=\"ds-row-top\"><span class=\"ds-row-name\">Yuki Tanaka</span><time class=\"ds-row-time\">08:15</time></span><span class=\"ds-row-preview\">Thanks, see you Saturday.</span><span class=\"ds-flag ds-flag-pipe\">WhatsApp</span> <span class=\"ds-flag ds-flag-sent\">Sent</span></span></button></div>",
+			"css": ".ds-list { width: 22rem; border-right: 1px solid var(--border); background: var(--background); } .ds-row { display: flex; align-items: flex-start; gap: 10px; width: calc(100% - .75rem); margin: 2px 6px; padding: 10px 12px; border: none; border-left: 2px solid transparent; border-radius: 0; background: transparent; color: var(--foreground); text-align: left; cursor: pointer; font-family: var(--font-sans); transition: background .2s ease-out; } .ds-row:hover { background: color-mix(in srgb, var(--muted) 70%, transparent); } .ds-row.is-active { border-left-color: var(--touch); background: color-mix(in srgb, var(--sidebar-accent) 80%, transparent); } .ds-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; } .ds-mark { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: calc(var(--radius) * .8); background: color-mix(in srgb, var(--touch) 12%, transparent); color: var(--touch); font-size: .6875rem; font-weight: 600; } .ds-row-body { min-width: 0; flex: 1; } .ds-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } .ds-row-name { font-family: var(--font-heading); font-size: .875rem; font-weight: 600; letter-spacing: -.025em; } .ds-row-time { font-family: var(--font-mono); font-size: .6875rem; font-variant-numeric: tabular-nums; color: var(--muted-foreground); } .ds-row-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 2px 0 6px; font-size: .75rem; line-height: 1.375; color: var(--muted-foreground); } .ds-flag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: calc(var(--radius) * .8); font-size: .6875rem; font-weight: 500; line-height: 1; } .ds-flag-pipe { background: var(--muted); color: var(--muted-foreground); } .ds-flag-turn { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); } .ds-flag-sent { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }"
+		},
+		{
+			"name": "Messages",
+			"kind": "custom",
+			"refersTo": "message-inbound",
+			"description": "Inbound on card with the Touch rail; outbound indented on a muted wash.",
+			"html": "<div class=\"ds-thread\"><div class=\"ds-msg ds-msg-in\"><div class=\"ds-msg-meta\"><b>Zalo</b><time>09:42</time></div>Căn 2PN ở Thảo Điền còn trống không ạ?</div><div class=\"ds-msg ds-msg-out\"><div class=\"ds-msg-meta\"><b>Nhịp</b><time>09:44</time></div>Dạ còn ạ. Chị muốn xem thứ Bảy được không?</div></div>",
+			"css": ".ds-thread { display: flex; flex-direction: column; gap: 8px; width: 360px; font-family: var(--font-sans); } .ds-msg { padding: 8px 12px; border-radius: calc(var(--radius) * .8); font-size: .875rem; line-height: 1.625; color: var(--foreground); white-space: pre-wrap; } .ds-msg-in { border-left: 2px solid var(--touch); background: var(--card); } .ds-msg-out { margin-left: 24px; border-left: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent); background: color-mix(in srgb, var(--muted) 40%, transparent); } .ds-msg-meta { display: flex; gap: 8px; margin-bottom: 4px; font-size: .75rem; color: var(--muted-foreground); } .ds-msg-meta b { font-weight: 500; color: color-mix(in srgb, var(--foreground) 80%, transparent); } .ds-msg-meta time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }"
+		}
+	],
+	"narrative": {
+		"northStar": "The Dispatch Desk",
+		"overview": "**Creative North Star: \"The Dispatch Desk\"**\n\nNhịp is the desk where every new lead lands and someone answers it before it goes cold. The screen has one job: show which guest is waiting, whose turn it is, and put the reply one tap away. Everything else stays quiet. The surfaces are flat white (or deep night blue in dark mode) with hairline blue edges, and one saturated blue marks every action and the thread you're looking at. The only other color is the turn itself: amber for *your turn*, green for *sent*. Red is kept for things that broke.\n\nThe desk is dense but calm. Agents work it on a phone and at a desk about equally, so the thread list and the thread are the same product in both places: one column on a phone, list and thread side by side from `md` up. Density comes from tight rows and small, exact type, not from shrinking touch targets. Every control someone taps mid-conversation is at least 44px tall.\n\nThe system comes from a supastarter kit, refit for triage. Pills are for acting, gently squared corners are for content, and depth comes from tone, never from drop shadows. Headings are in Be Vietnam Pro and body text in Noto Sans. Both carry the Vietnamese subset, so diacritics set cleanly at every size.",
+		"keyCharacteristics": [
+			"One action blue; the turn (amber / green) is the only other signal on a row.",
+			"Flat surfaces: tonal washes and 1–2px inset lines instead of shadows.",
+			"Pill buttons, squared content (rows, flags, messages, fields).",
+			"A 2px left rail marks \"selected\" everywhere: thread rows, inbound messages, the sidebar.",
+			"Timestamps in IBM Plex Mono with tabular figures.",
+			"Light and dark themes are both first-class; every token has a night twin."
+		],
+		"rules": [
+			{
+				"name": "The One Blue Rule",
+				"body": "Blue is the only action color. No second accent, no gradient, no brand purple. If a new control needs emphasis, it's primary blue or it's neutral.",
+				"section": "colors"
+			},
+			{
+				"name": "The Turn Is The Signal Rule",
+				"body": "On a thread, only the turn gets color: amber while the guest waits, green once we've answered. Pipe, owner and other metadata stay neutral grey-blue so the turn is readable from across the room.",
+				"section": "colors"
+			},
+			{
+				"name": "The Red Means Broken Rule",
+				"body": "Signal Red is for errors and destructive actions only. A waiting guest is amber, never red. Urgency is not an error.",
+				"section": "colors"
+			},
+			{
+				"name": "The Tabular Clock Rule",
+				"body": "Times are always Plex Mono with `tabular-nums`. Proportional digits make a column of times jitter.",
+				"section": "typography"
+			},
+			{
+				"name": "The Theme Sizes Rule",
+				"body": "Sizes below 0.75rem use the theme tokens (`text-micro`, `text-2xs`), never arbitrary values. `cn()` knows these tokens, so they survive a text color merged after them.",
+				"section": "typography"
+			},
+			{
+				"name": "The Flat Desk Rule",
+				"body": "Surfaces are flat at rest and flat on hover. State shows as a tonal fill or a 2px rail, never as lift.",
+				"section": "elevation"
+			},
+			{
+				"name": "The Pill Acts Rule",
+				"body": "If it's fully round, it does something. Status and metadata are never pills; they're small squared flags.",
+				"section": "shapes"
+			}
+		],
+		"dos": [
+			"**Do** use Dispatch Blue (#2563eb) for every primary action and for nothing decorative.",
+			"**Do** show the turn with the flag pair: Your-Turn Amber (#b45309) at 12% for waiting, Sent Green (#15803d) at 12% for answered.",
+			"**Do** mark selection with a 2px left rail (Touch Blue on rows and inbound messages, `shadow-rail` in navigation).",
+			"**Do** keep tappable controls in the inbox at least 44px tall (`min-h-11`), even when the visual button is 36px.",
+			"**Do** set timestamps in IBM Plex Mono with `tabular-nums`.",
+			"**Do** use theme tokens for one-off values (`text-micro`, `text-2xs`, `w-row-inset`, `--container-inbox-list`); `@shadcn/lint` rejects raw colors, arbitrary values and inline styles in the app.",
+			"**Do** give every color a night twin in both `:root` and `.dark` when you add one."
+		],
+		"donts": [
+			"**Don't** add a second accent color, a gradient, or brand illustration inside the inbox.",
+			"**Don't** use Signal Red (#dc2626) for waiting or overdue leads; red means an error or a destructive action.",
+			"**Don't** add drop shadows or elevation on hover; state is a tonal fill or a rail.",
+			"**Don't** make status or metadata into pills; round shapes are for actions.",
+			"**Don't** use grey borders; borders are Hairline Blue (#e4ecfc) / Night Hairline (#253352).",
+			"**Don't** write arbitrary Tailwind values (`text-[11px]`, `w-[calc(...)]`) in app code; name the value as a theme token in `apps/saas/app/globals.css`.",
+			"**Don't** stack contradictory utilities (`rounded-full rounded-md`, `bg-primary bg-touch/12`); a plain `className` without `cn()` resolves them by stylesheet order, not by position."
+		]
+	}
+}
