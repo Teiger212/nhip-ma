@@ -1,5 +1,7 @@
 # Nhịp
 
+<!-- impeccable:product-schema 1 -->
+
 Working name only (pulse of the first reply). Not a brand lock. Terms are defined once in
 [CONTEXT.md](./CONTEXT.md); decisions and their reasons are in [docs/adr](./docs/adr); how
 the system is built today is [ARCHITECTURE.md](./ARCHITECTURE.md).
@@ -27,6 +29,47 @@ colleague will be in touch".
 
 Full definitions are in CONTEXT.md. Not mass-market brokerage. Not a rental operator. Not
 a marketplace.
+
+## Platform
+
+web
+
+## Operating Context
+
+- **Agents** work on a phone and at a desk about equally through the day: answering between
+  viewings on the phone, and at the office on a laptop. Sessions are short and interrupted;
+  the queue decides what comes next.
+- **Managers** read Home and reassign threads, on a laptop or a phone.
+- **Languages**: the interface is English and Vietnamese (operators); guests write in
+  English, Vietnamese, Japanese, Korean and Russian, and see only the agency's own
+  WhatsApp or Zalo, never Nhịp.
+- **Speed is the product**: a guest answered in minutes, at any hour, with a human approving
+  every message.
+
+## Brand Commitments
+
+None binding yet (2026-09-30). Nhịp is a working name; no logo, colours or voice are fixed.
+Design work may propose them.
+
+## Evidence on Hand
+
+Some real material exists (Eyal, 2026-09-30), not yet catalogued here: ask what and where
+before using any. Nothing else may be claimed: no customers, testimonials, metrics or
+screenshots of real guests. The seed's demo threads (Minji, Yuki, Alexei, Thảo) are invented.
+
+## Product Principles
+
+- **A human approves every message.** Nhịp drafts; the agent decides and sends.
+- **The queue, not the mailbox.** What waits on the agent comes first; nothing is dismissed.
+- **Both directions of the language bridge.** Every guest message is translated for the
+  agent; every reply is drafted in the guest's language.
+- **Never invent facts.** No Vietnamese law, no listing detail the office did not provide.
+- **Office numbers, not people's scores.** Home is office-level; no per-agent ranking yet.
+
+## Accessibility & Inclusion
+
+No formal standard is set. Operators read in English or Vietnamese (diacritics must render
+well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
 
 ## The job, in order
 
