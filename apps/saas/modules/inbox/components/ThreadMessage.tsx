@@ -8,6 +8,10 @@ import type { Message } from "../lib/types";
 import { useOperatorLanguage } from "./ThreadParts";
 
 /** One message on the thread, with its translation under the original for a guest message. */
+
+/** Who a message came from, as a person reads it (the stored values are internal). */
+const SOURCE_KEYS = { guest: "guest", nhip: "nhip", "oa-echo": "oaEcho" } as const;
+
 export function ThreadMessage({ message }: { message: Message }) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
@@ -24,7 +28,9 @@ export function ThreadMessage({ message }: { message: Message }) {
 			)}
 		>
 			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
-				<span className="font-medium text-foreground/80">{message.source}</span>
+				<span className="font-medium text-foreground/80" data-test="message-source">
+					{t(`source.${SOURCE_KEYS[message.source]}`)}
+				</span>
 				<time className="font-mono tabular-nums" dateTime={message.at}>
 					{formatInboxTimestamp(message.at, locale)}
 				</time>

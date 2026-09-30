@@ -862,6 +862,11 @@
 			"filter": "Hiển thị",
 			"all": "Tất cả cuộc trò chuyện"
 		},
-		"emptyPool": "Khách đang chờ bất kỳ ai sẽ hiện ở đây. Khi bạn trả lời, cuộc trò chuyện là của bạn."
+		"emptyPool": "Khách đang chờ bất kỳ ai sẽ hiện ở đây. Khi bạn trả lời, cuộc trò chuyện là của bạn.",
+		"source": {
+			"guest": "Khách",
+			"nhip": "Gửi từ Nhịp",
+			"oaEcho": "Gửi từ ứng dụng của văn phòng"
+		}
 	}
 }

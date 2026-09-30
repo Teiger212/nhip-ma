@@ -70,3 +70,26 @@ export function pipeCopy(locale: Locale): PipeCopy {
 		banner: (pipes) => saas.inbox.pipeDisconnectedBanner.replaceAll("{pipes}", pipes),
 	};
 }
+
+/** The ownership copy (ADR 0015): the Pool / Yours flags and a new agent's empty pool. */
+export type OwnerCopy = {
+	pool: string;
+	mine: string;
+	/** What an agent's Inbox says while the pool is empty and nothing is theirs. */
+	emptyPool: string;
+};
+
+export function ownerCopy(locale: Locale): OwnerCopy {
+	const file = path.resolve(
+		__dirname,
+		`../../../../packages/i18n/translations/${locale}/saas.json`,
+	);
+	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
+		inbox: { owner: { pool: string; mine: string }; emptyPool: string };
+	};
+	return {
+		pool: saas.inbox.owner.pool,
+		mine: saas.inbox.owner.mine,
+		emptyPool: saas.inbox.emptyPool,
+	};
+}

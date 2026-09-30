@@ -862,6 +862,11 @@
 			"filter": "Showing",
 			"all": "All threads"
 		},
-		"emptyPool": "Guests waiting for anyone appear here. When you answer one, it's yours."
+		"emptyPool": "Guests waiting for anyone appear here. When you answer one, it's yours.",
+		"source": {
+			"guest": "Guest",
+			"nhip": "Sent from Nhịp",
+			"oaEcho": "Sent from the office's app"
+		}
 	}
 }
