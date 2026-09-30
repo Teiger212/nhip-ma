@@ -79,7 +79,7 @@ export function PricingTable({
 
 	const filteredPlans = Object.entries(plans).filter(([planId]) => planId !== activePlanId);
 
-	const hasSubscriptions = filteredPlans.some(([_, plan]) =>
+	const hasSubscriptions = filteredPlans.some(([, plan]) =>
 		"prices" in plan
 			? (plan as PaidPlan).prices.some((price) => price.type === "subscription")
 			: false,

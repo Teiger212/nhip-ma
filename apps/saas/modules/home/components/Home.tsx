@@ -3,6 +3,7 @@ import { FUNNEL_WINDOW_DAYS, loadHomeFunnel } from "@home/lib/funnel";
 import type { Funnel } from "@repo/database/inbox";
 import { PageHeader } from "@shared/components/PageHeader";
 import { getLocale, getTranslations } from "next-intl/server";
+import type { CSSProperties } from "react";
 
 /**
  * Home is the numbers screen (ADR 0001): the office funnel (ADR 0002) with response time
@@ -52,8 +53,8 @@ function Count({
 			<p className="font-mono text-3xl leading-none text-foreground tabular-nums">{value}</p>
 			<div aria-hidden="true" className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
 				<div
-					className="h-full rounded-full bg-primary transition-[width]"
-					style={{ width: `${Math.round(share * 100)}%` }}
+					className="h-full w-(--share) rounded-full bg-primary transition-all"
+					style={{ "--share": `${Math.round(share * 100)}%` } as CSSProperties}
 				/>
 			</div>
 			<p className="mt-2 text-xs text-pretty text-muted-foreground">{hint}</p>

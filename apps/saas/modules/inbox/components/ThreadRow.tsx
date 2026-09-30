@@ -29,7 +29,7 @@ export function ThreadRow({
 			variant="ghost"
 			aria-current={active ? "true" : undefined}
 			className={cn(
-				"gap-2.5 px-3 py-2.5 font-normal min-w-0 my-0.5 mx-1.5 h-auto w-[calc(100%-0.75rem)] w-full items-start justify-start overflow-hidden rounded-lg rounded-none border-l-0 border-l-2 border-l-transparent text-left active:scale-100",
+				"gap-2.5 px-3 py-2.5 font-normal min-w-0 my-0.5 mx-1.5 w-row-inset h-auto items-start justify-start overflow-hidden rounded-lg rounded-none border-l-0 border-l-2 border-l-transparent text-left active:scale-100",
 				active
 					? "border-l-touch bg-primary/8 bg-sidebar-accent/80 hover:bg-primary/12 hover:bg-sidebar-accent"
 					: "hover:bg-muted/70",
@@ -42,7 +42,7 @@ export function ThreadRow({
 					<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
 					{when ? (
 						<time
-							className="font-mono shrink-0 text-[11px] text-muted-foreground tabular-nums"
+							className="font-mono text-micro shrink-0 text-muted-foreground tabular-nums"
 							dateTime={when}
 						>
 							{formatInboxTimestamp(when, locale)}

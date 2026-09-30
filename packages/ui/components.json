@@ -4,7 +4,7 @@
 	"rsc": true,
 	"tsx": true,
 	"tailwind": {
-		"css": "../../tooling/tailwind/theme.css",
+		"css": "../../apps/saas/app/globals.css",
 		"baseColor": "olive",
 		"cssVariables": true,
 		"prefix": ""

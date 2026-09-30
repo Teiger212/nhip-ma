@@ -114,14 +114,14 @@ export function NotificationCenter({ className }: { className?: string }) {
 					>
 						<BellIcon className="size-4 text-muted-foreground" />
 						{unreadCount > 0 ? (
-							<span className="-right-1.5 -top-1.5 h-5 min-w-5 px-1 font-semibold absolute flex items-center justify-center rounded-full bg-touch text-[10px] leading-none text-touch-foreground">
+							<span className="-right-1.5 -top-1.5 h-5 min-w-5 px-1 font-semibold text-2xs absolute flex items-center justify-center rounded-full bg-touch leading-none text-touch-foreground">
 								{unreadCount > 99 ? "99+" : unreadCount}
 							</span>
 						) : null}
 					</Button>
 				}
 			/>
-			<PopoverContent className="p-0 w-[min(100vw-2rem,22rem)]">
+			<PopoverContent className="p-0 w-popover">
 				<div className="gap-2 px-3 py-2 flex items-center justify-between border-b">
 					<h2 className="font-semibold text-sm">{t("title")}</h2>
 					<Button

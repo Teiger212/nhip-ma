@@ -18,6 +18,7 @@
 		"@neon/config": "^1.8.2",
 		"@neon/env": "^1.4.7",
 		"@repo/tsconfig": "workspace:*",
+		"@shadcn/lint": "0.2.0",
 		"@types/node": "catalog:",
 		"dotenv-cli": "catalog:",
 		"oxfmt": "catalog:",

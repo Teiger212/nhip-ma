@@ -35,7 +35,7 @@ export function ThreadMessage({ message }: { message: Message }) {
 					{formatInboxTimestamp(message.at, locale)}
 				</time>
 				{message.mock ? (
-					<Badge status="info" className="h-4 px-1.5 font-medium text-[10px] normal-case">
+					<Badge status="info" className="h-4 px-1.5 font-medium text-2xs normal-case">
 						{t("mock")}
 					</Badge>
 				) : null}
@@ -43,7 +43,7 @@ export function ThreadMessage({ message }: { message: Message }) {
 			<div className="leading-relaxed whitespace-pre-wrap">{message.text}</div>
 			{translation ? (
 				<div className="mt-1.5 pt-1.5 text-xs leading-relaxed border-t border-dashed whitespace-pre-wrap text-muted-foreground">
-					<span className="mr-1.5 font-medium tracking-wide text-[10px] text-muted-foreground/80 uppercase">
+					<span className="mr-1.5 font-medium tracking-wide text-2xs text-muted-foreground/80 uppercase">
 						{t("translation")}
 					</span>
 					{translation}

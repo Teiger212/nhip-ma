@@ -18,7 +18,7 @@ export function GuestMark({ name }: { name: string }) {
 	return (
 		<span
 			aria-hidden="true"
-			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-full rounded-md bg-primary bg-touch/12 text-[0.7rem] text-primary-foreground text-touch"
+			className="size-8 font-semibold tracking-tight text-micro flex shrink-0 items-center justify-center rounded-full rounded-md bg-primary bg-touch/12 text-primary-foreground text-touch"
 		>
 			{guestInitials(name)}
 		</span>
@@ -41,7 +41,7 @@ function CompactFlag({
 			data-test={testId}
 			data-owner={dataOwner}
 			className={cn(
-				"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
+				"h-5 px-1.5 font-medium px-2 text-micro inline-flex items-center rounded-full rounded-md leading-none",
 				tone === "neutral" && "bg-muted text-muted-foreground",
 				tone === "warning" && "bg-warning/12 text-warning",
 				tone === "success" && "bg-success/12 text-success",
@@ -94,7 +94,7 @@ export function ThreadListState({
 			className="px-4 py-10 flex flex-col items-center justify-center text-center"
 			data-test={testId}
 		>
-			<p className="text-sm max-w-[22ch] text-pretty text-muted-foreground">{title}</p>
+			<p className="text-sm max-w-empty-note text-pretty text-muted-foreground">{title}</p>
 			{action}
 		</div>
 	);

@@ -4,5 +4,41 @@
 	"ignorePatterns": ["**/.content-collections/**", "**/prisma/zod/index.ts", "**/.claude/**"],
 	"options": {
 		"typeAware": true
+	},
+	"jsPlugins": ["@shadcn/lint"],
+	"rules": {
+		"react/set-state-in-effect": "off",
+		"react/purity": "off",
+		"react/immutability": "off",
+		"react/preserve-manual-memoization": "off",
+		"react/incompatible-library": "off",
+		"shadcn/no-raw-colors": "error",
+		"shadcn/no-arbitrary-values": "error",
+		"shadcn/no-inline-styles": "error",
+		"shadcn/no-unknown-classes": "error"
+	},
+	"overrides": [
+		{
+			"files": [
+				"apps/marketing/**",
+				"apps/docs/**",
+				"apps/mail-preview/**",
+				"packages/mail/**",
+				"packages/ui/**",
+				"apps/saas/modules/ai/**",
+				"apps/saas/modules/payments/**"
+			],
+			"rules": {
+				"shadcn/no-raw-colors": "off",
+				"shadcn/no-arbitrary-values": "off",
+				"shadcn/no-inline-styles": "off",
+				"shadcn/no-unknown-classes": "off"
+			}
+		}
+	],
+	"settings": {
+		"shadcn": {
+			"ui": "@repo/ui"
+		}
 	}
 }

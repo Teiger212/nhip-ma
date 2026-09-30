@@ -32,7 +32,7 @@ function useExtractRowText() {
 function ExtractRowList({ rows }: { rows: ExtractRow[] }) {
 	const text = useExtractRowText();
 	return (
-		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
+		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid-cols-fields grid">
 			{rows.map((row) => {
 				const { label, value } = text(row);
 				return (

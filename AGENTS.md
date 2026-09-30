@@ -334,6 +334,13 @@ Canonical auth examples:
 
 - Use components from `@repo/ui/components`; Base UI primitives are wrapped there.
   Compose with the `render` prop (Base UI); there is no Radix `asChild`.
+- Style with the theme only; `@shadcn/lint` (in `pnpm lint`) refuses raw palette colors
+  (`bg-pink-500`), arbitrary values (`p-[13px]`, `text-[10px]`), inline styles and classes
+  Tailwind cannot generate. A size, shadow or width the theme lacks becomes a token or an
+  `@utility` in `apps/saas/app/globals.css` (e.g. `text-2xs`, `shadow-rail`,
+  `w-inbox-list`); a truly dynamic value goes through a CSS variable
+  (`style={{ "--share": … }}` with `w-(--share)`). `packages/ui` (the components themselves)
+  and unused kit modules are exempt. Component contracts (`no-restyle`) come later.
 - Use React Hook Form with Zod. Follow
   `apps/marketing/modules/home/components/ContactForm.tsx`.
 - Use `next-intl` `useTranslations()` in client components and the server helpers

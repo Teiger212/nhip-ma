@@ -19,7 +19,7 @@ export function SettingsItem({
 	danger?: boolean;
 }>) {
 	return (
-		<Card className="@2xl:grid @2xl:grid-cols-[min(100%/3,360px)_auto] @2xl:gap-8 @container">
+		<Card className="@2xl:grid @2xl:grid-cols-setting @2xl:gap-8 @container">
 			<CardHeader className="@2xl:pb-6">
 				<CardTitle className={cn("font-medium text-base", danger && "text-destructive")}>
 					{title}

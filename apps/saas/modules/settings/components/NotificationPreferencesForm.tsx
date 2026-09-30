@@ -59,7 +59,7 @@ export function NotificationPreferencesForm() {
 								{t(`groups.${group.id}.title`)}
 							</h3>
 							<div className="overflow-x-auto rounded-lg border">
-								<table className="text-sm w-full min-w-[320px]">
+								<table className="text-sm min-w-80 w-full">
 									<thead>
 										<tr className="border-b bg-muted/40 text-left">
 											<th className="px-3 py-2 font-medium">{t("columns.type")}</th>
