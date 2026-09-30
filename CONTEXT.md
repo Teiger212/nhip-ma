@@ -21,7 +21,7 @@ is renamed.
 - **Guest**: the person who wrote in. A prospective tenant or buyer, or someone writing
   on their behalf (HR, a relocation firm). Never sees Nhịp; sees the agency number.
 - **Agent**: the person who answers guests. The **user** of the queue. Works mostly in
-  Vietnamese, some English, on a phone. Sees the office's pool and the threads they own
+  Vietnamese, some English, on a phone and at a desk about equally. Sees the office's pool and the threads they own
   (ADR 0015).
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
