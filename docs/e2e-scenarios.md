@@ -122,3 +122,31 @@ time: nothing in it can be trusted.
 3. **Only the platform admin sees it.** An agent sees no Webhooks page; its API refuses the
    agent (403) and a visitor who is signed out (401). Spec: `apps/saas/tests/webhooks.spec.ts`
    (Webhook deliveries 3).
+
+## Pool then owner (ADR 0015)
+
+Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and a manager
+(`manager@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
+1's, Yuki is agent 2's, Alexei and Thảo are in the pool.
+
+1. **A new guest lands in the pool.** A guest writes to the office for the first time: both
+   agents see the thread in their Inbox, marked as in the pool, and so does the manager.
+2. **The first agent to answer owns it.** Agent 1 approves a reply on a pool thread: it stays
+   in agent 1's Inbox, shown as theirs, and leaves agent 2's Inbox, counts and search. Agent 2
+   opening it by address, or through the API, finds nothing (404).
+3. **Two agents answering at once end with one owner.** Agent 1 and agent 2 approve the same
+   pool thread at the same moment: one reply is sent, and the thread belongs to whoever sent it.
+4. **The guest's next message goes to the owner.** The guest writes again on an owned thread:
+   it is Your turn for agent 1 only; agent 2 still does not see it.
+5. **The manager sees every thread and reassigns.** The manager sees pool threads and every
+   agent's threads, each marked with its owner. Reassigning agent 1's thread to agent 2 moves
+   it: agent 2 now has it, agent 1 no longer does. Returning it to the pool shows it to both
+   agents again.
+6. **A reply from the vendor's own app claims nothing.** A reply the office sent from the
+   WhatsApp or Zalo app itself leaves the thread in the pool.
+7. **The manager filters by owner.** The manager's Inbox filter All / Pool / an operator shows
+   exactly those threads.
+8. **A new agent's first day.** A newly joined agent sees only the pool; with nothing in it,
+   the Inbox says guests waiting for anyone appear there.
+9. **An agent cannot reassign.** An agent's thread has no Owner control, and the reassign API
+   refuses an agent (403).
