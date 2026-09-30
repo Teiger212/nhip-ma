@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn } from "@repo/ui";
+import { cn } from "@repo/ui";
 import { useLocale } from "next-intl";
 
 import { displayName } from "../lib/display-name";
@@ -24,15 +24,14 @@ export function ThreadRow({
 	const name = displayName(conversation);
 	const when = conversation.lastGuestInboundAt;
 	return (
-		<Button
+		<button
 			type="button"
-			variant="ghost"
 			aria-current={active ? "true" : undefined}
 			className={cn(
-				"gap-2.5 px-3 py-2.5 font-normal min-w-0 my-0.5 mx-1.5 w-row-inset h-auto items-start justify-start overflow-hidden rounded-lg rounded-none border-l-0 border-l-2 border-l-transparent text-left active:scale-100",
+				"gap-2.5 px-3 py-2.5 text-sm min-w-0 my-0.5 mx-1.5 w-row-inset ease-out flex cursor-pointer items-start overflow-hidden border-l-2 text-left transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none",
 				active
-					? "border-l-touch bg-primary/8 bg-sidebar-accent/80 hover:bg-primary/12 hover:bg-sidebar-accent"
-					: "hover:bg-muted/70",
+					? "border-l-touch bg-sidebar-accent/80 hover:bg-sidebar-accent"
+					: "border-l-transparent hover:bg-muted/70",
 			)}
 			onClick={onOpen}
 		>
@@ -58,6 +57,6 @@ export function ThreadRow({
 					<ThreadFlags conversation={conversation} />
 				</span>
 			</span>
-		</Button>
+		</button>
 	);
 }

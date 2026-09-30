@@ -54,11 +54,11 @@ export function ThreadDetail({
 	);
 	return (
 		<>
-			<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40 bg-muted/60">
+			<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-muted/60">
 				<Button
 					type="button"
 					variant="ghost"
-					className="md:hidden min-h-11 min-w-11 gap-1 px-2"
+					className="md:hidden min-h-11 min-w-11"
 					onClick={onBack}
 					aria-label={t("backAria")}
 				>
@@ -78,7 +78,7 @@ export function ThreadDetail({
 					<div className="border-t" />
 					<ExtractFields conversation={conversation} />
 					{cribNotes ? (
-						<section className="gap-1.5 p-3 flex flex-col rounded-lg rounded-md border-l-2 border-l-primary bg-primary/6 bg-touch/8">
+						<section className="gap-1.5 p-3 flex flex-col rounded-md border-l-2 border-l-primary bg-touch/8">
 							<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
 							<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
 							<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>

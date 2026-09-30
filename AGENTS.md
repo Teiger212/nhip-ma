@@ -340,7 +340,13 @@ Canonical auth examples:
   `@utility` in `apps/saas/app/globals.css` (e.g. `text-2xs`, `shadow-rail`,
   `w-inbox-list`); a truly dynamic value goes through a CSS variable
   (`style={{ "--share": … }}` with `w-(--share)`). `packages/ui` (the components themselves)
-  and unused kit modules are exempt. Component contracts (`no-restyle`) come later.
+  and unused kit modules are exempt.
+- Don't restyle a `@repo/ui` component through `className`: `shadcn/no-restyle` allows layout
+  only (plus contracts in `.oxlintrc.json`: spacing on `Card`/`CardHeader`/`CardContent`,
+  shape on `Skeleton`, `pr-*` on `Input`). Use a variant or size (`Input variant="search"`,
+  `Badge size="sm"`), or add one in `packages/ui` when the design calls for it; see
+  [DESIGN.md](./DESIGN.md). Kit-origin screens still carrying restyles are listed in the last
+  `.oxlintrc.json` override; when you edit one, fix it and take it off the list.
 - Use React Hook Form with Zod. Follow
   `apps/marketing/modules/home/components/ContactForm.tsx`.
 - Use `next-intl` `useTranslations()` in client components and the server helpers

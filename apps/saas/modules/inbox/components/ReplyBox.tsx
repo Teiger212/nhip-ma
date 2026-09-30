@@ -45,7 +45,8 @@ export function ReplyBox({
 						<Button
 							type="button"
 							variant="ghost"
-							className="h-8 min-h-8 gap-1.5 px-2 text-xs"
+							size="sm"
+							className="min-h-8"
 							disabled={regenerating}
 							onClick={onRegenerate}
 						>
@@ -62,7 +63,7 @@ export function ReplyBox({
 				id="inbox-reply"
 				value={reply}
 				onChange={(event) => onReplyChange(event.target.value)}
-				className="min-h-28 text-sm rounded-lg rounded-md shadow-none"
+				className="min-h-28"
 				aria-label={t("reply")}
 			/>
 		</section>

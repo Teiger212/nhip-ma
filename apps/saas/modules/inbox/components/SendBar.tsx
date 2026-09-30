@@ -41,7 +41,7 @@ export function SendBar({
 	const warn = Boolean(blockedReason) || status.kind === "error" || status.kind === "unknown";
 	const quiet = !blockedReason && status.kind === "none";
 	return (
-		<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-card bg-muted/40">
+		<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-muted/40">
 			<output
 				data-test="send-status"
 				aria-live="polite"
