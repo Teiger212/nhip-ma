@@ -34,5 +34,5 @@ export async function requireInboxSession(request: Request): Promise<SessionGate
 			),
 		};
 	}
-	return { viewer: { userId: session.user.id, officeId: office.officeId } };
+	return { viewer: { userId: session.user.id, officeId: office.officeId, role: office.role } };
 }

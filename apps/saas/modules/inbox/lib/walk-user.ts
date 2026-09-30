@@ -3,6 +3,14 @@ export const WALK_USER_EMAIL = "walk@nhip.local";
 export const WALK_USER_NAME = "Walk Operator";
 export const WALK_USER_PASSWORD = "walkthrough";
 
+/** The second agent (ADR 0015): shows that one agent never sees another's threads. */
+export const WALK_AGENT2_EMAIL = "walk2@nhip.local";
+export const WALK_AGENT2_NAME = "Walk Operator Two";
+
+/** The walk office's manager (ADR 0015): kit role `admin`; sees every thread and reassigns. */
+export const WALK_MANAGER_EMAIL = "manager@nhip.local";
+export const WALK_MANAGER_NAME = "Walk Manager";
+
 /** The platform admin (Nhịp): owner of the walk office, also sees the kit's admin area. */
 export const WALK_ADMIN_EMAIL = "admin@nhip.local";
 export const WALK_ADMIN_NAME = "Walk Admin";

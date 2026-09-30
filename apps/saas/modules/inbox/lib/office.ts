@@ -3,8 +3,11 @@ import { getOrganizationMembershipsForUser } from "@repo/database";
 
 export type OfficeDenial = "no_office" | "ambiguous_office" | "platform_admin";
 
+/** A manager is the office's kit owner or admin; an agent is a member (ADR 0015). */
+export type OfficeRole = "agent" | "manager";
+
 export type OfficeResolution =
-	| { officeId: string; denied?: undefined }
+	| { officeId: string; role: OfficeRole; denied?: undefined }
 	| { officeId?: undefined; denied: OfficeDenial };
 
 /**
@@ -34,5 +37,9 @@ export async function resolveOffice(user: {
 		});
 		return { denied: "ambiguous_office" };
 	}
-	return { officeId: memberships[0].organizationId };
+	const role = memberships[0].role;
+	return {
+		officeId: memberships[0].organizationId,
+		role: role === "owner" || role === "admin" ? "manager" : "agent",
+	};
 }

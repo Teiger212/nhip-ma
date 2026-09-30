@@ -57,7 +57,15 @@ const CONVERSATION_INCLUDE = {
 	draft: true,
 	paperwork: true,
 	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
+	owner: { select: { id: true, name: true, email: true } },
 } satisfies Prisma.ConversationInclude;
+
+/** What a viewer may read (ADR 0015): the office, and for an agent only its pool and their own. */
+function visibleTo(viewer: InboxViewer): Prisma.ConversationWhereInput {
+	return viewer.role === "manager"
+		? { officeId: viewer.officeId }
+		: { officeId: viewer.officeId, OR: [{ ownerId: null }, { ownerId: viewer.userId }] };
+}
 
 type ConversationRecord = Prisma.ConversationGetPayload<{ include: typeof CONVERSATION_INCLUDE }>;
 type MessageRecord = ConversationRecord["messages"][number];
@@ -195,6 +203,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		guestId: record.guestId,
 		guestName: record.guestName,
 		officeId: record.officeId,
+		owner: record.owner ? { id: record.owner.id, name: operatorNameOf(record.owner) } : null,
 		messages,
 		lastGuestInboundAt: isoOrNull(record.lastGuestInboundAt),
 		sentAt: isoOrNull(record.sentAt),
@@ -234,7 +243,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 	return {
 		async listConversations(viewer?: InboxViewer) {
 			const records = await db.conversation.findMany({
-				where: viewer ? { officeId: viewer.officeId } : undefined,
+				where: viewer ? visibleTo(viewer) : undefined,
 				orderBy: { updatedAt: "desc" },
 				include: CONVERSATION_INCLUDE,
 			});
@@ -247,6 +256,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				return null;
 			}
 			if (viewer && conversation.officeId !== viewer.officeId) {
+				return null;
+			}
+			const owner = conversation.owner?.id ?? null;
+			if (viewer && viewer.role !== "manager" && owner !== null && owner !== viewer.userId) {
 				return null;
 			}
 			return conversation;
@@ -422,6 +435,12 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							},
 						});
 						if (retried.count === 0) return { ok: false, reason: "in_progress" };
+						if (input.operatorId) {
+							await tx.conversation.updateMany({
+								where: { id: input.conversationId, ownerId: null },
+								data: { ownerId: input.operatorId },
+							});
+						}
 						const answer = await tx.answer.findUniqueOrThrow({ where: { id: existing.id } });
 						return { ok: true, answer: mapAnswer(answer) };
 					}
@@ -440,6 +459,14 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							approvedAt: now,
 						},
 					});
+					// Pool, then owner (ADR 0015): the first approval claims an unowned thread, in the
+					// same transaction, so two agents racing for it end with one owner.
+					if (input.operatorId) {
+						await tx.conversation.updateMany({
+							where: { id: input.conversationId, ownerId: null },
+							data: { ownerId: input.operatorId },
+						});
+					}
 					return { ok: true, answer: mapAnswer(created) };
 				});
 			} catch (error) {
@@ -640,6 +667,20 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				// The work may call the vendor; its own timeout is shorter than this.
 				{ maxWait: 10_000, timeout: 20_000 },
 			);
+		},
+
+		async setOwner(conversationId, ownerId, officeId) {
+			if (ownerId) {
+				const member = await db.member.count({
+					where: { organizationId: officeId, userId: ownerId },
+				});
+				if (member === 0) return false;
+			}
+			const { count } = await db.conversation.updateMany({
+				where: { id: conversationId, officeId },
+				data: { ownerId },
+			});
+			return count === 1;
 		},
 
 		async recordWebhookDelivery(delivery) {

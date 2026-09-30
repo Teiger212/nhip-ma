@@ -4,10 +4,10 @@ import path from "node:path";
 
 import type { BrowserContext } from "@playwright/test";
 
-import { AGENT, type Login, PLATFORM_ADMIN } from "./seed";
+import { AGENT, AGENT_2, type Login, MANAGER, PLATFORM_ADMIN } from "./seed";
 
 /** The logins a spec may start signed in as. */
-export const SESSION_LOGINS: Login[] = [AGENT, PLATFORM_ADMIN];
+export const SESSION_LOGINS: Login[] = [AGENT, AGENT_2, MANAGER, PLATFORM_ADMIN];
 
 /** The storage state file for `who` (gitignored). */
 export function sessionStatePath(who: Login): string {

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { guestInitials } from "../lib/guest-initials";
+import { useOfficeRole } from "../lib/inbox-queries";
 import { yourTurn } from "../lib/queue";
 import type { Conversation, OperatorLanguage } from "../lib/types";
 
@@ -27,12 +28,18 @@ export function GuestMark({ name }: { name: string }) {
 function CompactFlag({
 	children,
 	tone,
+	testId,
+	dataOwner,
 }: {
 	children: ReactNode;
 	tone: "neutral" | "warning" | "success";
+	testId?: string;
+	dataOwner?: string;
 }) {
 	return (
 		<span
+			data-test={testId}
+			data-owner={dataOwner}
 			className={cn(
 				"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
 				tone === "neutral" && "bg-muted text-muted-foreground",
@@ -45,13 +52,25 @@ function CompactFlag({
 	);
 }
 
-/** The pipe and the turn (Your turn / Sent), on a row and on the thread header alike. */
+/**
+ * The pipe, who holds the thread (the pool, you, or another agent, ADR 0015) and the turn
+ * (Your turn / Sent), on a row and on the thread header alike.
+ */
 export function ThreadFlags({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
 	const turn = yourTurn(conversation);
+	const { userId } = useOfficeRole();
+	const owner = conversation.owner;
 	return (
 		<>
 			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
+			<CompactFlag
+				tone="neutral"
+				testId="thread-owner"
+				dataOwner={!owner ? "pool" : owner.id === userId ? "mine" : "other"}
+			>
+				{!owner ? t("owner.pool") : owner.id === userId ? t("owner.mine") : owner.name}
+			</CompactFlag>
 			<CompactFlag tone={turn ? "warning" : "success"}>
 				{turn ? t("yourTurn") : t("sent")}
 			</CompactFlag>

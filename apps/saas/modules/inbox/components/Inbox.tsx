@@ -11,6 +11,8 @@ import {
 	useApproveAndSend,
 	useConversations,
 	useDisconnectedEndpoints,
+	useOfficeAgents,
+	useOfficeRole,
 	useRegenerateDraft,
 } from "../lib/inbox-queries";
 import { PIPE_NAMES } from "../lib/pipe-names";
@@ -41,11 +43,22 @@ export function Inbox() {
 	const regenerate = useRegenerateDraft();
 	const [view, setView] = useQueryState("view", viewParser);
 	const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""));
+	// A manager narrows the office's threads to the pool or one operator (ADR 0015).
+	const [ownerFilter, setOwnerFilter] = useQueryState("owner", parseAsString.withDefault("all"));
+	const { role } = useOfficeRole();
+	const manager = role === "manager";
+	const agents = useOfficeAgents(manager);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [detailOpen, setDetailOpen] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 
-	const conversations = useMemo(() => conversationsQuery.data ?? [], [conversationsQuery.data]);
+	const conversations = useMemo(() => {
+		const all = conversationsQuery.data ?? [];
+		if (!manager || ownerFilter === "all") return all;
+		return all.filter((conversation) =>
+			ownerFilter === "pool" ? !conversation.owner : conversation.owner?.id === ownerFilter,
+		);
+	}, [conversationsQuery.data, manager, ownerFilter]);
 	const queue = useMemo(
 		() => buildQueueView(conversations, view, query),
 		[conversations, view, query],
@@ -113,6 +126,28 @@ export function Inbox() {
 					})}
 				</output>
 			) : null}
+			{manager ? (
+				<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
+					<label htmlFor="inbox-owner-filter">{t("owner.filter")}</label>
+					<select
+						id="inbox-owner-filter"
+						data-test="owner-filter"
+						className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
+						value={ownerFilter}
+						onChange={(event) =>
+							void setOwnerFilter(event.target.value === "all" ? null : event.target.value)
+						}
+					>
+						<option value="all">{t("owner.all")}</option>
+						<option value="pool">{t("owner.pool")}</option>
+						{agents.data?.map((agent) => (
+							<option key={agent.id} value={agent.id}>
+								{agent.name}
+							</option>
+						))}
+					</select>
+				</div>
+			) : null}
 			<InboxToolbar
 				query={query}
 				onQueryChange={(value) => void setQuery(value || null)}
@@ -144,6 +179,7 @@ export function Inbox() {
 							onOpen={openThread}
 							onRetry={() => void conversationsQuery.refetch()}
 							onViewSent={() => void setView("sent")}
+							emptyTitle={manager ? undefined : t("emptyPool")}
 						/>
 					</div>
 				</aside>
