@@ -21,7 +21,11 @@
 		"stylesheet": "./tooling/tailwind/theme.css"
 	},
 	"sortPackageJson": true,
-	"ignorePatterns": ["packages/database/prisma/zod/**.ts", "tooling/tailwind/tailwind-animate.css"],
+	"ignorePatterns": [
+		"packages/database/prisma/zod/**.ts",
+		"tooling/tailwind/tailwind-animate.css",
+		".agents/skills/**"
+	],
 	"overrides": [
 		{
 			"files": ["**/*.json", "**/*.jsonc"],
