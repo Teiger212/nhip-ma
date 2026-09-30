@@ -11,6 +11,45 @@
 	--font-sans: var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif;
 	--font-heading: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-ibm-plex-mono), ui-monospace, sfmono-regular, menlo, monaco, monospace;
+
+	/* Nhịp's small sizes: flags, timestamps and labels under the body text. */
+	--text-2xs: 0.625rem;
+	--text-micro: 0.6875rem;
+	/* The product name beside the logo in the sidebar. */
+	--text-brand: 0.95rem;
+
+	/* The active item's rail in the sidebar and user menu; a 1px border drawn inside. */
+	--shadow-rail: inset 2px 0 0 var(--sidebar-primary);
+	--shadow-hairline: inset 0 0 0 1px var(--border);
+
+	/* The inbox's thread list column, and the width of a sentence in an empty state. */
+	--container-inbox-list: 22rem;
+	--container-empty-note: 22ch;
+}
+
+/* A thread row inset from the list's edges by its horizontal margin (mx-1.5). */
+@utility w-row-inset {
+	width: calc(100% - 0.75rem);
+}
+
+/* Label and value columns of a thread's extracted fields. */
+@utility grid-cols-fields {
+	grid-template-columns: minmax(7rem, auto) minmax(0, 1fr);
+}
+
+/* A settings row: a third of the width for the label (at most 360px), the rest for the control. */
+@utility grid-cols-setting {
+	grid-template-columns: min(100% / 3, 360px) auto;
+}
+
+/* The avatar cropper's shade stays inside its frame (a third-party element). */
+.cropper-shade-clip {
+	clip-path: inset(0);
+}
+
+/* A popover as wide as the screen allows, up to 22rem. */
+@utility w-popover {
+	width: min(100vw - 2rem, 22rem);
 }
 
 @utility container {

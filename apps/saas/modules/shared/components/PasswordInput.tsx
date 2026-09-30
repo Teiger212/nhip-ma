@@ -90,7 +90,6 @@ export function PasswordInput({
 		setShowPassword(true);
 	};
 
-	const rightPadding = showGenerateButton ? "pr-20" : "pr-10";
 	const password = value || "";
 
 	return (
@@ -98,7 +97,7 @@ export function PasswordInput({
 			<div className="relative">
 				<Input
 					type={showPassword ? "text" : "password"}
-					className={cn(rightPadding, inputClassName)}
+					className={cn(showGenerateButton ? "pr-20" : "pr-10", inputClassName)}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					autoComplete={autoComplete}

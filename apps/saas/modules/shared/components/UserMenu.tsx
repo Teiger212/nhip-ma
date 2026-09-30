@@ -74,7 +74,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						className={cn(
 							rowClassName,
 							"gap-2 px-2 py-1.5 min-w-0 flex-1 hover:bg-sidebar-accent",
-							settingsActive && "bg-sidebar-accent shadow-[inset_2px_0_0_var(--sidebar-primary)]",
+							settingsActive && "shadow-rail bg-sidebar-accent",
 						)}
 					>
 						<UserAvatar name={name ?? ""} avatarUrl={image} />
@@ -119,7 +119,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 			<DropdownMenuContent
 				side={dropdownSide}
 				align={dropdownAlign}
-				className="w-56 min-w-[var(--anchor-width)]"
+				className="w-56 min-w-(--anchor-width)"
 			>
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>

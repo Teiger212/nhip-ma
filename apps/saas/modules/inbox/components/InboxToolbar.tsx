@@ -56,7 +56,7 @@ export function InboxToolbar({
 					hiddenOnPhone && "md:flex hidden",
 				)}
 			>
-				<div className="gap-0 p-0.5 inline-flex rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
+				<div className="gap-0 p-0.5 shadow-hairline inline-flex rounded-full bg-muted">
 					{INBOX_VIEWS.map((option) => {
 						const active = option === view;
 						return (
@@ -74,9 +74,7 @@ export function InboxToolbar({
 								)}
 							>
 								{t(`views.${option}`)}
-								<span className="font-mono text-[10px] tabular-nums opacity-70">
-									{counts[option]}
-								</span>
+								<span className="font-mono text-2xs tabular-nums opacity-70">{counts[option]}</span>
 							</button>
 						);
 					})}

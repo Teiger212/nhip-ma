@@ -3,7 +3,7 @@
 import { cn, toast } from "@repo/ui";
 import { useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { displayName } from "../lib/display-name";
@@ -21,9 +21,6 @@ import { InboxToolbar } from "./InboxToolbar";
 import { ThreadDetail } from "./ThreadDetail";
 import { ThreadList } from "./ThreadList";
 import { ThreadListState } from "./ThreadParts";
-
-/** Desktop thread-list column. Same used width, min, and max so detail content cannot flex it. */
-const INBOX_LIST_WIDTH = "22rem";
 
 const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("yourTurn");
 
@@ -123,11 +120,10 @@ export function Inbox() {
 			/>
 			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
 				<aside
-					style={{ "--inbox-list-width": INBOX_LIST_WIDTH } as CSSProperties}
 					className={cn(
 						"min-h-0 min-w-0 flex-col overflow-hidden bg-card/40",
-						"md:w-[var(--inbox-list-width)] md:min-w-[var(--inbox-list-width)] md:max-w-[var(--inbox-list-width)] w-full",
-						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-[var(--inbox-list-width)] md:border-r",
+						"md:w-inbox-list md:min-w-inbox-list md:max-w-inbox-list w-full",
+						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-inbox-list md:border-r",
 						detailOpen ? "md:flex hidden" : "md:flex-none flex flex-1",
 					)}
 				>

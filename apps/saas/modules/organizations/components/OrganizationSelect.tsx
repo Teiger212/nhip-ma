@@ -193,7 +193,7 @@ export function OrganzationSelect({
 		<DropdownMenuContent
 			side={collapsed ? "right" : "bottom"}
 			align={collapsed ? "start" : "center"}
-			className="w-56 min-w-[var(--anchor-width)]"
+			className="w-56 min-w-(--anchor-width)"
 		>
 			{!authConfig.organizations.requireOrganization && (
 				<>

@@ -83,11 +83,7 @@ function NavItemLink({
 		<SidebarMenuButton
 			isActive={item.isActive}
 			tooltip={label}
-			className={
-				item.isActive
-					? "shadow-[inset_2px_0_0_var(--sidebar-primary)] data-[active=true]:bg-sidebar-accent"
-					: undefined
-			}
+			className={item.isActive ? "shadow-rail data-[active=true]:bg-sidebar-accent" : undefined}
 			render={(props) => (
 				<LocaleLink {...props} href={item.href} onClick={onNavigate} prefetch>
 					<Icon />
@@ -139,7 +135,7 @@ export function NavBar() {
 										<Logo withLabel={false} className="text-sidebar-foreground" />
 										<span
 											className={cn(
-												"font-semibold tracking-tight text-[0.95rem]",
+												"font-semibold tracking-tight text-brand",
 												!showLabels && "sr-only",
 											)}
 										>
