@@ -26,13 +26,15 @@ if (devServer) {
 	// The app's own URL is baked into the build: the HTTPS address, whatever the ports.
 	process.env.NEXT_PUBLIC_SAAS_URL = e2eUrl;
 	// Same server and credentials as dev, its own database: like the unit-test database, the
-	// E2E one is dev's DATABASE_URL renamed. CI sets DATABASE_URL itself and skips this.
+	// E2E one is dev's DATABASE_URL renamed, unless .env.local names it (E2E_DATABASE_URL: a
+	// worktree whose dev database is on Neon keeps E2E local). CI sets DATABASE_URL itself.
 	if (!process.env.DATABASE_URL) {
 		const local = path.resolve(__dirname, "../../.env.local");
-		const devUrl = fs.existsSync(local)
-			? dotenv.parse(fs.readFileSync(local)).DATABASE_URL
-			: undefined;
-		if (devUrl) {
+		const localEnv = fs.existsSync(local) ? dotenv.parse(fs.readFileSync(local)) : {};
+		const devUrl = localEnv.DATABASE_URL;
+		if (localEnv.E2E_DATABASE_URL) {
+			process.env.DATABASE_URL = localEnv.E2E_DATABASE_URL;
+		} else if (devUrl) {
 			const url = new URL(devUrl);
 			url.pathname = "/supastarter_e2e";
 			process.env.DATABASE_URL = url.toString();

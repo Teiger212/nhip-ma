@@ -39,15 +39,17 @@ python3 - "$env_file" "$url" "$name" <<'PY'
 import sys
 path, url, name = sys.argv[1:4]
 lines = [l for l in open(path).read().splitlines()
-         if not l.startswith(("DATABASE_URL=", "TEST_DATABASE_URL="))]
+         if not l.startswith(("DATABASE_URL=", "TEST_DATABASE_URL=", "E2E_DATABASE_URL="))
+         and not l.startswith("# This worktree's Neon branch")]
 lines += [
     "# This worktree's Neon branch (scripts/worktree-db.sh); tests stay on local Postgres.",
     f'DATABASE_URL="{url}"',
     f'TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nhip_test_{name}"',
+    f'E2E_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nhip_e2e_{name}"',
 ]
 open(path, "w").write("\n".join(lines) + "\n")
 PY
-echo "Wrote DATABASE_URL (Neon $branch) and TEST_DATABASE_URL (local nhip_test_$name) to $env_file."
+echo "Wrote DATABASE_URL (Neon $branch), TEST_DATABASE_URL and E2E_DATABASE_URL (local nhip_test_$name, nhip_e2e_$name) to $env_file."
 
 # The branch carries main's schema; bring it to this worktree's.
 (cd "$worktree" && pnpm --filter @repo/database generate >/dev/null && pnpm --filter @repo/database push >/dev/null)

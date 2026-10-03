@@ -143,8 +143,8 @@ seeded with the demo logins and threads; nothing real).
 own. `scripts/worktree-db.sh <worktree>` gives it a copy-on-write child of Neon `dev`
 (`wt-<name>`, schema and seed included), pushes the worktree's schema to it, and writes its
 `DATABASE_URL` into the worktree's `.env.local`, so worktrees on different schemas never break
-each other. Vitest and E2E stay on local Postgres, under the worktree's own name
-(`TEST_DATABASE_URL`, `nhip_test_<name>`): they are wiped every run and CI has its own. When the
+each other. Vitest and E2E stay on local Postgres, under the worktree's own names
+(`TEST_DATABASE_URL` and `E2E_DATABASE_URL`: `nhip_test_<name>`, `nhip_e2e_<name>`): they are wiped every run and CI has its own. When the
 worktree goes, `scripts/worktree-db.sh <worktree> --delete` removes its branch. The main
 checkout may stay on local Postgres (`supastarter`).
 
