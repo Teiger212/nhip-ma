@@ -53,9 +53,9 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	// No retries: a flaky spec is fixed, not retried (AGENTS.md, "Test quality").
 	retries: 0,
-	// CI's runner has 4 vCPUs (public repo): 3 workers, one core left to the build's server and
-	// Postgres. Every spec makes its own offices, so specs never share state.
-	workers: process.env.CI ? 3 : undefined,
+	// CI's runner has 4 vCPUs (public repo): 2 workers, the other cores left to the build's
+	// server and Postgres. Every spec makes its own offices, so specs never share state.
+	workers: process.env.CI ? 2 : undefined,
 	reporter: [["html"]],
 	use: {
 		// The kit already uses `data-test`; getByTestId follows it.
