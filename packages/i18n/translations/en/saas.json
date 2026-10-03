@@ -730,7 +730,8 @@
 			"specialCharacter": "Special character"
 		},
 		"showPassword": "Show password",
-		"hidePassword": "Hide password"
+		"hidePassword": "Hide password",
+		"generatePassword": "Generate a password"
 	},
 	"checkoutReturn": {
 		"title": "Processing your purchase",

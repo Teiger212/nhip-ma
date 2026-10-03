@@ -730,7 +730,8 @@
 			"specialCharacter": "Ký tự đặc biệt"
 		},
 		"showPassword": "Hiện mật khẩu",
-		"hidePassword": "Ẩn mật khẩu"
+		"hidePassword": "Ẩn mật khẩu",
+		"generatePassword": "Tạo mật khẩu"
 	},
 	"checkoutReturn": {
 		"title": "Đang xử lý giao dịch",
