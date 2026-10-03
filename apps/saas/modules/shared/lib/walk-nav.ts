@@ -18,7 +18,7 @@ export type WalkNavItem = {
 };
 
 export type SettingsSection = {
-	id: "general" | "security" | "notifications";
+	id: "general" | "security" | "notifications" | "billing";
 	href: string;
 	isActive: boolean;
 };
@@ -63,11 +63,14 @@ export function isSettingsPath(pathname: string): boolean {
 }
 
 /** Sections shown in the footer while the operator is inside Account settings. */
-export function buildSettingsSections(pathname: string): SettingsSection[] | null {
+export function buildSettingsSections(
+	pathname: string,
+	options: { billing: boolean } = { billing: false },
+): SettingsSection[] | null {
 	if (!isSettingsPath(pathname)) return null;
-	// No Billing: an office pays per seat (ADR 0014) and that is not built, so there is
-	// nothing for an operator to see here yet.
+	// Billing only when its kit screen is on (KIT_SCREENS.billing, off until ADR 0014).
 	const ids: SettingsSection["id"][] = ["general", "security", "notifications"];
+	if (options.billing) ids.push("billing");
 	return ids.map((id) => {
 		const href = `/settings/${id}`;
 		return { id, href, isActive: isNavSubItemActive(pathname, href) };

@@ -5,6 +5,7 @@ import { isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { useYourTurnCount } from "@inbox/lib/inbox-queries";
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
+import { config as paymentsConfig } from "@repo/payments/config";
 import {
 	Badge,
 	cn,
@@ -27,6 +28,7 @@ import {
 } from "@repo/ui";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { UserMenu } from "@shared/components/UserMenu";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -48,6 +50,7 @@ const SECTION_LABEL_KEYS = {
 	general: "settings.menu.account.general",
 	security: "settings.menu.account.security",
 	notifications: "settings.menu.account.notifications",
+	billing: "settings.menu.account.billing",
 } as const;
 
 function NavItemLink({
@@ -117,7 +120,9 @@ export function NavBar() {
 	const isAdmin = isPlatformAdmin(user?.role);
 	const items = buildWalkNav(pathname, { isAdmin });
 	const yourTurnCount = useShellYourTurnCount();
-	const settingsSections = buildSettingsSections(pathname);
+	const settingsSections = buildSettingsSections(pathname, {
+		billing: KIT_SCREENS.billing && paymentsConfig.billingAttachedTo === "user",
+	});
 
 	function closeMobileNav() {
 		if (isMobile) {

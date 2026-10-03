@@ -54,9 +54,11 @@ describe("buildSettingsSections", () => {
 		expect(sections?.find((section) => section.id === "general")?.isActive).toBe(false);
 	});
 
-	it("has no Billing until an office pays per seat (ADR 0014)", () => {
-		const sections = buildSettingsSections("/settings/general");
-		expect(sections?.some((section) => section.href === "/settings/billing")).toBe(false);
+	it("has no Billing until its kit screen is on (ADR 0014), and lists it once it is", () => {
+		const off = buildSettingsSections("/settings/general");
+		expect(off?.some((section) => section.href === "/settings/billing")).toBe(false);
+		const on = buildSettingsSections("/settings/general", { billing: true });
+		expect(on?.at(-1)?.href).toBe("/settings/billing");
 	});
 });
 

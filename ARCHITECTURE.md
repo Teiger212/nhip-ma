@@ -80,9 +80,11 @@ packages/mail         Invitation and auth emails; the pipe-disconnected alert
 The kit apps `apps/marketing`, `apps/docs` and `apps/mail-preview` are unused. `apps/saas`
 still carries kit modules Nhịp does not build on (payments, onboarding) and depends on
 `packages/payments`, `notifications`, `storage` (office logos) and `permissions` through the
-kit. Billing is ADR 0014 territory in PRODUCT.md and not built, so its screens are not
-routed: no Billing settings, no plan picker or checkout return, and the kit's start, chatbot
-and per-office stats pages are gone (an office's URL redirects to the Inbox).
+kit. Kit screens Nhịp keeps but does not show yet are switched off in one place,
+`modules/shared/lib/kit-screens.ts` (off means a 404 and no link): Billing with the plan
+picker and checkout return (ADR 0014, an office pays per seat, not built), the start page
+and the AI chat demo. An office's own URL redirects to the Inbox; its kit start page, with
+sample revenue and churn, stays in the tree unrouted.
 
 Nhịp's own code in `apps/saas`:
 

@@ -46,6 +46,7 @@
 				"apps/mail-preview/**",
 				"packages/mail/**",
 				"packages/ui/**",
+				"apps/saas/modules/ai/**",
 				"apps/saas/modules/payments/**"
 			],
 			"rules": {
