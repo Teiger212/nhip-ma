@@ -58,8 +58,12 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   sync module (`sync.ts`), which owns a thread's link to its lead and persists through the
   store. After a guest's message on a thread with no lead, `afterGuestInbound` runs the sync's
   `newGuest` in the background; the thread's `inbox_crm_link` row is the claim, so concurrent
-  first messages make one lead. Home still shows "connect your CRM" where closings and lost
-  will be (#68).
+  first messages make one lead. Outcomes arrive by the CRM's webhook (`/webhooks/crm/mock`,
+  signed with `MOCK_CRM_WEBHOOK_SECRET`; absent where unset): the sync's `outcomesChanged` asks
+  the adapter for the changed leads' outcomes and caches them on the link, observed when Nhịp
+  first heard them (`observeOutcome`). The thread summary carries the link, so the queue rule
+  (`isResolved`, `inQueue`) and the nav count read it on the client. Home still shows "connect
+  your CRM" where closings and lost will be (#68).
 - **Home** (ADR 0002): `modules/home/lib/funnel.ts` resolves the office and calls
   `store.funnel(viewer, { since, timeZone })`, one SQL query over Answers. The window is 30
   local days in the office's time zone (`modules/home/lib/window.ts`, Asia/Ho_Chi_Minh

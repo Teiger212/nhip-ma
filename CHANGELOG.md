@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-03 (won or lost leaves the queue)
+
+### Added
+
+- **Won or lost leaves the queue, and comes back** (#63, spec #59). When the office's CRM tells Nhịp a lead was won or lost, its thread leaves Your turn and the nav count and shows a neutral "Won" or "Lost" where the turn was, under Sent and All. When the guest writes after Nhịp first heard that outcome, the thread is back in Your turn. The CRM's own close date never decides it. For now the mock CRM's signed webhook (`MOCK_CRM_WEBHOOK_SECRET`, development and E2E only) carries the notice; HubSpot's comes with #66.
+
 ## 2026-10-03 (a new guest becomes a CRM lead)
 
 ### Added
