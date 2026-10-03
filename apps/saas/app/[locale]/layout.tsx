@@ -12,23 +12,26 @@ import { notFound } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { PropsWithChildren } from "react";
 
+// Preloads are what a first visit waits on, so only the faces the first paint uses are
+// preloaded: the headings (500 to 700) and Noto Sans, one variable file per subset.
 const sansFont = Be_Vietnam_Pro({
 	subsets: ["latin", "vietnamese"],
-	weight: ["400", "500", "600", "700"],
+	weight: ["500", "600", "700"],
 	variable: "--font-be-vietnam",
 	display: "swap",
 });
 
 const bodyFont = Noto_Sans({
 	subsets: ["latin", "vietnamese"],
-	weight: ["400", "500", "600"],
 	variable: "--font-noto-sans",
 	display: "swap",
 });
 
+// Mono sets only digits (times, counts, Home's figures): loaded when used, not preloaded.
 const monoFont = IBM_Plex_Mono({
-	subsets: ["latin", "latin-ext", "vietnamese"],
-	weight: ["400", "500"],
+	subsets: ["latin", "vietnamese"],
+	weight: ["300", "400", "500"],
+	preload: false,
 	variable: "--font-ibm-plex-mono",
 	display: "swap",
 });

@@ -207,7 +207,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 						<>
 							<div className="my-6 h-4 relative">
 								<hr className="top-2 relative" />
-								<p className="top-0 h-4 px-2 font-medium text-sm leading-tight absolute left-1/2 mx-auto inline-block -translate-x-1/2 bg-background text-center text-foreground/60">
+								<p className="top-0 px-2 font-medium text-sm absolute left-1/2 mx-auto inline-block -translate-x-1/2 bg-background text-center leading-none text-muted-foreground">
 									{t("auth.login.continueWith")}
 								</p>
 							</div>

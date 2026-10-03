@@ -169,3 +169,18 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
    refuses an agent (403).
    Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 9; the manager's control on the same thread is the positive
    control; 403 for handing on, returning to the pool and taking a pool thread; nothing moves).
+
+## Home (ADR 0002, ADR 0004, ADR 0015)
+
+1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,
+   oldest waiting first and quiet ones last, the same order as the inbox's Your turn. Choosing
+   one opens the inbox with that thread selected (on a phone, the thread itself).
+2. **Waiting now lists only what the operator can open.** A thread another agent owns is not
+   in agent 1's Waiting now; the manager's lists it.
+3. **Nobody waiting.** With every guest answered, Waiting now says "No guest is waiting."
+4. **The nav counts Your turn on every page.** The amber number beside Inbox in the sidebar
+   equals the inbox's Your turn count, on Home, the Inbox and Settings alike. Approving a
+   reply lowers it; a guest writing in raises it within the inbox's poll. The platform admin
+   sees no number.
+5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
+   wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.

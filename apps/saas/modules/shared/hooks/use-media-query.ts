@@ -23,7 +23,10 @@ export function useMediaQuery(query: string): boolean {
 	return matches;
 }
 
-/** Returns true when viewport is below md breakpoint (768px) - i.e. mobile */
+/**
+ * True below `lg` (1024px), where the app runs its phone shell: the sidebar is a sheet
+ * behind the top bar (packages/ui/hooks/use-mobile.ts).
+ */
 export function useIsMobile(): boolean {
-	return useMediaQuery("(max-width: 767px)");
+	return useMediaQuery("(max-width: 1023px)");
 }

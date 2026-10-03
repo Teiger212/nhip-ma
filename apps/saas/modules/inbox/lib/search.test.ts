@@ -1,24 +1,24 @@
 import { expect, test } from "vitest";
 
-import { lastInboundText, matchesThreadSearch } from "./search";
+import { matchesThreadSearch } from "./search";
 import { DEMO_THREADS } from "./seed";
-import type { Conversation } from "./types";
+import type { ConversationSummary } from "./types";
 
-function conv(partial: Partial<Conversation> & Pick<Conversation, "id">): Conversation {
+function conv(
+	partial: Partial<ConversationSummary> & Pick<ConversationSummary, "id">,
+): ConversationSummary {
 	return {
 		pipe: "whatsapp",
 		guestId: partial.guestId || "g1",
 		guestName: partial.guestName ?? "Minji",
 		officeId: "walk-office",
 		owner: null,
-		messages: partial.messages ?? [],
 		lastGuestInboundAt: null,
 		sentAt: null,
 		unansweredInboundId: null,
-		oneShot: null,
-		answers: [],
-		lastAnswer: null,
 		updatedAt: new Date().toISOString(),
+		guestLanguage: null,
+		lastInboundText: "",
 		...partial,
 	};
 }
@@ -27,21 +27,9 @@ test("search matches guest name or last inbound text", () => {
 	const thread = conv({
 		id: "whatsapp:demo-ko-stay",
 		guestName: "Minji",
-		messages: [
-			{
-				id: "1",
-				direction: "in",
-				source: "guest",
-				text: "Tay Ho에서 3 nights vs monthly stay",
-				at: new Date().toISOString(),
-				vendorMessageId: null,
-				pipeExternalId: null,
-				translations: {},
-			},
-		],
+		lastInboundText: "Tay Ho에서 3 nights vs monthly stay",
 	});
 
-	expect(lastInboundText(thread).includes("Tay Ho")).toBe(true);
 	expect(matchesThreadSearch(thread, "minji")).toBe(true);
 	expect(matchesThreadSearch(thread, "monthly")).toBe(true);
 	expect(matchesThreadSearch(thread, "Ciputra")).toBe(false);
@@ -55,18 +43,7 @@ test("Ciputra matches the invented Alexei thread only", () => {
 			guestName: demo.guestName,
 			pipe: demo.pipe,
 			guestId: demo.guestId,
-			messages: [
-				{
-					id: "1",
-					direction: "in",
-					source: "guest",
-					text: demo.text,
-					at: new Date().toISOString(),
-					vendorMessageId: null,
-					pipeExternalId: null,
-					translations: {},
-				},
-			],
+			lastInboundText: demo.text,
 		}),
 	);
 	const hits = threads.filter((thread) => matchesThreadSearch(thread, "Ciputra"));

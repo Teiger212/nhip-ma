@@ -201,6 +201,9 @@ export function LoginForm() {
 												<button
 													type="button"
 													onClick={() => setShowPassword(!showPassword)}
+													aria-label={
+														showPassword ? t("common.hidePassword") : t("common.showPassword")
+													}
 													className="inset-y-0 right-0 pr-4 text-xl absolute flex items-center text-primary"
 												>
 													{showPassword ? (
@@ -240,7 +243,7 @@ export function LoginForm() {
 						<>
 							<div className="my-6 h-4 relative">
 								<hr className="top-2 relative" />
-								<p className="top-0 h-4 px-2 font-medium text-sm leading-tight absolute left-1/2 mx-auto inline-block -translate-x-1/2 bg-background text-center text-foreground/60">
+								<p className="top-0 px-2 font-medium text-sm absolute left-1/2 mx-auto inline-block -translate-x-1/2 bg-background text-center leading-none text-muted-foreground">
 									{t("auth.login.continueWith")}
 								</p>
 							</div>

@@ -1,8 +1,12 @@
 @layer base {
 	/*
-	 * Nhịp palette (Flat, from the ui-ux-pro-max "messaging inbox triage" read).
+	 * Nhịp palette (Flat, from the ui-ux-pro-max "messaging inbox triage" read). The state
+	 * colors are set as text on their own 12% tint (the turn flags), so the light values are
+	 * dark enough for 4.5:1 there, on the selected row included.
 	 * Blue is the one action color; red is destructive and errors only;
-	 * pending is amber, sent is green.
+	 * pending is amber, sent is green. The app sits on the canvas; content sits on
+	 * cards (panels). Charts use one blue at two strengths, and the hatch marks a number
+	 * Nhịp does not have yet.
 	 */
 	:root {
 		--background: #ffffff;
@@ -19,18 +23,23 @@
 		--muted-foreground: #475569;
 		--accent: #e4ecfc;
 		--accent-foreground: #1e3a8a;
-		--touch: #2563eb;
+		--touch: #1d4ed8;
 		--touch-foreground: #ffffff;
 		--border: #e4ecfc;
 		--input: #cbd9f5;
 		--ring: #2563eb;
 		--destructive: #dc2626;
 		--destructive-foreground: #ffffff;
-		--success: #15803d;
+		--success: #166534;
 		--success-foreground: #ffffff;
-		--warning: #b45309;
+		--warning: #92400e;
 		--warning-foreground: #ffffff;
-		--sidebar: #f8fafc;
+		--canvas: #f2f5fb;
+		--chart-strong: #2563eb;
+		--chart-soft: #9db9f2;
+		--chart-track: #eef3fd;
+		--hatch: #cbd9f5;
+		--sidebar: #f2f5fb;
 		--sidebar-foreground: #0f172a;
 		--sidebar-primary: #2563eb;
 		--sidebar-primary-foreground: #ffffff;
@@ -67,6 +76,11 @@
 		--success-foreground: #0b1220;
 		--warning: #fbbf24;
 		--warning-foreground: #0b1220;
+		--canvas: #080e1a;
+		--chart-strong: #60a5fa;
+		--chart-soft: #2f4f8a;
+		--chart-track: #17223a;
+		--hatch: #2a3a5e;
 		--sidebar: #080e1a;
 		--sidebar-foreground: #e2e8f0;
 		--sidebar-primary: #60a5fa;
@@ -101,6 +115,11 @@
 	--color-warning-foreground: var(--warning-foreground);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
+	--color-canvas: var(--canvas);
+	--color-chart-strong: var(--chart-strong);
+	--color-chart-soft: var(--chart-soft);
+	--color-chart-track: var(--chart-track);
+	--color-hatch: var(--hatch);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);

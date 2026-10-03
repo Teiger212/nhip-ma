@@ -3,8 +3,10 @@ import { OrganizationsGrid } from "@organizations/components/OrganizationsGrid";
 import { config } from "@repo/auth/config";
 import { Card } from "@repo/ui";
 import { PageHeader } from "@shared/components/PageHeader";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata() {
 	const t = await getTranslations("app.menu");
@@ -15,6 +17,7 @@ export async function generateMetadata() {
 }
 
 export default async function AppStartPage() {
+	if (!KIT_SCREENS.start) notFound();
 	const session = await getSession();
 
 	if (!session) {

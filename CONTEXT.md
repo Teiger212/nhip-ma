@@ -86,7 +86,8 @@ is renamed.
 - **Response time**: first inbound to the office's first reply (the first `sent` Answer's
   `sentAt`, or the first reply from the vendor's app, whichever came first). Supporting metric: median and 90th percentile over the answered leads.
 - **Window**: Home counts the leads whose first message landed in the last 30 days, and
-  engaged and in conversation inside that cohort, so the funnel never widens.
+  engaged and in conversation inside that cohort, so the funnel never widens. The 30 days
+  are the office's local calendar days, today included, so leads by day has one bar per day.
 
 ## Sending
 

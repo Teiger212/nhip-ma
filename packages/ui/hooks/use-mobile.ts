@@ -2,7 +2,11 @@
 
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+/**
+ * Below `lg` the sidebar is a sheet behind the top bar, as on a phone: docked at 256px it
+ * would leave a tablet about 500px for the inbox's two panels. Matches Tailwind's `lg`.
+ */
+const MOBILE_BREAKPOINT = 1024;
 
 export function useIsMobile() {
 	const [isMobile, setIsMobile] = React.useState(false);

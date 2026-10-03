@@ -10,6 +10,7 @@ import { getOrganizationMembership } from "@repo/database";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { ConfirmationAlertProvider } from "@shared/components/ConfirmationAlertProvider";
 import { PermixProvider } from "@shared/components/PermixProvider";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { setupPermissions, permix } from "@shared/lib/permix";
 import { getServerQueryClient } from "@shared/lib/server";
@@ -58,7 +59,8 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 		});
 	}
 
-	if (paymentsConfig.billingAttachedTo === "user") {
+	// The kit's per-user purchases, read only while its billing screens are on (ADR 0014).
+	if (KIT_SCREENS.billing && paymentsConfig.billingAttachedTo === "user") {
 		await queryClient.prefetchQuery({
 			queryKey: orpc.payments.listPurchases.queryKey({
 				input: {},

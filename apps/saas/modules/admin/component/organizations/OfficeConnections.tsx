@@ -72,7 +72,7 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 						<div className="min-w-0">
 							<p className="font-medium">Zalo</p>
 							{zalo.length === 0 && (
-								<Badge status="info" data-test="connection-status">
+								<Badge status="neutral" data-test="connection-status">
 									{t("status.none")}
 								</Badge>
 							)}
@@ -102,7 +102,13 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 						>
 							<div className="gap-2 min-w-0 flex flex-wrap items-center">
 								<Badge
-									status={pipe.credential === "connected" ? "success" : "error"}
+									status={
+										pipe.credential === "connected"
+											? "success"
+											: pipe.credential === "disconnected"
+												? "error"
+												: "neutral"
+									}
 									data-test="connection-status"
 								>
 									{t(
@@ -153,7 +159,7 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 				<div className="gap-3 flex items-start justify-between" data-test="connection-whatsapp">
 					<div>
 						<p className="font-medium">WhatsApp</p>
-						<Badge status="info" data-test="connection-status">
+						<Badge status="neutral" data-test="connection-status">
 							{t("status.none")}
 						</Badge>
 						<p className="mt-1 text-sm text-muted-foreground">{t("whatsappLater")}</p>
