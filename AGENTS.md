@@ -132,12 +132,21 @@ one real round trip from a phone over WhatsApp and Zalo.
   staging smoke (`pnpm --filter saas smoke`, `tests/smoke/`) against the deployment.
 
 **Neon (staging and prod, ADR 0016).** This folder is linked to Neon project
-`lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Dev stays on
-local Postgres: pass `--no-env-pull` to every `neon link`, `neon deploy` and `neon checkout`,
-or the CLI writes the linked branch's `DATABASE_URL` into `.env.local` and points dev at that
-database.
-Neon branches: `production` (default) and `staging` (schema from `prisma migrate deploy`,
-never seeded: the seed's password is public).
+`lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Pass
+`--no-env-pull` to every `neon link`, `neon deploy` and `neon checkout`, or the CLI writes the
+linked branch's `DATABASE_URL` into `.env.local` and repoints dev without asking.
+Neon branches: `production` (default), `staging` (schema from `prisma migrate deploy`,
+never seeded: the seed's password is public), and `dev` (a schema-only copy of `staging`,
+seeded with the demo logins and threads; nothing real).
+
+**Worktree databases (decided 2026-10-03).** A worktree never builds or seeds a database of its
+own. `scripts/worktree-db.sh <worktree>` gives it a copy-on-write child of Neon `dev`
+(`wt-<name>`, schema and seed included), pushes the worktree's schema to it, and writes its
+`DATABASE_URL` into the worktree's `.env.local`, so worktrees on different schemas never break
+each other. Vitest and E2E stay on local Postgres, under the worktree's own name
+(`TEST_DATABASE_URL`, `nhip_test_<name>`): they are wiped every run and CI has its own. When the
+worktree goes, `scripts/worktree-db.sh <worktree> --delete` removes its branch. The main
+checkout may stay on local Postgres (`supastarter`).
 
 **What Eyal sets by hand** (accounts, secrets, vendor settings) is tracked in
 [docs/setup-checklist.md](docs/setup-checklist.md); add to it whenever work needs one.
