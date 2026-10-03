@@ -500,6 +500,13 @@ enum CrmKind {
   mock
 }
 
+/// What the CRM says about a lead (ADR 0003). Only the CRM decides won or lost, never the chat.
+enum CrmOutcomeStatus {
+  open
+  won
+  lost
+}
+
 /// How Nhịp linked a thread to its CRM lead (ADR 0003): it created the lead, or found the
 /// guest's existing lead by phone or by the Zalo user id Nhịp stored on it.
 enum CrmLinkMethod {
@@ -523,15 +530,22 @@ model CrmConnection {
 /// it first creates or finds the lead, so two first messages make one lead. Until the lead is
 /// written, `leadId` is null. Disconnecting the office's CRM removes its links.
 model CrmLink {
-  conversationId String         @id
-  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  officeId       String
-  connection     CrmConnection  @relation(fields: [officeId], references: [officeId], onDelete: Cascade)
-  leadId         String?
-  leadName       String?
-  method         CrmLinkMethod?
-  claimedAt      DateTime       @default(now())
-  linkedAt       DateTime?
+  conversationId    String            @id
+  conversation      Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId          String
+  connection        CrmConnection     @relation(fields: [officeId], references: [officeId], onDelete: Cascade)
+  leadId            String?
+  leadName          String?
+  method            CrmLinkMethod?
+  claimedAt         DateTime          @default(now())
+  linkedAt          DateTime?
+  outcome           CrmOutcomeStatus?
+  /// The CRM's own date for the outcome, for display only.
+  outcomeAt         DateTime?
+  outcomeReason     String?
+  /// When Nhịp first saw the current won or lost outcome. A guest who writes after it is back
+  /// in the queue (ADR 0003, Q3); the CRM's own date never decides that.
+  outcomeObservedAt DateTime?
 
   @@index([officeId])
   @@map("inbox_crm_link")
@@ -540,19 +554,22 @@ model CrmLink {
 /// The mock CRM's leads (ADR 0003): a CRM kept in Nhịp's database for development, tests,
 /// the demo and offices without one. Phones are E.164.
 model MockCrmLead {
-  id         String       @id @default(cuid())
-  officeId   String
-  office     Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  name       String
-  phone      String?
-  zaloUserId String?
-  pipe       Pipe
-  language   String?
+  id            String           @id @default(cuid())
+  officeId      String
+  office        Organization     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String?
+  zaloUserId    String?
+  pipe          Pipe
+  language      String?
   /// The guest's qualification as Nhịp extracted it (area, rent or buy, budget, timeframe,
   /// household). Never message text.
-  fields     Json?
-  threadUrl  String
-  createdAt  DateTime     @default(now())
+  fields        Json?
+  threadUrl     String
+  outcome       CrmOutcomeStatus @default(open)
+  outcomeAt     DateTime?
+  outcomeReason String?
+  createdAt     DateTime         @default(now())
 
   @@index([officeId, phone])
   @@index([officeId, zaloUserId])

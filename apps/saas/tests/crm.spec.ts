@@ -1,11 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, APIResponse, Browser, Page } from "@playwright/test";
+import type { APIRequestContext, APIResponse, Browser, Locator, Page } from "@playwright/test";
 
 import type { MockCrmLead } from "./support/crm";
-import { connectMockCrm, mockCrmLeads } from "./support/crm";
+import { connectMockCrm, markInMockCrm, mockCrmLeads } from "./support/crm";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
@@ -14,22 +14,33 @@ import type { Api } from "./support/session";
 import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
 
 /**
- * The thread header's CRM status (inbox.crm) and the platform admin's CRM setting on an office's
- * Connections card (admin.connections.crm), from packages/i18n/translations/en/saas.json.
+ * The thread's CRM status and turn, as an operator reads them (inbox), and the platform admin's
+ * CRM setting on an office's Connections card (admin.connections.crm), from
+ * packages/i18n/translations/en/saas.json.
  */
 const crmCopy = (() => {
 	const file = path.resolve(__dirname, "../../../packages/i18n/translations/en/saas.json");
 	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
-		inbox: { crm: { inCrm: string } };
+		inbox: { yourTurn: string; sent: string; crm: { inCrm: string; won: string; lost: string } };
 		admin: {
 			connections: { crm: { label: string; none: string; mock: string; saved: string } };
 		};
 	};
 	return {
 		inCrm: (name: string) => saas.inbox.crm.inCrm.replaceAll("{name}", name),
+		won: saas.inbox.crm.won,
+		lost: saas.inbox.crm.lost,
+		yourTurn: saas.inbox.yourTurn,
+		sent: saas.inbox.sent,
 		setting: saas.admin.connections.crm,
 	};
 })();
+
+/**
+ * A page learns of a change when it asks again, which the Inbox does about every ten seconds;
+ * a change gets three of those rounds to show.
+ */
+const WITHIN_A_POLL = { timeout: 30_000 };
 
 /** A guest of this test, writing on Zalo to one office's OA. */
 type Guest = {
@@ -214,6 +225,63 @@ async function threadIdOf(api: Api, guest: Guest): Promise<string> {
 	return thread!.id;
 }
 
+/** The amber number beside Inbox in the sidebar (gone at 0). */
+function navCount(page: Page) {
+	return page.getByRole("link", { name: /^Inbox\b/ }).getByTestId("nav-your-turn-count");
+}
+
+/** A view button of the Inbox (Your turn / Sent / All) with its count. */
+function view(page: Page, name: "Your turn" | "Sent" | "All", count: number) {
+	return page.getByRole("button", { name: `${name} ${count}`, exact: true });
+}
+
+/** A guest's row in the Inbox's thread list, in the view on show. */
+function rowOf(page: Page, guest: Guest) {
+	return threadList(page).getByRole("button", { name: new RegExp(`^${nameOf(guest)}\\b`) });
+}
+
+/** The Inbox's views count these, and the nav's number is its Your turn. */
+async function expectQueue(
+	page: Page,
+	counts: { yourTurn: number; sent: number; all: number },
+	options?: { timeout: number },
+) {
+	await expect(view(page, "Your turn", counts.yourTurn), "the Inbox's Your turn").toBeVisible(
+		options,
+	);
+	await expect(view(page, "Sent", counts.sent), "the Inbox's Sent").toBeVisible(options);
+	await expect(view(page, "All", counts.all), "the Inbox's All").toBeVisible(options);
+	await expect(navCount(page), "the nav counts Your turn").toHaveText(
+		String(counts.yourTurn),
+		options,
+	);
+}
+
+/**
+ * On a resolved thread's row, the outcome stands where the turn was: one status badge, saying
+ * the outcome, no "Your turn" or "Sent" beside it, and neutral, the tone of the pipe badge on the
+ * same row (DESIGN.md, Badges), not the turn's amber or green.
+ */
+async function expectOutcomeInPlaceOfTheTurn(row: Locator, outcome: string) {
+	const status = row.getByTestId("thread-status");
+	await expect(status, "one status on the row").toHaveCount(1);
+	await expect(status, `the row says ${outcome}`).toHaveText(outcome);
+	await expect(row.getByText(crmCopy.yourTurn, { exact: true }), "no Your turn").toHaveCount(0);
+	await expect(row.getByText(crmCopy.sent, { exact: true }), "no Sent").toHaveCount(0);
+	const pipe = row.getByText("Zalo", { exact: true });
+	await expect(pipe, "the row's pipe badge, neutral").toBeVisible();
+	expect(await toneOf(status), `${outcome} is neutral, like the pipe badge`).toEqual(
+		await toneOf(pipe),
+	);
+}
+
+async function toneOf(badge: Locator) {
+	return badge.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return { color: style.color, background: style.backgroundColor };
+	});
+}
+
 /* ---------------------------------------------------------------- in the CRM itself */
 
 function leadsOf(officeId: string, guest: Guest): MockCrmLead[] {
@@ -228,6 +296,36 @@ async function expectLeadAppears(officeId: string, guest: Guest, message: string
 	await expect
 		.poll(() => leadsOf(officeId, guest).length, { message, timeout: 30_000 })
 		.toBeGreaterThan(0);
+}
+
+/** The guest's lead in the office's CRM, once it is there. */
+async function leadOf(officeId: string, guest: Guest): Promise<MockCrmLead> {
+	await expectLeadAppears(officeId, guest, `${guest.id} becomes a lead in the CRM`);
+	return leadsOf(officeId, guest)[0];
+}
+
+/** The office marks the guest's lead in its CRM; the CRM holds it so, and has told Nhịp. */
+async function markLead(
+	request: APIRequestContext,
+	officeId: string,
+	guest: Guest,
+	lead: MockCrmLead,
+	outcome: "won" | "lost",
+): Promise<number> {
+	const status = await markInMockCrm(request, officeId, lead.id, outcome);
+	expect(
+		leadsOf(officeId, guest)[0]?.outcome,
+		`the CRM holds ${guest.id}'s lead as ${outcome}`,
+	).toBe(outcome);
+	return status;
+}
+
+/** Nhịp took the CRM's notice. */
+function expectNoticeTaken(status: number, what: string) {
+	expect(status, `Nhịp takes the CRM's notice that ${what} (${status})`).toBeGreaterThanOrEqual(
+		200,
+	);
+	expect(status, `Nhịp takes the CRM's notice that ${what} (${status})`).toBeLessThan(300);
 }
 
 /**
@@ -501,5 +599,145 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		const byAdmin = await crmConnection.put(admin.page.request, office.id, "mock");
 		expect(byAdmin.status(), "the platform admin sets the office's CRM").toBe(200);
 		expect(await officeCrmIn(await admin.api.get(address)), "the office is on Mock").toBe("mock");
+	});
+});
+
+// scenario: docs/e2e-scenarios.md CRM 3
+test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
+	test("lost: the thread leaves Your turn for Sent with a neutral Lost where the turn was, the nav count drops; the guest writes again and it is back in Your turn, and the CRM telling Nhịp again it is lost does not hide them", async ({
+		newOffice,
+		request,
+	}) => {
+		test.setTimeout(240_000);
+		const office = await newOffice("CRM 3 lost", { crm: "mock" });
+		const { page } = office.agent;
+
+		// Two guests wait on the office's only agent; the second keeps the counts above zero.
+		const guest = await office.newGuest();
+		const other = await office.newGuest();
+		const lead = await leadOf(office.id, guest);
+		const otherLead = await leadOf(office.id, other);
+
+		await page.goto("/en/inbox");
+		await expectQueue(page, { yourTurn: 2, sent: 0, all: 2 }, WITHIN_A_POLL);
+		await expect(rowOf(page, guest), "the guest waits in Your turn").toBeVisible();
+
+		// The office marks the lead lost in its CRM, and the CRM tells Nhịp.
+		const lost = await markLead(request, office.id, guest, lead, "lost");
+
+		// The thread leaves Your turn; the nav count drops with it.
+		await expect(
+			view(page, "Your turn", 1),
+			`the lost thread leaves Your turn (the CRM's notice answered ${lost})`,
+		).toBeVisible(WITHIN_A_POLL);
+		await expectQueue(page, { yourTurn: 1, sent: 1, all: 2 }, WITHIN_A_POLL);
+		await expect(rowOf(page, other), "the other guest still waits").toBeVisible();
+		await expect(rowOf(page, guest), "the lost guest is not in Your turn").toHaveCount(0);
+		expectNoticeTaken(lost, "the lead is lost");
+
+		// Under Sent, with a neutral Lost where the turn was, in the list and the thread header.
+		await view(page, "Sent", 1).click();
+		const row = rowOf(page, guest);
+		await expect(row, "the lost thread is under Sent").toBeVisible();
+		await expectOutcomeInPlaceOfTheTurn(row, crmCopy.lost);
+		await row.click();
+		await expect(openThread(page).getByText(guest.texts[0], { exact: true })).toBeVisible();
+		await expect(
+			openThread(page).getByTestId("thread-status"),
+			"the thread header says Lost",
+		).toHaveText(crmCopy.lost);
+
+		// The guest writes again: back in Your turn, the count up again.
+		await guest.write(`Is it still available after all? ${randomUUID().slice(0, 8)}`);
+		await expectQueue(page, { yourTurn: 2, sent: 0, all: 2 }, WITHIN_A_POLL);
+		await view(page, "Your turn", 2).click();
+		await expect(
+			rowOf(page, guest).getByTestId("thread-status"),
+			"the guest who wrote again is Your turn",
+		).toHaveText(crmCopy.yourTurn);
+		expect(
+			leadsOf(office.id, guest)[0].outcome,
+			"the CRM still holds the lead as lost: Nhịp does not reopen it",
+		).toBe("lost");
+
+		// The CRM tells Nhịp again that the lead is lost (with a newer date of its own): the
+		// outcome was already seen before the guest wrote, so the guest stays Your turn. Judged once
+		// the other guest's lead, marked won after it, has left Your turn.
+		expectNoticeTaken(
+			await markLead(request, office.id, guest, lead, "lost"),
+			"the lead is lost, again",
+		);
+		expectNoticeTaken(await markLead(request, office.id, other, otherLead, "won"), "a lead is won");
+		await expectQueue(page, { yourTurn: 1, sent: 1, all: 2 }, WITHIN_A_POLL);
+		await expect(rowOf(page, other), "the won guest has left Your turn").toHaveCount(0);
+		await expect(
+			rowOf(page, guest).getByTestId("thread-status"),
+			"the guest who wrote after the outcome stays Your turn",
+		).toHaveText(crmCopy.yourTurn);
+	});
+
+	test("won: the thread leaves Your turn for Sent with a neutral Won where the turn was, in the list and the thread header, and the nav count drops", async ({
+		newOffice,
+		request,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await newOffice("CRM 3 won", { crm: "mock" });
+		const { page } = office.agent;
+
+		const guest = await office.newGuest();
+		await office.newGuest();
+		const lead = await leadOf(office.id, guest);
+
+		await page.goto("/en/inbox");
+		await expectQueue(page, { yourTurn: 2, sent: 0, all: 2 }, WITHIN_A_POLL);
+		await expect(rowOf(page, guest), "the guest waits in Your turn").toBeVisible();
+
+		const won = await markLead(request, office.id, guest, lead, "won");
+
+		await expect(
+			view(page, "Your turn", 1),
+			`the won thread leaves Your turn (the CRM's notice answered ${won})`,
+		).toBeVisible(WITHIN_A_POLL);
+		await expectQueue(page, { yourTurn: 1, sent: 1, all: 2 }, WITHIN_A_POLL);
+		await expect(rowOf(page, guest), "the won guest is not in Your turn").toHaveCount(0);
+		expectNoticeTaken(won, "the lead is won");
+
+		await view(page, "Sent", 1).click();
+		const row = rowOf(page, guest);
+		await expect(row, "the won thread is under Sent").toBeVisible();
+		await expectOutcomeInPlaceOfTheTurn(row, crmCopy.won);
+		await row.click();
+		await expect(openThread(page).getByText(guest.texts[0], { exact: true })).toBeVisible();
+		await expect(
+			openThread(page).getByTestId("thread-status"),
+			"the thread header says Won",
+		).toHaveText(crmCopy.won);
+	});
+
+	test("a notice signed with the wrong secret, or not signed, is refused", async ({
+		newOffice,
+		request,
+	}) => {
+		test.setTimeout(120_000);
+		const office = await newOffice("CRM 3 refused", { crm: "mock", agent: false });
+		const guest = await office.newGuest();
+		const lead = await leadOf(office.id, guest);
+		const secret = process.env.MOCK_CRM_WEBHOOK_SECRET;
+		if (!secret) throw new Error("MOCK_CRM_WEBHOOK_SECRET comes from the E2E env");
+
+		// A notice naming a real lead of the office, as the mock CRM sends it; only its signature is
+		// wrong, or missing.
+		const body = JSON.stringify({ officeId: office.id, leadIds: [lead.id] });
+		const forged = createHmac("sha256", `${secret}-not-it`).update(body).digest("hex");
+		const wrongSecret = await request.post("/webhooks/crm/mock", {
+			data: body,
+			headers: { "content-type": "application/json", "x-mock-crm-signature": `sha256=${forged}` },
+		});
+		expect(wrongSecret.status(), "a notice signed with the wrong secret is refused").toBe(401);
+		const unsigned = await request.post("/webhooks/crm/mock", {
+			data: body,
+			headers: { "content-type": "application/json" },
+		});
+		expect(unsigned.status(), "an unsigned notice is refused").toBe(401);
 	});
 });

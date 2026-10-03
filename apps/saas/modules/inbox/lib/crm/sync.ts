@@ -4,7 +4,7 @@ import { displayName } from "../display-name";
 import type { Conversation, CrmKind } from "../types";
 import { crmAdapterFor } from "./adapters";
 import { guestIdentity } from "./phone";
-import { decideLead } from "./rules";
+import { decideLead, observeOutcome } from "./rules";
 import type { CrmAdapter } from "./types";
 
 /**
@@ -25,7 +25,8 @@ export function createCrmSync(deps: {
 		/**
 		 * The platform admin sets the office's CRM, or none (spec #59, Q6). The same CRM again
 		 * keeps the office's links; another, or none, drops them: another CRM's leads mean nothing.
-		 * False when there is no such office.
+		 * Their cached outcomes go with them, so a won or lost thread whose guest spoke last is
+		 * back in Your turn (missing data never hides a guest). False when there is no such office.
 		 */
 		async connectOffice(officeId: string, kind: CrmKind | null): Promise<boolean> {
 			if (!(await store.officeExists(officeId))) return false;
@@ -52,6 +53,38 @@ export function createCrmSync(deps: {
 				// A failed write never blocks the thread: the guest's next message tries again.
 				await store.releaseCrmLink(conversation.id);
 				throw error;
+			}
+		},
+
+		/**
+		 * The office's CRM says these leads changed (its webhook, or a reconcile): ask it for their
+		 * outcomes and cache them on the office's threads linked to them, observing each new won or
+		 * lost outcome at `now` (ADR 0003, Q3). Leads of another office, or a notice `from` a CRM the
+		 * office is not on, change nothing.
+		 */
+		async outcomesChanged(
+			officeId: string,
+			leadIds: string[],
+			now: Date,
+			options: { from?: CrmKind } = {},
+		): Promise<void> {
+			const connection = await store.getCrmConnection(officeId);
+			if (!connection || leadIds.length === 0) return;
+			// A CRM speaks only for the offices connected to it.
+			if (options.from && connection.kind !== options.from) return;
+			const links = await store.crmLinksForLeads(officeId, leadIds);
+			if (links.length === 0) return;
+			const reported = await adapterFor(connection, { store, officeId }).outcomesFor(
+				links.map((link) => link.leadId),
+			);
+			for (const link of links) {
+				const outcome = reported[link.leadId];
+				if (!outcome) continue;
+				await store.saveCrmOutcome(
+					link.conversationId,
+					link.leadId,
+					observeOutcome(link, outcome, now),
+				);
 			}
 		},
 	};

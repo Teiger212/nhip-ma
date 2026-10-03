@@ -81,3 +81,13 @@ test("production requires https everywhere, the E2E run included (no localhost e
 		urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: "https://localhost:3443" }),
 	).toHaveLength(0);
 });
+
+// ADR 0003 amendment (2026-10-03): production stays on no mock CRM notices; spec #59 (#63) "unreachable in production".
+test("a production deployment refuses the mock CRM's webhook secret, whatever its value", () => {
+	const mock = { ...BASE, MOCK_CRM_WEBHOOK_SECRET: "any-value-at-all" };
+	expect(errorsOf({ ...mock, VERCEL_ENV: "production" }).join("\n")).toContain(
+		"MOCK_CRM_WEBHOOK_SECRET",
+	);
+	expect(errorsOf({ ...mock, VERCEL_ENV: "preview" })).toEqual([]);
+	expect(errorsOf(mock)).toEqual([]);
+});

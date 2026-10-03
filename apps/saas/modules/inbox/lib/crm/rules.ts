@@ -3,8 +3,8 @@
  * calls them; the store only persists what they decide.
  */
 
-import type { CrmLinkMethod } from "../types";
-import type { CrmLead, GuestIdentity } from "./types";
+import type { CrmLinkMethod, CrmOutcome, CrmOutcomeStatus } from "../types";
+import type { CrmLead, GuestIdentity, LeadOutcome } from "./types";
 
 export type LeadDecision =
 	| { action: "reuse"; lead: CrmLead; method: Exclude<CrmLinkMethod, "created"> }
@@ -21,4 +21,38 @@ export function decideLead(matches: CrmLead[], identity: GuestIdentity): LeadDec
 	if (matches.length === 0) return { action: "create", method: "created" };
 	if (matches.length > 1) return { action: "ambiguous" };
 	return { action: "reuse", lead: matches[0], method: identity.phone ? "phone" : "zaloId" };
+}
+
+/**
+ * What Nhịp caches after the CRM reports a lead's outcome (ADR 0003, Q3). A won or lost outcome
+ * is observed when Nhịp first sees it: seen again, it keeps that time; a different decision is a
+ * new observation; an open lead has none. The CRM's own date is kept for display only.
+ */
+/** A thread status also names won and lost (`queue.ts`); kept structural to avoid an import cycle. */
+type ThreadStatusLike = "yourTurn" | "sent" | "won" | "lost";
+
+/** Won or lost: the CRM has decided the lead. Open, or nothing yet, is not decided. */
+export function isDecided(
+	outcome: CrmOutcomeStatus | ThreadStatusLike | null | undefined,
+): outcome is "won" | "lost" {
+	return outcome === "won" || outcome === "lost";
+}
+
+export function observeOutcome(
+	previous: CrmOutcome | null,
+	reported: LeadOutcome,
+	now: Date,
+): CrmOutcome {
+	const decided = isDecided(reported.status);
+	const sameDecision = decided && previous?.outcome === reported.status;
+	return {
+		outcome: reported.status,
+		outcomeAt: reported.at,
+		outcomeReason: reported.reason,
+		outcomeObservedAt: !decided
+			? null
+			: sameDecision
+				? (previous?.outcomeObservedAt ?? now.toISOString())
+				: now.toISOString(),
+	};
 }

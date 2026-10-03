@@ -1,9 +1,10 @@
+import { isDecided } from "./crm/rules";
 import { matchesThreadSearch } from "./search";
 import type { ConversationSummary } from "./types";
 
 /**
  * The inbox is a queue. These are the rules that define it (ADR 0004): "Your turn" is the
- * only pending state, the quiet section holds the Your-turn threads the guest has not
+ * only pending state; a resolved thread (ADR 0003) leaves it; the quiet section holds the Your-turn threads the guest has not
  * touched for a while, and each view has one order. The client module renders a
  * QueueView; it does not restate any of this. The queue reads thread summaries, which is
  * all the list loads; the open thread is loaded whole on its own.
@@ -28,31 +29,60 @@ export function yourTurn(conversation: Pick<ConversationSummary, "unansweredInbo
  * route and the client both count with this, so which threads count is decided here and
  * nowhere else. The store only derives each thread's turn fact (`unansweredInboundId`).
  */
-export function yourTurnCount(
-	conversations: Pick<ConversationSummary, "unansweredInboundId">[],
-): number {
-	return conversations.filter(yourTurn).length;
+export function yourTurnCount(conversations: QueueFields[]): number {
+	return conversations.filter(inQueue).length;
 }
 
 function time(value: string | null): number {
 	return value ? new Date(value).getTime() : 0;
 }
 
-/** Still Your turn, but the guest last wrote more than 48 hours ago. */
-export function isQuiet(
-	conversation: Pick<ConversationSummary, "unansweredInboundId" | "lastGuestInboundAt">,
-	now: number = Date.now(),
+type QueueFields = Pick<ConversationSummary, "unansweredInboundId" | "crm" | "lastGuestInboundAt">;
+
+/**
+ * The CRM reports the lead won or lost (CONTEXT, "Resolved"), and the guest has not written
+ * since Nhịp first saw that outcome (ADR 0003, Q3). A guest who writes after it is back in the
+ * queue: a lost lead writing again is exactly who the agent must see. The CRM's own close date
+ * never decides it, and a decided outcome with no observation time is not resolved: missing
+ * data never hides a guest.
+ */
+export function isResolved(
+	conversation: Pick<ConversationSummary, "crm" | "lastGuestInboundAt">,
 ): boolean {
-	const last = time(conversation.lastGuestInboundAt);
-	return yourTurn(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
+	const crm = conversation.crm;
+	if (!crm || !isDecided(crm.outcome) || !crm.outcomeObservedAt) {
+		return false;
+	}
+	return time(conversation.lastGuestInboundAt) <= time(crm.outcomeObservedAt);
 }
 
-export function inView(
-	conversation: Pick<ConversationSummary, "unansweredInboundId">,
-	view: InboxView,
-): boolean {
+/** In the queue: Your turn and not resolved. */
+export function inQueue(conversation: QueueFields): boolean {
+	return yourTurn(conversation) && !isResolved(conversation);
+}
+
+/**
+ * The one status a thread shows (its row and header): the CRM's outcome while resolved,
+ * otherwise whose turn it is. A resolved thread is not the agent's turn, even if the guest
+ * spoke last before the outcome.
+ */
+/** What a thread's status badge says: whose turn it is, or the CRM's outcome while resolved. */
+export type ThreadStatus = "yourTurn" | "sent" | "won" | "lost";
+
+export function threadStatus(conversation: QueueFields): ThreadStatus {
+	if (isResolved(conversation)) return conversation.crm?.outcome === "won" ? "won" : "lost";
+	return yourTurn(conversation) ? "yourTurn" : "sent";
+}
+
+/** Still in the queue, but the guest last wrote more than 48 hours ago. */
+export function isQuiet(conversation: QueueFields, now: number = Date.now()): boolean {
+	const last = time(conversation.lastGuestInboundAt);
+	return inQueue(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
+}
+
+export function inView(conversation: QueueFields, view: InboxView): boolean {
 	if (view === "all") return true;
-	return view === "sent" ? !yourTurn(conversation) : yourTurn(conversation);
+	return view === "sent" ? !inQueue(conversation) : inQueue(conversation);
 }
 
 /** Oldest waiting guest first in the queue; most recent activity first elsewhere. */

@@ -66,7 +66,9 @@ is renamed.
   nothing. When the owner's account ends (ADR 0013), the thread returns to the pool.
 - **Reassign**: a manager gives a thread to another operator of the office, or back to the
   pool. Only managers reassign; agents never hand threads on.
-- **Resolved**: the CRM reports won or lost. Leaves the queue; visible under Sent / All.
+- **Resolved**: the CRM reports won or lost. Leaves the queue (and the nav count) until the guest
+  writes again after Nhịp first saw that outcome, not the CRM's own close date; visible under
+  Sent / All with a neutral Won or Lost in place of the turn (ADR 0003).
 - There is no dismiss. The queue empties through sends and outcomes (ADR 0004).
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not
   gated by role. Office-level only. The headline is the **funnel** (ADR 0002); response

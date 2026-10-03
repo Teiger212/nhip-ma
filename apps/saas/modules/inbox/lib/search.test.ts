@@ -16,6 +16,7 @@ function conv(
 		lastGuestInboundAt: null,
 		sentAt: null,
 		unansweredInboundId: null,
+		crm: null,
 		updatedAt: new Date().toISOString(),
 		guestLanguage: null,
 		lastInboundText: "",

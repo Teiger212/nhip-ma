@@ -37,7 +37,13 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 3. **Won or lost leaves the queue, and comes back** (#63). The lead is marked lost in the mock
    CRM, which tells Nhịp: the thread is under Sent with a neutral "Lost" where the turn was, not
    in Your turn, and the nav count drops. The guest writes again: back in Your turn. A won lead
-   shows "Won".
+   shows "Won". A notice with a bad signature is refused.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 3; an office of the test's own with one invited agent
+   and a second waiting guest, so the counts are exact; "neutral" is the tone of the row's pipe
+   badge; the CRM telling Nhịp again that the lead is lost, after the guest wrote, keeps them in
+   Your turn (the outcome is timed from when Nhịp first saw it, ADR 0003), judged once another
+   lead marked won after it has left Your turn; a notice signed with the wrong secret, or not
+   signed, answers 401).
 4. **A failed CRM write heals** (#64). With the mock CRM failing, a new guest's message still
    arrives and is in Your turn at once; the manager sees "Not in CRM yet". When the CRM
    recovers, the lead appears and the thread says "In CRM".

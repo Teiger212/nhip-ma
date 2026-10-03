@@ -897,7 +897,9 @@
 			"oaEcho": "Gửi từ ứng dụng của văn phòng"
 		},
 		"crm": {
-			"inCrm": "Trong CRM: {name}"
+			"inCrm": "Trong CRM: {name}",
+			"won": "Chốt",
+			"lost": "Mất"
 		}
 	}
 }

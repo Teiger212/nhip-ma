@@ -7,6 +7,7 @@
 export {
 	CrmKind,
 	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -19,6 +20,7 @@ export {
 export type {
 	Conversation,
 	ConversationCrm,
+	CrmOutcome,
 	ConversationSummary,
 	Draft,
 	InboundEvent,
