@@ -1,0 +1,26 @@
+{
+	"uid": "nhip_demo_app",
+	"type": "app",
+	"config": {
+		"name": "Nhịp (demo)",
+		"description": "Creates a contact and a deal for each new guest who writes to the office through Nhịp, and reads the deal's outcome back.",
+		"distribution": "private",
+		"auth": {
+			"type": "static",
+			"requiredScopes": [
+				"oauth",
+				"crm.objects.contacts.read",
+				"crm.objects.contacts.write",
+				"crm.objects.deals.read",
+				"crm.objects.deals.write",
+				"crm.schemas.contacts.read",
+				"crm.schemas.contacts.write"
+			]
+		},
+		"permittedUrls": {
+			"fetch": [],
+			"iframe": [],
+			"img": []
+		}
+	}
+}

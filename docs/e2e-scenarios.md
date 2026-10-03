@@ -63,6 +63,12 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    API; signed out, 401. No guest writes on a HubSpot office here and nothing calls HubSpot:
    the HubSpot adapter is held to its contract by Vitest on recorded HubSpot HTTP (spec #59
    stories 13 to 20), and the token's encryption at rest is ADR 0017's.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 8; offices of the test's own on no CRM, fake tokens
+   only; choosing HubSpot saves nothing until the token is saved, judged through the API; "never
+   the token" is the literal token absent from the reloaded page's HTML, from `GET`'s raw answer
+   and from the `PUT`'s; the token field is a password field and empty after a reload; "not
+   saved" with no token is the card asking for it and the office still on None, and `PUT` with
+   no token answering 400; "refused" is as in CRM 2, before and after the office has a token).
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 
