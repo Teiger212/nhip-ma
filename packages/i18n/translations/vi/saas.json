@@ -125,6 +125,14 @@
 				"expired": "Lần kết nối đã hết hạn. Hãy bắt đầu lại.",
 				"refused": "Zalo không chấp thuận kết nối.",
 				"failed": "Kết nối thất bại. Hãy thử lại."
+			},
+			"crm": {
+				"label": "CRM",
+				"hint": "Khách mới được tạo thành khách hàng tiềm năng trong CRM của văn phòng này.",
+				"none": "Không có",
+				"mock": "CRM mô phỏng (phát triển và demo)",
+				"saved": "Đã lưu CRM.",
+				"failed": "Không lưu được CRM. Hãy thử lại."
 			}
 		},
 		"webhooks": {

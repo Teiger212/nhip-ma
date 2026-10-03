@@ -391,8 +391,11 @@ export type InboxStore = {
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
 	/** The office's CRM (ADR 0003), or null when it has none. */
 	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
-	/** Connect the office to a CRM, or disconnect it with null. Another kind, or none, drops its links. */
-	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
+	/**
+	 * Connect the office to a CRM, or disconnect it with null. Another kind, or none, drops its
+	 * links. False when there is no such office.
+	 */
+	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<boolean>;
 	/**
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
 	 * thread is already claimed or linked. The database decides, so two first messages make one lead.

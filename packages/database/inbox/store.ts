@@ -1006,12 +1006,18 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async setCrmConnection(officeId, kind) {
-			await db.$transaction(async (tx) => {
+			return db.$transaction(async (tx) => {
+				const office = await tx.organization.findUnique({
+					where: { id: officeId },
+					select: { id: true },
+				});
+				if (!office) return false;
 				const current = await tx.crmConnection.findUnique({ where: { officeId } });
-				if ((current?.kind ?? null) === kind) return;
+				if ((current?.kind ?? null) === kind) return true;
 				// Removing the connection removes its links (cascade): another CRM's leads mean nothing.
 				if (current) await tx.crmConnection.delete({ where: { officeId } });
 				if (kind) await tx.crmConnection.create({ data: { officeId, kind } });
+				return true;
 			});
 		},
 

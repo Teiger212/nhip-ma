@@ -10,6 +10,8 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
+import { OfficeCrm } from "./OfficeCrm";
+
 type OfficePipe = {
 	pipe: "zalo" | "whatsapp";
 	externalId: string;
@@ -156,6 +158,7 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 						</div>
 					))}
 				</div>
+				<OfficeCrm officeId={officeId} />
 				<div className="gap-3 flex items-start justify-between" data-test="connection-whatsapp">
 					<div>
 						<p className="font-medium">WhatsApp</p>
