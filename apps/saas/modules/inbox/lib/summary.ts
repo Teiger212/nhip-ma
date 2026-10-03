@@ -29,5 +29,6 @@ export function summarize(conversation: Conversation): ConversationSummary {
 		updatedAt: conversation.updatedAt,
 		guestLanguage: conversation.oneShot?.language ?? null,
 		lastInboundText: latestGuestText(conversation),
+		crm: conversation.crm,
 	};
 }

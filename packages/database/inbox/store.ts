@@ -5,6 +5,9 @@ import { Prisma, type PrismaClient } from "../prisma/generated/client";
 import { operatorNameOf } from "../prisma/queries/operators";
 import {
 	AnswerStatus,
+	CrmKind,
+	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DbMessageSource,
 	type Funnel,
 	GuestLanguage,
@@ -17,6 +20,7 @@ import type {
 	Answer,
 	BeginAnswerResult,
 	Conversation,
+	ConversationCrm,
 	ConversationSummary,
 	Draft,
 	InboundEvent,
@@ -60,6 +64,7 @@ const CONVERSATION_INCLUDE = {
 	paperwork: true,
 	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
 	owner: { select: { id: true, name: true, email: true } },
+	crmLink: true,
 } satisfies Prisma.ConversationInclude;
 
 /** What a viewer may read (ADR 0015): the office, and for an agent only its pool and their own. */
@@ -133,7 +138,35 @@ type SummaryRow = {
 	ownerEmail: string | null;
 	lastInboundText: string | null;
 	unansweredInboundId: string | null;
+	crmKind: string | null;
+	crmLeadId: string | null;
+	crmLeadName: string | null;
+	crmMethod: string | null;
+	crmOutcome: string | null;
+	crmOutcomeAt: Date | null;
+	crmOutcomeReason: string | null;
+	crmOutcomeObservedAt: Date | null;
+	crmCheckedAt: Date | null;
 };
+
+/** The thread's CRM link (ADR 0003) as `crm`, for the raw reads of thread `c`. */
+const CRM_LINK = Prisma.sql`LEFT JOIN "inbox_crm_link" "crm" ON "crm"."conversationId" = "c"."id"`;
+
+/**
+ * Resolved (CONTEXT, ADR 0003) in SQL, exactly as `isResolved` in the queue: the linked lead
+ * is won or lost, and the guest has not written since Nhịp observed that outcome. Never NULL
+ * (a thread with no link or no outcome is not resolved). Needs `CRM_LINK`.
+ */
+const RESOLVED = Prisma.sql`COALESCE(
+	"crm"."leadId" IS NOT NULL
+	AND "crm"."outcome"::text IN ('won', 'lost')
+	AND (
+		"crm"."outcomeObservedAt" IS NULL
+		OR "c"."lastGuestInboundAt" IS NULL
+		OR "c"."lastGuestInboundAt" <= "crm"."outcomeObservedAt"
+	),
+	FALSE
+)`;
 
 /**
  * Languages and rent-or-buy are text on disk (ADR 0012) so the lists can grow without a
@@ -156,6 +189,25 @@ function vocab<Schema extends z.ZodType>(
 
 const iso = (at: Date): string => at.toISOString();
 const isoOrNull = (at: Date | null): string | null => (at ? at.toISOString() : null);
+
+type CrmLinkRecord = NonNullable<ConversationRecord["crmLink"]>;
+
+function mapCrmLink(row: CrmLinkRecord): ConversationCrm {
+	return {
+		kind: row.kind,
+		leadId: row.leadId,
+		leadName: row.leadName,
+		method: row.method,
+		outcome: row.outcome,
+		outcomeAt: isoOrNull(row.outcomeAt),
+		outcomeReason: row.outcomeReason,
+		outcomeObservedAt: isoOrNull(row.outcomeObservedAt),
+		checkedAt: iso(row.checkedAt),
+	};
+}
+
+const isDecided = (outcome: CrmOutcomeStatus | null): boolean =>
+	outcome === "won" || outcome === "lost";
 
 function toDbSource(source: MessageSource): DbMessageSource {
 	return source === "oa-echo" ? "oa_echo" : source;
@@ -271,6 +323,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		oneShot,
 		answers,
 		lastAnswer: answers.length > 0 ? answers[answers.length - 1] : null,
+		crm: record.crmLink ? mapCrmLink(record.crmLink) : null,
 		updatedAt: iso(record.updatedAt),
 	};
 }
@@ -297,6 +350,23 @@ function mapSummary(row: SummaryRow): ConversationSummary {
 			? vocab(GuestLanguage, row.language, "Conversation.language")
 			: null,
 		lastInboundText: row.lastInboundText ?? "",
+		crm:
+			row.crmKind !== null && row.crmMethod !== null && row.crmCheckedAt !== null
+				? {
+						kind: vocab(CrmKind, row.crmKind, "CrmLink.kind"),
+						leadId: row.crmLeadId,
+						leadName: row.crmLeadName,
+						method: vocab(CrmLinkMethod, row.crmMethod, "CrmLink.method"),
+						outcome:
+							row.crmOutcome === null
+								? null
+								: vocab(CrmOutcomeStatus, row.crmOutcome, "CrmLink.outcome"),
+						outcomeAt: isoOrNull(row.crmOutcomeAt),
+						outcomeReason: row.crmOutcomeReason,
+						outcomeObservedAt: isoOrNull(row.crmOutcomeObservedAt),
+						checkedAt: iso(row.crmCheckedAt),
+					}
+				: null,
 	};
 }
 
@@ -395,10 +465,17 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					"owner"."id" AS "ownerId", "owner"."name" AS "ownerName",
 					"owner"."email" AS "ownerEmail",
 					"latest"."text" AS "lastInboundText",
-					CASE WHEN ${LATEST_UNANSWERED} THEN "latest"."id" END AS "unansweredInboundId"
+					CASE WHEN ${LATEST_UNANSWERED} THEN "latest"."id" END AS "unansweredInboundId",
+					"crm"."kind"::text AS "crmKind", "crm"."leadId" AS "crmLeadId",
+					"crm"."leadName" AS "crmLeadName", "crm"."method"::text AS "crmMethod",
+					"crm"."outcome"::text AS "crmOutcome", "crm"."outcomeAt" AS "crmOutcomeAt",
+					"crm"."outcomeReason" AS "crmOutcomeReason",
+					"crm"."outcomeObservedAt" AS "crmOutcomeObservedAt",
+					"crm"."checkedAt" AS "crmCheckedAt"
 				FROM "inbox_conversation" "c"
 				LEFT JOIN "user" "owner" ON "owner"."id" = "c"."ownerId"
 				${LATEST_INBOUND}
+				${CRM_LINK}
 				WHERE ${visibleSql(viewer)}
 				ORDER BY "c"."updatedAt" DESC, "c"."id"
 			`;
@@ -410,7 +487,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				SELECT COUNT(*)::int AS "count"
 				FROM "inbox_conversation" "c"
 				${LATEST_INBOUND}
-				WHERE ${visibleSql(viewer)} AND ${LATEST_UNANSWERED}
+				${CRM_LINK}
+				WHERE ${visibleSql(viewer)} AND ${LATEST_UNANSWERED} AND NOT ${RESOLVED}
 			`;
 			return row?.count ?? 0;
 		},
@@ -978,6 +1056,151 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				),
 			};
 			return funnel;
+		},
+
+		async getCrmConnection(officeId) {
+			const row = await db.crmConnection.findUnique({
+				where: { officeId },
+				select: { kind: true },
+			});
+			return row ? { kind: row.kind } : null;
+		},
+
+		async setCrmConnection(officeId, kind) {
+			await db.$transaction(async (tx) => {
+				const current = await tx.crmConnection.findUnique({
+					where: { officeId },
+					select: { kind: true },
+				});
+				if ((current?.kind ?? null) === kind) return;
+				// Another CRM's leads, or none: the links and their cached outcomes go.
+				await tx.crmLink.deleteMany({ where: { officeId } });
+				if (kind === null) {
+					await tx.crmConnection.deleteMany({ where: { officeId } });
+					return;
+				}
+				await tx.crmConnection.upsert({
+					where: { officeId },
+					create: { officeId, kind },
+					update: { kind, failedAt: null, refreshedAt: null },
+				});
+			});
+		},
+
+		async saveCrmLink(conversationId, link, expected) {
+			const conversation = await db.conversation.findUniqueOrThrow({
+				where: { id: conversationId },
+				select: { officeId: true, crmLink: { select: { leadId: true } } },
+			});
+			const sameLead = conversation.crmLink?.leadId === link.leadId;
+			const data = {
+				officeId: conversation.officeId,
+				kind: link.kind,
+				leadId: link.leadId,
+				leadName: link.leadName,
+				method: link.method,
+				checkedAt: link.checkedAt,
+				// Another lead's outcome is not this lead's.
+				...(sameLead
+					? {}
+					: { outcome: null, outcomeAt: null, outcomeReason: null, outcomeObservedAt: null }),
+			};
+			if (expected === null) {
+				// Only if nobody linked the thread since it was read.
+				const { count } = await db.crmLink.createMany({
+					data: [{ conversationId, ...data }],
+					skipDuplicates: true,
+				});
+				return count > 0;
+			}
+			if (expected) {
+				const { count } = await db.crmLink.updateMany({
+					where: {
+						conversationId,
+						leadId: expected.leadId,
+						checkedAt: new Date(expected.checkedAt),
+					},
+					data,
+				});
+				return count > 0;
+			}
+			await db.crmLink.upsert({
+				where: { conversationId },
+				create: { conversationId, ...data },
+				update: data,
+			});
+			return true;
+		},
+
+		async saveCrmOutcomes(updates, checkedAt) {
+			await db.$transaction(async (tx) => {
+				for (const update of updates) {
+					const current = await tx.crmLink.findUnique({
+						where: { conversationId: update.conversationId },
+						select: { leadId: true, outcome: true, outcomeObservedAt: true },
+					});
+					if (!current || (update.leadId && current.leadId !== update.leadId)) continue;
+					// Q3 (ADR 0003): a decided outcome is observed once, when it first appears.
+					const outcomeObservedAt = !isDecided(update.outcome)
+						? null
+						: current.outcome === update.outcome
+							? (current.outcomeObservedAt ?? checkedAt)
+							: checkedAt;
+					// Only the link as read: a relink meanwhile is not this lead's outcome.
+					await tx.crmLink.updateMany({
+						where: {
+							conversationId: update.conversationId,
+							leadId: current.leadId,
+							outcome: current.outcome,
+						},
+						data: {
+							outcome: update.outcome,
+							outcomeAt: update.outcomeAt,
+							outcomeReason: update.outcomeReason,
+							outcomeObservedAt,
+							checkedAt,
+						},
+					});
+				}
+			});
+		},
+
+		async upsertMockCrmLead(lead) {
+			const data = {
+				officeId: lead.officeId,
+				name: lead.name,
+				phone: lead.phone,
+				outcome: lead.outcome,
+				outcomeAt: lead.outcomeAt ? new Date(lead.outcomeAt) : null,
+				outcomeReason: lead.outcomeReason,
+			};
+			await db.mockCrmLead.upsert({
+				where: { id: lead.id },
+				create: { id: lead.id, ...data },
+				update: data,
+			});
+		},
+
+		async findMockCrmLeads(officeId, where) {
+			const rows = await db.mockCrmLead.findMany({
+				where: {
+					officeId,
+					...(where.phone ? { phone: where.phone } : {}),
+					...(where.ids ? { id: { in: where.ids } } : {}),
+					...(where.query ? { name: { contains: where.query, mode: "insensitive" } } : {}),
+				},
+				orderBy: { name: "asc" },
+				take: 20,
+			});
+			return rows.map((row) => ({
+				id: row.id,
+				officeId: row.officeId,
+				name: row.name,
+				phone: row.phone,
+				outcome: row.outcome,
+				outcomeAt: isoOrNull(row.outcomeAt),
+				outcomeReason: row.outcomeReason,
+			}));
 		},
 
 		async close() {

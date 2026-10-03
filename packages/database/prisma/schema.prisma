@@ -41,7 +41,7 @@ model User {
   notifications            Notification[]
   notificationPreferences  UserNotificationPreference[]
   answers                  Answer[]
-  ownedConversations       Conversation[] @relation("ConversationOwner")
+  ownedConversations       Conversation[]               @relation("ConversationOwner")
 
   @@unique([email])
   @@map("user")
@@ -150,7 +150,7 @@ model TwoFactor {
 }
 
 model Organization {
-  id                 String       @id @default(cuid())
+  id                 String           @id @default(cuid())
   name               String
   slug               String?
   logo               String?
@@ -162,6 +162,8 @@ model Organization {
   purchases          Purchase[]
   conversations      Conversation[]
   pipeConnections    PipeConnection[]
+  crmConnection      CrmConnection?
+  mockCrmLeads       MockCrmLead[]
 
   @@unique([slug])
   @@map("organization")
@@ -320,6 +322,7 @@ model Conversation {
   draft              Draft?
   paperwork          Paperwork?
   answers            Answer[]
+  crmLink            CrmLink?
 
   @@unique([officeId, pipe, guestId])
   @@index([officeId])
@@ -491,4 +494,74 @@ model WebhookDelivery {
 
   @@index([receivedAt])
   @@map("inbox_webhook_delivery")
+}
+
+enum CrmKind {
+  mock
+}
+
+enum CrmOutcomeStatus {
+  open
+  won
+  lost
+}
+
+enum CrmLinkMethod {
+  phone
+  manual
+}
+
+/// The office's CRM (ADR 0003). One per office; set by the platform admin.
+model CrmConnection {
+  officeId    String       @id
+  office      Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind        CrmKind
+  /// When the CRM last failed.
+  failedAt    DateTime?
+  /// The reconcile's lease (ADR 0003): when it last started for this office, so one instance
+  /// runs it at a time.
+  refreshedAt DateTime?
+  updatedAt   DateTime     @updatedAt
+
+  @@map("inbox_crm_connection")
+}
+
+/// A thread's link to a CRM lead, with the lead's outcome cached. `leadId` null: a lookup
+/// found nothing, or a manager unlinked it (method manual, which automatic matching never
+/// overrides).
+model CrmLink {
+  conversationId    String            @id
+  conversation      Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId          String
+  kind              CrmKind
+  leadId            String?
+  leadName          String?
+  method            CrmLinkMethod
+  outcome           CrmOutcomeStatus?
+  /// The CRM's own date for the outcome, for display.
+  outcomeAt         DateTime?
+  outcomeReason     String?
+  /// When Nhịp first saw the current outcome. A guest who writes after it is back in the
+  /// queue (ADR 0003).
+  outcomeObservedAt DateTime?
+  /// When the CRM was last asked about this thread.
+  checkedAt         DateTime
+
+  @@index([officeId])
+  @@map("inbox_crm_link")
+}
+
+/// The mock CRM's leads (ADR 0003): development, tests and the demo. Phones are E.164.
+model MockCrmLead {
+  id            String           @id
+  officeId      String
+  office        Organization     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String?
+  outcome       CrmOutcomeStatus @default(open)
+  outcomeAt     DateTime?
+  outcomeReason String?
+
+  @@index([officeId, phone])
+  @@map("inbox_mock_crm_lead")
 }

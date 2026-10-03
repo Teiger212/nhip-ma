@@ -45,3 +45,45 @@ a working funnel. The mock is also the fallback when matching fails.
   until the office stores Zalo ids in the CRM.
 - Credentials per CRM follow the pattern in `config.ts`: validated at startup, settled
   fields, no raw env reads downstream.
+
+## Amendment (2026-10-03): a real CRM for a demo, decided before building
+
+Decided with Eyal after reviewing `feat/crm-seam` (`reports/crm-seam-plan-2026-10-03.md`,
+Q1 to Q23). The seam, the cached link per thread and the conditional writes stand. These
+supersede the matching, write-back, refresh and Attio points above where they differ.
+
+- **The demo CRM is HubSpot's free CRM** (Q20): free forever, recognised by buyers, a deal
+  board where the closing shows, signed webhooks, and one call creates a contact with its
+  deal. Attio is dropped as the default; Bitrix24 is the likely second adapter for Vietnam,
+  built only after beta agencies name their CRM (Q22). The demo pipe is Zalo (Q23); its
+  inbound is a real pipe, rehearsed locally against a HubSpot sandbox (Q17). Staging only:
+  production stays on the mock until a beta agency names its CRM (Q2).
+- **Write-back comes first, with reading** (Q2, Q11 to Q15). The guest's first message
+  creates the lead, for every new guest: the contact (name, phone, pipe, language, the
+  extracted fields, a link to the thread; never message transcripts) and its deal. A phone
+  already in the CRM reuses the contact; a new deal is created only if that contact has no
+  open deal, otherwise the thread links to the open one. A contact Nhịp creates stores the
+  Zalo user id in a custom property, so later lookups match without a phone. Deals start
+  unassigned. A failed write retries with backoff and a cap; managers see "Not in CRM yet";
+  the guest and the queue never wait on it (Q16).
+- **Resolved ends when the guest writes after `outcomeObservedAt`** (Q3), the time Nhịp
+  first saw the outcome: not the CRM's close date (a backdated close must not hide a guest
+  who wrote meanwhile), and not the last check. The same outcome seen again keeps its first
+  observation; a different one is observed anew.
+- **No fetch on view** (Q4, replaces "Decided when building" on `feat/crm-seam`). Webhooks
+  update the cached outcome at once; an hourly reconcile per office, single-flight behind a
+  lease (`CrmConnection.refreshedAt`), catches what a webhook missed. The inbox's 10 s poll
+  never calls the CRM. Home never waits on the CRM either: it shows cached closings and lost
+  with an "as of" time (Q5).
+- **Managers link and unlink by hand; agents see the CRM status read-only** (Q1; replaces
+  "the agent picks the lead"). To be revisited with UX; Zalo-id matching removes most manual
+  links anyway.
+- **Matching never guesses.** E.164 through `libphonenumber-js` with Vietnam as the default
+  region (Q19); two leads on one phone match neither.
+- **Credentials are encrypted per office**, like pipe credentials (ADR 0017): a HubSpot
+  private-app token entered by the platform admin in the office's Connections card, next to
+  Zalo and WhatsApp (Q6, Q18). A public OAuth app waits until several offices use HubSpot.
+- **Won and Lost are neutral badges** in place of the turn while a thread is resolved
+  (DESIGN.md).
+- **Shipped in slices**, one PR each from `main`, never stacked (Q8): data and queue; the
+  HubSpot adapter; Home, admin and seed; the manual link. Each ships its own tests (Q7).

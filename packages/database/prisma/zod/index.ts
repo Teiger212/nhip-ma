@@ -154,6 +154,24 @@ export const WebhookDeliveryScalarFieldEnumSchema = z.enum(['id', 'pipe', 'recei
 
 export type WebhookDeliveryScalarFieldEnum = z.infer<typeof WebhookDeliveryScalarFieldEnumSchema>;
 
+// File: CrmConnectionScalarFieldEnum.schema.ts
+
+export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'failedAt', 'refreshedAt', 'updatedAt'])
+
+export type CrmConnectionScalarFieldEnum = z.infer<typeof CrmConnectionScalarFieldEnumSchema>;
+
+// File: CrmLinkScalarFieldEnum.schema.ts
+
+export const CrmLinkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'kind', 'leadId', 'leadName', 'method', 'outcome', 'outcomeAt', 'outcomeReason', 'outcomeObservedAt', 'checkedAt'])
+
+export type CrmLinkScalarFieldEnum = z.infer<typeof CrmLinkScalarFieldEnumSchema>;
+
+// File: MockCrmLeadScalarFieldEnum.schema.ts
+
+export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name', 'phone', 'outcome', 'outcomeAt', 'outcomeReason'])
+
+export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -231,6 +249,24 @@ export type DraftSource = z.infer<typeof DraftSourceSchema>;
 export const AnswerStatusSchema = z.enum(['sending', 'sent', 'failed', 'unknown'])
 
 export type AnswerStatus = z.infer<typeof AnswerStatusSchema>;
+
+// File: CrmKind.schema.ts
+
+export const CrmKindSchema = z.enum(['mock'])
+
+export type CrmKind = z.infer<typeof CrmKindSchema>;
+
+// File: CrmLinkMethod.schema.ts
+
+export const CrmLinkMethodSchema = z.enum(['phone', 'manual'])
+
+export type CrmLinkMethod = z.infer<typeof CrmLinkMethodSchema>;
+
+// File: CrmOutcomeStatus.schema.ts
+
+export const CrmOutcomeStatusSchema = z.enum(['open', 'won', 'lost'])
+
+export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatusSchema>;
 
 // File: User.schema.ts
 
@@ -611,4 +647,51 @@ export const WebhookDeliverySchema = z.object({
 });
 
 export type WebhookDeliveryType = z.infer<typeof WebhookDeliverySchema>;
+
+
+// File: CrmConnection.schema.ts
+
+export const CrmConnectionSchema = z.object({
+  officeId: z.string(),
+  kind: CrmKindSchema,
+  failedAt: z.date().nullish(),
+  refreshedAt: z.date().nullish(),
+  updatedAt: z.date(),
+});
+
+export type CrmConnectionType = z.infer<typeof CrmConnectionSchema>;
+
+
+// File: CrmLink.schema.ts
+
+export const CrmLinkSchema = z.object({
+  conversationId: z.string(),
+  officeId: z.string(),
+  kind: CrmKindSchema,
+  leadId: z.string().nullish(),
+  leadName: z.string().nullish(),
+  method: CrmLinkMethodSchema,
+  outcome: CrmOutcomeStatusSchema.nullish(),
+  outcomeAt: z.date().nullish(),
+  outcomeReason: z.string().nullish(),
+  outcomeObservedAt: z.date().nullish(),
+  checkedAt: z.date(),
+});
+
+export type CrmLinkType = z.infer<typeof CrmLinkSchema>;
+
+
+// File: MockCrmLead.schema.ts
+
+export const MockCrmLeadSchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  name: z.string(),
+  phone: z.string().nullish(),
+  outcome: CrmOutcomeStatusSchema.default("open"),
+  outcomeAt: z.date().nullish(),
+  outcomeReason: z.string().nullish(),
+});
+
+export type MockCrmLeadType = z.infer<typeof MockCrmLeadSchema>;
 

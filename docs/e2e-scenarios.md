@@ -10,27 +10,36 @@ Seed: `pnpm seed --reset` (walk office, mock CRM). Logins: `walk@nhip.local` (ag
 
 ## CRM (ADR 0003)
 
-1. **Link a thread by hand.** As the agent, open Minji's thread, choose "Link to CRM lead",
-   search "minji", pick Minji Park. The header shows "In CRM: Minji Park".
-2. **Unlink sticks.** Unlink Minji's thread; after the next refresh (10 minutes, or reload
-   after changing the TTL for the test) it is still unlinked, even though her phone would
-   match.
-3. **A lead of another office cannot be linked.** Posting another office's lead id to
-   `/api/conversations/:id/crm-link` answers 404 `lead_not_found`; another office's thread
-   answers 404 `not_found`.
-4. **No CRM, no picker.** With the office's CRM set to None, the thread shows no CRM chip
-   and the leads search answers 409 `crm_not_connected`.
-5. **Lost leaves the queue, and comes back.** Alexei (lost in the mock CRM) is under Sent
-   with "Lost", not in Your turn or Quiet. Send a guest message as Alexei
-   (`POST /dev/inbound`); he is back in Your turn.
-6. **Home counts deals from the CRM.** Home shows Closings and Lost with "From your CRM ·
-   n of m leads linked". Link a second thread to the same won lead: Closings does not go
-   up.
-7. **CRM down.** With the CRM failing (a test adapter that throws), Home loads, shows the
-   cached Closings and Lost, and says the CRM did not answer in time.
-8. **The admin connects an office.** As the platform admin, Admin → Organizations → walk
-   office → CRM: choose None; the agent's Home shows "Connect your CRM". Choose Mock CRM;
-   the numbers return. A non-admin calling the admin CRM procedure is refused.
+Decided 2026-10-03 (ADR 0003 amendment): managers link and unlink by hand, agents see the
+CRM status read-only; outcomes arrive by webhook and an hourly reconcile, never on view.
+Scenarios marked _(slice n)_ get their spec with that slice of the CRM seam.
+
+1. **A manager links a thread by hand** _(slice 4)_. As the manager, open Minji's thread,
+   choose "Link to CRM lead", search "min" (3 characters at least), pick Minji Park. The
+   header shows "In CRM: Minji Park". The agent sees the same, read-only.
+2. **Unlink sticks** _(slice 4)_. The manager unlinks Minji's thread; after the next
+   reconcile it is still unlinked, even though her phone would match.
+3. **Another office's lead or thread does not exist** _(slice 4)_. Posting another
+   office's lead id to `/api/conversations/:id/crm-link` answers 404 `lead_not_found`;
+   another office's thread answers 404 `not_found`; an agent linking a colleague's thread
+   finds nothing (404).
+4. **No CRM, no picker** _(slice 4)_. With the office's CRM set to None, the thread shows
+   no CRM status and the leads search answers 409 `crm_not_connected`.
+5. **Lost leaves the queue, and comes back.** A new guest writes on Zalo to an OA the walk
+   office holds. Setup: the office is on the mock CRM and the CRM reports that guest's lead
+   lost (`markLeadLost` in `apps/saas/tests/support/crm.ts`). As the agent, the thread is
+   under Sent with a "Lost" badge where the turn was, not in Your turn, and the Inbox nav
+   count does not count it. The guest writes again: the thread is back in Your turn with
+   "Your turn", and the nav count counts it.
+6. **Home counts deals from the CRM** _(slice 3)_. Home shows Closings and Lost from the
+   cache with an "as of" time. Link a second thread to the same won lead: Closings does not
+   go up.
+7. **CRM down** _(slice 3)_. With the CRM failing, Home loads at once with the cached
+   Closings and Lost and their "as of" time; it never waits on the CRM.
+8. **The admin connects an office** _(slice 3)_. As the platform admin, the office's
+   Connections card, next to Zalo and WhatsApp: choose None; the agent's Home shows "Connect
+   your CRM". Choose Mock; the numbers return. A non-admin calling the admin CRM procedure is
+   refused.
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 

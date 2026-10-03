@@ -3,12 +3,15 @@ import { expect, test } from "vitest";
 import {
 	buildQueueView,
 	inView,
+	inQueue,
 	isInboxView,
 	isQuiet,
+	isResolved,
+	threadStatus,
 	nextSelection,
 	QUIET_AFTER_MS,
 } from "./queue";
-import type { ConversationSummary } from "./types";
+import type { ConversationCrm, ConversationSummary } from "./types";
 
 const NOW = new Date("2026-09-05T12:00:00.000Z").getTime();
 
@@ -24,6 +27,7 @@ function conv(
 		lastGuestInboundAt: at,
 		sentAt: null,
 		unansweredInboundId: `${partial.id}:1`,
+		crm: null,
 		updatedAt: at,
 		guestLanguage: null,
 		lastInboundText: `hello from ${partial.guestName}`,
@@ -142,4 +146,113 @@ test("view parsing", () => {
 	expect(isInboxView("sent")).toBe(true);
 	expect(isInboxView("yourTurn")).toBe(true);
 	expect(isInboxView("needsReply")).toBe(false);
+});
+
+/** A linked lead whose outcome Nhịp observed at `observedAt`; the CRM dates it `outcomeAt`. */
+const crm = (
+	outcome: "open" | "won" | "lost",
+	observedAt: string,
+	outcomeAt: string = observedAt,
+): ConversationCrm => ({
+	kind: "mock",
+	leadId: "lead-1",
+	leadName: "Lead",
+	method: "phone",
+	outcome,
+	outcomeAt,
+	outcomeReason: null,
+	outcomeObservedAt: outcome === "open" ? null : observedAt,
+	checkedAt: observedAt,
+});
+
+// CONTEXT "Resolved": the CRM reports won or lost; it leaves the queue, visible under Sent / All.
+test("a won or lost lead leaves the queue and shows under Sent and All", () => {
+	const lost = conv({
+		id: "lost",
+		guestName: "L",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z"),
+	});
+	const open = conv({
+		id: "open",
+		guestName: "O",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("open", "2026-09-04T11:00:00.000Z"),
+	});
+	expect(isResolved(lost)).toBe(true);
+	expect(inQueue(lost)).toBe(false);
+	expect(inQueue(open)).toBe(true);
+	const queue = buildQueueView([lost, open], "yourTurn", "", NOW);
+	expect(queue.visible.map((c) => c.id)).toEqual(["open"]);
+	expect(queue.counts).toEqual({ yourTurn: 1, sent: 1, all: 2 });
+	expect(buildQueueView([lost, open], "sent", "", NOW).visible.map((c) => c.id)).toEqual(["lost"]);
+	expect(buildQueueView([lost, open], "all", "", NOW).visible).toHaveLength(2);
+});
+
+// CONTEXT "Resolved": leaves the queue until the guest writes again.
+test("a guest who writes after Nhịp observed the outcome is back in the queue", () => {
+	const wroteBack = conv({
+		id: "back",
+		guestName: "B",
+		lastGuestInboundAt: "2026-09-04T12:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z"),
+	});
+	expect(isResolved(wroteBack)).toBe(false);
+	expect(inQueue(wroteBack)).toBe(true);
+});
+
+// ADR 0003 (Q3): the time Nhịp first saw the outcome decides, never the CRM's own close date.
+test("a backdated close does not hide a guest who wrote before Nhịp saw it", () => {
+	// The CRM dates the loss at 09:00; the guest wrote at 10:00; Nhịp saw the loss at 11:00.
+	const backdated = conv({
+		id: "backdated",
+		guestName: "D",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z", "2026-09-04T09:00:00.000Z"),
+	});
+	expect(isResolved(backdated)).toBe(true);
+	expect(inQueue(backdated)).toBe(false);
+});
+
+test("an unlinked, unmatched or open thread is untouched by the CRM", () => {
+	const plain = conv({ id: "plain", guestName: "P" });
+	const miss = conv({
+		id: "miss",
+		guestName: "M",
+		crm: { ...crm("lost", "2026-09-04T11:00:00.000Z"), leadId: null },
+	});
+	for (const thread of [plain, miss]) {
+		expect(isResolved(thread)).toBe(false);
+		expect(inQueue(thread)).toBe(true);
+	}
+});
+
+// DESIGN.md "In the inbox": one status badge per thread; the CRM's outcome replaces the turn while resolved.
+test("a thread's status: the outcome while resolved, the turn otherwise", () => {
+	const lost = conv({
+		id: "l",
+		guestName: "L",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("lost", "2026-09-04T11:00:00.000Z"),
+	});
+	const won = conv({
+		id: "w",
+		guestName: "W",
+		lastGuestInboundAt: "2026-09-04T10:00:00.000Z",
+		crm: crm("won", "2026-09-04T11:00:00.000Z"),
+	});
+	const back = conv({
+		id: "b",
+		guestName: "B",
+		lastGuestInboundAt: "2026-09-04T12:00:00.000Z",
+		crm: crm("won", "2026-09-04T11:00:00.000Z"),
+	});
+	const answered = conv({ id: "a", guestName: "A", unansweredInboundId: null });
+	expect([lost, won, back, answered, conv({ id: "p", guestName: "P" })].map(threadStatus)).toEqual([
+		"lost",
+		"won",
+		"yourTurn",
+		"sent",
+		"yourTurn",
+	]);
 });

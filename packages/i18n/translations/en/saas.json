@@ -887,6 +887,10 @@
 			"guest": "Guest",
 			"nhip": "Sent from Nhịp",
 			"oaEcho": "Sent from the office's app"
+		},
+		"crm": {
+			"won": "Won",
+			"lost": "Lost"
 		}
 	}
 }

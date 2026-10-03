@@ -3,7 +3,7 @@ import type { ConversationSummary } from "./types";
 
 /**
  * The inbox is a queue. These are the rules that define it (ADR 0004): "Your turn" is the
- * only pending state, the quiet section holds the Your-turn threads the guest has not
+ * only pending state, a resolved thread (ADR 0003) leaves it, the quiet section holds the Your-turn threads the guest has not
  * touched for a while, and each view has one order. The client module renders a
  * QueueView; it does not restate any of this. The queue reads thread summaries, which is
  * all the list loads; the open thread is loaded whole on its own.
@@ -27,21 +27,49 @@ function time(value: string | null): number {
 	return value ? new Date(value).getTime() : 0;
 }
 
-/** Still Your turn, but the guest last wrote more than 48 hours ago. */
-export function isQuiet(
-	conversation: Pick<ConversationSummary, "unansweredInboundId" | "lastGuestInboundAt">,
-	now: number = Date.now(),
+type QueueFields = Pick<ConversationSummary, "unansweredInboundId" | "crm" | "lastGuestInboundAt">;
+
+/**
+ * The CRM reports the lead won or lost (CONTEXT, "Resolved"), and the guest has not written
+ * since Nhịp observed that outcome (ADR 0003). A guest who writes after it is back in the
+ * queue: a lost lead writing again is exactly who the agent must see. The CRM's own close
+ * date never decides this; a backdated close must not hide a guest who wrote meanwhile.
+ */
+export function isResolved(
+	conversation: Pick<ConversationSummary, "crm" | "lastGuestInboundAt">,
 ): boolean {
-	const last = time(conversation.lastGuestInboundAt);
-	return yourTurn(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
+	const crm = conversation.crm;
+	if (!crm?.leadId || (crm.outcome !== "won" && crm.outcome !== "lost")) return false;
+	if (!crm.outcomeObservedAt || !conversation.lastGuestInboundAt) return true;
+	return time(conversation.lastGuestInboundAt) <= time(crm.outcomeObservedAt);
 }
 
-export function inView(
-	conversation: Pick<ConversationSummary, "unansweredInboundId">,
-	view: InboxView,
-): boolean {
+/** In the queue: Your turn and not resolved. */
+export function inQueue(conversation: QueueFields): boolean {
+	return yourTurn(conversation) && !isResolved(conversation);
+}
+
+/**
+ * The one status a thread shows (on its row and header): the CRM's outcome while resolved,
+ * otherwise whose turn it is. A resolved thread is not the agent's turn, even if the guest
+ * spoke last before the outcome.
+ */
+export function threadStatus(conversation: QueueFields): "yourTurn" | "sent" | "won" | "lost" {
+	if (isResolved(conversation)) {
+		return conversation.crm?.outcome === "won" ? "won" : "lost";
+	}
+	return yourTurn(conversation) ? "yourTurn" : "sent";
+}
+
+/** Still in the queue, but the guest last wrote more than 48 hours ago. */
+export function isQuiet(conversation: QueueFields, now: number = Date.now()): boolean {
+	const last = time(conversation.lastGuestInboundAt);
+	return inQueue(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
+}
+
+export function inView(conversation: QueueFields, view: InboxView): boolean {
 	if (view === "all") return true;
-	return view === "sent" ? !yourTurn(conversation) : yourTurn(conversation);
+	return view === "sent" ? !inQueue(conversation) : inQueue(conversation);
 }
 
 /** Oldest waiting guest first in the queue; most recent activity first elsewhere. */
@@ -78,7 +106,7 @@ export function buildQueueView(
 	const matching = conversations.filter((conversation) => matchesThreadSearch(conversation, query));
 	const counts: QueueCounts = { yourTurn: 0, sent: 0, all: matching.length };
 	for (const conversation of matching) {
-		if (yourTurn(conversation)) counts.yourTurn += 1;
+		if (inQueue(conversation)) counts.yourTurn += 1;
 		else counts.sent += 1;
 	}
 	const inOrder = matching

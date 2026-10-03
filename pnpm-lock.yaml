@@ -545,6 +545,9 @@ importers:
       js-cookie:
         specifier: 'catalog:'
         version: 3.0.8
+      libphonenumber-js:
+        specifier: ^1.13.14
+        version: 1.13.14
       lucide-react:
         specifier: 'catalog:'
         version: 1.31.0(react@19.2.8)
@@ -6134,6 +6137,9 @@ packages:
 
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
+
+  libphonenumber-js@1.13.14:
+    resolution: {integrity: sha512-llihgCcx0BFLksecLP+x1J+6JDE1GsXS1RN/LoPF6qcwpeQcnjj0lcvZxY8AzbEpYwyZWPZW/nDuqkqzm3amiw==}
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -12754,6 +12760,8 @@ snapshots:
   layout-base@2.0.1: {}
 
   leac@0.6.0: {}
+
+  libphonenumber-js@1.13.14: {}
 
   lightningcss-android-arm64@1.32.0:
     optional: true

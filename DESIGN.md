@@ -413,6 +413,7 @@ Confident, compact pills that press in slightly.
 - **One component:** `Badge` (`packages/ui/components/badge.tsx`) is the only status mark, in the inbox, on Home and in Admin. 20px tall (`h-5`), 8px horizontal padding, 4.8px radius (`rounded-md`), Label type (500, `text-micro`), no border.
 - **Tones:** each is its color as text on a 12% tint of itself. Neutral (default) is Slate Note on Morning Wash; info is Dispatch Blue; success is Sent Green; warning is Your-Turn Amber; error is Signal Red.
 - **In the inbox:** Your turn is warning, Sent is success, the pipe (WhatsApp / Zalo) and the owner are neutral. Row and thread header use the same badges in the same order: pipe, owner, then turn.
+- **Won and Lost:** while a thread is resolved (ADR 0003), the CRM's outcome takes the turn's place as a neutral badge. Neither is colored: an outcome is not the turn (The Turn Is The Signal Rule), and Lost is not an error. When the guest writes again, the turn badge comes back.
 - **Count (`numeric`):** the same badge in Count type (Plex Mono, tabular). The amber count of Your-turn threads rides on the Inbox nav item on every page, and on Waiting now's title.
 - **Inline (`size="sm"`):** 16px, 6px padding, Micro Caps size in sentence case; the info-toned mock badge on a message's meta line.
 - **In Admin:** connected and filed are success; banned, needs-reconnect, failed and refused are error; an office with no pipe ("none") and a dropped delivery are neutral, because an absence is not a failure.

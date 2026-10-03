@@ -1,6 +1,9 @@
 import type {
 	Funnel,
 	AnswerStatus,
+	CrmKind,
+	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -155,6 +158,8 @@ export type Conversation = {
 	lastAnswer: Answer | null;
 	/** The agent who owns the thread (ADR 0015), or null while it is in the office's pool. */
 	owner: { id: string; name: string } | null;
+	/** The thread's CRM lead and its cached outcome (ADR 0003); null while it has no link. */
+	crm: ConversationCrm | null;
 	updatedAt: string;
 };
 
@@ -177,11 +182,43 @@ export type ConversationSummary = Pick<
 	| "sentAt"
 	| "unansweredInboundId"
 	| "updatedAt"
+	| "crm"
 > & {
 	/** The guest's language as the one-shot detected it; null until it has run. */
 	guestLanguage: GuestLanguage | null;
 	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
 	lastInboundText: string;
+};
+
+export type ConversationCrm = {
+	kind: CrmKind;
+	/** null: a lookup found nothing, or a manager unlinked it (method `manual`). */
+	leadId: string | null;
+	leadName: string | null;
+	method: CrmLinkMethod;
+	outcome: CrmOutcomeStatus | null;
+	/** The CRM's own date for the outcome, for display only. */
+	outcomeAt: string | null;
+	outcomeReason: string | null;
+	/**
+	 * When Nhịp first saw the current outcome. The thread is resolved until the guest writes
+	 * after it (ADR 0003); the CRM's own date never decides that.
+	 */
+	outcomeObservedAt: string | null;
+	/** When the CRM was last asked about this thread. */
+	checkedAt: string;
+};
+
+/** A lead in the mock CRM (ADR 0003). */
+export type MockCrmLeadRecord = {
+	id: string;
+	officeId: string;
+	name: string;
+	/** E.164, or null. */
+	phone: string | null;
+	outcome: CrmOutcomeStatus;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
 };
 
 /** A guest message's failed translations into one operator language (ADR 0007). */
@@ -373,6 +410,53 @@ export type InboxStore = {
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
 	/** Delete deliveries received before `before`; returns how many went. */
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
+	/** The office's CRM (ADR 0003), or null when none is connected. */
+	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
+	/**
+	 * Connect the office to a CRM kind, or disconnect it with `null`. Disconnecting or
+	 * changing the kind drops the office's thread links: another CRM's leads mean nothing.
+	 */
+	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
+	/**
+	 * Link a thread to a lead (or record a miss with `leadId: null`); a new lead drops the old
+	 * outcome. With `expected`, write only if the link is still what was read (null: no link
+	 * yet), so a background lookup never overwrites a manager's link made meanwhile. Returns
+	 * whether it wrote.
+	 */
+	saveCrmLink: (
+		conversationId: string,
+		link: {
+			kind: CrmKind;
+			leadId: string | null;
+			leadName: string | null;
+			method: CrmLinkMethod;
+			checkedAt: Date;
+		},
+		expected?: { leadId: string | null; checkedAt: string } | null,
+	) => Promise<boolean>;
+	/**
+	 * Cache what the CRM said about linked threads' leads, as of `checkedAt`. A won or lost
+	 * outcome Nhịp had not seen yet is observed at `checkedAt`; the same outcome again keeps
+	 * its first observation. An update that names `leadId` is skipped when the thread now
+	 * links another lead; a link gone meanwhile is skipped too.
+	 */
+	saveCrmOutcomes: (
+		updates: Array<{
+			conversationId: string;
+			leadId?: string;
+			outcome: CrmOutcomeStatus | null;
+			outcomeAt: Date | null;
+			outcomeReason: string | null;
+		}>,
+		checkedAt: Date,
+	) => Promise<void>;
+	/** Write a mock CRM lead (ADR 0003): seed and tests. */
+	upsertMockCrmLead: (lead: MockCrmLeadRecord) => Promise<void>;
+	/** The office's mock CRM leads by E.164 phone, by name, or by id; at most 20. */
+	findMockCrmLeads: (
+		officeId: string,
+		where: { phone?: string; query?: string; ids?: string[] },
+	) => Promise<MockCrmLeadRecord[]>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

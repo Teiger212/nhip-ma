@@ -10,7 +10,7 @@ import {
 import { useLocale } from "next-intl";
 import { useState } from "react";
 
-import { yourTurn } from "./queue";
+import { inQueue } from "./queue";
 import { summarize } from "./summary";
 import type { Conversation, ConversationSummary, Pipe } from "./types";
 
@@ -125,7 +125,7 @@ export function useYourTurnCount({
 		retry: false,
 	});
 	const value = listMounted
-		? (list.data?.filter(yourTurn).length ?? null)
+		? (list.data?.filter(inQueue).length ?? null)
 		: (count.data?.count ?? null);
 	const [held, setHeld] = useState<number | null>(null);
 	if (value !== null && value !== held) setHeld(value);

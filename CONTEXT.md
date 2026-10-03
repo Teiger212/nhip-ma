@@ -66,7 +66,9 @@ is renamed.
   nothing. When the owner's account ends (ADR 0013), the thread returns to the pool.
 - **Reassign**: a manager gives a thread to another operator of the office, or back to the
   pool. Only managers reassign; agents never hand threads on.
-- **Resolved**: the CRM reports won or lost. Leaves the queue; visible under Sent / All.
+- **Resolved**: the CRM reports won or lost. Leaves the queue until the guest writes again
+  after Nhịp first saw that outcome (not the CRM's own close date); visible under Sent / All
+  with a neutral Won or Lost badge in place of the turn (ADR 0003).
 - There is no dismiss. The queue empties through sends and outcomes (ADR 0004).
 - **Home**: the numbers screen. Widgets made of graphs, visible to every operator, not
   gated by role. Office-level only. The headline is the **funnel** (ADR 0002); response
@@ -139,9 +141,13 @@ is renamed.
   the owner. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
   backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
-  become a CRM. First real adapter: **Attio** (provisional).
+  become a CRM. First real adapter: **HubSpot**'s free CRM, for the demo (ADR 0003,
+  2026-10-03); Attio is dropped as the default.
 - **CRM link**: the stored association between a conversation and a CRM lead. Made
-  automatically by phone number (E.164), or by the agent through "link to CRM lead".
+  automatically (by phone number in E.164, or by the Zalo user id Nhịp stored on a contact
+  it created), or by a **manager** through "link to CRM lead"; agents see the link
+  read-only. A manager's unlink is remembered; automatic matching never relinks it. An
+  ambiguous match (two leads on one phone) links nothing.
 
 ## Deliberately not
 

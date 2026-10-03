@@ -78,3 +78,11 @@ and they land in the admin area. "Never a member" in this ADR reads as "never an
 - **Interactions**: the disconnected-pipe banner stays office-wide (it names no guest); red-team
   T1's reach is now the pool plus the agent's own threads; the CRM seam must read threads
   through the same visibility before it merges.
+
+## Amendment (2026-10-03): only managers link a thread to a CRM lead
+
+ADR 0003's amendment of the same date: a thread's CRM link is set or removed by hand by
+managers only; agents see the CRM status read-only. The CRM link reads threads through the
+same visibility as everything else, so an agent never sees a colleague's thread's lead. A
+resolved thread (won or lost) leaves its owner's queue like any other until the guest writes
+again; resolution changes no ownership.
