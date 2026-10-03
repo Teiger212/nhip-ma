@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type { APIRequestContext, APIResponse, Browser, Page } from "@playwright/test";
 
 import type { MockCrmLead } from "./support/crm";
 import { connectMockCrm, mockCrmLeads } from "./support/crm";
@@ -291,6 +291,11 @@ const crmConnection = {
 		}),
 };
 
+/** The office's CRM in a `GET /api/crm/connection` answer (it also lists the kinds on offer). */
+async function officeCrmIn(res: APIResponse): Promise<"mock" | null> {
+	return ((await res.json()) as { kind: "mock" | null }).kind;
+}
+
 // ---------------------------------------------------------------------------------------
 
 // scenario: docs/e2e-scenarios.md CRM 1
@@ -458,7 +463,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		await setting.shows("none", "the office has no CRM");
 		const asAdmin = await admin.api.get(address);
 		expect(asAdmin.status(), "the platform admin reads the office's CRM").toBe(200);
-		expect(await asAdmin.json()).toEqual({ kind: null });
+		expect(await officeCrmIn(asAdmin)).toBeNull();
 
 		// The office's own agent and manager: no Connections, no CRM setting, and the API refuses.
 		for (const [who, operator] of [
@@ -489,12 +494,12 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 
 		// Nothing changed: the office is still on no CRM.
 		const after = await admin.api.get(address);
-		expect(await after.json(), "the refused requests changed nothing").toEqual({ kind: null });
+		expect(await officeCrmIn(after), "the refused requests changed nothing").toBeNull();
 		await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
 
 		// The same request from the platform admin is taken: the refusals were about who asked.
 		const byAdmin = await crmConnection.put(admin.page.request, office.id, "mock");
 		expect(byAdmin.status(), "the platform admin sets the office's CRM").toBe(200);
-		expect(await (await admin.api.get(address)).json()).toEqual({ kind: "mock" });
+		expect(await officeCrmIn(await admin.api.get(address)), "the office is on Mock").toBe("mock");
 	});
 });
