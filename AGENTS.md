@@ -145,7 +145,7 @@ own. `scripts/worktree-db.sh <worktree>` gives it a copy-on-write child of Neon 
 `DATABASE_URL` into the worktree's `.env.local`, so worktrees on different schemas never break
 each other. Vitest and E2E stay on local Postgres, under the worktree's own names
 (`TEST_DATABASE_URL` and `E2E_DATABASE_URL`: `nhip_test_<name>`, `nhip_e2e_<name>`): they are wiped every run and CI has its own. When the
-worktree goes, `scripts/worktree-db.sh <worktree> --delete` removes its branch. The main
+worktree goes, `scripts/worktree-db.sh <worktree> --delete` removes its branch. Run single test files through the env, or they fall back to the shared `supastarter_test`: from `apps/saas`, `pnpm exec dotenv -c -e ../../.env -- vitest run <file>` (root `pnpm test` already loads it). The main
 checkout may stay on local Postgres (`supastarter`).
 
 **What Eyal sets by hand** (accounts, secrets, vendor settings) is tracked in
