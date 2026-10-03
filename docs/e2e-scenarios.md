@@ -55,6 +55,14 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    characters at least) and link Minji's thread to Minji Park; the agent sees it read-only and
    has no link controls. Unlinked, it stays unlinked. Another office's lead or thread answers
    404; an agent linking a colleague's thread finds nothing.
+8. **The admin connects an office to HubSpot** (#65). As the platform admin, on the office's
+   Connections card: choose HubSpot, enter the office's HubSpot access token and save. After a
+   reload the card shows HubSpot with a token set, and never the token itself; neither does
+   `GET /api/crm/connection`. HubSpot with no token is not saved. Saving a new token replaces
+   it, still unseen. The office's agent and manager find no CRM setting and get 403 from the
+   API; signed out, 401. No guest writes on a HubSpot office here and nothing calls HubSpot:
+   the HubSpot adapter is held to its contract by Vitest on recorded HubSpot HTTP (spec #59
+   stories 13 to 20), and the token's encryption at rest is ADR 0017's.
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 

@@ -132,7 +132,13 @@
 				"none": "None",
 				"mock": "Mock CRM (development and demo)",
 				"saved": "CRM saved.",
-				"failed": "Could not save the CRM. Try again."
+				"failed": "Could not save the CRM. Try again.",
+				"hubspot": "HubSpot",
+				"token": "HubSpot access token",
+				"tokenHint": "From the Nhịp app in this office's HubSpot account: Distribution, Show.",
+				"save": "Save",
+				"tokenSet": "Token saved. It is never shown again.",
+				"tokenRequired": "Enter the HubSpot access token."
 			}
 		},
 		"webhooks": {

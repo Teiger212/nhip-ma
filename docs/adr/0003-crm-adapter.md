@@ -82,7 +82,16 @@ supersede the matching, write-back, refresh and Attio points above where they di
 - **Matching never guesses.** E.164 through `libphonenumber-js` with Vietnam as the default
   region (Q19); a guest matching two leads is linked to neither, and no lead is added (#61).
 - **Credentials are encrypted per office**, like pipe credentials (ADR 0017): a HubSpot
-  private-app token entered by the platform admin in the office's Connections card, next to
-  Zalo and WhatsApp (Q6, Q18). A public OAuth app waits until several offices use HubSpot.
+  access token entered by the platform admin in the office's Connections card, next to Zalo
+  and WhatsApp (Q6, Q18), stored write-only. HubSpot no longer lets new accounts create
+  legacy private apps (2026-09-28), so the token is that of Nhịp's own app: a HubSpot CLI
+  project with static auth and private distribution, which installs on one standard account
+  (the demo portal) plus up to ten test accounts (#65). Static auth cannot reach every
+  office's account, and an app's auth type is fixed at its first upload, so the demo app has
+  a project name of its own and the production app is a separate OAuth app, built when a
+  second agency uses HubSpot. Its exchange and refresh can come from Better Auth's
+  `genericOAuth` HubSpot provider, with the tokens copied into the same per-office
+  credential, since Better Auth keeps them per user and an office's account is not one
+  user's (2026-10-03).
 - **Won and Lost are neutral badges** in place of the turn while a thread is resolved
   (DESIGN.md).
