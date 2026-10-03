@@ -1,8 +1,11 @@
 import crypto from "node:crypto";
 
+import type { CrmKind } from "../types";
+
 /**
- * Vendor tokens at rest (`inbox_pipe_credential`) and the connect cookie: AES-256-GCM under
- * `PIPE_SECRETS_KEY` (32 random bytes, base64), which lives only in the deployment's env.
+ * Vendor tokens at rest (`inbox_pipe_credential`, a CRM's on `inbox_crm_connection`) and the
+ * connect cookie: AES-256-GCM under `PIPE_SECRETS_KEY` (32 random bytes, base64), which lives
+ * only in the deployment's env.
  * A database copy without the key cannot send as the office. `context` is bound in as
  * associated data, so a sealed value only opens where it was sealed (this OA's refresh
  * token, the connect cookie): one moved to another row or purpose fails to open.
@@ -65,4 +68,9 @@ export function decryptSecret(sealed: string, base64Key: string, context: string
 /** Where a pipe token is sealed: its pipe, endpoint and kind. */
 export function tokenContext(pipe: string, externalId: string, kind: "access" | "refresh"): string {
 	return `token:${pipe}:${externalId}:${kind}`;
+}
+
+/** Where an office's CRM access token is sealed: its CRM kind and office. */
+export function crmTokenContext(kind: CrmKind, officeId: string): string {
+	return `token:crm:${kind}:${officeId}:access`;
 }

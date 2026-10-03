@@ -1,8 +1,9 @@
 import type { InboxStore } from "@repo/database/inbox";
 
 import { displayName } from "../display-name";
+import { crmTokenContext, decryptSecret, encryptSecret } from "../pipes/secrets";
 import type { Conversation, CrmKind } from "../types";
-import { crmAdapterFor } from "./adapters";
+import { type CrmAdapterConnection, crmAdapterFor, crmKindTakesToken } from "./adapters";
 import { guestIdentity } from "./phone";
 import { decideLead, observeOutcome } from "./rules";
 import type { CrmAdapter } from "./types";
@@ -16,23 +17,60 @@ export function createCrmSync(deps: {
 	store: InboxStore;
 	/** The address that opens this thread in Nhịp, written on the lead. */
 	threadUrl: (conversationId: string) => string;
+	/**
+	 * The deployment's key for tokens at rest (`PIPE_SECRETS_KEY`, ADR 0017). Without it no
+	 * office can be connected to a CRM that takes a token, and none such can be opened.
+	 */
+	secretsKey?: string;
 	/** The office's CRM; tests hand in one that fails. */
 	adapterFor?: typeof crmAdapterFor;
 }) {
 	const adapterFor = deps.adapterFor ?? crmAdapterFor;
-	const { store } = deps;
+	const { store, secretsKey } = deps;
+
+	/** The office's CRM, with its access token opened for the adapter; null when it has none. */
+	async function connectionOf(officeId: string): Promise<CrmAdapterConnection | null> {
+		const connection = await store.getCrmConnection(officeId);
+		if (!connection) return null;
+		if (!crmKindTakesToken(connection.kind)) return { kind: connection.kind, token: null };
+		const sealed = await store.getCrmAccessToken(officeId);
+		const token =
+			sealed && secretsKey
+				? decryptSecret(sealed, secretsKey, crmTokenContext(connection.kind, officeId))
+				: null;
+		return { kind: connection.kind, token };
+	}
+
 	return {
 		/**
 		 * The platform admin sets the office's CRM, or none (spec #59, Q6). The same CRM again
 		 * keeps the office's links; another, or none, drops them: another CRM's leads mean nothing.
 		 * Their cached outcomes go with them, so a won or lost thread whose guest spoke last is
-		 * back in Your turn (missing data never hides a guest). False when there is no such office.
+		 * back in Your turn (missing data never hides a guest).
+		 *
+		 * A CRM that takes an access token (#65) is connected only with one, sealed before it is
+		 * stored (ADR 0017); the same CRM with a new token replaces it and keeps the links. Nothing
+		 * is checked against the CRM here. Nothing changes unless the answer is `connected`.
 		 */
-		async connectOffice(officeId: string, kind: CrmKind | null): Promise<boolean> {
-			if (!(await store.officeExists(officeId))) return false;
+		async connectOffice(
+			officeId: string,
+			kind: CrmKind | null,
+			token?: string,
+		): Promise<"connected" | "no_office" | "token_required" | "no_secrets_key"> {
+			if (!(await store.officeExists(officeId))) return "no_office";
 			const current = await store.getCrmConnection(officeId);
-			if ((current?.kind ?? null) !== kind) await store.setCrmConnection(officeId, kind);
-			return true;
+			const sameKind = (current?.kind ?? null) === kind;
+			if (!kind || !crmKindTakesToken(kind)) {
+				if (!sameKind) await store.setCrmConnection(officeId, kind);
+				return "connected";
+			}
+			const trimmedToken = token?.trim();
+			if (!trimmedToken) return "token_required";
+			if (!secretsKey) return "no_secrets_key";
+			const sealed = encryptSecret(trimmedToken, secretsKey, crmTokenContext(kind, officeId));
+			if (sameKind) await store.replaceCrmAccessToken(officeId, sealed);
+			else await store.setCrmConnection(officeId, kind, sealed);
+			return "connected";
 		},
 
 		/**
@@ -41,7 +79,7 @@ export function createCrmSync(deps: {
 		 * thread goes on, so two first messages make one lead. Nothing when the office has no CRM.
 		 */
 		async newGuest(conversation: Conversation): Promise<void> {
-			const connection = await store.getCrmConnection(conversation.officeId);
+			const connection = await connectionOf(conversation.officeId);
 			if (!connection) return;
 			if (!(await store.claimCrmLink(conversation.id, conversation.officeId))) return;
 			try {
@@ -68,8 +106,9 @@ export function createCrmSync(deps: {
 			now: Date,
 			options: { from?: CrmKind } = {},
 		): Promise<void> {
-			const connection = await store.getCrmConnection(officeId);
-			if (!connection || leadIds.length === 0) return;
+			if (leadIds.length === 0) return;
+			const connection = await connectionOf(officeId);
+			if (!connection) return;
 			// A CRM speaks only for the offices connected to it.
 			if (options.from && connection.kind !== options.from) return;
 			const links = await store.crmLinksForLeads(officeId, leadIds);

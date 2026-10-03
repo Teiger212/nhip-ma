@@ -54,12 +54,20 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
   platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.
 - **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
-  (`crmAdapterFor`; only the mock so far), pure rules (`rules.ts`, `phone.ts`), and the CRM
+  (`crmAdapterFor`: the mock and HubSpot), pure rules (`rules.ts`, `phone.ts`), and the CRM
   sync module (`sync.ts`), which owns a thread's link to its lead and persists through the
   store. After a guest's message on a thread with no lead, `afterGuestInbound` runs the sync's
   `newGuest` in the background; the thread's `inbox_crm_link` row is the claim, so concurrent
   first messages make one lead. The platform admin sets the office's CRM in its Connections
-  card (`OfficeCrm`, `/api/crm/connection`). Outcomes arrive by the CRM's webhook
+  card (`OfficeCrm`, `/api/crm/connection`). A kind that takes an access token (HubSpot) is
+  saved only with one: `connectOffice` seals it with `PIPE_SECRETS_KEY` (ADR 0017's
+  `encryptSecret`) onto `inbox_crm_connection.accessToken`, and only the sync opens it, to hand it
+  to `crmAdapterFor`; the API answers `tokenSet`, never the token. The HubSpot adapter
+  (`hubspot.ts`, #65) finds the guest's contact by phone (read back as E.164) or by the
+  `zalo_user_id` property it creates on first need, links to the contact's open deal, and
+  otherwise creates the contact if there is none, then an unassigned deal associated with it;
+  `hubspot.test.ts` replays its calls against recorded HubSpot exchanges. Outcomes arrive by
+  the CRM's webhook
   (`/webhooks/crm/mock`, signed with `MOCK_CRM_WEBHOOK_SECRET`; absent where unset): the sync's
   `outcomesChanged` asks the adapter for the changed leads' outcomes and caches them on the link,
   observed when Nhịp first heard them (`observeOutcome`). The thread summary carries the link, so

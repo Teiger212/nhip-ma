@@ -1,0 +1,90 @@
+{
+	"call": "createLead",
+	"scenario": "Two contacts share the guest's phone and neither has an open deal",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"input": {
+		"phone": "+84901703857",
+		"zaloUserId": null,
+		"name": "Nhịp Test Twin 170385",
+		"pipe": "whatsapp",
+		"language": "vi",
+		"fields": {
+			"areaOfInterest": "Thảo Điền",
+			"nationality": null,
+			"inVietnamNow": true,
+			"rentOrBuy": "rent",
+			"timeframe": "next month",
+			"budgetBand": "1,000–1,500 USD",
+			"bedsOrHousehold": "2 bedrooms"
+		},
+		"threadUrl": "https://nhip.test/vi/inbox?thread=nhip-test-170385-7"
+	},
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/contacts/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "hs_searchable_calculated_phone_number",
+									"operator": "EQ",
+									"value": "901703857"
+								}
+							]
+						},
+						{
+							"filters": [
+								{
+									"propertyName": "hs_searchable_calculated_mobile_number",
+									"operator": "EQ",
+									"value": "901703857"
+								}
+							]
+						}
+					],
+					"properties": ["phone", "mobilephone"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"total": 2,
+					"results": [
+						{
+							"id": "883000292587",
+							"properties": {
+								"createdate": "2026-10-03T14:20:06.863Z",
+								"hs_object_id": "883000292587",
+								"lastmodifieddate": "2026-10-03T14:20:10.550Z",
+								"mobilephone": null,
+								"phone": "+84901703857"
+							},
+							"createdAt": "2026-10-03T14:20:06.863Z",
+							"updatedAt": "2026-10-03T14:20:10.550Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-1/883000292587"
+						},
+						{
+							"id": "883000292588",
+							"properties": {
+								"createdate": "2026-10-03T14:20:07.384Z",
+								"hs_object_id": "883000292588",
+								"lastmodifieddate": "2026-10-03T14:20:10.226Z",
+								"mobilephone": null,
+								"phone": "+84901703857"
+							},
+							"createdAt": "2026-10-03T14:20:07.384Z",
+							"updatedAt": "2026-10-03T14:20:10.226Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-1/883000292588"
+						}
+					]
+				}
+			}
+		}
+	]
+}

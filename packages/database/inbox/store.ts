@@ -1044,9 +1044,17 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		async getCrmConnection(officeId) {
 			const row = await db.crmConnection.findUnique({
 				where: { officeId },
-				select: { kind: true },
+				select: { kind: true, accessToken: true },
 			});
-			return row ? { kind: row.kind } : null;
+			return row ? { kind: row.kind, tokenSet: row.accessToken !== null } : null;
+		},
+
+		async getCrmAccessToken(officeId) {
+			const row = await db.crmConnection.findUnique({
+				where: { officeId },
+				select: { accessToken: true },
+			});
+			return row?.accessToken ?? null;
 		},
 
 		async officeExists(officeId) {
@@ -1057,12 +1065,16 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return office !== null;
 		},
 
-		async setCrmConnection(officeId, kind) {
+		async setCrmConnection(officeId, kind, accessToken = null) {
 			await db.$transaction(async (tx) => {
-				// Removing the connection removes its links (cascade).
+				// Removing the connection removes its links (cascade) and its token.
 				await tx.crmConnection.deleteMany({ where: { officeId } });
-				if (kind) await tx.crmConnection.create({ data: { officeId, kind } });
+				if (kind) await tx.crmConnection.create({ data: { officeId, kind, accessToken } });
 			});
+		},
+
+		async replaceCrmAccessToken(officeId, accessToken) {
+			await db.crmConnection.update({ where: { officeId }, data: { accessToken } });
 		},
 
 		async claimCrmLink(conversationId, officeId) {

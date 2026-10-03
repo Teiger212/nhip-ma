@@ -1,0 +1,35 @@
+{
+	"call": "createZaloProperty",
+	"scenario": "Creating the Zalo property again",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/properties/2026-09/contacts",
+				"body": {
+					"name": "zalo_user_id",
+					"label": "Zalo user ID",
+					"description": "The guest's Zalo user id, written by Nhịp so a returning Zalo guest is recognised.",
+					"groupName": "contactinformation",
+					"type": "string",
+					"fieldType": "text",
+					"hasUniqueValue": true
+				}
+			},
+			"response": {
+				"status": 409,
+				"body": {
+					"status": "error",
+					"message": "A property named 'zalo_user_id' already exists.",
+					"correlationId": "01a10222-6551-7419-8faa-fae33fd6380f",
+					"context": {
+						"name": ["zalo_user_id"]
+					},
+					"category": "OBJECT_ALREADY_EXISTS",
+					"subCategory": "Properties.PROPERTY_WITH_NAME_EXISTS"
+				}
+			}
+		}
+	]
+}

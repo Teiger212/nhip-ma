@@ -1,8 +1,7 @@
-import { threadUrl } from "../inbox";
+import { crmSyncFor } from "../inbox";
 import { getRuntime } from "../runtime";
 import type { CrmKind } from "../types";
 import { crmWebhookFor } from "./adapters";
-import { createCrmSync } from "./sync";
 
 /**
  * A CRM's outcome webhook (ADR 0003, spec #59), the same for every kind: verified through the
@@ -16,11 +15,8 @@ export async function handleCrmWebhook(kind: CrmKind, request: Request): Promise
 	if (!read) return Response.json({ error: "not_found" }, { status: 404 });
 	const notice = read(await request.text(), request.headers);
 	if (!notice) return Response.json({ error: "bad_signature" }, { status: 401 });
-	await createCrmSync({ store: runtime.store, threadUrl }).outcomesChanged(
-		notice.officeId,
-		notice.leadIds,
-		new Date(),
-		{ from: kind },
-	);
+	await crmSyncFor(runtime).outcomesChanged(notice.officeId, notice.leadIds, new Date(), {
+		from: kind,
+	});
 	return Response.json({ ok: true });
 }

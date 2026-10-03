@@ -23,7 +23,20 @@ const crmCopy = (() => {
 	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
 		inbox: { yourTurn: string; sent: string; crm: { inCrm: string; won: string; lost: string } };
 		admin: {
-			connections: { crm: { label: string; none: string; mock: string; saved: string } };
+			connections: {
+				crm: {
+					label: string;
+					none: string;
+					mock: string;
+					saved: string;
+					hubspot: string;
+					token: string;
+					tokenHint: string;
+					save: string;
+					tokenSet: string;
+					tokenRequired: string;
+				};
+			};
 		};
 	};
 	return {
@@ -344,35 +357,79 @@ async function expectInCrmOnThread(page: Page, guest: Guest) {
 
 /* ---------------------------------------------------------------- the office's CRM setting */
 
+/** The CRMs the setting offers, by their copy key. */
+type CrmChoice = "none" | "mock" | "hubspot";
+const CRM_CHOICES: readonly CrmChoice[] = ["none", "mock", "hubspot"];
+
 /** The platform admin's CRM setting, on the office's Connections card (Admin → Organizations). */
 async function openCrmSetting(admin: Admin, officeId: string) {
 	const { page } = admin;
 	await page.goto(`/en/admin/organizations/${officeId}`);
 	const card = page.getByTestId("office-connections");
 	await expect(card, "the platform admin sees the office's Connections card").toBeVisible();
-	const kind = card.getByTestId("connection-crm").getByTestId("crm-kind");
+	const crm = card.getByTestId("connection-crm");
+	const kind = crm.getByTestId("crm-kind");
 	await expect(kind, "the office's Connections card has a CRM setting").toBeVisible();
 	await expect(kind, "the setting is the office's CRM").toHaveAccessibleName(crmCopy.setting.label);
 	/**
-	 * The setting shows this choice as the office's CRM, and not the other one. The trigger also
+	 * The setting shows this choice as the office's CRM, and none of the others. The trigger also
 	 * holds its dropdown arrow, so the choice is judged within its text, not as all of it.
 	 */
-	const shows = async (choice: "none" | "mock", message?: string) => {
-		const other = choice === "none" ? "mock" : "none";
+	const shows = async (choice: CrmChoice, message?: string) => {
 		await expect(kind, message).toContainText(crmCopy.setting[choice]);
-		await expect(kind, message).not.toContainText(crmCopy.setting[other]);
+		for (const other of CRM_CHOICES.filter((c) => c !== choice)) {
+			await expect(kind, message).not.toContainText(crmCopy.setting[other]);
+		}
 	};
+	/** The admin picks a CRM in the setting's list (whether that saves depends on the CRM). */
+	const pick = async (choice: CrmChoice) => {
+		await kind.click();
+		const option = page.getByRole("option", { name: crmCopy.setting[choice], exact: true });
+		await expect(option, `the setting offers ${crmCopy.setting[choice]}`).toBeVisible();
+		await option.click();
+	};
+	/** The HubSpot access token field, and the button that saves it, in the CRM setting. */
+	const token = crm.getByTestId("crm-token");
+	const save = crm.getByRole("button", { name: crmCopy.setting.save, exact: true });
 	return {
 		shows,
+		token,
+		save,
+		/** Said in the CRM setting (a token set, a token required). */
+		says: (text: string) => crm.getByText(text, { exact: true }),
 		/** The admin chooses the office's CRM; it saves at once. */
 		choose: async (choice: "none" | "mock") => {
-			await kind.click();
-			await page.getByRole("option", { name: crmCopy.setting[choice], exact: true }).click();
+			await pick(choice);
 			await expect(
 				page.getByText(crmCopy.setting.saved, { exact: true }),
 				"CRM saved.",
 			).toBeVisible();
 			await shows(choice);
+		},
+		/**
+		 * The admin chooses HubSpot: nothing is saved yet; the setting asks for the office's HubSpot
+		 * access token, in a password field named for it, with a button to save it.
+		 */
+		chooseHubSpot: async () => {
+			await pick("hubspot");
+			await expect(token, "choosing HubSpot asks for the access token").toBeVisible();
+			await expect(token, "the token field is named for the token").toHaveAccessibleName(
+				crmCopy.setting.token,
+			);
+			await expect(token, "the token is typed into a password field").toHaveAttribute(
+				"type",
+				"password",
+			);
+			await expect(save, "a button saves the token").toBeVisible();
+		},
+		/** The admin enters a token and saves it: CRM saved. */
+		saveToken: async (value: string) => {
+			await token.fill(value);
+			await save.click();
+			await expect(
+				page.getByText(crmCopy.setting.saved, { exact: true }),
+				"CRM saved.",
+			).toBeVisible();
 		},
 	};
 }
@@ -380,18 +437,67 @@ async function openCrmSetting(admin: Admin, officeId: string) {
 /** The office's CRM through the API behind the setting. */
 const crmConnection = {
 	address: (officeId: string) => `/api/crm/connection?officeId=${encodeURIComponent(officeId)}`,
-	/** Sets it, sent as the app's own calls are (with the Origin), so a refusal is about who asks. */
-	put: (request: APIRequestContext, officeId: string, kind: "mock" | null) =>
+	/**
+	 * Sets it, sent as the app's own calls are (with the Origin), so a refusal is about who asks.
+	 * HubSpot takes the office's access token; without `token`, the body carries none.
+	 */
+	put: (
+		request: APIRequestContext,
+		officeId: string,
+		kind: "mock" | "hubspot" | null,
+		token?: string,
+	) =>
 		request.put("/api/crm/connection", {
-			data: { officeId, kind },
+			data: token === undefined ? { officeId, kind } : { officeId, kind, token },
 			headers: { origin: appOrigin() },
 			maxRedirects: 0,
 		}),
 };
 
 /** The office's CRM in a `GET /api/crm/connection` answer (it also lists the kinds on offer). */
-async function officeCrmIn(res: APIResponse): Promise<"mock" | null> {
-	return ((await res.json()) as { kind: "mock" | null }).kind;
+async function officeCrmIn(res: APIResponse): Promise<"mock" | "hubspot" | null> {
+	return ((await res.json()) as { kind: "mock" | "hubspot" | null }).kind;
+}
+
+/** A HubSpot access token of the test's own, shaped like one; nothing ever sends it to HubSpot. */
+function fakeHubSpotToken(): string {
+	return `pat-eu1-e2e-${randomUUID()}`;
+}
+
+/**
+ * The platform admin reads the office's CRM through the API: on HubSpot, with a token set, and
+ * none of these tokens anywhere in the raw answer.
+ */
+async function expectHubSpotWithTokenUnseen(admin: Admin, officeId: string, tokens: string[]) {
+	const res = await admin.api.get(crmConnection.address(officeId));
+	expect(res.status(), "the platform admin reads the office's CRM").toBe(200);
+	const raw = await res.text();
+	for (const token of tokens) {
+		expect(raw, "the API's answer never carries the token").not.toContain(token);
+	}
+	expect(JSON.parse(raw), "the office is on HubSpot, with a token set").toMatchObject({
+		kind: "hubspot",
+		tokenSet: true,
+	});
+}
+
+/**
+ * The platform admin reloads the office's Connections card: it shows HubSpot with a token set, the
+ * token field is empty, and none of these tokens is anywhere in the page (its HTML and the data
+ * inlined in it included).
+ */
+async function expectCardShowsTokenSetNeverToken(admin: Admin, officeId: string, tokens: string[]) {
+	const setting = await openCrmSetting(admin, officeId);
+	await setting.shows("hubspot", "the office's CRM is saved as HubSpot");
+	await expect(
+		setting.says(crmCopy.setting.tokenSet),
+		"the card says a token is set",
+	).toBeVisible();
+	await expect(setting.token, "the token field is empty").toHaveValue("");
+	const html = await admin.page.content();
+	for (const token of tokens) {
+		expect(html, "the token is nowhere in the page").not.toContain(token);
+	}
 }
 
 // ---------------------------------------------------------------------------------------
@@ -739,5 +845,169 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 			headers: { "content-type": "application/json" },
 		});
 		expect(unsigned.status(), "an unsigned notice is refused").toBe(401);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md CRM 8
+test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
+	// No guest writes on a HubSpot office here and nothing calls HubSpot: the adapter is held to its
+	// contract by Vitest on recorded HubSpot HTTP (spec #59). The tokens are fakes of the test's own.
+
+	test("the platform admin chooses HubSpot, enters the office's access token and saves: nothing is saved before that, and after a reload the card shows HubSpot with a token set, the token field empty and the token nowhere in the page or the API's answer", async ({
+		admin,
+		newOffice,
+	}) => {
+		test.setTimeout(120_000);
+		const office = await newOffice("CRM 8 hubspot", { crm: "none", agent: false });
+		const token = fakeHubSpotToken();
+
+		const setting = await openCrmSetting(admin, office.id);
+		await setting.shows("none", "a new office has no CRM");
+		await setting.chooseHubSpot();
+
+		// Choosing HubSpot alone saves nothing: the office is still on no CRM.
+		const before = await admin.api.get(crmConnection.address(office.id));
+		expect(before.status()).toBe(200);
+		expect(await officeCrmIn(before), "choosing HubSpot does not save it").toBeNull();
+
+		await setting.saveToken(token);
+
+		await expectCardShowsTokenSetNeverToken(admin, office.id, [token]);
+		await expectHubSpotWithTokenUnseen(admin, office.id, [token]);
+	});
+
+	test("HubSpot with no token is not saved: the setting asks for the token, and the office stays on None", async ({
+		admin,
+		newOffice,
+	}) => {
+		test.setTimeout(120_000);
+		const office = await newOffice("CRM 8 no token", { crm: "none", agent: false });
+
+		const setting = await openCrmSetting(admin, office.id);
+		await setting.shows("none", "a new office has no CRM");
+		await setting.chooseHubSpot();
+		await setting.save.click();
+		await expect(
+			setting.says(crmCopy.setting.tokenRequired),
+			"the setting asks for the HubSpot access token",
+		).toBeVisible();
+		await expect(
+			admin.page.getByText(crmCopy.setting.saved, { exact: true }),
+			"no CRM saved.",
+		).toHaveCount(0);
+
+		const res = await admin.api.get(crmConnection.address(office.id));
+		expect(res.status()).toBe(200);
+		expect(await officeCrmIn(res), "the office is still on no CRM").toBeNull();
+		await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
+	});
+
+	test("saving a new token replaces the old one, and neither is shown afterwards, on the card or through the API", async ({
+		admin,
+		newOffice,
+	}) => {
+		test.setTimeout(120_000);
+		const office = await newOffice("CRM 8 replace", { crm: "none", agent: false });
+		const first = fakeHubSpotToken();
+		const second = fakeHubSpotToken();
+
+		const setting = await openCrmSetting(admin, office.id);
+		await setting.chooseHubSpot();
+		await setting.saveToken(first);
+
+		// On the reloaded card (HubSpot, a token set), the admin enters a new token and saves it.
+		await expectCardShowsTokenSetNeverToken(admin, office.id, [first]);
+		const reopened = await openCrmSetting(admin, office.id);
+		await reopened.saveToken(second);
+
+		await expectCardShowsTokenSetNeverToken(admin, office.id, [first, second]);
+		await expectHubSpotWithTokenUnseen(admin, office.id, [first, second]);
+	});
+
+	test("through the API: HubSpot with a token is saved and read back as a token set, never the token; HubSpot without a token answers 400 and the office stays as it was", async ({
+		admin,
+		newOffice,
+	}) => {
+		test.setTimeout(120_000);
+		const office = await newOffice("CRM 8 api", { crm: "none", agent: false });
+		const address = crmConnection.address(office.id);
+		const { request } = admin.page;
+		const first = fakeHubSpotToken();
+		const second = fakeHubSpotToken();
+
+		// HubSpot without a token is refused, and changes nothing.
+		const tokenless = await crmConnection.put(request, office.id, "hubspot");
+		expect(tokenless.status(), "HubSpot without a token is refused").toBe(400);
+		expect(await officeCrmIn(await admin.api.get(address)), "the office stays on None").toBeNull();
+
+		// The same request with the office's token is taken, and its answer does not echo the token
+		// (stored write-only, ADR 0003).
+		const saved = await crmConnection.put(request, office.id, "hubspot", first);
+		expect(saved.status(), "HubSpot with a token is saved").toBe(200);
+		expect(await saved.text(), "the answer does not echo the token").not.toContain(first);
+		await expectHubSpotWithTokenUnseen(admin, office.id, [first]);
+
+		// A new token replaces it: still HubSpot, still a token set, neither token readable.
+		const replaced = await crmConnection.put(request, office.id, "hubspot", second);
+		expect(replaced.status(), "a new token is saved").toBe(200);
+		expect(await replaced.text(), "the answer does not echo the token").not.toContain(second);
+		await expectHubSpotWithTokenUnseen(admin, office.id, [first, second]);
+	});
+
+	test("a non-admin is refused: the office's agent and manager find no CRM setting and get 403 from the API, anyone signed out 401, and the office's CRM is unchanged", async ({
+		admin,
+		newOffice,
+		request,
+	}) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 8 refused", { crm: "none", manager: true });
+		const address = crmConnection.address(office.id);
+		const token = fakeHubSpotToken();
+
+		const refusedBy = async (who: string, page: Page) => {
+			await page.goto(`/en/admin/organizations/${office.id}`);
+			// Judge on a rendered page, not an empty one.
+			await expect(page.getByRole("main")).toBeVisible();
+			await expect(page.getByTestId("crm-kind"), `${who} sees no CRM setting`).toHaveCount(0);
+			await expect(page.getByTestId("crm-token"), `${who} sees no token field`).toHaveCount(0);
+
+			const read = await page.request.get(address, { maxRedirects: 0 });
+			expect(read.status(), `${who} cannot read the office's CRM`).toBe(403);
+			expect(await read.text(), `${who} is not shown the token`).not.toContain(token);
+			const write = await crmConnection.put(page.request, office.id, "hubspot", fakeHubSpotToken());
+			expect(write.status(), `${who} cannot connect the office to HubSpot`).toBe(403);
+		};
+
+		// On no CRM, the office's own agent and manager are refused, and so is anyone signed out.
+		for (const [who, operator] of [
+			["the agent", office.agent],
+			["the manager", office.manager],
+		] as const) {
+			await refusedBy(who, operator.page);
+		}
+		const signedOutRead = await request.get(address, { maxRedirects: 0 });
+		expect(signedOutRead.status(), "nobody signed in cannot read it").toBe(401);
+		const signedOutWrite = await crmConnection.put(request, office.id, "hubspot", token);
+		expect(signedOutWrite.status(), "nobody signed in cannot set it").toBe(401);
+		expect(
+			await officeCrmIn(await admin.api.get(address)),
+			"the refused requests changed nothing",
+		).toBeNull();
+
+		// The same request from the platform admin is taken: the refusals were about who asked.
+		const byAdmin = await crmConnection.put(admin.page.request, office.id, "hubspot", token);
+		expect(byAdmin.status(), "the platform admin connects the office to HubSpot").toBe(200);
+
+		// With a token set, the agent and manager still read nothing and change nothing.
+		for (const [who, operator] of [
+			["the agent", office.agent],
+			["the manager", office.manager],
+		] as const) {
+			await refusedBy(who, operator.page);
+		}
+		const signedOutAgain = await request.get(address, { maxRedirects: 0 });
+		expect(signedOutAgain.status(), "nobody signed in cannot read it").toBe(401);
+		expect(await signedOutAgain.text(), "nor see the token").not.toContain(token);
+		await expectHubSpotWithTokenUnseen(admin, office.id, [token]);
 	});
 });

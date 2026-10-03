@@ -132,7 +132,13 @@
 				"none": "Không có",
 				"mock": "CRM mô phỏng (phát triển và demo)",
 				"saved": "Đã lưu CRM.",
-				"failed": "Không lưu được CRM. Hãy thử lại."
+				"failed": "Không lưu được CRM. Hãy thử lại.",
+				"hubspot": "HubSpot",
+				"token": "Mã truy cập HubSpot",
+				"tokenHint": "Lấy từ ứng dụng Nhịp trong tài khoản HubSpot của văn phòng: Distribution, Show.",
+				"save": "Lưu",
+				"tokenSet": "Đã lưu mã. Mã sẽ không bao giờ được hiển thị lại.",
+				"tokenRequired": "Nhập mã truy cập HubSpot."
 			}
 		},
 		"webhooks": {

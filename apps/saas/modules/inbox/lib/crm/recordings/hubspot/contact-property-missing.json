@@ -1,0 +1,37 @@
+{
+	"call": "createLead",
+	"scenario": "A contact write names the Zalo property before it exists",
+	"recordedAt": "2026-10-03T14:10:53.645Z",
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/contacts",
+				"body": {
+					"properties": {
+						"firstname": "Nhịp Test Property 653645",
+						"zalo_user_id": "nhip-test-zalo-653645-0"
+					}
+				}
+			},
+			"response": {
+				"status": 400,
+				"body": {
+					"status": "error",
+					"message": "Property values were not valid: [{\"isValid\":false,\"message\":\"Property \\\"zalo_user_id\\\" does not exist\",\"error\":\"PROPERTY_DOESNT_EXIST\",\"name\":\"zalo_user_id\",\"localizedErrorMessage\":\"Property \\\"zalo_user_id\\\" does not exist\",\"portalId\":149475500}]",
+					"correlationId": "01a1021a-824e-7058-8233-62d7fac11f96",
+					"errors": [
+						{
+							"message": "Property \"zalo_user_id\" does not exist",
+							"code": "PROPERTY_DOESNT_EXIST",
+							"context": {
+								"propertyName": ["zalo_user_id"]
+							}
+						}
+					],
+					"category": "VALIDATION_ERROR"
+				}
+			}
+		}
+	]
+}

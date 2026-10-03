@@ -53,14 +53,17 @@ Q1 to Q23). The spec is GitHub issue #59; its tickets carry the delivery order. 
 supersede the matching, write-back, refresh and Attio points above where they differ.
 
 - **The demo CRM is HubSpot's free CRM** (Q20): free forever, recognised by buyers, a deal
-  board where the closing shows, signed webhooks, and one call creates a contact with its
-  deal. Attio is dropped as the default; Bitrix24 is the likely second adapter for Vietnam,
-  built only after beta agencies name their CRM (Q22). The demo pipe is Zalo (Q23); its
-  inbound is a real pipe, rehearsed locally against a HubSpot sandbox (Q17). Staging only:
-  production stays on the mock until a beta agency names its CRM (Q2).
+  board where the closing shows, signed webhooks, and a contact with its deal written in two
+  calls (2026-10-03, #65: first written here as one call; HubSpot's API takes the contact,
+  found or created, then the deal with an inline association to it). Attio is dropped as the
+  default; Bitrix24 is the likely second adapter for Vietnam, built only after beta agencies
+  name their CRM (Q22). The demo pipe is Zalo (Q23); its inbound is a real pipe, rehearsed
+  locally against a HubSpot sandbox (Q17). Staging only: production stays on the mock until a
+  beta agency names its CRM (Q2).
 - **Write-back comes first, with reading** (Q2, Q11 to Q15). The guest's first message
-  creates the lead, for every new guest: the contact (name, phone, pipe, language, the
-  extracted fields, a link to the thread; never message transcripts) and its deal. A phone
+  creates the lead, for every new guest: the contact (name, phone, Zalo user id) and its
+  deal, which carries the thread's own details (pipe, language, the extracted fields, a link
+  to the thread; never message transcripts), since one thread is one deal (#65). A phone
   already in the CRM reuses the contact; a new deal is created only if that contact has no
   open deal, otherwise the thread links to the open one. A contact Nhịp creates stores the
   Zalo user id in a custom property, so later lookups match without a phone. Deals start
@@ -82,7 +85,16 @@ supersede the matching, write-back, refresh and Attio points above where they di
 - **Matching never guesses.** E.164 through `libphonenumber-js` with Vietnam as the default
   region (Q19); a guest matching two leads is linked to neither, and no lead is added (#61).
 - **Credentials are encrypted per office**, like pipe credentials (ADR 0017): a HubSpot
-  private-app token entered by the platform admin in the office's Connections card, next to
-  Zalo and WhatsApp (Q6, Q18). A public OAuth app waits until several offices use HubSpot.
+  access token entered by the platform admin in the office's Connections card, next to Zalo
+  and WhatsApp (Q6, Q18), stored write-only. HubSpot no longer lets new accounts create
+  legacy private apps (2026-09-28), so the token is that of Nhịp's own app: a HubSpot CLI
+  project with static auth and private distribution, which installs on one standard account
+  (the demo portal) plus up to ten test accounts (#65). Static auth cannot reach every
+  office's account, and an app's auth type is fixed at its first upload, so the demo app has
+  a project name of its own and the production app is a separate OAuth app, built when a
+  second agency uses HubSpot. Its exchange and refresh can come from Better Auth's
+  `genericOAuth` HubSpot provider, with the tokens copied into the same per-office
+  credential, since Better Auth keeps them per user and an office's account is not one
+  user's (2026-10-03).
 - **Won and Lost are neutral badges** in place of the turn while a thread is resolved
   (DESIGN.md).
