@@ -44,9 +44,11 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
 - **Inbox reads** come in three shapes (`modules/inbox/lib/inbox-queries.ts`): the list is
   `ConversationSummary` rows from one SQL query (`listConversationSummaries`: who, pipe,
   owner, turn, the last guest message as preview), the open thread is the whole
-  `Conversation` from `/api/conversations/:id`, and the Your-turn count is a SQL count
-  (`countYourTurn`). All three share one visibility rule and one Your-turn rule, and live
-  under one TanStack Query key, so a send or reassignment refreshes them together.
+  `Conversation` from `/api/conversations/:id`, and the Your-turn count is the queue rule's
+  `yourTurnCount` over those same summaries, on the server for pages without the list and on
+  the client where the list is loaded; the queue rule has no SQL copy. All three share one
+  visibility rule and one Your-turn rule, and live under one TanStack Query key, so a send or
+  reassignment refreshes them together.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
   platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.
 - **CRM seam** (ADR 0003): not on `main`. Home shows "connect your CRM" where closings and

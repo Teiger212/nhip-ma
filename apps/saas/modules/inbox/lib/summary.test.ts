@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from "vitest";
 
 import { oneShot } from "./draft";
-import { yourTurn } from "./queue";
+import { buildQueueView, yourTurn, yourTurnCount } from "./queue";
 import { summarize } from "./summary";
 import { testInboxStore } from "./test-store";
 import type { ConversationSummary, InboxViewer, Store } from "./types";
@@ -151,7 +151,7 @@ test("Your turn in the list is the guest's latest message with nothing answering
 	expect(summaries.find((thread) => thread.guestId === "echo")?.guestLanguage).toBeNull();
 });
 
-test("the nav's Your-turn count equals the Your-turn threads the list shows each viewer (ADR 0004, ADR 0015)", async () => {
+test("the nav's Your-turn count is the Your-turn threads each viewer can open (ADR 0004, ADR 0015)", async () => {
 	const expected = new Map<InboxViewer, number>([
 		[manager, 6],
 		[agentOne, 5],
@@ -160,10 +160,8 @@ test("the nav's Your-turn count equals the Your-turn threads the list shows each
 		[elsewhere, 1],
 	]);
 	for (const [viewer, count] of expected) {
-		const listed = (await store.listConversationSummaries(viewer)).filter(yourTurn).length;
-		expect(await store.countYourTurn(viewer), `${viewer.userId} in ${viewer.officeId}`).toBe(
-			listed,
-		);
-		expect(listed).toBe(count);
+		const summaries = await store.listConversationSummaries(viewer);
+		expect(yourTurnCount(summaries), `${viewer.userId} in ${viewer.officeId}`).toBe(count);
+		expect(buildQueueView(summaries, "yourTurn", "").counts.yourTurn).toBe(count);
 	}
 });
