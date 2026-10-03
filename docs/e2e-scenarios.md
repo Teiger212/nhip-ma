@@ -25,12 +25,15 @@ Scenarios marked _(slice n)_ get their spec with that slice of the CRM seam.
    finds nothing (404).
 4. **No CRM, no picker** _(slice 4)_. With the office's CRM set to None, the thread shows
    no CRM status and the leads search answers 409 `crm_not_connected`.
-5. **Lost leaves the queue, and comes back.** A new guest writes on Zalo to an OA the walk
-   office holds. Setup: the office is on the mock CRM and the CRM reports that guest's lead
-   lost (`markLeadLost` in `apps/saas/tests/support/crm.ts`). As the agent, the thread is
-   under Sent with a "Lost" badge where the turn was, not in Your turn, and the Inbox nav
-   count does not count it. The guest writes again: the thread is back in Your turn with
-   "Your turn", and the nav count counts it.
+5. **Lost leaves the queue, and comes back.** A new guest writes on Zalo to an OA the
+   agent's office holds, while another guest is also waiting. Setup: the office is on the
+   mock CRM and the CRM reports the first guest's lead lost (`markLeadLost` in
+   `apps/saas/tests/support/crm.ts`). As the agent, the thread is under Sent with a "Lost"
+   badge where the turn was, in its row and its header, not in Your turn, and the Inbox nav
+   count counts only the other guest. The guest writes again: the thread is back in Your
+   turn with "Your turn", and the nav count counts it again. Spec:
+   `apps/saas/tests/crm.spec.ts` (CRM 5; a new office with an invited agent, not the walk
+   office, so no other spec's guest moves the counts).
 6. **Home counts deals from the CRM** _(slice 3)_. Home shows Closings and Lost from the
    cache with an "as of" time. Link a second thread to the same won lead: Closings does not
    go up.
