@@ -1,6 +1,6 @@
 "use client";
 
-import { CrmKind } from "@inbox/lib/types";
+import type { CrmKind } from "@inbox/lib/types";
 import {
 	Select,
 	SelectContent,
@@ -13,14 +13,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 type Kind = CrmKind | null;
+/** The server names the kinds (from `CrmKind`); a client component never imports the store. */
+type CrmSetting = { kind: Kind; kinds: CrmKind[] };
 const NONE = "none";
-
-/** A choice in the select: a CRM kind, or none. Anything else is not a choice. */
-function kindOf(value: unknown): Kind | undefined {
-	if (value === NONE) return null;
-	const parsed = CrmKind.safeParse(value);
-	return parsed.success ? parsed.data : undefined;
-}
 
 const crmKey = (officeId: string) => ["admin", "crm", officeId] as const;
 
@@ -33,10 +28,10 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 	const queryClient = useQueryClient();
 	const crm = useQuery({
 		queryKey: crmKey(officeId),
-		queryFn: async (): Promise<{ kind: Kind }> => {
+		queryFn: async (): Promise<CrmSetting> => {
 			const res = await fetch(`/api/crm/connection?officeId=${encodeURIComponent(officeId)}`);
 			if (!res.ok) throw new Error(`crm ${res.status}`);
-			return res.json() as Promise<{ kind: Kind }>;
+			return res.json() as Promise<CrmSetting>;
 		},
 	});
 	const save = useMutation({
@@ -56,7 +51,7 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 	});
 	const items = [
 		{ value: NONE, label: t("none") },
-		...CrmKind.options.map((kind) => ({ value: kind, label: t(kind) })),
+		...(crm.data?.kinds ?? []).map((kind) => ({ value: kind, label: t(kind) })),
 	];
 	return (
 		<div className="gap-3 flex items-start justify-between" data-test="connection-crm">
@@ -69,8 +64,12 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 				value={crm.data ? (crm.data.kind ?? NONE) : null}
 				disabled={!crm.isSuccess || save.isPending}
 				onValueChange={(value) => {
-					const kind = kindOf(value);
-					if (kind !== undefined) save.mutate(kind);
+					// A choice is none or one of the kinds the server named; anything else is not one.
+					if (value === NONE) save.mutate(null);
+					else {
+						const kind = crm.data?.kinds.find((known) => known === value);
+						if (kind) save.mutate(kind);
+					}
 				}}
 			>
 				<SelectTrigger className="w-56 shrink-0" aria-label={t("label")} data-test="crm-kind">

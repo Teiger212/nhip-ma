@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 
 const body = z.object({ officeId: z.string().min(1), kind: CrmKind.nullable() });
 
-/** The office's CRM as the platform admin sees it (Admin → the office → Connections, ADR 0003). */
+/**
+ * The office's CRM as the platform admin sees it (Admin → the office → Connections, ADR 0003),
+ * with the kinds there are to choose from, so the client never restates them.
+ */
 export async function GET(request: Request): Promise<Response> {
 	const gate = await requirePlatformAdmin(request);
 	if (gate.denied) return gate.denied;
@@ -21,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
 		return NextResponse.json({ error: "office_not_found" }, { status: 404 });
 	}
 	const connection = await store.getCrmConnection(officeId);
-	return NextResponse.json({ kind: connection?.kind ?? null });
+	return NextResponse.json({ kind: connection?.kind ?? null, kinds: CrmKind.options });
 }
 
 /**
