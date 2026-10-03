@@ -53,9 +53,13 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   reassignment refreshes them together.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
   platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.
-- **CRM seam** (ADR 0003): not on `main`. Home shows "connect your CRM" where closings and
-  lost will be. The adapter, its mock and the linking UI are on the unmerged `feat/crm-seam`
-  branch (PRODUCT.md, milestone 5).
+- **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
+  (`crmAdapterFor`; only the mock so far), pure rules (`rules.ts`, `phone.ts`), and the CRM
+  sync module (`sync.ts`), which owns a thread's link to its lead and persists through the
+  store. After a guest's message on a thread with no lead, `afterGuestInbound` runs the sync's
+  `newGuest` in the background; the thread's `inbox_crm_link` row is the claim, so concurrent
+  first messages make one lead. Home still shows "connect your CRM" where closings and lost
+  will be (#68).
 - **Home** (ADR 0002): `modules/home/lib/funnel.ts` resolves the office and calls
   `store.funnel(viewer, { since, timeZone })`, one SQL query over Answers. The window is 30
   local days in the office's time zone (`modules/home/lib/window.ts`, Asia/Ho_Chi_Minh

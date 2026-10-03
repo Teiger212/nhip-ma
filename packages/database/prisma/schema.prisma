@@ -41,7 +41,7 @@ model User {
   notifications            Notification[]
   notificationPreferences  UserNotificationPreference[]
   answers                  Answer[]
-  ownedConversations       Conversation[] @relation("ConversationOwner")
+  ownedConversations       Conversation[]               @relation("ConversationOwner")
 
   @@unique([email])
   @@map("user")
@@ -150,7 +150,7 @@ model TwoFactor {
 }
 
 model Organization {
-  id                 String       @id @default(cuid())
+  id                 String           @id @default(cuid())
   name               String
   slug               String?
   logo               String?
@@ -162,6 +162,8 @@ model Organization {
   purchases          Purchase[]
   conversations      Conversation[]
   pipeConnections    PipeConnection[]
+  crmConnection      CrmConnection?
+  mockCrmLeads       MockCrmLead[]
 
   @@unique([slug])
   @@map("organization")
@@ -320,6 +322,7 @@ model Conversation {
   draft              Draft?
   paperwork          Paperwork?
   answers            Answer[]
+  crmLink            CrmLink?
 
   @@unique([officeId, pipe, guestId])
   @@index([officeId])
@@ -491,4 +494,67 @@ model WebhookDelivery {
 
   @@index([receivedAt])
   @@map("inbox_webhook_delivery")
+}
+
+enum CrmKind {
+  mock
+}
+
+/// How Nhịp linked a thread to its CRM lead (ADR 0003): it created the lead, or found the
+/// guest's existing lead by phone or by the Zalo user id Nhịp stored on it.
+enum CrmLinkMethod {
+  created
+  phone
+  zaloId
+}
+
+/// The office's CRM (ADR 0003). One per office; set by the platform admin.
+model CrmConnection {
+  officeId  String       @id
+  office    Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind      CrmKind
+  links     CrmLink[]
+  updatedAt DateTime     @updatedAt
+
+  @@map("inbox_crm_connection")
+}
+
+/// A thread's link to its CRM lead. The row is the claim on writing the lead: whoever inserts
+/// it first creates or finds the lead, so two first messages make one lead. Until the lead is
+/// written, `leadId` is null. Disconnecting the office's CRM removes its links.
+model CrmLink {
+  conversationId String         @id
+  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId       String
+  connection     CrmConnection  @relation(fields: [officeId], references: [officeId], onDelete: Cascade)
+  leadId         String?
+  leadName       String?
+  method         CrmLinkMethod?
+  claimedAt      DateTime       @default(now())
+  linkedAt       DateTime?
+
+  @@index([officeId])
+  @@map("inbox_crm_link")
+}
+
+/// The mock CRM's leads (ADR 0003): a CRM kept in Nhịp's database for development, tests,
+/// the demo and offices without one. Phones are E.164.
+model MockCrmLead {
+  id         String       @id @default(cuid())
+  officeId   String
+  office     Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String?
+  zaloUserId String?
+  pipe       Pipe
+  language   String?
+  /// The guest's qualification as Nhịp extracted it (area, rent or buy, budget, timeframe,
+  /// household). Never message text.
+  fields     Json?
+  threadUrl  String
+  createdAt  DateTime     @default(now())
+
+  @@index([officeId, phone])
+  @@index([officeId, zaloUserId])
+  @@map("inbox_mock_crm_lead")
 }

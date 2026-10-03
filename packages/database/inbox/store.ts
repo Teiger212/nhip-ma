@@ -5,6 +5,7 @@ import { Prisma, type PrismaClient } from "../prisma/generated/client";
 import { operatorNameOf } from "../prisma/queries/operators";
 import {
 	AnswerStatus,
+	CrmLinkMethod,
 	DbMessageSource,
 	type Funnel,
 	GuestLanguage,
@@ -23,7 +24,9 @@ import type {
 	InboxStore,
 	InboxViewer,
 	Message,
+	MockCrmLead,
 	OneShot,
+	Qualification,
 	SendResult,
 	PipeCredentialState,
 	Translations,
@@ -60,6 +63,7 @@ const CONVERSATION_INCLUDE = {
 	paperwork: true,
 	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
 	owner: { select: { id: true, name: true, email: true } },
+	crmLink: true,
 } satisfies Prisma.ConversationInclude;
 
 /** What a viewer may read (ADR 0015): the office, and for an agent only its pool and their own. */
@@ -156,6 +160,21 @@ function vocab<Schema extends z.ZodType>(
 
 const iso = (at: Date): string => at.toISOString();
 const isoOrNull = (at: Date | null): string | null => (at ? at.toISOString() : null);
+
+function mapMockCrmLead(row: Prisma.MockCrmLeadGetPayload<object>): MockCrmLead {
+	return {
+		id: row.id,
+		officeId: row.officeId,
+		name: row.name,
+		phone: row.phone,
+		zaloUserId: row.zaloUserId,
+		pipe: row.pipe,
+		language: row.language,
+		fields: (row.fields as Qualification | null) ?? null,
+		threadUrl: row.threadUrl,
+		createdAt: iso(row.createdAt),
+	};
+}
 
 function toDbSource(source: MessageSource): DbMessageSource {
 	return source === "oa-echo" ? "oa_echo" : source;
@@ -264,6 +283,14 @@ function mapConversation(record: ConversationRecord): Conversation {
 		guestName: record.guestName,
 		officeId: record.officeId,
 		owner: record.owner ? { id: record.owner.id, name: operatorNameOf(record.owner) } : null,
+		crm:
+			record.crmLink?.leadId && record.crmLink.leadName !== null && record.crmLink.method
+				? {
+						leadId: record.crmLink.leadId,
+						leadName: record.crmLink.leadName,
+						method: vocab(CrmLinkMethod, record.crmLink.method, "CrmLink.method"),
+					}
+				: null,
 		messages,
 		lastGuestInboundAt: isoOrNull(record.lastGuestInboundAt),
 		sentAt: isoOrNull(record.sentAt),
@@ -968,6 +995,62 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				),
 			};
 			return funnel;
+		},
+
+		async getCrmConnection(officeId) {
+			const row = await db.crmConnection.findUnique({
+				where: { officeId },
+				select: { kind: true },
+			});
+			return row ? { kind: row.kind } : null;
+		},
+
+		async setCrmConnection(officeId, kind) {
+			await db.$transaction(async (tx) => {
+				const current = await tx.crmConnection.findUnique({ where: { officeId } });
+				if ((current?.kind ?? null) === kind) return;
+				// Removing the connection removes its links (cascade): another CRM's leads mean nothing.
+				if (current) await tx.crmConnection.delete({ where: { officeId } });
+				if (kind) await tx.crmConnection.create({ data: { officeId, kind } });
+			});
+		},
+
+		async claimCrmLink(conversationId, officeId) {
+			const { count } = await db.crmLink.createMany({
+				data: [{ conversationId, officeId }],
+				skipDuplicates: true,
+			});
+			return count > 0;
+		},
+
+		async releaseCrmLink(conversationId) {
+			await db.crmLink.deleteMany({ where: { conversationId, leadId: null } });
+		},
+
+		async completeCrmLink(conversationId, link) {
+			await db.crmLink.update({
+				where: { conversationId },
+				data: { ...link, linkedAt: new Date() },
+			});
+		},
+
+		async createMockCrmLead(lead) {
+			const row = await db.mockCrmLead.create({
+				data: { ...lead, fields: lead.fields ?? Prisma.JsonNull },
+			});
+			return mapMockCrmLead(row);
+		},
+
+		async findMockCrmLeads(officeId, where = {}) {
+			const rows = await db.mockCrmLead.findMany({
+				where: {
+					officeId,
+					...(where.phone ? { phone: where.phone } : {}),
+					...(where.zaloUserId ? { zaloUserId: where.zaloUserId } : {}),
+				},
+				orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+			});
+			return rows.map(mapMockCrmLead);
 		},
 
 		async close() {

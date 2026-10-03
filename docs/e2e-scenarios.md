@@ -8,29 +8,41 @@ a scenario gets its test, link the spec file next to it.
 Seed: `pnpm seed --reset` (walk office, mock CRM). Logins: `walk@nhip.local` (agent),
 `admin@nhip.local` (platform admin), password `walkthrough`.
 
-## CRM (ADR 0003)
+## CRM (ADR 0003, spec #59)
 
-1. **Link a thread by hand.** As the agent, open Minji's thread, choose "Link to CRM lead",
-   search "minji", pick Minji Park. The header shows "In CRM: Minji Park".
-2. **Unlink sticks.** Unlink Minji's thread; after the next refresh (10 minutes, or reload
-   after changing the TTL for the test) it is still unlinked, even though her phone would
-   match.
-3. **A lead of another office cannot be linked.** Posting another office's lead id to
-   `/api/conversations/:id/crm-link` answers 404 `lead_not_found`; another office's thread
-   answers 404 `not_found`.
-4. **No CRM, no picker.** With the office's CRM set to None, the thread shows no CRM chip
-   and the leads search answers 409 `crm_not_connected`.
-5. **Lost leaves the queue, and comes back.** Alexei (lost in the mock CRM) is under Sent
-   with "Lost", not in Your turn or Quiet. Send a guest message as Alexei
-   (`POST /dev/inbound`); he is back in Your turn.
-6. **Home counts deals from the CRM.** Home shows Closings and Lost with "From your CRM ·
-   n of m leads linked". Link a second thread to the same won lead: Closings does not go
-   up.
-7. **CRM down.** With the CRM failing (a test adapter that throws), Home loads, shows the
-   cached Closings and Lost, and says the CRM did not answer in time.
-8. **The admin connects an office.** As the platform admin, Admin → Organizations → walk
-   office → CRM: choose None; the agent's Home shows "Connect your CRM". Choose Mock CRM;
-   the numbers return. A non-admin calling the admin CRM procedure is refused.
+The office's CRM holds each lead's outcome; Nhịp writes the lead and reads the outcome back. In
+E2E the office's CRM is the **mock CRM**: connecting an office to it is setup
+(`connectMockCrm`), and reading its leads (`mockCrmLeads`) is looking at the CRM, as a manager
+would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario names its ticket.
+
+1. **A new guest becomes a lead in the CRM** (#61). An office on the mock CRM: a new guest
+   writes on Zalo. The agent opens the thread and its header says "In CRM: <the guest's name>"
+   (read-only); the office's manager sees the same on that thread.
+   The mock CRM holds one lead for that guest, with their Zalo user id, pipe and a link to the
+   thread, and no message text. The guest writes again: still one lead. An office with no CRM:
+   the header says nothing about a CRM, and no lead is made.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 1; offices of the test's own with an invited agent
+   and, on the mock CRM, an invited manager (the kit's `admin`);
+   a nameless Zalo guest's name is their Zalo id, as the Inbox lists them; "no second lead" and
+   "no lead" are judged once a later guest's lead, on the mock CRM, has arrived).
+2. **The admin sets an office's CRM** (#62). As the platform admin, the office's Connections
+   card: choose Mock, and a new guest becomes a lead; choose None, and the thread's CRM status
+   goes. A non-admin is refused.
+3. **Won or lost leaves the queue, and comes back** (#63). The lead is marked lost in the mock
+   CRM, which tells Nhịp: the thread is under Sent with a neutral "Lost" where the turn was, not
+   in Your turn, and the nav count drops. The guest writes again: back in Your turn. A won lead
+   shows "Won".
+4. **A failed CRM write heals** (#64). With the mock CRM failing, a new guest's message still
+   arrives and is in Your turn at once; the manager sees "Not in CRM yet". When the CRM
+   recovers, the lead appears and the thread says "In CRM".
+5. **The reconcile catches a missed outcome** (#67). A lead marked lost with no notice to Nhịp
+   is resolved after the reconcile runs.
+6. **Home counts deals from the CRM** (#68). Home shows Closings and Lost "as of" the last check,
+   and loads at once with the CRM failing. Two threads on one won lead count one closing.
+7. **A manager links or unlinks by hand** (#70). As the manager, search the CRM ("min", 3
+   characters at least) and link Minji's thread to Minji Park; the agent sees it read-only and
+   has no link controls. Unlinked, it stays unlinked. Another office's lead or thread answers
+   404; an agent linking a colleague's thread finds nothing.
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 

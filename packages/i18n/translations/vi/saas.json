@@ -887,6 +887,9 @@
 			"guest": "Khách",
 			"nhip": "Gửi từ Nhịp",
 			"oaEcho": "Gửi từ ứng dụng của văn phòng"
+		},
+		"crm": {
+			"inCrm": "Trong CRM: {name}"
 		}
 	}
 }

@@ -9,6 +9,7 @@ import { replyEndpoint, useDisconnectedEndpoints } from "../lib/inbox-queries";
 import { PIPE_NAMES } from "../lib/pipe-names";
 import type { SendStatus } from "../lib/send-status";
 import type { Conversation, DraftSource } from "../lib/types";
+import { CrmStatus } from "./CrmStatus";
 import { ExtractFields } from "./ExtractFields";
 import { OwnerControl } from "./OwnerControl";
 import { ReplyBox } from "./ReplyBox";
@@ -85,6 +86,7 @@ export function ThreadDetail({
 				<GuestMark name={displayName(conversation)} />
 				<p className="font-semibold tracking-tight font-heading">{displayName(conversation)}</p>
 				<ThreadFlags conversation={conversation} />
+				<CrmStatus conversation={conversation} />
 				<OwnerControl conversation={conversation} />
 			</header>
 			<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">

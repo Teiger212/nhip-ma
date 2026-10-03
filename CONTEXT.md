@@ -137,11 +137,16 @@ is renamed.
   lapsed or was revoked). Guests' messages still arrive; replies that would go out from it
   are blocked with the reason shown, and the platform admin is alerted to reconnect it with
   the owner. The office's other numbers and OAs are unaffected.
-- **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
-  backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
-  become a CRM. First real adapter: **Attio** (provisional).
-- **CRM link**: the stored association between a conversation and a CRM lead. Made
-  automatically by phone number (E.164), or by the agent through "link to CRM lead".
+- **CRM adapter**: one interface, one implementation per CRM the office uses. Source of truth
+  for closings and lost (ADR 0003). Nhịp does not become a CRM. The only CRM so far is the
+  **mock CRM**, which keeps its leads in Nhịp's database; HubSpot's free CRM is decided as the
+  first real one (ADR 0003, spec #59).
+- **CRM lead**: the guest's record in the office's CRM (a contact with its deal). Not the
+  funnel's **Lead**, which is a guest who wrote in.
+- **CRM link**: the stored association between a thread and its CRM lead. Nhịp makes it when a
+  guest writes on a thread that has none: it finds the guest's CRM lead (by phone on WhatsApp,
+  by the Zalo user id Nhịp stored on Zalo) or creates one. A guest who matches two CRM leads is
+  linked to neither. The thread header shows the CRM lead, read-only.
 
 ## Deliberately not
 

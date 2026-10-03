@@ -1,4 +1,7 @@
+import { getBaseUrl } from "@shared/lib/base-url";
+
 import { runInBackground } from "./background";
+import { createCrmSync } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
@@ -66,16 +69,35 @@ export async function generateModelDraft(
 }
 
 /**
+ * The address that opens a thread in Nhịp, written on its CRM lead (spec #59, Q12). Offices
+ * are Vietnamese, so the link opens the Vietnamese inbox; the operator can switch from there.
+ */
+export function threadUrl(conversationId: string): string {
+	return `${getBaseUrl()}/vi/inbox?thread=${encodeURIComponent(conversationId)}`;
+}
+
+/**
  * Everything that follows a guest message: the one-shot now, then translation and, for a
- * guest who wrote back after a send, the model draft in the background. The first reply
- * keeps the template until the model draft is shown to be better on the invented threads
- * (ADR 0005).
+ * guest who wrote back after a send, the model draft in the background. A thread with no
+ * lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
+ * queue never wait on the CRM. The first reply keeps the template until the model draft is
+ * shown to be better on the invented threads (ADR 0005).
  */
 export async function afterGuestInbound(
 	runtime: Runtime,
 	conversation: Conversation,
 ): Promise<Conversation> {
 	const updated = (await applyOneShot(runtime.store, conversation)) ?? conversation;
+	if (!updated.crm) {
+		void runInBackground(`crm lead ${updated.id}`, async () => {
+			try {
+				await createCrmSync({ store: runtime.store, threadUrl }).newGuest(updated);
+			} catch {
+				// A CRM's error can carry guest data; the log keeps only what failed (PDPL).
+				throw new Error("CRM lead write failed");
+			}
+		});
+	}
 	const inbound = updated.messages.find((message) => message.id === updated.unansweredInboundId);
 	if (inbound) {
 		scheduleTranslations(runtime, inbound);

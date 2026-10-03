@@ -887,6 +887,9 @@
 			"guest": "Guest",
 			"nhip": "Sent from Nhịp",
 			"oaEcho": "Sent from the office's app"
+		},
+		"crm": {
+			"inCrm": "In CRM: {name}"
 		}
 	}
 }

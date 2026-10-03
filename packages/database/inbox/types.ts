@@ -1,6 +1,8 @@
 import type {
 	Funnel,
 	AnswerStatus,
+	CrmKind,
+	CrmLinkMethod,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -155,6 +157,8 @@ export type Conversation = {
 	lastAnswer: Answer | null;
 	/** The agent who owns the thread (ADR 0015), or null while it is in the office's pool. */
 	owner: { id: string; name: string } | null;
+	/** The thread's lead in the office's CRM (ADR 0003); null until Nhịp has linked one. */
+	crm: ConversationCrm | null;
 	updatedAt: string;
 };
 
@@ -183,6 +187,24 @@ export type ConversationSummary = Pick<
 	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
 	lastInboundText: string;
 };
+
+/** The thread's linked lead (ADR 0003). */
+export type ConversationCrm = { leadId: string; leadName: string; method: CrmLinkMethod };
+
+/** What Nhịp writes into the mock CRM for a guest (ADR 0003, Q12): never message text. */
+export type NewMockCrmLead = {
+	officeId: string;
+	name: string;
+	/** E.164, or null. */
+	phone: string | null;
+	zaloUserId: string | null;
+	pipe: Pipe;
+	language: string | null;
+	fields: Qualification | null;
+	threadUrl: string;
+};
+
+export type MockCrmLead = NewMockCrmLead & { id: string; createdAt: string };
 
 /** A guest message's failed translations into one operator language (ADR 0007). */
 export type TranslationFailure = {
@@ -367,6 +389,29 @@ export type InboxStore = {
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
 	/** Delete deliveries received before `before`; returns how many went. */
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
+	/** The office's CRM (ADR 0003), or null when it has none. */
+	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
+	/** Connect the office to a CRM, or disconnect it with null. Another kind, or none, drops its links. */
+	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
+	/**
+	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
+	 * thread is already claimed or linked. The database decides, so two first messages make one lead.
+	 */
+	claimCrmLink: (conversationId: string, officeId: string) => Promise<boolean>;
+	/** Give up a claim that linked nothing, so a later guest message tries again. */
+	releaseCrmLink: (conversationId: string) => Promise<void>;
+	/** Record the lead a claimed thread is linked to. */
+	completeCrmLink: (
+		conversationId: string,
+		link: { leadId: string; leadName: string; method: CrmLinkMethod },
+	) => Promise<void>;
+	/** Write a lead into the mock CRM (ADR 0003). */
+	createMockCrmLead: (lead: NewMockCrmLead) => Promise<MockCrmLead>;
+	/** The office's mock CRM leads with this E.164 phone or Zalo user id; every lead with neither. */
+	findMockCrmLeads: (
+		officeId: string,
+		where?: { phone?: string; zaloUserId?: string },
+	) => Promise<MockCrmLead[]>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

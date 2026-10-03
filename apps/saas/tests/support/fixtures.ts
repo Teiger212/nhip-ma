@@ -25,8 +25,11 @@ export type Admin = {
 	/** A unique email whose account, should one ever exist, is removed after the test. */
 	newEmail: (tag: string) => string;
 	createOffice: (label: string) => Promise<Office>;
-	/** Invites an email into an office (the walk office unless told otherwise). */
-	invite: (email: string, officeId?: string) => Promise<string>;
+	/**
+	 * Invites an email into an office (the walk office unless told otherwise), as an agent (the
+	 * kit's `member`) unless told `admin`, the kit's role for a manager (CONTEXT.md "Manager").
+	 */
+	invite: (email: string, officeId?: string, role?: "member" | "admin") => Promise<string>;
 	cancelInvitation: (invitationId: string) => Promise<void>;
 	/** The office's members as the platform admin sees them. */
 	memberEmails: (officeId: string) => Promise<string[]>;
@@ -72,10 +75,10 @@ export const test = base.extend<{ admin: Admin }>({
 				offices.push(id);
 				return { id, name };
 			},
-			invite: async (email, officeId = WALK_OFFICE_ID) => {
+			invite: async (email, officeId = WALK_OFFICE_ID, role = "member") => {
 				const res = await api.post("/api/auth/organization/invite-member", {
 					email,
-					role: "member",
+					role,
 					organizationId: officeId,
 				});
 				expect(res.ok(), `the platform admin invites into the office: ${await res.text()}`).toBe(
