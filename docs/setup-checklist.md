@@ -37,6 +37,21 @@ from milestone 6.
 - [ ] **Live sends:** tell Claude to set `SEND_MODE=live` on staging. Verify: a reply approved
       in the inbox arrives on the guest's phone.
 
+### CRM demo: HubSpot (ADR 0003, decided 2026-10-03)
+
+The demo is a round trip on Zalo (above): a guest writes, the contact and deal appear in
+HubSpot, the deal is marked won there, and Nhịp's Home counts the closing. Nothing here is
+needed until the HubSpot slice is ready; start whenever.
+
+- [ ] **HubSpot free account** for the demo office (free CRM, no trial clock).
+- [ ] **A private app** in it with read and write on contacts and deals. Keep its access
+      token for the next step; never paste it in chat or a file.
+- [ ] **Hand the token over** where the HubSpot slice says (Admin → Connections once
+      built; it is stored encrypted per office).
+- [ ] **Webhook on deal stage changes** to the staging URL the slice names.
+- [ ] **Ask the first beta agencies which CRM they use** (or spreadsheets, Bitrix24, Getfly)
+      before a second adapter is built.
+
 ### Error tracking (PostHog, PR #41)
 
 - [ ] **PostHog project** "Nhịp Staging" (EU or US region).
