@@ -63,6 +63,10 @@ export type CrmKind = z.infer<typeof CrmKind>;
 export const CrmLinkMethod = z.enum(["created", "phone", "zaloId"]);
 export type CrmLinkMethod = z.infer<typeof CrmLinkMethod>;
 
+/** What the CRM says about a lead. Only the CRM decides won or lost, never the chat. */
+export const CrmOutcomeStatus = z.enum(["open", "won", "lost"]);
+export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatus>;
+
 /**
  * Every timestamp the store reads or writes is `Date#toISOString` output, so the strict
  * UTC form is the whole contract. A local-time or half-formed string is corrupt state.

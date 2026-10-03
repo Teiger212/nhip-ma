@@ -47,6 +47,7 @@ const envSchema = z
 		ZALO_APP_SECRET: trimmed,
 		ZALO_OA_SECRET_KEY: trimmed,
 		PIPE_SECRETS_KEY: trimmed,
+		MOCK_CRM_WEBHOOK_SECRET: trimmed,
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
@@ -80,7 +81,12 @@ const envSchema = z
 		}
 		// The E2E profile commits test-only pipe secrets (.env.e2e); a live deployment refuses them.
 		if (env.SEND_MODE === "live") {
-			for (const key of ["ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY", "PIPE_SECRETS_KEY"] as const) {
+			for (const key of [
+				"ZALO_APP_SECRET",
+				"ZALO_OA_SECRET_KEY",
+				"PIPE_SECRETS_KEY",
+				"MOCK_CRM_WEBHOOK_SECRET",
+			] as const) {
 				const value = env[key];
 				const plain =
 					key === "PIPE_SECRETS_KEY" && value
@@ -222,6 +228,11 @@ export type InboxConfig = {
 	/** Encrypts vendor tokens at rest (`pipes/secrets.ts`). */
 	pipeSecretsKey?: string;
 	/**
+	 * Signs the mock CRM's outcome webhook (ADR 0003). Unset, the mock CRM cannot notify Nhịp
+	 * and its webhook answers 404: production never sets it.
+	 */
+	mockCrmWebhookSecret?: string;
+	/**
 	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
 	 * a key there is no model: no translation is shown and every suggested reply is a
 	 * template. The model id is whatever the office chose; nothing here names a vendor.
@@ -257,6 +268,7 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 			oaSecretKey: clean(env.ZALO_OA_SECRET_KEY),
 		},
 		pipeSecretsKey: clean(env.PIPE_SECRETS_KEY),
+		mockCrmWebhookSecret: clean(env.MOCK_CRM_WEBHOOK_SECRET),
 		drafts: {
 			apiKey: clean(env.DRAFT_API_KEY),
 			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,

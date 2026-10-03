@@ -25,6 +25,7 @@ function conv(
 		lastGuestInboundAt: at,
 		sentAt: null,
 		unansweredInboundId: `${partial.id}:1`,
+		crm: null,
 		updatedAt: at,
 		guestLanguage: null,
 		lastInboundText: `hello from ${partial.guestName}`,

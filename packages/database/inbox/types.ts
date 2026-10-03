@@ -3,6 +3,7 @@ import type {
 	AnswerStatus,
 	CrmKind,
 	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
 	GuestLanguage,
 	MessageDirection,
@@ -181,6 +182,7 @@ export type ConversationSummary = Pick<
 	| "sentAt"
 	| "unansweredInboundId"
 	| "updatedAt"
+	| "crm"
 > & {
 	/** The guest's language as the one-shot detected it; null until it has run. */
 	guestLanguage: GuestLanguage | null;
@@ -189,7 +191,22 @@ export type ConversationSummary = Pick<
 };
 
 /** The thread's linked lead (ADR 0003). */
-export type ConversationCrm = { leadId: string; leadName: string; method: CrmLinkMethod };
+export type ConversationCrm = {
+	leadId: string;
+	leadName: string;
+	method: CrmLinkMethod;
+} & CrmOutcome;
+
+/**
+ * What Nhịp last heard from the CRM about a thread's lead (ADR 0003). `outcomeObservedAt` is
+ * when Nhịp first saw the current won or lost outcome; the CRM's own `outcomeAt` is for display.
+ */
+export type CrmOutcome = {
+	outcome: CrmOutcomeStatus | null;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
+	outcomeObservedAt: string | null;
+};
 
 /** What Nhịp writes into the mock CRM for a guest (ADR 0003, Q12): never message text. */
 export type NewMockCrmLead = {
@@ -204,7 +221,13 @@ export type NewMockCrmLead = {
 	threadUrl: string;
 };
 
-export type MockCrmLead = NewMockCrmLead & { id: string; createdAt: string };
+export type MockCrmLead = NewMockCrmLead & {
+	id: string;
+	outcome: CrmOutcomeStatus;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
+	createdAt: string;
+};
 
 /** A guest message's failed translations into one operator language (ADR 0007). */
 export type TranslationFailure = {
@@ -410,8 +433,21 @@ export type InboxStore = {
 	/** The office's mock CRM leads with this E.164 phone or Zalo user id; every lead with neither. */
 	findMockCrmLeads: (
 		officeId: string,
-		where?: { phone?: string; zaloUserId?: string },
+		where?: { phone?: string; zaloUserId?: string; ids?: string[] },
 	) => Promise<MockCrmLead[]>;
+	/** The mock CRM marks a lead open, won or lost (the CRM's own record, as an office would). */
+	setMockCrmLeadOutcome: (
+		officeId: string,
+		leadId: string,
+		outcome: { status: CrmOutcomeStatus; at: Date | null; reason: string | null },
+	) => Promise<void>;
+	/** The office's threads linked to these leads, with what Nhịp last heard about each. */
+	crmLinksForLeads: (
+		officeId: string,
+		leadIds: string[],
+	) => Promise<Array<{ conversationId: string; leadId: string } & CrmOutcome>>;
+	/** Cache a lead's outcome on a thread, only while the thread is still linked to that lead. */
+	saveCrmOutcome: (conversationId: string, leadId: string, outcome: CrmOutcome) => Promise<void>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

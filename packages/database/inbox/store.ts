@@ -6,6 +6,7 @@ import { operatorNameOf } from "../prisma/queries/operators";
 import {
 	AnswerStatus,
 	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DbMessageSource,
 	type Funnel,
 	GuestLanguage,
@@ -18,6 +19,7 @@ import type {
 	Answer,
 	BeginAnswerResult,
 	Conversation,
+	ConversationCrm,
 	ConversationSummary,
 	Draft,
 	InboundEvent,
@@ -137,7 +139,39 @@ type SummaryRow = {
 	ownerEmail: string | null;
 	lastInboundText: string | null;
 	unansweredInboundId: string | null;
+	crmLeadId: string | null;
+	crmLeadName: string | null;
+	crmMethod: string | null;
+	crmOutcome: string | null;
+	crmOutcomeAt: Date | null;
+	crmOutcomeReason: string | null;
+	crmOutcomeObservedAt: Date | null;
 };
+
+/** A thread's CRM link row, as either read shapes it. */
+type CrmLinkRow = {
+	leadId: string | null;
+	leadName: string | null;
+	method: string | null;
+	outcome: string | null;
+	outcomeAt: Date | null;
+	outcomeReason: string | null;
+	outcomeObservedAt: Date | null;
+};
+
+/** The thread's linked lead, or null while it has none (a claim in progress, or no CRM). */
+function mapCrmLink(row: CrmLinkRow | null | undefined): ConversationCrm | null {
+	if (!row?.leadId || row.leadName === null || row.method === null) return null;
+	return {
+		leadId: row.leadId,
+		leadName: row.leadName,
+		method: vocab(CrmLinkMethod, row.method, "CrmLink.method"),
+		outcome: row.outcome === null ? null : vocab(CrmOutcomeStatus, row.outcome, "CrmLink.outcome"),
+		outcomeAt: isoOrNull(row.outcomeAt),
+		outcomeReason: row.outcomeReason,
+		outcomeObservedAt: isoOrNull(row.outcomeObservedAt),
+	};
+}
 
 /**
  * Languages and rent-or-buy are text on disk (ADR 0012) so the lists can grow without a
@@ -172,6 +206,9 @@ function mapMockCrmLead(row: Prisma.MockCrmLeadGetPayload<object>): MockCrmLead 
 		language: row.language,
 		fields: (row.fields as Qualification | null) ?? null,
 		threadUrl: row.threadUrl,
+		outcome: row.outcome,
+		outcomeAt: isoOrNull(row.outcomeAt),
+		outcomeReason: row.outcomeReason,
 		createdAt: iso(row.createdAt),
 	};
 }
@@ -283,14 +320,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		guestName: record.guestName,
 		officeId: record.officeId,
 		owner: record.owner ? { id: record.owner.id, name: operatorNameOf(record.owner) } : null,
-		crm:
-			record.crmLink?.leadId && record.crmLink.leadName !== null && record.crmLink.method
-				? {
-						leadId: record.crmLink.leadId,
-						leadName: record.crmLink.leadName,
-						method: vocab(CrmLinkMethod, record.crmLink.method, "CrmLink.method"),
-					}
-				: null,
+		crm: mapCrmLink(record.crmLink),
 		messages,
 		lastGuestInboundAt: isoOrNull(record.lastGuestInboundAt),
 		sentAt: isoOrNull(record.sentAt),
@@ -324,6 +354,15 @@ function mapSummary(row: SummaryRow): ConversationSummary {
 			? vocab(GuestLanguage, row.language, "Conversation.language")
 			: null,
 		lastInboundText: row.lastInboundText ?? "",
+		crm: mapCrmLink({
+			leadId: row.crmLeadId,
+			leadName: row.crmLeadName,
+			method: row.crmMethod,
+			outcome: row.crmOutcome,
+			outcomeAt: row.crmOutcomeAt,
+			outcomeReason: row.crmOutcomeReason,
+			outcomeObservedAt: row.crmOutcomeObservedAt,
+		}),
 	};
 }
 
@@ -422,9 +461,14 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					"owner"."id" AS "ownerId", "owner"."name" AS "ownerName",
 					"owner"."email" AS "ownerEmail",
 					"latest"."text" AS "lastInboundText",
-					CASE WHEN ${LATEST_UNANSWERED} THEN "latest"."id" END AS "unansweredInboundId"
+					CASE WHEN ${LATEST_UNANSWERED} THEN "latest"."id" END AS "unansweredInboundId",
+					"crm"."leadId" AS "crmLeadId", "crm"."leadName" AS "crmLeadName",
+					"crm"."method"::text AS "crmMethod", "crm"."outcome"::text AS "crmOutcome",
+					"crm"."outcomeAt" AS "crmOutcomeAt", "crm"."outcomeReason" AS "crmOutcomeReason",
+					"crm"."outcomeObservedAt" AS "crmOutcomeObservedAt"
 				FROM "inbox_conversation" "c"
 				LEFT JOIN "user" "owner" ON "owner"."id" = "c"."ownerId"
+				LEFT JOIN "inbox_crm_link" "crm" ON "crm"."conversationId" = "c"."id"
 				${LATEST_INBOUND}
 				WHERE ${visibleSql(viewer)}
 				ORDER BY "c"."updatedAt" DESC, "c"."id"
@@ -1047,10 +1091,52 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					officeId,
 					...(where.phone ? { phone: where.phone } : {}),
 					...(where.zaloUserId ? { zaloUserId: where.zaloUserId } : {}),
+					...(where.ids ? { id: { in: where.ids } } : {}),
 				},
 				orderBy: [{ createdAt: "asc" }, { id: "asc" }],
 			});
 			return rows.map(mapMockCrmLead);
+		},
+
+		async setMockCrmLeadOutcome(officeId, leadId, outcome) {
+			await db.mockCrmLead.updateMany({
+				where: { id: leadId, officeId },
+				data: { outcome: outcome.status, outcomeAt: outcome.at, outcomeReason: outcome.reason },
+			});
+		},
+
+		async crmLinksForLeads(officeId, leadIds) {
+			const rows = await db.crmLink.findMany({
+				where: { officeId, leadId: { in: leadIds } },
+			});
+			return rows.flatMap((row) => {
+				const link = mapCrmLink(row);
+				return link
+					? [
+							{
+								conversationId: row.conversationId,
+								leadId: link.leadId,
+								outcome: link.outcome,
+								outcomeAt: link.outcomeAt,
+								outcomeReason: link.outcomeReason,
+								outcomeObservedAt: link.outcomeObservedAt,
+							},
+						]
+					: [];
+			});
+		},
+
+		async saveCrmOutcome(conversationId, leadId, outcome) {
+			// Only while the thread still links this lead: a relink meanwhile is not its outcome.
+			await db.crmLink.updateMany({
+				where: { conversationId, leadId },
+				data: {
+					outcome: outcome.outcome,
+					outcomeAt: outcome.outcomeAt ? new Date(outcome.outcomeAt) : null,
+					outcomeReason: outcome.outcomeReason,
+					outcomeObservedAt: outcome.outcomeObservedAt ? new Date(outcome.outcomeObservedAt) : null,
+				},
+			});
 		},
 
 		async close() {

@@ -162,13 +162,13 @@ export type CrmConnectionScalarFieldEnum = z.infer<typeof CrmConnectionScalarFie
 
 // File: CrmLinkScalarFieldEnum.schema.ts
 
-export const CrmLinkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'leadId', 'leadName', 'method', 'claimedAt', 'linkedAt'])
+export const CrmLinkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'leadId', 'leadName', 'method', 'claimedAt', 'linkedAt', 'outcome', 'outcomeAt', 'outcomeReason', 'outcomeObservedAt'])
 
 export type CrmLinkScalarFieldEnum = z.infer<typeof CrmLinkScalarFieldEnumSchema>;
 
 // File: MockCrmLeadScalarFieldEnum.schema.ts
 
-export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name', 'phone', 'zaloUserId', 'pipe', 'language', 'fields', 'threadUrl', 'createdAt'])
+export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name', 'phone', 'zaloUserId', 'pipe', 'language', 'fields', 'threadUrl', 'outcome', 'outcomeAt', 'outcomeReason', 'createdAt'])
 
 export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEnumSchema>;
 
@@ -267,6 +267,12 @@ export type CrmKind = z.infer<typeof CrmKindSchema>;
 export const CrmLinkMethodSchema = z.enum(['created', 'phone', 'zaloId'])
 
 export type CrmLinkMethod = z.infer<typeof CrmLinkMethodSchema>;
+
+// File: CrmOutcomeStatus.schema.ts
+
+export const CrmOutcomeStatusSchema = z.enum(['open', 'won', 'lost'])
+
+export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatusSchema>;
 
 // File: User.schema.ts
 
@@ -670,6 +676,10 @@ export const CrmLinkSchema = z.object({
   method: CrmLinkMethodSchema.nullish(),
   claimedAt: z.date(),
   linkedAt: z.date().nullish(),
+  outcome: CrmOutcomeStatusSchema.nullish(),
+  outcomeAt: z.date().nullish(),
+  outcomeReason: z.string().nullish(),
+  outcomeObservedAt: z.date().nullish(),
 });
 
 export type CrmLinkType = z.infer<typeof CrmLinkSchema>;
@@ -687,6 +697,9 @@ export const MockCrmLeadSchema = z.object({
   language: z.string().nullish(),
   fields: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
   threadUrl: z.string(),
+  outcome: CrmOutcomeStatusSchema.default("open"),
+  outcomeAt: z.date().nullish(),
+  outcomeReason: z.string().nullish(),
   createdAt: z.date(),
 });
 

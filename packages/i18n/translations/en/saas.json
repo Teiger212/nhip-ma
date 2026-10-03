@@ -889,7 +889,9 @@
 			"oaEcho": "Sent from the office's app"
 		},
 		"crm": {
-			"inCrm": "In CRM: {name}"
+			"inCrm": "In CRM: {name}",
+			"won": "Won",
+			"lost": "Lost"
 		}
 	}
 }
