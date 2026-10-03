@@ -26,7 +26,7 @@ import { noDraftAdapter } from "./drafts";
 import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import type { Conversation } from "./types";
+import type { Conversation, ConversationSummary } from "./types";
 
 type Body = Record<string, unknown>;
 
@@ -181,12 +181,15 @@ test("approve refuses a second send against the same guest message", async () =>
 	expect(second.res.status).toBe(409);
 	expect(second.body.error).toBe("already_answered");
 	expect(second.body.conversation).toBeUndefined();
-	const listed = await json(
-		await listConversations(new Request("http://localhost/api/conversations")),
+	const opened = await json(
+		await getConversation(
+			new Request(`http://localhost/api/conversations/${conv.id}`),
+			params(conv.id),
+		),
 	);
-	const thread = (listed.body as unknown as Conversation[]).find((item) => item.id === conv.id);
-	expect(thread?.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
-	expect(thread?.answers).toHaveLength(1);
+	const thread = opened.body as unknown as Conversation;
+	expect(thread.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
+	expect(thread.answers).toHaveLength(1);
 });
 
 test("an approval names its target and its text: stale, missing and empty are refused", async () => {
@@ -371,7 +374,9 @@ test("list and get conversation return the invented inbound", async () => {
 	const listed = await json(
 		await listConversations(new Request("http://localhost/api/conversations")),
 	);
-	const fromList = (listed.body as unknown as Conversation[]).find((item) => item.id === conv.id);
+	const fromList = (listed.body as unknown as ConversationSummary[]).find(
+		(item) => item.id === conv.id,
+	);
 	expect(fromList?.guestName).toBe("Alexei");
 
 	const opened = await json(
@@ -400,9 +405,15 @@ test("there is no send path except approve", async () => {
 	const listed = await json(
 		await listConversations(new Request("http://localhost/api/conversations")),
 	);
-	const first = (listed.body as unknown as Conversation[])[0];
+	const first = (listed.body as unknown as ConversationSummary[])[0];
 	expect(first.sentAt).toBeNull();
-	expect(first.answers).toEqual([]);
+	const opened = await json(
+		await getConversation(
+			new Request(`http://localhost/api/conversations/${first.id}`),
+			params(first.id),
+		),
+	);
+	expect((opened.body as unknown as Conversation).answers).toEqual([]);
 });
 
 test("WhatsApp approve outside 24h window is refused", async () => {

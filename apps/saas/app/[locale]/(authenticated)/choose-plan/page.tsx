@@ -5,8 +5,10 @@ import { config as authConfig } from "@repo/auth/config";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { AuthWrapper } from "@shared/components/AuthWrapper";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +22,7 @@ export async function generateMetadata() {
 }
 
 export default async function ChoosePlanPage() {
+	if (!KIT_SCREENS.billing) notFound();
 	const t = await getTranslations("choosePlan");
 	const session = await getSession();
 

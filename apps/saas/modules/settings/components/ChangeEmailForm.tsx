@@ -52,7 +52,11 @@ export function ChangeEmailForm() {
 					void onSubmit();
 				}}
 			>
-				<Input type="email" {...form.register("email")} />
+				<Input
+					type="email"
+					aria-label={t("settings.account.changeEmail.title")}
+					{...form.register("email")}
+				/>
 
 				<div className="mt-4 flex justify-end">
 					<Button

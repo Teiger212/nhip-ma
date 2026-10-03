@@ -1,12 +1,27 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	queryOptions,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useLocale } from "next-intl";
+import { useState } from "react";
 
-import type { Conversation, Pipe } from "./types";
+import { yourTurn } from "./queue";
+import { summarize } from "./summary";
+import type { Conversation, ConversationSummary, Pipe } from "./types";
 
-/** Server data for the inbox lives in TanStack Query; nothing else caches it. */
+/**
+ * Server data for the inbox lives in TanStack Query; nothing else caches it. Everything
+ * about threads sits under this key, so invalidating it refreshes the list, the nav count
+ * and the open thread together.
+ */
 export const conversationsQueryKey = ["inbox", "conversations"] as const;
+const listQueryKey = [...conversationsQueryKey, "list"] as const;
+const detailQueryKey = (id: string) => [...conversationsQueryKey, "detail", id] as const;
 
 /**
  * The queue changes without the operator doing anything: guests write back, translations
@@ -31,13 +46,90 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 	return data;
 }
 
+/**
+ * The thread list, as summaries (no messages). One definition for every reader (the inbox,
+ * Home's Waiting now, the nav count), so they share one cache entry and one poll.
+ */
+const conversationListQuery = queryOptions({
+	queryKey: listQueryKey,
+	queryFn: () => api<ConversationSummary[]>("/api/conversations"),
+	refetchInterval: POLL_INTERVAL_MS,
+});
+
 export function useConversations() {
+	return useQuery(conversationListQuery);
+}
+
+/**
+ * The open thread, whole: messages, translations, the one-shot and the Answers. Polled like
+ * the list while it is open. Opening it is also what asks the server for any translation
+ * into the operator's language that is still missing (ADR 0007). Each fetch also refreshes
+ * the thread's row, so the row and the open thread never tell two stories.
+ */
+export function useConversation(id: string | null) {
 	const locale = useLocale();
+	const queryClient = useQueryClient();
 	return useQuery({
-		queryKey: [...conversationsQueryKey, locale],
-		queryFn: () => api<Conversation[]>(`/api/conversations?locale=${encodeURIComponent(locale)}`),
+		queryKey: detailQueryKey(id ?? ""),
+		queryFn: async () => {
+			const conversation = await api<Conversation>(
+				`/api/conversations/${encodeURIComponent(id ?? "")}?locale=${encodeURIComponent(locale)}`,
+			);
+			putSummary(queryClient, conversation);
+			return conversation;
+		},
+		enabled: id !== null,
 		refetchInterval: POLL_INTERVAL_MS,
+		// A thread this operator can no longer open stays gone; asking again will not help.
+		retry: (failures, error) =>
+			!(error instanceof InboxApiError && error.code === "not_found") && failures < 3,
 	});
+}
+
+/**
+ * A thread the server just returned after an action: the open thread shows it and its row
+ * moves at once; the refetch that follows confirms both.
+ */
+function putConversation(queryClient: QueryClient, conversation: Conversation): void {
+	queryClient.setQueryData(detailQueryKey(conversation.id), conversation);
+	putSummary(queryClient, conversation);
+}
+
+/** Replace the thread's row with what the whole thread says, if the list holds it. */
+function putSummary(queryClient: QueryClient, conversation: Conversation): void {
+	queryClient.setQueryData<ConversationSummary[]>(listQueryKey, (list) =>
+		list?.map((item) => (item.id === conversation.id ? summarize(conversation) : item)),
+	);
+}
+
+/**
+ * How many threads are Your turn for this operator, for the nav on every page. Where the
+ * page already polls the conversation list (Inbox, Home), the count is read off it, so the
+ * database is asked once; elsewhere only the number comes over the wire. The last value is
+ * held while one source hands over to the other, so the number never blinks.
+ */
+export function useYourTurnCount({
+	enabled,
+	listMounted,
+}: {
+	enabled: boolean;
+	listMounted: boolean;
+}): number | null {
+	const list = useQuery({ ...conversationListQuery, enabled: enabled && listMounted });
+	const count = useQuery({
+		queryKey: [...conversationsQueryKey, "yourTurnCount"],
+		queryFn: () => api<{ count: number }>("/api/conversations/your-turn"),
+		refetchInterval: POLL_INTERVAL_MS,
+		enabled: enabled && !listMounted,
+		// An operator without an office is refused (403); asking again will not change that.
+		retry: false,
+	});
+	const value = listMounted
+		? (list.data?.filter(yourTurn).length ?? null)
+		: (count.data?.count ?? null);
+	const [held, setHeld] = useState<number | null>(null);
+	if (value !== null && value !== held) setHeld(value);
+	return enabled ? (value ?? held) : null;
 }
 
 export type DisconnectedEndpoint = { pipe: Pipe; externalId: string };
@@ -96,6 +188,7 @@ export function useSetOwner() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ ownerId }),
 			}),
+		onSuccess: (conversation) => putConversation(queryClient, conversation),
 		onSettled: () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
 	});
 }
@@ -109,7 +202,8 @@ function useConversationMutation(path: string) {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body ?? {}),
 			}),
-		onSuccess: async () => {
+		onSuccess: async ({ conversation }) => {
+			putConversation(queryClient, conversation);
 			await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
 		},
 	});

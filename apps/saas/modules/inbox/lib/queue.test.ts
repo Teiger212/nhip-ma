@@ -8,38 +8,25 @@ import {
 	nextSelection,
 	QUIET_AFTER_MS,
 } from "./queue";
-import type { Conversation } from "./types";
+import type { ConversationSummary } from "./types";
 
 const NOW = new Date("2026-09-05T12:00:00.000Z").getTime();
 
 function conv(
-	partial: Partial<Conversation> & Pick<Conversation, "id" | "guestName">,
-): Conversation {
+	partial: Partial<ConversationSummary> & Pick<ConversationSummary, "id" | "guestName">,
+): ConversationSummary {
 	const at = partial.lastGuestInboundAt ?? "2026-09-01T00:00:00.000Z";
 	return {
 		pipe: "zalo",
 		guestId: partial.id,
 		officeId: "walk-office",
 		owner: null,
-		messages: [
-			{
-				id: `${partial.id}:1`,
-				direction: "in",
-				source: "guest",
-				text: `hello from ${partial.guestName}`,
-				at,
-				vendorMessageId: null,
-				pipeExternalId: null,
-				translations: {},
-			},
-		],
 		lastGuestInboundAt: at,
 		sentAt: null,
 		unansweredInboundId: `${partial.id}:1`,
-		oneShot: null,
-		answers: [],
-		lastAnswer: null,
 		updatedAt: at,
+		guestLanguage: null,
+		lastInboundText: `hello from ${partial.guestName}`,
 		...partial,
 	};
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { getSession } from "@auth/lib/server";
+import { OFFICE_TIME_ZONE, windowStart } from "@home/lib/window";
 import { type OfficeDenial, resolveOffice } from "@inbox/lib/office";
 import { getRuntime } from "@inbox/lib/runtime";
 import type { Funnel } from "@repo/database/inbox";
@@ -25,11 +26,11 @@ export async function loadHomeFunnel(): Promise<HomeFunnel> {
 	if (office.denied) {
 		return { denied: office.denied };
 	}
-	const since = new Date(Date.now() - FUNNEL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+	const since = windowStart(new Date(), FUNNEL_WINDOW_DAYS, OFFICE_TIME_ZONE);
 	const runtime = getRuntime();
 	const funnel = await runtime.store.funnel(
 		{ userId: session.user.id, officeId: office.officeId },
-		{ since, countMock: runtime.config.sendMode !== "live" },
+		{ since, countMock: runtime.config.sendMode !== "live", timeZone: OFFICE_TIME_ZONE },
 	);
 	return { funnel };
 }

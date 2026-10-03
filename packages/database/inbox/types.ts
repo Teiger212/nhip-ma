@@ -158,6 +158,41 @@ export type Conversation = {
 	updatedAt: string;
 };
 
+/**
+ * A thread as the list sees it: everything the queue (ADR 0004), search, the row, Home's
+ * Waiting now and the nav count read, and nothing they do not. The open thread loads whole
+ * (`Conversation`); the list polls these, so its size grows with threads, never messages.
+ * The fields shared with `Conversation` mean the same; `unansweredInboundId` is derived by
+ * the same rule.
+ */
+export type ConversationSummary = Pick<
+	Conversation,
+	| "id"
+	| "pipe"
+	| "guestId"
+	| "guestName"
+	| "officeId"
+	| "owner"
+	| "lastGuestInboundAt"
+	| "sentAt"
+	| "unansweredInboundId"
+	| "updatedAt"
+> & {
+	/** The guest's language as the one-shot detected it; null until it has run. */
+	guestLanguage: GuestLanguage | null;
+	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
+	lastInboundText: string;
+};
+
+/** A guest message's failed translations into one operator language (ADR 0007). */
+export type TranslationFailure = {
+	messageId: string;
+	locale: OperatorLanguage;
+	/** Failed attempts since the last success. */
+	attempts: number;
+	lastFailedAt: string;
+};
+
 export type InboundEvent = {
 	pipe: Pipe;
 	source: MessageSource;
@@ -226,7 +261,19 @@ export type WebhookDeliveryRecord = {
 export type WebhookDelivery = WebhookDeliveryRecord & { id: string; receivedAt: string };
 
 export type InboxStore = {
+	/**
+	 * Every thread with everything under it. Scripts and tests read this; the inbox's list
+	 * reads `listConversationSummaries`, which stays small however long the threads get.
+	 */
 	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
+	/** The threads this viewer can open (ADR 0015), most recently active first, as summaries. */
+	listConversationSummaries: (viewer: InboxViewer) => Promise<ConversationSummary[]>;
+	/**
+	 * How many threads this viewer can open are Your turn (ADR 0004), counted in SQL by the
+	 * rule that sets `unansweredInboundId`: the guest's latest message has no Answer sending,
+	 * sent or of unknown outcome, and no reply from the vendor's own app after it.
+	 */
+	countYourTurn: (viewer: InboxViewer) => Promise<number>;
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
 	/** Files the message under `officeId`; a thread that already has an office keeps it. */
 	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
@@ -271,8 +318,19 @@ export type InboxStore = {
 	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
 	setDraft: (id: string, draft: Draft) => Promise<Conversation | null>;
-	/** Store one guest message's rendering in one operator language. */
+	/** Store one guest message's rendering in one operator language; clears its failures. */
 	setTranslation: (messageId: string, locale: OperatorLanguage, text: string) => Promise<void>;
+	/** A translation attempt failed: count it and stamp when, so retries can back off. */
+	recordTranslationFailure: (
+		messageId: string,
+		locale: OperatorLanguage,
+		at: Date,
+	) => Promise<void>;
+	/** The recorded failures of these messages into `locale`; messages without one are absent. */
+	translationFailures: (
+		messageIds: string[],
+		locale: OperatorLanguage,
+	) => Promise<TranslationFailure[]>;
 	/**
 	 * The operator approved `text` as the answer to `inboundId`: write the Answer in status
 	 * `sending` before anything talks to a vendor. Atomic: a second approval of the same
@@ -297,9 +355,14 @@ export type InboxStore = {
 	 * `since`, counted in SQL inside the office; no thread leaves the store for a count.
 	 * A lead is reached by the office's first reply: a sent Answer, or a reply an agent sent
 	 * from the vendor's own app (`oa-echo`). `countMock` decides whether mock sends count:
-	 * yes in a mock deployment (the demo), never in a live one.
+	 * yes in a mock deployment (the demo), never in a live one. `timeZone` (an IANA zone,
+	 * e.g. `Asia/Ho_Chi_Minh`) is the office's: `byDay` buckets leads by local calendar day
+	 * in it. An unknown zone throws a RangeError.
 	 */
-	funnel: (viewer: InboxViewer, window: { since: Date; countMock: boolean }) => Promise<Funnel>;
+	funnel: (
+		viewer: InboxViewer,
+		window: { since: Date; countMock: boolean; timeZone: string },
+	) => Promise<Funnel>;
 	/**
 	 * Give a thread to an agent, or back to the pool (null). The new owner must be a member
 	 * of the thread's office; returns false when the thread or the member is not found.

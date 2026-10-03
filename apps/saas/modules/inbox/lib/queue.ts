@@ -1,11 +1,12 @@
 import { matchesThreadSearch } from "./search";
-import type { Conversation } from "./types";
+import type { ConversationSummary } from "./types";
 
 /**
  * The inbox is a queue. These are the rules that define it (ADR 0004): "Your turn" is the
  * only pending state, the quiet section holds the Your-turn threads the guest has not
  * touched for a while, and each view has one order. The client module renders a
- * QueueView; it does not restate any of this.
+ * QueueView; it does not restate any of this. The queue reads thread summaries, which is
+ * all the list loads; the open thread is loaded whole on its own.
  */
 export const INBOX_VIEWS = ["yourTurn", "sent", "all"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
@@ -18,7 +19,7 @@ export function isInboxView(value: unknown): value is InboxView {
 }
 
 /** The guest spoke last. A fact, not a judgment. */
-export function yourTurn(conversation: Pick<Conversation, "unansweredInboundId">): boolean {
+export function yourTurn(conversation: Pick<ConversationSummary, "unansweredInboundId">): boolean {
 	return conversation.unansweredInboundId !== null;
 }
 
@@ -28,7 +29,7 @@ function time(value: string | null): number {
 
 /** Still Your turn, but the guest last wrote more than 48 hours ago. */
 export function isQuiet(
-	conversation: Pick<Conversation, "unansweredInboundId" | "lastGuestInboundAt">,
+	conversation: Pick<ConversationSummary, "unansweredInboundId" | "lastGuestInboundAt">,
 	now: number = Date.now(),
 ): boolean {
 	const last = time(conversation.lastGuestInboundAt);
@@ -36,7 +37,7 @@ export function isQuiet(
 }
 
 export function inView(
-	conversation: Pick<Conversation, "unansweredInboundId">,
+	conversation: Pick<ConversationSummary, "unansweredInboundId">,
 	view: InboxView,
 ): boolean {
 	if (view === "all") return true;
@@ -44,7 +45,9 @@ export function inView(
 }
 
 /** Oldest waiting guest first in the queue; most recent activity first elsewhere. */
-export function compareForView(view: InboxView): (a: Conversation, b: Conversation) => number {
+export function compareForView(
+	view: InboxView,
+): (a: ConversationSummary, b: ConversationSummary) => number {
 	return view === "yourTurn"
 		? (a, b) => time(a.lastGuestInboundAt) - time(b.lastGuestInboundAt)
 		: (a, b) => time(b.updatedAt) - time(a.updatedAt);
@@ -54,12 +57,12 @@ export type QueueCounts = Record<InboxView, number>;
 
 export type QueueView = {
 	/** Threads in the current view that match the search, in view order. */
-	visible: Conversation[];
+	visible: ConversationSummary[];
 	/**
 	 * The collapsed section at the bottom of the queue: Your-turn threads the guest last
 	 * touched more than 48 hours ago, oldest first. Empty outside the Your turn view.
 	 */
-	quiet: Conversation[];
+	quiet: ConversationSummary[];
 	/** Per-view totals for the same search, so tab counts agree with the list. Quiet counts. */
 	counts: QueueCounts;
 	/** Whether the queue is empty because every guest has been answered. */
@@ -67,7 +70,7 @@ export type QueueView = {
 };
 
 export function buildQueueView(
-	conversations: Conversation[],
+	conversations: ConversationSummary[],
 	view: InboxView,
 	query: string,
 	now: number = Date.now(),
@@ -105,7 +108,10 @@ export function buildQueueView(
  * the sent thread has left the list, so this is also what advances to the next waiting
  * guest.
  */
-export function nextSelection(ordered: Conversation[], selectedId: string | null): string | null {
+export function nextSelection(
+	ordered: ConversationSummary[],
+	selectedId: string | null,
+): string | null {
 	if (selectedId && ordered.some((conversation) => conversation.id === selectedId)) {
 		return selectedId;
 	}

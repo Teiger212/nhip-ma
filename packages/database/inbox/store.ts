@@ -1,7 +1,7 @@
 import { createId as cuid } from "@paralleldrive/cuid2";
 import { z } from "zod";
 
-import type { Prisma, PrismaClient } from "../prisma/generated/client";
+import { Prisma, type PrismaClient } from "../prisma/generated/client";
 import { operatorNameOf } from "../prisma/queries/operators";
 import {
 	AnswerStatus,
@@ -10,12 +10,14 @@ import {
 	GuestLanguage,
 	MessageSource,
 	OperatorLanguage,
+	Pipe,
 	RentOrBuy,
 } from "./schema";
 import type {
 	Answer,
 	BeginAnswerResult,
 	Conversation,
+	ConversationSummary,
 	Draft,
 	InboundEvent,
 	InboxStore,
@@ -74,6 +76,64 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 /** An Answer that counts as the office's reply: in flight, delivered, or possibly delivered. */
 const ANSWERING_STATUSES: readonly AnswerStatus[] = ["sending", "sent", "unknown"];
+
+/** `visibleTo` for the raw reads of thread `c`: the office, and for an agent its pool and their own. */
+function visibleSql(viewer: InboxViewer): Prisma.Sql {
+	return viewer.role === "manager"
+		? Prisma.sql`"c"."officeId" = ${viewer.officeId}`
+		: Prisma.sql`"c"."officeId" = ${viewer.officeId}
+			AND ("c"."ownerId" IS NULL OR "c"."ownerId" = ${viewer.userId})`;
+}
+
+/**
+ * The guest's latest message on thread `c`, as `latest`: last in the thread's order (time,
+ * then arrival), the same message `mapConversation` walks back to.
+ */
+const LATEST_INBOUND = Prisma.sql`
+	LEFT JOIN LATERAL (
+		SELECT "m"."id", "m"."text", "m"."at", "m"."seq"
+		FROM "inbox_message" "m"
+		WHERE "m"."conversationId" = "c"."id" AND "m"."direction" = 'in'
+		ORDER BY "m"."at" DESC, "m"."seq" DESC
+		LIMIT 1
+	) "latest" ON TRUE`;
+
+/**
+ * Your turn (ADR 0004, ADR 0011) in SQL, exactly as `mapConversation` derives
+ * `unansweredInboundId`: there is a latest guest message, no Answer to it is sending, sent or
+ * of unknown outcome, and no reply from the vendor's own app comes after it in thread order.
+ */
+const LATEST_UNANSWERED = Prisma.sql`(
+	"latest"."id" IS NOT NULL
+	AND NOT EXISTS (
+		SELECT 1 FROM "inbox_answer" "a"
+		WHERE "a"."inboundId" = "latest"."id"
+			AND "a"."status"::text IN (${Prisma.join([...ANSWERING_STATUSES])})
+	)
+	AND NOT EXISTS (
+		SELECT 1 FROM "inbox_message" "echo"
+		WHERE "echo"."conversationId" = "c"."id"
+			AND "echo"."direction" = 'out' AND "echo"."source" = 'oa_echo'
+			AND ("echo"."at", "echo"."seq") > ("latest"."at", "latest"."seq")
+	)
+)`;
+
+type SummaryRow = {
+	id: string;
+	pipe: string;
+	guestId: string;
+	guestName: string | null;
+	officeId: string;
+	language: string | null;
+	lastGuestInboundAt: Date | null;
+	sentAt: Date | null;
+	updatedAt: Date;
+	ownerId: string | null;
+	ownerName: string | null;
+	ownerEmail: string | null;
+	lastInboundText: string | null;
+	unansweredInboundId: string | null;
+};
 
 /**
  * Languages and rent-or-buy are text on disk (ADR 0012) so the lists can grow without a
@@ -215,6 +275,31 @@ function mapConversation(record: ConversationRecord): Conversation {
 	};
 }
 
+function mapSummary(row: SummaryRow): ConversationSummary {
+	return {
+		id: row.id,
+		pipe: vocab(Pipe, row.pipe, "Conversation.pipe"),
+		guestId: row.guestId,
+		guestName: row.guestName,
+		officeId: row.officeId,
+		owner:
+			row.ownerId !== null
+				? {
+						id: row.ownerId,
+						name: operatorNameOf({ name: row.ownerName ?? "", email: row.ownerEmail ?? "" }),
+					}
+				: null,
+		lastGuestInboundAt: isoOrNull(row.lastGuestInboundAt),
+		sentAt: isoOrNull(row.sentAt),
+		unansweredInboundId: row.unansweredInboundId,
+		updatedAt: iso(row.updatedAt),
+		guestLanguage: row.language
+			? vocab(GuestLanguage, row.language, "Conversation.language")
+			: null,
+		lastInboundText: row.lastInboundText ?? "",
+	};
+}
+
 /** Prisma's unique-violation code. Duck-typed so no error class has to be imported. */
 function isUniqueViolation(error: unknown): boolean {
 	return (
@@ -225,6 +310,56 @@ function isUniqueViolation(error: unknown): boolean {
 /** The nearest-rank percentile of an ascending list: `p` in (0, 1], never interpolated. */
 function nearestRank(sorted: number[], p: number): number {
 	return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)];
+}
+
+const MINUTE_MS = 60_000;
+
+/** The response-time bands (ResponseTime.buckets), each lower bound inclusive. */
+function responseBuckets(durations: number[]): NonNullable<Funnel["responseTime"]>["buckets"] {
+	const buckets = { under5m: 0, from5to15m: 0, from15to60m: 0, over60m: 0 };
+	for (const ms of durations) {
+		if (ms < 5 * MINUTE_MS) buckets.under5m += 1;
+		else if (ms < 15 * MINUTE_MS) buckets.from5to15m += 1;
+		else if (ms < 60 * MINUTE_MS) buckets.from15to60m += 1;
+		else buckets.over60m += 1;
+	}
+	return buckets;
+}
+
+/** `YYYY-MM-DD` of the calendar day after `day`, by calendar arithmetic, never by 24 hours. */
+function nextDay(day: string): string {
+	const [year, month, date] = day.split("-").map(Number);
+	return new Date(Date.UTC(year, month - 1, date + 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * Leads by local calendar day (Funnel.byDay): every day from `since`'s to `until`'s in
+ * `timeZone`, zero-filled. A first contact stamped after `until` (a vendor clock ahead of
+ * ours) counts on the last day, so the days still add up to the cohort.
+ */
+function leadsByDay(
+	firstContacts: Date[],
+	since: Date,
+	until: Date,
+	timeZone: string,
+): Funnel["byDay"] {
+	const dayKey = new Intl.DateTimeFormat("en-CA", {
+		timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	});
+	const last = dayKey.format(until);
+	const days = new Map<string, number>();
+	for (let day = dayKey.format(since); day <= last; day = nextDay(day)) {
+		days.set(day, 0);
+	}
+	for (const at of firstContacts) {
+		const day = dayKey.format(at);
+		const key = day > last ? last : day;
+		days.set(key, (days.get(key) ?? 0) + 1);
+	}
+	return [...days].map(([day, leads]) => ({ day, leads }));
 }
 
 export function createInboxStore(db: PrismaClient): InboxStore {
@@ -248,6 +383,36 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				include: CONVERSATION_INCLUDE,
 			});
 			return records.map(mapConversation);
+		},
+
+		async listConversationSummaries(viewer) {
+			// One row per thread, never per message: the latest guest message is one indexed
+			// lookup per thread (`inbox_message (conversationId, direction, at)`).
+			const rows = await db.$queryRaw<SummaryRow[]>`
+				SELECT "c"."id", "c"."pipe"::text AS "pipe", "c"."guestId", "c"."guestName",
+					"c"."officeId", "c"."language", "c"."lastGuestInboundAt", "c"."sentAt",
+					"c"."updatedAt",
+					"owner"."id" AS "ownerId", "owner"."name" AS "ownerName",
+					"owner"."email" AS "ownerEmail",
+					"latest"."text" AS "lastInboundText",
+					CASE WHEN ${LATEST_UNANSWERED} THEN "latest"."id" END AS "unansweredInboundId"
+				FROM "inbox_conversation" "c"
+				LEFT JOIN "user" "owner" ON "owner"."id" = "c"."ownerId"
+				${LATEST_INBOUND}
+				WHERE ${visibleSql(viewer)}
+				ORDER BY "c"."updatedAt" DESC, "c"."id"
+			`;
+			return rows.map(mapSummary);
+		},
+
+		async countYourTurn(viewer) {
+			const [row] = await db.$queryRaw<Array<{ count: number }>>`
+				SELECT COUNT(*)::int AS "count"
+				FROM "inbox_conversation" "c"
+				${LATEST_INBOUND}
+				WHERE ${visibleSql(viewer)} AND ${LATEST_UNANSWERED}
+			`;
+			return row?.count ?? 0;
 		},
 
 		async getConversation(id, viewer?: InboxViewer) {
@@ -384,11 +549,35 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async setTranslation(messageId, locale, text) {
-			await db.translation.upsert({
+			await db.$transaction([
+				db.translation.upsert({
+					where: { messageId_locale: { messageId, locale } },
+					create: { messageId, locale, text },
+					update: { text },
+				}),
+				db.translationFailure.deleteMany({ where: { messageId, locale } }),
+			]);
+		},
+
+		async recordTranslationFailure(messageId, locale, at) {
+			await db.translationFailure.upsert({
 				where: { messageId_locale: { messageId, locale } },
-				create: { messageId, locale, text },
-				update: { text },
+				create: { messageId, locale, attempts: 1, lastFailedAt: at },
+				update: { attempts: { increment: 1 }, lastFailedAt: at },
 			});
+		},
+
+		async translationFailures(messageIds, locale) {
+			if (messageIds.length === 0) return [];
+			const rows = await db.translationFailure.findMany({
+				where: { messageId: { in: messageIds }, locale },
+			});
+			return rows.map((row) => ({
+				messageId: row.messageId,
+				locale: vocab(OperatorLanguage, row.locale, "TranslationFailure.locale"),
+				attempts: row.attempts,
+				lastFailedAt: iso(row.lastFailedAt),
+			}));
 		},
 
 		async beginAnswer(input) {
@@ -719,22 +908,32 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		async funnel(viewer, window) {
 			const since = new Date(nowIso(window.since));
 			const until = new Date();
-			// One row per cohort lead, never per message; the percentiles are the only thing
-			// left for JavaScript.
+			// One row per cohort lead, never per message; the percentiles, the response-time
+			// bands and the local days are the only things left for JavaScript. Every CTE starts
+			// from the office's threads (then the cohort's), so no other office's rows are read.
 			const leads = await db.$queryRaw<
 				Array<{ firstInboundAt: Date; firstSentAt: Date | null; wroteBack: boolean }>
 			>`
-				WITH "first" AS (
-					SELECT "conversationId", MIN("at") AS "firstInboundAt"
-					FROM "inbox_message" WHERE "direction" = 'in' GROUP BY "conversationId"
+				WITH "office" AS (
+					SELECT "id" FROM "inbox_conversation" WHERE "officeId" = ${viewer.officeId}
+				),
+				"first" AS (
+					SELECT "m"."conversationId", MIN("m"."at") AS "firstInboundAt"
+					FROM "inbox_message" "m"
+					JOIN "office" ON "office"."id" = "m"."conversationId"
+					WHERE "m"."direction" = 'in'
+					GROUP BY "m"."conversationId"
+					HAVING MIN("m"."at") >= ${since}
 				),
 				"reached" AS (
 					SELECT "conversationId", MIN("at") AS "firstSentAt" FROM (
-						SELECT "conversationId", "sentAt" AS "at" FROM "inbox_answer"
-						WHERE "status" = 'sent' AND (${window.countMock} OR NOT "mock")
+						SELECT "a"."conversationId", "a"."sentAt" AS "at" FROM "inbox_answer" "a"
+						JOIN "first" ON "first"."conversationId" = "a"."conversationId"
+						WHERE "a"."status" = 'sent' AND (${window.countMock} OR NOT "a"."mock")
 						UNION ALL
-						SELECT "conversationId", "at" FROM "inbox_message"
-						WHERE "direction" = 'out' AND "source" = 'oa_echo'
+						SELECT "m"."conversationId", "m"."at" FROM "inbox_message" "m"
+						JOIN "first" ON "first"."conversationId" = "m"."conversationId"
+						WHERE "m"."direction" = 'out' AND "m"."source" = 'oa_echo'
 					) "replies" GROUP BY "conversationId"
 				)
 				SELECT "first"."firstInboundAt" AS "firstInboundAt",
@@ -748,7 +947,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				FROM "inbox_conversation" "c"
 				JOIN "first" ON "first"."conversationId" = "c"."id"
 				LEFT JOIN "reached" ON "reached"."conversationId" = "c"."id"
-				WHERE "c"."officeId" = ${viewer.officeId} AND "first"."firstInboundAt" >= ${since}
+				WHERE "c"."officeId" = ${viewer.officeId}
 			`;
 			const durations = leads
 				.flatMap((lead) =>
@@ -769,7 +968,14 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 								answered: durations.length,
 								medianMs: nearestRank(durations, 0.5),
 								p90Ms: nearestRank(durations, 0.9),
+								buckets: responseBuckets(durations),
 							},
+				byDay: leadsByDay(
+					leads.map((lead) => lead.firstInboundAt),
+					since,
+					until,
+					window.timeZone,
+				),
 			};
 			return funnel;
 		},

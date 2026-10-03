@@ -1,8 +1,10 @@
 import { getSession } from "@auth/lib/server";
 import { CheckoutReturnContent } from "@payments/components/CheckoutReturnContent";
 import { AuthWrapper } from "@shared/components/AuthWrapper";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +22,7 @@ export default async function CheckoutReturnPage({
 }: {
 	searchParams: Promise<{ organizationId?: string }>;
 }) {
+	if (!KIT_SCREENS.billing) notFound();
 	const [session, t, { organizationId }] = await Promise.all([
 		getSession(),
 		getTranslations("checkoutReturn"),

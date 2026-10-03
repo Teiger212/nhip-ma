@@ -31,7 +31,7 @@ export function OrganizationRoleSelect({
 			}}
 			disabled={disabled}
 		>
-			<SelectTrigger>
+			<SelectTrigger className="w-max">
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>

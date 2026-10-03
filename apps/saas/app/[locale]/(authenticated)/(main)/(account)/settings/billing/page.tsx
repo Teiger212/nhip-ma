@@ -5,9 +5,11 @@ import { listPurchases } from "@payments/lib/server";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata() {
 	const t = await getTranslations("settings.billing");
@@ -18,6 +20,7 @@ export async function generateMetadata() {
 }
 
 export default async function BillingSettingsPage() {
+	if (!KIT_SCREENS.billing) notFound();
 	const session = await getSession();
 	const purchases = await listPurchases();
 
