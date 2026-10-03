@@ -195,7 +195,7 @@ PRs; "open" means not started unless it says otherwise.
 5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
    "Coming soon" controls.
    _In progress_: the CRM seam, reviewed and planned in slices after #52
-   (`reports/crm-seam-plan-2026-10-03.md`). _Open_: billing (the kit's screens stay
+   (`reports/crm-seam-plan-2026-10-03.md`), now unblocked. _Open_: billing (the kit's screens stay
    hidden), guest-data deletion, "Coming soon" controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
@@ -212,7 +212,8 @@ are not: Vercel builds only `main` and `production` until previews get their own
 WhatsApp waits on its number.
 
 **Alongside the milestones**: the design system, DESIGN.md (#47–#49, merged), and the
-desk refit (#50 lint rules, #52 Home rebuilt and the audit's fixes, in review).
+desk refit (#50 lint rules; #52, landed through #53: Home rebuilt and the audit's
+fixes), merged 2026-10-03.
 
 Shipped before this stage: the conversation loop (ADR 0009), office tenancy and Home, the
 account lifecycle (ADR 0013). Listing match stays the horizon.
