@@ -16,6 +16,7 @@ export {
 } from "@repo/database/inbox";
 export type {
 	Conversation,
+	ConversationSummary,
 	Draft,
 	InboundEvent,
 	InboxStore as Store,
@@ -26,5 +27,6 @@ export type {
 	Qualification,
 	SendMode,
 	SendResult,
+	TranslationFailure,
 	Translations,
 } from "@repo/database/inbox";

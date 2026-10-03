@@ -106,6 +106,12 @@ export const TranslationScalarFieldEnumSchema = z.enum(['messageId', 'locale', '
 
 export type TranslationScalarFieldEnum = z.infer<typeof TranslationScalarFieldEnumSchema>;
 
+// File: TranslationFailureScalarFieldEnum.schema.ts
+
+export const TranslationFailureScalarFieldEnumSchema = z.enum(['messageId', 'locale', 'attempts', 'lastFailedAt'])
+
+export type TranslationFailureScalarFieldEnum = z.infer<typeof TranslationFailureScalarFieldEnumSchema>;
+
 // File: QualificationScalarFieldEnum.schema.ts
 
 export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold'])
@@ -484,6 +490,18 @@ export const TranslationSchema = z.object({
 });
 
 export type TranslationType = z.infer<typeof TranslationSchema>;
+
+
+// File: TranslationFailure.schema.ts
+
+export const TranslationFailureSchema = z.object({
+  messageId: z.string(),
+  locale: z.string(),
+  attempts: z.number().int(),
+  lastFailedAt: z.date(),
+});
+
+export type TranslationFailureType = z.infer<typeof TranslationFailureSchema>;
 
 
 // File: Qualification.schema.ts

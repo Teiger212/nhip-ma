@@ -328,22 +328,26 @@ model Conversation {
 }
 
 model Message {
-  id              String           @id
-  seq             Int              @unique @default(autoincrement())
-  conversationId  String
-  conversation    Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  direction       MessageDirection
-  source          MessageSource
-  text            String
-  at              DateTime
-  vendorMessageId String?
-  mock            Boolean          @default(false)
-  pipeExternalId  String?
-  translations    Translation[]
-  answer          Answer?
+  id                  String               @id
+  seq                 Int                  @unique @default(autoincrement())
+  conversationId      String
+  conversation        Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction           MessageDirection
+  source              MessageSource
+  text                String
+  at                  DateTime
+  vendorMessageId     String?
+  mock                Boolean              @default(false)
+  pipeExternalId      String?
+  translations        Translation[]
+  translationFailures TranslationFailure[]
+  answer              Answer?
 
   @@unique([conversationId, vendorMessageId])
   @@index([conversationId])
+  /// A thread's latest guest message (the list's turn and preview) and the funnel's first
+  /// inbound per thread are both read by (thread, direction, time).
+  @@index([conversationId, direction, at])
   @@map("inbox_message")
 }
 
@@ -355,6 +359,21 @@ model Translation {
 
   @@id([messageId, locale])
   @@map("inbox_translation")
+}
+
+/// A translation into one operator language that did not land (ADR 0007): the model failed
+/// or answered nothing, so no Translation was stored. Kept in the database so every instance
+/// waits out the same backoff instead of calling the model again on the next read. Cleared
+/// when the translation lands.
+model TranslationFailure {
+  messageId    String
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  locale       String
+  attempts     Int
+  lastFailedAt DateTime
+
+  @@id([messageId, locale])
+  @@map("inbox_translation_failure")
 }
 
 model Qualification {
@@ -424,7 +443,7 @@ model PipeConnection {
   pipe       Pipe
   externalId String
   officeId   String
-  office     Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  office     Organization    @relation(fields: [officeId], references: [id], onDelete: Cascade)
   credential PipeCredential?
 
   @@id([pipe, externalId])
@@ -473,4 +492,3 @@ model WebhookDelivery {
   @@index([receivedAt])
   @@map("inbox_webhook_delivery")
 }
-

@@ -29,7 +29,7 @@ import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts"
 import { checkFollowUp } from "./drafts/guardrails";
 import { asData } from "./drafts/prompts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import type { Conversation } from "./types";
+import type { Conversation, ConversationSummary } from "./types";
 
 /**
  * The done line of ADR 0009, walked end to end against a fake draft adapter: a guest who
@@ -190,7 +190,9 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	const listed = await json(
 		await listConversations(new Request("http://localhost/api/conversations?locale=vi")),
 	);
-	const inList = (listed.body as unknown as Conversation[]).find((item) => item.id === conv.id);
+	const inList = (listed.body as unknown as ConversationSummary[]).find(
+		(item) => item.id === conv.id,
+	);
 	expect(inList?.unansweredInboundId).toBe(secondInbound);
 
 	// 4. The agent approves the suggested follow-up. It sends.
