@@ -216,9 +216,10 @@ pipe_credential, webhook_delivery.
   from the `0_init` baseline in `prisma/migrations/`. After editing the schema, run
   `pnpm --filter @repo/database migrate:new <name>`, which replays the migrations into a
   throwaway database and writes the diff. `migrate:check` fails when the schema has changes
-  no migration covers; CI runs it. `migrate:deploy` applies them. Staging is migrated by
-  hand today: before a PR with a migration merges, `migrate deploy` runs against the Neon
-  `staging` branch (direct, non-pooled URL). Migrations are additive and stay compatible with
+  no migration covers; CI runs it. `migrate:deploy` applies them. Hosted environments migrate on build:
+  `apps/saas/scripts/vercel-build.sh` runs `prisma migrate deploy` against the direct
+  (non-pooled) URL before building, and a failed migration fails the build, so the previous
+  deployment keeps serving. Migrations are additive and stay compatible with
   the release before (ADR 0016), so applying one ahead of its code is safe. Automating this
   is open.
 - **Tests** use `supastarter_test` (Vitest) and `supastarter_e2e` (Playwright) on the same
