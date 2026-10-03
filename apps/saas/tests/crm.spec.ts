@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type { APIRequestContext, APIResponse, Browser, Page } from "@playwright/test";
 
 import type { MockCrmLead } from "./support/crm";
 import { connectMockCrm, mockCrmLeads } from "./support/crm";
@@ -11,15 +11,24 @@ import { expect, test as base } from "./support/fixtures";
 import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
-import { clientIpHeaders, withOrigin } from "./support/session";
+import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
 
-/** The thread header's CRM status (packages/i18n/translations/en/saas.json, inbox.crm). */
+/**
+ * The thread header's CRM status (inbox.crm) and the platform admin's CRM setting on an office's
+ * Connections card (admin.connections.crm), from packages/i18n/translations/en/saas.json.
+ */
 const crmCopy = (() => {
 	const file = path.resolve(__dirname, "../../../packages/i18n/translations/en/saas.json");
 	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
 		inbox: { crm: { inCrm: string } };
+		admin: {
+			connections: { crm: { label: string; none: string; mock: string; saved: string } };
+		};
 	};
-	return { inCrm: (name: string) => saas.inbox.crm.inCrm.replaceAll("{name}", name) };
+	return {
+		inCrm: (name: string) => saas.inbox.crm.inCrm.replaceAll("{name}", name),
+		setting: saas.admin.connections.crm,
+	};
 })();
 
 /** A guest of this test, writing on Zalo to one office's OA. */
@@ -221,6 +230,72 @@ async function expectLeadAppears(officeId: string, guest: Guest, message: string
 		.toBeGreaterThan(0);
 }
 
+/**
+ * The agent opens the guest's thread until its header says the guest is in the CRM, by name.
+ * The lead is written in the background, after the guest's message is taken.
+ */
+async function expectInCrmOnThread(page: Page, guest: Guest) {
+	await expect(async () => {
+		await openThreadOf(page, guest);
+		await expect(
+			openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+			"the thread header says the guest is in the CRM",
+		).toBeVisible({ timeout: 3_000 });
+	}, "the thread header says In CRM: <the guest's name>").toPass({ timeout: 45_000 });
+}
+
+/* ---------------------------------------------------------------- the office's CRM setting */
+
+/** The platform admin's CRM setting, on the office's Connections card (Admin → Organizations). */
+async function openCrmSetting(admin: Admin, officeId: string) {
+	const { page } = admin;
+	await page.goto(`/en/admin/organizations/${officeId}`);
+	const card = page.getByTestId("office-connections");
+	await expect(card, "the platform admin sees the office's Connections card").toBeVisible();
+	const kind = card.getByTestId("connection-crm").getByTestId("crm-kind");
+	await expect(kind, "the office's Connections card has a CRM setting").toBeVisible();
+	await expect(kind, "the setting is the office's CRM").toHaveAccessibleName(crmCopy.setting.label);
+	/**
+	 * The setting shows this choice as the office's CRM, and not the other one. The trigger also
+	 * holds its dropdown arrow, so the choice is judged within its text, not as all of it.
+	 */
+	const shows = async (choice: "none" | "mock", message?: string) => {
+		const other = choice === "none" ? "mock" : "none";
+		await expect(kind, message).toContainText(crmCopy.setting[choice]);
+		await expect(kind, message).not.toContainText(crmCopy.setting[other]);
+	};
+	return {
+		shows,
+		/** The admin chooses the office's CRM; it saves at once. */
+		choose: async (choice: "none" | "mock") => {
+			await kind.click();
+			await page.getByRole("option", { name: crmCopy.setting[choice], exact: true }).click();
+			await expect(
+				page.getByText(crmCopy.setting.saved, { exact: true }),
+				"CRM saved.",
+			).toBeVisible();
+			await shows(choice);
+		},
+	};
+}
+
+/** The office's CRM through the API behind the setting. */
+const crmConnection = {
+	address: (officeId: string) => `/api/crm/connection?officeId=${encodeURIComponent(officeId)}`,
+	/** Sets it, sent as the app's own calls are (with the Origin), so a refusal is about who asks. */
+	put: (request: APIRequestContext, officeId: string, kind: "mock" | null) =>
+		request.put("/api/crm/connection", {
+			data: { officeId, kind },
+			headers: { origin: appOrigin() },
+			maxRedirects: 0,
+		}),
+};
+
+/** The office's CRM in a `GET /api/crm/connection` answer (it also lists the kinds on offer). */
+async function officeCrmIn(res: APIResponse): Promise<"mock" | null> {
+	return ((await res.json()) as { kind: "mock" | null }).kind;
+}
+
 // ---------------------------------------------------------------------------------------
 
 // scenario: docs/e2e-scenarios.md CRM 1
@@ -321,5 +396,110 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		).toHaveCount(0);
 		await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(0);
 		expect(mockCrmLeads(office.id), "no lead is made for an office with no CRM").toEqual([]);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md CRM 2
+test.describe("CRM 2 — the admin sets an office's CRM", () => {
+	test("the platform admin chooses Mock on the office's Connections card: it is saved, and a new guest becomes a lead the agent sees In CRM", async ({
+		admin,
+		newOffice,
+	}) => {
+		test.setTimeout(150_000);
+		// An office on no CRM: only the admin's setting puts it on the mock CRM.
+		const office = await newOffice("CRM 2 mock", { crm: "none" });
+
+		const setting = await openCrmSetting(admin, office.id);
+		await setting.shows("none", "a new office has no CRM");
+		await setting.choose("mock");
+
+		// It stays chosen.
+		const reopened = await openCrmSetting(admin, office.id);
+		await reopened.shows("mock", "the office's CRM is saved as Mock");
+
+		// A new guest writes: they become a lead in the mock CRM, and the agent sees it.
+		const guest = await office.newGuest();
+		await expectInCrmOnThread(office.agent.page, guest);
+		const leads = leadsOf(office.id, guest);
+		expect(leads, "the office's CRM holds one lead for the guest").toHaveLength(1);
+		expect(leads[0].name, "the lead carries the guest's name").toBe(nameOf(guest));
+	});
+
+	test("choosing None takes the thread's In CRM status away", async ({ admin, newOffice }) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 2 none", { crm: "none" });
+		const { page } = office.agent;
+
+		// On the mock CRM through the setting, a new guest's thread is In CRM.
+		await (await openCrmSetting(admin, office.id)).choose("mock");
+		const guest = await office.newGuest();
+		await expectInCrmOnThread(page, guest);
+
+		// The admin chooses None (a fresh page, so the earlier "CRM saved." is gone).
+		await (await openCrmSetting(admin, office.id)).choose("none");
+		const reopened = await openCrmSetting(admin, office.id);
+		await reopened.shows("none", "the office's CRM is saved as None");
+
+		// The agent opens the thread afresh: nothing about a CRM in it any more.
+		await openThreadOf(page, guest);
+		await expect(
+			openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+			"the thread no longer says the guest is in the CRM",
+		).toHaveCount(0);
+		await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(0);
+	});
+
+	test("a non-admin is refused: the office's agent and manager find no CRM setting, the API answers them 403 and anyone signed out 401, and the office's CRM stays None", async ({
+		admin,
+		newOffice,
+		request,
+	}) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 2 refused", { crm: "none", manager: true });
+		const address = crmConnection.address(office.id);
+
+		// The platform admin has the setting, and the API answers them: the office has no CRM.
+		const setting = await openCrmSetting(admin, office.id);
+		await setting.shows("none", "the office has no CRM");
+		const asAdmin = await admin.api.get(address);
+		expect(asAdmin.status(), "the platform admin reads the office's CRM").toBe(200);
+		expect(await officeCrmIn(asAdmin)).toBeNull();
+
+		// The office's own agent and manager: no Connections, no CRM setting, and the API refuses.
+		for (const [who, operator] of [
+			["the agent", office.agent],
+			["the manager", office.manager],
+		] as const) {
+			const { page } = operator;
+			await page.goto(`/en/admin/organizations/${office.id}`);
+			// Judge on a rendered page, not an empty one.
+			await expect(page.getByRole("main")).toBeVisible();
+			await expect(
+				page.getByTestId("office-connections"),
+				`${who} sees no Connections`,
+			).toHaveCount(0);
+			await expect(page.getByTestId("crm-kind"), `${who} sees no CRM setting`).toHaveCount(0);
+
+			const read = await page.request.get(address, { maxRedirects: 0 });
+			expect(read.status(), `${who} cannot read the office's CRM`).toBe(403);
+			const write = await crmConnection.put(page.request, office.id, "mock");
+			expect(write.status(), `${who} cannot set the office's CRM`).toBe(403);
+		}
+
+		// Signed out: refused too.
+		const signedOutRead = await request.get(address, { maxRedirects: 0 });
+		expect(signedOutRead.status(), "nobody signed in cannot read it").toBe(401);
+		const signedOutWrite = await crmConnection.put(request, office.id, "mock");
+		expect(signedOutWrite.status(), "nobody signed in cannot set it").toBe(401);
+
+		// Nothing changed: the office is still on no CRM.
+		const after = await admin.api.get(address);
+		expect(await officeCrmIn(after), "the refused requests changed nothing").toBeNull();
+		await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
+
+		// The same request from the platform admin is taken: the refusals were about who asked.
+		const byAdmin = await crmConnection.put(admin.page.request, office.id, "mock");
+		expect(byAdmin.status(), "the platform admin sets the office's CRM").toBe(200);
+		expect(await officeCrmIn(await admin.api.get(address)), "the office is on Mock").toBe("mock");
 	});
 });

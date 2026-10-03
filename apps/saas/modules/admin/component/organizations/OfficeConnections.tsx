@@ -10,6 +10,8 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
+import { OfficeCrm } from "./OfficeCrm";
+
 type OfficePipe = {
 	pipe: "zalo" | "whatsapp";
 	externalId: string;
@@ -165,6 +167,7 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 						<p className="mt-1 text-sm text-muted-foreground">{t("whatsappLater")}</p>
 					</div>
 				</div>
+				<OfficeCrm officeId={officeId} />
 			</CardContent>
 		</Card>
 	);
