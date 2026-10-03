@@ -211,7 +211,7 @@ test("a guest who writes after Nhịp observed the outcome is back in the queue"
 });
 
 // ADR 0003 (Q3): the time Nhịp first saw the outcome decides, never the CRM's own close date.
-test("a backdated close does not hide a guest who wrote before Nhịp saw it", () => {
+test("a backdated close still resolves a guest who wrote before Nhịp saw it", () => {
 	// The CRM dates the loss at 09:00; the guest wrote at 10:00; Nhịp saw the loss at 11:00.
 	const backdated = conv({
 		id: "backdated",

@@ -1,9 +1,10 @@
+import { isDecided } from "./crm/rules";
 import { matchesThreadSearch } from "./search";
 import type { ConversationSummary } from "./types";
 
 /**
  * The inbox is a queue. These are the rules that define it (ADR 0004): "Your turn" is the
- * only pending state, a resolved thread (ADR 0003) leaves it, the quiet section holds the Your-turn threads the guest has not
+ * only pending state; a resolved thread (ADR 0003) leaves it; the quiet section holds the Your-turn threads the guest has not
  * touched for a while, and each view has one order. The client module renders a
  * QueueView; it does not restate any of this. The queue reads thread summaries, which is
  * all the list loads; the open thread is loaded whole on its own.
@@ -49,7 +50,7 @@ export function isResolved(
 	conversation: Pick<ConversationSummary, "crm" | "lastGuestInboundAt">,
 ): boolean {
 	const crm = conversation.crm;
-	if (!crm || (crm.outcome !== "won" && crm.outcome !== "lost") || !crm.outcomeObservedAt) {
+	if (!crm || !isDecided(crm.outcome) || !crm.outcomeObservedAt) {
 		return false;
 	}
 	return time(conversation.lastGuestInboundAt) <= time(crm.outcomeObservedAt);
@@ -65,7 +66,10 @@ export function inQueue(conversation: QueueFields): boolean {
  * otherwise whose turn it is. A resolved thread is not the agent's turn, even if the guest
  * spoke last before the outcome.
  */
-export function threadStatus(conversation: QueueFields): "yourTurn" | "sent" | "won" | "lost" {
+/** What a thread's status badge says: whose turn it is, or the CRM's outcome while resolved. */
+export type ThreadStatus = "yourTurn" | "sent" | "won" | "lost";
+
+export function threadStatus(conversation: QueueFields): ThreadStatus {
 	if (isResolved(conversation)) return conversation.crm?.outcome === "won" ? "won" : "lost";
 	return yourTurn(conversation) ? "yourTurn" : "sent";
 }

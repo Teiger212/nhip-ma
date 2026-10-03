@@ -1,7 +1,7 @@
 import type { InboxStore } from "@repo/database/inbox";
 
 import { displayName } from "../display-name";
-import type { Conversation } from "../types";
+import type { Conversation, CrmKind } from "../types";
 import { crmAdapterFor } from "./adapters";
 import { guestIdentity } from "./phone";
 import { decideLead, observeOutcome } from "./rules";
@@ -46,11 +46,19 @@ export function createCrmSync(deps: {
 		/**
 		 * The office's CRM says these leads changed (its webhook, or a reconcile): ask it for their
 		 * outcomes and cache them on the office's threads linked to them, observing each new won or
-		 * lost outcome at `now` (ADR 0003, Q3). Leads of another office, or none, change nothing.
+		 * lost outcome at `now` (ADR 0003, Q3). Leads of another office, or a notice `from` a CRM the
+		 * office is not on, change nothing.
 		 */
-		async outcomesChanged(officeId: string, leadIds: string[], now: Date): Promise<void> {
+		async outcomesChanged(
+			officeId: string,
+			leadIds: string[],
+			now: Date,
+			options: { from?: CrmKind } = {},
+		): Promise<void> {
 			const connection = await store.getCrmConnection(officeId);
 			if (!connection || leadIds.length === 0) return;
+			// A CRM speaks only for the offices connected to it.
+			if (options.from && connection.kind !== options.from) return;
 			const links = await store.crmLinksForLeads(officeId, leadIds);
 			if (links.length === 0) return;
 			const reported = await adapterFor(connection, { store, officeId }).outcomesFor(

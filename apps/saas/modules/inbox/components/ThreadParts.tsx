@@ -4,9 +4,10 @@ import { Badge, cn } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
+import { isDecided } from "../lib/crm/rules";
 import { guestInitials } from "../lib/guest-initials";
 import { useOfficeRole } from "../lib/inbox-queries";
-import { threadStatus } from "../lib/queue";
+import { type ThreadStatus, threadStatus } from "../lib/queue";
 import type { ConversationSummary, OperatorLanguage } from "../lib/types";
 
 /** SaaS routing only serves the operator locales (`modules/i18n/routing.ts`). */
@@ -39,7 +40,7 @@ const STATUS_BADGE = {
 	sent: "success",
 	won: "neutral",
 	lost: "neutral",
-} as const satisfies Record<ReturnType<typeof threadStatus>, "neutral" | "success" | "warning">;
+} as const satisfies Record<ThreadStatus, "neutral" | "success" | "warning">;
 
 /**
  * The pipe, who holds the thread (the pool, you, or another agent, ADR 0015) and the status
@@ -69,7 +70,7 @@ export function ThreadFlags({
 				{!owner ? t("owner.pool") : owner.id === userId ? t("owner.mine") : owner.name}
 			</Badge>
 			<Badge status={STATUS_BADGE[status]} data-test="thread-status" data-status={status}>
-				{status === "won" || status === "lost" ? t(`crm.${status}`) : t(status)}
+				{isDecided(status) ? t(`crm.${status}`) : t(status)}
 			</Badge>
 		</>
 	);

@@ -199,7 +199,7 @@ async function leadOf(conversationId: string) {
 	return conversation.crm;
 }
 
-// Spec #59 stories 3, 23 (#63): the CRM reports a lead lost; Nhịp caches it, observed now.
+// ADR 0003 (Q3): the CRM reports a lead lost; Nhịp caches it, observed when it first heard it.
 test("an outcome the CRM reports is cached on the lead's thread, observed when Nhịp heard it", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
@@ -237,6 +237,21 @@ test("outcomes reported for one office never touch another office's threads", as
 	await store.setMockCrmLeadOutcome(OFFICE, leadId, { status: "won", at: null, reason: null });
 
 	await sync.outcomesChanged("office-b", [leadId], new Date("2026-10-03T12:00:00.000Z"));
+
+	expect((await leadOf(conversation.id)).outcome).toBeNull();
+});
+
+// ADR 0003: a CRM speaks only for offices connected to it; a notice from another kind changes nothing.
+test("a notice from a CRM the office is not on changes nothing", async () => {
+	store = await testInboxStore();
+	await store.setCrmConnection(OFFICE, "mock");
+	const conversation = await guestWrites("zalo", "zalo-user-11", "Hải");
+	const sync = createCrmSync({ store, threadUrl });
+	await sync.newGuest(conversation);
+	const { leadId } = await leadOf(conversation.id);
+	await store.setMockCrmLeadOutcome(OFFICE, leadId, { status: "lost", at: null, reason: null });
+
+	await sync.outcomesChanged(OFFICE, [leadId], new Date(), { from: "another-crm" as "mock" });
 
 	expect((await leadOf(conversation.id)).outcome).toBeNull();
 });

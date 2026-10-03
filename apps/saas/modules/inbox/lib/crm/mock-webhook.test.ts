@@ -9,7 +9,7 @@ const body = JSON.stringify({ officeId: "office-a", leadIds: ["lead-1", "lead-2"
 const sign = (raw: string, secret = SECRET) =>
 	`sha256=${createHmac("sha256", secret).update(raw).digest("hex")}`;
 
-// Spec #59 (#63): the mock CRM's notice is trusted only when signed with the deployment's secret.
+// ADR 0003 (2026-10-03 amendment): outcomes arrive by signed webhooks; nothing unsigned is trusted.
 test("a signed notice names the office and its changed leads", () => {
 	expect(readMockCrmWebhook(body, sign(body), SECRET)).toEqual({
 		officeId: "office-a",
@@ -17,6 +17,7 @@ test("a signed notice names the office and its changed leads", () => {
 	});
 });
 
+// ADR 0003: a notice that is not signed with the deployment's secret, or was changed after, is refused.
 test("an unsigned, wrongly signed or tampered notice is refused", () => {
 	expect(readMockCrmWebhook(body, null, SECRET)).toBeNull();
 	expect(readMockCrmWebhook(body, sign(body, "another-secret"), SECRET)).toBeNull();
@@ -24,6 +25,7 @@ test("an unsigned, wrongly signed or tampered notice is refused", () => {
 	expect(readMockCrmWebhook(body, "sha256=not-hex", SECRET)).toBeNull();
 });
 
+// ADR 0003: only a notice naming an office and its changed leads is read.
 test("a signed notice that is not the expected shape is refused", () => {
 	const odd = JSON.stringify({ officeId: "office-a", leadIds: "lead-1" });
 	expect(readMockCrmWebhook(odd, sign(odd), SECRET)).toBeNull();

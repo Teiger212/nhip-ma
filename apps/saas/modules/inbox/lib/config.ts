@@ -56,8 +56,18 @@ const envSchema = z
 		NEXT_PUBLIC_SAAS_URL: trimmed,
 		AUTH_TRUSTED_ORIGINS: trimmed,
 		NODE_ENV: z.string().optional(),
+		VERCEL_ENV: trimmed,
 	})
 	.superRefine((env, ctx) => {
+		// The mock CRM is for development and E2E (ADR 0003): production never takes its notices.
+		if (env.VERCEL_ENV === "production" && env.MOCK_CRM_WEBHOOK_SECRET) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["MOCK_CRM_WEBHOOK_SECRET"],
+				message:
+					"MOCK_CRM_WEBHOOK_SECRET must not be set in production: the mock CRM's webhook is for development and E2E",
+			});
+		}
 		if (env.SEND_MODE !== undefined && env.SEND_MODE !== "mock" && env.SEND_MODE !== "live") {
 			ctx.addIssue({
 				code: "custom",
