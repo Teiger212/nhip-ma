@@ -6,6 +6,12 @@
 
 - **Won or lost leaves the queue, and comes back** (#63, spec #59). When the office's CRM tells Nhịp a lead was won or lost, its thread leaves Your turn and the nav count and shows a neutral "Won" or "Lost" where the turn was, under Sent and All. When the guest writes after Nhịp first heard that outcome, the thread is back in Your turn. The CRM's own close date never decides it. For now the mock CRM's signed webhook (`MOCK_CRM_WEBHOOK_SECRET`, development and E2E only) carries the notice; HubSpot's comes with #66.
 
+## 2026-10-03 (the admin sets an office's CRM)
+
+### Added
+
+- **The platform admin sets an office's CRM** (#62, spec #59). The office's Connections card has a CRM row next to Zalo and WhatsApp: None or Mock CRM, saved at once. Choosing Mock turns lead creation on for the office; None (or another kind) drops its thread links. Only the platform admin can change it (`/api/crm/connection`: 401 signed out, 403 otherwise).
+
 ## 2026-10-03 (a new guest becomes a CRM lead)
 
 ### Added

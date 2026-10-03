@@ -23,6 +23,18 @@ export function createCrmSync(deps: {
 	const { store } = deps;
 	return {
 		/**
+		 * The platform admin sets the office's CRM, or none (spec #59, Q6). The same CRM again
+		 * keeps the office's links; another, or none, drops them: another CRM's leads mean nothing.
+		 * False when there is no such office.
+		 */
+		async connectOffice(officeId: string, kind: CrmKind | null): Promise<boolean> {
+			if (!(await store.officeExists(officeId))) return false;
+			const current = await store.getCrmConnection(officeId);
+			if ((current?.kind ?? null) !== kind) await store.setCrmConnection(officeId, kind);
+			return true;
+		},
+
+		/**
 		 * A guest wrote on a thread with no lead yet (Q11 to Q13): find the guest's lead in the
 		 * office's CRM, or create it, and link the thread. Only the first caller to claim the
 		 * thread goes on, so two first messages make one lead. Nothing when the office has no CRM.

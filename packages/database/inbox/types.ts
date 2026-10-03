@@ -414,7 +414,12 @@ export type InboxStore = {
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
 	/** The office's CRM (ADR 0003), or null when it has none. */
 	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
-	/** Connect the office to a CRM, or disconnect it with null. Another kind, or none, drops its links. */
+	/** Whether the office exists. */
+	officeExists: (officeId: string) => Promise<boolean>;
+	/**
+	 * Replace the office's CRM connection, or remove it with null. Replacing or removing it
+	 * removes the office's thread links with it (cascade).
+	 */
 	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
 	/**
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the

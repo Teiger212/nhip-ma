@@ -125,6 +125,14 @@
 				"expired": "The connect attempt expired. Start it again.",
 				"refused": "Zalo did not approve the connection.",
 				"failed": "Connecting failed. Try again."
+			},
+			"crm": {
+				"label": "CRM",
+				"hint": "New guests become leads in this office's CRM.",
+				"none": "None",
+				"mock": "Mock CRM (development and demo)",
+				"saved": "CRM saved.",
+				"failed": "Could not save the CRM. Try again."
 			}
 		},
 		"webhooks": {
