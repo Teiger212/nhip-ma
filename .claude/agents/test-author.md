@@ -10,7 +10,7 @@ skills:
 tools: Read, Write, Edit, Glob, Grep, Bash
 hooks:
   PreToolUse:
-    - matcher: "Read|Write|Edit|Glob|Grep"
+    - matcher: "Read|Write|Edit|Glob|Grep|Bash"
       hooks:
         - type: command
           command: "$CLAUDE_PROJECT_DIR/.claude/hooks/test-author-scope.sh"
@@ -27,9 +27,11 @@ from code: that is what lets your tests catch an implementation that is wrong.
 - The seed logins in `apps/saas/modules/inbox/lib/walk-user.ts`, and UI copy in
   `packages/i18n/translations/`.
 - The running app itself: drive it with Playwright to learn roles, labels and text.
-  You may not read application source (components, routes, store, auth). A hook refuses it.
-  Don't try another way (shell commands included): an assertion copied from the code proves
-  nothing.
+  You may not read application source (components, routes, store, auth). A hook refuses it,
+  in the main checkout and in worktrees alike. Bash runs only Playwright, `pnpm lint`,
+  `pnpm format`, `pnpm type-check` and `git status`; read and write files with the file
+  tools. If the hook refuses something you need, stop and report it rather than working
+  around it: an assertion copied from the code proves nothing.
 
 ## What you write
 
