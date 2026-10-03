@@ -12,13 +12,13 @@ from milestone 6.
 
 ### Migrations on build (PR #44)
 
-- [ ] **Vercel, staging, Sensitive:** `DIRECT_DATABASE_URL` = staging's direct (non-pooled)
+- [x] **Vercel, staging, Sensitive:** `DIRECT_DATABASE_URL` = staging's direct (non-pooled)
       Neon URL. Get it with
       `neon connection-string staging --project-id lingering-bonus-85587787 --no-env-pull`
       in your own terminal and paste it into Vercel; don't paste it in chat.
-- [ ] **Merge #44**, then tell Claude to switch the Build Command to `pnpm run build:vercel`.
+- [x] **Merge #44**, then tell Claude to switch the Build Command to `pnpm run build:vercel`.
       Verify: the next staging build log shows "Applying migrations", and the staging smoke
-      run passes.
+      run passes. Done 2026-09-30: "No pending migrations to apply", smoke green.
 
 ### Zalo (ADR 0017)
 
