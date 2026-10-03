@@ -181,6 +181,11 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
 4. **The nav counts Your turn on every page.** The amber number beside Inbox in the sidebar
    equals the inbox's Your turn count, on Home, the Inbox and Settings alike. Approving a
    reply lowers it; a guest writing in raises it within the inbox's poll. The platform admin
-   sees no number.
+   sees no number. Spec: `apps/saas/tests/nav-count.spec.ts` (Home 4; an office of the test's
+   own with one invited agent, so the counts are exact: three guests, one approved, so Your
+   turn 2 differs from Sent and All; Home and Settings loaded afresh; a guest raises it on
+   Settings, the Inbox and Home without a reload; the platform admin, owner of that office,
+   is judged on a Settings page opened before the agent's and after the agent's has shown a
+   new guest, and in the admin area).
 5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
    wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.

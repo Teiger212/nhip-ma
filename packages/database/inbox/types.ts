@@ -268,12 +268,6 @@ export type InboxStore = {
 	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
 	/** The threads this viewer can open (ADR 0015), most recently active first, as summaries. */
 	listConversationSummaries: (viewer: InboxViewer) => Promise<ConversationSummary[]>;
-	/**
-	 * How many threads this viewer can open are Your turn (ADR 0004), counted in SQL by the
-	 * rule that sets `unansweredInboundId`: the guest's latest message has no Answer sending,
-	 * sent or of unknown outcome, and no reply from the vendor's own app after it.
-	 */
-	countYourTurn: (viewer: InboxViewer) => Promise<number>;
 	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
 	/** Files the message under `officeId`; a thread that already has an office keeps it. */
 	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;

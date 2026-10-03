@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-03 (one queue rule)
+
+### Changed
+
+- **The nav's Your-turn count uses the queue rule.** It counts the thread summaries with the same rule as the inbox's list, instead of a second count in SQL, so a later change to what is in the queue (the CRM's resolved threads, spec #59) is made in the queue rules alone. No visible change.
+
 ## 2026-09-27 (send safety)
 
 ### Fixed
