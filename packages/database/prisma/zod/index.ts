@@ -154,6 +154,24 @@ export const WebhookDeliveryScalarFieldEnumSchema = z.enum(['id', 'pipe', 'recei
 
 export type WebhookDeliveryScalarFieldEnum = z.infer<typeof WebhookDeliveryScalarFieldEnumSchema>;
 
+// File: CrmConnectionScalarFieldEnum.schema.ts
+
+export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'updatedAt'])
+
+export type CrmConnectionScalarFieldEnum = z.infer<typeof CrmConnectionScalarFieldEnumSchema>;
+
+// File: CrmLinkScalarFieldEnum.schema.ts
+
+export const CrmLinkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'leadId', 'leadName', 'method', 'claimedAt', 'linkedAt'])
+
+export type CrmLinkScalarFieldEnum = z.infer<typeof CrmLinkScalarFieldEnumSchema>;
+
+// File: MockCrmLeadScalarFieldEnum.schema.ts
+
+export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name', 'phone', 'zaloUserId', 'pipe', 'language', 'fields', 'threadUrl', 'createdAt'])
+
+export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -165,6 +183,12 @@ export type SortOrder = z.infer<typeof SortOrderSchema>;
 export const JsonNullValueInputSchema = z.enum(['JsonNull'])
 
 export type JsonNullValueInput = z.infer<typeof JsonNullValueInputSchema>;
+
+// File: NullableJsonNullValueInput.schema.ts
+
+export const NullableJsonNullValueInputSchema = z.enum(['DbNull', 'JsonNull'])
+
+export type NullableJsonNullValueInput = z.infer<typeof NullableJsonNullValueInputSchema>;
 
 // File: QueryMode.schema.ts
 
@@ -231,6 +255,18 @@ export type DraftSource = z.infer<typeof DraftSourceSchema>;
 export const AnswerStatusSchema = z.enum(['sending', 'sent', 'failed', 'unknown'])
 
 export type AnswerStatus = z.infer<typeof AnswerStatusSchema>;
+
+// File: CrmKind.schema.ts
+
+export const CrmKindSchema = z.enum(['mock'])
+
+export type CrmKind = z.infer<typeof CrmKindSchema>;
+
+// File: CrmLinkMethod.schema.ts
+
+export const CrmLinkMethodSchema = z.enum(['created', 'phone', 'zaloId'])
+
+export type CrmLinkMethod = z.infer<typeof CrmLinkMethodSchema>;
 
 // File: User.schema.ts
 
@@ -611,4 +647,48 @@ export const WebhookDeliverySchema = z.object({
 });
 
 export type WebhookDeliveryType = z.infer<typeof WebhookDeliverySchema>;
+
+
+// File: CrmConnection.schema.ts
+
+export const CrmConnectionSchema = z.object({
+  officeId: z.string(),
+  kind: CrmKindSchema,
+  updatedAt: z.date(),
+});
+
+export type CrmConnectionType = z.infer<typeof CrmConnectionSchema>;
+
+
+// File: CrmLink.schema.ts
+
+export const CrmLinkSchema = z.object({
+  conversationId: z.string(),
+  officeId: z.string(),
+  leadId: z.string().nullish(),
+  leadName: z.string().nullish(),
+  method: CrmLinkMethodSchema.nullish(),
+  claimedAt: z.date(),
+  linkedAt: z.date().nullish(),
+});
+
+export type CrmLinkType = z.infer<typeof CrmLinkSchema>;
+
+
+// File: MockCrmLead.schema.ts
+
+export const MockCrmLeadSchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  name: z.string(),
+  phone: z.string().nullish(),
+  zaloUserId: z.string().nullish(),
+  pipe: PipeSchema,
+  language: z.string().nullish(),
+  fields: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
+  threadUrl: z.string(),
+  createdAt: z.date(),
+});
+
+export type MockCrmLeadType = z.infer<typeof MockCrmLeadSchema>;
 

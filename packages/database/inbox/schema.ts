@@ -55,6 +55,14 @@ export type DraftSource = z.infer<typeof DraftSource>;
 export const AnswerStatus = z.enum(["sending", "sent", "failed", "unknown"]);
 export type AnswerStatus = z.infer<typeof AnswerStatus>;
 
+/** The CRM an office is connected to (ADR 0003). Each real CRM joins with its adapter. */
+export const CrmKind = z.enum(["mock"]);
+export type CrmKind = z.infer<typeof CrmKind>;
+
+/** How Nhịp linked a thread to its lead: it created it, or found it by phone or Zalo id. */
+export const CrmLinkMethod = z.enum(["created", "phone", "zaloId"]);
+export type CrmLinkMethod = z.infer<typeof CrmLinkMethod>;
+
 /**
  * Every timestamp the store reads or writes is `Date#toISOString` output, so the strict
  * UTC form is the whole contract. A local-time or half-formed string is corrupt state.
