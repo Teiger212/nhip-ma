@@ -32,8 +32,8 @@ type Guest = {
 	write: (text?: string) => Promise<string>;
 };
 
-/** An agent of an office, signed in in a browser of their own, on their Inbox. */
-type Agent = { page: Page; api: Api };
+/** An operator of an office, signed in in a browser of their own, on their Inbox. */
+type Operator = { page: Page; api: Api };
 
 /** An office of the test's own, with a Zalo OA of its own. */
 type TestOffice = {
@@ -42,25 +42,27 @@ type TestOffice = {
 	/** A new guest writes to the office for the first time. */
 	newGuest: () => Promise<Guest>;
 	/** The office's invited agent (only when asked for). */
-	agent: Agent;
+	agent: Operator;
+	/** The office's invited manager (only when asked for). */
+	manager: Operator;
 };
 
 /**
  * `newOffice` makes an office of the test's own (the platform admin creates it; it is deleted
  * afterwards), on the mock CRM or on none, with a Zalo OA of its own (released afterwards, even
- * when the test failed) and, when asked, an agent who joined it through the invitation link.
- * No other spec writes to it, so its leads are this test's leads only.
+ * when the test failed) and, when asked, an agent and a manager who joined it through the
+ * invitation link. No other spec writes to it, so its leads are this test's leads only.
  */
 const test = base.extend<{
 	newOffice: (
 		label: string,
-		options: { crm: "mock" | "none"; agent?: boolean },
+		options: { crm: "mock" | "none"; agent?: boolean; manager?: boolean },
 	) => Promise<TestOffice>;
 }>({
 	newOffice: async ({ admin, browser, request }, use) => {
 		const oaIds: string[] = [];
 		const contexts: { close: () => Promise<void> }[] = [];
-		await use(async (label, { crm, agent = true }) => {
+		await use(async (label, { crm, agent = true, manager = false }) => {
 			const office = await admin.createOffice(label);
 			if (crm === "mock") {
 				connectMockCrm(office.id);
@@ -68,12 +70,13 @@ const test = base.extend<{
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
 			connectZaloOa(office.id, oaId);
-			let joined: Agent | undefined;
-			if (agent) {
-				const newcomer = await newAgentOf(admin, browser, office.id);
+			const join = async (role: "member" | "admin") => {
+				const newcomer = await newOperatorOf(admin, browser, office.id, role);
 				contexts.push(newcomer);
-				joined = newcomer;
-			}
+				return newcomer;
+			};
+			const joinedAgent = agent ? await join("member") : undefined;
+			const joinedManager = manager ? await join("admin") : undefined;
 			return {
 				...office,
 				newGuest: async () => {
@@ -90,9 +93,13 @@ const test = base.extend<{
 					await guest.write();
 					return guest;
 				},
-				get agent(): Agent {
-					if (!joined) throw new Error(`${label} was made without an agent`);
-					return joined;
+				get agent(): Operator {
+					if (!joinedAgent) throw new Error(`${label} was made without an agent`);
+					return joinedAgent;
+				},
+				get manager(): Operator {
+					if (!joinedManager) throw new Error(`${label} was made without a manager`);
+					return joinedManager;
 				},
 			};
 		});
@@ -138,10 +145,18 @@ async function zaloWebhook(
 	expect(res.ok(), `the Zalo webhook is taken (${res.status()})`).toBe(true);
 }
 
-/** A newly joined agent of `officeId`, signed up through the invitation link, on their Inbox. */
-async function newAgentOf(admin: Admin, browser: Browser, officeId: string) {
-	const email = admin.newEmail("crm-agent");
-	const invitationId = await admin.invite(email, officeId);
+/**
+ * A newly joined operator of `officeId`, signed up through the invitation link, on their Inbox:
+ * an agent (the kit's `member`) or a manager (the kit's `admin`).
+ */
+async function newOperatorOf(
+	admin: Admin,
+	browser: Browser,
+	officeId: string,
+	role: "member" | "admin",
+) {
+	const email = admin.newEmail(role === "admin" ? "crm-manager" : "crm-agent");
+	const invitationId = await admin.invite(email, officeId, role);
 	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
 	const page = await context.newPage();
 	await signUpByInvitationLink(page, invitationId, email);
@@ -210,11 +225,11 @@ async function expectLeadAppears(officeId: string, guest: Guest, message: string
 
 // scenario: docs/e2e-scenarios.md CRM 1
 test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
-	test("on the mock CRM: the thread header says In CRM with the guest's name, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again", async ({
+	test("on the mock CRM: the thread header says In CRM with the guest's name to the agent and the manager, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(150_000);
-		const office = await newOffice("CRM 1 mock", { crm: "mock" });
+		const office = await newOffice("CRM 1 mock", { crm: "mock", manager: true });
 		const { page, api } = office.agent;
 
 		const guest = await office.newGuest();
@@ -228,6 +243,18 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 				"the thread header says the guest is in the CRM",
 			).toBeVisible({ timeout: 3_000 });
 		}, "the thread header says In CRM: <the guest's name>").toPass({ timeout: 45_000 });
+
+		// The manager sees it too, on the same thread.
+		const manager = office.manager.page;
+		await openThreadOf(manager, guest);
+		await expect(
+			manager.getByTestId("owner-filter"),
+			"they are the office's manager (only a manager filters by owner, Pool 9)",
+		).toBeVisible();
+		await expect(
+			openThread(manager).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+			"the manager's thread header says the guest is in the CRM",
+		).toBeVisible();
 
 		// In the CRM: exactly one lead for the guest, theirs, linked to the thread, with no
 		// message text in it.

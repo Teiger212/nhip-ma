@@ -16,11 +16,13 @@ E2E the office's CRM is the **mock CRM**: connecting an office to it is setup
 would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario names its ticket.
 
 1. **A new guest becomes a lead in the CRM** (#61). An office on the mock CRM: a new guest
-   writes on Zalo. The agent opens the thread and its header says "In CRM: <the guest's name>".
+   writes on Zalo. The agent opens the thread and its header says "In CRM: <the guest's name>"
+   (read-only); the office's manager sees the same on that thread.
    The mock CRM holds one lead for that guest, with their Zalo user id, pipe and a link to the
    thread, and no message text. The guest writes again: still one lead. An office with no CRM:
    the header says nothing about a CRM, and no lead is made.
-   Spec: `apps/saas/tests/crm.spec.ts` (CRM 1; offices of the test's own with an invited agent;
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 1; offices of the test's own with an invited agent
+   and, on the mock CRM, an invited manager (the kit's `admin`);
    a nameless Zalo guest's name is their Zalo id, as the Inbox lists them; "no second lead" and
    "no lead" are judged once a later guest's lead, on the mock CRM, has arrived).
 2. **The admin sets an office's CRM** (#62). As the platform admin, the office's Connections
