@@ -4,13 +4,10 @@ import { getOrganizationList, getSession } from "@auth/lib/server";
 import { localeRedirect } from "@i18n/routing";
 import { ActiveOrganizationProvider } from "@organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@organizations/lib/api";
-import { listPurchases } from "@payments/lib/server";
 import { config as authConfig } from "@repo/auth/config";
 import { getOrganizationMembership } from "@repo/database";
-import { config as paymentsConfig } from "@repo/payments/config";
 import { ConfirmationAlertProvider } from "@shared/components/ConfirmationAlertProvider";
 import { PermixProvider } from "@shared/components/PermixProvider";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { setupPermissions, permix } from "@shared/lib/permix";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
@@ -55,15 +52,6 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 		await queryClient.prefetchQuery({
 			queryKey: organizationListQueryKey,
 			queryFn: getOrganizationList,
-		});
-	}
-
-	if (paymentsConfig.billingAttachedTo === "user") {
-		await queryClient.prefetchQuery({
-			queryKey: orpc.payments.listPurchases.queryKey({
-				input: {},
-			}),
-			queryFn: () => listPurchases(),
 		});
 	}
 

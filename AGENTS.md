@@ -208,7 +208,6 @@ Only app-local aliases are configured in the app `tsconfig.json` files.
 | `@payments/*`      | `./modules/payments/*`      |
 | `@i18n/*`          | `./modules/i18n/*`          |
 | `@admin/*`         | `./modules/admin/*`         |
-| `@ai/*`            | `./modules/ai/*`            |
 | `@onboarding/*`    | `./modules/onboarding/*`    |
 | `@shared/*`        | `./modules/shared/*`        |
 | `@inbox/*`         | `./modules/inbox/*`         |

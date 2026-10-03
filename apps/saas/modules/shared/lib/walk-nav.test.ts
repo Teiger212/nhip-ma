@@ -3,20 +3,15 @@ import { describe, expect, it } from "vitest";
 import { buildSettingsSections, buildWalkNav, isNavSubItemActive } from "./walk-nav";
 
 describe("buildWalkNav", () => {
-	it("is Home, Inbox and one disabled placeholder, in that order", () => {
+	it("is Home then Inbox, with no placeholder (PRODUCT.md, the Coming soon rule)", () => {
 		const items = buildWalkNav("/inbox");
-		expect(items.map((item) => item.id)).toEqual(["home", "inbox", "international"]);
-		expect(items.map((item) => item.disabled)).toEqual([false, false, true]);
+		expect(items.map((item) => item.id)).toEqual(["home", "inbox"]);
 		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(true);
 		expect(items.find((item) => item.id === "home")?.isActive).toBe(false);
 	});
 
 	it("the platform admin sees the admin area only; operators never see it", () => {
-		expect(buildWalkNav("/admin/organizations").map((item) => item.id)).toEqual([
-			"home",
-			"inbox",
-			"international",
-		]);
+		expect(buildWalkNav("/admin/organizations").map((item) => item.id)).toEqual(["home", "inbox"]);
 		const admin = buildWalkNav("/admin/organizations", { isAdmin: true });
 		expect(admin).toEqual([
 			{
@@ -24,7 +19,6 @@ describe("buildWalkNav", () => {
 				href: "/admin/organizations",
 				iconName: "shield",
 				isActive: true,
-				disabled: false,
 			},
 		]);
 		expect(buildWalkNav("/vi/admin/users", { isAdmin: true })[0]?.isActive).toBe(true);
@@ -36,40 +30,33 @@ describe("buildWalkNav", () => {
 		expect(buildWalkNav("/home").find((item) => item.id === "inbox")?.isActive).toBe(false);
 	});
 
-	it("marks nested inbox routes as the live job and never activates placeholders", () => {
+	it("marks nested inbox routes as the live job, and nothing elsewhere", () => {
 		expect(buildWalkNav("/inbox/thread-1").find((item) => item.id === "inbox")?.isActive).toBe(
 			true,
 		);
-		const onChatbot = buildWalkNav("/chatbot");
-		expect(onChatbot.find((item) => item.id === "international")?.isActive).toBe(false);
-		expect(onChatbot.find((item) => item.id === "inbox")?.isActive).toBe(false);
+		expect(buildWalkNav("/settings/general").some((item) => item.isActive)).toBe(false);
 	});
 });
 
 describe("buildSettingsSections", () => {
 	it("is null outside settings", () => {
-		expect(buildSettingsSections("/inbox", { billingAttachedToUser: true })).toBeNull();
+		expect(buildSettingsSections("/inbox")).toBeNull();
 	});
 
 	it("lists the account sections and activates the current one", () => {
-		const sections = buildSettingsSections("/settings/security", { billingAttachedToUser: true });
+		const sections = buildSettingsSections("/settings/security");
 		expect(sections?.map((section) => section.href)).toEqual([
 			"/settings/general",
 			"/settings/security",
 			"/settings/notifications",
-			"/settings/billing",
 		]);
 		expect(sections?.find((section) => section.id === "security")?.isActive).toBe(true);
 		expect(sections?.find((section) => section.id === "general")?.isActive).toBe(false);
 	});
 
-	it("omits billing when it is attached to the organization", () => {
-		const sections = buildSettingsSections("/settings/general", { billingAttachedToUser: false });
-		expect(sections?.map((section) => section.id)).toEqual([
-			"general",
-			"security",
-			"notifications",
-		]);
+	it("has no Billing until an office pays per seat (ADR 0014)", () => {
+		const sections = buildSettingsSections("/settings/general");
+		expect(sections?.some((section) => section.href === "/settings/billing")).toBe(false);
 	});
 });
 

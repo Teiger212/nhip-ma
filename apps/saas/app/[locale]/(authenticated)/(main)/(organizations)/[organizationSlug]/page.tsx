@@ -1,42 +1,13 @@
-import { getActiveOrganization } from "@auth/lib/server";
-import OrganizationStart from "@organizations/components/OrganizationStart";
-import { PageHeader } from "@shared/components/PageHeader";
-import { getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
+import { localeRedirect } from "@i18n/routing";
+import { getLocale } from "next-intl/server";
 
-export async function generateMetadata({
-	params,
-}: {
-	params: Promise<{ organizationSlug: string }>;
-}) {
-	const { organizationSlug } = await params;
-
-	const activeOrganization = await getActiveOrganization(organizationSlug as string);
-
-	return {
-		title: activeOrganization?.name,
-	};
-}
-
-export default async function OrganizationPage({
-	params,
-}: {
-	params: Promise<{ organizationSlug: string }>;
-}) {
-	const { organizationSlug } = await params;
-	const t = await getTranslations("organizations.start");
-
-	const activeOrganization = await getActiveOrganization(organizationSlug as string);
-
-	if (!activeOrganization) {
-		return notFound();
-	}
-
-	return (
-		<div>
-			<PageHeader title={activeOrganization.name} subtitle={t("subtitle")} />
-
-			<OrganizationStart />
-		</div>
-	);
+/**
+ * An office has no page of its own: its people work in the Inbox and read Home. The kit's
+ * start page (invented stats) is gone; accepting an invitation or creating an office lands
+ * here, so send them on. The office's settings stay under /{slug}/settings.
+ */
+export default async function OrganizationPage() {
+	const locale = await getLocale();
+	localeRedirect({ href: "/inbox", locale });
+	return null;
 }
