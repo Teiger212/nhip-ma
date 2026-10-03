@@ -24,9 +24,9 @@ export function yourTurn(conversation: Pick<ConversationSummary, "unansweredInbo
 }
 
 /**
- * How many threads are Your turn: the inbox's tab count and the nav count alike. The server
- * and the client both count with this rule, so there is no second copy of it (in SQL or
- * elsewhere) to drift.
+ * How many threads are Your turn: the inbox's tab count and the nav count alike. The count
+ * route and the client both count with this, so which threads count is decided here and
+ * nowhere else. The store only derives each thread's turn fact (`unansweredInboundId`).
  */
 export function yourTurnCount(
 	conversations: Pick<ConversationSummary, "unansweredInboundId">[],
@@ -87,12 +87,8 @@ export function buildQueueView(
 	now: number = Date.now(),
 ): QueueView {
 	const matching = conversations.filter((conversation) => matchesThreadSearch(conversation, query));
-	const waiting = yourTurnCount(matching);
-	const counts: QueueCounts = {
-		yourTurn: waiting,
-		sent: matching.length - waiting,
-		all: matching.length,
-	};
+	const counts: QueueCounts = { yourTurn: yourTurnCount(matching), sent: 0, all: matching.length };
+	counts.sent = counts.all - counts.yourTurn;
 	const inOrder = matching
 		.filter((conversation) => inView(conversation, view))
 		.sort(compareForView(view));

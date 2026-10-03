@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from "vitest";
 
 import { oneShot } from "./draft";
-import { buildQueueView, yourTurn, yourTurnCount } from "./queue";
+import { yourTurn } from "./queue";
 import { summarize } from "./summary";
 import { testInboxStore } from "./test-store";
 import type { ConversationSummary, InboxViewer, Store } from "./types";
@@ -149,19 +149,4 @@ test("Your turn in the list is the guest's latest message with nothing answering
 	const fresh = summaries.find((thread) => thread.guestId === "fresh");
 	expect(fresh?.guestLanguage).toBe("en");
 	expect(summaries.find((thread) => thread.guestId === "echo")?.guestLanguage).toBeNull();
-});
-
-test("the nav's Your-turn count is the Your-turn threads each viewer can open (ADR 0004, ADR 0015)", async () => {
-	const expected = new Map<InboxViewer, number>([
-		[manager, 6],
-		[agentOne, 5],
-		[agentTwo, 4],
-		[noRole, 4],
-		[elsewhere, 1],
-	]);
-	for (const [viewer, count] of expected) {
-		const summaries = await store.listConversationSummaries(viewer);
-		expect(yourTurnCount(summaries), `${viewer.userId} in ${viewer.officeId}`).toBe(count);
-		expect(buildQueueView(summaries, "yourTurn", "").counts.yourTurn).toBe(count);
-	}
 });

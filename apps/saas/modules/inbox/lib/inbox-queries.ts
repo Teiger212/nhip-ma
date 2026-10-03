@@ -124,11 +124,8 @@ export function useYourTurnCount({
 		// An operator without an office is refused (403); asking again will not change that.
 		retry: false,
 	});
-	const value = listMounted
-		? list.data
-			? yourTurnCount(list.data)
-			: null
-		: (count.data?.count ?? null);
+	const listCount = list.data ? yourTurnCount(list.data) : null;
+	const value = listMounted ? listCount : (count.data?.count ?? null);
 	const [held, setHeld] = useState<number | null>(null);
 	if (value !== null && value !== held) setHeld(value);
 	return enabled ? (value ?? held) : null;

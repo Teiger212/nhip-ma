@@ -46,7 +46,9 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   owner, turn, the last guest message as preview), the open thread is the whole
   `Conversation` from `/api/conversations/:id`, and the Your-turn count is the queue rule's
   `yourTurnCount` over those same summaries, on the server for pages without the list and on
-  the client where the list is loaded; the queue rule has no SQL copy. All three share one
+  the client where the list is loaded. The store derives each thread's turn fact
+  (`unansweredInboundId`); which threads count is decided only in the queue rules, so the
+  count has no SQL copy. All three share one
   visibility rule and one Your-turn rule, and live under one TanStack Query key, so a send or
   reassignment refreshes them together.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
