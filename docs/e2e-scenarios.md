@@ -28,6 +28,12 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 2. **The admin sets an office's CRM** (#62). As the platform admin, the office's Connections
    card: choose Mock, and a new guest becomes a lead; choose None, and the thread's CRM status
    goes. A non-admin is refused.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 2; offices of the test's own, put on the mock CRM
+   through the admin's setting, never `connectMockCrm`; the choice is judged saved on a reloaded
+   Connections card; "becomes a lead" is the agent's "In CRM: <name>" and one lead in the mock
+   CRM; "refused" is the office's own agent and manager seeing no CRM setting and getting 403 from
+   `GET`/`PUT /api/crm/connection`, 401 signed out, the office still on None afterwards, and the
+   admin's same `PUT` taken).
 3. **Won or lost leaves the queue, and comes back** (#63). The lead is marked lost in the mock
    CRM, which tells Nhịp: the thread is under Sent with a neutral "Lost" where the turn was, not
    in Your turn, and the nav count drops. The guest writes again: back in Your turn. A won lead
