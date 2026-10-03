@@ -48,8 +48,10 @@ web
 
 ## Brand Commitments
 
-None binding yet (2026-09-30). Nhịp is a working name; no logo, colours or voice are fixed.
-Design work may propose them.
+Nhịp is still a working name; no logo or voice is fixed. The visual system in use is
+[DESIGN.md](./DESIGN.md), "The Dispatch Desk" (2026-10-03): flat panels on a tinted
+canvas, one action blue, and the turn (amber waiting, green sent) as the only other color.
+Design work proposed it; Eyal may revise it.
 
 ## Evidence on Hand
 
@@ -91,8 +93,11 @@ well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
 7. **Follow up.** When the guest writes back, the thread returns to Your turn with a
    translated message and a follow-up draft that does not re-greet them.
 8. **Count.** Home shows the office funnel: leads in, engaged, in conversation, closings,
-   lost, with response time underneath. Closings and lost come from the office's CRM.
-   Same numbers for every operator; no per-agent breakdown yet.
+   lost, then leads by day and response time (the median, and how many leads were answered
+   within 5, 15 and 60 minutes), over the office's last 30 local days. Closings and lost
+   come from the office's CRM. Same numbers for every operator; no per-agent breakdown yet.
+   Beside them, **Waiting now** lists the guests whose turn it is, oldest first, that this
+   operator can open, each one tap from its thread.
 
 ## Integrations
 
@@ -116,8 +121,10 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 **In scope**
 
 - Everything built: capture, translate, extract, draft, queue, approve and send, follow-up,
-  Home, office tenancy, invitations, the account lifecycle; the CRM seam with its mock is
-  built on `feat/crm-seam`, merged in milestone 5.
+  Home, office tenancy, invitations, the account lifecycle. The CRM seam with its mock was
+  prototyped on `feat/crm-seam` and lands in slices in milestone 5
+  (`reports/crm-seam-plan-2026-10-03.md`); searching the CRM to link a thread by hand is
+  for managers only (2026-10-03).
 - Pool then owner inside an office; managers invite their own agents; offices, pipes and
   managers set up in the admin area without a script (ADR 0015).
 - Each office sends from its own numbers (per-connection pipe credentials).
@@ -126,6 +133,7 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 - Drafts that cannot invent a fact or be steered by a guest: a decision-model spike (Jev,
   Laya or an LLM behind one seam) for typed guardrail checks; a per-office model cost guard.
 - Billing, minimal: per seat and the lapse lock (ADR 0014); the 30-day close by hand.
+  Until then the kit's own billing screens (priced per user) stay hidden.
 - Error tracking, logs, uptime and a webhook delivery log; rate limits on public endpoints;
   a tested backup restore; deleting a guest's data on request. Error reports never carry a
   guest's personal data: message text, names and phone numbers are scrubbed before anything
