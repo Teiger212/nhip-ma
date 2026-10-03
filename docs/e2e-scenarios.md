@@ -20,6 +20,9 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    The mock CRM holds one lead for that guest, with their Zalo user id, pipe and a link to the
    thread, and no message text. The guest writes again: still one lead. An office with no CRM:
    the header says nothing about a CRM, and no lead is made.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 1; offices of the test's own with an invited agent;
+   a nameless Zalo guest's name is their Zalo id, as the Inbox lists them; "no second lead" and
+   "no lead" are judged once a later guest's lead, on the mock CRM, has arrived).
 2. **The admin sets an office's CRM** (#62). As the platform admin, the office's Connections
    card: choose Mock, and a new guest becomes a lead; choose None, and the thread's CRM status
    goes. A non-admin is refused.
