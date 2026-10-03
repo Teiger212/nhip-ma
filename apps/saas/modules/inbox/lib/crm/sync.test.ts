@@ -1,7 +1,9 @@
 import type { InboxStore } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
+import { applyOneShot } from "../inbox";
 import { testInboxStore } from "../test-store";
+import { mockCrmAdapter } from "./mock";
 import { createCrmSync } from "./sync";
 
 const OFFICE = "office-a";
@@ -30,7 +32,9 @@ async function guestWrites(pipe: "zalo" | "whatsapp", guestId: string, guestName
 test("a new Zalo guest becomes one lead in the office's CRM, linked to the thread", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
-	const conversation = await guestWrites("zalo", "zalo-user-1", "Thảo Nguyễn");
+	const written = await guestWrites("zalo", "zalo-user-1", "Thảo Nguyễn");
+	// What Nhịp extracts from the message (the one-shot) before the lead is written.
+	const conversation = (await applyOneShot(store, written)) ?? written;
 
 	await createCrmSync({ store, threadUrl }).newGuest(conversation);
 
@@ -41,8 +45,10 @@ test("a new Zalo guest becomes one lead in the office's CRM, linked to the threa
 		zaloUserId: "zalo-user-1",
 		phone: null,
 		pipe: "zalo",
+		language: "vi",
 		threadUrl: threadUrl(conversation.id),
 	});
+	expect(leads[0].fields).toMatchObject({ rentOrBuy: "rent" });
 	expect(JSON.stringify(leads[0])).not.toContain("Xin chào");
 	expect((await store.getConversation(conversation.id))?.crm).toEqual({
 		leadId: leads[0].id,
@@ -122,7 +128,7 @@ test("an office with no CRM makes no lead", async () => {
 	expect((await store.getConversation(conversation.id))?.crm).toBeNull();
 });
 
-// Spec #59 stories 16, 28 (#61): a WhatsApp guest's number finds their lead, however the office typed it.
+// Spec #59 story 16 (#61): a WhatsApp guest's number, in E.164, finds their lead.
 test("a WhatsApp guest whose number is on a lead is linked to it by phone", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
@@ -150,4 +156,39 @@ test("a new WhatsApp guest's lead carries their number in E.164", async () => {
 	expect(await store.findMockCrmLeads(OFFICE)).toMatchObject([
 		{ name: "Yuki", phone: "+84912345678", zaloUserId: null, pipe: "whatsapp" },
 	]);
+});
+
+// Spec #59 story 22 (#61): a failed write never blocks the thread; the guest's next message tries again.
+test("a lead write the CRM refuses leaves the thread free to try again", async () => {
+	store = await testInboxStore();
+	await store.setCrmConnection(OFFICE, "mock");
+	const conversation = await guestWrites("zalo", "zalo-user-6", "Quân");
+	const refusing = (
+		_connection: { kind: "mock" },
+		deps: { store: InboxStore; officeId: string },
+	) => ({
+		...mockCrmAdapter(deps.store, deps.officeId),
+		createLead: () => Promise.reject(new Error("CRM is down")),
+	});
+
+	await expect(
+		createCrmSync({ store, threadUrl, adapterFor: refusing }).newGuest(conversation),
+	).rejects.toThrow();
+	await createCrmSync({ store, threadUrl }).newGuest(conversation);
+
+	expect((await store.findMockCrmLeads(OFFICE)).map((lead) => lead.name)).toEqual(["Quân"]);
+});
+
+// Spec #59 story 29 (#61): a number on two leads matches neither.
+test("a WhatsApp guest whose number is on two leads is linked to neither, and no lead is added", async () => {
+	store = await testInboxStore();
+	await store.setCrmConnection(OFFICE, "mock");
+	await existingLead({ phone: "+84901234567", name: "Minji Park" });
+	await existingLead({ phone: "+84901234567", name: "Minji's agency" });
+	const conversation = await guestWrites("whatsapp", "84901234567", "Minji");
+
+	await createCrmSync({ store, threadUrl }).newGuest(conversation);
+
+	expect(await store.findMockCrmLeads(OFFICE)).toHaveLength(2);
+	expect((await store.getConversation(conversation.id))?.crm).toBeNull();
 });

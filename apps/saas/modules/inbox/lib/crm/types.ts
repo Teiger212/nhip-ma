@@ -1,4 +1,4 @@
-import type { CrmKind, Pipe, Qualification } from "../types";
+import type { Pipe, Qualification } from "../types";
 
 /**
  * One adapter per CRM (ADR 0003), shaped like the pipe adapters: product code never names a
@@ -19,7 +19,6 @@ export type NewGuestLead = GuestIdentity & {
 };
 
 export type CrmAdapter = {
-	kind: CrmKind;
 	/** The CRM's leads for this guest; empty when it knows none. */
 	findLeads(identity: GuestIdentity): Promise<CrmLead[]>;
 	/** Write the guest into the CRM as a new lead. */

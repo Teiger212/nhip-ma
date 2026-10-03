@@ -5,7 +5,6 @@ import type { CrmAdapter } from "./types";
 /** The mock CRM (ADR 0003): leads in Nhịp's own database, for development, tests and the demo. */
 export function mockCrmAdapter(store: InboxStore, officeId: string): CrmAdapter {
 	return {
-		kind: "mock",
 		async findLeads({ phone, zaloUserId }) {
 			const found = [
 				...(phone ? await store.findMockCrmLeads(officeId, { phone }) : []),

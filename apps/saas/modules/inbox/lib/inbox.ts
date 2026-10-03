@@ -68,7 +68,10 @@ export async function generateModelDraft(
 	});
 }
 
-/** The address that opens a thread in Nhịp, written on its CRM lead (spec #59, Q12). */
+/**
+ * The address that opens a thread in Nhịp, written on its CRM lead (spec #59, Q12). Offices
+ * are Vietnamese, so the link opens the Vietnamese inbox; the operator can switch from there.
+ */
 export function threadUrl(conversationId: string): string {
 	return `${getBaseUrl()}/vi/inbox?thread=${encodeURIComponent(conversationId)}`;
 }
