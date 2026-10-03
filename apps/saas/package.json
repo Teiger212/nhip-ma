@@ -44,6 +44,7 @@
 		"hono": "catalog:",
 		"input-otp": "catalog:",
 		"js-cookie": "catalog:",
+		"libphonenumber-js": "^1.13.14",
 		"lucide-react": "catalog:",
 		"next": "catalog:",
 		"next-intl": "catalog:",
