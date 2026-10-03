@@ -158,7 +158,6 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 						</div>
 					))}
 				</div>
-				<OfficeCrm officeId={officeId} />
 				<div className="gap-3 flex items-start justify-between" data-test="connection-whatsapp">
 					<div>
 						<p className="font-medium">WhatsApp</p>
@@ -168,6 +167,7 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 						<p className="mt-1 text-sm text-muted-foreground">{t("whatsappLater")}</p>
 					</div>
 				</div>
+				<OfficeCrm officeId={officeId} />
 			</CardContent>
 		</Card>
 	);

@@ -192,3 +192,41 @@ test("a WhatsApp guest whose number is on two leads is linked to neither, and no
 	expect(await store.findMockCrmLeads(OFFICE)).toHaveLength(2);
 	expect((await store.getConversation(conversation.id))?.crm).toBeNull();
 });
+
+// Spec #59 story 35 (#62): another CRM's leads mean nothing; the same CRM keeps its links.
+test("choosing the office's CRM again keeps its links; choosing none drops them, and only its own", async () => {
+	store = await testInboxStore();
+	const sync = createCrmSync({ store, threadUrl });
+	expect(await sync.connectOffice(OFFICE, "mock")).toBe(true);
+	expect(await sync.connectOffice("office-b", "mock")).toBe(true);
+	const ours = await guestWrites("zalo", "zalo-user-9", "Minh");
+	const theirs = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId: "zalo-user-10",
+			guestName: "Lan",
+			text: "Chào",
+			vendorMessageId: null,
+		},
+		"office-b",
+	);
+	await sync.newGuest(ours);
+	await sync.newGuest(theirs);
+
+	await sync.connectOffice(OFFICE, "mock");
+	expect((await store.getConversation(ours.id))?.crm?.leadName).toBe("Minh");
+
+	await sync.connectOffice(OFFICE, null);
+	expect((await store.getConversation(ours.id))?.crm).toBeNull();
+	expect(await store.getCrmConnection(OFFICE)).toBeNull();
+	expect((await store.getConversation(theirs.id))?.crm?.leadName).toBe("Lan");
+});
+
+// #62: an office that does not exist cannot be connected.
+test("an unknown office cannot be connected to a CRM", async () => {
+	store = await testInboxStore();
+	expect(await createCrmSync({ store, threadUrl }).connectOffice("no-such-office", "mock")).toBe(
+		false,
+	);
+});

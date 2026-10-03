@@ -1,5 +1,6 @@
 "use client";
 
+import { CrmKind } from "@inbox/lib/types";
 import {
 	Select,
 	SelectContent,
@@ -11,8 +12,15 @@ import { toast } from "@repo/ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-type Kind = "mock" | null;
+type Kind = CrmKind | null;
 const NONE = "none";
+
+/** A choice in the select: a CRM kind, or none. Anything else is not a choice. */
+function kindOf(value: unknown): Kind | undefined {
+	if (value === NONE) return null;
+	const parsed = CrmKind.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
+}
 
 const crmKey = (officeId: string) => ["admin", "crm", officeId] as const;
 
@@ -48,7 +56,7 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 	});
 	const items = [
 		{ value: NONE, label: t("none") },
-		{ value: "mock", label: t("mock") },
+		...CrmKind.options.map((kind) => ({ value: kind, label: t(kind) })),
 	];
 	return (
 		<div className="gap-3 flex items-start justify-between" data-test="connection-crm">
@@ -60,7 +68,10 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 				items={items}
 				value={crm.data ? (crm.data.kind ?? NONE) : null}
 				disabled={!crm.isSuccess || save.isPending}
-				onValueChange={(value) => save.mutate(value === "mock" ? "mock" : null)}
+				onValueChange={(value) => {
+					const kind = kindOf(value);
+					if (kind !== undefined) save.mutate(kind);
+				}}
 			>
 				<SelectTrigger className="w-56 shrink-0" aria-label={t("label")} data-test="crm-kind">
 					<SelectValue />
