@@ -13,6 +13,15 @@ export function mockCrmAdapter(store: InboxStore, officeId: string): CrmAdapter 
 			const unique = new Map(found.map((lead) => [lead.id, { id: lead.id, name: lead.name }]));
 			return [...unique.values()];
 		},
+		async outcomesFor(leadIds) {
+			const leads = await store.findMockCrmLeads(officeId, { ids: leadIds });
+			return Object.fromEntries(
+				leads.map((lead) => [
+					lead.id,
+					{ status: lead.outcome, at: lead.outcomeAt, reason: lead.outcomeReason },
+				]),
+			);
+		},
 		async createLead(guest) {
 			const lead = await store.createMockCrmLead({ officeId, ...guest });
 			return { id: lead.id, name: lead.name };

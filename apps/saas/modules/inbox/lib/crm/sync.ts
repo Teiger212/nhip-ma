@@ -4,7 +4,7 @@ import { displayName } from "../display-name";
 import type { Conversation } from "../types";
 import { crmAdapterFor } from "./adapters";
 import { guestIdentity } from "./phone";
-import { decideLead } from "./rules";
+import { decideLead, observeOutcome } from "./rules";
 import type { CrmAdapter } from "./types";
 
 /**
@@ -40,6 +40,30 @@ export function createCrmSync(deps: {
 				// A failed write never blocks the thread: the guest's next message tries again.
 				await store.releaseCrmLink(conversation.id);
 				throw error;
+			}
+		},
+
+		/**
+		 * The office's CRM says these leads changed (its webhook, or a reconcile): ask it for their
+		 * outcomes and cache them on the office's threads linked to them, observing each new won or
+		 * lost outcome at `now` (ADR 0003, Q3). Leads of another office, or none, change nothing.
+		 */
+		async outcomesChanged(officeId: string, leadIds: string[], now: Date): Promise<void> {
+			const connection = await store.getCrmConnection(officeId);
+			if (!connection || leadIds.length === 0) return;
+			const links = await store.crmLinksForLeads(officeId, leadIds);
+			if (links.length === 0) return;
+			const reported = await adapterFor(connection, { store, officeId }).outcomesFor(
+				links.map((link) => link.leadId),
+			);
+			for (const link of links) {
+				const outcome = reported[link.leadId];
+				if (!outcome) continue;
+				await store.saveCrmOutcome(
+					link.conversationId,
+					link.leadId,
+					observeOutcome(link, outcome, now),
+				);
 			}
 		},
 	};

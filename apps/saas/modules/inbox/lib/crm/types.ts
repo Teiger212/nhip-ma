@@ -1,4 +1,4 @@
-import type { Pipe, Qualification } from "../types";
+import type { CrmOutcomeStatus, Pipe, Qualification } from "../types";
 
 /**
  * One adapter per CRM (ADR 0003), shaped like the pipe adapters: product code never names a
@@ -18,9 +18,14 @@ export type NewGuestLead = GuestIdentity & {
 	threadUrl: string;
 };
 
+/** What the CRM says about a lead now: open, won or lost, with its own date and reason. */
+export type LeadOutcome = { status: CrmOutcomeStatus; at: string | null; reason: string | null };
+
 export type CrmAdapter = {
 	/** The CRM's leads for this guest; empty when it knows none. */
 	findLeads(identity: GuestIdentity): Promise<CrmLead[]>;
 	/** Write the guest into the CRM as a new lead. */
 	createLead(guest: NewGuestLead): Promise<CrmLead>;
+	/** What the CRM says now about each of these leads; leads it does not know are absent. */
+	outcomesFor(leadIds: string[]): Promise<Record<string, LeadOutcome>>;
 };
