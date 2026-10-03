@@ -139,14 +139,16 @@ Neon branches: `production` (default), `staging` (schema from `prisma migrate de
 never seeded: the seed's password is public), and `dev` (a schema-only copy of `staging`,
 seeded with the demo logins and threads; nothing real).
 
-**Worktree databases (decided 2026-10-03).** A worktree never builds or seeds a database of its
-own. `scripts/worktree-db.sh <worktree>` gives it a copy-on-write child of Neon `dev`
-(`wt-<name>`, schema and seed included), pushes the worktree's schema to it, and writes its
-`DATABASE_URL` into the worktree's `.env.local`, so worktrees on different schemas never break
-each other. Vitest and E2E stay on local Postgres, under the worktree's own names
-(`TEST_DATABASE_URL` and `E2E_DATABASE_URL`: `nhip_test_<name>`, `nhip_e2e_<name>`): they are wiped every run and CI has its own. When the
-worktree goes, `scripts/worktree-db.sh <worktree> --delete` removes its branch. Run single test files through the env, or they fall back to the shared `supastarter_test`: from `apps/saas`, `pnpm exec dotenv -c -e ../../.env -- vitest run <file>` (root `pnpm test` already loads it). The main
-checkout may stay on local Postgres (`supastarter`).
+**Worktree databases (decided 2026-10-03).** Each worktree has its own databases, so worktrees
+on different schemas never break each other. `scripts/worktree-db.sh <worktree>` creates the dev
+database `nhip_dev_<name>` on local Postgres (schema pushed, seeded) and writes it into the
+worktree's `.env.local`, with `TEST_DATABASE_URL` (`nhip_test_<name>`) and `E2E_DATABASE_URL`
+(`nhip_e2e_<name>`), which Vitest and Playwright create themselves. With `--neon` the dev
+database is a copy-on-write child of the Neon `dev` branch (`wt-<name>`) instead, for a
+remote session that cannot reach local Postgres. `--delete` drops them when the worktree goes.
+Run single test files through the env, or they fall back to the shared `supastarter_test`:
+from `apps/saas`, `pnpm exec dotenv -c -e ../../.env -- vitest run <file>` (root `pnpm test`
+already loads it).
 
 **What Eyal sets by hand** (accounts, secrets, vendor settings) is tracked in
 [docs/setup-checklist.md](docs/setup-checklist.md); add to it whenever work needs one.
