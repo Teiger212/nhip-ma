@@ -1,7 +1,8 @@
 /**
  * The mock CRM as a test sees it (run through tsx by `crm.ts`, like `pipe-state.ts`). The mock
  * CRM is the office's CRM for E2E: connecting an office to it is setup, and reading its leads is
- * looking at the CRM, as a manager would in HubSpot. Neither touches Nhịp's own link to a lead.
+ * looking at the CRM, as a manager would in HubSpot. `connect` writes the connection straight to
+ * the store, which drops the office's links to leads: use it on a fresh office only.
  *
  *   tsx tests/support/crm-state.ts connect <officeId>
  *   tsx tests/support/crm-state.ts leads <officeId>      prints the office's mock leads as JSON

@@ -10,7 +10,7 @@
 
 ### Added
 
-- **The platform admin sets an office's CRM** (#62, spec #59). The office's Connections card has a CRM row next to Zalo and WhatsApp: None or Mock CRM, saved at once. Choosing Mock turns lead creation on for the office; None (or another kind) drops its thread links. Only the platform admin can change it (`/api/crm/connection`: 401 signed out, 403 otherwise).
+- **The platform admin sets an office's CRM** (#62, spec #59). The office's Connections card has a CRM row next to Zalo and WhatsApp: None or Mock CRM, saved at once. Choosing Mock turns lead creation on for the office; None (or another kind) drops its thread links, and with them any Won or Lost: those threads count as unanswered again if the guest spoke last. Only the platform admin can change it (`/api/crm/connection`: 401 signed out, 403 otherwise).
 
 ## 2026-10-03 (a new guest becomes a CRM lead)
 

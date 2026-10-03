@@ -25,7 +25,8 @@ export function createCrmSync(deps: {
 		/**
 		 * The platform admin sets the office's CRM, or none (spec #59, Q6). The same CRM again
 		 * keeps the office's links; another, or none, drops them: another CRM's leads mean nothing.
-		 * False when there is no such office.
+		 * Their cached outcomes go with them, so a won or lost thread whose guest spoke last is
+		 * back in Your turn (missing data never hides a guest). False when there is no such office.
 		 */
 		async connectOffice(officeId: string, kind: CrmKind | null): Promise<boolean> {
 			if (!(await store.officeExists(officeId))) return false;
