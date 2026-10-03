@@ -9,36 +9,65 @@ colors:
   deep-navy: "#1e3a8a"
   hairline-blue: "#e4ecfc"
   field-edge: "#cbd9f5"
-  rail-paper: "#f8fafc"
+  desk-canvas: "#f2f5fb"
   dispatch-blue: "#2563eb"
-  touch-blue: "#2563eb"
+  touch-blue: "#1d4ed8"
+  chart-strong: "#2563eb"
+  chart-soft: "#9db9f2"
+  chart-track: "#eef3fd"
+  hatch: "#cbd9f5"
   signal-red: "#dc2626"
-  sent-green: "#15803d"
-  your-turn-amber: "#b45309"
+  sent-green: "#166534"
+  your-turn-amber: "#92400e"
+  night-canvas: "#080e1a"
   night-desk: "#0b1220"
   night-card: "#111a2e"
   night-wash: "#1b2740"
   night-hairline: "#253352"
+  night-field-edge: "#34456b"
   night-ink: "#e2e8f0"
   night-note: "#94a3b8"
   night-blue: "#3b82f6"
   night-touch: "#60a5fa"
+  night-chart-soft: "#2f4f8a"
+  night-chart-track: "#17223a"
+  night-hatch: "#2a3a5e"
 typography:
   headline:
     fontFamily: "Be Vietnam Pro, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.33
+  page-title:
+    fontFamily: "Be Vietnam Pro, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.5rem"
+    fontWeight: 600
+    lineHeight: 1.33
+    letterSpacing: "-0.025em"
   title:
     fontFamily: "Be Vietnam Pro, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 600
-    lineHeight: 1.1
+    lineHeight: 1
   thread-name:
     fontFamily: "Be Vietnam Pro, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     letterSpacing: "-0.025em"
+  figure:
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontSize: "2.5rem"
+    fontWeight: 300
+    lineHeight: 1
+    letterSpacing: "-0.03em"
+    fontFeature: '"tnum"'
+  figure-small:
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontSize: "2rem"
+    fontWeight: 300
+    lineHeight: 1
+    letterSpacing: "-0.03em"
+    fontFeature: '"tnum"'
   body:
     fontFamily: "Noto Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
@@ -60,9 +89,15 @@ typography:
     fontWeight: 500
     letterSpacing: "0.025em"
   clock:
-    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontFamily: "Noto Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 400
+    fontFeature: '"tnum"'
+  count:
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
+    fontSize: "0.6875rem"
+    fontWeight: 500
+    lineHeight: 1
     fontFeature: '"tnum"'
 rounded:
   sm: "3.6px"
@@ -112,32 +147,59 @@ components:
     rounded: "{rounded.xl}"
     padding: "4px 12px"
     height: "36px"
+  input-search:
+    backgroundColor: "{colors.morning-wash}"
+    textColor: "{colors.harbor-ink}"
+    rounded: "{rounded.md}"
+    padding: "12px 16px 12px 48px"
+    height: "48px"
   card:
     backgroundColor: "{colors.background}"
     textColor: "{colors.harbor-ink}"
     rounded: "{rounded.3xl}"
     padding: "24px"
+  panel:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.harbor-ink}"
+    rounded: "{rounded.3xl}"
+    padding: "20px"
+  page-canvas:
+    backgroundColor: "{colors.desk-canvas}"
+    textColor: "{colors.harbor-ink}"
   thread-row:
     backgroundColor: "transparent"
     textColor: "{colors.harbor-ink}"
-    rounded: "0"
+    rounded: "{rounded.xl}"
     padding: "10px 12px"
   thread-row-active:
     backgroundColor: "{colors.hairline-blue}"
+    rounded: "{rounded.xl}"
   guest-mark:
-    backgroundColor: "color-mix(in srgb, #2563eb 12%, transparent)"
+    backgroundColor: "color-mix(in srgb, #1d4ed8 12%, transparent)"
     textColor: "{colors.touch-blue}"
     rounded: "{rounded.md}"
     size: "32px"
+  guest-mark-selected:
+    backgroundColor: "{colors.dispatch-blue}"
+    textColor: "{colors.background}"
+    rounded: "{rounded.md}"
+    size: "32px"
   flag-your-turn:
-    backgroundColor: "color-mix(in srgb, #b45309 12%, transparent)"
+    backgroundColor: "color-mix(in srgb, #92400e 12%, transparent)"
     textColor: "{colors.your-turn-amber}"
     typography: "{typography.label}"
     rounded: "{rounded.md}"
     padding: "0 8px"
     height: "20px"
+  flag-count:
+    backgroundColor: "color-mix(in srgb, #92400e 12%, transparent)"
+    textColor: "{colors.your-turn-amber}"
+    typography: "{typography.count}"
+    rounded: "{rounded.md}"
+    padding: "0 8px"
+    height: "20px"
   flag-sent:
-    backgroundColor: "color-mix(in srgb, #15803d 12%, transparent)"
+    backgroundColor: "color-mix(in srgb, #166534 12%, transparent)"
     textColor: "{colors.sent-green}"
     typography: "{typography.label}"
     rounded: "{rounded.md}"
@@ -154,18 +216,49 @@ components:
     backgroundColor: "{colors.background}"
     textColor: "{colors.harbor-ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.xl}"
     padding: "8px 12px"
   message-outbound:
-    backgroundColor: "color-mix(in srgb, #f1f5fd 40%, transparent)"
+    backgroundColor: "color-mix(in srgb, #f1f5fd 60%, transparent)"
     textColor: "{colors.harbor-ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.xl}"
     padding: "8px 12px"
+  operator-note:
+    backgroundColor: "color-mix(in srgb, #1d4ed8 8%, transparent)"
+    textColor: "{colors.harbor-ink}"
+    rounded: "{rounded.xl}"
+    padding: "12px"
   nav-item-active:
-    backgroundColor: "{colors.hairline-blue}"
+    backgroundColor: "{colors.background}"
     textColor: "{colors.harbor-ink}"
     rounded: "{rounded.md}"
+  flag-error:
+    backgroundColor: "color-mix(in srgb, #dc2626 12%, transparent)"
+    textColor: "{colors.signal-red}"
+    typography: "{typography.label}"
+    rounded: "{rounded.md}"
+    padding: "0 8px"
+    height: "20px"
+  flag-info:
+    backgroundColor: "color-mix(in srgb, #2563eb 12%, transparent)"
+    textColor: "{colors.dispatch-blue}"
+    typography: "{typography.label}"
+    rounded: "{rounded.md}"
+    padding: "0 8px"
+    height: "20px"
+  view-tab-active:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.harbor-ink}"
+    rounded: "{rounded.full}"
+    height: "32px"
+    padding: "0 12px"
+  figure-missing:
+    backgroundColor: "transparent"
+    textColor: "{colors.harbor-ink}"
+    rounded: "{rounded.lg}"
+    height: "40px"
+    padding: "0 12px"
 ---
 
 # Design System: Nhịp
@@ -174,19 +267,20 @@ components:
 
 **Creative North Star: "The Dispatch Desk"**
 
-Nhịp is the desk where every new lead lands and someone answers it before it goes cold. The screen has one job: show which guest is waiting, whose turn it is, and put the reply one tap away. Everything else stays quiet. The surfaces are flat white (or deep night blue in dark mode) with hairline blue edges, and one saturated blue marks every action and the thread you're looking at. The only other color is the turn itself: amber for _your turn_, green for _sent_. Red is kept for things that broke.
+Nhịp is the desk where every new lead lands and someone answers it before it goes cold. The screen has one job: show which guest is waiting, whose turn it is, and put the reply one tap away. Everything else stays quiet. The app sits on a pale blue canvas (deep night blue in dark mode); content sits on white panels with hairline blue edges, and one saturated blue marks every action and the thread you're looking at. The only other color is the turn itself: amber for _your turn_, green for _sent_. Red is kept for things that broke.
 
-The desk is dense but calm. Agents work it on a phone and at a desk about equally, so the thread list and the thread are the same product in both places: one column on a phone, list and thread side by side from `md` up. Density comes from tight rows and small, exact type, not from shrinking touch targets. Every control someone taps mid-conversation is at least 44px tall.
+The desk is dense but calm. Agents work it on a phone and at a desk about equally, so the thread list and the thread are the same product in both places: one full-bleed column on a phone, two panels side by side from `md` up. Below `lg` (1024px) the app runs its phone shell: a 56px top bar with the sidebar as a sheet behind it. Density comes from tight rows and small, exact type, not from shrinking touch targets. Every control someone taps mid-conversation is at least 44px tall. Home is the numbers screen: light mono figures, one blue at two strengths, and an honest hatch where a number doesn't exist yet.
 
-The system comes from a supastarter kit, refit for triage. Pills are for acting, gently squared corners are for content, and depth comes from tone, never from drop shadows. Headings are in Be Vietnam Pro and body text in Noto Sans. Both carry the Vietnamese subset, so diacritics set cleanly at every size.
+The system comes from a supastarter kit, refit for triage. Pills are for acting, gently squared corners are for content, and depth comes from tone. Only floating layers (menus, dialogs, toasts) cast a shadow. Headings are in Be Vietnam Pro and body text in Noto Sans. Both carry the Vietnamese subset, so diacritics set cleanly at every size.
 
 **Key Characteristics:**
 
 - One action blue; the turn (amber / green) is the only other signal on a row.
-- Flat surfaces: tonal washes and 1–2px inset lines instead of shadows.
-- Pill buttons, squared content (rows, flags, messages, fields).
-- A 2px left rail marks "selected" everywhere: thread rows, inbound messages, the sidebar.
-- Timestamps in IBM Plex Mono with tabular figures.
+- Canvas and panels: a pale canvas carries borderless navigation; content lives on white, hairline-edged panels.
+- Flat surfaces: tonal fills and 1px inset hairlines instead of shadows. Floating layers are the one exception.
+- Pill buttons, squared content (rows, badges, messages, fields).
+- Selection is a fill, never a side stripe: an accent row with a solid guest mark, a white chip in the nav.
+- Digit-only content in IBM Plex Mono with tabular figures (counts, Home's light figures); timestamps in the sans, tabular.
 - Light and dark themes are both first-class; every token has a night twin.
 
 ## Colors
@@ -195,26 +289,33 @@ Cool, low-chroma slate and blue neutrals carrying a single saturated blue, with 
 
 ### Primary
 
-- **Dispatch Blue** (#2563eb; night #3b82f6): the one action color. Primary buttons, links, the focus ring (`--ring`), the active sidebar marker, the info badge. When something on screen is blue and solid, you can press it.
-- **Touch Blue** (#2563eb; night #60a5fa): the selection rail and guest avatar tint (`--touch`). The same hue as Dispatch Blue in light mode, lifted in dark mode so a 2px rail still reads on night surfaces.
+- **Dispatch Blue** (#2563eb; night #3b82f6): the one action color. Primary buttons, links, the focus ring, the active nav icon, the selected guest mark, the info badge. When something on screen is blue and solid, you can press it or you're looking at it.
+- **Touch Blue** (#1d4ed8; night #60a5fa): the guest mark's initials on their 12% tint, and the operator note's 8% tint (`--touch`). A step darker than Dispatch Blue in light mode so the initials hold 4.5:1 on their own tint; lifted in dark mode so tints still read on night surfaces.
 
 ### Neutral
 
-- **Plain White** (#ffffff): page and card background in light mode.
+- **Desk Canvas** (#f2f5fb; night #080e1a): the app's ground and the sidebar, which is the same surface. Panels sit on it.
+- **Plain White** (#ffffff): panels, cards, and the active nav chip in light mode.
 - **Harbor Ink** (#0f172a): body text and headings. Deep slate, not black.
-- **Slate Note** (#475569): secondary text, such as previews, metadata, empty-state sentences and the send-status line.
-- **Morning Wash** (#f1f5fd): the secondary button fill, muted surfaces, the pipe flag, the send bar tint.
+- **Slate Note** (#475569): secondary text, such as previews, metadata, hints, empty-state sentences and the send-status line.
+- **Morning Wash** (#f1f5fd): the secondary button fill, muted surfaces, the search field, the pipe badge, the send bar tint, outbound messages.
 - **Deep Navy** (#1e3a8a): text on Morning Wash (secondary buttons).
 - **Hairline Blue** (#e4ecfc): every border and divider, and the accent fill for the active thread row and hovered menu items. Borders are blue-tinted, never grey.
-- **Field Edge** (#cbd9f5): input strokes, one step stronger than Hairline Blue so fields read as fields.
-- **Rail Paper** (#f8fafc): the sidebar surface, a breath off white.
-- **Night Desk / Night Card / Night Wash / Night Hairline** (#0b1220 / #111a2e / #1b2740 / #253352): the dark-mode background, card, muted and border steps. **Night Ink** (#e2e8f0) and **Night Note** (#94a3b8) are its text colors.
+- **Field Edge** (#cbd9f5; night #34456b): input strokes, one step stronger than Hairline Blue so fields read as fields.
+- **Night Desk / Night Card / Night Wash / Night Hairline** (#0b1220 / #111a2e / #1b2740 / #253352): the dark-mode background, panel, muted and border steps. **Night Ink** (#e2e8f0) and **Night Note** (#94a3b8) are its text colors.
+
+### Chart
+
+- **Chart Strong** (#2563eb; night #60a5fa): the one bar or share to read first: today's leads, the fastest response bucket, the funnel's share bars.
+- **Chart Soft** (#9db9f2; night #2f4f8a): every other bar.
+- **Chart Track** (#eef3fd; night #17223a): the empty part of a share bar and the chart's hover cursor.
+- **Hatch** (#cbd9f5; night #2a3a5e): the diagonal hatch line for a number Nhịp does not have yet.
 
 ### State
 
-- **Your-Turn Amber** (#b45309; night #fbbf24): the guest wrote last and nobody has answered. Used only as a 12% tint with amber text.
-- **Sent Green** (#15803d; night #4ade80): our reply went out. The same 12% tint treatment.
-- **Signal Red** (#dc2626; night #f87171): errors, failed sends, destructive actions. Nothing else.
+- **Your-Turn Amber** (#92400e; night #fbbf24): the guest wrote last and nobody has answered. As a 12% tint with amber text on badges and counts (the row badge, the nav count, Waiting now's count); as bare amber text only for the wait time beside a waiting guest. Dark enough in light mode for 4.5:1 on its own tint, including on the selected row's fill.
+- **Sent Green** (#166534; night #4ade80): our reply went out. The same 12% tint treatment, at the same 4.5:1.
+- **Signal Red** (#dc2626; night #f87171): errors, failed sends, disconnected pipes, destructive actions. Nothing else.
 
 ### Named Rules
 
@@ -224,57 +325,72 @@ Cool, low-chroma slate and blue neutrals carrying a single saturated blue, with 
 
 **The Red Means Broken Rule.** Signal Red is for errors and destructive actions only. A waiting guest is amber, never red. Urgency is not an error.
 
+**The Two Strengths Rule.** A chart is one blue at two strengths on a track: strong for the one value to read first, soft for the rest. No second hue, no legend colors.
+
 ## Typography
 
 **Heading Font:** Be Vietnam Pro (with ui-sans-serif, system-ui)
 **Body Font:** Noto Sans (with ui-sans-serif, system-ui)
-**Mono Font:** IBM Plex Mono (with ui-monospace)
+**Mono Font:** IBM Plex Mono, 300 / 400 / 500 (with ui-monospace)
 
-**Character:** A Vietnamese-designed geometric sans for names and headings, paired with a neutral humanist workhorse for messages. Both draw full Vietnamese diacritics. `h1`–`h3` and `.font-heading` switch to Be Vietnam Pro automatically.
+**Character:** A Vietnamese-designed geometric sans for names and headings, paired with a neutral humanist workhorse for messages, and a light mono for the numbers. All three draw full Vietnamese diacritics. `h1` to `h3` and `.font-heading` switch to Be Vietnam Pro automatically.
 
 ### Hierarchy
 
-- **Headline** (700, 1.25rem on a phone, 1.5rem from `md`): page titles such as Settings, Admin and auth screens.
-- **Title** (600, 1.125rem, 1.1): card titles and section headers.
-- **Thread Name** (Be Vietnam Pro 600, 0.875rem, −0.025em): the guest's name on a row and in the thread header. The only heading face inside the inbox.
+- **Headline** (700, 1.25rem on a phone, 1.5rem from `md`): auth and onboarding screen titles.
+- **Page Title** (Be Vietnam Pro 600, 1.25rem on a phone, 1.5rem from `md`, −0.025em, balanced): the page header on Home, Settings and Admin, with a Slate Note subtitle (0.875rem) under it and an optional qualifier aside on the right.
+- **Title** (600, 1.125rem, line-height 1): card titles (`CardTitle`) and section headers. Home's panel titles are the same face at 0.875rem on a phone, 1rem from `md`.
+- **Thread Name** (Be Vietnam Pro 600, 0.875rem, −0.025em): the guest's name on a row, in the thread header and in Waiting now.
+- **Figure** (Plex Mono 300, 2rem on a phone, 2.5rem from `md`, line-height 1, −0.03em, tabular): Home's headline numbers. Units beside a figure (`m`, `h`, words) drop to Noto Sans 0.875rem in Slate Note.
 - **Body** (400, 0.875rem, 1.625): message text, with `pre-wrap` so guests' line breaks survive.
-- **Body Small** (400, 0.75rem, 1.375): row previews (clamped to 2 lines), message meta, hints.
-- **Label** (500, 0.6875rem, `text-micro`): flags, avatar initials.
+- **Body Small** (400, 0.75rem, 1.375): row previews (clamped to 2 lines), message meta, hints, stage labels.
+- **Label** (500, 0.6875rem, `text-micro`): badges, avatar initials.
+- **Count** (Plex Mono 500, 0.6875rem, tabular): a numeric badge (`Badge numeric`), such as the nav's Your-turn count and Waiting now's count.
 - **Micro Caps** (500, 0.625rem, `text-2xs`, +0.025em, uppercase): the translation label under a message. The inline mock badge (`Badge size="sm"`) uses the same size in sentence case.
-- **Clock** (Plex Mono, 0.6875rem, tabular figures): every timestamp, so times line up down the list.
+- **Clock** (Noto Sans, 0.6875rem on a row, 0.75rem in a message's meta line, tabular figures): every relative or absolute time, so times line up down the list.
 
 ### Named Rules
 
-**The Tabular Clock Rule.** Times are always Plex Mono with `tabular-nums`. Proportional digits make a column of times jitter.
+**The Tabular Clock Rule.** Times are Noto Sans with `tabular-nums`. A time mixes digits with words and separators (`5 phút`, `09:42`, a date), so it takes the sans; tabular figures keep a column of times from jittering.
 
-**The Theme Sizes Rule.** Sizes below 0.75rem use the theme tokens (`text-micro`, `text-2xs`), never arbitrary values. `cn()` knows these tokens, so they survive a text color merged after them.
+**The Digits In Mono Rule.** Plex Mono carries digit-only content: Home's figures, numeric badges, funnel stage numbers, view-tab counts, bucket counts and shares. Words and units beside them stay in Noto Sans. Anything written as a phrase (a timestamp, a wait time, the p90 line) stays in the sans with tabular figures.
+
+**The Theme Sizes Rule.** Sizes below 0.75rem and the figure sizes use theme tokens (`text-micro`, `text-2xs`, `text-figure`, `text-figure-sm`), never arbitrary values. `cn()` knows these tokens, so they survive a text color merged after them.
 
 ## Layout
 
-The inbox is a two-pane desk. From `md` up, the thread list is a fixed column (`--container-inbox-list`, 22rem) with a right border, and the thread fills the rest. Below `md` the two panes swap: the list, then a thread with a back action. There's no separate mobile design, only the same components on a narrower desk.
+The app is a canvas with panels on it. The sidebar is the canvas itself, with no border; the page area is the canvas too, and every block of content is a panel. There's no separate mobile design, only the same components on a narrower desk. Below `lg` (1024px) the shell is the phone one: a 56px top bar (menu, mark, bell, user menu) and the sidebar as a sheet. From `lg` the sidebar docks.
 
-Rows are inset from the list edge by 6px on each side (`w-row-inset`) with 2px of vertical gap, so the active fill doesn't touch the column border. Rows pad 10px × 12px with a 10px gap between avatar and text. Empty states are one centred sentence capped at 22ch (`--container-empty-note`), with an optional outline button under it.
+**Inbox.** From `md` up, the thread list (`--container-inbox-list`, 22rem) and the thread are two panels with a 10px gap, inset 12px from the canvas; from `lg`, where the sidebar docks beside them, the left gutter tightens to 4px. Search, the owner filter and the view tabs live inside the list panel. Below `md` the panels go full-bleed on white with no border, and swap: the list, then a thread with a back action. Rows are inset from the panel edge by 6px on each side (`w-row-inset`) with 2px of vertical gap, pad 10px × 12px, and keep a 10px gap between avatar and text. Empty states are one centred sentence capped at 22ch (`--container-empty-note`), with an optional outline button under it.
 
-Tap targets that matter mid-conversation (Send, Retry, View sent, the Quiet disclosure) are at least 44px tall (`min-h-11`), even where the button's visual height is 36px. Settings use a label/control grid: a third of the width for the label, capped at 360px (`grid-cols-setting`). Extracted fields use a `minmax(7rem, auto) 1fr` label/value grid (`grid-cols-fields`). Marketing and settings pages sit in a `max-w-7xl` container with 1.5rem side padding. Spacing is Tailwind's 4px step. The inbox lives on 6, 8, 10 and 12px.
+**Home.** A `max-w-6xl` column under the page header. Panels stack with a 10px gap (12px from `md`): the funnel strip, one row of five cells from `lg`; then Leads by day (two thirds) beside Waiting now (one third) from `lg`; then Response time (median on a third, buckets on two thirds, from `md`). Below `lg` Waiting now comes above the chart, and the funnel's cells become Leads in across the top with the other four two by two. Grid children carry `min-w-0` so a long guest name truncates instead of widening the grid. Panel content pads 16px (20px from `md`).
 
-## Elevation & Depth
-
-Nhịp is flat. Depth comes from tone: white or Night Desk for the page, Rail Paper for the sidebar, Morning Wash for muted strips such as the send bar and outbound messages, Hairline Blue for selection. Inputs keep the kit's `shadow-xs` hairline. Otherwise there are no drop shadows, and no blur or glass. The two named shadows below are really lines, drawn inside the box so they never shift layout.
-
-### Shadow Vocabulary
-
-- **Rail** (`box-shadow: inset 2px 0 0 var(--sidebar-primary)`): the active item in the sidebar and user menu.
-- **Hairline** (`box-shadow: inset 0 0 0 1px var(--border)`): a 1px border drawn inside, for chips and toggles that sit on a tinted surface.
+Tap targets that matter mid-conversation (Send, Retry, Regenerate, View sent, the Quiet disclosure, Open inbox) are at least 44px tall (`min-h-11`), even where the button's visual height is smaller. On a phone the top bar's menu, bell (`size-11`) and user-menu trigger are 44px, the view tabs are 44px below `md`, and nav links are 44px below `lg`. Settings use a label/control grid: a third of the width for the label, capped at 360px (`grid-cols-setting`). Extracted fields use a `minmax(7rem, auto) 1fr` label/value grid (`grid-cols-fields`); response-time buckets use label, bar, count (`grid-cols-bucket`). Spacing is Tailwind's 4px step. The inbox lives on 6, 8, 10 and 12px.
 
 ### Named Rules
 
-**The Flat Desk Rule.** Surfaces are flat at rest and flat on hover. State shows as a tonal fill or a 2px rail, never as lift.
+**The Canvas And Panel Rule.** The canvas carries navigation, page headers and status banners; panels carry content. A new block of content is a panel on the canvas, not a section drawn on the canvas, and the sidebar never gets its own edge.
+
+## Elevation & Depth
+
+Nhịp is flat. Depth comes from tone: the canvas under everything, white panels on it, Morning Wash for muted strips such as the send bar and outbound messages, Hairline Blue for selection. Inputs keep the kit's `shadow-xs` hairline. Surfaces have no drop shadows, and nothing has blur or glass. The one named surface shadow is really a line, drawn inside the box so it never shifts layout. Floating layers are the exception (see below).
+
+### Shadow Vocabulary
+
+- **Hairline** (`shadow-hairline`, `inset 0 0 0 1px var(--border)`): a 1px border drawn inside, for a white element sitting on a tinted surface: the active nav chip, the active view tab, inbound messages, the window chip, the hatched box.
+- **Overlay** (the kit's soft drop shadows, in `packages/ui`): `shadow-md` on tooltips, popovers and select lists; `shadow-lg` on menus, dialogs, alert dialogs, sheets and toasts (menus tinted `black/3`, toasts `black/5`); `shadow-xl` on submenus. Each also carries a 1px border, which is what separates it in dark mode, where a black shadow vanishes.
+
+### Named Rules
+
+**The Flat Desk Rule.** Surfaces are flat at rest and flat on hover. State shows as a tonal fill, a solid guest mark, or a white chip on the canvas, never as lift. The single exception: floating layers lift; surfaces never do. Menus, popovers, selects, tooltips, dialogs, sheets and toasts keep the kit's soft drop shadow, with the hairline border as their separator in dark mode.
+
+**The No Stripe Rule.** Nothing is marked by a colored side border. Selection, direction and notes read from fill and tint; the 2px rail is retired.
 
 ## Shapes
 
-One base radius (6px, `--radius: 0.375rem`) scaled by fixed factors: sm 3.6px, md 4.8px, lg 6px, xl 8.4px, 2xl 10.8px, 3xl 13.2px, 4xl 15.6px. Actions are pills (`rounded-full`). Content is gently squared: messages, flags and the guest mark use md (4.8px), inputs use xl (8.4px), and cards use 3xl (13.2px) so they read as containers. Thread rows are square-cornered, because their left rail needs a straight edge to sit on.
+One base radius (6px, `--radius: 0.375rem`) scaled by fixed factors: sm 3.6px, md 4.8px, lg 6px, xl 8.4px, 2xl 10.8px, 3xl 13.2px, 4xl 15.6px. Actions are pills (`rounded-full`). Panels and cards use 3xl (13.2px) so they read as containers. Things inside a panel use xl (8.4px): thread rows, Waiting now rows, messages, the operator note, inputs. Small marks use md (4.8px): badges, the guest mark, the search field, chips. The hatched box uses lg (6px).
 
-**The Pill Acts Rule.** If it's fully round, it does something. Status and metadata are never pills; they're small squared flags.
+**The Pill Acts Rule.** If it's fully round, it does something. Status and metadata are never pills; they're small squared badges. (Share bars are round-ended lines, not controls, and the view tabs are a pill toggle because they act.)
 
 ## Components
 
@@ -285,77 +401,116 @@ Confident, compact pills that press in slightly.
 - **Shape:** full pill (9999px) at every size: sm 24px, md 36px (default), lg 48px, icon 32px square-round.
 - **Primary:** Dispatch Blue fill, white text, 16px horizontal padding, semibold 0.875rem. Hover mixes the blue 82% toward the background.
 - **Secondary (default variant):** Morning Wash fill, Deep Navy text; hover darkens it 10%.
-- **Outline:** a 10% ink border on transparent; hover adds a 10% ink wash. It's the choice for the secondary action in an empty or error state.
+- **Outline:** a 10% ink border on transparent; hover adds a 10% ink wash. It's the choice for the secondary action in an empty or error state, and for Waiting now's full-width Open inbox.
 - **Ghost:** no fill until hover (10% ink wash). Thread rows are not Buttons; they are their own row element (see Thread Row).
 - **Destructive:** Signal Red fill; only for the irreversible.
 - **Focus:** 2px Dispatch Blue ring, offset 2px from the background.
 - **Active:** scales to 0.98 over 200ms ease-out. Motion stops under `prefers-reduced-motion`.
 - **Loading:** a spinner before the label; the button keeps its width.
 
-### Flags (the turn and the pipe)
+### Badges (the turn, the pipe, the owner, the count)
 
-- **Style:** 20px tall, 8px horizontal padding, 4.8px radius, Label type (500, 0.6875rem), no border.
-- **Your turn:** Your-Turn Amber text on a 12% amber tint. **Sent:** Sent Green on a 12% green tint. **Pipe (WhatsApp / Zalo):** Slate Note on Morning Wash.
-- Row and thread header use the same flags, in the same order: pipe first, then turn.
+- **One component:** `Badge` (`packages/ui/components/badge.tsx`) is the only status mark, in the inbox, on Home and in Admin. 20px tall (`h-5`), 8px horizontal padding, 4.8px radius (`rounded-md`), Label type (500, `text-micro`), no border.
+- **Tones:** each is its color as text on a 12% tint of itself. Neutral (default) is Slate Note on Morning Wash; info is Dispatch Blue; success is Sent Green; warning is Your-Turn Amber; error is Signal Red.
+- **In the inbox:** Your turn is warning, Sent is success, the pipe (WhatsApp / Zalo) and the owner are neutral. Row and thread header use the same badges in the same order: pipe, owner, then turn.
+- **Count (`numeric`):** the same badge in Count type (Plex Mono, tabular). The amber count of Your-turn threads rides on the Inbox nav item on every page, and on Waiting now's title.
+- **Inline (`size="sm"`):** 16px, 6px padding, Micro Caps size in sentence case; the info-toned mock badge on a message's meta line.
+- **In Admin:** connected and filed are success; banned, needs-reconnect, failed and refused are error; an office with no pipe ("none") and a dropped delivery are neutral, because an absence is not a failure.
 
-### Cards / Containers
+### Cards / Panels
 
 - **Corner Style:** 13.2px (`rounded-3xl`).
-- **Background:** Plain White / Night Card, 1px Hairline Blue border.
+- **Background:** Plain White / Night Card on the canvas, 1px Hairline Blue border.
 - **Shadow Strategy:** none (see Elevation).
-- **Internal Padding:** 24px, with a 16px gap under the header.
+- **Internal Padding:** 24px for kit cards; Home's panels pad 16px (20px from `md`) with a title row (Be Vietnam Pro semibold, Slate Note meta on the right). `CardTitle` is semibold (600), the Title role.
+- **Dividers:** a panel split into cells uses hairlines between cells, not gaps.
 
 ### Inputs / Fields
 
 - **Style:** 36px tall, Field Edge 1px stroke, card background, 8.4px radius, 12px horizontal padding, 1rem text (16px, so iOS doesn't zoom on focus).
 - **Focus:** the stroke turns Dispatch Blue, with a 1px blue ring.
 - **Placeholder:** 60% ink. **Disabled:** 50% opacity and a not-allowed cursor.
-- **Search (`variant="search"`):** the inbox search: 48px tall, a Morning Wash fill with no stroke, 4.8px radius, and 48px of left padding for the leading icon.
+- **Search (`variant="search"`):** the inbox search, at the top of the list panel: 48px tall, a Morning Wash fill with no stroke, 4.8px radius, and 48px of left padding for the leading icon.
+
+### View Tabs
+
+A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note.
 
 ### Navigation
 
-- **Style:** a Rail Paper sidebar. Items are icon + label, with Lucide icons at stroke 1.5.
-- **Active:** a Hairline Blue fill plus the Rail shadow (2px Dispatch Blue on the inside left).
-- **Hover:** accent fill without the rail.
-- **Phone:** the sidebar collapses to a sheet; the same active treatment applies.
+- **Style:** the sidebar is the canvas, borderless; the canvas fill (`bg-canvas`) sits on the kit's `SidebarProvider` wrapper. Items are icon + label, with Lucide icons at stroke 1.5; inactive labels at 75% ink.
+- **Variant:** `SidebarMenuButton variant="chip"` carries the whole treatment, so the app passes no restyle classes.
+- **Active:** a white chip with the Hairline shadow, ink text, the icon in Dispatch Blue. The settings entry in the user menu uses the same chip.
+- **Hover:** Hairline Blue accent fill.
+- **Count:** while any thread is Your turn, the Inbox link carries a numeric warning `Badge` at its right edge (`ml-auto`), inside the link itself.
+- **Phone (below `lg`):** the sidebar is a sheet behind the 56px top bar; links are 44px tall; the same active treatment applies.
+
+### Page Header
+
+Page Title on the left with a Slate Note subtitle under it; an optional aside on the right, bottom-aligned, for something that qualifies the whole page (Home's window: a 28px squared chip, white with the Hairline shadow, 0.75rem Slate Note).
 
 ### Thread Row (signature)
 
 The unit of the desk: who, when, what they said, whose turn.
 
-- **Structure:** guest mark (32px, 4.8px radius, Touch Blue initials on a 12% blue tint), then name and Clock timestamp on one baseline, a two-line Body Small preview, then flags.
-- **Rest:** transparent, 2px transparent left border, square corners. **Hover:** 70% Morning Wash.
-- **Active:** Touch Blue left rail and an 80% Hairline Blue fill (`aria-current`); no press-scale.
+- **Structure:** guest mark (32px, 4.8px radius, Touch Blue initials on a 12% blue tint), then name and Clock timestamp (sans, tabular) on one baseline, a two-line Body Small preview, then badges.
+- **Rest:** transparent, 8.4px radius. **Hover:** 70% Morning Wash.
+- **Active (`aria-current`):** a Hairline Blue fill, and the guest mark turns solid Dispatch Blue with white initials (200ms). No press-scale, no stripe.
 - **Quiet threads** fold under a `<details>` disclosure at the list's foot (44px summary, Body Small, Slate Note).
 
 ### Message
 
-- **Inbound (guest):** card background, 2px Touch Blue left rail, 4.8px radius, 8px × 12px padding, Body type.
-- **Outbound (us):** indented 24px from the left, 40% Morning Wash, a 2px rail at 20% ink.
-- **Meta line:** the source in 80% ink, then a Clock time and an optional micro badge. A translation sits under a dashed hairline with a Micro Caps label.
+- **Inbound (guest):** card background with the Hairline shadow, 8.4px radius, 8px × 12px padding, Body type.
+- **Outbound (us):** indented 24px from the left, 60% Morning Wash, no edge.
+- **Meta line:** the source in 80% ink, then a Clock time (sans, tabular) and an optional inline mock badge. A translation sits under a dashed hairline with a Micro Caps label.
+
+### Operator Note
+
+The "for you" note in the thread's side detail: an 8% Touch Blue tint, 8.4px radius, 12px padding, a semibold title and a Slate Note hint above the text. No stripe.
 
 ### Send Bar
 
 A strip under the thread: card background tinted 40% Morning Wash, top hairline, 8px × 12px. On the left, a polite live-region status in Body Small (Slate Note, or Signal Red when a send failed or a pipe is disconnected). On the right, the Send button, at least 44px tall.
+
+### Waiting Now (Home)
+
+The office's Your-turn queue in inbox order, oldest first, at most five rows. The card is `min-w-0`, so a long name truncates instead of widening the grid. Each row (at least 56px, 8.4px radius) opens its thread: guest mark, name, pipe badge and language, and the wait time in amber on the right. A full-width outline Open inbox button closes the panel.
+
+### Funnel Strip (Home)
+
+One panel, five cells split by hairlines: Leads in, Engaged, In conversation, Closings, Lost. Each cell has a mono stage number (full Slate Note) beside its label, a Figure, a thin 4px share bar on the track (Chart Strong), and a Body Small hint. Closings and Lost come from the office's CRM: until one is connected, the cell shows a 40px hatched box with a white "Connect your CRM" chip instead of a figure.
+
+### Charts (Home)
+
+- **Leads by day:** the kit's recharts wrapper. Bars in Chart Soft, today in Chart Strong, 2px top corners, horizontal gridlines only, three y ticks, a date under every seventh day. The track color is the hover cursor.
+- **Response time:** the median as a Figure, the p90 and answered count in Slate Note under it, then four bucket rows (label, 14px bar, mono count and share); the fastest bucket is strong, the rest soft.
 
 ## Do's and Don'ts
 
 ### Do:
 
 - **Do** use Dispatch Blue (#2563eb) for every primary action and for nothing decorative.
-- **Do** show the turn with the flag pair: Your-Turn Amber (#b45309) at 12% for waiting, Sent Green (#15803d) at 12% for answered.
-- **Do** mark selection with a 2px left rail (Touch Blue on rows and inbound messages, `shadow-rail` in navigation).
-- **Do** keep tappable controls in the inbox at least 44px tall (`min-h-11`), even when the visual button is 36px.
-- **Do** set timestamps in IBM Plex Mono with `tabular-nums`.
-- **Do** use theme tokens for one-off values (`text-micro`, `text-2xs`, `w-row-inset`, `--container-inbox-list`); `@shadcn/lint` rejects raw colors, arbitrary values and inline styles in the app.
+- **Do** show the turn with the badge pair: Your-Turn Amber (#92400e) at 12% for waiting, Sent Green (#166534) at 12% for answered.
+- **Do** put content on a panel (13.2px, 1px Hairline Blue, no shadow) on the Desk Canvas (#f2f5fb).
+- **Do** mark selection with a fill: Hairline Blue plus a solid guest mark on rows, a white Hairline chip in the nav.
+- **Do** keep tappable controls in the inbox and the phone shell at least 44px tall (`min-h-11`), even when the visual button is smaller.
+- **Do** set digit-only content (figures, counts) in IBM Plex Mono with `tabular-nums`, and timestamps, words and units in Noto Sans (timestamps with `tabular-nums`).
+- **Do** draw charts in one blue at two strengths: Chart Strong for the value to read first, Chart Soft for the rest, on Chart Track.
+- **Do** hatch a number Nhịp does not have yet and say why in a neutral chip.
+- **Do** use theme tokens for one-off values (`text-micro`, `text-2xs`, `text-figure`, `w-row-inset`, `--container-inbox-list`); `@shadcn/lint` rejects raw colors, arbitrary values and inline styles in the app.
 - **Do** give every color a night twin in both `:root` and `.dark` when you add one.
 
 ### Don't:
 
+- **Don't** reintroduce the 2px left rail or any colored side stripe, on rows, messages, notes or navigation.
 - **Don't** add a second accent color, a gradient, or brand illustration inside the inbox.
+- **Don't** add a second hue to a chart.
+- **Don't** show a zero for a number Nhịp doesn't have; a zero reads as a fact.
 - **Don't** use Signal Red (#dc2626) for waiting or overdue leads; red means an error or a destructive action.
-- **Don't** add drop shadows or elevation on hover; state is a tonal fill or a rail.
-- **Don't** make status or metadata into pills; round shapes are for actions.
+- **Don't** add drop shadows or elevation on hover; state is a tonal fill. Only floating layers keep the kit's shadow.
+- **Don't** give the sidebar its own border or surface; it is the canvas.
+- **Don't** set words, units or timestamps in mono; mono is for digit-only content.
+- **Don't** make status or metadata into pills, or build a second status component; status is a squared `Badge`.
 - **Don't** use grey borders; borders are Hairline Blue (#e4ecfc) / Night Hairline (#253352).
 - **Don't** write arbitrary Tailwind values (`text-[11px]`, `w-[calc(...)]`) in app code; name the value as a theme token in `apps/saas/app/globals.css`.
 - **Don't** restyle a `@repo/ui` component with `className` beyond layout; `shadcn/no-restyle` enforces it. Use a variant or size, or add one when the design calls for it.

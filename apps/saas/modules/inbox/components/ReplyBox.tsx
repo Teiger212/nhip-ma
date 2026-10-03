@@ -46,7 +46,7 @@ export function ReplyBox({
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="min-h-8"
+							className="min-h-11"
 							disabled={regenerating}
 							onClick={onRegenerate}
 						>

@@ -130,7 +130,7 @@ function SidebarProvider({
 						} as React.CSSProperties
 					}
 					className={cn(
-						"group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
+						"group/sidebar-wrapper flex min-h-svh w-full bg-canvas has-data-[variant=inset]:bg-sidebar",
 						className,
 					)}
 					{...props}
@@ -202,7 +202,7 @@ function Sidebar({
 
 	return (
 		<div
-			className="group peer md:block hidden text-sidebar-foreground"
+			className="group peer lg:block hidden text-sidebar-foreground"
 			data-state={state}
 			data-collapsible={state === "collapsed" ? collapsible : ""}
 			data-variant={variant}
@@ -223,13 +223,13 @@ function Sidebar({
 			<div
 				data-slot="sidebar-container"
 				className={cn(
-					"inset-y-0 md:flex fixed z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear",
+					"inset-y-0 lg:flex fixed z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear",
 					side === "left"
 						? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
 						: "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
 					variant === "floating" || variant === "inset"
 						? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-						: "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=left]:border-sidebar-border group-data-[side=right]:border-l group-data-[side=right]:border-sidebar-border",
+						: "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
 					className,
 				)}
 				{...props}
@@ -297,7 +297,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
 		<main
 			data-slot="sidebar-inset"
 			className={cn(
-				"min-w-0 relative flex w-full flex-1 flex-col bg-background",
+				"min-w-0 relative flex w-full flex-1 flex-col bg-canvas",
 				"md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
 				className,
 			)}
@@ -448,6 +448,9 @@ const sidebarMenuButtonVariants = cva(
 				default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
 				outline:
 					"bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
+				/** Nhịp's main nav: the active item is a white chip on the canvas, its icon in the
+				 * action blue; 44px tall in the phone shell, where it is tapped. */
+				chip: "max-lg:h-11 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-card data-[active=true]:text-foreground data-[active=true]:shadow-hairline data-[active=true]:[&>svg]:text-primary",
 			},
 			size: {
 				default: "h-8 text-sm",

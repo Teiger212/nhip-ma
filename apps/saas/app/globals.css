@@ -18,13 +18,30 @@
 	/* The product name beside the logo in the sidebar. */
 	--text-brand: 0.95rem;
 
-	/* The active item's rail in the sidebar and user menu; a 1px border drawn inside. */
-	--shadow-rail: inset 2px 0 0 var(--sidebar-primary);
+	/* Home's figures: Plex Mono light, for digits; words beside them stay in the sans. */
+	--text-figure: 2.5rem;
+	--text-figure--line-height: 1;
+	--text-figure--letter-spacing: -0.03em;
+	--text-figure-sm: 2rem;
+	--text-figure-sm--line-height: 1;
+	--text-figure-sm--letter-spacing: -0.03em;
+
+	/* A 1px border drawn inside, for chips and the active nav item on the canvas. */
 	--shadow-hairline: inset 0 0 0 1px var(--border);
 
 	/* The inbox's thread list column, and the width of a sentence in an empty state. */
 	--container-inbox-list: 22rem;
 	--container-empty-note: 22ch;
+}
+
+/* A number Nhịp does not have yet (closings and lost before a CRM is connected). */
+@utility hatched {
+	background-image: repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 7px);
+}
+
+/* Home's response-time buckets: label, bar, count. */
+@utility grid-cols-bucket {
+	grid-template-columns: minmax(5.5rem, 7.5rem) minmax(0, 1fr) minmax(5rem, auto);
 }
 
 /* A thread row inset from the list's edges by its horizontal margin (mx-1.5). */

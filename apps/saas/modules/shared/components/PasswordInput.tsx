@@ -119,7 +119,8 @@ export function PasswordInput({
 						type="button"
 						onClick={() => setShowPassword(!showPassword)}
 						className="p-2 flex cursor-pointer items-center justify-center text-primary transition-colors hover:text-primary/80"
-						title={showPassword ? "Hide password" : "Show password"}
+						aria-label={showPassword ? t("common.hidePassword") : t("common.showPassword")}
+						title={showPassword ? t("common.hidePassword") : t("common.showPassword")}
 					>
 						{showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
 					</button>
@@ -135,14 +136,9 @@ export function PasswordInput({
 								{isMet ? (
 									<CircleCheckIcon className="size-3.5 shrink-0 text-success" />
 								) : (
-									<CircleXIcon className="size-3.5 shrink-0 text-foreground/40" />
+									<CircleXIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								)}
-								<span
-									className={cn(
-										"text-xs",
-										isMet ? "font-normal text-success" : "font-light text-foreground/40",
-									)}
-								>
+								<span className={cn("text-xs", isMet ? "text-success" : "text-muted-foreground")}>
 									{t(`common.passwordCriteria.${criterion.labelKey}`)}
 								</span>
 							</div>

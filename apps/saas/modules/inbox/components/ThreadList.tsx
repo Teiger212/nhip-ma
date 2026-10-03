@@ -4,7 +4,7 @@ import { Button, Skeleton } from "@repo/ui";
 import { useTranslations } from "next-intl";
 
 import type { QueueView } from "../lib/queue";
-import type { Conversation } from "../lib/types";
+import type { ConversationSummary } from "../lib/types";
 import { ThreadListState } from "./ThreadParts";
 import { ThreadRow } from "./ThreadRow";
 
@@ -55,7 +55,7 @@ export function ThreadList({
 }) {
 	const t = useTranslations("inbox");
 
-	function rows(list: Conversation[]) {
+	function rows(list: ConversationSummary[]) {
 		return list.map((conversation) => (
 			<ThreadRow
 				key={conversation.id}

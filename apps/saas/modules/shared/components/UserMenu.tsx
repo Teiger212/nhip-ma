@@ -74,13 +74,13 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						className={cn(
 							rowClassName,
 							"gap-2 px-2 py-1.5 min-w-0 flex-1 hover:bg-sidebar-accent",
-							settingsActive && "shadow-rail bg-sidebar-accent",
+							settingsActive && "shadow-hairline bg-card hover:bg-card",
 						)}
 					>
 						<UserAvatar name={name ?? ""} avatarUrl={image} />
 						<span className="leading-tight min-w-0 text-left">
 							<span className="font-medium text-sm block truncate">{name}</span>
-							<span className="text-xs block truncate opacity-70">{email}</span>
+							<span className="text-xs block truncate text-muted-foreground">{email}</span>
 						</span>
 					</LocaleLink>
 					<DropdownMenuTrigger
@@ -107,7 +107,11 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						<button
 							{...props}
 							type="button"
-							className={cn(props.className, rowClassName, "gap-2 hover:bg-sidebar-accent")}
+							className={cn(
+								props.className,
+								rowClassName,
+								"min-h-11 min-w-11 gap-2 justify-center hover:bg-sidebar-accent",
+							)}
 							aria-label="User menu"
 						>
 							<UserAvatar name={name ?? ""} avatarUrl={image} />
@@ -124,17 +128,15 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>
 						{name}
-						<span className="font-normal text-xs block opacity-70">{email}</span>
+						<span className="font-normal text-xs block text-muted-foreground">{email}</span>
 					</DropdownMenuLabel>
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
 
 				{/* Color mode selection */}
-				<DropdownMenuItem
-					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
-					closeOnClick={false}
-				>
+				{/* A row holding its own control, not a menu item: the toggle takes the focus. */}
+				<div className="gap-4 px-2 py-1.5 text-sm flex items-center justify-between">
 					<span className="whitespace-nowrap">{t("app.userMenu.colorMode")}</span>
 					<ColorModeToggle
 						modes={["system", "light", "dark"]}
@@ -144,7 +146,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 							dark: t("common.colorMode.dark"),
 						}}
 					/>
-				</DropdownMenuItem>
+				</div>
 
 				<DropdownMenuSeparator />
 
@@ -164,16 +166,13 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 					/>
 				) : null}
 
-				<DropdownMenuItem
-					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
-					closeOnClick={false}
-				>
+				<div className="gap-4 px-2 py-1.5 text-sm flex items-center justify-between">
 					<span className="flex items-center">
 						<LanguagesIcon className="mr-2 size-4" />
 						<span className="whitespace-nowrap">{t("app.userMenu.language")}</span>
 					</span>
 					<WalkLocaleToggle />
-				</DropdownMenuItem>
+				</div>
 
 				{config.docsUrl && (
 					<DropdownMenuItem

@@ -517,7 +517,8 @@
 							"success": "Đã kết thúc phiên"
 						}
 					},
-					"currentSession": "Phiên hiện tại"
+					"currentSession": "Phiên hiện tại",
+					"revoke": "Kết thúc phiên này"
 				},
 				"changePassword": {
 					"currentPassword": "Mật khẩu hiện tại",
@@ -727,7 +728,9 @@
 			"upperAndLowercase": "Chữ hoa và chữ thường",
 			"number": "Chữ số",
 			"specialCharacter": "Ký tự đặc biệt"
-		}
+		},
+		"showPassword": "Hiện mật khẩu",
+		"hidePassword": "Ẩn mật khẩu"
 	},
 	"checkoutReturn": {
 		"title": "Đang xử lý giao dịch",
@@ -761,6 +764,22 @@
 			"no_office": "Tài khoản này chưa thuộc văn phòng nào nên không có gì để đếm.",
 			"ambiguous_office": "Tài khoản này thuộc nhiều hơn một văn phòng. Hãy nhờ Nhịp sửa.",
 			"platform_admin": "Quản trị viên nền tảng làm việc trong khu quản trị, không xem số liệu của văn phòng."
+		},
+		"leadsByDay": "Khách mới theo ngày",
+		"perDay": "{total} khách · {average} mỗi ngày",
+		"chartLabel": "Số khách mới mỗi ngày trong {days} ngày qua, tổng cộng {total}.",
+		"waitingNow": "Đang chờ",
+		"waitingEmpty": "Không có khách nào đang chờ.",
+		"waitingFailed": "Không tải được danh sách khách đang chờ.",
+		"openInbox": "Mở hộp thư",
+		"openInboxMore": "Mở hộp thư (thêm {count})",
+		"waitedFor": "Đã chờ {duration}",
+		"spread": {
+			"label": "Tốc độ trả lời khách",
+			"under5m": "Dưới 5 phút",
+			"from5to15m": "5–15 phút",
+			"from15to60m": "15–60 phút",
+			"over60m": "Trên 1 giờ"
 		}
 	},
 	"inbox": {

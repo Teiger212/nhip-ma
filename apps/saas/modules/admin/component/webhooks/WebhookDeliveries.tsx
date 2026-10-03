@@ -71,7 +71,7 @@ export function WebhookDeliveries() {
 										outcomeOf(delivery) === "filed"
 											? "success"
 											: outcomeOf(delivery) === "dropped"
-												? "warning"
+												? "neutral"
 												: "error"
 									}
 									data-test="webhook-delivery-outcome"

@@ -12,7 +12,7 @@ const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement
 
 const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
 	// oxlint-disable-next-line jsx_a11y/heading-has-content
-	<h3 className={cn("font-medium text-lg leading-none", className)} {...props} />
+	<h3 className={cn("font-semibold text-lg leading-none", className)} {...props} />
 );
 
 const CardDescription = ({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (

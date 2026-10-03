@@ -517,7 +517,8 @@
 							"success": "Session revoked"
 						}
 					},
-					"currentSession": "Current session"
+					"currentSession": "Current session",
+					"revoke": "End this session"
 				},
 				"changePassword": {
 					"currentPassword": "Current password",
@@ -727,7 +728,9 @@
 			"upperAndLowercase": "Upper & lowercase",
 			"number": "Number",
 			"specialCharacter": "Special character"
-		}
+		},
+		"showPassword": "Show password",
+		"hidePassword": "Hide password"
 	},
 	"checkoutReturn": {
 		"title": "Processing your purchase",
@@ -761,6 +764,22 @@
 			"no_office": "This account does not belong to an office yet, so there is nothing to count.",
 			"ambiguous_office": "This account belongs to more than one office. Ask Nhịp to fix it.",
 			"platform_admin": "The platform admin works in the admin area, not in an office's numbers."
+		},
+		"leadsByDay": "Leads by day",
+		"perDay": "{total, plural, one {# lead} other {# leads}} · {average} a day",
+		"chartLabel": "Leads per day over the last {days} days, {total} in all.",
+		"waitingNow": "Waiting now",
+		"waitingEmpty": "No guest is waiting.",
+		"waitingFailed": "Could not load who is waiting.",
+		"openInbox": "Open inbox",
+		"openInboxMore": "Open inbox ({count} more)",
+		"waitedFor": "Waiting {duration}",
+		"spread": {
+			"label": "How fast leads were answered",
+			"under5m": "Under 5 min",
+			"from5to15m": "5–15 min",
+			"from15to60m": "15–60 min",
+			"over60m": "Over 1 hour"
 		}
 	},
 	"inbox": {
