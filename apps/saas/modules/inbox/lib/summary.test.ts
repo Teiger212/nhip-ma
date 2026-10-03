@@ -150,20 +150,3 @@ test("Your turn in the list is the guest's latest message with nothing answering
 	expect(fresh?.guestLanguage).toBe("en");
 	expect(summaries.find((thread) => thread.guestId === "echo")?.guestLanguage).toBeNull();
 });
-
-test("the nav's Your-turn count equals the Your-turn threads the list shows each viewer (ADR 0004, ADR 0015)", async () => {
-	const expected = new Map<InboxViewer, number>([
-		[manager, 6],
-		[agentOne, 5],
-		[agentTwo, 4],
-		[noRole, 4],
-		[elsewhere, 1],
-	]);
-	for (const [viewer, count] of expected) {
-		const listed = (await store.listConversationSummaries(viewer)).filter(yourTurn).length;
-		expect(await store.countYourTurn(viewer), `${viewer.userId} in ${viewer.officeId}`).toBe(
-			listed,
-		);
-		expect(listed).toBe(count);
-	}
-});

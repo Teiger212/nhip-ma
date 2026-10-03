@@ -7,6 +7,7 @@ import {
 	isQuiet,
 	nextSelection,
 	QUIET_AFTER_MS,
+	yourTurnCount,
 } from "./queue";
 import type { ConversationSummary } from "./types";
 
@@ -142,4 +143,13 @@ test("view parsing", () => {
 	expect(isInboxView("sent")).toBe(true);
 	expect(isInboxView("yourTurn")).toBe(true);
 	expect(isInboxView("needsReply")).toBe(false);
+});
+
+// ADR 0004: the nav's Your-turn count and the inbox's Your turn tab count the same threads.
+test("the Your-turn count is the threads whose guest spoke last, quiet ones included", () => {
+	// Minji and Yuki wait, Thảo waits quietly; the office answered Alexei.
+	expect(yourTurnCount(all)).toBe(3);
+	expect(yourTurnCount([alexei])).toBe(0);
+	expect(yourTurnCount([])).toBe(0);
+	expect(buildQueueView(all, "sent", "", NOW).counts).toEqual({ yourTurn: 3, sent: 1, all: 4 });
 });

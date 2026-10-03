@@ -23,6 +23,17 @@ export function yourTurn(conversation: Pick<ConversationSummary, "unansweredInbo
 	return conversation.unansweredInboundId !== null;
 }
 
+/**
+ * How many threads are Your turn: the inbox's tab count and the nav count alike. The count
+ * route and the client both count with this, so which threads count is decided here and
+ * nowhere else. The store only derives each thread's turn fact (`unansweredInboundId`).
+ */
+export function yourTurnCount(
+	conversations: Pick<ConversationSummary, "unansweredInboundId">[],
+): number {
+	return conversations.filter(yourTurn).length;
+}
+
 function time(value: string | null): number {
 	return value ? new Date(value).getTime() : 0;
 }
@@ -76,11 +87,8 @@ export function buildQueueView(
 	now: number = Date.now(),
 ): QueueView {
 	const matching = conversations.filter((conversation) => matchesThreadSearch(conversation, query));
-	const counts: QueueCounts = { yourTurn: 0, sent: 0, all: matching.length };
-	for (const conversation of matching) {
-		if (yourTurn(conversation)) counts.yourTurn += 1;
-		else counts.sent += 1;
-	}
+	const counts: QueueCounts = { yourTurn: yourTurnCount(matching), sent: 0, all: matching.length };
+	counts.sent = counts.all - counts.yourTurn;
 	const inOrder = matching
 		.filter((conversation) => inView(conversation, view))
 		.sort(compareForView(view));

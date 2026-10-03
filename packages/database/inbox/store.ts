@@ -432,16 +432,6 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return rows.map(mapSummary);
 		},
 
-		async countYourTurn(viewer) {
-			const [row] = await db.$queryRaw<Array<{ count: number }>>`
-				SELECT COUNT(*)::int AS "count"
-				FROM "inbox_conversation" "c"
-				${LATEST_INBOUND}
-				WHERE ${visibleSql(viewer)} AND ${LATEST_UNANSWERED}
-			`;
-			return row?.count ?? 0;
-		},
-
 		async getConversation(id, viewer?: InboxViewer) {
 			const conversation = await load(id);
 			if (!conversation) {

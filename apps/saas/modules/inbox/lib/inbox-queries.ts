@@ -10,7 +10,7 @@ import {
 import { useLocale } from "next-intl";
 import { useState } from "react";
 
-import { yourTurn } from "./queue";
+import { yourTurnCount } from "./queue";
 import { summarize } from "./summary";
 import type { Conversation, ConversationSummary, Pipe } from "./types";
 
@@ -124,9 +124,8 @@ export function useYourTurnCount({
 		// An operator without an office is refused (403); asking again will not change that.
 		retry: false,
 	});
-	const value = listMounted
-		? (list.data?.filter(yourTurn).length ?? null)
-		: (count.data?.count ?? null);
+	const listCount = list.data ? yourTurnCount(list.data) : null;
+	const value = listMounted ? listCount : (count.data?.count ?? null);
 	const [held, setHeld] = useState<number | null>(null);
 	if (value !== null && value !== held) setHeld(value);
 	return enabled ? (value ?? held) : null;

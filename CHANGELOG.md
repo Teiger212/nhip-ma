@@ -6,6 +6,12 @@
 
 - **A new guest becomes a lead in the office's CRM** (#61, spec #59). When a guest writes on a thread with no CRM lead (their first message, or the next one on a thread from before the office's CRM), Nhịp finds their lead in the office's CRM (by phone on WhatsApp, by the Zalo id it stored on Zalo) or creates one, in the background: name, phone or Zalo id, pipe, language, the extracted fields and a link to the thread, never message text. A burst of first messages makes one lead; a guest matching two leads is linked to neither. The thread header shows "In CRM: <name>". Offices are on the mock CRM until the admin's CRM setting (#62) and HubSpot (#65) land.
 
+## 2026-10-03 (one queue rule)
+
+### Changed
+
+- **The nav's Your-turn count uses the queue rule.** It counts the thread summaries with the same rule as the inbox's list, instead of a second count in SQL, so a later change to what is in the queue (the CRM's resolved threads, spec #59) is made in the queue rules alone. No visible change.
+
 ## 2026-09-27 (send safety)
 
 ### Fixed
