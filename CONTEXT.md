@@ -139,9 +139,12 @@ is renamed.
   the owner. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses, plus a mock
   backed by a local table. Source of truth for closings and lost (ADR 0003). Nhịp does not
-  become a CRM. First real adapter: **Attio** (provisional).
-- **CRM link**: the stored association between a conversation and a CRM lead. Made
-  automatically by phone number (E.164), or by the agent through "link to CRM lead".
+  become a CRM. First real adapter: **HubSpot**'s free CRM, for the demo (ADR 0003, spec #59).
+  The **mock CRM** keeps its leads in Nhịp's database, for development, tests and the demo.
+- **CRM link**: the stored association between a thread and its lead in the office's CRM.
+  Nhịp makes it when a guest writes on a thread that has none: it finds the guest's lead (by
+  phone on WhatsApp, by the Zalo user id Nhịp stored on Zalo) or creates one. A guest who
+  matches two leads is linked to neither. The thread header shows the lead, read-only.
 
 ## Deliberately not
 
