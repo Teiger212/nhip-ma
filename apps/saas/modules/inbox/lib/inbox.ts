@@ -91,7 +91,11 @@ export async function afterGuestInbound(
 	if (!updated.crm) {
 		void runInBackground(`crm lead ${updated.id}`, async () => {
 			try {
-				await createCrmSync({ store: runtime.store, threadUrl }).newGuest(updated);
+				await createCrmSync({
+					store: runtime.store,
+					threadUrl,
+					secretsKey: runtime.config.pipeSecretsKey,
+				}).newGuest(updated);
 			} catch {
 				// A CRM's error can carry guest data; the log keeps only what failed (PDPL).
 				throw new Error("CRM lead write failed");

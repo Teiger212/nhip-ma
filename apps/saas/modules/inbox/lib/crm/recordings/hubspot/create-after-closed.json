@@ -1,0 +1,278 @@
+{
+	"call": "createLead",
+	"scenario": "A returning guest whose deal is closed: a new deal, same contact",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"input": {
+		"phone": "+84901703854",
+		"zaloUserId": null,
+		"name": "Nhịp Test Lan 170385",
+		"pipe": "whatsapp",
+		"language": "vi",
+		"fields": {
+			"areaOfInterest": "Thảo Điền",
+			"nationality": null,
+			"inVietnamNow": true,
+			"rentOrBuy": "rent",
+			"timeframe": "next month",
+			"budgetBand": "1,000–1,500 USD",
+			"bedsOrHousehold": "2 bedrooms"
+		},
+		"threadUrl": "https://nhip.test/vi/inbox?thread=nhip-test-170385-5"
+	},
+	"contactId": "883011891416",
+	"expected": {
+		"id": "524620543180",
+		"name": "Nhịp Test Lan 170385"
+	},
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/contacts/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "hs_searchable_calculated_phone_number",
+									"operator": "EQ",
+									"value": "901703854"
+								}
+							]
+						},
+						{
+							"filters": [
+								{
+									"propertyName": "hs_searchable_calculated_mobile_number",
+									"operator": "EQ",
+									"value": "901703854"
+								}
+							]
+						}
+					],
+					"properties": ["phone", "mobilephone"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"total": 1,
+					"results": [
+						{
+							"id": "883011891416",
+							"properties": {
+								"createdate": "2026-10-03T14:19:40.146Z",
+								"hs_object_id": "883011891416",
+								"lastmodifieddate": "2026-10-03T14:19:59.058Z",
+								"mobilephone": null,
+								"phone": "090 170 3854"
+							},
+							"createdAt": "2026-10-03T14:19:40.146Z",
+							"updatedAt": "2026-10-03T14:19:59.058Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-1/883011891416"
+						}
+					]
+				}
+			}
+		},
+		{
+			"request": {
+				"method": "GET",
+				"path": "/crm/pipelines/2026-09/deals",
+				"body": null
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"results": [
+						{
+							"label": "Sales Pipeline",
+							"displayOrder": 0,
+							"id": "default",
+							"stages": [
+								{
+									"label": "Appointment Scheduled",
+									"displayOrder": 0,
+									"metadata": {
+										"isClosed": "false",
+										"probability": "0.2"
+									},
+									"id": "appointmentscheduled",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								},
+								{
+									"label": "Qualified To Buy",
+									"displayOrder": 1,
+									"metadata": {
+										"isClosed": "false",
+										"probability": "0.4"
+									},
+									"id": "qualifiedtobuy",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								},
+								{
+									"label": "Presentation Scheduled",
+									"displayOrder": 2,
+									"metadata": {
+										"isClosed": "false",
+										"probability": "0.6"
+									},
+									"id": "presentationscheduled",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								},
+								{
+									"label": "Decision Maker Bought-In",
+									"displayOrder": 3,
+									"metadata": {
+										"isClosed": "false",
+										"probability": "0.8"
+									},
+									"id": "decisionmakerboughtin",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								},
+								{
+									"label": "Contract Sent",
+									"displayOrder": 4,
+									"metadata": {
+										"isClosed": "false",
+										"probability": "0.9"
+									},
+									"id": "contractsent",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								},
+								{
+									"label": "Closed Won",
+									"displayOrder": 5,
+									"metadata": {
+										"isClosed": "true",
+										"probability": "1.0"
+									},
+									"id": "closedwon",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								},
+								{
+									"label": "Closed Lost",
+									"displayOrder": 6,
+									"metadata": {
+										"isClosed": "true",
+										"probability": "0.0"
+									},
+									"id": "closedlost",
+									"createdAt": "1970-01-01T00:00:00Z",
+									"updatedAt": "1970-01-01T00:00:00Z",
+									"writePermissions": "CRM_PERMISSIONS_ENFORCEMENT",
+									"archived": false
+								}
+							],
+							"createdAt": "1970-01-01T00:00:00Z",
+							"updatedAt": "1970-01-01T00:00:00Z",
+							"archived": false
+						}
+					]
+				}
+			}
+		},
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/deals",
+				"body": {
+					"properties": {
+						"dealname": "Nhịp Test Lan 170385",
+						"pipeline": "default",
+						"dealstage": "appointmentscheduled",
+						"description": "Nhịp thread: https://nhip.test/vi/inbox?thread=nhip-test-170385-5\nPipe: WhatsApp\nLanguage: vi\nArea: Thảo Điền\nRent or buy: rent\nBudget: 1,000–1,500 USD\nTimeframe: next month\nHousehold: 2 bedrooms"
+					},
+					"associations": [
+						{
+							"to": {
+								"id": "883011891416"
+							},
+							"types": [
+								{
+									"associationCategory": "HUBSPOT_DEFINED",
+									"associationTypeId": 3
+								}
+							]
+						}
+					]
+				}
+			},
+			"response": {
+				"status": 201,
+				"body": {
+					"id": "524620543180",
+					"properties": {
+						"createdate": "2026-10-03T14:20:05.619Z",
+						"days_to_close": "0",
+						"dealname": "Nhịp Test Lan 170385",
+						"dealstage": "appointmentscheduled",
+						"description": "Nhịp thread: https://nhip.test/vi/inbox?thread=nhip-test-170385-5\nPipe: WhatsApp\nLanguage: vi\nArea: Thảo Điền\nRent or buy: rent\nBudget: 1,000–1,500 USD\nTimeframe: next month\nHousehold: 2 bedrooms",
+						"hs_closed_amount": "0",
+						"hs_closed_amount_in_home_currency": "0",
+						"hs_closed_deal_close_date": "0",
+						"hs_closed_deal_create_date": "0",
+						"hs_closed_won_count": "0",
+						"hs_createdate": "2026-10-03T14:20:05.619Z",
+						"hs_days_to_close_raw": "0",
+						"hs_deal_stage_probability_shadow": "0.200000000000000011102230246251565404236316680908203125",
+						"hs_has_last_conversation_follow_ups": "false",
+						"hs_has_last_meeting_followups": "false",
+						"hs_is_closed": "false",
+						"hs_is_closed_count": "0",
+						"hs_is_closed_lost": "false",
+						"hs_is_closed_won": "false",
+						"hs_is_deal_split": "false",
+						"hs_is_open_count": "1",
+						"hs_lastmodifieddate": "2026-10-03T14:20:05.619Z",
+						"hs_num_associated_active_deal_registrations": "0",
+						"hs_num_associated_deal_registrations": "0",
+						"hs_num_associated_deal_splits": "0",
+						"hs_num_of_associated_line_items": "0",
+						"hs_num_target_accounts": "0",
+						"hs_number_of_call_engagements": "0",
+						"hs_number_of_inbound_calls": "0",
+						"hs_number_of_outbound_calls": "0",
+						"hs_number_of_overdue_tasks": "0",
+						"hs_object_id": "524620543180",
+						"hs_object_source": "INTEGRATION",
+						"hs_object_source_id": "55608927",
+						"hs_object_source_label": "INTEGRATION",
+						"hs_open_deal_create_date": "1791037205619",
+						"hs_projected_amount": "0",
+						"hs_projected_amount_in_home_currency": "0",
+						"hs_v2_date_entered_current_stage": "2026-10-03T14:20:05.619Z",
+						"hs_v2_time_in_current_stage": "2026-10-03T14:20:05.619Z",
+						"num_associated_contacts": "0",
+						"num_notes": "0",
+						"pipeline": "default"
+					},
+					"createdAt": "2026-10-03T14:20:05.619Z",
+					"updatedAt": "2026-10-03T14:20:05.619Z",
+					"archived": false,
+					"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/524620543180"
+				}
+			}
+		}
+	]
+}

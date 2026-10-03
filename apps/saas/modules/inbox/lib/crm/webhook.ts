@@ -16,11 +16,10 @@ export async function handleCrmWebhook(kind: CrmKind, request: Request): Promise
 	if (!read) return Response.json({ error: "not_found" }, { status: 404 });
 	const notice = read(await request.text(), request.headers);
 	if (!notice) return Response.json({ error: "bad_signature" }, { status: 401 });
-	await createCrmSync({ store: runtime.store, threadUrl }).outcomesChanged(
-		notice.officeId,
-		notice.leadIds,
-		new Date(),
-		{ from: kind },
-	);
+	await createCrmSync({
+		store: runtime.store,
+		threadUrl,
+		secretsKey: runtime.config.pipeSecretsKey,
+	}).outcomesChanged(notice.officeId, notice.leadIds, new Date(), { from: kind });
 	return Response.json({ ok: true });
 }

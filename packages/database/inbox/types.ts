@@ -412,15 +412,27 @@ export type InboxStore = {
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
 	/** Delete deliveries received before `before`; returns how many went. */
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
-	/** The office's CRM (ADR 0003), or null when it has none. */
-	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind } | null>;
+	/** The office's CRM (ADR 0003), or null when it has none; whether it holds an access token. */
+	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind; tokenSet: boolean } | null>;
+	/**
+	 * The office's CRM access token as stored: sealed by the app (never plaintext here), or null.
+	 * Only the CRM sync reads it, to open it for the adapter; nothing reads it for a client.
+	 */
+	getCrmAccessToken: (officeId: string) => Promise<string | null>;
 	/** Whether the office exists. */
 	officeExists: (officeId: string) => Promise<boolean>;
 	/**
-	 * Replace the office's CRM connection, or remove it with null. Replacing or removing it
-	 * removes the office's thread links with it (cascade).
+	 * Replace the office's CRM connection, or remove it with null, with its access token (sealed
+	 * by the app) when the kind takes one. Replacing or removing it removes the office's thread
+	 * links (cascade) and its old token with it.
 	 */
-	setCrmConnection: (officeId: string, kind: CrmKind | null) => Promise<void>;
+	setCrmConnection: (
+		officeId: string,
+		kind: CrmKind | null,
+		accessToken?: string | null,
+	) => Promise<void>;
+	/** Replace the access token (sealed) on the office's CRM connection, keeping its links. */
+	replaceCrmAccessToken: (officeId: string, accessToken: string) => Promise<void>;
 	/**
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
 	 * thread is already claimed or linked. The database decides, so two first messages make one lead.

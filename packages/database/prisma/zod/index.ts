@@ -156,7 +156,7 @@ export type WebhookDeliveryScalarFieldEnum = z.infer<typeof WebhookDeliveryScala
 
 // File: CrmConnectionScalarFieldEnum.schema.ts
 
-export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'updatedAt'])
+export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'accessToken', 'updatedAt'])
 
 export type CrmConnectionScalarFieldEnum = z.infer<typeof CrmConnectionScalarFieldEnumSchema>;
 
@@ -258,7 +258,7 @@ export type AnswerStatus = z.infer<typeof AnswerStatusSchema>;
 
 // File: CrmKind.schema.ts
 
-export const CrmKindSchema = z.enum(['mock'])
+export const CrmKindSchema = z.enum(['mock', 'hubspot'])
 
 export type CrmKind = z.infer<typeof CrmKindSchema>;
 
@@ -660,6 +660,7 @@ export type WebhookDeliveryType = z.infer<typeof WebhookDeliverySchema>;
 export const CrmConnectionSchema = z.object({
   officeId: z.string(),
   kind: CrmKindSchema,
+  accessToken: z.string().nullish(),
   updatedAt: z.date(),
 });
 

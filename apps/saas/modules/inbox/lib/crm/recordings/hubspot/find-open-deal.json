@@ -1,0 +1,108 @@
+{
+	"call": "findLeads",
+	"scenario": "A returning Zalo guest whose contact has an open deal",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"input": {
+		"phone": null,
+		"zaloUserId": "nhip-test-zalo-170385-2"
+	},
+	"expected": [
+		{
+			"id": "524541248723",
+			"name": "Nhịp Test Minh 170385"
+		}
+	],
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/contacts/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "zalo_user_id",
+									"operator": "EQ",
+									"value": "nhip-test-zalo-170385-2"
+								}
+							]
+						}
+					],
+					"properties": ["phone", "mobilephone", "zalo_user_id"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"total": 1,
+					"results": [
+						{
+							"id": "883017076970",
+							"properties": {
+								"createdate": "2026-10-03T14:19:32.061Z",
+								"hs_object_id": "883017076970",
+								"lastmodifieddate": "2026-10-03T14:19:42.159Z",
+								"mobilephone": null,
+								"phone": null,
+								"zalo_user_id": "nhip-test-zalo-170385-2"
+							},
+							"createdAt": "2026-10-03T14:19:32.061Z",
+							"updatedAt": "2026-10-03T14:19:42.159Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-1/883017076970"
+						}
+					]
+				}
+			}
+		},
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/deals/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "associations.contact",
+									"operator": "EQ",
+									"value": "883017076970"
+								},
+								{
+									"propertyName": "hs_is_closed",
+									"operator": "EQ",
+									"value": "false"
+								}
+							]
+						}
+					],
+					"properties": ["dealname"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"total": 1,
+					"results": [
+						{
+							"id": "524541248723",
+							"properties": {
+								"createdate": "2026-10-03T14:19:32.636Z",
+								"dealname": "Nhịp Test Minh 170385",
+								"hs_lastmodifieddate": "2026-10-03T14:19:39.393Z",
+								"hs_object_id": "524541248723"
+							},
+							"createdAt": "2026-10-03T14:19:32.636Z",
+							"updatedAt": "2026-10-03T14:19:39.393Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/524541248723"
+						}
+					]
+				}
+			}
+		}
+	]
+}

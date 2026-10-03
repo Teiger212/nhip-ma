@@ -498,6 +498,7 @@ model WebhookDelivery {
 
 enum CrmKind {
   mock
+  hubspot
 }
 
 /// What the CRM says about a lead (ADR 0003). Only the CRM decides won or lost, never the chat.
@@ -517,11 +518,15 @@ enum CrmLinkMethod {
 
 /// The office's CRM (ADR 0003). One per office; set by the platform admin.
 model CrmConnection {
-  officeId  String       @id
-  office    Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  kind      CrmKind
-  links     CrmLink[]
-  updatedAt DateTime     @updatedAt
+  officeId    String       @id
+  office      Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind        CrmKind
+  /// The office's access token for a CRM that takes one, sealed by the app before it reaches
+  /// this table (ADR 0017's encryption). Write-only: never read back to a client. Another kind
+  /// replaces the row, so the token goes with it.
+  accessToken String?      @db.Text
+  links       CrmLink[]
+  updatedAt   DateTime     @updatedAt
 
   @@map("inbox_crm_connection")
 }

@@ -56,7 +56,7 @@ export const AnswerStatus = z.enum(["sending", "sent", "failed", "unknown"]);
 export type AnswerStatus = z.infer<typeof AnswerStatus>;
 
 /** The CRM an office is connected to (ADR 0003). Each real CRM joins with its adapter. */
-export const CrmKind = z.enum(["mock"]);
+export const CrmKind = z.enum(["mock", "hubspot"]);
 export type CrmKind = z.infer<typeof CrmKind>;
 
 /** How Nhịp linked a thread to its lead: it created it, or found it by phone or Zalo id. */

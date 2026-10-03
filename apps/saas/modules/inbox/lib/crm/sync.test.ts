@@ -163,10 +163,7 @@ test("a lead write the CRM refuses leaves the thread free to try again", async (
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
 	const conversation = await guestWrites("zalo", "zalo-user-6", "Quân");
-	const refusing = (
-		_connection: { kind: "mock" },
-		deps: { store: InboxStore; officeId: string },
-	) => ({
+	const refusing = (_connection: unknown, deps: { store: InboxStore; officeId: string }) => ({
 		...mockCrmAdapter(deps.store, deps.officeId),
 		createLead: () => Promise.reject(new Error("CRM is down")),
 	});
@@ -260,8 +257,8 @@ test("a notice from a CRM the office is not on changes nothing", async () => {
 test("choosing the office's CRM again keeps its links; choosing none drops them, and only its own", async () => {
 	store = await testInboxStore();
 	const sync = createCrmSync({ store, threadUrl });
-	expect(await sync.connectOffice(OFFICE, "mock")).toBe(true);
-	expect(await sync.connectOffice("office-b", "mock")).toBe(true);
+	expect(await sync.connectOffice(OFFICE, "mock")).toBe("connected");
+	expect(await sync.connectOffice("office-b", "mock")).toBe("connected");
 	const ours = await guestWrites("zalo", "zalo-user-9", "Minh");
 	const theirs = await store.upsertInbound(
 		{
@@ -290,6 +287,110 @@ test("choosing the office's CRM again keeps its links; choosing none drops them,
 test("an unknown office cannot be connected to a CRM", async () => {
 	store = await testInboxStore();
 	expect(await createCrmSync({ store, threadUrl }).connectOffice("no-such-office", "mock")).toBe(
-		false,
+		"no_office",
 	);
+});
+
+/* ------------------------------------------------- an office on a CRM that takes an access token */
+
+/** The deployment's key for sealed tokens (ADR 0017), as `PIPE_SECRETS_KEY` holds it. */
+const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
+
+/**
+ * The sync with an adapter factory that remembers the connection it was handed and answers as
+ * the mock CRM, so a guest's first message shows which token the office's CRM would be opened with.
+ */
+function syncSeeingTokens() {
+	const seen: Array<string | null> = [];
+	const sync = createCrmSync({
+		store,
+		threadUrl,
+		secretsKey: SECRETS_KEY,
+		adapterFor: (connection, deps) => {
+			seen.push(connection.token);
+			return mockCrmAdapter(deps.store, deps.officeId);
+		},
+	});
+	return { sync, seen };
+}
+
+/** A thread of the office linked to a lead, as a guest's first message leaves it. */
+async function linkedThread(sync: ReturnType<typeof createCrmSync>, guestId: string, name: string) {
+	const conversation = await guestWrites("zalo", guestId, name);
+	await sync.newGuest(conversation);
+	expect((await leadOf(conversation.id)).leadName).toBe(name);
+	return conversation;
+}
+
+// ADR 0003 (2026-10-03), ADR 0017, spec #59 story 33 (#65): the token is stored encrypted, and
+// only the CRM's adapter gets it back in the clear.
+test("an office connected to HubSpot keeps its token sealed, and its CRM is opened with that token", async () => {
+	store = await testInboxStore();
+	const { sync, seen } = syncSeeingTokens();
+
+	expect(await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-first-token")).toBe("connected");
+
+	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "hubspot", tokenSet: true });
+	const sealed = await store.getCrmAccessToken(OFFICE);
+	expect(sealed).toBeTruthy();
+	expect(sealed).not.toContain("pat-eu1-first-token");
+	await linkedThread(sync, "zalo-user-20", "Mai");
+	expect(seen).toEqual(["pat-eu1-first-token"]);
+});
+
+// #65: HubSpot with no token is not saved; the office stays as it was.
+test("HubSpot without a token is refused, and the office keeps its CRM and links", async () => {
+	store = await testInboxStore();
+	const { sync } = syncSeeingTokens();
+	await sync.connectOffice(OFFICE, "mock");
+	const linked = await linkedThread(sync, "zalo-user-21", "Phúc");
+
+	expect(await sync.connectOffice(OFFICE, "hubspot")).toBe("token_required");
+	expect(await sync.connectOffice(OFFICE, "hubspot", "   ")).toBe("token_required");
+
+	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock", tokenSet: false });
+	expect((await leadOf(linked.id)).leadName).toBe("Phúc");
+});
+
+// #65: saving a new token replaces it; the same CRM keeps the office's links (spec #59 story 35).
+test("a new HubSpot token replaces the old one and keeps the office's links", async () => {
+	store = await testInboxStore();
+	const { sync, seen } = syncSeeingTokens();
+	await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-old-token");
+	const linked = await linkedThread(sync, "zalo-user-22", "Hương");
+
+	expect(await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-new-token")).toBe("connected");
+
+	expect((await leadOf(linked.id)).leadName).toBe("Hương");
+	await linkedThread(sync, "zalo-user-23", "Tuấn");
+	expect(seen).toEqual(["pat-eu1-old-token", "pat-eu1-new-token"]);
+	expect(await store.getCrmAccessToken(OFFICE)).not.toContain("pat-eu1-new-token");
+});
+
+// #65, spec #59 story 35: another CRM, or none, drops HubSpot's token with the office's links.
+test("switching away from HubSpot drops its token and the office's links", async () => {
+	store = await testInboxStore();
+	const { sync } = syncSeeingTokens();
+	await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-gone-token");
+	const linked = await linkedThread(sync, "zalo-user-24", "Lan");
+
+	expect(await sync.connectOffice(OFFICE, "mock")).toBe("connected");
+	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock", tokenSet: false });
+	expect(await store.getCrmAccessToken(OFFICE)).toBeNull();
+	expect((await store.getConversation(linked.id))?.crm).toBeNull();
+
+	await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-again-token");
+	expect(await sync.connectOffice(OFFICE, null)).toBe("connected");
+	expect(await store.getCrmConnection(OFFICE)).toBeNull();
+	expect(await store.getCrmAccessToken(OFFICE)).toBeNull();
+});
+
+// ADR 0017: a token is never stored in the clear; without the deployment's key nothing is saved.
+test("without the deployment's secrets key, HubSpot is not saved", async () => {
+	store = await testInboxStore();
+	const sync = createCrmSync({ store, threadUrl });
+
+	expect(await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-no-key")).toBe("no_secrets_key");
+
+	expect(await store.getCrmConnection(OFFICE)).toBeNull();
 });

@@ -1,0 +1,50 @@
+{
+	"call": "findLeads",
+	"scenario": "HubSpot refuses the token",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"input": {
+		"phone": "+84901703857",
+		"zaloUserId": null
+	},
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/contacts/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "hs_searchable_calculated_phone_number",
+									"operator": "EQ",
+									"value": "901703857"
+								}
+							]
+						},
+						{
+							"filters": [
+								{
+									"propertyName": "hs_searchable_calculated_mobile_number",
+									"operator": "EQ",
+									"value": "901703857"
+								}
+							]
+						}
+					],
+					"properties": ["phone", "mobilephone"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 401,
+				"body": {
+					"status": "error",
+					"message": "Authentication credentials not found. This API supports OAuth 2.0 authentication and you can find more details at https://developers.hubspot.com/docs/methods/auth/oauth-overview",
+					"correlationId": "01a10223-11f9-74de-bdde-d66930724063",
+					"category": "INVALID_AUTHENTICATION"
+				}
+			}
+		}
+	]
+}

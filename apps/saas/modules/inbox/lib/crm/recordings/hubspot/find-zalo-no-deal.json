@@ -1,0 +1,89 @@
+{
+	"call": "findLeads",
+	"scenario": "A Zalo id on a CRM contact without deals",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"input": {
+		"phone": null,
+		"zaloUserId": "nhip-test-zalo-170385-6"
+	},
+	"expected": [],
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/contacts/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "zalo_user_id",
+									"operator": "EQ",
+									"value": "nhip-test-zalo-170385-6"
+								}
+							]
+						}
+					],
+					"properties": ["phone", "mobilephone", "zalo_user_id"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"total": 1,
+					"results": [
+						{
+							"id": "883024831686",
+							"properties": {
+								"createdate": "2026-10-03T14:19:51.997Z",
+								"hs_object_id": "883024831686",
+								"lastmodifieddate": "2026-10-03T14:19:51.997Z",
+								"mobilephone": null,
+								"phone": null,
+								"zalo_user_id": "nhip-test-zalo-170385-6"
+							},
+							"createdAt": "2026-10-03T14:19:51.997Z",
+							"updatedAt": "2026-10-03T14:19:51.997Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-1/883024831686"
+						}
+					]
+				}
+			}
+		},
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/deals/search",
+				"body": {
+					"filterGroups": [
+						{
+							"filters": [
+								{
+									"propertyName": "associations.contact",
+									"operator": "EQ",
+									"value": "883024831686"
+								},
+								{
+									"propertyName": "hs_is_closed",
+									"operator": "EQ",
+									"value": "false"
+								}
+							]
+						}
+					],
+					"properties": ["dealname"],
+					"limit": 100
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"total": 0,
+					"results": []
+				}
+			}
+		}
+	]
+}

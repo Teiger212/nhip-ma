@@ -1,0 +1,104 @@
+{
+	"call": "outcomesFor",
+	"scenario": "A won deal, a lost deal with a reason, an open deal and an unknown id",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"input": ["524743265503", "524585859289", "524620543180", "1"],
+	"won": "524743265503",
+	"lost": "524585859289",
+	"open": "524620543180",
+	"unknown": "1",
+	"exchanges": [
+		{
+			"request": {
+				"method": "POST",
+				"path": "/crm/objects/2026-09/deals/batch/read",
+				"body": {
+					"inputs": [
+						{
+							"id": "524743265503"
+						},
+						{
+							"id": "524585859289"
+						},
+						{
+							"id": "524620543180"
+						},
+						{
+							"id": "1"
+						}
+					],
+					"properties": ["hs_is_closed", "hs_is_closed_won", "closedate", "closed_lost_reason"]
+				}
+			},
+			"response": {
+				"status": 207,
+				"body": {
+					"completedAt": "2026-10-03T14:20:06.493Z",
+					"status": "COMPLETE",
+					"startedAt": "2026-10-03T14:20:06.485Z",
+					"results": [
+						{
+							"id": "524585859289",
+							"properties": {
+								"closed_lost_reason": "Nhịp test: rented elsewhere",
+								"closedate": "2026-10-03T14:19:58.485Z",
+								"createdate": "2026-10-03T14:19:51.498Z",
+								"hs_is_closed": "true",
+								"hs_is_closed_won": "false",
+								"hs_lastmodifieddate": "2026-10-03T14:20:03.542Z",
+								"hs_object_id": "524585859289"
+							},
+							"createdAt": "2026-10-03T14:19:51.498Z",
+							"updatedAt": "2026-10-03T14:20:03.542Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/524585859289"
+						},
+						{
+							"id": "524620543180",
+							"properties": {
+								"closed_lost_reason": null,
+								"closedate": null,
+								"createdate": "2026-10-03T14:20:05.619Z",
+								"hs_is_closed": "false",
+								"hs_is_closed_won": "false",
+								"hs_lastmodifieddate": "2026-10-03T14:20:06.266Z",
+								"hs_object_id": "524620543180"
+							},
+							"createdAt": "2026-10-03T14:20:05.619Z",
+							"updatedAt": "2026-10-03T14:20:06.266Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/524620543180"
+						},
+						{
+							"id": "524743265503",
+							"properties": {
+								"closed_lost_reason": null,
+								"closedate": "2026-10-03T14:20:06.155Z",
+								"createdate": "2026-10-03T14:19:53.947Z",
+								"hs_is_closed": "true",
+								"hs_is_closed_won": "true",
+								"hs_lastmodifieddate": "2026-10-03T14:20:06.155Z",
+								"hs_object_id": "524743265503"
+							},
+							"createdAt": "2026-10-03T14:19:53.947Z",
+							"updatedAt": "2026-10-03T14:20:06.155Z",
+							"archived": false,
+							"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/524743265503"
+						}
+					],
+					"errors": [
+						{
+							"status": "error",
+							"category": "OBJECT_NOT_FOUND",
+							"message": "Could not get some DEAL objects, they may be deleted or not exist. Check that ids are valid.",
+							"context": {
+								"ids": ["1"]
+							}
+						}
+					],
+					"numErrors": 1
+				}
+			}
+		}
+	]
+}
