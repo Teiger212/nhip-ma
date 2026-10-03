@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import type { CrmKind } from "../types";
+
 /**
  * Vendor tokens at rest (`inbox_pipe_credential`, a CRM's on `inbox_crm_connection`) and the
  * connect cookie: AES-256-GCM under `PIPE_SECRETS_KEY` (32 random bytes, base64), which lives
@@ -69,6 +71,6 @@ export function tokenContext(pipe: string, externalId: string, kind: "access" | 
 }
 
 /** Where an office's CRM access token is sealed: its CRM kind and office. */
-export function crmTokenContext(kind: string, officeId: string): string {
+export function crmTokenContext(kind: CrmKind, officeId: string): string {
 	return `token:crm:${kind}:${officeId}:access`;
 }

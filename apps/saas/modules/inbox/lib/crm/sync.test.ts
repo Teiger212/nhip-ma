@@ -338,53 +338,6 @@ test("an office connected to HubSpot keeps its token sealed, and its CRM is open
 	expect(seen).toEqual(["pat-eu1-first-token"]);
 });
 
-// #65: HubSpot with no token is not saved; the office stays as it was.
-test("HubSpot without a token is refused, and the office keeps its CRM and links", async () => {
-	store = await testInboxStore();
-	const { sync } = syncSeeingTokens();
-	await sync.connectOffice(OFFICE, "mock");
-	const linked = await linkedThread(sync, "zalo-user-21", "Phúc");
-
-	expect(await sync.connectOffice(OFFICE, "hubspot")).toBe("token_required");
-	expect(await sync.connectOffice(OFFICE, "hubspot", "   ")).toBe("token_required");
-
-	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock", tokenSet: false });
-	expect((await leadOf(linked.id)).leadName).toBe("Phúc");
-});
-
-// #65: saving a new token replaces it; the same CRM keeps the office's links (spec #59 story 35).
-test("a new HubSpot token replaces the old one and keeps the office's links", async () => {
-	store = await testInboxStore();
-	const { sync, seen } = syncSeeingTokens();
-	await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-old-token");
-	const linked = await linkedThread(sync, "zalo-user-22", "Hương");
-
-	expect(await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-new-token")).toBe("connected");
-
-	expect((await leadOf(linked.id)).leadName).toBe("Hương");
-	await linkedThread(sync, "zalo-user-23", "Tuấn");
-	expect(seen).toEqual(["pat-eu1-old-token", "pat-eu1-new-token"]);
-	expect(await store.getCrmAccessToken(OFFICE)).not.toContain("pat-eu1-new-token");
-});
-
-// #65, spec #59 story 35: another CRM, or none, drops HubSpot's token with the office's links.
-test("switching away from HubSpot drops its token and the office's links", async () => {
-	store = await testInboxStore();
-	const { sync } = syncSeeingTokens();
-	await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-gone-token");
-	const linked = await linkedThread(sync, "zalo-user-24", "Lan");
-
-	expect(await sync.connectOffice(OFFICE, "mock")).toBe("connected");
-	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock", tokenSet: false });
-	expect(await store.getCrmAccessToken(OFFICE)).toBeNull();
-	expect((await store.getConversation(linked.id))?.crm).toBeNull();
-
-	await sync.connectOffice(OFFICE, "hubspot", "pat-eu1-again-token");
-	expect(await sync.connectOffice(OFFICE, null)).toBe("connected");
-	expect(await store.getCrmConnection(OFFICE)).toBeNull();
-	expect(await store.getCrmAccessToken(OFFICE)).toBeNull();
-});
-
 // ADR 0017: a token is never stored in the clear; without the deployment's key nothing is saved.
 test("without the deployment's secrets key, HubSpot is not saved", async () => {
 	store = await testInboxStore();

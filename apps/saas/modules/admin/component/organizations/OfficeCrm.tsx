@@ -1,9 +1,18 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { CrmKind } from "@inbox/lib/types";
 import { Button } from "@repo/ui/components/button";
+import {
+	Form,
+	FormControl,
+	FormDescription,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
-import { Label } from "@repo/ui/components/label";
 import {
 	Select,
 	SelectContent,
@@ -14,7 +23,9 @@ import {
 import { toast } from "@repo/ui/components/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useId, useState } from "react";
+import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 type Kind = CrmKind | null;
 /**
@@ -36,13 +47,16 @@ const crmKey = (officeId: string) => ["admin", "crm", officeId] as const;
 export function OfficeCrm({ officeId }: { officeId: string }) {
 	const t = useTranslations("admin.connections.crm");
 	const queryClient = useQueryClient();
-	const tokenId = useId();
-	const hintId = useId();
-	const requiredId = useId();
 	/** A kind that takes a token, picked but not saved until its token is. */
 	const [pending, setPending] = useState<CrmKind | null>(null);
-	const [token, setToken] = useState("");
-	const [tokenMissing, setTokenMissing] = useState(false);
+	const tokenSchema = useMemo(
+		() => z.object({ token: z.string().trim().min(1, t("tokenRequired")) }),
+		[t],
+	);
+	const tokenForm = useForm({
+		resolver: zodResolver(tokenSchema),
+		defaultValues: { token: "" },
+	});
 
 	const crm = useQuery({
 		queryKey: crmKey(officeId),
@@ -64,8 +78,7 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: crmKey(officeId) });
 			setPending(null);
-			setToken("");
-			setTokenMissing(false);
+			tokenForm.reset({ token: "" });
 			toast.add({ title: t("saved"), type: "success" });
 		},
 		onError: () => toast.add({ title: t("failed"), type: "error" }),
@@ -80,7 +93,7 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 	];
 
 	const choose = (value: string | null) => {
-		setTokenMissing(false);
+		tokenForm.clearErrors();
 		if (value === NONE) {
 			setPending(null);
 			save.mutate({ kind: null });
@@ -98,15 +111,10 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 		save.mutate({ kind });
 	};
 
-	const saveToken = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		if (!shown) return;
-		if (!token.trim()) {
-			setTokenMissing(true);
-			return;
-		}
-		save.mutate({ kind: shown, token });
-	};
+	// The field is checked on Save, so an empty one asks for the token and saves nothing.
+	const saveToken = tokenForm.handleSubmit(({ token }) => {
+		if (shown) save.mutate({ kind: shown, token });
+	});
 
 	return (
 		<div className="gap-3 grid grid-cols-1" data-test="connection-crm">
@@ -134,40 +142,39 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 				</Select>
 			</div>
 			{takesToken(shown) && (
-				<form className="gap-2 p-3 grid grid-cols-1 rounded-md border" onSubmit={saveToken}>
-					<Label htmlFor={tokenId}>{t("token")}</Label>
-					<div className="gap-2 flex items-center">
-						<Input
-							id={tokenId}
-							type="password"
-							autoComplete="new-password"
-							spellCheck={false}
-							className="min-w-0 flex-1"
-							value={token}
-							onChange={(event) => {
-								setToken(event.target.value);
-								setTokenMissing(false);
-							}}
-							aria-describedby={tokenMissing ? `${hintId} ${requiredId}` : hintId}
-							aria-invalid={tokenMissing || undefined}
-							data-test="crm-token"
+				<Form {...tokenForm}>
+					<form className="gap-2 p-3 grid grid-cols-1 rounded-xl border" onSubmit={saveToken}>
+						<FormField
+							control={tokenForm.control}
+							name="token"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>{t("token")}</FormLabel>
+									<div className="gap-2 flex items-center">
+										<FormControl>
+											<Input
+												{...field}
+												type="password"
+												autoComplete="new-password"
+												spellCheck={false}
+												className="min-w-0 flex-1"
+												data-test="crm-token"
+											/>
+										</FormControl>
+										<Button type="submit" size="sm" className="shrink-0" loading={save.isPending}>
+											{t("save")}
+										</Button>
+									</div>
+									<FormDescription>{t("tokenHint")}</FormDescription>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
-						<Button type="submit" size="sm" className="shrink-0" loading={save.isPending}>
-							{t("save")}
-						</Button>
-					</div>
-					<p id={hintId} className="text-sm text-muted-foreground">
-						{t("tokenHint")}
-					</p>
-					{tokenMissing ? (
-						<p id={requiredId} className="text-sm text-destructive">
-							{t("tokenRequired")}
-						</p>
-					) : (
-						!pending &&
-						setting?.tokenSet && <p className="text-sm text-muted-foreground">{t("tokenSet")}</p>
-					)}
-				</form>
+						{!tokenForm.formState.errors.token && !pending && setting?.tokenSet && (
+							<p className="text-sm text-muted-foreground">{t("tokenSet")}</p>
+						)}
+					</form>
+				</Form>
 			)}
 		</div>
 	);

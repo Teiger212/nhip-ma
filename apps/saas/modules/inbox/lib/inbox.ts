@@ -76,6 +76,15 @@ export function threadUrl(conversationId: string): string {
 	return `${getBaseUrl()}/vi/inbox?thread=${encodeURIComponent(conversationId)}`;
 }
 
+/** The CRM sync (spec #59) over the runtime's store, with thread links and its key for CRM tokens. */
+export function crmSyncFor(runtime: Runtime) {
+	return createCrmSync({
+		store: runtime.store,
+		threadUrl,
+		secretsKey: runtime.config.pipeSecretsKey,
+	});
+}
+
 /**
  * Everything that follows a guest message: the one-shot now, then translation and, for a
  * guest who wrote back after a send, the model draft in the background. A thread with no
@@ -91,11 +100,7 @@ export async function afterGuestInbound(
 	if (!updated.crm) {
 		void runInBackground(`crm lead ${updated.id}`, async () => {
 			try {
-				await createCrmSync({
-					store: runtime.store,
-					threadUrl,
-					secretsKey: runtime.config.pipeSecretsKey,
-				}).newGuest(updated);
+				await crmSyncFor(runtime).newGuest(updated);
 			} catch {
 				// A CRM's error can carry guest data; the log keeps only what failed (PDPL).
 				throw new Error("CRM lead write failed");

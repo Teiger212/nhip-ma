@@ -1,6 +1,5 @@
 import { crmKindTakesToken } from "@inbox/lib/crm/adapters";
-import { createCrmSync } from "@inbox/lib/crm/sync";
-import { threadUrl } from "@inbox/lib/inbox";
+import { crmSyncFor } from "@inbox/lib/inbox";
 import { requirePlatformAdmin } from "@inbox/lib/require-platform-admin";
 import { getRuntime } from "@inbox/lib/runtime";
 import { CrmKind } from "@inbox/lib/types";
@@ -50,13 +49,7 @@ export async function PUT(request: Request): Promise<Response> {
 	const parsed = body.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 	const { officeId, kind, token } = parsed.data;
-	const runtime = getRuntime();
-	const sync = createCrmSync({
-		store: runtime.store,
-		threadUrl,
-		secretsKey: runtime.config.pipeSecretsKey,
-	});
-	const result = await sync.connectOffice(officeId, kind, token);
+	const result = await crmSyncFor(getRuntime()).connectOffice(officeId, kind, token);
 	switch (result) {
 		case "no_office":
 			return NextResponse.json({ error: "office_not_found" }, { status: 404 });

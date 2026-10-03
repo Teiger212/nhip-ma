@@ -1,4 +1,5 @@
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { z } from "zod";
 
 import { toE164 } from "./phone";
 import type { CrmAdapter, CrmLead, GuestIdentity, LeadOutcome, NewGuestLead } from "./types";
@@ -18,9 +19,9 @@ const PIPELINES = `/crm/pipelines/${VERSION}/deals`;
 const CONTACT_PROPERTIES = `/crm/properties/${VERSION}/contacts`;
 
 /** The contact property Nhịp creates for the Zalo user id: unique, so one Zalo guest is one contact. */
-const ZALO = "zalo_user_id";
-const ZALO_PROPERTY = {
-	name: ZALO,
+const ZALO_ID_PROPERTY = "zalo_user_id";
+const ZALO_ID_PROPERTY_DEFINITION = {
+	name: ZALO_ID_PROPERTY,
 	label: "Zalo user ID",
 	description: "The guest's Zalo user id, written by Nhịp so a returning Zalo guest is recognised.",
 	groupName: "contactinformation",
@@ -31,13 +32,14 @@ const ZALO_PROPERTY = {
 /** HubSpot-defined association: deal to contact. */
 const DEAL_TO_CONTACT = 3;
 /** HubSpot's caps: filter groups in one search, and ids in one batch read. */
-const SEARCH_GROUPS = 5;
-const BATCH = 100;
+const MAX_FILTER_GROUPS = 5;
+const MAX_BATCH_READ = 100;
 /** Longest Retry-After waited out; beyond it the guest's next message retries the write. */
 const MAX_RETRY_AFTER_S = 10;
 
-const PIPES = { zalo: "Zalo", whatsapp: "WhatsApp" };
-const FIELDS = [
+/** How the deal's description names the guest's pipe, and the extracted fields it lists. */
+const PIPE_LABELS = { zalo: "Zalo", whatsapp: "WhatsApp" };
+const DESCRIPTION_FIELDS = [
 	["areaOfInterest", "Area"],
 	["rentOrBuy", "Rent or buy"],
 	["budgetBand", "Budget"],
@@ -45,24 +47,53 @@ const FIELDS = [
 	["bedsOrHousehold", "Household"],
 ] as const;
 
-type Properties = Record<string, string | null | undefined>;
-type HubSpotObject = { id: string; properties: Properties };
-type Pipeline = {
-	id: string;
-	displayOrder: number;
-	stages: { id: string; displayOrder: number; metadata: { isClosed?: string } }[];
-};
+/* The parts of HubSpot's answers the adapter reads; anything else in them is dropped. */
+const Properties = z.record(z.string(), z.string().nullable());
+type Properties = z.infer<typeof Properties>;
+const HubSpotObject = z.object({ id: z.string(), properties: Properties });
+const Results = z.object({ results: z.array(HubSpotObject) });
+const Pipelines = z.object({
+	results: z.array(
+		z.object({
+			id: z.string(),
+			displayOrder: z.number(),
+			stages: z.array(
+				z.object({
+					id: z.string(),
+					displayOrder: z.number(),
+					metadata: z.object({ isClosed: z.string().optional() }),
+				}),
+			),
+		}),
+	),
+});
+/** A refusal's category, and the properties a refused write names as missing; never its message. */
+const Refusal = z.object({
+	category: z.string().nullish().catch(null),
+	errors: z
+		.array(
+			z.object({
+				code: z.string().optional(),
+				context: z.object({ propertyName: z.array(z.string()).optional() }).optional(),
+			}),
+		)
+		.nullish()
+		.catch(null),
+});
 
-/** A non-2xx answer: its status and HubSpot's category and message, never the request's token. */
+/**
+ * A non-2xx answer (spec #59 story 43): which operation failed, the status and HubSpot's
+ * category. Never HubSpot's message, which can echo property values, nor the token.
+ */
 class HubSpotError extends Error {
 	constructor(
+		readonly operation: string,
 		readonly status: number,
 		readonly category: string | null,
 		/** Properties HubSpot says do not exist, from a refused write. */
 		readonly missingProperties: string[],
-		message: string,
 	) {
-		super(message);
+		super(`HubSpot ${operation} answered ${status}${category ? ` ${category}` : ""}`);
 		this.name = "HubSpotError";
 	}
 }
@@ -70,7 +101,14 @@ class HubSpotError extends Error {
 export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch }): CrmAdapter {
 	const send = deps.fetch ?? fetch;
 
-	async function request(method: string, path: string, body?: unknown): Promise<any> {
+	/** One call to HubSpot, its answer read through `schema`; `operation` names it in an error. */
+	async function request<T>(
+		operation: string,
+		schema: z.ZodType<T>,
+		method: string,
+		path: string,
+		body?: unknown,
+	): Promise<T> {
 		for (let attempt = 0; ; attempt++) {
 			const response = await send(`${API}${path}`, {
 				method,
@@ -82,18 +120,25 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 				await new Promise((resolve) => setTimeout(resolve, wait));
 				continue;
 			}
-			const text = await response.text();
-			const parsed = parse(text);
-			if (response.ok) return parsed;
+			const parsed = parse(await response.text());
+			if (response.ok) {
+				const read = schema.safeParse(parsed);
+				if (!read.success) {
+					throw new Error(
+						`HubSpot ${operation} answered ${response.status} in an unexpected shape`,
+					);
+				}
+				return read.data;
+			}
+			const refusal = Refusal.safeParse(parsed);
+			const { category, errors } = refusal.success ? refusal.data : {};
 			throw new HubSpotError(
+				operation,
 				response.status,
-				parsed?.category ?? null,
-				(parsed?.errors ?? [])
-					.filter((error: { code?: string }) => error.code === "PROPERTY_DOESNT_EXIST")
-					.flatMap(
-						(error: { context?: { propertyName?: string[] } }) => error.context?.propertyName ?? [],
-					),
-				`HubSpot ${method} ${path.split("?")[0]} answered ${response.status} ${parsed?.category ?? ""}: ${parsed?.message ?? ""}`.trim(),
+				category ?? null,
+				(errors ?? [])
+					.filter((error) => error.code === "PROPERTY_DOESNT_EXIST")
+					.flatMap((error) => error.context?.propertyName ?? []),
 			);
 		}
 	}
@@ -118,7 +163,13 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 	/** True when HubSpot created the property; false when it already existed. */
 	async function createZaloProperty(): Promise<boolean> {
 		try {
-			await request("POST", CONTACT_PROPERTIES, ZALO_PROPERTY);
+			await request(
+				"create the Zalo id property",
+				z.unknown(),
+				"POST",
+				CONTACT_PROPERTIES,
+				ZALO_ID_PROPERTY_DEFINITION,
+			);
 			return true;
 		} catch (error) {
 			if (error instanceof HubSpotError && error.status === 409) return false;
@@ -141,18 +192,24 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 					)
 				: []),
 			...(identity.zaloUserId
-				? [{ filters: [{ propertyName: ZALO, operator: "EQ", value: identity.zaloUserId }] }]
+				? [
+						{
+							filters: [
+								{ propertyName: ZALO_ID_PROPERTY, operator: "EQ", value: identity.zaloUserId },
+							],
+						},
+					]
 				: []),
 		];
 		if (filterGroups.length === 0) return [];
 		const search = {
 			filterGroups,
-			properties: ["phone", "mobilephone", ...(identity.zaloUserId ? [ZALO] : [])],
+			properties: ["phone", "mobilephone", ...(identity.zaloUserId ? [ZALO_ID_PROPERTY] : [])],
 			limit: 100,
 		};
 		// A search on a property that does not exist is a bare 400, with no category.
-		const found: { results: HubSpotObject[] } = await withZaloProperty(
-			() => request("POST", `${CONTACTS}/search`, search),
+		const found = await withZaloProperty(
+			() => request("search contacts", Results, "POST", `${CONTACTS}/search`, search),
 			(error) => Boolean(identity.zaloUserId) && error.status === 400 && !error.category,
 		);
 		return found.results
@@ -163,8 +220,8 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 	/** The open deals of these contacts, by HubSpot's own closed flag. */
 	async function openDeals(contactIds: string[]): Promise<CrmLead[]> {
 		const leads = new Map<string, CrmLead>();
-		for (const ids of chunks(contactIds, SEARCH_GROUPS)) {
-			const found: { results: HubSpotObject[] } = await request("POST", `${DEALS}/search`, {
+		for (const ids of chunks(contactIds, MAX_FILTER_GROUPS)) {
+			const found = await request("search deals", Results, "POST", `${DEALS}/search`, {
 				filterGroups: ids.map((id) => ({
 					filters: [
 						{ propertyName: "associations.contact", operator: "EQ", value: id },
@@ -183,7 +240,7 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 
 	/** Where a new deal starts: the first open stage of the office's first pipeline. */
 	async function startingStage(): Promise<{ pipeline: string; dealstage: string }> {
-		const { results }: { results: Pipeline[] } = await request("GET", PIPELINES);
+		const { results } = await request("read deal pipelines", Pipelines, "GET", PIPELINES);
 		const pipeline = [...results].sort((a, b) => a.displayOrder - b.displayOrder)[0];
 		const stage = [...(pipeline?.stages ?? [])]
 			.sort((a, b) => a.displayOrder - b.displayOrder)
@@ -196,11 +253,11 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 		const properties = {
 			firstname: guest.name,
 			...(guest.phone ? { phone: guest.phone } : {}),
-			...(guest.zaloUserId ? { [ZALO]: guest.zaloUserId } : {}),
+			...(guest.zaloUserId ? { [ZALO_ID_PROPERTY]: guest.zaloUserId } : {}),
 		};
-		const contact: HubSpotObject = await withZaloProperty(
-			() => request("POST", CONTACTS, { properties }),
-			(error) => error.missingProperties.includes(ZALO),
+		const contact = await withZaloProperty(
+			() => request("create contact", HubSpotObject, "POST", CONTACTS, { properties }),
+			(error) => error.missingProperties.includes(ZALO_ID_PROPERTY),
 		);
 		return contact.id;
 	}
@@ -226,7 +283,7 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 			}
 			const { pipeline, dealstage } = await startingStage();
 			const contactId = contactIds[0] ?? (await createContact(guest));
-			const deal: HubSpotObject = await request("POST", DEALS, {
+			const deal = await request("create deal", HubSpotObject, "POST", DEALS, {
 				properties: { dealname: guest.name, pipeline, dealstage, description: description(guest) },
 				associations: [
 					{
@@ -240,9 +297,9 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 
 		async outcomesFor(leadIds) {
 			const outcomes: Record<string, LeadOutcome> = {};
-			for (const ids of chunks(leadIds, BATCH)) {
+			for (const ids of chunks(leadIds, MAX_BATCH_READ)) {
 				// A 207 lists the deals HubSpot does not know under `errors`; they stay absent.
-				const read: { results: HubSpotObject[] } = await request("POST", `${DEALS}/batch/read`, {
+				const read = await request("read deals", Results, "POST", `${DEALS}/batch/read`, {
 					inputs: ids.map((id) => ({ id })),
 					properties: ["hs_is_closed", "hs_is_closed_won", "closedate", "closed_lost_reason"],
 				});
@@ -265,7 +322,7 @@ function outcome(properties: Properties): LeadOutcome {
 }
 
 function isGuest(properties: Properties, { phone, zaloUserId }: GuestIdentity): boolean {
-	if (zaloUserId && properties[ZALO] === zaloUserId) return true;
+	if (zaloUserId && properties[ZALO_ID_PROPERTY] === zaloUserId) return true;
 	return Boolean(
 		phone &&
 		[properties.phone, properties.mobilephone].some((number) => number && toE164(number) === phone),
@@ -276,15 +333,16 @@ function isGuest(properties: Properties, { phone, zaloUserId }: GuestIdentity): 
 function description(guest: NewGuestLead): string {
 	return [
 		`Nhịp thread: ${guest.threadUrl}`,
-		`Pipe: ${PIPES[guest.pipe]}`,
+		`Pipe: ${PIPE_LABELS[guest.pipe]}`,
 		...(guest.language ? [`Language: ${guest.language}`] : []),
-		...FIELDS.flatMap(([key, label]) =>
+		...DESCRIPTION_FIELDS.flatMap(([key, label]) =>
 			guest.fields?.[key] ? [`${label}: ${guest.fields[key]}`] : [],
 		),
 	].join("\n");
 }
 
-function parse(text: string): any {
+/** An answer's body as JSON; null when empty or not JSON. */
+function parse(text: string): unknown {
 	try {
 		return text ? JSON.parse(text) : null;
 	} catch {

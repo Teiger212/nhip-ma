@@ -59,16 +59,16 @@ export function createCrmSync(deps: {
 		): Promise<"connected" | "no_office" | "token_required" | "no_secrets_key"> {
 			if (!(await store.officeExists(officeId))) return "no_office";
 			const current = await store.getCrmConnection(officeId);
-			const same = (current?.kind ?? null) === kind;
+			const sameKind = (current?.kind ?? null) === kind;
 			if (!kind || !crmKindTakesToken(kind)) {
-				if (!same) await store.setCrmConnection(officeId, kind);
+				if (!sameKind) await store.setCrmConnection(officeId, kind);
 				return "connected";
 			}
-			const plain = token?.trim();
-			if (!plain) return "token_required";
+			const trimmedToken = token?.trim();
+			if (!trimmedToken) return "token_required";
 			if (!secretsKey) return "no_secrets_key";
-			const sealed = encryptSecret(plain, secretsKey, crmTokenContext(kind, officeId));
-			if (same) await store.replaceCrmAccessToken(officeId, sealed);
+			const sealed = encryptSecret(trimmedToken, secretsKey, crmTokenContext(kind, officeId));
+			if (sameKind) await store.replaceCrmAccessToken(officeId, sealed);
 			else await store.setCrmConnection(officeId, kind, sealed);
 			return "connected";
 		},

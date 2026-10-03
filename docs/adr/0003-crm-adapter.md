@@ -53,14 +53,17 @@ Q1 to Q23). The spec is GitHub issue #59; its tickets carry the delivery order. 
 supersede the matching, write-back, refresh and Attio points above where they differ.
 
 - **The demo CRM is HubSpot's free CRM** (Q20): free forever, recognised by buyers, a deal
-  board where the closing shows, signed webhooks, and one call creates a contact with its
-  deal. Attio is dropped as the default; Bitrix24 is the likely second adapter for Vietnam,
-  built only after beta agencies name their CRM (Q22). The demo pipe is Zalo (Q23); its
-  inbound is a real pipe, rehearsed locally against a HubSpot sandbox (Q17). Staging only:
-  production stays on the mock until a beta agency names its CRM (Q2).
+  board where the closing shows, signed webhooks, and a contact with its deal written in two
+  calls (2026-10-03, #65: first written here as one call; HubSpot's API takes the contact,
+  found or created, then the deal with an inline association to it). Attio is dropped as the
+  default; Bitrix24 is the likely second adapter for Vietnam, built only after beta agencies
+  name their CRM (Q22). The demo pipe is Zalo (Q23); its inbound is a real pipe, rehearsed
+  locally against a HubSpot sandbox (Q17). Staging only: production stays on the mock until a
+  beta agency names its CRM (Q2).
 - **Write-back comes first, with reading** (Q2, Q11 to Q15). The guest's first message
-  creates the lead, for every new guest: the contact (name, phone, pipe, language, the
-  extracted fields, a link to the thread; never message transcripts) and its deal. A phone
+  creates the lead, for every new guest: the contact (name, phone, Zalo user id) and its
+  deal, which carries the thread's own details (pipe, language, the extracted fields, a link
+  to the thread; never message transcripts), since one thread is one deal (#65). A phone
   already in the CRM reuses the contact; a new deal is created only if that contact has no
   open deal, otherwise the thread links to the open one. A contact Nhịp creates stores the
   Zalo user id in a custom property, so later lookups match without a phone. Deals start
