@@ -46,7 +46,7 @@ export function InboxToolbar({
 						onChange={(event) => onQueryChange(event.target.value)}
 						placeholder={t("searchPlaceholder")}
 						aria-label={t("searchAria")}
-						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-full rounded-md border-transparent bg-muted shadow-none"
+						variant="search"
 					/>
 				</div>
 			</div>

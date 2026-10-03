@@ -35,7 +35,7 @@ export function ThreadMessage({ message }: { message: Message }) {
 					{formatInboxTimestamp(message.at, locale)}
 				</time>
 				{message.mock ? (
-					<Badge status="info" className="h-4 px-1.5 font-medium text-2xs normal-case">
+					<Badge status="info" size="sm">
 						{t("mock")}
 					</Badge>
 				) : null}

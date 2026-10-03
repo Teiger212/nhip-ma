@@ -534,6 +534,7 @@
 			"**Don't** make status or metadata into pills; round shapes are for actions.",
 			"**Don't** use grey borders; borders are Hairline Blue (#e4ecfc) / Night Hairline (#253352).",
 			"**Don't** write arbitrary Tailwind values (`text-[11px]`, `w-[calc(...)]`) in app code; name the value as a theme token in `apps/saas/app/globals.css`.",
+			"**Don't** restyle a `@repo/ui` component with `className` beyond layout; `shadcn/no-restyle` enforces it. Use a variant or size, or add one when the design calls for it.",
 			"**Don't** stack contradictory utilities (`rounded-full rounded-md`, `bg-primary bg-touch/12`); a plain `className` without `cn()` resolves them by stylesheet order, not by position."
 		]
 	}

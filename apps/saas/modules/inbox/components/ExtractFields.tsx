@@ -53,7 +53,7 @@ export function ExtractFields({ conversation }: { conversation: Conversation }) 
 	const t = useTranslations("inbox");
 	const arranged = useMemo(() => arrangeExtractRows(conversation.oneShot), [conversation.oneShot]);
 	return (
-		<section className="gap-2 p-3 flex flex-col rounded-lg rounded-md bg-muted bg-muted/50">
+		<section className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>

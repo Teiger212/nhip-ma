@@ -18,7 +18,7 @@ export function GuestMark({ name }: { name: string }) {
 	return (
 		<span
 			aria-hidden="true"
-			className="size-8 font-semibold tracking-tight text-micro flex shrink-0 items-center justify-center rounded-full rounded-md bg-primary bg-touch/12 text-primary-foreground text-touch"
+			className="size-8 font-semibold tracking-tight text-micro flex shrink-0 items-center justify-center rounded-md bg-touch/12 text-touch"
 		>
 			{guestInitials(name)}
 		</span>
@@ -41,7 +41,7 @@ function CompactFlag({
 			data-test={testId}
 			data-owner={dataOwner}
 			className={cn(
-				"h-5 px-1.5 font-medium px-2 text-micro inline-flex items-center rounded-full rounded-md leading-none",
+				"h-5 px-2 font-medium text-micro inline-flex items-center rounded-md leading-none",
 				tone === "neutral" && "bg-muted text-muted-foreground",
 				tone === "warning" && "bg-warning/12 text-warning",
 				tone === "success" && "bg-success/12 text-success",

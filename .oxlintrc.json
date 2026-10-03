@@ -15,7 +15,28 @@
 		"shadcn/no-raw-colors": "error",
 		"shadcn/no-arbitrary-values": "error",
 		"shadcn/no-inline-styles": "error",
-		"shadcn/no-unknown-classes": "error"
+		"shadcn/no-unknown-classes": "error",
+		"shadcn/no-restyle": [
+			"error",
+			{
+				"allow": ["layout"],
+				"contracts": [
+					{
+						"pattern": "^Card(Header|Content)?$",
+						"allow": ["layout", "spacing"]
+					},
+					{
+						"pattern": "^Skeleton$",
+						"allow": ["layout", "shape"]
+					},
+					{
+						"pattern": "^Input$",
+						"allow": ["layout", "pr-*"]
+					}
+				]
+			}
+		],
+		"shadcn/require-static-classes": "error"
 	},
 	"overrides": [
 		{
@@ -32,7 +53,34 @@
 				"shadcn/no-raw-colors": "off",
 				"shadcn/no-arbitrary-values": "off",
 				"shadcn/no-inline-styles": "off",
-				"shadcn/no-unknown-classes": "off"
+				"shadcn/no-unknown-classes": "off",
+				"shadcn/no-restyle": "off",
+				"shadcn/require-static-classes": "off"
+			}
+		},
+		{
+			"files": [
+				"apps/saas/modules/admin/component/organizations/OrganizationList.tsx",
+				"apps/saas/modules/admin/component/users/UserList.tsx",
+				"apps/saas/modules/auth/components/OtpForm.tsx",
+				"apps/saas/modules/onboarding/components/OnboardingAccountStep.tsx",
+				"apps/saas/modules/organizations/components/OrganizationLogo.tsx",
+				"apps/saas/modules/organizations/components/OrganizationLogoForm.tsx",
+				"apps/saas/modules/organizations/components/OrganizationMembersList.tsx",
+				"apps/saas/modules/organizations/components/OrganizationSelect.tsx",
+				"apps/saas/modules/organizations/components/OrganizationsGrid.tsx",
+				"apps/saas/modules/settings/components/UserAvatarUpload.tsx",
+				"apps/saas/modules/shared/components/AppWrapper.tsx",
+				"apps/saas/modules/shared/components/NavBar.tsx",
+				"apps/saas/modules/shared/components/NotificationCenter.tsx",
+				"apps/saas/modules/shared/components/PasswordInput.tsx",
+				"apps/saas/modules/shared/components/SettingsItem.tsx",
+				"apps/saas/modules/shared/components/UserAvatar.tsx",
+				"apps/saas/modules/shared/components/UserMenu.tsx"
+			],
+			"rules": {
+				"shadcn/no-restyle": "off",
+				"shadcn/require-static-classes": "off"
 			}
 		}
 	],

@@ -240,7 +240,7 @@ Cool, low-chroma slate and blue neutrals carrying a single saturated blue, with 
 - **Body** (400, 0.875rem, 1.625): message text, with `pre-wrap` so guests' line breaks survive.
 - **Body Small** (400, 0.75rem, 1.375): row previews (clamped to 2 lines), message meta, hints.
 - **Label** (500, 0.6875rem, `text-micro`): flags, avatar initials.
-- **Micro Caps** (500, 0.625rem, `text-2xs`, +0.025em, uppercase): the translation label under a message, and the tiny inline badge.
+- **Micro Caps** (500, 0.625rem, `text-2xs`, +0.025em, uppercase): the translation label under a message. The inline mock badge (`Badge size="sm"`) uses the same size in sentence case.
 - **Clock** (Plex Mono, 0.6875rem, tabular figures): every timestamp, so times line up down the list.
 
 ### Named Rules
@@ -286,7 +286,7 @@ Confident, compact pills that press in slightly.
 - **Primary:** Dispatch Blue fill, white text, 16px horizontal padding, semibold 0.875rem. Hover mixes the blue 82% toward the background.
 - **Secondary (default variant):** Morning Wash fill, Deep Navy text; hover darkens it 10%.
 - **Outline:** a 10% ink border on transparent; hover adds a 10% ink wash. It's the choice for the secondary action in an empty or error state.
-- **Ghost:** no fill until hover (10% ink wash). Thread rows are built on ghost.
+- **Ghost:** no fill until hover (10% ink wash). Thread rows are not Buttons; they are their own row element (see Thread Row).
 - **Destructive:** Signal Red fill; only for the irreversible.
 - **Focus:** 2px Dispatch Blue ring, offset 2px from the background.
 - **Active:** scales to 0.98 over 200ms ease-out. Motion stops under `prefers-reduced-motion`.
@@ -310,6 +310,7 @@ Confident, compact pills that press in slightly.
 - **Style:** 36px tall, Field Edge 1px stroke, card background, 8.4px radius, 12px horizontal padding, 1rem text (16px, so iOS doesn't zoom on focus).
 - **Focus:** the stroke turns Dispatch Blue, with a 1px blue ring.
 - **Placeholder:** 60% ink. **Disabled:** 50% opacity and a not-allowed cursor.
+- **Search (`variant="search"`):** the inbox search: 48px tall, a Morning Wash fill with no stroke, 4.8px radius, and 48px of left padding for the leading icon.
 
 ### Navigation
 
@@ -357,4 +358,5 @@ A strip under the thread: card background tinted 40% Morning Wash, top hairline,
 - **Don't** make status or metadata into pills; round shapes are for actions.
 - **Don't** use grey borders; borders are Hairline Blue (#e4ecfc) / Night Hairline (#253352).
 - **Don't** write arbitrary Tailwind values (`text-[11px]`, `w-[calc(...)]`) in app code; name the value as a theme token in `apps/saas/app/globals.css`.
+- **Don't** restyle a `@repo/ui` component with `className` beyond layout; `shadcn/no-restyle` enforces it. Use a variant or size, or add one when the design calls for it.
 - **Don't** stack contradictory utilities (`rounded-full rounded-md`, `bg-primary bg-touch/12`); a plain `className` without `cn()` resolves them by stylesheet order, not by position.
