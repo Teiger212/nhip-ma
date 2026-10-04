@@ -450,10 +450,11 @@ export type InboxStore = {
 		accessToken?: string | null,
 	) => Promise<void>;
 	/**
-	 * Replace the access token (sealed) on the office's CRM connection, keeping its links. The
-	 * CRM account it knew is forgotten: a new token may reach another account (ADR 0008).
+	 * Replace the access token (sealed for `kind`) on the office's CRM connection, keeping its
+	 * links. The CRM account it knew is forgotten: a new token may reach another account (ADR
+	 * 0008). False, and nothing written, when the connection is no longer of `kind` (#95).
 	 */
-	replaceCrmAccessToken: (officeId: string, accessToken: string) => Promise<void>;
+	replaceCrmAccessToken: (officeId: string, kind: CrmKind, accessToken: string) => Promise<boolean>;
 	/** The offices on this CRM whose connection is on the CRM's account `accountId` (#66). */
 	crmOfficesOnAccount: (kind: CrmKind, accountId: string) => Promise<string[]>;
 	/** Up to `limit` offices on this CRM whose account is not known yet, most recently saved first. */

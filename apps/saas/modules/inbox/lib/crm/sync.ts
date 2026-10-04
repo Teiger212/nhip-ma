@@ -133,8 +133,9 @@ export function createCrmSync(deps: {
 			if (!trimmedToken) return "token_required";
 			if (!secretsKey) return "no_secrets_key";
 			const sealed = encryptSecret(trimmedToken, secretsKey, crmTokenContext(kind, officeId));
-			if (sameKind) await store.replaceCrmAccessToken(officeId, sealed);
-			else await store.setCrmConnection(officeId, kind, sealed);
+			// Another admin may change the kind meanwhile: the token goes only onto its own kind.
+			const replaced = sameKind && (await store.replaceCrmAccessToken(officeId, kind, sealed));
+			if (!replaced) await store.setCrmConnection(officeId, kind, sealed);
 			return "connected";
 		},
 

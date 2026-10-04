@@ -179,7 +179,6 @@ model Member {
   createdAt      DateTime
 
   @@unique([organizationId, userId])
-  @@index([organizationId])
   @@index([userId])
   @@map("member")
 }
@@ -221,7 +220,6 @@ model Purchase {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  @@index([subscriptionId])
   @@map("purchase")
 }
 
@@ -325,8 +323,10 @@ model Conversation {
   crmLink            CrmLink?
 
   @@unique([officeId, pipe, guestId])
-  @@index([officeId])
+  /// What every office-owned row's foreign key points at, so a row's office is its thread's.
+  @@unique([id, officeId])
   @@index([officeId, ownerId])
+  @@index([ownerId])
   @@map("inbox_conversation")
 }
 
@@ -334,7 +334,9 @@ model Message {
   id                  String               @id
   seq                 Int                  @unique @default(autoincrement())
   conversationId      String
-  conversation        Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// The thread's office, on every office-owned row (#95); the foreign key holds them equal.
+  officeId            String
+  conversation        Conversation         @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   direction           MessageDirection
   source              MessageSource
   text                String
@@ -345,8 +347,11 @@ model Message {
   translations        Translation[]
   translationFailures TranslationFailure[]
   answer              Answer?
+  answeringDrafts     Draft[]
 
   @@unique([conversationId, vendorMessageId])
+  @@unique([id, officeId])
+  @@index([officeId])
   @@index([conversationId])
   /// A thread's latest guest message (the list's turn and preview) and the funnel's first
   /// inbound per thread are both read by (thread, direction, time).
@@ -356,11 +361,13 @@ model Message {
 
 model Translation {
   messageId String
-  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  officeId  String
+  message   Message @relation(fields: [messageId, officeId], references: [id, officeId], onDelete: Cascade)
   locale    String
   text      String
 
   @@id([messageId, locale])
+  @@index([officeId])
   @@map("inbox_translation")
 }
 
@@ -370,18 +377,21 @@ model Translation {
 /// when the translation lands.
 model TranslationFailure {
   messageId    String
-  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  officeId     String
+  message      Message  @relation(fields: [messageId, officeId], references: [id, officeId], onDelete: Cascade)
   locale       String
   attempts     Int
   lastFailedAt DateTime
 
   @@id([messageId, locale])
+  @@index([officeId])
   @@map("inbox_translation_failure")
 }
 
 model Qualification {
   conversationId  String       @id
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId        String
+  conversation    Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   areaOfInterest  String?
   nationality     String?
   inVietnamNow    Boolean?
@@ -390,25 +400,39 @@ model Qualification {
   budgetBand      String?
   bedsOrHousehold String?
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
   @@map("inbox_qualification")
 }
 
 model Draft {
   conversationId   String       @id
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId         String
+  conversation     Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   reply            String
+  /// The guest message this reply answers; null once that message is gone.
   answersMessageId String?
+  answersMessage   Message?     @relation(fields: [answersMessageId], references: [id], onDelete: SetNull)
   source           DraftSource  @default(template)
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
+  @@index([answersMessageId])
   @@map("inbox_draft")
 }
 
 model Paperwork {
   conversationId String       @id
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId       String
+  conversation   Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   mentioned      Boolean
   flag           String?
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
   @@map("inbox_paperwork")
 }
 
@@ -419,9 +443,10 @@ model Answer {
   id              String       @id
   seq             Int          @unique @default(autoincrement())
   conversationId  String
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId        String
+  conversation    Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   inboundId       String       @unique
-  inbound         Message      @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  inbound         Message      @relation(fields: [inboundId, officeId], references: [id, officeId], onDelete: Cascade)
   text            String
   operatorId      String?
   operator        User?        @relation(fields: [operatorId], references: [id], onDelete: SetNull)
@@ -437,7 +462,11 @@ model Answer {
   failedAt        DateTime?
   failureReason   String?
 
+  /// Prisma's one-to-one relation needs it; `inboundId` alone is already unique.
+  @@unique([inboundId, officeId])
   @@index([conversationId])
+  @@index([officeId])
+  @@index([operatorId])
   @@map("inbox_answer")
 }
 
@@ -450,6 +479,7 @@ model PipeConnection {
   credential PipeCredential?
 
   @@id([pipe, externalId])
+  @@index([officeId])
   @@map("inbox_pipe_connection")
 }
 
@@ -541,8 +571,9 @@ model CrmConnection {
 /// written, `leadId` is null. Disconnecting the office's CRM removes its links.
 model CrmLink {
   conversationId    String            @id
-  conversation      Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   officeId          String
+  /// Both relations carry `officeId`: the link's thread and its CRM are the same office's.
+  conversation      Conversation      @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   connection        CrmConnection     @relation(fields: [officeId], references: [officeId], onDelete: Cascade)
   leadId            String?
   leadName          String?
@@ -557,6 +588,8 @@ model CrmLink {
   /// in the queue (ADR 0003, Q3); the CRM's own date never decides that.
   outcomeObservedAt DateTime?
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
   @@index([officeId])
   @@map("inbox_crm_link")
 }

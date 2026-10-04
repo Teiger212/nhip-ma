@@ -204,8 +204,8 @@ test("a WhatsApp guest whose number is on two leads is linked to neither, and no
 	).toBeNull();
 });
 
-async function leadOf(conversationId: string) {
-	const conversation = await store.getOfficeConversation(OFFICE, conversationId);
+async function leadOf(thread: { id: string; officeId: string }) {
+	const conversation = await store.getOfficeConversation(thread.officeId, thread.id);
 	if (!conversation?.crm) throw new Error("the thread has no lead");
 	return conversation.crm;
 }
@@ -217,7 +217,7 @@ test("an outcome the CRM reports is cached on the lead's thread, observed when N
 	const conversation = await guestWrites("zalo", "zalo-user-7", "Alexei");
 	const sync = createCrmSync({ store, threadUrl });
 	await sync.newGuest(conversation);
-	const { leadId } = await leadOf(conversation.id);
+	const { leadId } = await leadOf(conversation);
 	const closedAt = new Date("2026-10-02T09:00:00.000Z");
 	await store.setMockCrmLeadOutcome(OFFICE, leadId, {
 		status: "lost",
@@ -228,7 +228,7 @@ test("an outcome the CRM reports is cached on the lead's thread, observed when N
 	await sync.outcomesChanged(OFFICE, [leadId], new Date("2026-10-03T12:00:00.000Z"));
 	await sync.outcomesChanged(OFFICE, [leadId], new Date("2026-10-03T13:00:00.000Z"));
 
-	expect(await leadOf(conversation.id)).toMatchObject({
+	expect(await leadOf(conversation)).toMatchObject({
 		outcome: "lost",
 		outcomeAt: "2026-10-02T09:00:00.000Z",
 		outcomeReason: "price",
@@ -244,12 +244,12 @@ test("outcomes reported for one office never touch another office's threads", as
 	const conversation = await guestWrites("zalo", "zalo-user-8", "Yuki");
 	const sync = createCrmSync({ store, threadUrl });
 	await sync.newGuest(conversation);
-	const { leadId } = await leadOf(conversation.id);
+	const { leadId } = await leadOf(conversation);
 	await store.setMockCrmLeadOutcome(OFFICE, leadId, { status: "won", at: null, reason: null });
 
 	await sync.outcomesChanged("office-b", [leadId], new Date("2026-10-03T12:00:00.000Z"));
 
-	expect((await leadOf(conversation.id)).outcome).toBeNull();
+	expect((await leadOf(conversation)).outcome).toBeNull();
 });
 
 // ADR 0003: a CRM speaks only for offices connected to it; a notice from another kind changes nothing.
@@ -259,12 +259,12 @@ test("a notice from a CRM the office is not on changes nothing", async () => {
 	const conversation = await guestWrites("zalo", "zalo-user-11", "Hải");
 	const sync = createCrmSync({ store, threadUrl });
 	await sync.newGuest(conversation);
-	const { leadId } = await leadOf(conversation.id);
+	const { leadId } = await leadOf(conversation);
 	await store.setMockCrmLeadOutcome(OFFICE, leadId, { status: "lost", at: null, reason: null });
 
 	await sync.outcomesChanged(OFFICE, [leadId], new Date(), { from: "another-crm" as "mock" });
 
-	expect((await leadOf(conversation.id)).outcome).toBeNull();
+	expect((await leadOf(conversation)).outcome).toBeNull();
 });
 
 // Spec #59 story 35 (#62): another CRM's leads mean nothing; the same CRM keeps its links.
@@ -334,7 +334,7 @@ function syncSeeingTokens() {
 async function linkedThread(sync: ReturnType<typeof createCrmSync>, guestId: string, name: string) {
 	const conversation = await guestWrites("zalo", guestId, name);
 	await sync.newGuest(conversation);
-	expect((await leadOf(conversation.id)).leadName).toBe(name);
+	expect((await leadOf(conversation)).leadName).toBe(name);
 	return conversation;
 }
 
@@ -352,6 +352,20 @@ test("an office connected to HubSpot keeps its token sealed, and its CRM is open
 	expect(sealed).not.toContain("pat-eu1-first-token");
 	await linkedThread(sync, "zalo-user-20", "Mai");
 	expect(seen).toEqual(["pat-eu1-first-token"]);
+});
+
+// #95: two admins saving at once. A token is sealed for its CRM kind, so a token replaced while
+// the office's CRM changed kind underneath is never written onto the new kind.
+test("a token is replaced only on the CRM kind it was sealed for", async () => {
+	store = await testInboxStore();
+	await store.setCrmConnection(OFFICE, "mock");
+
+	expect(await store.replaceCrmAccessToken(OFFICE, "hubspot", "sealed-for-hubspot")).toBe(false);
+	expect(await store.getCrmConnection(OFFICE)).toEqual({ kind: "mock", tokenSet: false });
+
+	await store.setCrmConnection(OFFICE, "hubspot", "sealed-first");
+	expect(await store.replaceCrmAccessToken(OFFICE, "hubspot", "sealed-second")).toBe(true);
+	expect(await store.getCrmAccessToken(OFFICE)).toBe("sealed-second");
 });
 
 // ADR 0017: a token is never stored in the clear; without the deployment's key nothing is saved.
@@ -401,9 +415,9 @@ async function wonThread(
 		officeId,
 	);
 	await sync.newGuest(conversation);
-	const { leadId } = await leadOf(conversation.id);
+	const { leadId } = await leadOf(conversation);
 	await store.setMockCrmLeadOutcome(officeId, leadId!, { status: "won", at: null, reason: null });
-	return { id: conversation.id, leadId: leadId! };
+	return { id: conversation.id, officeId, leadId: leadId! };
 }
 
 // ADR 0008, #66: one app serves many CRM accounts; a notice from one account reaches only the
@@ -421,8 +435,8 @@ test("a CRM account's notice reaches the office on that account, and never anoth
 		[{ account: "222", leadIds: [ours.leadId, theirs.leadId] }],
 		new Date("2026-10-04T08:00:00.000Z"),
 	);
-	expect((await leadOf(ours.id)).outcome).toBeNull();
-	expect((await leadOf(theirs.id)).outcome).toBe("won");
+	expect((await leadOf(ours)).outcome).toBeNull();
+	expect((await leadOf(theirs)).outcome).toBe("won");
 
 	await sync.noticesReceived(
 		"hubspot",
@@ -432,7 +446,7 @@ test("a CRM account's notice reaches the office on that account, and never anoth
 		],
 		new Date("2026-10-04T08:01:00.000Z"),
 	);
-	expect(await leadOf(ours.id)).toMatchObject({
+	expect(await leadOf(ours)).toMatchObject({
 		outcome: "won",
 		outcomeObservedAt: "2026-10-04T08:01:00.000Z",
 	});
@@ -448,10 +462,10 @@ test("a new token on the office's CRM forgets the account of the old one", async
 
 	await sync.connectOffice(OFFICE, "hubspot", "pat-new");
 	await sync.noticesReceived("hubspot", [{ account: "111", leadIds: [thread.leadId] }], new Date());
-	expect((await leadOf(thread.id)).outcome).toBeNull();
+	expect((await leadOf(thread)).outcome).toBeNull();
 
 	await sync.noticesReceived("hubspot", [{ account: "333", leadIds: [thread.leadId] }], new Date());
-	expect((await leadOf(thread.id)).outcome).toBe("won");
+	expect((await leadOf(thread)).outcome).toBe("won");
 });
 
 // ADR 0003: the mock CRM's account is the office itself, and it speaks only for a mock office.
@@ -468,8 +482,8 @@ test("a mock CRM notice names its office, and changes nothing for an office on a
 		[{ account: "office-b", leadIds: [theirs.leadId] }],
 		new Date(),
 	);
-	expect((await leadOf(theirs.id)).outcome).toBeNull();
+	expect((await leadOf(theirs)).outcome).toBeNull();
 
 	await sync.noticesReceived("mock", [{ account: OFFICE, leadIds: [ours.leadId] }], new Date());
-	expect((await leadOf(ours.id)).outcome).toBe("won");
+	expect((await leadOf(ours)).outcome).toBe("won");
 });
