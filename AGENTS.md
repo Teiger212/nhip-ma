@@ -235,7 +235,10 @@ Checks pass: Vercel's Lint and TypeCheck, and the GitHub check "Production smoke
 production-smoke (nhip - production)". That check is `.github/workflows/production-smoke.yml`,
 which runs on Vercel's `vercel.deployment.ready` dispatch. It runs the read-only
 `tests/smoke/` suite against the new deployment's own URL and writes nothing. A failing check
-keeps the previous deployment on the domain and fails the run visibly. The release run waits
+keeps the previous deployment on the domain and fails its run. GitHub emails nobody about
+that run, since `vercel[bot]` started it: Eyal hears through the release run, which fails
+with it. A production deployment outside a release (a Redeploy in Vercel) is only visible
+in Actions and in Vercel. The release run waits
 until the domain (`vars.PRODUCTION_URL`) serves the new deployment, comparing the `data-dpl-id`
 on each page's `<html>`, and then links it in the run summary. If the smoke check fails or
 never passes, the release run fails too. **Force Promote** in Vercel skips the checks: use it

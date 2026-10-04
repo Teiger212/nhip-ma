@@ -121,8 +121,16 @@ jobs:
                 built=$(jq -r '.environment_url // .target_url // empty' <<<"$status")
                 case $state in
                   success)
-                    url=$built
-                    echo "Vercel built production from $short: $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                    # Only the deployment's own URL names the new deployment; the domain
+                    # would name whichever deployment it serves.
+                    if [[ -n $domain && ${built%/} == "$domain" ]]; then
+                      built=$(jq -r '.target_url // empty' <<<"$status")
+                      [[ ${built%/} != "$domain" ]] || built=""
+                    fi
+                    if [[ -n $built ]]; then
+                      url=$built
+                      echo "Vercel built production from $short: $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                    fi
                     ;;
                   failure | error)
                     fail "Vercel's production build of $short failed: $built"
@@ -159,7 +167,9 @@ jobs:
           done
           if [[ -z $url ]]; then
             fail "No finished production deployment of $short after 30 minutes."
+          elif [[ -z $smoke ]]; then
+            fail "No Production smoke status appeared on $short after 30 minutes ($url). Check Actions for a Production smoke run from Vercel's dispatch."
           elif [[ $smoke != success ]]; then
-            fail "The production smoke check on $short is ${smoke:-missing} after 30 minutes, so Vercel holds $url off the domain. Open the Production smoke run; re-run it if it was cancelled."
+            fail "The production smoke check on $short is still $smoke after 30 minutes, so Vercel holds $url off the domain. Open the Production smoke run; re-run it if it was cancelled."
           fi
           fail "$domain doesn't serve $short (${dpl:-deployment id unread}) after 30 minutes. Another Deployment Check may hold $url (see the deployment in Vercel), or production was rolled back and the release needs promoting."
