@@ -1,0 +1,106 @@
+name: Production smoke
+
+# A Vercel Deployment Check (#113): Vercel holds each production deployment off the production
+# domain until this check passes. Once a production deployment is built, Vercel sends
+# `vercel.deployment.ready`, and this job runs the read-only smoke suite (`tests/smoke/`, the
+# same as staging's) against that deployment's own URL. Read-only: no secrets, no data written.
+#
+# vercel/repository-dispatch/actions/status reports the verdict as a commit status on the
+# deployment's commit: its main step sets `pending`, its post step `failure` if any step failed,
+# else `success`. Its default name, "Production smoke | production-smoke (nhip - production)",
+# carries the environment; it is the check Vercel requires, so renaming this workflow or job
+# means picking the check again in Vercel. Because of how the action judges a run:
+#   - this workflow has one job (the action reads the run's first job);
+#   - every slow step has its own timeout: a step that times out fails, while a job-level
+#     timeout or a cancel only cancels, and the action reads a cancelled step as a pass. The
+#     last step turns a cancelled run into a failed step, so it cannot pass the check.
+#
+# GitHub runs repository_dispatch workflows from main's HEAD, so checkout takes the deployment's
+# commit: the tests then match the copy that commit ships. Vercel also sends the event for
+# staging (Preview) deployments; the job skips them.
+#
+# `workflow_dispatch` smokes any deployment URL by hand (e.g. staging). The status action sets
+# no status on a manual run.
+on:
+  repository_dispatch:
+    types: [vercel.deployment.ready]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Deployment URL to smoke, e.g. https://nhip-staging.vercel.app
+        required: true
+        type: string
+
+run-name: >-
+  Production smoke: ${{ github.event_name == 'workflow_dispatch' && inputs.url ||
+  format('{0} {1}', github.event.client_payload.environment, github.event.client_payload.git.shortSha) }}
+
+permissions:
+  contents: read
+  statuses: write
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  production-smoke:
+    name: production smoke
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.client_payload.environment == 'production' &&
+      github.event.client_payload.project.name == 'nhip')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Report the check to Vercel
+        if: github.event_name == 'repository_dispatch'
+        uses: vercel/repository-dispatch/actions/status@v1
+
+      - name: Checkout the deployment's commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.git.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        timeout-minutes: 10
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        timeout-minutes: 5
+        run: pnpm --filter saas exec playwright install --with-deps chromium
+
+      # To prove a failing check holds a deployment, set the repository variable
+      # PRODUCTION_SMOKE_FORCE_FAIL to `true` for one run (docs/setup-checklist.md).
+      - name: Fail on purpose while PRODUCTION_SMOKE_FORCE_FAIL is set
+        if: vars.PRODUCTION_SMOKE_FORCE_FAIL == 'true'
+        run: |
+          echo "::error::PRODUCTION_SMOKE_FORCE_FAIL is set: this check fails on purpose. Delete the variable and re-run."
+          exit 1
+
+      - name: Smoke the deployment
+        timeout-minutes: 10
+        env:
+          DEPLOYMENT_URL: ${{ inputs.url || github.event.client_payload.url }}
+        run: |
+          url=${DEPLOYMENT_URL%/}
+          [[ $url == http://* || $url == https://* ]] || url="https://$url"
+          echo "Smoking $url" | tee -a "$GITHUB_STEP_SUMMARY"
+          SMOKE_BASE_URL=$url pnpm --filter saas smoke
+
+      - name: A cancelled run fails the check
+        if: cancelled()
+        run: |
+          echo "::error::The smoke run was cancelled or timed out, so the deployment stays off the domain. Re-run this job."
+          exit 1
