@@ -54,14 +54,17 @@ export async function deleteThreadUnder<T>(
 	await testDb.$transaction(
 		async (tx) => {
 			await tx.$queryRaw`SELECT 1 FROM "inbox_conversation" WHERE "id" = ${conversationId} AND "officeId" = ${officeId} FOR UPDATE`;
-			running = during().then(
-				(value) => ({ ok: true as const, value }),
-				(error: unknown) => ({ ok: false as const, error }),
-			);
 			const settled = { done: false };
-			void running.then(() => {
-				settled.done = true;
-			});
+			// Not awaited here: `during` must run while this transaction holds the lock.
+			running = (async () => {
+				try {
+					return { ok: true as const, value: await during() };
+				} catch (error) {
+					return { ok: false as const, error };
+				} finally {
+					settled.done = true;
+				}
+			})();
 			await Promise.race([running, waitingOnALock(settled)]);
 			settled.done = true;
 			await tx.$queryRaw`SELECT 1 FROM "inbox_answer" WHERE "conversationId" = ${conversationId} AND "officeId" = ${officeId} FOR UPDATE`;
