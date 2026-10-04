@@ -1,0 +1,117 @@
+name: Release
+
+# Publishing a GitHub Release moves `production` to the release's commit (ADR 0016, #112), once
+# `scripts/release/check-release.sh` confirms it is on main, ahead of production, deployed on
+# staging and smoked there. Vercel then builds production from it (migrations first).
+#
+# Only this workflow may move `production`: the branch's ruleset (24113338) blocks every push
+# except by the repository's deploy key, whose private half is the `release` environment's
+# secret `PRODUCTION_DEPLOY_KEY` (docs/setup-checklist.md). Because that key bypasses the
+# ruleset's fast-forward rule too, the gate's ancestry check is what keeps the move a
+# fast-forward; the push below never forces.
+#
+# The gate runs from `main`, never from the release's commit: a tag can point at any commit,
+# and a commit off main could carry a gate that always says yes. The release's commit is only
+# data here, and the key exists only inside the push step. GitHub still runs this workflow file
+# from the tagged commit, so a tag on an edited copy could skip the gate. That's why the
+# `release` environment requires Eyal's approval before the job gets the key.
+#
+# Only one run waits behind the running one: a third release cancels the second while it
+# waits. Release one at a time.
+on:
+  release:
+    types: [published]
+
+# One release at a time; a second waits instead of racing the first.
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: read
+  actions: read
+
+# A named `bash` runs with `-eo pipefail`; the default shell does not, and `gate | tee` would
+# then pass even when the gate refuses.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: release
+    steps:
+      - name: Checkout main (the gate's code), without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The tag, not `release.target_commitish`, which can be a branch name.
+      - name: Resolve the release's commit
+        id: commit
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git fetch --quiet --force origin production "refs/tags/$TAG:refs/tags/$TAG"
+          echo "sha=$(git rev-parse "refs/tags/$TAG^{commit}")" >> "$GITHUB_OUTPUT"
+
+      - name: Check the release gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/release/check-release.sh "${{ steps.commit.outputs.sha }}" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # GitHub's SSH host keys come from its API over HTTPS, so the push trusts no first sight.
+      - name: Fast-forward production with the deploy key
+        env:
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          key="$RUNNER_TEMP/deploy_key"
+          hosts="$RUNNER_TEMP/known_hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > "$key")
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$hosts"
+          GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$hosts -o StrictHostKeyChecking=yes" \
+            git push "git@github.com:$GITHUB_REPOSITORY.git" "$SHA:refs/heads/production"
+
+      # Production has never deployed before #113, so Vercel's environment name is matched
+      # loosely. A failed build leaves the previous production deployment serving.
+      - name: Link the production deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          deadline=$((SECONDS + 30 * 60))
+          # production has already moved by now, so an API blip only means another poll.
+          while ((SECONDS < deadline)); do
+            id=$(gh api "repos/{owner}/{repo}/deployments?sha=$SHA&per_page=100" \
+              --jq '[.[] | select(.environment | ascii_downcase == "production")][0].id // empty' || true)
+            if [[ -n $id ]]; then
+              status=$(gh api "repos/{owner}/{repo}/deployments/$id/statuses?per_page=1" --jq '.[0] // empty' || true)
+              state=$(jq -r '.state // empty' <<<"$status")
+              url=$(jq -r '.environment_url // .target_url // empty' <<<"$status")
+              case $state in
+                success)
+                  echo "Production deployed ${SHA:0:7}: $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                  exit 0
+                  ;;
+                failure | error)
+                  echo "::error::Vercel's production build of ${SHA:0:7} failed: $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                  exit 1
+                  ;;
+                inactive)
+                  echo "::error::Vercel's production deployment of ${SHA:0:7} is inactive (replaced or rolled back): $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                  exit 1
+                  ;;
+              esac
+            fi
+            sleep 20
+          done
+          echo "::error::No finished production deployment of ${SHA:0:7} after 30 minutes." | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1

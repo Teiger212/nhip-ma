@@ -200,8 +200,8 @@ exception: its required `officeId` columns shipped in one deploy, before any off
 `turbo run build --filter=saas` (runs `^generate`), Node 22, functions in `sin1`. Staging is
 `main`'s deployment at `https://nhip-staging.vercel.app`, with its env vars scoped to Preview
 on branch `main`. The production branch is `production`: a GitHub ruleset blocks every push
-and deletion, and only the release workflow (#112, not built yet) will move it to a commit
-staging ran. Vercel builds only `main` (staging) and `production` (Ignored Build Step); PR
+and deletion, and only the release workflow moves it to a commit staging ran (see "Cutting a
+release" below). Vercel builds only `main` (staging) and `production` (Ignored Build Step); PR
 previews wait for a database of their own (phase B). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
 The repo is not linked; agents read the project with the Vercel CLI by passing
 `VERCEL_ORG_ID=team_ADLKpom8d1SF6Gi0X4EaZxlR VERCEL_PROJECT_ID=prj_SLx3Ca2WEF7KpmpHXewJBrwe0rVG`.
@@ -211,6 +211,33 @@ deploy` against `DIRECT_DATABASE_URL` (the environment's direct Neon URL), then 
 failed migration fails the build and the previous deployment keeps serving.
 Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
 Firewall rule of 300 requests/min per IP on `/api/` and `/webhooks/`.
+
+**Cutting a release (#112).** Publish a GitHub Release on a commit of `main` that staging
+deployed and smoked:
+`gh release create vX.Y.Z --target <sha> --generate-notes`.
+Always pass `--target`: without it the tag lands on `main`'s HEAD, which may not have finished
+on staging yet, and the gate refuses it. The workflow (`.github/workflows/release.yml`) runs
+`scripts/release/check-release.sh` on the tag's commit. The gate requires that the commit:
+
+- is on `main`;
+- is ahead of `production`;
+- has a successful `Preview` deployment;
+- has a passing staging smoke run.
+
+The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
+then fast-forwards `production` with the deploy key and links Vercel's production deployment
+in the run summary. To check a commit beforehand, run
+`scripts/release/check-release.sh <sha>`. To go back, use Vercel's instant rollback, never an
+older release: the gate refuses one. `scripts/release/check-release.test.sh` checks the gate
+against known commits; it reads GitHub, so it runs by hand. Notes:
+
+- **A refused release** leaves its tag behind; remove both with
+  `gh release delete vX.Y.Z --cleanup-tag`.
+- **Commits from before `release.yml` merged** start no run, because GitHub runs the workflow
+  from the tagged commit. The first release must target a later commit.
+- **The release after an instant rollback** builds, but doesn't take the production domain
+  until it's promoted in Vercel (or the rollback is undone).
+- **Release one at a time:** a third release cancels the second while it waits.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
