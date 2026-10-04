@@ -12,7 +12,7 @@
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
 		"generate": "dotenv -c -e ../../.env -- prisma generate --no-hints",
 		"push": "dotenv -c -e ../../.env -- prisma db push",
-		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
+		"migrate": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
 		"type-check": "tsc --noEmit",
 		"migrate:deploy": "dotenv -c -e ../../.env -- ./scripts/migrate-deploy.sh",

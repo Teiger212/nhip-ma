@@ -25,8 +25,8 @@ Use for persistent schema changes. Prisma/PostgreSQL is the active runtime, whil
    ```
    Review generated diffs, but correct their source/config and regenerate instead of editing generated files.
 6. Apply the change to your dev database with `pnpm --filter @repo/database push` (dev only;
-   ADR 0016). Never run `prisma migrate dev` here: the dev database has drifted through `push`,
-   and `migrate dev` offers to reset it.
+   ADR 0016). Never run `prisma migrate dev` here: every dev database is built with `push`,
+   so it stops at "We need to reset". The package's `migrate` script runs `migrate:new` instead.
 7. Write the migration that hosted environments (staging, prod) will run:
    ```bash
    pnpm --filter @repo/database migrate:new <short_name>
