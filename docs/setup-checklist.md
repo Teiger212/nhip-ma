@@ -30,10 +30,10 @@ paste the password in chat or a file.
 - [ ] **Password,** in your own terminal:
       `export NHIP_APP_PASSWORD="$(openssl rand -base64 30 | tr '+/' '-_')"` (URL-safe).
 - [ ] **Create the role on staging:**
-      `psql "$(neon connection-string staging --project-id lingering-bonus-85587787 --no-env-pull)" -v app_password="$NHIP_APP_PASSWORD" -f packages/database/sql/app-role.sql`.
+      `psql "$(neon connection-string staging --role-name neondb_owner --project-id lingering-bonus-85587787 --no-env-pull)" -v app_password="$NHIP_APP_PASSWORD" -f packages/database/sql/app-role.sql`.
       It runs as `neondb_owner` over the direct URL, and is safe to run again.
 - [ ] **Vercel, staging, Sensitive:** `DATABASE_URL` = staging's pooled URL as `nhip_app`. Take
-      `neon connection-string staging --pooled --project-id lingering-bonus-85587787 --no-env-pull`
+      `neon connection-string staging --pooled --role-name neondb_owner --project-id lingering-bonus-85587787 --no-env-pull`
       and replace `neondb_owner:<its password>` with `nhip_app:$NHIP_APP_PASSWORD`. Leave
       `DIRECT_DATABASE_URL` as it is. Redeploy.
 - [ ] **Restart staging's compute** (Neon console → Branches → staging → Computes → Restart): a
@@ -49,8 +49,8 @@ paste the password in chat or a file.
       (`&options=-c%20lock_timeout%3D5s`):
       `psql "<that URL>" -c 'begin; lock table "rateLimit" in access exclusive mode; rollback;'`
       must fail after about 5s with "canceling statement due to lock timeout" (it changes
-      nothing either way). Type `rollback;` in the first terminal. The next PR that ships a
-      migration shows the rest: its staging build log reads "lock_timeout 5s".
+      nothing either way). Type `rollback;` in the first terminal. The next green staging build
+      shows the build side: `migrate deploy` connects with the option even with nothing pending.
 - [ ] **Restore window:** Neon console → project settings → Instant restore shows 6 hours (the
       API said 21600s on 2026-10-04). AGENTS.md ("Rolling back after a migration") relies on it.
 
@@ -162,12 +162,12 @@ pushed, and "Turn on alerts" stays hidden.
       environment, a new `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`, a new VAPID key pair
       with its `VAPID_SUBJECT`). `DATABASE_URL` is prod's
       pooled Neon URL as the app role `nhip_app` (#98); `DIRECT_DATABASE_URL` is its direct URL
-      as `neondb_owner`.
+      as `neondb_owner`. `DRAFT_API_KEY` and `DRAFT_MODEL`, set on neither staging nor prod
+      yet. Never set `MOCK_CRM_WEBHOOK_SECRET` or `AUTH_TRUSTED_ORIGINS` in production.
 - [ ] **Production's app role** (#98): the staging steps under "The app's database role", on
       branch `production` and with a new password, before the first release. Run
       `app-role.sql` again after the first release has migrated the empty branch: that run
-      takes the app's access to `_prisma_migrations` away. `DRAFT_API_KEY` and `DRAFT_MODEL`, set on neither staging nor prod
-      yet. Never set `MOCK_CRM_WEBHOOK_SECRET` or `AUTH_TRUSTED_ORIGINS` in production.
+      takes the app's access to `_prisma_migrations` away.
 - [ ] **Vietnam's Personal Data Protection Law:** the cross-border transfer impact
       assessment filed with the Ministry of Public Security (A05) within 60 days of the first
       transfer, naming every processor (hosting in Singapore, model providers, PostHog, the

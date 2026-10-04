@@ -141,7 +141,7 @@ one real round trip from a phone over WhatsApp and Zalo.
 linked branch's `DATABASE_URL` into `.env.local` and repoints dev without asking.
 Neon branches: `production` (default), `staging` (schema from `prisma migrate deploy`,
 never seeded: the seed's password is public), and `dev` (a schema-only copy of `staging`,
-seeded with the demo logins and threads; nothing real). Each of staging and production has two
+seeded with the demo logins and threads; nothing real). Each of staging and production gets two
 login roles (#98). Migrations run as the owner, `neondb_owner`, over `DIRECT_DATABASE_URL`, with
 no statement cap. The app connects through the pooler as `nhip_app` (`DATABASE_URL`), which
 reads and writes rows only and carries `statement_timeout` 25s and
@@ -175,7 +175,8 @@ pnpm --filter @repo/database migrate:deploy     # applies the rest
 applied the longest run, from the first, whose schema equals the database's; it refuses a
 database no run reproduces, and does nothing on one that already has a history. Write new
 migrations with `migrate:new <name>` and read them: Prisma cannot fill a new required column on
-a table that has rows, so add it nullable, backfill it, then set it `NOT NULL`, in the same file.
+a table that has rows, so follow the expand/contract table below (a constant default, or the
+two-deploy "Make a column required" row); a plain `SET NOT NULL` fails the migration lint.
 The main dev DB was baselined on 2026-10-04.
 
 **Lint and lock timeout (#98).** CI lints the migrations a PR adds with Squawk, never applied
@@ -194,8 +195,9 @@ applied. Its failed row in `_prisma_migrations` makes every later deploy refuse 
 is resolved, against `DIRECT_DATABASE_URL` from `packages/database`:
 
 1. See which of its statements applied (the build log names the one that failed).
-2. Either undo them and run `pnpm exec prisma migrate resolve --rolled-back <name>`, so the next
-   deploy runs it again; or apply the rest by hand and run `--applied <name>`.
+2. Either undo them and run
+   `DATABASE_URL="$DIRECT_DATABASE_URL" pnpm exec prisma migrate resolve --rolled-back <name>`,
+   so the next deploy runs it again; or apply the rest by hand and resolve it `--applied`.
 3. Redeploy. A lock timeout on the migration's first statement applied nothing: resolve it
    `--rolled-back` and redeploy once the lock's holder is gone.
 
@@ -265,8 +267,10 @@ fix, or restore the database from a Neon branch. Production's restore window is 
 (`history_retention_seconds` 21600, read from the Neon API on 2026-10-04; the free plan), so a
 bad migration noticed the next morning is past it. Before releasing such a migration, branch
 `production` from a folder outside the repo, so a restore point outlives the window:
-`neon branches create --name pre-vX.Y.Z --parent production --project-id lingering-bonus-85587787`. `scripts/release/check-release.test.sh` checks the gate
-against known commits; it reads GitHub, so it runs by hand. Notes:
+`neon branches create --name pre-vX.Y.Z --parent production --project-id lingering-bonus-85587787`.
+
+`scripts/release/check-release.test.sh` checks the gate against known commits; it reads GitHub,
+so it runs by hand. Notes:
 
 - **A refused release** leaves its tag behind; remove both with
   `gh release delete vX.Y.Z --cleanup-tag`.
