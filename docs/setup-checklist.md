@@ -201,10 +201,12 @@ pushed, and "Turn on alerts" stays hidden.
         `VERCEL_AUTOMATION_BYPASS_SECRET`, then tell Claude to send it as the
         `x-vercel-protection-bypass` header. Until then every release would be held, since the
         smoke fails on Vercel's login wall.
-  - [ ] **The production URL**, once chosen (above), as a repository variable. The release
-        run then waits until that domain serves the release. Without it, the run stops at
-        "smoke passed" and says the domain wasn't checked:
-        `gh variable set PRODUCTION_URL -R Teiger212/nhip-ma --body https://<domain>`.
+  - [ ] **The production URL** as a repository variable. The release run then waits until
+        that domain serves the release. Without it, the run stops at "smoke passed" and says
+        the domain wasn't checked:
+        `gh variable set PRODUCTION_URL -R Teiger212/nhip-ma --body https://<domain>`. Until
+        the custom domain exists, use production's `.vercel.app` alias (Vercel → the
+        production deployment → Domains), and switch it when the domain is added.
   - [ ] **After this merges:** the next staging deploy starts a "Production smoke" run in
         Actions, with its job skipped (staging is not production). That proves Vercel sends
         its `repository_dispatch` events to this repo. If no run appears, check Vercel →
@@ -213,17 +215,26 @@ pushed, and "Turn on alerts" stays hidden.
         "Production smoke" run passed and its commit shows the status
         `Production smoke | production-smoke (nhip - production)`. Then Deployment Checks →
         Add Checks → GitHub → pick that name exactly, for Production. Don't pick the bare
-        job "production smoke": its check run lands on `main`'s head, not on the release's
-        commit. Vercel only lists a check that has run once, so the first release isn't held
-        by it.
-  - [ ] **Prove a failure holds**, before go-live:
+        job "production smoke": a dispatched run's check run is filed on whatever commit
+        `main`'s head is when Vercel's event arrives, not on the deployed commit. That's why
+        Vercel's docs say to report through the commit status. Vercel only lists a check that
+        has run once, so the first release isn't held by it.
+  - [ ] **Prove a failure holds**, before go-live, with a real release of a fresh commit:
     1. `gh variable set PRODUCTION_SMOKE_FORCE_FAIL -R Teiger212/nhip-ma --body true`.
-    2. In Vercel, Redeploy the current production deployment.
-    3. Check that the new deployment's Production smoke run fails and the deployment stays
-       held. The domain keeps serving the old one.
+    2. Release a commit that has never been released (merged to `main`, staged and smoked):
+       `gh release create vX.Y.Z --target <sha> --generate-notes`, and approve it.
+    3. Check that its Production smoke run fails, that Vercel shows the deployment held,
+       that the domain keeps serving the previous release, and that the release run fails
+       with the smoke message.
     4. `gh variable delete PRODUCTION_SMOKE_FORCE_FAIL -R Teiger212/nhip-ma`, then re-run
-       the failed job. The deployment is promoted.
+       the failed Production smoke job. Check that the deployment is promoted and the
+       domain serves it.
     5. Note what you saw on #113.
+
+    Don't use a Redeploy in Vercel for this. It reuses a commit that already has a
+    `success` status under the same name, and Vercel may read that status before the new
+    run marks it pending, so the deployment could be promoted without proving anything.
+
   - [ ] **Force Promote** (on a deployment's page in Vercel) skips every check. It's for
         emergencies only.
 - [ ] **Restore drill** of the prod database, done once and timed.

@@ -85,12 +85,14 @@ jobs:
       # production domain until its Deployment Checks pass (#113): the production smoke run
       # (`production-smoke.yml`) and Vercel's own Lint and TypeCheck. GitHub's deployment
       # `success` is not enough: on staging Vercel posts it the moment the build is ready, so a
-      # held production deployment most likely shows `success` before its checks run. The step
-      # therefore waits, in turn, for the build, the production smoke status on the commit, and
-      # the production domain (`vars.PRODUCTION_URL`) serving this very deployment, compared by
+      # held production deployment most likely shows `success` before its checks run (inferred;
+      # production had not deployed when this was written). On every poll the step reads both
+      # the deployment and the production smoke status on the commit, and fails at once on a
+      # failed build or a failed smoke check, whatever the deployment's state. It passes when
+      # the production domain (`vars.PRODUCTION_URL`) serves this very deployment, compared by
       # the `data-dpl-id` that Skew Protection puts on every page's <html>. A failed build or
-      # check leaves the previous production deployment serving. Production had not deployed
-      # yet when this was written, so the environment name is matched loosely.
+      # check leaves the previous production deployment serving. The environment name is
+      # matched case-insensitively.
       - name: Link the production deployment
         env:
           GH_TOKEN: ${{ github.token }}
@@ -141,35 +143,38 @@ jobs:
                 esac
               fi
             fi
-            if [[ -n $url ]]; then
-              # The latest status per context; production-smoke.yml writes only production's.
-              smoke=$(gh api "repos/{owner}/{repo}/commits/$SHA/status" \
-                --jq '[.statuses[] | select(.context | startswith("Production smoke |"))][0].state // empty' || true)
-              case $smoke in
-                failure | error)
-                  fail "The production smoke check failed on $short, so Vercel keeps $url off the production domain. Fix it in a new release; Force Promote is for emergencies only."
-                  ;;
-                success)
-                  if [[ -z $domain ]]; then
-                    echo "::warning::vars.PRODUCTION_URL is not set, so the domain serving $short is unconfirmed (docs/setup-checklist.md)."
-                    echo "Production smoke passed on $short ($url); the domain was not checked." >>"$GITHUB_STEP_SUMMARY"
-                    exit 0
-                  fi
+            # The latest status of production-smoke.yml's check, by its exact name, whatever
+            # the deployment's state: a held deployment must not hide a failed check.
+            smoke=$(gh api "repos/{owner}/{repo}/commits/$SHA/status" \
+              --jq '[.statuses[] | select(.context == "Production smoke | production-smoke (nhip - production)")][0].state // empty' || true)
+            case $smoke in
+              failure | error)
+                fail "The production smoke check failed on $short, so Vercel keeps ${url:-the deployment} off the production domain. If the repository variable PRODUCTION_SMOKE_FORCE_FAIL is set, delete it and re-run the Production smoke job; otherwise fix it in a new release. Force Promote is for emergencies only."
+                ;;
+              success)
+                if [[ -z $domain ]]; then
+                  echo "::warning::vars.PRODUCTION_URL is not set, so the domain serving $short is unconfirmed (docs/setup-checklist.md)."
+                  echo "Production smoke passed on $short (${url:-deployment URL not read}); the domain was not checked." >>"$GITHUB_STEP_SUMMARY"
+                  exit 0
+                fi
+                if [[ -n $url ]]; then
                   [[ -n $dpl ]] || dpl=$(serves "$url")
                   if [[ -n $dpl && $(serves "$domain") == "$dpl" ]]; then
                     echo "Production serves $short at $domain ($dpl, $url)" | tee -a "$GITHUB_STEP_SUMMARY"
                     exit 0
                   fi
-                  ;;
-              esac
-            fi
+                fi
+                ;;
+            esac
             sleep 20
           done
-          if [[ -z $url ]]; then
+          if [[ -z $url && -z $smoke ]]; then
             fail "No finished production deployment of $short after 30 minutes."
           elif [[ -z $smoke ]]; then
             fail "No Production smoke status appeared on $short after 30 minutes ($url). Check Actions for a Production smoke run from Vercel's dispatch."
           elif [[ $smoke != success ]]; then
-            fail "The production smoke check on $short is still $smoke after 30 minutes, so Vercel holds $url off the domain. Open the Production smoke run; re-run it if it was cancelled."
+            fail "The production smoke check on $short is still $smoke after 30 minutes, so Vercel holds ${url:-the deployment} off the domain. Open the Production smoke run; re-run it if it was cancelled."
+          elif [[ -z $url ]]; then
+            fail "The production smoke check passed on $short, but GitHub never showed its deployment as successful, so $domain was not compared. See the deployment in Vercel."
           fi
           fail "$domain doesn't serve $short (${dpl:-deployment id unread}) after 30 minutes. Another Deployment Check may hold $url (see the deployment in Vercel), or production was rolled back and the release needs promoting."

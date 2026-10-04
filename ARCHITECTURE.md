@@ -287,9 +287,12 @@ ADR 0016 and its amendment. One Vercel project `nhip`, one Neon project, both in
   gives the deployment the production domain only once this check passes, along with Vercel's
   Lint and TypeCheck.
 - **Prod** builds from the `production` branch. Ruleset 24113338 ("production: releases
-  only") blocks updates, non-fast-forward pushes and deletion, and has no bypass actor, so
-  nothing moves `production` today. The release workflow that will move it to a commit
-  staging ran, and runs prod migrations first, is #112 and not built yet. The production
+  only") blocks updates, non-fast-forward pushes and deletion; its one bypass is deploy keys.
+  The release workflow (`.github/workflows/release.yml`, #112) is the only holder of a deploy
+  key: on a published GitHub Release that Eyal approves, it fast-forwards `production` to a
+  commit staging deployed and smoked. Vercel's build runs prod migrations first
+  (`build:vercel`). The key itself is one of Eyal's setup steps
+  (`docs/setup-checklist.md`). The production
   Neon branch is empty (no tables, no migration history); the first release migrates it
   from `0_init`. There are no Production-scope env vars yet (#99). No release has shipped.
 
