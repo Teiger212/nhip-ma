@@ -23,7 +23,7 @@ describe("migration lint (#98)", () => {
 		expect(code).not.toBe(0);
 	});
 
-	it("would have failed #97's migration, which set columns NOT NULL in one deploy (adding-not-nullable-field)", () => {
+	it("would have failed #97's migration (#95), which set columns NOT NULL in one deploy (adding-not-nullable-field)", () => {
 		const { code, output } = lint(
 			"prisma/migrations/20261004074733_office_on_every_row/migration.sql",
 		);
@@ -47,5 +47,11 @@ describe("migration lint (#98)", () => {
 		const { code, output } = lint("--since", "HEAD");
 		expect(output).toContain("No new migrations");
 		expect(code).toBe(0);
+	});
+
+	it("fails when it cannot tell what was added, rather than linting nothing", () => {
+		const { code, output } = lint("--since", "no-such-ref");
+		expect(output).not.toContain("No new migrations");
+		expect(code).not.toBe(0);
 	});
 });

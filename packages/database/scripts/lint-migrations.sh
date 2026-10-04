@@ -10,9 +10,12 @@ cd "$(dirname "$0")/.."
 files=()
 if [ "${1:-}" = --since ]; then
 	ref="${2:?usage: lint-migrations.sh --since <ref>}"
-	while IFS= read -r file; do files+=("$file"); done < <(
-		git diff --name-only --relative --diff-filter=A "$ref" HEAD -- 'prisma/migrations/*/migration.sql'
-	)
+	# Captured first, so a bad ref fails the script instead of linting nothing.
+	added=$(git diff --name-only --relative --no-renames --diff-filter=A "$ref" HEAD -- \
+		'prisma/migrations/*/migration.sql')
+	while IFS= read -r file; do
+		if [ -n "$file" ]; then files+=("$file"); fi
+	done <<<"$added"
 	if [ "${#files[@]}" -eq 0 ]; then
 		echo "No new migrations to lint."
 		exit 0
