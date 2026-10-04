@@ -429,22 +429,23 @@ function leadsByDay(
 }
 
 export function createInboxStore(db: PrismaClient): InboxStore {
-	async function load(id: string, client: Db = db): Promise<Conversation | null> {
+	/** The office's thread, or null: an id never reaches another office's (#95). */
+	async function load(officeId: string, id: string, client: Db = db): Promise<Conversation | null> {
 		const record = await client.conversation.findUnique({
-			where: { id },
+			where: { id_officeId: { id, officeId } },
 			include: CONVERSATION_INCLUDE,
 		});
 		return record ? mapConversation(record) : null;
 	}
 
-	async function exists(id: string): Promise<boolean> {
-		return (await db.conversation.count({ where: { id } })) > 0;
+	async function exists(officeId: string, id: string): Promise<boolean> {
+		return (await db.conversation.count({ where: { id, officeId } })) > 0;
 	}
 
 	return {
-		async listConversations(viewer?: InboxViewer) {
+		async listConversations(viewer) {
 			const records = await db.conversation.findMany({
-				where: viewer ? visibleTo(viewer) : undefined,
+				where: visibleTo(viewer),
 				orderBy: { updatedAt: "desc" },
 				include: CONVERSATION_INCLUDE,
 			});
@@ -476,19 +477,16 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return rows.map(mapSummary);
 		},
 
-		async getConversation(id, viewer?: InboxViewer) {
-			const conversation = await load(id);
-			if (!conversation) {
-				return null;
-			}
-			if (viewer && conversation.officeId !== viewer.officeId) {
-				return null;
-			}
-			const owner = conversation.owner?.id ?? null;
-			if (viewer && viewer.role !== "manager" && owner !== null && owner !== viewer.userId) {
-				return null;
-			}
-			return conversation;
+		async getConversation(id, viewer) {
+			const record = await db.conversation.findFirst({
+				where: { id, ...visibleTo(viewer) },
+				include: CONVERSATION_INCLUDE,
+			});
+			return record ? mapConversation(record) : null;
+		},
+
+		async getOfficeConversation(officeId, id) {
+			return load(officeId, id);
 		},
 
 		async upsertInbound(event: InboundEvent, officeId: string) {
@@ -535,6 +533,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						data: {
 							id: cuid(),
 							conversationId: threadId,
+							officeId,
 							direction: event.source === "guest" ? "in" : "out",
 							source: toDbSource(event.source),
 							text: event.text,
@@ -559,7 +558,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				if (isUniqueViolation(error)) return write();
 				throw error;
 			});
-			return (await load(id)) as Conversation;
+			return (await load(officeId, id)) as Conversation;
 		},
 
 		async deleteConversations(officeId, ids) {
@@ -567,71 +566,75 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
-		async setOneShot(id, shot: OneShot) {
-			if (!(await exists(id))) {
+		async setOneShot(officeId, id, shot: OneShot) {
+			if (!(await exists(officeId, id))) {
 				return null;
 			}
 			const q = shot.qualification;
 			const paperwork = { mentioned: shot.paperwork.mentioned, flag: shot.paperwork.flag };
+			const threadKey = { conversationId_officeId: { conversationId: id, officeId } };
 			await db.$transaction([
 				db.qualification.upsert({
-					where: { conversationId: id },
-					create: { conversationId: id, ...q },
+					where: threadKey,
+					create: { conversationId: id, officeId, ...q },
 					update: { ...q },
 				}),
 				db.draft.upsert({
-					where: { conversationId: id },
-					create: { conversationId: id, ...shot.draft },
+					where: threadKey,
+					create: { conversationId: id, officeId, ...shot.draft },
 					update: { ...shot.draft },
 				}),
 				db.paperwork.upsert({
-					where: { conversationId: id },
-					create: { conversationId: id, ...paperwork },
+					where: threadKey,
+					create: { conversationId: id, officeId, ...paperwork },
 					update: paperwork,
 				}),
 				db.conversation.update({
-					where: { id },
+					where: { id_officeId: { id, officeId } },
 					data: { language: shot.language, updatedAt: new Date() },
 				}),
 			]);
-			return load(id);
+			return load(officeId, id);
 		},
 
-		async setDraft(id, draft: Draft) {
-			if (!(await exists(id))) {
+		async setDraft(officeId, id, draft: Draft) {
+			if (!(await exists(officeId, id))) {
 				return null;
 			}
 			await db.draft.upsert({
-				where: { conversationId: id },
-				create: { conversationId: id, ...draft },
+				where: { conversationId_officeId: { conversationId: id, officeId } },
+				create: { conversationId: id, officeId, ...draft },
 				update: { ...draft },
 			});
-			return load(id);
+			return load(officeId, id);
 		},
 
-		async setTranslation(messageId, locale, text) {
+		// The translation rows below are keyed by message. Scoped by office in the where, a
+		// message of another office matches nothing; the create that follows is then refused
+		// by the database (its key exists, or its office is not its message's): it throws.
+		async setTranslation(officeId, messageId, locale, text) {
 			await db.$transaction([
 				db.translation.upsert({
-					where: { messageId_locale: { messageId, locale } },
-					create: { messageId, locale, text },
+					where: { messageId_locale: { messageId, locale }, officeId },
+					create: { messageId, officeId, locale, text },
 					update: { text },
 				}),
-				db.translationFailure.deleteMany({ where: { messageId, locale } }),
+				db.translationFailure.deleteMany({ where: { messageId, locale, officeId } }),
 			]);
 		},
 
-		async recordTranslationFailure(messageId, locale, at) {
+		async recordTranslationFailure(officeId, messageId, locale, at) {
 			await db.translationFailure.upsert({
-				where: { messageId_locale: { messageId, locale } },
-				create: { messageId, locale, attempts: 1, lastFailedAt: at },
+				where: { messageId_locale: { messageId, locale }, officeId },
+				create: { messageId, officeId, locale, attempts: 1, lastFailedAt: at },
 				update: { attempts: { increment: 1 }, lastFailedAt: at },
 			});
 		},
 
-		async translationFailures(messageIds, locale) {
+		async translationFailures(officeId, messageIds, locale) {
 			if (messageIds.length === 0) return [];
 			const rows = await db.translationFailure.findMany({
-				where: { messageId: { in: messageIds }, locale },
+				where: { messageId: { in: messageIds }, locale, officeId },
 			});
 			return rows.map((row) => ({
 				messageId: row.messageId,
@@ -645,7 +648,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			try {
 				return await db.$transaction(async (tx): Promise<BeginAnswerResult> => {
 					const inbound = await tx.message.findFirst({
-						where: { id: input.inboundId, conversationId: input.conversationId },
+						where: {
+							id: input.inboundId,
+							conversationId: input.conversationId,
+							officeId: input.officeId,
+						},
 						select: {
 							direction: true,
 							pipeExternalId: true,
@@ -655,7 +662,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					if (!inbound || inbound.direction !== "in") {
 						throw new Error("Inbox store: beginAnswer needs a guest message on this thread.");
 					}
-					const existing = await tx.answer.findUnique({ where: { inboundId: input.inboundId } });
+					const existing = await tx.answer.findUnique({
+						where: { inboundId: input.inboundId, officeId: input.officeId },
+					});
 					const operator = input.operatorId
 						? await tx.user.findUnique({
 								where: { id: input.operatorId },
@@ -687,7 +696,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						if (retried.count === 0) return { ok: false, reason: "in_progress" };
 						if (input.operatorId) {
 							await tx.conversation.updateMany({
-								where: { id: input.conversationId, ownerId: null },
+								where: { id: input.conversationId, officeId: input.officeId, ownerId: null },
 								data: { ownerId: input.operatorId },
 							});
 						}
@@ -698,6 +707,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						data: {
 							id: cuid(),
 							conversationId: input.conversationId,
+							officeId: input.officeId,
 							inboundId: input.inboundId,
 							text: input.text,
 							operatorId: input.operatorId,
@@ -713,7 +723,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					// same transaction, so two agents racing for it end with one owner.
 					if (input.operatorId) {
 						await tx.conversation.updateMany({
-							where: { id: input.conversationId, ownerId: null },
+							where: { id: input.conversationId, officeId: input.officeId, ownerId: null },
 							data: { ownerId: input.operatorId },
 						});
 					}
@@ -728,8 +738,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 		},
 
-		async completeAnswer(answerId, result: SendResult) {
-			const answer = await db.answer.findUnique({ where: { id: answerId } });
+		async completeAnswer(officeId, answerId, result: SendResult) {
+			const answer = await db.answer.findUnique({ where: { id: answerId, officeId } });
 			if (!answer) {
 				return null;
 			}
@@ -739,7 +749,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			const at = new Date();
 			await db.$transaction([
 				db.answer.update({
-					where: { id: answerId },
+					where: { id: answerId, officeId },
 					data: {
 						status: "sent",
 						sentAt: at,
@@ -752,6 +762,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					data: {
 						id: cuid(),
 						conversationId: answer.conversationId,
+						officeId,
 						direction: "out",
 						source: "nhip",
 						text: answer.text,
@@ -762,23 +773,23 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					},
 				}),
 				db.conversation.update({
-					where: { id: answer.conversationId },
+					where: { id_officeId: { id: answer.conversationId, officeId } },
 					data: { sentAt: at, updatedAt: at },
 				}),
 			]);
-			return load(answer.conversationId);
+			return load(officeId, answer.conversationId);
 		},
 
-		async failAnswer(answerId, reason) {
+		async failAnswer(officeId, answerId, reason) {
 			await db.answer.updateMany({
-				where: { id: answerId, status: "sending" },
+				where: { id: answerId, officeId, status: "sending" },
 				data: { status: "failed", failedAt: new Date(), failureReason: reason },
 			});
 		},
 
-		async markAnswerUnknown(answerId, reason) {
+		async markAnswerUnknown(officeId, answerId, reason) {
 			await db.answer.updateMany({
-				where: { id: answerId, status: "sending" },
+				where: { id: answerId, officeId, status: "sending" },
 				data: { status: "unknown", failedAt: new Date(), failureReason: reason },
 			});
 		},
@@ -957,9 +968,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
-		async guestInboundText(id) {
+		async guestInboundText(officeId, id) {
 			const messages = await db.message.findMany({
-				where: { conversationId: id, source: "guest" },
+				where: { conversationId: id, officeId, source: "guest" },
 				orderBy: [{ at: "asc" }, { seq: "asc" }],
 				select: { text: true },
 			});
@@ -1073,11 +1084,12 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			});
 		},
 
-		async replaceCrmAccessToken(officeId, accessToken) {
-			await db.crmConnection.update({
-				where: { officeId },
+		async replaceCrmAccessToken(officeId, kind, accessToken) {
+			const { count } = await db.crmConnection.updateMany({
+				where: { officeId, kind },
 				data: { accessToken, accountId: null },
 			});
+			return count === 1;
 		},
 
 		async crmOfficesOnAccount(kind, accountId) {
@@ -1106,7 +1118,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count > 0;
 		},
 
-		async claimCrmLink(conversationId, officeId) {
+		async claimCrmLink(officeId, conversationId) {
 			const { count } = await db.crmLink.createMany({
 				data: [{ conversationId, officeId }],
 				skipDuplicates: true,
@@ -1114,13 +1126,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count > 0;
 		},
 
-		async releaseCrmLink(conversationId) {
-			await db.crmLink.deleteMany({ where: { conversationId, leadId: null } });
+		async releaseCrmLink(officeId, conversationId) {
+			await db.crmLink.deleteMany({ where: { conversationId, officeId, leadId: null } });
 		},
 
-		async completeCrmLink(conversationId, link) {
-			await db.crmLink.update({
-				where: { conversationId },
+		async completeCrmLink(officeId, conversationId, link) {
+			await db.crmLink.updateMany({
+				where: { conversationId, officeId },
 				data: { ...link, linkedAt: new Date() },
 			});
 		},
@@ -1173,10 +1185,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			});
 		},
 
-		async saveCrmOutcome(conversationId, leadId, outcome) {
+		async saveCrmOutcome(officeId, conversationId, leadId, outcome) {
 			// Only while the thread still links this lead: a relink meanwhile is not its outcome.
 			await db.crmLink.updateMany({
-				where: { conversationId, leadId },
+				where: { conversationId, officeId, leadId },
 				data: {
 					outcome: outcome.outcome,
 					outcomeAt: outcome.outcomeAt ? new Date(outcome.outcomeAt) : null,

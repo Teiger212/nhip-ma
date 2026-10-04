@@ -150,6 +150,42 @@ Run single test files through the env, or they fall back to the shared `supastar
 from `apps/saas`, `pnpm exec dotenv -c -e ../../.env -- vitest run <file>` (root `pnpm test`
 already loads it).
 
+**Migrations (decided 2026-10-04, #95).** Dev databases are built with `db push`; staging and
+production only ever run `prisma migrate deploy`. To make a dev database deploy-ready (or to bring
+one forward with `migrate deploy` instead of `push`), give it a migration history once:
+
+```bash
+pnpm --filter @repo/database migrate:baseline   # marks applied the migrations its schema already has
+pnpm --filter @repo/database migrate:deploy     # applies the rest
+```
+
+`migrate:baseline` replays `prisma/migrations` one by one into a throwaway database and marks
+applied the longest run, from the first, whose schema equals the database's; it refuses a
+database no run reproduces, and does nothing on one that already has a history. Write new
+migrations with `migrate:new <name>` and read them: Prisma cannot fill a new required column on
+a table that has rows, so add it nullable, backfill it, then set it `NOT NULL`, in the same file.
+
+**Schema changes are expand/contract.** A deploy runs `migrate deploy` before the new code
+serves, while the previous deployment still serves, so every migration must work with the code
+before it ([ParallelChange](https://martinfowler.com/bliki/ParallelChange.html); Braintree's
+[schema changes without downtime](https://medium.com/paypal-tech/postgresql-at-scale-database-schema-changes-without-downtime-20d3749ed680);
+GitLab's [avoiding downtime in migrations](https://docs.gitlab.com/development/database/avoiding_downtime_in_migrations)).
+There is no post-deploy migration step, so "after the code ships" means a second deploy.
+
+| Change                                    | Deploys | How                                                                                                                                |
+| ----------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| New table, nullable column, index         | 1       | As is                                                                                                                              |
+| New column with a constant default        | 1       | `NOT NULL DEFAULT …`: old code omits it, Postgres fills it (no rewrite)                                                            |
+| New foreign key or check on existing rows | 1       | Add it `NOT VALID`, then `VALIDATE CONSTRAINT` (no write lock)                                                                     |
+| Make a column required (new or existing)  | 2       | Deploy the code that writes it; then backfill, and `SET NOT NULL` (behind a validated `CHECK … IS NOT NULL`, which skips the scan) |
+| Rename a column or table, change a type   | 2+      | Add the new one, write both, backfill, read the new one; drop the old one in a later deploy                                        |
+| Drop a column or table                    | 2       | Stop reading and writing it; drop it in the next deploy                                                                            |
+
+The deploys can be an hour apart. Every migration PR says which row it is; one that breaks the
+code before it says why that is safe (no live writers, or an announced off-hours window) and that
+Vercel's instant rollback is then unsafe (old code on the new schema). #95 is the recorded
+exception: its required `officeId` columns shipped in one deploy, before any office was live.
+
 **What Eyal sets by hand** (accounts, secrets, vendor settings) is tracked in
 [docs/setup-checklist.md](docs/setup-checklist.md); add to it whenever work needs one.
 

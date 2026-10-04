@@ -96,43 +96,43 @@ export type ConversationScalarFieldEnum = z.infer<typeof ConversationScalarField
 
 // File: MessageScalarFieldEnum.schema.ts
 
-export const MessageScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'direction', 'source', 'text', 'at', 'vendorMessageId', 'mock', 'pipeExternalId'])
+export const MessageScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'officeId', 'direction', 'source', 'text', 'at', 'vendorMessageId', 'mock', 'pipeExternalId'])
 
 export type MessageScalarFieldEnum = z.infer<typeof MessageScalarFieldEnumSchema>;
 
 // File: TranslationScalarFieldEnum.schema.ts
 
-export const TranslationScalarFieldEnumSchema = z.enum(['messageId', 'locale', 'text'])
+export const TranslationScalarFieldEnumSchema = z.enum(['messageId', 'officeId', 'locale', 'text'])
 
 export type TranslationScalarFieldEnum = z.infer<typeof TranslationScalarFieldEnumSchema>;
 
 // File: TranslationFailureScalarFieldEnum.schema.ts
 
-export const TranslationFailureScalarFieldEnumSchema = z.enum(['messageId', 'locale', 'attempts', 'lastFailedAt'])
+export const TranslationFailureScalarFieldEnumSchema = z.enum(['messageId', 'officeId', 'locale', 'attempts', 'lastFailedAt'])
 
 export type TranslationFailureScalarFieldEnum = z.infer<typeof TranslationFailureScalarFieldEnumSchema>;
 
 // File: QualificationScalarFieldEnum.schema.ts
 
-export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold'])
+export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold'])
 
 export type QualificationScalarFieldEnum = z.infer<typeof QualificationScalarFieldEnumSchema>;
 
 // File: DraftScalarFieldEnum.schema.ts
 
-export const DraftScalarFieldEnumSchema = z.enum(['conversationId', 'reply', 'answersMessageId', 'source'])
+export const DraftScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'reply', 'answersMessageId', 'source'])
 
 export type DraftScalarFieldEnum = z.infer<typeof DraftScalarFieldEnumSchema>;
 
 // File: PaperworkScalarFieldEnum.schema.ts
 
-export const PaperworkScalarFieldEnumSchema = z.enum(['conversationId', 'mentioned', 'flag'])
+export const PaperworkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'mentioned', 'flag'])
 
 export type PaperworkScalarFieldEnum = z.infer<typeof PaperworkScalarFieldEnumSchema>;
 
 // File: AnswerScalarFieldEnum.schema.ts
 
-export const AnswerScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'inboundId', 'text', 'operatorId', 'operatorName', 'status', 'mock', 'pipe', 'to', 'pipeExternalId', 'vendorMessageId', 'approvedAt', 'sentAt', 'failedAt', 'failureReason'])
+export const AnswerScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'officeId', 'inboundId', 'text', 'operatorId', 'operatorName', 'status', 'mock', 'pipe', 'to', 'pipeExternalId', 'vendorMessageId', 'approvedAt', 'sentAt', 'failedAt', 'failureReason'])
 
 export type AnswerScalarFieldEnum = z.infer<typeof AnswerScalarFieldEnumSchema>;
 
@@ -511,6 +511,7 @@ export const MessageSchema = z.object({
   id: z.string(),
   seq: z.number().int(),
   conversationId: z.string(),
+  officeId: z.string(),
   direction: MessageDirectionSchema,
   source: MessageSourceSchema,
   text: z.string(),
@@ -527,6 +528,7 @@ export type MessageType = z.infer<typeof MessageSchema>;
 
 export const TranslationSchema = z.object({
   messageId: z.string(),
+  officeId: z.string(),
   locale: z.string(),
   text: z.string(),
 });
@@ -538,6 +540,7 @@ export type TranslationType = z.infer<typeof TranslationSchema>;
 
 export const TranslationFailureSchema = z.object({
   messageId: z.string(),
+  officeId: z.string(),
   locale: z.string(),
   attempts: z.number().int(),
   lastFailedAt: z.date(),
@@ -550,6 +553,7 @@ export type TranslationFailureType = z.infer<typeof TranslationFailureSchema>;
 
 export const QualificationSchema = z.object({
   conversationId: z.string(),
+  officeId: z.string(),
   areaOfInterest: z.string().nullish(),
   nationality: z.string().nullish(),
   inVietnamNow: z.boolean().nullish(),
@@ -566,6 +570,7 @@ export type QualificationType = z.infer<typeof QualificationSchema>;
 
 export const DraftSchema = z.object({
   conversationId: z.string(),
+  officeId: z.string(),
   reply: z.string(),
   answersMessageId: z.string().nullish(),
   source: DraftSourceSchema.default("template"),
@@ -578,6 +583,7 @@ export type DraftType = z.infer<typeof DraftSchema>;
 
 export const PaperworkSchema = z.object({
   conversationId: z.string(),
+  officeId: z.string(),
   mentioned: z.boolean(),
   flag: z.string().nullish(),
 });
@@ -591,6 +597,7 @@ export const AnswerSchema = z.object({
   id: z.string(),
   seq: z.number().int(),
   conversationId: z.string(),
+  officeId: z.string(),
   inboundId: z.string(),
   text: z.string(),
   operatorId: z.string().nullish(),

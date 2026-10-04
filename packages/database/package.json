@@ -17,7 +17,8 @@
 		"type-check": "tsc --noEmit",
 		"migrate:deploy": "dotenv -c -e ../../.env -- prisma migrate deploy",
 		"migrate:check": "dotenv -c -e ../../.env -- ./scripts/migrations.sh check",
-		"migrate:new": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new"
+		"migrate:new": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new",
+		"migrate:baseline": "dotenv -c -e ../../.env -- ./scripts/migrations.sh baseline"
 	},
 	"dependencies": {
 		"@paralleldrive/cuid2": "^3.3.0",

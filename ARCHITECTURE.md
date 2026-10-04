@@ -240,6 +240,9 @@ pipe_credential, webhook_delivery.
   `packages/database/inbox/store.ts`, zod vocabularies in `schema.ts`, domain types in
   `types.ts`. Routes call its methods, never Prisma directly.
 - **Thread identity** is (office, pipe, guest); the id keeps the `office:pipe:guest` shape.
+- **The office line is held by the database** (#95). Every office-owned row carries
+  `officeId`, and composite foreign keys to `(id, officeId)` keep it equal to its thread's
+  (or its message's); every store method names its office and filters by it in the query.
   `Answer.operatorId` is set-null so a send's record outlives its sender (ADR 0013).
 - **Schema changes**: dev uses `prisma db push`. Hosted environments use `prisma migrate`
   from the `0_init` baseline in `prisma/migrations/`. After editing the schema, run
@@ -249,7 +252,9 @@ pipe_credential, webhook_delivery.
   migrate on build: `apps/saas/scripts/vercel-build.sh` runs `prisma migrate deploy` against
   the direct (non-pooled) URL before building, and a failed migration fails the build, so the
   previous deployment keeps serving. Migrations are additive and stay compatible with the
-  release before (ADR 0016), so applying one ahead of its code is safe.
+  release before (ADR 0016), so applying one ahead of its code is safe; AGENTS.md
+  ("Migrations") has the expand/contract rule and its one recorded exception (#95), and
+  `migrate:baseline` for giving a pushed dev database a migration history.
 - **Tests** use `supastarter_test` (Vitest) and `supastarter_e2e` (Playwright) on the same
   server as dev.
 

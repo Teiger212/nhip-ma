@@ -34,16 +34,20 @@ const inbound = (guestId: string, at: number, text = "Xin chào") => ({
 
 type Store = Awaited<ReturnType<typeof testInboxStore>>;
 
+/** A thread's office: its id leads with it (`conversationId`). */
+const officeOf = (id: string) => id.split(":")[0];
+
 /** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
 async function sent(store: Store, id: string, inboundId: string) {
 	const begun = await store.beginAnswer({
+		officeId: officeOf(id),
 		conversationId: id,
 		inboundId,
 		text: "Reply",
 		operatorId: "agent-1",
 	});
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	await store.completeAnswer(begun.answer.id, {
+	await store.completeAnswer(officeOf(id), begun.answer.id, {
 		mock: true,
 		pipe: "zalo",
 		to: id.split(":").at(-1) ?? "",
@@ -54,6 +58,7 @@ async function sent(store: Store, id: string, inboundId: string) {
 /** Approve, then let the vendor refuse or go silent: the Answer never counts as received. */
 async function notSent(store: Store, id: string, inboundId: string, how: "failed" | "unknown") {
 	const begun = await store.beginAnswer({
+		officeId: officeOf(id),
 		conversationId: id,
 		inboundId,
 		text: "Reply",
@@ -61,14 +66,14 @@ async function notSent(store: Store, id: string, inboundId: string, how: "failed
 	});
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
 	if (how === "failed") {
-		await store.failAnswer(begun.answer.id, "vendor refused");
+		await store.failAnswer(officeOf(id), begun.answer.id, "vendor refused");
 	} else {
-		await store.markAnswerUnknown(begun.answer.id, "timeout");
+		await store.markAnswerUnknown(officeOf(id), begun.answer.id, "timeout");
 	}
 }
 
 async function lastInboundId(store: Store, id: string): Promise<string> {
-	const conversation = await store.getConversation(id);
+	const conversation = await store.getOfficeConversation(officeOf(id), id);
 	const message = conversation?.messages.filter((m) => m.direction === "in").at(-1);
 	if (!message) throw new Error(`no inbound on ${id}`);
 	return message.id;

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-04 (the database holds the office line)
+
+### Changed
+
+- **Every office-owned row carries its office, and the database holds it** (#95). Messages, Answers, translations and their failures, qualifications, drafts and paperwork have an `officeId`, backfilled from their thread by migration `20261004074733_office_on_every_row`. Composite foreign keys keep each row's office equal to its thread's (or its message's), so a row filed under the wrong office is refused by Postgres; a CRM link's office must be its thread's too. A draft's `answersMessageId` is now a foreign key and clears when its message goes.
+- **The store fails closed.** Every inbox store method names the office it acts for and filters by it in the query: an id of another office's thread, message or Answer reads and writes nothing. `getConversation`, `listConversations`, `approveAndSend` and `regenerateDraft` require the viewer; background work (drafts, translation, the CRM) reads through `getOfficeConversation`.
+- **Indexes:** `Conversation.ownerId`, `Answer.operatorId` and `PipeConnection.officeId` are indexed; `Conversation(officeId)`, `Member(organizationId)` and `Purchase(subscriptionId)` lose indexes their unique keys already cover.
+- **A CRM token is replaced only on the kind it was sealed for**, so two admins saving at once never leave a HubSpot token on a mock connection.
+- **`pnpm --filter @repo/database migrate:baseline`** gives a database built by `db push` a migration history (AGENTS.md, "Migrations").
+
 ## 2026-10-04 (a HubSpot deal won or lost reaches the inbox)
 
 ### Added
@@ -79,7 +89,7 @@
 #### Office tenancy and the Home screen (ADRs 0001, 0002, 0008)
 
 - **The office is the tenant.** `Conversation.ownerUserId` becomes `officeId`, the kit organization's id. The store lists and reads strictly by office, and the "unowned is visible to everyone" fallback is gone. Files from before tenancy migrate on open (the column is dropped) and their threads wait unowned until `adoptUnownedThreads` runs; the seed does that for the walk office.
-- **Session gate resolves the office.** `requireInboxSession` returns `{ userId, officeId }`: the session's active organization, else the first membership, else `403 no_office`. `POST /dev/inbound` needs a session and files under that office.
+- **Session gate resolves the office.** `requireInboxSession` returns `{ userId, officeId }`: the session's active organization, else the first membership, else `403 no_office`. (Since superseded: the gate requires exactly one membership, refusing none with `no_office` and more than one with `ambiguous_office`, and refuses the platform admin; `apps/saas/modules/inbox/lib/office.ts`.) `POST /dev/inbound` needs a session and files under that office.
 - **Pipe-to-office mapping.** `PipeConnection` (pipe + vendor id of the number or OA → office) replaces `INBOX_OWNER_USER_ID`. Webhook events carry `pipeExternalId` (WhatsApp `phone_number_id`, Zalo OA id) and are filed under the office that owns it; inbound on an unconnected pipe is dropped with a log line. `pnpm --filter saas pipe:connect` sets a mapping.
 - **Walk office.** `pnpm seed` creates organization `walk-office` with the walk user as owner and active organization, and files the invented threads under it.
 - **Home.** `/home` is enabled in the sidebar: the five funnel stages as cards, closings and lost showing "Connect your CRM", the rest and response time marked as coming next. No number on the screen looks like a fact yet.

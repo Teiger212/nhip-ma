@@ -224,7 +224,7 @@ test("an approval names its target and its text: stale, missing and empty are re
 	expect(malformed.res.status).toBe(400);
 
 	// Nothing above sent anything.
-	const untouched = await peekTestRuntime()!.store.getConversation(again.id);
+	const untouched = await peekTestRuntime()!.store.getOfficeConversation(again.officeId, again.id);
 	expect(untouched?.answers).toEqual([]);
 	expect(untouched?.unansweredInboundId).toBe(again.unansweredInboundId);
 
@@ -240,6 +240,7 @@ test("a guest message arriving mid-send stays Your turn", async () => {
 	const m1 = conv.unansweredInboundId!;
 	// Approval is on record; the vendor has not answered yet. M2 lands now.
 	const begun = await runtime.store.beginAnswer({
+		officeId: conv.officeId,
 		conversationId: conv.id,
 		inboundId: m1,
 		text: "Reply to M1",
@@ -250,7 +251,7 @@ test("a guest message arriving mid-send stays Your turn", async () => {
 	const m2 = withM2.unansweredInboundId!;
 	expect(m2).not.toBe(m1);
 	// The vendor acknowledges M1's reply; the outbound is now the last message on the thread.
-	const done = await runtime.store.completeAnswer(begun.answer.id, {
+	const done = await runtime.store.completeAnswer(conv.officeId, begun.answer.id, {
 		mock: true,
 		pipe: "zalo",
 		to: "guest-mid",
@@ -260,7 +261,9 @@ test("a guest message arriving mid-send stays Your turn", async () => {
 	// M2 is still the guest's unanswered message: the queue does not read message order.
 	expect(done?.unansweredInboundId).toBe(m2);
 	expect((await approveReply(done!, { reply: "Reply to M2" })).res.status).toBe(200);
-	expect((await runtime.store.getConversation(conv.id))?.unansweredInboundId).toBeNull();
+	expect(
+		(await runtime.store.getOfficeConversation(conv.officeId, conv.id))?.unansweredInboundId,
+	).toBeNull();
 });
 
 test("a vendor success whose record fails is never sent twice", async () => {
@@ -272,10 +275,10 @@ test("a vendor success whose record fails is never sent twice", async () => {
 		...runtime,
 		store: {
 			...runtime.store,
-			completeAnswer: async (answerId, result) => {
+			completeAnswer: async (officeId, answerId, result) => {
 				calls += 1;
 				if (calls === 1) throw new Error("disk full");
-				return completeAnswer(answerId, result);
+				return completeAnswer(officeId, answerId, result);
 			},
 		},
 	});
@@ -283,7 +286,7 @@ test("a vendor success whose record fails is never sent twice", async () => {
 	expect(first.res.status).toBe(500);
 	expect(first.body.error).toBe("record_failed");
 	// The Answer stays on file as unknown, so a retry is refused rather than resent.
-	const after = await runtime.store.getConversation(conv.id);
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.lastAnswer).toMatchObject({ status: "unknown" });
 	expect(after?.lastAnswer?.failureReason).toMatch(/disk full/);
 	expect(after?.unansweredInboundId).toBeNull();
@@ -308,7 +311,7 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	expect(failed.res.status).toBe(502);
 	expect(failed.body.error).toBe("send_failed");
 	expect("detail" in failed.body).toBe(false);
-	let state = await runtime.store.getConversation(refused.id);
+	let state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(state?.unansweredInboundId).toBe(refused.unansweredInboundId);
 	vi.stubGlobal(
@@ -317,7 +320,7 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	);
 	const retried = await approveReply(refused, { reply: "Second try" });
 	expect(retried.res.status).toBe(200);
-	state = await runtime.store.getConversation(refused.id);
+	state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.answers).toHaveLength(1);
 	expect(state?.lastAnswer).toMatchObject({
 		status: "sent",
@@ -337,7 +340,7 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	const unknown = await approveReply(lost);
 	expect(unknown.res.status).toBe(502);
 	expect(unknown.body.error).toBe("delivery_unknown");
-	state = await runtime.store.getConversation(lost.id);
+	state = await runtime.store.getOfficeConversation(lost.officeId, lost.id);
 	expect(state?.lastAnswer).toMatchObject({ status: "unknown" });
 	expect(state?.unansweredInboundId).toBeNull();
 	vi.stubGlobal(
@@ -458,7 +461,10 @@ test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 		const conv = await arrive({ pipe, guestId, text: "Hello" });
 		expect(conv.pipe, pipe).toBe(pipe);
 		// End to end: the value survives the write and the strict parse on the way back out.
-		const stored = await peekTestRuntime()?.store.getConversation(`walk-office:${pipe}:${guestId}`);
+		const stored = await peekTestRuntime()?.store.getOfficeConversation(
+			"walk-office",
+			`walk-office:${pipe}:${guestId}`,
+		);
 		expect(stored?.pipe, pipe).toBe(pipe);
 	}
 
@@ -523,9 +529,12 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 		expect(res.res.status, JSON.stringify(body)).toBe(200);
 	}
 	const runtime = peekTestRuntime();
-	const trimmed = await runtime?.store.getConversation("walk-office:zalo:guest-trim");
+	const trimmed = await runtime?.store.getOfficeConversation(
+		"walk-office",
+		"walk-office:zalo:guest-trim",
+	);
 	expect(trimmed?.messages[0]?.text).toBe("Looking to rent in Tay Ho");
-	const degraded = await runtime?.store.getConversation("walk-office:zalo:g4");
+	const degraded = await runtime?.store.getOfficeConversation("walk-office", "walk-office:zalo:g4");
 	expect(degraded?.guestName).toBeNull();
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
 });
@@ -566,7 +575,7 @@ test("inbox routes refuse requests without a session", async () => {
 	const approved = await approveReply(conv, { reply: "attacker text" });
 	expect(approved.res.status).toBe(401);
 
-	const after = await peekTestRuntime()?.store.getConversation(conv.id);
+	const after = await peekTestRuntime()?.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.sentAt).toBeNull();
 	expect(after?.answers).toEqual([]);
 });
@@ -576,7 +585,7 @@ test("two concurrent approvals send exactly once", async () => {
 	const [a, b] = await Promise.all([approveReply(conv), approveReply(conv)]);
 	const statuses = [a.res.status, b.res.status].sort((x, y) => x - y);
 	expect(statuses).toEqual([200, 409]);
-	const after = await peekTestRuntime()?.store.getConversation(conv.id);
+	const after = await peekTestRuntime()?.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
 	expect(after?.answers).toHaveLength(1);
 });
@@ -608,7 +617,7 @@ test("a live reply is refused when the thread arrived on an endpoint the office 
 	expect(refused.res.status).toBe(409);
 	expect(refused.body.error).toBe("pipe_not_connected");
 	// Nothing was recorded, nothing was sent.
-	const after = await runtime.store.getConversation(conv.id);
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
 	expect(after?.answers).toEqual([]);
 	// In mock mode the same thread is fine: no vendor identity is at stake.
@@ -635,7 +644,7 @@ test("a disconnected pipe refuses before anything is recorded, in a live or a mo
 		expect(refused.body.error).toBe("pipe_disconnected");
 	}
 	expect(fetchSpy).not.toHaveBeenCalled();
-	const after = await runtime.store.getConversation(conv.id);
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.answers).toEqual([]);
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
 });
@@ -653,7 +662,7 @@ test("approve does not echo vendor error bodies", async () => {
 	expect(failed.res.status).toBe(502);
 	expect(failed.body.error).toBe("send_failed");
 	expect(JSON.stringify(failed.body)).not.toContain("secret vendor detail");
-	const after = await runtime.store.getConversation(conv.id);
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
 });

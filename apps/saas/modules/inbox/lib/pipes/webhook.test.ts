@@ -58,8 +58,7 @@ test("inbound on a pipe no office has connected is acknowledged and dropped", as
 	const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 	const res = await handleInboundWebhook("zalo", zaloRequest("guest-1", "Xin chào"));
 	expect(res.status).toBe(200);
-	const store = peekTestRuntime()!.store;
-	expect(await store.listConversations()).toEqual([]);
+	expect(await testDb.conversation.count()).toBe(0);
 	expect(warn).toHaveBeenCalledWith(
 		expect.stringMatching(/no office owns this pipe/),
 		expect.objectContaining({ pipe: "zalo", pipeExternalId: "oa-1" }),
@@ -101,5 +100,5 @@ test("a bad signature is refused before anything is filed", async () => {
 		body: await request.text(),
 	});
 	expect((await handleInboundWebhook("zalo", tampered)).status).toBe(403);
-	expect(await store.listConversations()).toEqual([]);
+	expect(await testDb.conversation.count()).toBe(0);
 });

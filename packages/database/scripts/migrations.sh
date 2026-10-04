@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Migrations for hosted environments (ADR 0016). Dev keeps `db push`; these never touch the
-# dev database. `check` and `new` replay prisma/migrations into a throwaway database on the
-# same server and diff it against prisma/schema.prisma.
+# Migrations for hosted environments (ADR 0016). Every command replays prisma/migrations into a
+# throwaway database on the same server. `check` and `new` diff it against prisma/schema.prisma
+# and never touch DATABASE_URL; `baseline` is the one that writes to it.
 #   migrations.sh check         exit 1 if schema.prisma has changes no migration covers
 #   migrations.sh new <name>    write prisma/migrations/<timestamp>_<name>/migration.sql
+#   migrations.sh baseline      give a database built by `db push` a migration history: find the
+#                               longest run of migrations, from the first, whose replay equals its
+#                               schema, and mark those applied. `migrate deploy` applies the rest.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${DATABASE_URL:?DATABASE_URL must be set (the server to borrow a throwaway database from)}"
@@ -14,7 +17,7 @@ SCRATCH_URL=$(url_with_db "$SCRATCH_DB")
 cleanup() { psql "$ADMIN_URL" -qc "drop database if exists $SCRATCH_DB" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 psql "$ADMIN_URL" -qc "create database $SCRATCH_DB" >/dev/null
-DATABASE_URL="$SCRATCH_URL" pnpm exec prisma migrate deploy >/dev/null
+[ "${1:-}" = baseline ] || DATABASE_URL="$SCRATCH_URL" pnpm exec prisma migrate deploy >/dev/null
 
 case "${1:-}" in
   check)
@@ -33,5 +36,46 @@ case "${1:-}" in
       --to-schema prisma/schema.prisma --script -o "$dir/migration.sql"
     if ! grep -qv '^--' "$dir/migration.sql"; then rm -rf "$dir"; echo "No schema changes; nothing written."; exit 0; fi
     echo "Wrote $dir/migration.sql — review it before committing." ;;
-  *) echo "usage: migrations.sh check | new <name>" >&2; exit 2 ;;
+  baseline)
+    # libpq refuses Prisma's own URL parameters; use a direct (not pooled) URL on Neon.
+    TARGET_URL=$(node -e 'const u=new URL(process.env.DATABASE_URL);u.search="";process.stdout.write(u.toString())')
+    if psql "$TARGET_URL" -tAc "select to_regclass('_prisma_migrations')" | grep -q .; then
+      echo "This database already has a migration history; run migrate deploy." ; exit 0
+    fi
+    # Same statements: tables, columns, enums, indexes and constraints. Only a table's column
+    # order may differ (db push appends), so columns are sorted inside their own table.
+    schema_of() {
+      pg_dump -s -O -x -T _prisma_migrations "$1" | python3 -c '
+import sys
+lines = [l for l in sys.stdin.read().splitlines() if l and not l.startswith(("--", "\\"))]
+statements = []
+for s in "\n".join(lines).split(";\n"):
+    s = s.strip()
+    if s.startswith("CREATE TABLE"):
+        head, _, rest = s.partition("(\n")
+        body, _, tail = rest.rpartition("\n)")
+        columns = sorted(c.strip().rstrip(",") for c in body.split("\n"))
+        s = head + "(\n" + "\n".join(columns) + "\n)" + tail
+    statements.append(s)
+print("\n;\n".join(sorted(statements)))'
+    }
+    target="$(schema_of "$TARGET_URL")"
+    total=0 matched=0 names=""
+    for dir in prisma/migrations/*/; do
+      psql "$SCRATCH_URL" -q -v ON_ERROR_STOP=1 -f "$dir/migration.sql" >/dev/null
+      total=$((total + 1)) names="$names $(basename "$dir")"
+      [ "$(schema_of "$SCRATCH_URL")" = "$target" ] && matched=$total
+    done
+    if [ "$matched" -eq 0 ]; then
+      echo "No run of migrations from the first reproduces this database's schema. Not baselined." >&2
+      exit 1
+    fi
+    last=""
+    for name in $(echo $names | cut -d' ' -f1-"$matched"); do
+      pnpm exec prisma migrate resolve --applied "$name" >/dev/null
+      last=$name
+    done
+    echo "Baselined through $last ($matched of $total migrations marked applied)."
+    echo "Run migrate deploy for the rest." ;;
+  *) echo "usage: migrations.sh check | new <name> | baseline" >&2; exit 2 ;;
 esac

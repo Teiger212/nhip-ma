@@ -21,7 +21,7 @@ export async function applyOneShot(
 	if (!conversation) {
 		return null;
 	}
-	const inbound = await store.guestInboundText(conversation.id);
+	const inbound = await store.guestInboundText(conversation.officeId, conversation.id);
 	if (!inbound) {
 		return conversation;
 	}
@@ -29,7 +29,7 @@ export async function applyOneShot(
 	if (conversation.sentAt) {
 		shot.draft.reply = followUpTemplate(shot.language);
 	}
-	return store.setOneShot(conversation.id, shot);
+	return store.setOneShot(conversation.officeId, conversation.id, shot);
 }
 
 /**
@@ -57,11 +57,11 @@ export async function generateModelDraft(
 	if (!reply) {
 		return null;
 	}
-	const current = await runtime.store.getConversation(conversation.id);
+	const current = await runtime.store.getOfficeConversation(conversation.officeId, conversation.id);
 	if (!current || current.unansweredInboundId !== inboundId) {
 		return null;
 	}
-	return runtime.store.setDraft(conversation.id, {
+	return runtime.store.setDraft(conversation.officeId, conversation.id, {
 		reply,
 		answersMessageId: inboundId,
 		source: "model",
@@ -109,7 +109,7 @@ export async function afterGuestInbound(
 	}
 	const inbound = updated.messages.find((message) => message.id === updated.unansweredInboundId);
 	if (inbound) {
-		scheduleTranslations(runtime, inbound);
+		scheduleTranslations(runtime, updated.officeId, inbound);
 		if (updated.sentAt && updated.oneShot && runtime.drafts.provider !== "none") {
 			void runInBackground(`follow-up draft ${updated.id}`, async () => {
 				await generateModelDraft(runtime, updated);
@@ -252,7 +252,7 @@ export type ApproveInput = {
 export async function approveAndSend(
 	id: string,
 	input: ApproveInput,
-	viewer?: InboxViewer,
+	viewer: InboxViewer,
 ): Promise<InboxResult> {
 	const { store, config } = getRuntime();
 	const conv = await store.getConversation(id, viewer);
@@ -337,10 +337,11 @@ export async function approveAndSend(
 	// The Answer is written before the vendor call. Its unique inbound is the guard against
 	// a concurrent approval; its status is what decides whether a retry is ever allowed.
 	const begun = await store.beginAnswer({
+		officeId: conv.officeId,
 		conversationId: conv.id,
 		inboundId,
 		text,
-		operatorId: viewer?.userId ?? null,
+		operatorId: viewer.userId,
 	});
 	if (!begun.ok) {
 		switch (begun.reason) {
@@ -366,12 +367,12 @@ export async function approveAndSend(
 		const message = err instanceof Error ? err.message : "send failed";
 		if (err instanceof SendError) {
 			// The vendor refused, or nothing was sent: a definite failure the operator may retry.
-			await store.failAnswer(answerId, message);
+			await store.failAnswer(conv.officeId, answerId, message);
 			return { ok: false, status: 502, error: "send_failed", message, detail: err.detail };
 		}
 		// A network failure or timeout: the vendor may or may not have the message. Never
 		// retried automatically, and never approved again until a person has checked.
-		await store.markAnswerUnknown(answerId, message);
+		await store.markAnswerUnknown(conv.officeId, answerId, message);
 		return {
 			ok: false,
 			status: 502,
@@ -381,7 +382,7 @@ export async function approveAndSend(
 	}
 
 	try {
-		const updated = await store.completeAnswer(answerId, result);
+		const updated = await store.completeAnswer(conv.officeId, answerId, result);
 		if (!updated) {
 			return { ok: false, status: 404, error: "not_found" };
 		}
@@ -390,7 +391,9 @@ export async function approveAndSend(
 		// The vendor accepted but the record failed. The Answer stays on file as unknown, so
 		// the reply is not sent a second time; someone reconciles it against the vendor.
 		const message = err instanceof Error ? err.message : "record failed";
-		await store.markAnswerUnknown(answerId, `recorded_failed: ${message}`).catch(() => undefined);
+		await store
+			.markAnswerUnknown(conv.officeId, answerId, `recorded_failed: ${message}`)
+			.catch(() => undefined);
 		return {
 			ok: false,
 			status: 500,
@@ -406,7 +409,7 @@ export async function approveAndSend(
  * Without a model, or when the model's draft fails the post-check, the template is put
  * back so the box is never empty.
  */
-export async function regenerateDraft(id: string, viewer?: InboxViewer): Promise<InboxResult> {
+export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<InboxResult> {
 	const runtime = getRuntime();
 	const conv = await runtime.store.getConversation(id, viewer);
 	if (!conv) {
@@ -426,7 +429,7 @@ export async function regenerateDraft(id: string, viewer?: InboxViewer): Promise
 	const reply = conv.sentAt
 		? followUpTemplate(shot.language)
 		: draftReply(shot.language, shot.qualification);
-	const updated = await runtime.store.setDraft(conv.id, {
+	const updated = await runtime.store.setDraft(conv.officeId, conv.id, {
 		reply,
 		answersMessageId: conv.unansweredInboundId,
 		source: "template",

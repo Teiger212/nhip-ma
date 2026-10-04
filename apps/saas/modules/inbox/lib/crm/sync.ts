@@ -133,8 +133,9 @@ export function createCrmSync(deps: {
 			if (!trimmedToken) return "token_required";
 			if (!secretsKey) return "no_secrets_key";
 			const sealed = encryptSecret(trimmedToken, secretsKey, crmTokenContext(kind, officeId));
-			if (sameKind) await store.replaceCrmAccessToken(officeId, sealed);
-			else await store.setCrmConnection(officeId, kind, sealed);
+			// Another admin may change the kind meanwhile: the token goes only onto its own kind.
+			const replaced = sameKind && (await store.replaceCrmAccessToken(officeId, kind, sealed));
+			if (!replaced) await store.setCrmConnection(officeId, kind, sealed);
 			return "connected";
 		},
 
@@ -146,7 +147,7 @@ export function createCrmSync(deps: {
 		async newGuest(conversation: Conversation): Promise<void> {
 			const connection = (await connectionOf(conversation.officeId))?.connection;
 			if (!connection) return;
-			if (!(await store.claimCrmLink(conversation.id, conversation.officeId))) return;
+			if (!(await store.claimCrmLink(conversation.officeId, conversation.id))) return;
 			try {
 				await linkLead(
 					conversation,
@@ -154,7 +155,7 @@ export function createCrmSync(deps: {
 				);
 			} catch (error) {
 				// A failed write never blocks the thread: the guest's next message tries again.
-				await store.releaseCrmLink(conversation.id);
+				await store.releaseCrmLink(conversation.officeId, conversation.id);
 				throw error;
 			}
 		},
@@ -185,6 +186,7 @@ export function createCrmSync(deps: {
 				const outcome = reported[link.leadId];
 				if (!outcome) continue;
 				await store.saveCrmOutcome(
+					officeId,
 					link.conversationId,
 					link.leadId,
 					observeOutcome(link, outcome, now),
@@ -220,7 +222,7 @@ export function createCrmSync(deps: {
 		const matches = identity.phone || identity.zaloUserId ? await crm.findLeads(identity) : [];
 		const decision = decideLead(matches, identity);
 		if (decision.action === "ambiguous") {
-			await store.releaseCrmLink(conversation.id);
+			await store.releaseCrmLink(conversation.officeId, conversation.id);
 			return;
 		}
 		const lead =
@@ -234,7 +236,7 @@ export function createCrmSync(deps: {
 						fields: conversation.oneShot?.qualification ?? null,
 						threadUrl: deps.threadUrl(conversation.id),
 					});
-		await store.completeCrmLink(conversation.id, {
+		await store.completeCrmLink(conversation.officeId, conversation.id, {
 			leadId: lead.id,
 			leadName: lead.name,
 			method: decision.method,
