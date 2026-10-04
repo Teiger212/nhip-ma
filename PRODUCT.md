@@ -148,7 +148,8 @@ approved replies and fills the reply box when confident; no popup list), the wee
 CSV export.
 
 **Later, not shown**: internal notes, an admin audit log, a per-office AI kill switch,
-listing match, per-agent performance, nudges.
+listing match, per-agent performance, nudges, native iOS and Android apps built from the web
+app (#124).
 
 **"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
 live, and only if we are confident it ships. It names the feature, never a date.
