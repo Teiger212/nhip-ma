@@ -36,10 +36,9 @@ two offices, and which credentials a reply goes out on.
 ## Consequences
 
 - `Conversation.id` for new threads is `office:pipe:guest`; the unique index is on the
-  triple. Superseded on the id by the 2026-10-04 amendment below: the id is opaque. Pre-tenancy threads keep their `pipe:guest` ids and are adopted by an office
-  unless that guest already has a thread there, in which case they stay unowned and are
-  reported. Superseded on this point by ADR 0012: `officeId` is required and there is no
-  adopt path; every thread has an office from birth.
+  triple. Superseded on the id by the 2026-10-04 amendment below: the id is opaque, and
+  every thread was re-keyed. (ADR 0012 had already removed the pre-tenancy `pipe:guest`
+  threads and their adopt path: every thread has an office from birth.)
 - `Message.pipeExternalId` is the office's endpoint per message. `ZALO_OA_ID` names the
   OA the Zalo token belongs to; unset means the Zalo check is skipped.
 - The seed creates two logins: the agent (`walk@nhip.local`) and the platform admin
@@ -63,8 +62,10 @@ identity should not travel.
 - **The guest's phone or Zalo id is stored once**, on the thread (`guestId`, beside
   `guestName`). An Answer no longer copies it (`Answer.to` is dropped; a send reads the
   thread's `guestId`), and vendor message ids, which can encode the guest's WhatsApp number,
-  are stored as an HMAC-SHA256 under a key derived from `BETTER_AUTH_SECRET`. Clearing
-  `guestId` and `guestName` leaves nothing in Nhịp's tables that says who the guest was
-  (ADR 0020).
+  are stored as an HMAC-SHA256 under a key derived from `BETTER_AUTH_SECRET`. No thread id,
+  Answer, vendor message id or thread link names the guest. What else can still say who the
+  guest was, for deletion (ADR 0020, #138) to clear: the CRM link's `leadName` (the CRM's name
+  for the lead, the guest's phone or Zalo id when they gave no name), the mock CRM's leads,
+  and message and draft text.
 - **A link to a thread the operator cannot open** (an old link, another office's thread)
   says the conversation isn't here; it never opens another guest's thread.

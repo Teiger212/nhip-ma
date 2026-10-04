@@ -241,7 +241,7 @@ pipe_credential, webhook_delivery.
   `packages/database/inbox/store.ts`, zod vocabularies in `schema.ts`, domain types in
   `types.ts`. Routes call its methods, never Prisma directly.
 - **Thread identity** is (office, pipe, guest), the unique key inbound finds a thread by; the
-  id is opaque (a `cuid()`) and never names the guest (ADR 0010, amended by #141). The guest's
+  id is opaque (a `cuid()`; older threads were re-keyed to UUIDs) and never names the guest (ADR 0010, amended by #141). The guest's
   phone or Zalo id lives only in `Conversation.guestId`; vendor message ids are stored as keyed
   hashes (`packages/database/inbox/vendor-id.ts`).
 - **The office line is held by the database** (#95). Every office-owned row carries

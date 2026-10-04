@@ -79,36 +79,46 @@ export function Inbox() {
 	);
 	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
 
-	// Selection follows the list: stays put while the thread is there, otherwise advances
-	// (this is what moves to the next waiting guest after a send). A link is judged on arrival
-	// against every thread the operator can open, not just the current view's.
+	// A link (`?thread=`) waits for the list, then is judged against every thread the operator
+	// can open, not just the current view's: one they can't is "not here", never another
+	// guest's thread; one outside the view, search or owner filter (answered, say) opens in All.
+	// Otherwise selection follows the list: it stays put while the thread is there, otherwise
+	// advances (this is what moves to the next waiting guest after a send).
 	useEffect(() => {
-		if (conversationsQuery.isPending) return;
-		if (threadParam !== null && conversationsQuery.isSuccess) {
-			void setThreadParam(null);
-			if (!conversations.some((conversation) => conversation.id === threadParam)) {
+		if (threadParam !== null) {
+			if (!conversationsQuery.isSuccess) return;
+			if (!conversationsQuery.data.some((conversation) => conversation.id === threadParam)) {
 				setLinkMissing(true);
 				setSelectedId(null);
+				void setThreadParam(null);
 				return;
 			}
-			// A thread outside this view (answered, say) opens in All rather than being passed over.
 			if (!ordered.some((conversation) => conversation.id === threadParam)) {
 				void setView("all");
+				void setQuery(null);
+				void setOwnerFilter(null);
 				return;
 			}
+			setLinkMissing(false);
+			setSelectedId(threadParam);
+			setDetailOpen(true);
+			void setThreadParam(null);
+			return;
 		}
-		if (linkMissing) return;
+		if (conversationsQuery.isPending || linkMissing) return;
 		const next = nextSelection(ordered, selectedId);
 		if (next !== selectedId) setSelectedId(next);
 	}, [
 		conversationsQuery.isPending,
 		conversationsQuery.isSuccess,
-		conversations,
+		conversationsQuery.data,
 		ordered,
 		selectedId,
 		threadParam,
 		setThreadParam,
 		setView,
+		setQuery,
+		setOwnerFilter,
 		linkMissing,
 	]);
 

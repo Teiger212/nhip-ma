@@ -6,7 +6,7 @@ import type { Store } from "./types";
 
 /**
  * The office is the tenant (ADR 0010, #95): every store method acts for one office, and
- * an id of another office's row (thread ids are guessable, `office:pipe:guest`) reaches
+ * an id of another office's row (thread ids are opaque, but never trusted as a key) reaches
  * nothing there. The database holds the same line: a row's office is its thread's.
  */
 const OURS = "office-a";

@@ -299,7 +299,8 @@ enum AnswerStatus {
 }
 
 /// One thread per guest per office (ADR 0010): the unique key is (office, pipe, guest). The id
-/// is opaque (a cuid) and never names the guest, because it is part of every route (#141);
+/// is opaque (a cuid; threads from before #141 were re-keyed to UUIDs) and never names the
+/// guest, because it is part of every route;
 /// `guestId` is the only place the guest's phone or Zalo id is stored.
 model Conversation {
   id                 String         @id
