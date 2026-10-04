@@ -13,18 +13,20 @@ const OURS = "office-a";
 const THEIRS = "office-b";
 
 const guestWrites = (store: Store, officeId: string, guestId: string) =>
-	store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName: null,
-			text: "Looking to rent in Tay Ho",
-			vendorMessageId: null,
-			pipeExternalId: null,
-		},
-		officeId,
-	);
+	store
+		.upsertInbound(
+			{
+				pipe: "zalo",
+				source: "guest",
+				guestId,
+				guestName: null,
+				text: "Looking to rent in Tay Ho",
+				vendorMessageId: null,
+				pipeExternalId: null,
+			},
+			officeId,
+		)
+		.then((result) => result.conversation);
 
 /** Another office's thread with a sending Answer, a translation failure and a CRM claim. */
 async function theirThread(store: Store) {

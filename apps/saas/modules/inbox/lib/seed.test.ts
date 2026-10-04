@@ -52,17 +52,19 @@ test("seed finds an existing thread by guest and does not write it twice", async
 	await resetTestInbox();
 	const store = createInboxStore(testDb);
 	setRuntimeForTests({ store, config: mockInboxConfig(), drafts: noDraftAdapter });
-	const earlier = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "demo-vi-tayho",
-			guestName: "Thảo",
-			text: "old message",
-			vendorMessageId: null,
-		},
-		WALK_OFFICE_ID,
-	);
+	const earlier = (
+		await store.upsertInbound(
+			{
+				pipe: "zalo",
+				source: "guest",
+				guestId: "demo-vi-tayho",
+				guestName: "Thảo",
+				text: "old message",
+				vendorMessageId: null,
+			},
+			WALK_OFFICE_ID,
+		)
+	).conversation;
 	const seeded = await seedInbox(WALK_OFFICE_ID);
 	expect(seeded).toHaveLength(4);
 	const thao = seeded.find((conversation) => conversation.guestId === "demo-vi-tayho");

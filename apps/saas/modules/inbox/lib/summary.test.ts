@@ -26,18 +26,20 @@ function write(
 	minutes: number,
 	officeId = OFFICE,
 ) {
-	return store.upsertInbound(
-		{
-			pipe: "zalo",
-			source,
-			guestId,
-			guestName: guestId,
-			text,
-			vendorMessageId: null,
-			at: at(minutes),
-		},
-		officeId,
-	);
+	return store
+		.upsertInbound(
+			{
+				pipe: "zalo",
+				source,
+				guestId,
+				guestName: guestId,
+				text,
+				vendorMessageId: null,
+				at: at(minutes),
+			},
+			officeId,
+		)
+		.then((result) => result.conversation);
 }
 
 /** An approval of the guest's waiting message, left in flight unless `then` settles it. */

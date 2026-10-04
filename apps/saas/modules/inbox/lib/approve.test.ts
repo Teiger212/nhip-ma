@@ -79,18 +79,20 @@ async function connectZaloOa(oaId: string, { disconnected = false } = {}): Promi
 
 /** A guest message that arrived on the office's endpoint `pipeExternalId`. */
 async function arriveOn(pipe: "zalo" | "whatsapp", pipeExternalId: string, guestId: string) {
-	return peekTestRuntime()!.store.upsertInbound(
-		{
-			pipe,
-			source: "guest",
-			guestId,
-			guestName: null,
-			text: "Hello",
-			vendorMessageId: null,
-			pipeExternalId,
-		},
-		"walk-office",
-	);
+	return peekTestRuntime()!
+		.store.upsertInbound(
+			{
+				pipe,
+				source: "guest",
+				guestId,
+				guestName: null,
+				text: "Hello",
+				vendorMessageId: null,
+				pipeExternalId,
+			},
+			"walk-office",
+		)
+		.then((result) => result.conversation);
 }
 
 /**
@@ -617,18 +619,20 @@ test("a live reply is refused when the thread arrived on an endpoint the office 
 	const runtime = peekTestRuntime();
 	if (!runtime) throw new Error("runtime missing");
 	// The guest wrote to the office's second number; this deployment can only send from "phone-a".
-	const conv = await runtime.store.upsertInbound(
-		{
-			pipe: "whatsapp",
-			source: "guest",
-			guestId: "16315551199",
-			guestName: null,
-			text: "Hello",
-			vendorMessageId: null,
-			pipeExternalId: "phone-b",
-		},
-		"walk-office",
-	);
+	const conv = (
+		await runtime.store.upsertInbound(
+			{
+				pipe: "whatsapp",
+				source: "guest",
+				guestId: "16315551199",
+				guestName: null,
+				text: "Hello",
+				vendorMessageId: null,
+				pipeExternalId: "phone-b",
+			},
+			"walk-office",
+		)
+	).conversation;
 	setRuntimeForTests({
 		...runtime,
 		config: mockInboxConfig({

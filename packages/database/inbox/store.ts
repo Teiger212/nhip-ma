@@ -519,7 +519,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							select: { id: true },
 						});
 						if (duplicate) {
-							return threadId;
+							return { id: threadId, inserted: false };
 						}
 					}
 
@@ -543,16 +543,20 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							data: { lastGuestInboundAt: at, updatedAt: at },
 						});
 					}
-					return threadId;
+					return { id: threadId, inserted: true };
 				});
 			// A vendor retry or a guest's first two messages can race here. The loser hits a
 			// unique index (thread per guest, message per vendor id); run again and it finds
-			// the winner's row.
-			const id = await write().catch((error: unknown) => {
+			// the winner's row, so only one of them says it inserted (ADR 0019: only a new
+			// message alerts).
+			const written = await write().catch((error: unknown) => {
 				if (isUniqueViolation(error)) return write();
 				throw error;
 			});
-			return (await load(officeId, id)) as Conversation;
+			return {
+				conversation: (await load(officeId, written.id)) as Conversation,
+				inserted: written.inserted,
+			};
 		},
 
 		async deleteConversations(officeId, ids) {
@@ -951,6 +955,61 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				outcome: row.outcome as WebhookDelivery["outcome"],
 				receivedAt: row.receivedAt.toISOString(),
 			}));
+		},
+
+		async officeOperators(officeId) {
+			const members = await db.member.findMany({
+				where: { organizationId: officeId },
+				orderBy: { createdAt: "asc" },
+				select: { user: { select: { id: true, role: true, locale: true } } },
+			});
+			return members.map(({ user }) => ({
+				userId: user.id,
+				platformRole: user.role,
+				locale: user.locale,
+			}));
+		},
+
+		async recordAlert({ officeId, conversationId, userId, kind, now, link, sounds }) {
+			const id = cuid();
+			return db.$transaction(
+				async (tx) => {
+					// One operator's alerts on one thread are decided one at a time (ADR 0019), so
+					// two messages at once cannot both sound. Released at commit.
+					if (conversationId) {
+						await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}::text), hashtext(${conversationId}::text))`;
+					}
+					const previous = conversationId
+						? await tx.inboxAlert.findFirst({
+								where: { userId, conversationId },
+								orderBy: { createdAt: "desc" },
+								select: { createdAt: true },
+							})
+						: null;
+					const sounded = sounds(previous?.createdAt ?? null, now);
+					const row = await tx.inboxAlert.create({
+						data: {
+							id,
+							userId,
+							conversationId,
+							officeId,
+							kind,
+							sounded,
+							link: link(id),
+							createdAt: now,
+						},
+						select: { id: true, link: true, sounded: true },
+					});
+					return row;
+				},
+				// A burst queues its alerts behind the lock; each holds it for a read and an insert.
+				{ maxWait: 10_000, timeout: 20_000 },
+			);
+		},
+
+		async pruneAlerts(before) {
+			const { count } = await db.inboxAlert.deleteMany({ where: { createdAt: { lt: before } } });
+			return count;
 		},
 
 		async pruneWebhookDeliveries(before) {

@@ -308,6 +308,33 @@ export type WebhookDeliveryRecord = {
 
 export type WebhookDelivery = WebhookDeliveryRecord & { id: string; receivedAt: string };
 
+/** What `upsertInbound` filed: the thread, and whether the message was new (ADR 0019). */
+export type InboundResult = { conversation: Conversation; inserted: boolean };
+
+export type AlertKind = "guest" | "returned" | "assigned" | "test";
+
+/** An office member as the alert rules see them (ADR 0019). */
+export type AlertOperator = {
+	userId: string;
+	/** `user.role`: the platform admin is never alerted. */
+	platformRole: string | null;
+	/** `user.locale`; null means Vietnamese. */
+	locale: string | null;
+};
+
+export type NewAlert = {
+	officeId: string;
+	/** Null for a test alert. */
+	conversationId: string | null;
+	userId: string;
+	kind: AlertKind;
+	now: Date;
+	link: (alertId: string) => string;
+	sounds: (previousAt: Date | null, now: Date) => boolean;
+};
+
+export type RecordedAlert = { id: string; link: string; sounded: boolean };
+
 export type InboxStore = {
 	/**
 	 * Every thread the viewer can open, with everything under it. Scripts and tests read
@@ -324,8 +351,12 @@ export type InboxStore = {
 	 * no viewer: scoped to the office, without the agent's pool-and-own rule.
 	 */
 	getOfficeConversation: (officeId: string, id: string) => Promise<Conversation | null>;
-	/** Files the message under `officeId`; a thread that already has an office keeps it. */
-	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
+	/**
+	 * Files the message under `officeId`; a thread that already has an office keeps it.
+	 * `inserted` is false when the message was already stored (a vendor's retry, matched by its
+	 * vendor message id): nothing that follows a new message runs for it (ADR 0019).
+	 */
+	upsertInbound: (event: InboundEvent, officeId: string) => Promise<InboundResult>;
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
 	listPipeConnections: () => Promise<PipeConnection[]>;
@@ -434,6 +465,16 @@ export type InboxStore = {
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
 	/** Delete deliveries received before `before`; returns how many went. */
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
+	/** The office's members as alerts see them: platform role and locale (ADR 0019). */
+	officeOperators: (officeId: string) => Promise<AlertOperator[]>;
+	/**
+	 * Log one alert to one operator (ADR 0019). Whether it sounds is decided by `sounds` from
+	 * this operator's previous alert on the thread, read and written in one transaction under an
+	 * advisory lock on (operator, thread). `link` builds the row's link from its own id.
+	 */
+	recordAlert: (alert: NewAlert) => Promise<RecordedAlert>;
+	/** Delete alerts made before `before`; returns how many went. */
+	pruneAlerts: (before: Date) => Promise<number>;
 	/** The office's CRM (ADR 0003), or null when it has none; whether it holds an access token. */
 	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind; tokenSet: boolean } | null>;
 	/**
