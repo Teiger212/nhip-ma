@@ -12,29 +12,33 @@
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
 		"generate": "dotenv -c -e ../../.env -- prisma generate --no-hints",
 		"push": "dotenv -c -e ../../.env -- prisma db push",
-		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
+		"migrate": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
 		"type-check": "tsc --noEmit",
-		"test": "vitest run",
-		"migrate:deploy": "dotenv -c -e ../../.env -- prisma migrate deploy",
+		"migrate:deploy": "dotenv -c -e ../../.env -- ./scripts/migrate-deploy.sh",
 		"migrate:check": "dotenv -c -e ../../.env -- ./scripts/migrations.sh check",
 		"migrate:new": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new",
-		"migrate:baseline": "dotenv -c -e ../../.env -- ./scripts/migrations.sh baseline"
+		"migrate:baseline": "dotenv -c -e ../../.env -- ./scripts/migrations.sh baseline",
+		"migrate:lint": "./scripts/lint-migrations.sh",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@paralleldrive/cuid2": "^3.3.0",
 		"@prisma/adapter-pg": "catalog:",
 		"@prisma/client": "catalog:",
+		"@vercel/functions": "^3.9.11",
 		"pg": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
+		"@types/pg": "^8.20.0",
 		"dotenv": "catalog:",
 		"dotenv-cli": "catalog:",
 		"prisma": "catalog:",
 		"prisma-zod-generator": "catalog:",
+		"squawk-cli": "2.66.0",
 		"vitest": "catalog:"
 	}
 }

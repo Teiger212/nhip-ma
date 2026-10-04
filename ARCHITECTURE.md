@@ -256,11 +256,16 @@ pipe_credential, webhook_delivery.
   throwaway database and writes the diff. `migrate:check` fails when the schema has changes
   no migration covers; CI runs it. `migrate:deploy` applies them. Hosted environments
   migrate on build: `apps/saas/scripts/vercel-build.sh` runs `prisma migrate deploy` against
-  the direct (non-pooled) URL before building, and a failed migration fails the build, so the
-  previous deployment keeps serving. Migrations are additive and stay compatible with the
+  the direct (non-pooled) URL before building, with a 5s lock timeout
+  (`packages/database/scripts/migrate-deploy.sh`), and a failed migration fails the build, so
+  the previous deployment keeps serving. CI lints the migrations a PR adds with Squawk (#98). Migrations are additive and stay compatible with the
   release before (ADR 0016), so applying one ahead of its code is safe; AGENTS.md
   ("Migrations") has the expand/contract rule and its one recorded exception (#95), and
   `migrate:baseline` for giving a pushed dev database a migration history.
+- **Connections** (#98): `packages/database/prisma/client.ts` builds the app's `pg` pool
+  (10s connect timeout, attached to Vercel's Fluid compute with `attachDatabasePool`) and hands
+  it to Prisma's adapter. Hosted, the app connects through Neon's pooler as `nhip_app`, whose
+  role carries the server timeouts; migrations run as the owner (AGENTS.md, "Neon").
 - **Tests** use `supastarter_test` (Vitest) and `supastarter_e2e` (Playwright) on the same
   server as dev.
 
@@ -276,7 +281,7 @@ ADR 0016 and its amendment. One Vercel project `nhip`, one Neon project, both in
 ```
 
 - **CI** (`.github/workflows/ci.yml`) on every PR and push to `main`: lint, format check,
-  type check, Vitest, `migrate:check`, `seed:check`; then an E2E job that builds
+  type check, Vitest, `migrate:check`, `seed:check`, the migration lint (PRs); then an E2E job that builds
   production and runs Playwright over HTTPS through a local proxy
   (`tests/support/https-proxy.mjs`), against a Postgres service with `SEND_MODE=mock` and
   no retries.

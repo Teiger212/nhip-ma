@@ -1,0 +1,26 @@
+# Squawk lints the migrations a PR adds (#98; scripts/lint-migrations.sh). Every rule not listed
+# here is on, including the ones behind AGENTS.md's expand/contract table: adding-required-field,
+# adding-not-nullable-field, constraint-missing-not-valid, adding-foreign-key-constraint,
+# changing-column-type, renaming-column, renaming-table, ban-drop-column and ban-drop-table.
+# A deliberate exception gets `-- squawk-ignore <rule>` on the line before its statement, with why.
+pg_version = "18.0"
+# Verified 2026-10-04 on Prisma 7.9.1: migrate deploy runs a migration statement by statement.
+assume_in_transaction = false
+excluded_rules = [
+	# migrate-deploy.sh sets lock_timeout on the connection, for every statement of every migration.
+	"require-lock-timeout",
+	# Migrations run with no statement cap on purpose: a backfill on a big table must finish.
+	"require-statement-timeout",
+	# Prisma writes no IF NOT EXISTS; a migration that fails part way is resolved by hand (AGENTS.md).
+	"prefer-robust-stmts",
+	# Plain CREATE INDEX and DROP INDEX are fine at our table sizes (#98).
+	"require-concurrent-index-creation",
+	"require-concurrent-index-deletion",
+	# Prisma maps DateTime to timestamp(3) and always writes UTC.
+	"prefer-timestamp-tz",
+	# Prisma's Int is integer, and its ids are text: no counter here runs out.
+	"prefer-bigint-over-int",
+	"prefer-identity",
+	# Prisma appends a new enum value, which is what the schema says.
+	"require-enum-value-ordering",
+]
