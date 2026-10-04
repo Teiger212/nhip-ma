@@ -154,7 +154,7 @@ export function createCrmSync(deps: {
 				);
 			} catch (error) {
 				// A failed write never blocks the thread: the guest's next message tries again.
-				await store.releaseCrmLink(conversation.id);
+				await store.releaseCrmLink(conversation.officeId, conversation.id);
 				throw error;
 			}
 		},
@@ -185,6 +185,7 @@ export function createCrmSync(deps: {
 				const outcome = reported[link.leadId];
 				if (!outcome) continue;
 				await store.saveCrmOutcome(
+					officeId,
 					link.conversationId,
 					link.leadId,
 					observeOutcome(link, outcome, now),
@@ -220,7 +221,7 @@ export function createCrmSync(deps: {
 		const matches = identity.phone || identity.zaloUserId ? await crm.findLeads(identity) : [];
 		const decision = decideLead(matches, identity);
 		if (decision.action === "ambiguous") {
-			await store.releaseCrmLink(conversation.id);
+			await store.releaseCrmLink(conversation.officeId, conversation.id);
 			return;
 		}
 		const lead =
@@ -234,7 +235,7 @@ export function createCrmSync(deps: {
 						fields: conversation.oneShot?.qualification ?? null,
 						threadUrl: deps.threadUrl(conversation.id),
 					});
-		await store.completeCrmLink(conversation.id, {
+		await store.completeCrmLink(conversation.officeId, conversation.id, {
 			leadId: lead.id,
 			leadName: lead.name,
 			method: decision.method,

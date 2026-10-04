@@ -50,7 +50,9 @@ test("a new Zalo guest becomes one lead in the office's CRM, linked to the threa
 	});
 	expect(leads[0].fields).toMatchObject({ rentOrBuy: "rent" });
 	expect(JSON.stringify(leads[0])).not.toContain("Xin chào");
-	expect((await store.getConversation(conversation.id))?.crm).toMatchObject({
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm,
+	).toMatchObject({
 		leadId: leads[0].id,
 		leadName: "Thảo Nguyễn",
 		method: "created",
@@ -71,7 +73,9 @@ test("two simultaneous first messages leave one lead in the CRM", async () => {
 	]);
 
 	expect(await store.findMockCrmLeads(OFFICE)).toHaveLength(1);
-	expect((await store.getConversation(conversation.id))?.crm?.leadName).toBe("Minh");
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm?.leadName,
+	).toBe("Minh");
 });
 
 const existingLead = (over: { phone?: string | null; zaloUserId?: string | null; name?: string }) =>
@@ -96,7 +100,9 @@ test("a Zalo guest whose id is on a lead is linked to it, and no new lead is mad
 	await createCrmSync({ store, threadUrl }).newGuest(conversation);
 
 	expect((await store.findMockCrmLeads(OFFICE)).map((found) => found.id)).toEqual([lead.id]);
-	expect((await store.getConversation(conversation.id))?.crm).toMatchObject({
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm,
+	).toMatchObject({
 		leadId: lead.id,
 		leadName: "Thảo (from last year)",
 		method: "zaloId",
@@ -114,7 +120,9 @@ test("a guest matching two leads is linked to neither, and no lead is added", as
 	await createCrmSync({ store, threadUrl }).newGuest(conversation);
 
 	expect(await store.findMockCrmLeads(OFFICE)).toHaveLength(2);
-	expect((await store.getConversation(conversation.id))?.crm).toBeNull();
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm,
+	).toBeNull();
 });
 
 // Spec #59 (#61): an office with no CRM gets no lead and no link.
@@ -125,7 +133,9 @@ test("an office with no CRM makes no lead", async () => {
 	await createCrmSync({ store, threadUrl }).newGuest(conversation);
 
 	expect(await store.findMockCrmLeads(OFFICE)).toEqual([]);
-	expect((await store.getConversation(conversation.id))?.crm).toBeNull();
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm,
+	).toBeNull();
 });
 
 // Spec #59 story 16 (#61): a WhatsApp guest's number, in E.164, finds their lead.
@@ -138,7 +148,9 @@ test("a WhatsApp guest whose number is on a lead is linked to it by phone", asyn
 	await createCrmSync({ store, threadUrl }).newGuest(conversation);
 
 	expect((await store.findMockCrmLeads(OFFICE)).map((found) => found.id)).toEqual([lead.id]);
-	expect((await store.getConversation(conversation.id))?.crm).toMatchObject({
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm,
+	).toMatchObject({
 		leadId: lead.id,
 		leadName: "Minji Park",
 		method: "phone",
@@ -187,11 +199,13 @@ test("a WhatsApp guest whose number is on two leads is linked to neither, and no
 	await createCrmSync({ store, threadUrl }).newGuest(conversation);
 
 	expect(await store.findMockCrmLeads(OFFICE)).toHaveLength(2);
-	expect((await store.getConversation(conversation.id))?.crm).toBeNull();
+	expect(
+		(await store.getOfficeConversation(conversation.officeId, conversation.id))?.crm,
+	).toBeNull();
 });
 
 async function leadOf(conversationId: string) {
-	const conversation = await store.getConversation(conversationId);
+	const conversation = await store.getOfficeConversation(OFFICE, conversationId);
 	if (!conversation?.crm) throw new Error("the thread has no lead");
 	return conversation.crm;
 }
@@ -275,12 +289,14 @@ test("choosing the office's CRM again keeps its links; choosing none drops them,
 	await sync.newGuest(theirs);
 
 	await sync.connectOffice(OFFICE, "mock");
-	expect((await store.getConversation(ours.id))?.crm?.leadName).toBe("Minh");
+	expect((await store.getOfficeConversation(ours.officeId, ours.id))?.crm?.leadName).toBe("Minh");
 
 	await sync.connectOffice(OFFICE, null);
-	expect((await store.getConversation(ours.id))?.crm).toBeNull();
+	expect((await store.getOfficeConversation(ours.officeId, ours.id))?.crm).toBeNull();
 	expect(await store.getCrmConnection(OFFICE)).toBeNull();
-	expect((await store.getConversation(theirs.id))?.crm?.leadName).toBe("Lan");
+	expect((await store.getOfficeConversation(theirs.officeId, theirs.id))?.crm?.leadName).toBe(
+		"Lan",
+	);
 });
 
 // #62: an office that does not exist cannot be connected.

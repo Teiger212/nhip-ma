@@ -50,6 +50,7 @@ export function needsTranslation(message: Message, locale: OperatorLanguage): bo
 
 export function scheduleTranslation(
 	runtime: Runtime,
+	officeId: string,
 	message: Message,
 	locale: OperatorLanguage,
 ): Promise<void> | null {
@@ -70,13 +71,13 @@ export function scheduleTranslation(
 				to: locale,
 			});
 		} catch (error) {
-			await runtime.store.recordTranslationFailure(message.id, locale, new Date());
+			await runtime.store.recordTranslationFailure(officeId, message.id, locale, new Date());
 			throw error;
 		}
 		if (text) {
-			await runtime.store.setTranslation(message.id, locale, text);
+			await runtime.store.setTranslation(officeId, message.id, locale, text);
 		} else {
-			await runtime.store.recordTranslationFailure(message.id, locale, new Date());
+			await runtime.store.recordTranslationFailure(officeId, message.id, locale, new Date());
 		}
 	}).finally(() => {
 		inFlight.delete(id);
@@ -86,9 +87,9 @@ export function scheduleTranslation(
 }
 
 /** At ingest: the new guest message, into every operator language it is not already in. */
-export function scheduleTranslations(runtime: Runtime, message: Message): void {
+export function scheduleTranslations(runtime: Runtime, officeId: string, message: Message): void {
 	for (const locale of OperatorLanguage.options) {
-		void scheduleTranslation(runtime, message, locale);
+		void scheduleTranslation(runtime, officeId, message, locale);
 	}
 }
 
@@ -100,7 +101,7 @@ export function scheduleTranslations(runtime: Runtime, message: Message): void {
  */
 export function scheduleMissingTranslations(
 	runtime: Runtime,
-	conversation: Pick<Conversation, "id" | "messages">,
+	conversation: Pick<Conversation, "id" | "officeId" | "messages">,
 	locale: OperatorLanguage,
 ): void {
 	if (runtime.drafts.provider === "none") {
@@ -114,6 +115,7 @@ export function scheduleMissingTranslations(
 	}
 	void runInBackground(`translations ${conversation.id} ${locale}`, async () => {
 		const failures = await runtime.store.translationFailures(
+			conversation.officeId,
 			missing.map((message) => message.id),
 			locale,
 		);
@@ -121,7 +123,7 @@ export function scheduleMissingTranslations(
 		const now = Date.now();
 		for (const message of missing) {
 			if (translationRetryDue(byMessage.get(message.id), now)) {
-				void scheduleTranslation(runtime, message, locale);
+				void scheduleTranslation(runtime, conversation.officeId, message, locale);
 			}
 		}
 	});

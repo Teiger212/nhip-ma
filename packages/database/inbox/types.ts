@@ -307,13 +307,19 @@ export type WebhookDelivery = WebhookDeliveryRecord & { id: string; receivedAt: 
 
 export type InboxStore = {
 	/**
-	 * Every thread with everything under it. Scripts and tests read this; the inbox's list
+	 * Every thread the viewer can open, with everything under it. Scripts and tests read this; the inbox's list
 	 * reads `listConversationSummaries`, which stays small however long the threads get.
 	 */
-	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
+	listConversations: (viewer: InboxViewer) => Promise<Conversation[]>;
 	/** The threads this viewer can open (ADR 0015), most recently active first, as summaries. */
 	listConversationSummaries: (viewer: InboxViewer) => Promise<ConversationSummary[]>;
-	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
+	/** The thread, if this viewer can open it (ADR 0015); null otherwise, decided in the query. */
+	getConversation: (id: string, viewer: InboxViewer) => Promise<Conversation | null>;
+	/**
+	 * The office's thread for its own background work (drafts, translation, the CRM), which has
+	 * no viewer: scoped to the office, without the agent's pool-and-own rule.
+	 */
+	getOfficeConversation: (officeId: string, id: string) => Promise<Conversation | null>;
 	/** Files the message under `officeId`; a thread that already has an office keeps it. */
 	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
 	connectPipe: (connection: PipeConnection) => Promise<void>;
@@ -354,19 +360,26 @@ export type InboxStore = {
 	) => Promise<T>;
 	/** Delete these threads of the office with everything under them. Returns how many went. */
 	deleteConversations: (officeId: string, ids: string[]) => Promise<number>;
-	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
+	setOneShot: (officeId: string, id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
-	setDraft: (id: string, draft: Draft) => Promise<Conversation | null>;
+	setDraft: (officeId: string, id: string, draft: Draft) => Promise<Conversation | null>;
 	/** Store one guest message's rendering in one operator language; clears its failures. */
-	setTranslation: (messageId: string, locale: OperatorLanguage, text: string) => Promise<void>;
+	setTranslation: (
+		officeId: string,
+		messageId: string,
+		locale: OperatorLanguage,
+		text: string,
+	) => Promise<void>;
 	/** A translation attempt failed: count it and stamp when, so retries can back off. */
 	recordTranslationFailure: (
+		officeId: string,
 		messageId: string,
 		locale: OperatorLanguage,
 		at: Date,
 	) => Promise<void>;
 	/** The recorded failures of these messages into `locale`; messages without one are absent. */
 	translationFailures: (
+		officeId: string,
 		messageIds: string[],
 		locale: OperatorLanguage,
 	) => Promise<TranslationFailure[]>;
@@ -377,18 +390,23 @@ export type InboxStore = {
 	 * for the retry.
 	 */
 	beginAnswer: (input: {
+		officeId: string;
 		conversationId: string;
 		inboundId: string;
 		text: string;
 		operatorId: string | null;
 	}) => Promise<BeginAnswerResult>;
 	/** The vendor acknowledged: `sent`, the outbound message on the thread, `sentAt` on it. */
-	completeAnswer: (answerId: string, result: SendResult) => Promise<Conversation | null>;
+	completeAnswer: (
+		officeId: string,
+		answerId: string,
+		result: SendResult,
+	) => Promise<Conversation | null>;
 	/** The vendor definitely refused: `failed`. The operator may approve again. */
-	failAnswer: (answerId: string, reason: string) => Promise<void>;
+	failAnswer: (officeId: string, answerId: string, reason: string) => Promise<void>;
 	/** The vendor did not answer, or the acknowledgement could not be recorded: `unknown`. */
-	markAnswerUnknown: (answerId: string, reason: string) => Promise<void>;
-	guestInboundText: (id: string) => Promise<string>;
+	markAnswerUnknown: (officeId: string, answerId: string, reason: string) => Promise<void>;
+	guestInboundText: (officeId: string, id: string) => Promise<string>;
 	/**
 	 * The office funnel (ADR 0002) for leads whose first message landed on or after
 	 * `since`, counted in SQL inside the office; no thread leaves the store for a count.
@@ -455,9 +473,10 @@ export type InboxStore = {
 	 */
 	claimCrmLink: (conversationId: string, officeId: string) => Promise<boolean>;
 	/** Give up a claim that linked nothing, so a later guest message tries again. */
-	releaseCrmLink: (conversationId: string) => Promise<void>;
+	releaseCrmLink: (officeId: string, conversationId: string) => Promise<void>;
 	/** Record the lead a claimed thread is linked to. */
 	completeCrmLink: (
+		officeId: string,
 		conversationId: string,
 		link: { leadId: string; leadName: string; method: CrmLinkMethod },
 	) => Promise<void>;
@@ -480,7 +499,12 @@ export type InboxStore = {
 		leadIds: string[],
 	) => Promise<Array<{ conversationId: string; leadId: string } & CrmOutcome>>;
 	/** Cache a lead's outcome on a thread, only while the thread is still linked to that lead. */
-	saveCrmOutcome: (conversationId: string, leadId: string, outcome: CrmOutcome) => Promise<void>;
+	saveCrmOutcome: (
+		officeId: string,
+		conversationId: string,
+		leadId: string,
+		outcome: CrmOutcome,
+	) => Promise<void>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

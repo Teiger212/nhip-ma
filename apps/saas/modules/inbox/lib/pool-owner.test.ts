@@ -58,6 +58,7 @@ test("a new thread is in the pool: every agent and the manager see it", async ()
 test("the first approval claims: the owner keeps it, the other agent loses it, the manager sees it", async () => {
 	const conv = await guestWrites("g-claim");
 	const begun = await store.beginAnswer({
+		officeId: conv.officeId,
 		conversationId: conv.id,
 		inboundId: conv.unansweredInboundId!,
 		text: "Hi",
@@ -74,6 +75,7 @@ test("two agents approving the same pool thread at once end with one owner", asy
 	const conv = await guestWrites("g-race");
 	const approve = (operatorId: string) =>
 		store.beginAnswer({
+			officeId: conv.officeId,
 			conversationId: conv.id,
 			inboundId: conv.unansweredInboundId!,
 			text: `from ${operatorId}`,
@@ -125,13 +127,14 @@ test("the rollout backfill: the first sent Answer's approver owns it, if still a
 		[leftBehind, "agent-1"],
 	] as const) {
 		const begun = await store.beginAnswer({
+			officeId: conv.officeId,
 			conversationId: conv.id,
 			inboundId: conv.unansweredInboundId!,
 			text: "Hi",
 			operatorId,
 		});
 		if (!begun.ok) throw new Error("beginAnswer");
-		await store.completeAnswer(begun.answer.id, {
+		await store.completeAnswer(conv.officeId, begun.answer.id, {
 			mock: true,
 			pipe: "whatsapp",
 			to: conv.guestId,

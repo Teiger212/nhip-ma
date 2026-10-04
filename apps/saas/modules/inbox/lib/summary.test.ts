@@ -47,18 +47,24 @@ async function approve(
 	operatorId: string,
 	then: "sending" | "sent" | "failed" | "unknown",
 ) {
-	const begun = await store.beginAnswer({ conversationId, inboundId, text: "reply", operatorId });
+	const begun = await store.beginAnswer({
+		officeId: OFFICE,
+		conversationId,
+		inboundId,
+		text: "reply",
+		operatorId,
+	});
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
 	if (then === "sent") {
-		await store.completeAnswer(begun.answer.id, {
+		await store.completeAnswer(OFFICE, begun.answer.id, {
 			mock: true,
 			pipe: "zalo",
 			to: conversationId,
 			vendorMessageId: `mock-${begun.answer.id}`,
 		});
 	}
-	if (then === "failed") await store.failAnswer(begun.answer.id, "refused");
-	if (then === "unknown") await store.markAnswerUnknown(begun.answer.id, "timeout");
+	if (then === "failed") await store.failAnswer(OFFICE, begun.answer.id, "refused");
+	if (then === "unknown") await store.markAnswerUnknown(OFFICE, begun.answer.id, "timeout");
 }
 
 async function guestThenApproval(
@@ -85,7 +91,11 @@ beforeEach(async () => {
 
 	// Nobody has answered: Your turn, in the pool. The one-shot has run on it.
 	const fresh = await write("fresh", "guest", "Looking to rent in Tay Ho", 0);
-	await store.setOneShot(fresh.id, oneShot("Looking to rent in Tay Ho", fresh.unansweredInboundId));
+	await store.setOneShot(
+		fresh.officeId,
+		fresh.id,
+		oneShot("Looking to rent in Tay Ho", fresh.unansweredInboundId),
+	);
 	// Each approval claims the thread for its approver (ADR 0015).
 	await guestThenApproval("sent", "agent-1", "sent");
 	await guestThenApproval("failed", "agent-1", "failed");

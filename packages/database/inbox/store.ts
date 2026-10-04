@@ -442,9 +442,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 	}
 
 	return {
-		async listConversations(viewer?: InboxViewer) {
+		async listConversations(viewer) {
 			const records = await db.conversation.findMany({
-				where: viewer ? visibleTo(viewer) : undefined,
+				where: visibleTo(viewer),
 				orderBy: { updatedAt: "desc" },
 				include: CONVERSATION_INCLUDE,
 			});
@@ -476,7 +476,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return rows.map(mapSummary);
 		},
 
-		async getConversation(id, viewer?: InboxViewer) {
+		async getConversation(id, viewer) {
 			const conversation = await load(id);
 			if (!conversation) {
 				return null;
@@ -489,6 +489,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				return null;
 			}
 			return conversation;
+		},
+
+		async getOfficeConversation(_officeId, id) {
+			return load(id);
 		},
 
 		async upsertInbound(event: InboundEvent, officeId: string) {
@@ -567,7 +571,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
-		async setOneShot(id, shot: OneShot) {
+		async setOneShot(_officeId, id, shot: OneShot) {
 			if (!(await exists(id))) {
 				return null;
 			}
@@ -597,7 +601,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return load(id);
 		},
 
-		async setDraft(id, draft: Draft) {
+		async setDraft(_officeId, id, draft: Draft) {
 			if (!(await exists(id))) {
 				return null;
 			}
@@ -609,7 +613,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return load(id);
 		},
 
-		async setTranslation(messageId, locale, text) {
+		async setTranslation(_officeId, messageId, locale, text) {
 			await db.$transaction([
 				db.translation.upsert({
 					where: { messageId_locale: { messageId, locale } },
@@ -620,7 +624,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			]);
 		},
 
-		async recordTranslationFailure(messageId, locale, at) {
+		async recordTranslationFailure(_officeId, messageId, locale, at) {
 			await db.translationFailure.upsert({
 				where: { messageId_locale: { messageId, locale } },
 				create: { messageId, locale, attempts: 1, lastFailedAt: at },
@@ -628,7 +632,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			});
 		},
 
-		async translationFailures(messageIds, locale) {
+		async translationFailures(_officeId, messageIds, locale) {
 			if (messageIds.length === 0) return [];
 			const rows = await db.translationFailure.findMany({
 				where: { messageId: { in: messageIds }, locale },
@@ -728,7 +732,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 		},
 
-		async completeAnswer(answerId, result: SendResult) {
+		async completeAnswer(_officeId, answerId, result: SendResult) {
 			const answer = await db.answer.findUnique({ where: { id: answerId } });
 			if (!answer) {
 				return null;
@@ -769,14 +773,14 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return load(answer.conversationId);
 		},
 
-		async failAnswer(answerId, reason) {
+		async failAnswer(_officeId, answerId, reason) {
 			await db.answer.updateMany({
 				where: { id: answerId, status: "sending" },
 				data: { status: "failed", failedAt: new Date(), failureReason: reason },
 			});
 		},
 
-		async markAnswerUnknown(answerId, reason) {
+		async markAnswerUnknown(_officeId, answerId, reason) {
 			await db.answer.updateMany({
 				where: { id: answerId, status: "sending" },
 				data: { status: "unknown", failedAt: new Date(), failureReason: reason },
@@ -957,7 +961,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
-		async guestInboundText(id) {
+		async guestInboundText(_officeId, id) {
 			const messages = await db.message.findMany({
 				where: { conversationId: id, source: "guest" },
 				orderBy: [{ at: "asc" }, { seq: "asc" }],
@@ -1114,11 +1118,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count > 0;
 		},
 
-		async releaseCrmLink(conversationId) {
+		async releaseCrmLink(_officeId, conversationId) {
 			await db.crmLink.deleteMany({ where: { conversationId, leadId: null } });
 		},
 
-		async completeCrmLink(conversationId, link) {
+		async completeCrmLink(_officeId, conversationId, link) {
 			await db.crmLink.update({
 				where: { conversationId },
 				data: { ...link, linkedAt: new Date() },
@@ -1173,7 +1177,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			});
 		},
 
-		async saveCrmOutcome(conversationId, leadId, outcome) {
+		async saveCrmOutcome(_officeId, conversationId, leadId, outcome) {
 			// Only while the thread still links this lead: a relink meanwhile is not its outcome.
 			await db.crmLink.updateMany({
 				where: { conversationId, leadId },
