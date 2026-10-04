@@ -89,7 +89,7 @@ Required gates:
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.
 3. Run the relevant tests before considering the change complete.
-4. CI (`.github/workflows/ci.yml`) runs lint (warnings fail), format:check, type-check, Vitest, `migrate:check`, `seed:check` and the E2E suite on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
+4. CI (`.github/workflows/ci.yml`) runs lint (warnings fail), format:check, type-check, Vitest, `migrate:check`, `seed:check`, the migration lint (PRs only) and the E2E suite on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
 **What gets a test (decided 2026-09-27).** Anything a person does (an agent or admin
 clicking, linking, approving, configuring) is tested end to end, not with unit tests;
@@ -141,9 +141,15 @@ one real round trip from a phone over WhatsApp and Zalo.
 linked branch's `DATABASE_URL` into `.env.local` and repoints dev without asking.
 Neon branches: `production` (default), `staging` (schema from `prisma migrate deploy`,
 never seeded: the seed's password is public), and `dev` (a schema-only copy of `staging`,
-seeded with the demo logins and threads; nothing real). Staging and production each have one
-login role, `neondb_owner`; a separate app role `nhip_app` for the app's pooled connection is
-planned (#98).
+seeded with the demo logins and threads; nothing real). Each of staging and production has two
+login roles (#98). Migrations run as the owner, `neondb_owner`, over `DIRECT_DATABASE_URL`, with
+no statement cap. The app connects through the pooler as `nhip_app` (`DATABASE_URL`), which
+reads and writes rows only and carries `statement_timeout` 25s and
+`idle_in_transaction_session_timeout` 30s (`packages/database/sql/app-role.sql`, run by Eyal per
+docs/setup-checklist.md; until then the app still connects as `neondb_owner`). Server timeouts
+never go in the app's pool config: pg sends them as startup parameters, and Neon's pooler
+refuses the connection. The pool itself (`packages/database/prisma/client.ts`) gives up a
+connection after 10s and is attached to Vercel's Fluid compute (`attachDatabasePool`).
 
 **Worktree databases (decided 2026-10-03).** Each worktree has its own databases, so worktrees
 on different schemas never break each other. `scripts/worktree-db.sh <worktree>` creates the dev
@@ -171,6 +177,27 @@ database no run reproduces, and does nothing on one that already has a history. 
 migrations with `migrate:new <name>` and read them: Prisma cannot fill a new required column on
 a table that has rows, so add it nullable, backfill it, then set it `NOT NULL`, in the same file.
 The main dev DB was baselined on 2026-10-04.
+
+**Lint and lock timeout (#98).** CI lints the migrations a PR adds with Squawk, never applied
+ones (`migrate:lint`; the rules, and why some are off, are in `packages/database/.squawk.toml`).
+Lint a new one with `pnpm --filter @repo/database migrate:lint prisma/migrations/<dir>/migration.sql`.
+A deliberate exception gets `-- squawk-ignore <rule>` on the line before its statement, with a
+comment saying why: a new table's foreign keys (`adding-foreign-key-constraint,
+constraint-missing-not-valid`, no rows to scan), or the drop in a contract deploy
+(`ban-drop-column`). `migrate:deploy` and hosted builds run `scripts/migrate-deploy.sh`, which
+sets `lock_timeout` 5s on the connection: a migration blocked on a lock fails the build instead
+of queueing every request behind it.
+
+**A migration that fails.** Prisma runs a migration statement by statement, not in one
+transaction (verified 2026-10-04 on Prisma 7.9.1), so a failure leaves the statements before it
+applied. Its failed row in `_prisma_migrations` makes every later deploy refuse (P3009) until it
+is resolved, against `DIRECT_DATABASE_URL` from `packages/database`:
+
+1. See which of its statements applied (the build log names the one that failed).
+2. Either undo them and run `pnpm exec prisma migrate resolve --rolled-back <name>`, so the next
+   deploy runs it again; or apply the rest by hand and run `--applied <name>`.
+3. Redeploy. A lock timeout on the migration's first statement applied nothing: resolve it
+   `--rolled-back` and redeploy once the lock's holder is gone.
 
 **Schema changes are expand/contract.** A deploy runs `migrate deploy` before the new code
 serves, while the previous deployment still serves, so every migration must work with the code
@@ -207,8 +234,8 @@ The repo is not linked; agents read the project with the Vercel CLI by passing
 `VERCEL_ORG_ID=team_ADLKpom8d1SF6Gi0X4EaZxlR VERCEL_PROJECT_ID=prj_SLx3Ca2WEF7KpmpHXewJBrwe0rVG`.
 Eyal changes project settings in the UI.
 Hosted builds run `pnpm run build:vercel` (`apps/saas/scripts/vercel-build.sh`): `prisma migrate
-deploy` against `DIRECT_DATABASE_URL` (the environment's direct Neon URL), then the build; a
-failed migration fails the build and the previous deployment keeps serving.
+deploy` against `DIRECT_DATABASE_URL` (the environment's direct Neon URL) with a 5s lock timeout,
+then the build; a failed migration fails the build and the previous deployment keeps serving.
 Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` table) and a
 Firewall rule of 300 requests/min per IP on `/api/` and `/webhooks/`.
 
@@ -228,7 +255,17 @@ The workflow waits for Eyal's approval (the `release` environment's required rev
 then fast-forwards `production` with the deploy key and links Vercel's production deployment
 in the run summary. To check a commit beforehand, run
 `scripts/release/check-release.sh <sha>`. To go back, use Vercel's instant rollback, never an
-older release: the gate refuses one. `scripts/release/check-release.test.sh` checks the gate
+older release: the gate refuses one.
+
+**Rolling back after a migration (#98).** Instant rollback is safe only while the older code
+still works on the new schema, which expand/contract keeps true. After a release whose
+migration breaks the code before it (its PR says so, see "Schema changes are expand/contract"),
+instant rollback is unsafe: the old code's writes fail on the new schema. Roll forward with a
+fix, or restore the database from a Neon branch. Production's restore window is 6 hours
+(`history_retention_seconds` 21600, read from the Neon API on 2026-10-04; the free plan), so a
+bad migration noticed the next morning is past it. Before releasing such a migration, branch
+`production` from a folder outside the repo, so a restore point outlives the window:
+`neon branches create --name pre-vX.Y.Z --parent production --project-id lingering-bonus-85587787`. `scripts/release/check-release.test.sh` checks the gate
 against known commits; it reads GitHub, so it runs by hand. Notes:
 
 - **A refused release** leaves its tag behind; remove both with

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-04 (safer migrations and connections before go-live)
+
+### Changed
+
+- **New migrations are linted in CI** (#98). Squawk checks the migrations a PR adds against the expand/contract rules: a required column without a default, `SET NOT NULL` in one deploy, or a foreign key on existing rows without `NOT VALID` fails the PR (`migrate:lint`, rules in `packages/database/.squawk.toml`).
+- **A migration blocked on a lock fails the build within 5s** instead of queueing every request behind it: hosted builds and `migrate:deploy` set `lock_timeout` on the migration connection (`scripts/migrate-deploy.sh`).
+- **The app's connections give up after 10s** instead of hanging on a cold or unreachable database, and release idle connections before a Fluid compute instance suspends (`attachDatabasePool`). The app's role `nhip_app` (`packages/database/sql/app-role.sql`) carries the server timeouts; Eyal creates it on staging and production.
+- **Rolling back after a migration:** AGENTS.md says when Vercel's instant rollback is unsafe, and that production's restore window is 6 hours.
+
 ## 2026-10-04 (the database holds the office line)
 
 ### Changed
