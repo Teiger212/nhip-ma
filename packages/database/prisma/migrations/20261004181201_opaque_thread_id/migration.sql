@@ -6,26 +6,23 @@
 -- never sees; on staging a few such rows may remain. Vercel's instant rollback to a deployment
 -- from before #141 is unsafe from here (with `20261004182359_drop_answer_to`, its approvals fail).
 
--- Every thread takes an opaque id (a UUID here; new threads take a cuid). Old and new are kept
--- side by side first, so the mock CRM's links can be rewritten by the id they actually name.
-CREATE TEMP TABLE "thread_rekey" AS
-SELECT "id" AS "old", "officeId", gen_random_uuid()::text AS "new" FROM "inbox_conversation";
-
--- A mock CRM lead links to the thread that created it (`?thread=<id>`, the id URI-encoded); a
--- lead reused by another thread keeps that link. Point each at its thread's new id. HubSpot
--- deals made before this keep their stale links (accepted, test data).
-UPDATE "inbox_mock_crm_lead" AS "lead"
-SET "threadUrl" = regexp_replace("lead"."threadUrl", '([?&]thread=)[^&#]*', '\1' || "k"."new")
-FROM "thread_rekey" AS "k"
-WHERE "k"."officeId" = "lead"."officeId"
-	AND replace(substring("lead"."threadUrl" FROM '[?&]thread=([^&#]*)'), '%3A', ':') = "k"."old";
-
--- The six foreign keys to "inbox_conversation" ("id", "officeId") are ON UPDATE CASCADE
+-- Every thread takes an opaque id (a UUID here; new threads take a cuid). The six foreign keys
+-- to "inbox_conversation" ("id", "officeId") are ON UPDATE CASCADE
 -- (20261004074733_office_on_every_row): every message, Answer, qualification, draft,
 -- paperwork and CRM link follows its thread.
-UPDATE "inbox_conversation" AS "c" SET "id" = "k"."new" FROM "thread_rekey" AS "k" WHERE "c"."id" = "k"."old";
+UPDATE "inbox_conversation" SET "id" = gen_random_uuid()::text;
 
-DROP TABLE "thread_rekey";
+-- A mock CRM lead links to the thread that created it. Through that thread's CRM link (method
+-- `created`; a lead found again by phone or Zalo id keeps its creator's link), point the lead
+-- at the thread's new id. A lead whose creating thread is gone keeps its old link (its row
+-- holds the guest's phone anyway); HubSpot deals made before this keep their stale links.
+-- Both are accepted: test data.
+UPDATE "inbox_mock_crm_lead" AS "lead"
+SET "threadUrl" = regexp_replace("lead"."threadUrl", '([?&]thread=)[^&#]*', '\1' || "link"."conversationId")
+FROM "inbox_crm_link" AS "link"
+WHERE "link"."leadId" = "lead"."id"
+	AND "link"."officeId" = "lead"."officeId"
+	AND "link"."method" = 'created';
 
 -- Vendor message ids are stored keyed and hashed from now on (HMAC-SHA256 under a key derived
 -- from BETTER_AUTH_SECRET, `packages/database/inbox/vendor-id.ts`). The stored value's only

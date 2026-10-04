@@ -31,11 +31,10 @@ const inbound = (guestId: string, text = "Xin chào", pipeExternalId: string | n
 
 let sends = 0;
 /** Vendor ids are unique per message, as a real vendor's are. */
-const mockSend = (to: string) => ({
+const mockSend = (guest: string) => ({
 	mock: true,
 	pipe: "zalo" as const,
-	to,
-	vendorMessageId: `mock-${to}-${++sends}`,
+	vendorMessageId: `mock-${guest}-${++sends}`,
 });
 
 type Store = Awaited<ReturnType<typeof testInboxStore>>;
@@ -234,7 +233,6 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 	const done = await store.completeAnswer(OFFICE, retried.answer.id, {
 		mock: false,
 		pipe: "zalo",
-		to: "life",
 		vendorMessageId: "z-1",
 	});
 	// The vendor's id is kept keyed and hashed, never as the vendor wrote it (#141).

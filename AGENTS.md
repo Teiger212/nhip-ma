@@ -443,6 +443,10 @@ Canonical auth examples:
 
 ## Config & environment variables
 
+`BETTER_AUTH_SECRET` also keys the hash vendor message ids are stored as (#141,
+`packages/database/inbox/vendor-id.ts`). Rotating it breaks duplicate detection across the
+rotation: a vendor retry of a message that arrived before is filed again.
+
 Server-only variables are unprefixed; browser-visible ones use `NEXT_PUBLIC_`. Local
 secrets go in `.env.local`, which is never committed. App runtime configuration and
 aliases belong in the app's config/tsconfig, not a package.

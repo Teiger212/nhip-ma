@@ -94,7 +94,6 @@ test("one office cannot answer, complete, fail or mark another office's Answer",
 		store.completeAnswer(OURS, answerId, {
 			mock: true,
 			pipe: "zalo",
-			to: "their-guest",
 			vendorMessageId: "planted",
 		}),
 	);

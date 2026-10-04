@@ -59,7 +59,7 @@ export function Inbox() {
 	// `?thread=` opens one thread on arrival (Home's Waiting now and CRM leads link here); it
 	// is read once, then dropped from the URL, so the selection stays local like every other click.
 	const [threadParam, setThreadParam] = useQueryState("thread");
-	const [selectedId, setSelectedId] = useState<string | null>(threadParam);
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [detailOpen, setDetailOpen] = useState(threadParam !== null);
 	// The link named no thread this operator can open (an old link, another office's thread):
 	// say so, and open nothing until they choose, never another guest's thread (#141).

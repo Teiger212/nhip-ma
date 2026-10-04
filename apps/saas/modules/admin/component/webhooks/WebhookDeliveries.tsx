@@ -14,7 +14,6 @@ type Delivery = {
 	officeIds: string[];
 	filed: number;
 	dropped: number;
-	vendorMessageIds: string[];
 	errorKind: string | null;
 };
 
@@ -85,11 +84,6 @@ export function WebhookDeliveries() {
 								{delivery.endpoints.length > 0 && (
 									<span className="text-muted-foreground">
 										{t("endpoint", { endpoints: delivery.endpoints.join(", ") })}
-									</span>
-								)}
-								{delivery.vendorMessageIds.length > 0 && (
-									<span className="font-mono text-xs break-all text-muted-foreground">
-										{delivery.vendorMessageIds.join(", ")}
 									</span>
 								)}
 								{delivery.errorKind && (

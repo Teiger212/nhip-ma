@@ -58,7 +58,6 @@ async function sent(store: Store, { officeId, id }: Thread, inboundId: string) {
 	await store.completeAnswer(officeId, begun.answer.id, {
 		mock: true,
 		pipe: "zalo",
-		to: "guest",
 		vendorMessageId: `mock-${inboundId}`,
 	});
 }

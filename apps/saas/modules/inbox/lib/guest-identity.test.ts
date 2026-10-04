@@ -77,7 +77,6 @@ test("no stored thread id, answer or vendor-id column contains the guest's id", 
 	await store.completeAnswer(OFFICE, begun.answer.id, {
 		mock: false,
 		pipe: "whatsapp",
-		to: PHONE,
 		vendorMessageId: REPLY_WAMID,
 	});
 	await store.recordWebhookDelivery({

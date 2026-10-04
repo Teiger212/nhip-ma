@@ -63,7 +63,11 @@ identity should not travel.
   `guestName`). An Answer no longer copies it (`Answer.to` is dropped; a send reads the
   thread's `guestId`), and vendor message ids, which can encode the guest's WhatsApp number,
   are stored as an HMAC-SHA256 under a key derived from `BETTER_AUTH_SECRET`. No thread id,
-  Answer, vendor message id or thread link names the guest. What else can still say who the
+  Answer, vendor message id or thread link Nhịp writes from now on names the guest. Links
+  written before #141 can: HubSpot deals' links, a mock CRM lead whose creating thread was gone
+  at migration, and rows the previous deployment wrote during the deploy window. Rotating
+  `BETTER_AUTH_SECRET` re-keys the vendor-id hash, so a vendor retry across a rotation is not
+  recognised as a duplicate. What else can still say who the
   guest was, for deletion (ADR 0020, #138) to clear: the CRM link's `leadName` (the CRM's name
   for the lead, the guest's phone or Zalo id when they gave no name), the mock CRM's leads,
   and message and draft text.

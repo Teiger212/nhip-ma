@@ -85,7 +85,6 @@ export type Message = {
 export type SendResult = {
 	mock: boolean;
 	pipe: Pipe;
-	to: string;
 	text?: string;
 	vendorMessageId: string | null;
 };

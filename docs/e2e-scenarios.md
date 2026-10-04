@@ -163,9 +163,10 @@ time: nothing in it can be trusted.
    each signed delivery goes to an OA id of its own and is known by that endpoint; a refused
    delivery carries no endpoint, so the spec knows its own by where it sits between two signed
    ones).
-2. **No guest data in the log.** The page never shows a message's text or the guest's id, nor
-   the vendor's message id as the vendor sent it (a WhatsApp message id can carry the guest's
-   number; #141 keeps only a keyed hash of it). A delivery is known by its endpoint and outcome.
+2. **No guest data in the log.** The page never shows a message's text, the guest's id, or the
+   vendor's message id (a WhatsApp message id can carry the guest's number; #141 stores only a
+   keyed hash of it, which the page does not show). A delivery is known by its endpoint and
+   outcome.
    Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 2; the API's answer too; Zalo
    message ids stand in for WhatsApp's, the rule being the same for every vendor id).
 3. **Only the platform admin sees it.** An agent sees no Webhooks page; its API refuses the
