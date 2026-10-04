@@ -1,7 +1,7 @@
-import { Funnel, conversationId } from "@repo/database/inbox";
+import { Funnel } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
-import { testInboxStore } from "./test-store";
+import { testDb, testInboxStore } from "./test-store";
 
 /**
  * The funnel (ADR 0002) counted from Answers (ADR 0011): a lead is a guest who first
@@ -34,31 +34,44 @@ const inbound = (guestId: string, at: number, text = "Xin chào") => ({
 
 type Store = Awaited<ReturnType<typeof testInboxStore>>;
 
-/** A thread's office: its id leads with it (`conversationId`). */
-const officeOf = (id: string) => id.split(":")[0];
+/** A thread as the helpers below act on it: its office and its (opaque) id. */
+type Thread = { officeId: string; id: string };
+
+/** The guest's Zalo thread at `officeId`, found as the store finds it: by (office, pipe, guest). */
+async function threadOf(officeId: string, guestId: string): Promise<Thread> {
+	return testDb.conversation.findUniqueOrThrow({
+		where: { officeId_pipe_guestId: { officeId, pipe: "zalo", guestId } },
+		select: { officeId: true, id: true },
+	});
+}
 
 /** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
-async function sent(store: Store, id: string, inboundId: string) {
+async function sent(store: Store, { officeId, id }: Thread, inboundId: string) {
 	const begun = await store.beginAnswer({
-		officeId: officeOf(id),
+		officeId,
 		conversationId: id,
 		inboundId,
 		text: "Reply",
 		operatorId: "agent-1",
 	});
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	await store.completeAnswer(officeOf(id), begun.answer.id, {
+	await store.completeAnswer(officeId, begun.answer.id, {
 		mock: true,
 		pipe: "zalo",
-		to: id.split(":").at(-1) ?? "",
+		to: "guest",
 		vendorMessageId: `mock-${inboundId}`,
 	});
 }
 
 /** Approve, then let the vendor refuse or go silent: the Answer never counts as received. */
-async function notSent(store: Store, id: string, inboundId: string, how: "failed" | "unknown") {
+async function notSent(
+	store: Store,
+	{ officeId, id }: Thread,
+	inboundId: string,
+	how: "failed" | "unknown",
+) {
 	const begun = await store.beginAnswer({
-		officeId: officeOf(id),
+		officeId,
 		conversationId: id,
 		inboundId,
 		text: "Reply",
@@ -66,14 +79,14 @@ async function notSent(store: Store, id: string, inboundId: string, how: "failed
 	});
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
 	if (how === "failed") {
-		await store.failAnswer(officeOf(id), begun.answer.id, "vendor refused");
+		await store.failAnswer(officeId, begun.answer.id, "vendor refused");
 	} else {
-		await store.markAnswerUnknown(officeOf(id), begun.answer.id, "timeout");
+		await store.markAnswerUnknown(officeId, begun.answer.id, "timeout");
 	}
 }
 
-async function lastInboundId(store: Store, id: string): Promise<string> {
-	const conversation = await store.getOfficeConversation(officeOf(id), id);
+async function lastInboundId(store: Store, { officeId, id }: Thread): Promise<string> {
+	const conversation = await store.getOfficeConversation(officeId, id);
 	const message = conversation?.messages.filter((m) => m.direction === "in").at(-1);
 	if (!message) throw new Error(`no inbound on ${id}`);
 	return message.id;
@@ -88,13 +101,13 @@ test("the funnel counts leads, engaged and in conversation for one office in the
 	// with the real clock, so the write-back is dated a minute ahead). Lead, engaged, in
 	// conversation.
 	await store.upsertInbound(inbound("minji", now - 3 * DAY), OFFICE);
-	const minji = conversationId(OFFICE, "zalo", "minji");
+	const minji = await threadOf(OFFICE, "minji");
 	await sent(store, minji, await lastInboundId(store, minji));
 	await store.upsertInbound(inbound("minji", now + MINUTE, "Cảm ơn"), OFFICE);
 
 	// Yuki: wrote in, was answered, never wrote back. Lead, engaged.
 	await store.upsertInbound(inbound("yuki", now - 2 * DAY), OFFICE);
-	const yuki = conversationId(OFFICE, "zalo", "yuki");
+	const yuki = await threadOf(OFFICE, "yuki");
 	await sent(store, yuki, await lastInboundId(store, yuki));
 
 	// Alexei: wrote in twice, nobody answered. Two guest messages are not an exchange.
@@ -103,7 +116,7 @@ test("the funnel counts leads, engaged and in conversation for one office in the
 
 	// Thảo: the send failed, then a later approval's outcome is unknown. Never received.
 	await store.upsertInbound(inbound("thao", now - 2 * DAY), OFFICE);
-	const thao = conversationId(OFFICE, "zalo", "thao");
+	const thao = await threadOf(OFFICE, "thao");
 	await notSent(store, thao, await lastInboundId(store, thao), "failed");
 	await store.upsertInbound(inbound("thao", now - 1 * DAY, "Still here"), OFFICE);
 	await notSent(store, thao, await lastInboundId(store, thao), "unknown");
@@ -111,13 +124,13 @@ test("the funnel counts leads, engaged and in conversation for one office in the
 	// Old: first wrote in 40 days ago, answered and wrote back inside the window. Not a lead
 	// of this window: the cohort is by first contact, so the funnel narrows monotonically.
 	await store.upsertInbound(inbound("old", now - 40 * DAY), OFFICE);
-	const old = conversationId(OFFICE, "zalo", "old");
+	const old = await threadOf(OFFICE, "old");
 	await sent(store, old, await lastInboundId(store, old));
 	await store.upsertInbound(inbound("old", now + MINUTE, "Back again"), OFFICE);
 
 	// Another office's guest, answered and back: invisible here.
 	await store.upsertInbound(inbound("elsewhere", now - 2 * DAY), OTHER_OFFICE);
-	const elsewhere = conversationId(OTHER_OFFICE, "zalo", "elsewhere");
+	const elsewhere = await threadOf(OTHER_OFFICE, "elsewhere");
 	await sent(store, elsewhere, await lastInboundId(store, elsewhere));
 	await store.upsertInbound(inbound("elsewhere", now + MINUTE, "Back"), OTHER_OFFICE);
 
@@ -151,7 +164,7 @@ test("response time is first inbound to first sent Answer, median and p90 over a
 		["e", 90],
 	] as const) {
 		await store.upsertInbound(inbound(guest, now - minutes * MINUTE), OFFICE);
-		const id = conversationId(OFFICE, "zalo", guest);
+		const id = await threadOf(OFFICE, guest);
 		await sent(store, id, await lastInboundId(store, id));
 	}
 	// An unanswered lead has no response time and does not drag the numbers.
@@ -200,8 +213,8 @@ test("a reply from the vendor's own app reaches the lead, and the earliest reply
 		{ ...inbound("phone", now - 50 * MINUTE, "Da, em gui anh can nay"), source: "oa-echo" },
 		OFFICE,
 	);
-	const both = conversationId(OFFICE, "zalo", "both");
 	await store.upsertInbound(inbound("both", now - 60 * MINUTE), OFFICE);
+	const both = await threadOf(OFFICE, "both");
 	await store.upsertInbound(
 		{ ...inbound("both", now - 30 * MINUTE, "from the phone"), source: "oa-echo" },
 		OFFICE,
@@ -226,8 +239,8 @@ test("a reply from the vendor's own app reaches the lead, and the earliest reply
 test("a live deployment's funnel leaves mock sends out", async () => {
 	const store = await testInboxStore();
 	const now = Date.now();
-	const id = conversationId(OFFICE, "zalo", "mocked");
 	await store.upsertInbound(inbound("mocked", now - 60 * MINUTE), OFFICE);
+	const id = await threadOf(OFFICE, "mocked");
 	await sent(store, id, await lastInboundId(store, id));
 
 	const demo = await store.funnel(viewer, {
@@ -366,7 +379,7 @@ test("the response-time spread accounts for every answered lead and nobody else 
 		["d", 90],
 	] as const) {
 		await store.upsertInbound(inbound(guest, now - minutes * MINUTE), OFFICE);
-		const id = conversationId(OFFICE, "zalo", guest);
+		const id = await threadOf(OFFICE, guest);
 		await sent(store, id, await lastInboundId(store, id));
 	}
 	// Answered from the phone, and two never answered.

@@ -12,7 +12,8 @@ deletes. The office is the controller and Nhịp its processor (inferred). Guest
 accounts (CONTEXT, "Deliberately not"), so a request reaches the agency, and a manager acts on it.
 
 A guest's data in Nhịp is one thread and everything under it. The id `office:pipe:guest` holds
-the guest's Zalo user id or phone, so the id itself is personal data. `Conversation` cascades to
+the guest's Zalo user id or phone, so the id itself is personal data. (Since #141 the id is
+opaque and the guest's id is stored only in `Conversation.guestId`; ADR 0010's amendment.) `Conversation` cascades to
 Message, Translation, TranslationFailure, Qualification, Draft, Paperwork, Answer and CrmLink
 (ADR 0012), and `store.deleteConversations` already deletes the whole tree, though only the seed
 calls it. The guest may also be a lead in the office's CRM. `CrmAdapter` has no delete.

@@ -70,6 +70,7 @@ export type Message = {
 	source: MessageSource;
 	text: string;
 	at: string;
+	/** The vendor's id as stored: its keyed hash (`vendor-id.ts`), never the raw id (#141). */
 	vendorMessageId: string | null;
 	mock?: boolean;
 	/**
@@ -110,9 +111,9 @@ export type Answer = {
 	status: AnswerStatus;
 	mock: boolean;
 	pipe: Pipe;
-	to: string;
 	/** The office endpoint the reply went out on: the one the guest wrote to. */
 	pipeExternalId: string | null;
+	/** The vendor's id for the sent reply as stored: its keyed hash, never the raw id (#141). */
 	vendorMessageId: string | null;
 	approvedAt: string;
 	sentAt: string | null;
@@ -291,7 +292,10 @@ export type OfficePipe = {
  */
 export type InboxViewer = { userId: string; officeId: string; role?: "agent" | "manager" };
 
-/** One incoming webhook as the delivery log keeps it (no message text, no guest id). */
+/**
+ * One incoming webhook as the delivery log keeps it (no message text, no guest id). The store
+ * keeps `vendorMessageIds` as keyed hashes: a raw WhatsApp id can carry the guest's number.
+ */
 export type WebhookDeliveryRecord = {
 	pipe: Pipe;
 	outcome: "refused" | "processed" | "failed";

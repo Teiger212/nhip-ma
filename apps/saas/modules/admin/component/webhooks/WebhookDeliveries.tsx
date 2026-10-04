@@ -88,7 +88,7 @@ export function WebhookDeliveries() {
 									</span>
 								)}
 								{delivery.vendorMessageIds.length > 0 && (
-									<span className="font-mono text-xs text-muted-foreground">
+									<span className="font-mono text-xs break-all text-muted-foreground">
 										{delivery.vendorMessageIds.join(", ")}
 									</span>
 								)}

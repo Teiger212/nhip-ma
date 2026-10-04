@@ -1,5 +1,4 @@
 import { backfillAnswerOperatorNames } from "@repo/database";
-import { conversationId } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
@@ -7,8 +6,18 @@ import { testDb, testInboxStore } from "./test-store";
 
 const OFFICE = "office-a";
 const OTHER_OFFICE = "office-b";
-/** The id of a Zalo thread in office A. */
-const zalo = (guestId: string) => conversationId(OFFICE, "zalo", guestId);
+/** A vendor message id as stored: an HMAC-SHA256, hex. */
+const HASHED = expect.stringMatching(/^[0-9a-f]{64}$/);
+/** The id of a guest's Zalo thread at an office, found as the store finds it: by (office, pipe, guest). */
+async function threadId(officeId: string, guestId: string): Promise<string> {
+	const thread = await testDb.conversation.findUniqueOrThrow({
+		where: { officeId_pipe_guestId: { officeId, pipe: "zalo", guestId } },
+		select: { id: true },
+	});
+	return thread.id;
+}
+/** The id of a guest's Zalo thread in office A. */
+const zalo = (guestId: string) => threadId(OFFICE, guestId);
 
 const inbound = (guestId: string, text = "Xin chào", pipeExternalId: string | null = null) => ({
 	pipe: "zalo" as const,
@@ -41,11 +50,7 @@ async function answer(store: Store, conversationId: string, inboundId: string, t
 		operatorId: "agent-1",
 	});
 	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	return store.completeAnswer(
-		OFFICE,
-		begun.answer.id,
-		mockSend(conversationId.split(":").at(-1) ?? ""),
-	);
+	return store.completeAnswer(OFFICE, begun.answer.id, mockSend("guest"));
 }
 
 test("one Answer per guest message: two approvals in the same instant let one in", async () => {
@@ -54,7 +59,7 @@ test("one Answer per guest message: two approvals in the same instant let one in
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
-		conversationId: zalo("race"),
+		conversationId: await zalo("race"),
 		inboundId,
 		text: "reply",
 		operatorId: "agent-1",
@@ -87,7 +92,7 @@ test("threads belong to one office, are shared inside it and invisible outside i
 	const agentA = { userId: "agent-1", officeId: OFFICE };
 	const agentA2 = { userId: "agent-2", officeId: OFFICE };
 	const agentB = { userId: "agent-3", officeId: OTHER_OFFICE };
-	const theirs = conversationId(OTHER_OFFICE, "zalo", "theirs");
+	const theirs = await threadId(OTHER_OFFICE, "theirs");
 
 	// Any agent in the office sees the office's threads; nobody sees another office's.
 	expect((await store.listConversations(agentA)).map((c) => c.guestId)).toEqual(["ours"]);
@@ -103,8 +108,8 @@ test("one thread per guest per office: the same guest at two offices never merge
 	const store = await testInboxStore();
 	const atA = await store.upsertInbound(inbound("same-guest", "private A"), OFFICE);
 	const atB = await store.upsertInbound(inbound("same-guest", "private B"), OTHER_OFFICE);
-	expect(atA.id).toBe(zalo("same-guest"));
-	expect(atB.id).toBe(conversationId(OTHER_OFFICE, "zalo", "same-guest"));
+	expect(atA.id).toBe(await zalo("same-guest"));
+	expect(atB.id).toBe(await threadId(OTHER_OFFICE, "same-guest"));
 	expect(atA.id).not.toBe(atB.id);
 	expect(atA.messages.map((m) => m.text)).toEqual(["private A"]);
 	expect(atB.messages.map((m) => m.text)).toEqual(["private B"]);
@@ -159,7 +164,7 @@ test("your turn is derived from the messages: the guest spoke last and nothing a
 	const secondInbound = burst.messages[1].id;
 	expect(burst.unansweredInboundId).toBe(secondInbound);
 
-	const sent = await answer(store, zalo("turn"), secondInbound, "reply");
+	const sent = await answer(store, await zalo("turn"), secondInbound, "reply");
 	expect(sent?.unansweredInboundId).toBeNull();
 	expect(sent?.sentAt).toBeTruthy();
 
@@ -183,7 +188,7 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
-		conversationId: zalo("life"),
+		conversationId: await zalo("life"),
 		inboundId,
 		text: "reply",
 		operatorId: "agent-1",
@@ -198,19 +203,20 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 		operatorId: "agent-1",
 		status: "sending",
 		pipe: "zalo",
-		to: "life",
 		pipeExternalId: "oa-1",
 		sentAt: null,
 	});
-	expect((await store.getOfficeConversation(OFFICE, zalo("life")))?.unansweredInboundId).toBeNull();
-	expect((await store.getOfficeConversation(OFFICE, zalo("life")))?.messages).toHaveLength(1);
+	expect(
+		(await store.getOfficeConversation(OFFICE, await zalo("life")))?.unansweredInboundId,
+	).toBeNull();
+	expect((await store.getOfficeConversation(OFFICE, await zalo("life")))?.messages).toHaveLength(1);
 
 	// A second approval while the first is in flight is refused.
 	expect(await store.beginAnswer(input)).toEqual({ ok: false, reason: "in_progress" });
 
 	// The vendor refused: failed, the guest's turn is back, and the retry reuses the row.
 	await store.failAnswer(OFFICE, begun.answer.id, "token expired");
-	let state = await store.getOfficeConversation(OFFICE, zalo("life"));
+	let state = await store.getOfficeConversation(OFFICE, await zalo("life"));
 	expect(state?.lastAnswer).toMatchObject({ status: "failed", failureReason: "token expired" });
 	expect(state?.unansweredInboundId).toBe(inboundId);
 	const retried = await store.beginAnswer({ ...input, text: "second try", operatorId: "agent-2" });
@@ -231,14 +237,15 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 		to: "life",
 		vendorMessageId: "z-1",
 	});
-	expect(done?.lastAnswer).toMatchObject({ status: "sent", vendorMessageId: "z-1", mock: false });
+	// The vendor's id is kept keyed and hashed, never as the vendor wrote it (#141).
+	expect(done?.lastAnswer).toMatchObject({ status: "sent", vendorMessageId: HASHED, mock: false });
 	expect(done?.lastAnswer?.sentAt).toBeTruthy();
 	expect(done?.sentAt).toBe(done?.lastAnswer?.sentAt);
 	expect(done?.messages.at(-1)).toMatchObject({
 		source: "nhip",
 		text: "second try",
 		pipeExternalId: "oa-1",
-		vendorMessageId: "z-1",
+		vendorMessageId: done?.lastAnswer?.vendorMessageId,
 	});
 	expect(done?.answers).toHaveLength(1);
 
@@ -250,7 +257,7 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 	// Failing or marking a sent Answer is a no-op.
 	await store.failAnswer(OFFICE, retried.answer.id, "late");
 	await store.markAnswerUnknown(OFFICE, retried.answer.id, "late");
-	expect((await store.getOfficeConversation(OFFICE, zalo("life")))?.lastAnswer?.status).toBe(
+	expect((await store.getOfficeConversation(OFFICE, await zalo("life")))?.lastAnswer?.status).toBe(
 		"sent",
 	);
 	// Only a guest message can be answered.
@@ -267,7 +274,7 @@ test("an Answer of unknown outcome blocks every further approval of that message
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
-		conversationId: zalo("unknown"),
+		conversationId: await zalo("unknown"),
 		inboundId,
 		text: "reply",
 		operatorId: null,
@@ -275,7 +282,7 @@ test("an Answer of unknown outcome blocks every further approval of that message
 	const begun = await store.beginAnswer(input);
 	if (!begun.ok) throw new Error(begun.reason);
 	await store.markAnswerUnknown(OFFICE, begun.answer.id, "fetch failed");
-	const state = await store.getOfficeConversation(OFFICE, zalo("unknown"));
+	const state = await store.getOfficeConversation(OFFICE, await zalo("unknown"));
 	expect(state?.lastAnswer).toMatchObject({ status: "unknown", failureReason: "fetch failed" });
 	// The vendor may have it: not Your turn, and not retried.
 	expect(state?.unansweredInboundId).toBeNull();
@@ -290,7 +297,7 @@ test("your turn reads the Answers, not message order: a guest message mid-send s
 	const m1 = conv.unansweredInboundId!;
 	const begun = await store.beginAnswer({
 		officeId: OFFICE,
-		conversationId: zalo("mid"),
+		conversationId: await zalo("mid"),
 		inboundId: m1,
 		text: "reply to M1",
 		operatorId: null,
@@ -305,7 +312,7 @@ test("your turn reads the Answers, not message order: a guest message mid-send s
 	expect(done?.messages.map((m) => m.text)).toEqual(["M1", "M2", "reply to M1"]);
 	expect(done?.unansweredInboundId).toBe(m2);
 	// Answering M2 closes the thread's turn.
-	const closed = await answer(store, zalo("mid"), m2, "reply to M2");
+	const closed = await answer(store, await zalo("mid"), m2, "reply to M2");
 	expect(closed?.unansweredInboundId).toBeNull();
 	expect(closed?.answers.map((a) => [a.inboundId, a.status])).toEqual([
 		[m1, "sent"],
@@ -322,7 +329,7 @@ test("translations are stored per message per operator language and read back", 
 	await store.setTranslation(OFFICE, id, "vi", "Xin chào");
 	await store.setTranslation(OFFICE, id, "en", "Hello");
 	await store.setTranslation(OFFICE, id, "en", "Hello there");
-	const after = await store.getOfficeConversation(OFFICE, zalo("tr"));
+	const after = await store.getOfficeConversation(OFFICE, await zalo("tr"));
 	expect(after?.messages[0].translations).toEqual({ vi: "Xin chào", en: "Hello there" });
 	await store.close();
 });
@@ -333,11 +340,11 @@ test("the suggested reply records which guest message it answers and where it ca
 	const inboundId = conv.unansweredInboundId!;
 	const shot = await store.setOneShot(
 		OFFICE,
-		zalo("draft"),
+		await zalo("draft"),
 		oneShot("Looking to rent in Tay Ho", inboundId),
 	);
 	expect(shot?.oneShot?.draft).toMatchObject({ answersMessageId: inboundId, source: "template" });
-	const drafted = await store.setDraft(OFFICE, zalo("draft"), {
+	const drafted = await store.setDraft(OFFICE, await zalo("draft"), {
 		reply: "Sure, which floor do you prefer?",
 		answersMessageId: inboundId,
 		source: "model",
@@ -348,7 +355,7 @@ test("the suggested reply records which guest message it answers and where it ca
 		source: "model",
 	});
 	expect(drafted?.oneShot?.qualification.areaOfInterest).toBe("Tây Hồ");
-	expect(await store.setDraft(OFFICE, zalo("missing"), drafted!.oneShot!.draft)).toBeNull();
+	expect(await store.setDraft(OFFICE, "no-such-thread", drafted!.oneShot!.draft)).toBeNull();
 	await store.close();
 });
 
@@ -380,7 +387,7 @@ test("an Answer keeps its sender's name after the account is deleted (ADR 0013)"
 	const conv = await store.upsertInbound(inbound("price"), OFFICE);
 	const begun = await store.beginAnswer({
 		officeId: OFFICE,
-		conversationId: zalo("price"),
+		conversationId: await zalo("price"),
 		inboundId: conv.unansweredInboundId!,
 		text: "The price is 2,000 USD a month.",
 		operatorId: "leaver",
@@ -396,7 +403,7 @@ test("an Answer keeps its sender's name after the account is deleted (ADR 0013)"
 test("Answers approved before ADR 0013 get their sender's name filled in", async () => {
 	const store = await testInboxStore();
 	const conv = await store.upsertInbound(inbound("old"), OFFICE);
-	await answer(store, zalo("old"), conv.unansweredInboundId!, "reply");
+	await answer(store, await zalo("old"), conv.unansweredInboundId!, "reply");
 	await testDb.answer.updateMany({ data: { operatorName: null } });
 	expect(await backfillAnswerOperatorNames(testDb)).toBe(1);
 	expect(await backfillAnswerOperatorNames(testDb)).toBe(0);
@@ -411,7 +418,7 @@ test("two approvals racing the retry of a failed Answer let one in", async () =>
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
-		conversationId: zalo("retry-race"),
+		conversationId: await zalo("retry-race"),
 		inboundId,
 		text: "reply",
 		operatorId: "agent-1",
@@ -433,7 +440,7 @@ test("a vendor retry of one message is stored once, even when both land at the s
 	const store = await testInboxStore();
 	const event = { ...inbound("retried"), vendorMessageId: "vendor-m1" };
 	await Promise.all([store.upsertInbound(event, OFFICE), store.upsertInbound(event, OFFICE)]);
-	const conv = await store.getOfficeConversation(OFFICE, zalo("retried"));
+	const conv = await store.getOfficeConversation(OFFICE, await zalo("retried"));
 	expect(conv?.messages).toHaveLength(1);
 	await store.close();
 });
@@ -444,7 +451,7 @@ test("a new guest's first two messages at the same time make one thread", async 
 		store.upsertInbound({ ...inbound("twin", "one"), vendorMessageId: "v-1" }, OFFICE),
 		store.upsertInbound({ ...inbound("twin", "two"), vendorMessageId: "v-2" }, OFFICE),
 	]);
-	const conv = await store.getOfficeConversation(OFFICE, zalo("twin"));
+	const conv = await store.getOfficeConversation(OFFICE, await zalo("twin"));
 	expect(conv?.messages.map((message) => message.text).sort()).toEqual(["one", "two"]);
 	await store.close();
 });
