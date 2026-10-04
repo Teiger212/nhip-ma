@@ -98,3 +98,19 @@ supersede the matching, write-back, refresh and Attio points above where they di
   user's (2026-10-03).
 - **Won and Lost are neutral badges** in place of the turn while a thread is resolved
   (DESIGN.md).
+
+Pending (2026-10-04): Attio is the first client's CRM (#101); its amendment follows the grill,
+see `reports/attio-research-2026-10-04.md`.
+
+## HubSpot accounts (2026-10-03)
+
+- Legacy private apps are gone for new accounts; their replacement, service keys, has no
+  webhooks. Hence Nhịp's own app above.
+- The demo portal, 149475387, is in HubSpot's EU data centre: cross-border under PDPL, the same
+  A05 filing as the rest.
+- The developer test account is 149475500 (`nhip-crm-dev`).
+
+## Considered
+
+- Integration platforms (Composio, reviewed 2026-10-03): rejected; one adapter per CRM.
+  Revisit Nango when 3+ paying offices use 3+ CRMs.

@@ -140,9 +140,9 @@ is renamed.
   are blocked with the reason shown, and the platform admin is alerted to reconnect it with
   the owner. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses. Source of truth
-  for closings and lost (ADR 0003). Nhịp does not become a CRM. The only CRM so far is the
-  **mock CRM**, which keeps its leads in Nhịp's database; HubSpot's free CRM is decided as the
-  first real one (ADR 0003, spec #59).
+  for closings and lost (ADR 0003). Nhịp does not become a CRM. The adapters are the
+  **mock CRM**, which keeps its leads in Nhịp's database and is for development and demos only;
+  HubSpot's free CRM, the demo (ADR 0003, spec #59); and Attio, the first client's CRM (#101).
 - **CRM lead**: the guest's record in the office's CRM (a contact with its deal). Not the
   funnel's **Lead**, which is a guest who wrote in.
 - **CRM link**: the stored association between a thread and its CRM lead. Nhịp makes it when a

@@ -280,10 +280,12 @@ ADR 0016 and its amendment. One Vercel project `nhip`, one Neon project, both in
 - **Staging smoke** (`.github/workflows/staging-smoke.yml`): on each successful Preview
   deployment, `pnpm --filter saas smoke` (`playwright.smoke.config.ts`, `tests/smoke/`)
   checks read-only that pages load, signed-out APIs refuse and webhooks fail closed.
-- **Prod** builds from the `production` branch, which a GitHub ruleset locks against
-  pushes and deletion. The release workflow that moves it to a commit staging ran, and
-  runs prod migrations first, is planned for PRODUCT.md milestone 6. No release has
-  shipped.
+- **Prod** builds from the `production` branch. Ruleset 24113338 ("production: releases
+  only") blocks updates, non-fast-forward pushes and deletion, and has no bypass actor, so
+  nothing moves `production` today. The release workflow that will move it to a commit
+  staging ran, and runs prod migrations first, is #112 and not built yet. The production
+  Neon branch is empty (no tables, no migration history); the first release migrates it
+  from `0_init`. There are no Production-scope env vars yet (#99). No release has shipped.
 
 ## Observability and personal data
 

@@ -40,14 +40,14 @@ from milestone 6.
 ### CRM demo: HubSpot (ADR 0003, decided 2026-10-03)
 
 The demo is a round trip on Zalo (above): a guest writes, the contact and deal appear in
-HubSpot, the deal is marked won there, and Nhịp's Home counts the closing. Nothing here is
-needed until the HubSpot slice is ready; start whenever.
+HubSpot, the deal is marked won there, and Nhịp's Home counts the closing. It is the demo
+path only; the first client is on Attio (below). The staging end-to-end steps are #116.
 
 - [ ] **HubSpot free account** for the demo office (free CRM, no trial clock).
-- [ ] **A private app** in it with read and write on contacts and deals. Keep its access
-      token for the next step; never paste it in chat or a file.
-- [ ] **Hand the token over** where the HubSpot slice says (Admin → Connections once
-      built; it is stored encrypted per office).
+- [ ] **Install the `nhip-demo` app** (`integrations/hubspot-demo-app`) on the demo portal,
+      or on the test account nhip-crm-dev, and paste its token into the office's Connections
+      card (built in #62 and #65; stored encrypted per office). Never paste it in chat or a
+      file.
 - [ ] **Webhook on deal stage changes** (#66): in `integrations/hubspot-demo-app/src/app/webhooks/webhooks-hsmeta.json`
       set `targetUrl` to `https://nhip-staging.vercel.app/webhooks/crm/hubspot` (or the
       rehearsal's tunnel URL) and upload the project again.
@@ -55,8 +55,17 @@ needed until the HubSpot slice is ready; start whenever.
       client secret, from its Auth tab) and `HUBSPOT_WEBHOOK_URL`, exactly the `targetUrl`
       above. `PIPE_SECRETS_KEY` must be set too, or the token cannot be saved. Verify: mark the
       demo deal won in HubSpot, and the thread shows "Won" in Nhịp within seconds.
-- [ ] **Ask the first beta agencies which CRM they use** (or spreadsheets, Bitrix24, Getfly)
-      before a second adapter is built.
+
+### Client CRM: Attio (#101, decided 2026-10-04)
+
+Answered: the first client uses Attio. The mock never goes to production for a client.
+
+- [x] **Nhịp's own free dev workspace** "Nhip Dev", Deals enabled, with an API key. Done
+      2026-10-04; the key is in the main checkout's `.env.local` as `ATTIO_TEST_TOKEN`.
+- [ ] **The client's own free workspace**, with Deals enabled and an API key (only a workspace
+      admin can create one); never paste the key in chat or a file.
+- [ ] **One default deal owner per office** (e.g. the manager), chosen when the office
+      connects.
 
 ### Error tracking (PostHog, PR #41)
 
@@ -86,14 +95,20 @@ needed until the HubSpot slice is ready; start whenever.
 - [ ] **Nhịp's own domain**; verify it in Resend with SPF, DKIM **and DMARC**; `MAIL_FROM`
       moves to it (invitations landed in spam from `lanternroute.com`).
 - [ ] **Per-office subdomains** on that domain (ADR 0018).
-- [ ] **Prod env vars** (Production scope): every staging value above (including
-      `DIRECT_DATABASE_URL`), each with prod's own value (own Zalo app, own Meta app, own PostHog project or environment, a new
-      `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`, prod Neon branch `DATABASE_URL`).
+- [ ] **Choose the production URL** (`NEXT_PUBLIC_SAAS_URL`, fixed at build time).
+- [ ] **Prod env vars** (Production scope; none exist yet, #99): every staging value above,
+      each with prod's own value (own Zalo app, own Meta app, own PostHog project or
+      environment, a new `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`). `DATABASE_URL` is prod's
+      pooled Neon URL as the app role `nhip_app` (#98); `DIRECT_DATABASE_URL` is its direct URL
+      as `neondb_owner`. `DRAFT_API_KEY` and `DRAFT_MODEL`, set on neither staging nor prod
+      yet. Never set `MOCK_CRM_WEBHOOK_SECRET` or `AUTH_TRUSTED_ORIGINS` in production.
 - [ ] **Vietnam's Personal Data Protection Law:** the cross-border transfer impact
       assessment filed with the Ministry of Public Security (A05) within 60 days of the first
-      transfer (hosting in Singapore, model providers, PostHog), confirmed with a Vietnamese
-      lawyer. Not legal advice.
-- [ ] **Release workflow's exemption** in the `production` branch ruleset (only it may move
-      the branch).
+      transfer, naming every processor (hosting in Singapore, model providers, PostHog, the
+      client's CRM, HubSpot's EU portal for the demo), confirmed with a Vietnamese lawyer. Ask
+      the lawyer whether Decree 356 requires a processing-service certificate (unverified).
+      Not legal advice.
+- [ ] **Release workflow's identity as the bypass actor** of the `production` branch ruleset
+      (24113338; none today), so only it may move the branch. The workflow is #112.
 - [ ] **Restore drill** of the prod database, done once and timed.
 - [ ] Optional: restrict the admin area by IP in the Vercel Firewall.
