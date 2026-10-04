@@ -89,7 +89,7 @@ Required gates:
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.
 3. Run the relevant tests before considering the change complete.
-4. CI (`.github/workflows/ci.yml`) runs lint (warnings fail), format:check, type-check, Vitest, `migrate:check`, `seed:check` and the E2E suite on every PR and push to `main`; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
+4. CI (`.github/workflows/ci.yml`) runs lint (warnings fail), type-check, Vitest, `migrate:check`, `seed:check` and the E2E suite on every PR and push to `main`, except a PR that changes only documentation (`**/*.md`, `docs/**`, `reports/**`). `.github/workflows/format.yml` runs format:check on every PR and push, docs included; startup env validation lives in `apps/saas/modules/shared/lib/env.ts`.
 
 **What gets a test (decided 2026-09-27).** Anything a person does (an agent or admin
 clicking, linking, approving, configuring) is tested end to end, not with unit tests;
