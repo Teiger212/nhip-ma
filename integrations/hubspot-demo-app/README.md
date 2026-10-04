@@ -11,3 +11,9 @@ its first upload, hence the project name `nhip-demo`.
   (the demo portal, or a test account such as nhip-crm-dev).
 - Token: the same Distribution tab, Show. Paste it into the office's Connections card; Nhịp
   stores it encrypted and never shows it back.
+- Webhook (#66): `src/app/webhooks/webhooks-hsmeta.json` subscribes to a deal's `dealstage`
+  changing (`crmObjects`, `object.propertyChange`), which is how Nhịp hears a deal won or lost.
+  Its `targetUrl` is a placeholder: set it at the rehearsal (a tunnel's https URL) or at deploy
+  to the deployment's `/webhooks/crm/hubspot`, and set that deployment's `HUBSPOT_WEBHOOK_URL` to
+  exactly the same URL, since the signature covers it. `HUBSPOT_APP_CLIENT_SECRET` is the app's
+  client secret (the app's Auth tab), which signs the webhooks. Upload again after changing it.

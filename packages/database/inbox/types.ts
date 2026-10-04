@@ -431,8 +431,24 @@ export type InboxStore = {
 		kind: CrmKind | null,
 		accessToken?: string | null,
 	) => Promise<void>;
-	/** Replace the access token (sealed) on the office's CRM connection, keeping its links. */
+	/**
+	 * Replace the access token (sealed) on the office's CRM connection, keeping its links. The
+	 * CRM account it knew is forgotten: a new token may reach another account (ADR 0008).
+	 */
 	replaceCrmAccessToken: (officeId: string, accessToken: string) => Promise<void>;
+	/** The offices on this CRM whose connection is on the CRM's account `accountId` (#66). */
+	crmOfficesOnAccount: (kind: CrmKind, accountId: string) => Promise<string[]>;
+	/** Up to `limit` offices on this CRM whose account is not known yet, most recently saved first. */
+	crmOfficesWithoutAccount: (kind: CrmKind, limit: number) => Promise<string[]>;
+	/**
+	 * Record the CRM account the office's connection is on, learned with the connection as it was
+	 * (`kind` and sealed `accessToken`); false, and nothing written, when it has changed since.
+	 */
+	setCrmAccountId: (
+		officeId: string,
+		learnedWith: { kind: CrmKind; accessToken: string | null },
+		accountId: string,
+	) => Promise<boolean>;
 	/**
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
 	 * thread is already claimed or linked. The database decides, so two first messages make one lead.

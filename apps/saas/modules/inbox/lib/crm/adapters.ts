@@ -2,9 +2,10 @@ import type { CrmKind, InboxStore } from "@repo/database/inbox";
 
 import type { InboxConfig } from "../config";
 import { hubspotCrmAdapter } from "./hubspot";
+import { readHubSpotWebhook } from "./hubspot-webhook";
 import { mockCrmAdapter } from "./mock";
 import { readMockCrmWebhook } from "./mock-webhook";
-import type { CrmAdapter } from "./types";
+import type { CrmAdapter, CrmNotice, CrmWebhookRequest } from "./types";
 
 /**
  * The office's CRM as an adapter is opened with: its kind and, for a kind that takes one, the
@@ -21,6 +22,18 @@ export function crmKindTakesToken(kind: CrmKind | null): boolean {
 	return kind !== null && KINDS_WITH_TOKEN.includes(kind);
 }
 
+/**
+ * The CRM kinds whose one app serves many accounts, so a webhook names the CRM's account and
+ * the office on it is found by the account id its adapter reports (#66). For the others the
+ * account a webhook names is the office itself, and their adapter is never asked for it.
+ */
+const KINDS_WITH_ACCOUNT: readonly CrmKind[] = ["hubspot"];
+
+/** Whether a webhook from this CRM kind names the CRM's own account rather than the office. */
+export function crmKindHasAccount(kind: CrmKind): boolean {
+	return KINDS_WITH_ACCOUNT.includes(kind);
+}
+
 /** The only place a CRM kind becomes an adapter (ADR 0003). */
 export function crmAdapterFor(
 	connection: CrmAdapterConnection,
@@ -35,27 +48,29 @@ export function crmAdapterFor(
 	}
 }
 
-/** A CRM's outcome notice, verified: the office it is for and the leads that changed. */
-export type CrmNotice = { officeId: string; leadIds: string[] };
-
 /**
- * How a CRM kind's outcome webhook is verified and read (ADR 0003), or null when this
+ * How a CRM kind's outcome webhook is verified and read (ADR 0003): the accounts and their
+ * changed leads, checked at `now`, or null when unverified. The reader is null when this
  * deployment has no such webhook (then it answers 404). Nothing unverified is ever returned.
  */
 export function crmWebhookFor(
 	kind: CrmKind,
 	config: InboxConfig,
-): ((rawBody: string, headers: Headers) => CrmNotice | null) | null {
+): ((request: CrmWebhookRequest, now: Date) => CrmNotice[] | null) | null {
 	switch (kind) {
 		case "mock": {
 			const secret = config.mockCrmWebhookSecret;
-			return secret
-				? (rawBody, headers) =>
-						readMockCrmWebhook(rawBody, headers.get("x-mock-crm-signature"), secret)
-				: null;
+			if (!secret) return null;
+			return ({ rawBody, headers }) => {
+				const notice = readMockCrmWebhook(rawBody, headers.get("x-mock-crm-signature"), secret);
+				// The mock's account is the office itself.
+				return notice ? [{ account: notice.officeId, leadIds: notice.leadIds }] : null;
+			};
 		}
-		case "hubspot":
-			// HubSpot's signed webhooks come with #66.
-			return null;
+		case "hubspot": {
+			const { hubspotAppClientSecret: clientSecret, hubspotWebhookUrl: url } = config;
+			if (!clientSecret || !url) return null;
+			return (request, now) => readHubSpotWebhook(request, { clientSecret, url }, now);
+		}
 	}
 }

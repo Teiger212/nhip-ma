@@ -1074,7 +1074,36 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async replaceCrmAccessToken(officeId, accessToken) {
-			await db.crmConnection.update({ where: { officeId }, data: { accessToken } });
+			await db.crmConnection.update({
+				where: { officeId },
+				data: { accessToken, accountId: null },
+			});
+		},
+
+		async crmOfficesOnAccount(kind, accountId) {
+			const rows = await db.crmConnection.findMany({
+				where: { kind, accountId },
+				select: { officeId: true },
+			});
+			return rows.map((row) => row.officeId);
+		},
+
+		async crmOfficesWithoutAccount(kind, limit) {
+			const rows = await db.crmConnection.findMany({
+				where: { kind, accountId: null },
+				select: { officeId: true },
+				orderBy: { updatedAt: "desc" },
+				take: limit,
+			});
+			return rows.map((row) => row.officeId);
+		},
+
+		async setCrmAccountId(officeId, learnedWith, accountId) {
+			const { count } = await db.crmConnection.updateMany({
+				where: { officeId, kind: learnedWith.kind, accessToken: learnedWith.accessToken },
+				data: { accountId },
+			});
+			return count > 0;
 		},
 
 		async claimCrmLink(conversationId, officeId) {

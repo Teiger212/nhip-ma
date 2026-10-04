@@ -347,3 +347,113 @@ test("without the deployment's secrets key, HubSpot is not saved", async () => {
 
 	expect(await store.getCrmConnection(OFFICE)).toBeNull();
 });
+
+/* ---------------------------------------------- a CRM whose webhook names its own account (#66) */
+
+/**
+ * The sync with an adapter factory that answers as the mock CRM and says which CRM account each
+ * token reaches, as HubSpot's account details name the portal a token was installed on.
+ */
+function syncOnAccounts(accounts: Record<string, string>) {
+	return createCrmSync({
+		store,
+		threadUrl,
+		secretsKey: SECRETS_KEY,
+		adapterFor: (connection, deps) => ({
+			...mockCrmAdapter(deps.store, deps.officeId),
+			accountId: async () => accounts[connection.token ?? ""] ?? "unknown",
+		}),
+	});
+}
+
+/** A thread of `officeId` linked to a lead the CRM now reports won. */
+async function wonThread(
+	sync: ReturnType<typeof createCrmSync>,
+	officeId: string,
+	guestId: string,
+	name: string,
+) {
+	const conversation = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId,
+			guestName: name,
+			text: "Chào",
+			vendorMessageId: null,
+		},
+		officeId,
+	);
+	await sync.newGuest(conversation);
+	const { leadId } = await leadOf(conversation.id);
+	await store.setMockCrmLeadOutcome(officeId, leadId!, { status: "won", at: null, reason: null });
+	return { id: conversation.id, leadId: leadId! };
+}
+
+// ADR 0008, #66: one app serves many CRM accounts; a notice from one account reaches only the
+// office on that account, whatever lead ids it names.
+test("a CRM account's notice reaches the office on that account, and never another office's threads", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({ "pat-office-a": "111", "pat-office-b": "222" });
+	await sync.connectOffice(OFFICE, "hubspot", "pat-office-a");
+	await sync.connectOffice("office-b", "hubspot", "pat-office-b");
+	const ours = await wonThread(sync, OFFICE, "zalo-user-30", "Mai");
+	const theirs = await wonThread(sync, "office-b", "zalo-user-31", "Lan");
+
+	await sync.noticesReceived(
+		"hubspot",
+		[{ account: "222", leadIds: [ours.leadId, theirs.leadId] }],
+		new Date("2026-10-04T08:00:00.000Z"),
+	);
+	expect((await leadOf(ours.id)).outcome).toBeNull();
+	expect((await leadOf(theirs.id)).outcome).toBe("won");
+
+	await sync.noticesReceived(
+		"hubspot",
+		[
+			{ account: "111", leadIds: [ours.leadId] },
+			{ account: "999", leadIds: [theirs.leadId] },
+		],
+		new Date("2026-10-04T08:01:00.000Z"),
+	);
+	expect(await leadOf(ours.id)).toMatchObject({
+		outcome: "won",
+		outcomeObservedAt: "2026-10-04T08:01:00.000Z",
+	});
+});
+
+// ADR 0008, #66: a new token can reach another account; the office's old account no longer speaks for it.
+test("a new token on the office's CRM forgets the account of the old one", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({ "pat-old": "111", "pat-new": "333" });
+	await sync.connectOffice(OFFICE, "hubspot", "pat-old");
+	await sync.resolveAccount(OFFICE);
+	const thread = await wonThread(sync, OFFICE, "zalo-user-32", "Hà");
+
+	await sync.connectOffice(OFFICE, "hubspot", "pat-new");
+	await sync.noticesReceived("hubspot", [{ account: "111", leadIds: [thread.leadId] }], new Date());
+	expect((await leadOf(thread.id)).outcome).toBeNull();
+
+	await sync.noticesReceived("hubspot", [{ account: "333", leadIds: [thread.leadId] }], new Date());
+	expect((await leadOf(thread.id)).outcome).toBe("won");
+});
+
+// ADR 0003: the mock CRM's account is the office itself, and it speaks only for a mock office.
+test("a mock CRM notice names its office, and changes nothing for an office on another CRM", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({ "pat-office-b": "office-a" });
+	await sync.connectOffice(OFFICE, "mock");
+	await sync.connectOffice("office-b", "hubspot", "pat-office-b");
+	const ours = await wonThread(sync, OFFICE, "zalo-user-33", "Minh");
+	const theirs = await wonThread(sync, "office-b", "zalo-user-34", "Yuki");
+
+	await sync.noticesReceived(
+		"mock",
+		[{ account: "office-b", leadIds: [theirs.leadId] }],
+		new Date(),
+	);
+	expect((await leadOf(theirs.id)).outcome).toBeNull();
+
+	await sync.noticesReceived("mock", [{ account: OFFICE, leadIds: [ours.leadId] }], new Date());
+	expect((await leadOf(ours.id)).outcome).toBe("won");
+});

@@ -295,6 +295,12 @@ async function main() {
 	});
 	console.info(`Recording against portal ${portalId}, run ${run}`);
 
+	// #66: the portal a token reaches, which HubSpot's webhooks name; the guard's own call.
+	save("account-details", {
+		...meta("accountId", "The portal the token was installed on", { expected: String(portalId) }),
+		exchanges: [account],
+	});
+
 	// The Zalo user id property: only a run on an account without it can record its self-heal.
 	const property = await send("GET", `${properties}/${ZALO}`);
 	if (property.response.status === 404) {

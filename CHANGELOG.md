@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-04 (a HubSpot deal won or lost reaches the inbox)
+
+### Added
+
+- **A HubSpot deal won or lost reaches the inbox** (#66, spec #59). HubSpot tells Nhịp when a deal's stage changes, at `/webhooks/crm/hubspot`, and the deal's thread shows "Won" or "Lost" within seconds, exactly as with the mock CRM. Each request is checked against HubSpot's v3 signature (the app's client secret over the method, `HUBSPOT_WEBHOOK_URL`, the raw body and the timestamp) and refused (401) when it fails or is more than 5 minutes off. One HubSpot app serves every office: each event names its portal, and only the office on that portal is touched. Nhịp learns an office's portal from HubSpot right after its token is saved (in the background; the save never waits), and again when a webhook names a portal no office is known on; a new token forgets the old portal. Other events, and portals no office is on, are taken (200) and ignored. Deployments set `HUBSPOT_APP_CLIENT_SECRET` and `HUBSPOT_WEBHOOK_URL` together; without them the route answers 404. The demo app subscribes to deal stage changes (`webhooks-hsmeta.json`, its `targetUrl` set at rehearsal or deploy).
+
 ## 2026-10-03 (the admin connects an office to HubSpot)
 
 ### Added
