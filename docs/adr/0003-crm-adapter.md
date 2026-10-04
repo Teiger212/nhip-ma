@@ -187,6 +187,11 @@ in the 2026-10-03 amendment holds unless a point below differs.
 - **Tests that must exist:** "a Won deal stays Won when Nhịp re-saves it" and "two concurrent
   leads from one person make one person".
 - **PDPL.** Attio is named as a processor in the A05 dossier if an agency uses it.
+- **HubSpot as a client's own CRM** (decided the same day). A production static app of
+  Nhịp's own, installed in the client's portal by a user with access to it. HubSpot's static
+  auth installs in "a single account… the same you use for development or another account
+  that the installing user has access to". The webhook check reads one app secret per
+  deployment, so OAuth or a per-office secret comes at the second HubSpot agency.
 
 ## HubSpot accounts (2026-10-03)
 
