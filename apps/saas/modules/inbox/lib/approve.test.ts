@@ -313,12 +313,20 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	let state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(state?.unansweredInboundId).toBe(refused.unansweredInboundId);
-	vi.stubGlobal(
-		"fetch",
-		vi.fn(async () => Response.json({ error: 0, data: { message_id: "z-1" } })),
+	const zaloSend = vi.fn(async (_url: string, _init?: RequestInit) =>
+		Response.json({ error: 0, data: { message_id: "z-1" } }),
 	);
+	vi.stubGlobal("fetch", zaloSend);
 	const retried = await approveReply(refused, { reply: "Second try" });
 	expect(retried.res.status).toBe(200);
+	// The reply goes to the thread's guest: the recipient is read from the thread's guestId,
+	// the one place it is stored (#141), never from a copy on the Answer.
+	const sent = JSON.parse(String(zaloSend.mock.calls.at(-1)?.[1]?.body)) as {
+		recipient?: { user_id?: string };
+	};
+	expect(sent.recipient?.user_id, "Zalo is asked to deliver to the thread's guest").toBe(
+		refused.guestId,
+	);
 	state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.answers).toHaveLength(1);
 	expect(state?.lastAnswer).toMatchObject({

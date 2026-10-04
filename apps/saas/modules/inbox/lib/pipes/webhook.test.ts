@@ -91,6 +91,25 @@ test("inbound on a connected pipe is filed under that office and stays there", a
 	expect(b[0].id).not.toContain("guest-2");
 });
 
+// ADR 0017 and #141: the delivery log ties a delivery to the messages it filed, through the
+// vendor id as stored (its keyed hash), never the raw id that can carry who the guest is.
+test("a delivery is on the log with its message's stored vendor id, never the raw one", async () => {
+	const store = peekTestRuntime()!.store;
+	await store.connectPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
+	const request = zaloRequest("guest-log", "Xin chào");
+	const { message } = (await request.clone().json()) as { message: { msg_id: string } };
+
+	expect((await handleInboundWebhook("zalo", request)).status).toBe(200);
+
+	const [thread] = await store.listConversations({ userId: "agent", officeId: "office-a" });
+	const stored = thread.messages[0].vendorMessageId;
+	expect(stored, "the message keeps a vendor id, for retries").toBeTruthy();
+	expect(stored).not.toBe(message.msg_id);
+	const [delivery] = await store.listWebhookDeliveries({ limit: 5, pipe: "zalo" });
+	expect(delivery.outcome).toBe("processed");
+	expect(delivery.vendorMessageIds, "the delivery names the message it filed").toEqual([stored]);
+});
+
 test("a bad signature is refused before anything is filed", async () => {
 	const store = peekTestRuntime()!.store;
 	await store.connectPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
