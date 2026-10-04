@@ -115,8 +115,11 @@ Answered: the first client uses Attio. The mock never goes to production for a c
   1. Make the key: `ssh-keygen -t ed25519 -N "" -C "nhip production release" -f nhip-release-key`.
   2. Add its public half with write access:
      `gh repo deploy-key add nhip-release-key.pub -R Teiger212/nhip-ma --allow-write --title "production release"`.
-  3. Make the `release` environment, open to `v*` tags only: Settings → Environments → New
-     environment `release` → Deployment branches and tags: Selected → Add rule → Tag `v*`.
+  3. Make the `release` environment: Settings → Environments → New environment `release`.
+     - Under Deployment protection rules, tick Required reviewers and add yourself. GitHub
+       runs the release workflow from the tagged commit, so this approval is what stops a tag
+       on an edited workflow from getting the key.
+     - Under Deployment branches and tags, choose Selected → Add rule → Tag `v*`.
   4. Store the private half there:
      `gh secret set PRODUCTION_DEPLOY_KEY --env release -R Teiger212/nhip-ma < nhip-release-key`.
   5. Let the key through the ruleset: Settings → Rules → Rulesets → "production: releases

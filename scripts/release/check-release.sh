@@ -34,8 +34,10 @@ fi
 
 # Any success in a deployment's history counts: a later `inactive` (a newer deploy replaced it)
 # must not block releasing an older commit.
+# The ids are read first, so a failed API call stops the gate instead of reading as "none".
+ids=$(gh api "repos/{owner}/{repo}/deployments?sha=$sha&environment=Preview&per_page=100" --jq '.[].id')
 staging_url=""
-for id in $(gh api "repos/{owner}/{repo}/deployments?sha=$sha&environment=Preview&per_page=100" --jq '.[].id'); do
+for id in $ids; do
 	staging_url=$(gh api "repos/{owner}/{repo}/deployments/$id/statuses?per_page=100" \
 		--jq '[.[] | select(.state == "success")][0].environment_url // empty')
 	[[ -n $staging_url ]] && break

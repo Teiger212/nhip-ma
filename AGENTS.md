@@ -224,11 +224,20 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
 - has a successful `Preview` deployment;
 - has a passing staging smoke run.
 
-The workflow then fast-forwards `production` with the deploy key and links Vercel's
-production deployment in the run summary. To check a commit beforehand, run
+The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
+then fast-forwards `production` with the deploy key and links Vercel's production deployment
+in the run summary. To check a commit beforehand, run
 `scripts/release/check-release.sh <sha>`. To go back, use Vercel's instant rollback, never an
 older release: the gate refuses one. `scripts/release/check-release.test.sh` checks the gate
-against known commits; it reads GitHub, so it runs by hand.
+against known commits; it reads GitHub, so it runs by hand. Notes:
+
+- **A refused release** leaves its tag behind; remove both with
+  `gh release delete vX.Y.Z --cleanup-tag`.
+- **Commits from before `release.yml` merged** start no run, because GitHub runs the workflow
+  from the tagged commit. The first release must target a later commit.
+- **The release after an instant rollback** builds, but doesn't take the production domain
+  until it's promoted in Vercel (or the rollback is undone).
+- **Release one at a time:** a third release cancels the second while it waits.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
 Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts
