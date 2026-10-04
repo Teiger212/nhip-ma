@@ -28,6 +28,24 @@ The board is the GitHub project **Nhịp** (https://github.com/users/Teiger212/p
 - **A new ticket** goes under its epic, with a milestone and a triage label, and onto the board: `gh project item-add 4 --owner Teiger212 --url <issue-url>`. Built-in workflows add it automatically once Eyal turns them on.
 - **A merged PR with no ticket** is listed in its epic's "Shipped" section.
 
+**The board's views:**
+
+| View         | Layout  | Shows                                                                        |
+| ------------ | ------- | ---------------------------------------------------------------------------- |
+| Epics        | Table   | Top-level epics with their sub-issue progress; expand one to see its tickets |
+| First Client | Board   | `milestone:"First client · 2026-10-18"`, by status                           |
+| Backlog      | Table   | `milestone:"After first client"`                                             |
+| Roadmap      | Roadmap | `has:target`: dated epics on a timeline, with milestone markers              |
+
+**Dates:**
+
+- Only epics carry the project's **Start** and **Target** date fields; tickets stay undated, and their order lives in the First Client board.
+- An epic goes on the roadmap when it gets both dates.
+- Plan code in days, not weeks. Date an epic by what actually gates it: a vendor, an account, Eyal's manual steps.
+- Set dates with `gh project item-edit --id <item-id> --project-id <project-id> --field-id <Start|Target field id> --date YYYY-MM-DD`. Get the ids from `gh project field-list 4 --owner Teiger212` and `gh project item-list 4 --owner Teiger212`.
+
+**Status moves by itself:** open issues and PRs are added as Todo, and closing an issue or merging a PR sets Done (the board's workflows: auto-add filter `is:issue,pr is:open`, Item closed, Pull request merged). Don't track triage state in Status; that's the labels' job.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
