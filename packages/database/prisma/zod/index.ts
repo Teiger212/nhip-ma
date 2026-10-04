@@ -216,7 +216,7 @@ export type PurchaseType = z.infer<typeof PurchaseTypeSchema>;
 
 // File: NotificationType.schema.ts
 
-export const NotificationTypeSchema = z.enum(['WELCOME', 'APP_UPDATE'])
+export const NotificationTypeSchema = z.enum(['WELCOME', 'APP_UPDATE', 'PIPE_DISCONNECTED'])
 
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 
