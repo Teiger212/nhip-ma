@@ -148,8 +148,11 @@ smoked, each one approved by Eyal (#112).
 - Pool then owner inside an office; managers invite their own agents; offices, pipes and
   managers set up in the admin area without a script (ADR 0015).
 - Each office sends from its own numbers (per-connection pipe credentials).
-- New-message alerts (web push, installable app); photos and voice notes shown in threads,
-  images sent; the WhatsApp reopen template for guests past the 24-hour window.
+- New-message alerts by web push from an installable app (ADR 0019, #84): a pool guest (or a
+  thread returned to the pool) alerts every agent and manager, an owned thread's guest its
+  owner only, a reassignment the new owner; the guest's name, pipe and language, never the
+  message; one alert per thread. No email. Photos and voice notes shown in threads, images
+  sent; the WhatsApp reopen template for guests past the 24-hour window.
 - Drafts that cannot invent a fact or be steered by a guest: a decision-model spike (Jev,
   Laya or an LLM behind one seam) for typed guardrail checks; a per-office model cost guard.
 - Billing, minimal: per seat and the lapse lock (ADR 0014: decided, but it lives on branch
@@ -167,7 +170,9 @@ CSV export.
 
 **Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a per-office AI kill switch,
 listing match, per-agent performance, nudges, native iOS and Android apps built from the web
-app (#124).
+app (#124; for alerts they change only the transport), escalation when an owner does not
+answer (#131), no alert while the operator is viewing that thread, alerts to the agent on
+Zalo or WhatsApp.
 
 **"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
 live, and only if we are confident it ships. It names the feature, never a date. One exception (2026-10-04): the platform admin's CRM selector lists the CRMs on the
@@ -216,7 +221,8 @@ PRs; "open" means not started unless it says otherwise.
    _Partly done_: the send-safety fixes in #32 (status-guarded retry, inbound dedupe, Zalo
    replay window). _Open_: the decision-model spike, the cost guard.
 4. **Reaching the agent**: alerts, photos and voice, the WhatsApp reopen template.
-   _Open_.
+   _Open_. Alerts are specced (ADR 0019, #84) and due for go-live; _waiting on Eyal_: the
+   VAPID keys on staging and prod (docs/setup-checklist.md).
 5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
    "Coming soon" controls.
    _In progress_: the CRM seam has shipped (#72, #74, #75, #76, #88, #90); open: #64, #67,
@@ -226,7 +232,8 @@ PRs; "open" means not started unless it says otherwise.
    (#93; the kit's screens stay hidden), guest-data deletion, "Coming soon" controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
-   impact assessment filed with A05 for hosting in Singapore, the model providers, the
+   impact assessment filed with A05 for hosting in Singapore, the model providers, the push
+   services that carry alerts (Apple, Google, Mozilla, Microsoft), the
    client's CRM, if any, and HubSpot's EU portal for the demo, confirmed with a Vietnamese
    lawyer), the first GitHub Release to prod.
    _Open_. Go-live target: first client on production by 2026-10-18 (#99).
