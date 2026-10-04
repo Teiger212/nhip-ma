@@ -7,6 +7,8 @@ import type { Store } from "../types";
 import { alertSounds } from "./burst";
 import { alertLink } from "./content";
 import { alertGuestMessage } from "./index";
+import { alertTag } from "./tag";
+import type { AlertPayload } from "./transport";
 
 /**
  * The alert log against the test database (ADR 0019 "Bursts", spec #84 testing seam 3): the
@@ -176,5 +178,62 @@ test("one operator's failed alert never costs the others theirs", async () => {
 	});
 	expect(alerted.map((row) => row.userId)).toContain("agent-1");
 	expect(alerted.map((row) => row.userId)).not.toContain("agent-2");
+	await store.close();
+});
+
+test("each operator's alert is in their language, and the payload names no thread and no guest", async () => {
+	const store = await testInboxStore();
+	await testDb.member.deleteMany({ where: { organizationId: OFFICE } });
+	await member(OFFICE, "agent-1", "member");
+	await member(OFFICE, "agent-2", "member");
+	await testDb.user.update({ where: { id: "agent-1" }, data: { locale: "en" } });
+	await testDb.user.update({ where: { id: "agent-2" }, data: { locale: null } });
+	const guestId = "zalo-guest-4471";
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId,
+			guestName: "Minji",
+			text: "안녕하세요",
+			vendorMessageId: null,
+		},
+		OFFICE,
+	);
+	const korean = {
+		...conversation,
+		oneShot: { ...conversation.oneShot!, language: "ko" as const },
+	};
+	const sent: { userId: string; payload: AlertPayload }[] = [];
+	const transport = {
+		send: async (userId: string, payload: AlertPayload) => void sent.push({ userId, payload }),
+	};
+	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
+	await alertGuestMessage(runtime, korean, { transport });
+
+	const byUser = Object.fromEntries(sent.map(({ userId, payload }) => [userId, payload]));
+	expect(byUser["agent-1"]).toMatchObject({ title: "Minji is waiting", body: "Zalo · Korean" });
+	expect(byUser["agent-2"]).toMatchObject({ title: "Minji đang chờ", body: "Zalo · tiếng Hàn" });
+	const rows = await testDb.inboxAlert.findMany({ where: { conversationId: conversation.id } });
+	for (const { userId, payload } of sent) {
+		expect(Object.keys(payload).sort()).toEqual([
+			"alertId",
+			"body",
+			"sound",
+			"tag",
+			"title",
+			"url",
+		]);
+		const row = rows.find((candidate) => candidate.id === payload.alertId);
+		expect(row?.userId).toBe(userId);
+		expect(payload.url).toBe(row?.link);
+		expect(payload.sound).toBe(row?.sounded);
+		expect(payload.tag).toBe(alertTag(conversation.id));
+		expect(JSON.stringify(payload)).not.toContain(conversation.id);
+		expect(JSON.stringify(payload)).not.toContain(guestId);
+		expect(JSON.stringify(payload)).not.toContain("안녕하세요");
+	}
+	expect(byUser["agent-1"].url).toMatch(/^\/en\/inbox\?alert=/);
+	expect(byUser["agent-2"].url).toMatch(/^\/vi\/inbox\?alert=/);
 	await store.close();
 });
