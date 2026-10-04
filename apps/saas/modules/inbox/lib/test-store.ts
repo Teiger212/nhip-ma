@@ -58,7 +58,12 @@ export async function deleteThreadUnder<T>(
 				(value) => ({ ok: true as const, value }),
 				(error: unknown) => ({ ok: false as const, error }),
 			);
-			await Promise.race([running, waitingOnALock()]);
+			const settled = { done: false };
+			void running.then(() => {
+				settled.done = true;
+			});
+			await Promise.race([running, waitingOnALock(settled)]);
+			settled.done = true;
 			await tx.$queryRaw`SELECT 1 FROM "inbox_answer" WHERE "conversationId" = ${conversationId} AND "officeId" = ${officeId} FOR UPDATE`;
 			await tx.conversation.deleteMany({ where: { id: conversationId, officeId } });
 		},
@@ -69,10 +74,11 @@ export async function deleteThreadUnder<T>(
 	return outcome.value;
 }
 
-/** Resolves once another session on the test database waits on a lock. */
-async function waitingOnALock(): Promise<void> {
+/** Resolves once another session on the test database waits on a lock, or `settled` is done. */
+async function waitingOnALock(settled: { done: boolean }): Promise<void> {
 	const deadline = Date.now() + 5_000;
 	while (Date.now() < deadline) {
+		if (settled.done) return;
 		const [row] = await testDb.$queryRaw<Array<{ waiting: number }>>`
 			SELECT count(*)::int AS waiting FROM pg_stat_activity
 			WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()`;

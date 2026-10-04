@@ -745,7 +745,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				if (isUniqueViolation(error)) {
 					return { ok: false, reason: "in_progress" };
 				}
-				// The thread went between the lock and a write; the lock makes it rare.
+				// ADR 0020's backstop: a row this approval writes points at one that is gone. Once
+				// the lock above returns a row the thread itself can't go before this commits, so
+				// in practice this is the operator's account deleted mid-approval.
 				if (isForeignKeyViolation(error)) {
 					return { ok: false, reason: "not_found" };
 				}

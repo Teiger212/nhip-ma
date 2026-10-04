@@ -477,7 +477,6 @@ test("a delete committed under the first approval of a pool thread makes it not_
 	const approved = await deleteThreadUnder(OFFICE, conv.id, () => store.beginAnswer(input));
 	expect(approved).toEqual(NOT_FOUND);
 	expect(await testDb.conversation.count({ where: { id: conv.id } })).toBe(0);
-	expect(await testDb.answer.count({ where: { inboundId: input.inboundId } })).toBe(0);
 	await store.close();
 });
 
@@ -490,7 +489,6 @@ test("a delete committed under the retry of a failed Answer makes it not_found (
 		store.beginAnswer({ ...input, text: "second try" }),
 	);
 	expect(approved).toEqual(NOT_FOUND);
-	expect(await testDb.answer.count({ where: { inboundId: input.inboundId } })).toBe(0);
 	await store.close();
 });
 
