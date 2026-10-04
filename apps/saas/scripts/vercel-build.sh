@@ -10,9 +10,10 @@ if [ -n "${VERCEL:-}" ]; then
 		echo "DIRECT_DATABASE_URL is not set: hosted builds migrate first (ADR 0016)." >&2
 		exit 1
 	fi
-	echo "Applying migrations (prisma migrate deploy)"
-	# The direct (non-pooled) URL: migrations take locks the pooler cannot hold.
-	(cd ../../packages/database && DATABASE_URL="$DIRECT_DATABASE_URL" pnpm exec prisma migrate deploy)
+	echo "Applying migrations (prisma migrate deploy, lock_timeout 5s)"
+	# The direct (non-pooled) URL: migrations take locks the pooler cannot hold. A migration
+	# blocked on a lock fails within 5s instead of queueing every request behind it (#98).
+	DATABASE_URL="$DIRECT_DATABASE_URL" ../../packages/database/scripts/migrate-deploy.sh
 fi
 
 cd ../.. && pnpm exec turbo run build --filter=saas

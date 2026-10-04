@@ -16,8 +16,11 @@ Use for typed notification events delivered in-app and/or by email. Do not bypas
 3. Generate and migrate:
    ```bash
    pnpm --filter @repo/database generate
-   pnpm --filter @repo/database migrate
+   pnpm --filter @repo/database push
+   pnpm --filter @repo/database migrate <short_name>
    ```
+   `push` applies the change to your dev database; `migrate <name>` writes the migration
+   (`migrations.sh new`; read it, and see the `database-schema-change` skill).
 4. Add the value to `NOTIFICATION_TYPES` in `packages/notifications/src/types.ts`, then update `NotificationTypeId` and, if user-configurable, the ordered group in `packages/notifications/src/catalog.ts`.
 5. Add `settings.notificationsPage.types.<TYPE>.label` to every `packages/i18n/translations/*/saas.json`. Update the `onToggle` type in `apps/saas/modules/settings/components/NotificationPreferencesForm.tsx` if its explicit union does not yet include the type.
 6. Add a producer under `packages/notifications/src` and export it from `src/index.ts`. Call `createNotification({ userId, type, data, link })`; the generic email derives its subject from `data.headline` or `data.title` and optionally renders `data.message`.

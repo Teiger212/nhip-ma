@@ -16,8 +16,11 @@ Use for sign-in, sign-up, verification, account security, OAuth, or Better Auth 
 3. Add required persisted fields to `packages/database/prisma/schema.prisma` and semantically mirror all PostgreSQL/MySQL/SQLite Drizzle schemas, then run:
    ```bash
    pnpm --filter @repo/database generate
-   pnpm --filter @repo/database migrate
+   pnpm --filter @repo/database push
+   pnpm --filter @repo/database migrate <short_name>
    ```
+   `push` applies the change to your dev database; `migrate <name>` writes the migration
+   (`migrations.sh new`; read it, and see the `database-schema-change` skill).
 4. Expose user-configurable behavior through typed flags in `packages/auth/types.ts` and `packages/auth/config.ts`; make UI honor those flags.
 5. Add/update the smallest route/components under `apps/saas/app/(unauthenticated)` or `apps/saas/modules/auth`. Use `authClient` from `@repo/auth/client` in client components and `getSession` from `@auth/lib/server` in Server Components.
 6. Preserve locale-aware mail callbacks and subscription/organization hooks in `packages/auth/auth.ts`. Add templates/translations when the flow sends email.
