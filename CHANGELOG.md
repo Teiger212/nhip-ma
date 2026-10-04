@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05 (approve on a deleted thread)
+
+### Fixed
+
+- **Approving a reply on a thread deleted under it answers 404** (#137, ADR 0020, the first step of guest-data deletion). Approve now locks the thread (`FOR KEY SHARE`) before it reads or writes an Answer, on a first send and on the retry of a failed one, which is the order the coming deletion locks in. A thread deleted before the approval, or while it waited, is `not_found` and the route answers 404. Before, a first send failed its foreign key with a 500, a retry on an owned thread approved a reply on a thread already gone, and a retry on a pool thread could deadlock (`40P01`). The new lock doesn't make approvals queue behind each other: two agents on one pool thread end with one owner, and the other is told the reply is being sent.
+
 ## 2026-10-04 (no notification emails)
 
 ### Changed

@@ -356,6 +356,9 @@ export async function approveAndSend(
 				};
 			case "unknown":
 				return DELIVERY_UNKNOWN;
+			case "not_found":
+				// The thread was deleted since it was read (ADR 0020).
+				return { ok: false, status: 404, error: "not_found" };
 		}
 	}
 	const answerId = begun.answer.id;

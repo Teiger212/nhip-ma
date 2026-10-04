@@ -128,8 +128,10 @@ export type BeginAnswerResult =
 			 * `already_answered`: a sent Answer exists. `in_progress`: another approval is
 			 * between approve and the vendor's reply. `unknown`: a previous send's outcome is
 			 * unknown and must be reconciled by a person before anything is sent again.
+			 * `not_found`: the office has no such thread, or it was deleted before or under
+			 * this approval (ADR 0020).
 			 */
-			reason: "already_answered" | "in_progress" | "unknown";
+			reason: "already_answered" | "in_progress" | "unknown" | "not_found";
 	  };
 
 export type Conversation = {
