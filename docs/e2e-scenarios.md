@@ -50,7 +50,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 5. **The reconcile catches a missed outcome** (#67). A lead marked lost with no notice to Nhịp
    is resolved after the reconcile runs.
 6. **Home counts deals from the CRM** (#68). Home shows Closings and Lost "as of" the last check,
-   and loads at once with the CRM failing. Two threads on one won lead count one closing.
+   and loads at once with the CRM failing. Two threads on one won lead count one closing. An
+   office with no CRM shows Closings and Lost hatched with "No CRM" and the line "Closings and
+   lost come from your CRM. Nhịp connects the one your office uses.", and no call to connect
+   one.
 7. **A manager links or unlinks by hand** (#70). As the manager, search the CRM ("min", 3
    characters at least) and link Minji's thread to Minji Park; the agent sees it read-only and
    has no link controls. Unlinked, it stays unlinked. Another office's lead or thread answers
@@ -69,6 +72,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    and from the `PUT`'s; the token field is a password field and empty after a reload; "not
    saved" with no token is the card asking for it and the office still on None, and `PUT` with
    no token answering 400; "refused" is as in CRM 2, before and after the office has a token).
+9. **Only CRMs Nhịp can connect are choosable** (#123). As the platform admin, the CRM
+   selector lists the CRMs on the roadmap (the built-in CRM, Bitrix24, Getfly CRM, Zoho CRM)
+   as disabled "coming soon" options that can't be saved. In production, the mock CRM isn't
+   offered.
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 

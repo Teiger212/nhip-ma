@@ -87,7 +87,7 @@ company entity first.
 | ------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
 | Meta developer app + WhatsApp Business                 | inbound webhook, outbound send (`WHATSAPP_*`)                       | Yes: Business Verification before real traffic         |
 | Zalo Official Account + developer app                  | same for Zalo (`ZALO_OA_*`)                                         | Yes: OA verification requires a registered VN business |
-| Attio workspace + API key                              | CRM adapter, closings and lost (ADR 0003)                           | No                                                     |
+| The agency's own CRM access, if any (intake, #128)     | CRM adapter, closings and lost (ADR 0003)                           | No                                                     |
 | OpenRouter account (or any OpenAI-compatible endpoint) | draft adapter: translation, follow-ups (`DRAFT_*`, ADRs 0005, 0007) | No; prepaid balance is the budget                      |
 | Resend (or the mail provider in `.env.local.example`)  | magic link and verification emails                                  | No, but a verified sending domain                      |
 | Google / GitHub OAuth apps                             | only if social login stays enabled                                  | No                                                     |

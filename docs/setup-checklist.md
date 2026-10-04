@@ -41,7 +41,7 @@ from milestone 6.
 
 The demo is a round trip on Zalo (above): a guest writes, the contact and deal appear in
 HubSpot, the deal is marked won there, and Nhịp's Home counts the closing. It is the demo
-path only; the first client is on Attio (below). The staging end-to-end steps are #116.
+path only; the first client's CRM comes from intake (#128): HubSpot or Attio (below), or none. The staging end-to-end steps are #116.
 
 - [ ] **HubSpot free account** for the demo office (free CRM, no trial clock).
 - [ ] **Install the `nhip-demo` app** (`integrations/hubspot-demo-app`) on the demo portal,
@@ -56,9 +56,19 @@ path only; the first client is on Attio (below). The staging end-to-end steps ar
       above. `PIPE_SECRETS_KEY` must be set too, or the token cannot be saved. Verify: mark the
       demo deal won in HubSpot, and the thread shows "Won" in Nhịp within seconds.
 
-### Client CRM: Attio (#101, decided 2026-10-04)
+### Client CRM: from intake (#128), decided 2026-10-04
 
-Answered: the first client uses Attio. The mock never goes to production for a client.
+The first client's CRM is unknown until intake. Nhịp never sets up a third-party CRM for an
+agency; with none, it goes live with no CRM connection. The mock never goes to production for a
+client.
+
+- [ ] **If HubSpot:** a production static app of Nhịp's own (a new CLI project, e.g.
+      `nhip-prod`), installed in the client's portal by a user with access to it (you, added
+      by their admin); production's `HUBSPOT_APP_CLIENT_SECRET` and `HUBSPOT_WEBHOOK_URL`; its
+      token pasted into the office's Connections card. A second HubSpot agency needs OAuth or a
+      per-office webhook secret.
+
+**If Attio** (#101):
 
 - [x] **Nhịp's own free dev workspace** "Nhip Dev", Deals enabled, with an API key. Done
       2026-10-04; the key is in the main checkout's `.env.local` as `ATTIO_TEST_TOKEN`.

@@ -78,7 +78,8 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   `outcomesChanged` asks the adapter for the changed leads' outcomes and caches them on the link,
   observed when Nhịp first heard them (`observeOutcome`). The thread summary carries the link, so
   the queue rule (`isResolved`, `inQueue`) and the nav count read it on the client. Home still
-  shows "connect your CRM" where closings and lost will be (#68).
+  shows "connect your CRM" where closings and lost will be (#68); it becomes a neutral "No CRM"
+  chip (PRODUCT.md, 2026-10-04).
 - **Home** (ADR 0002): `modules/home/lib/funnel.ts` resolves the office and calls
   `store.funnel(viewer, { since, timeZone })`, one SQL query over Answers. The window is 30
   local days in the office's time zone (`modules/home/lib/window.ts`, Asia/Ho_Chi_Minh

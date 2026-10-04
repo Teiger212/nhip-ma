@@ -19,7 +19,9 @@ is renamed.
 ## People
 
 - **Guest**: the person who wrote in. A prospective tenant or buyer, or someone writing
-  on their behalf (HR, a relocation firm). Never sees Nhịp; sees the agency number.
+  on their behalf (HR, a relocation firm). Never sees Nhịp; sees the agency number. Often an
+  expat on a foreign number: a WhatsApp number is always read with its country code; full
+  international input comes after go-live (#125).
 - **Agent**: the person who answers guests. The **user** of the queue. Works mostly in
   Vietnamese, some English, on a phone and at a desk about equally. Sees the office's pool and the threads they own
   (ADR 0015).
@@ -34,11 +36,15 @@ is renamed.
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
   role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
   the membership ends, the account ends, except the platform admin's (ADR 0013).
-- **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
+- **Office**: the tenant (ADR 0008). Owns its pipes, its CRM connection if any, its agents, and
+  its threads.
   A thread starts in the office's pool and belongs to its owner once answered (ADR 0015).
   One agency, one office is the MVP; multi-office agencies later. Every office lives in
   one shared Nhịp, yet each feels standalone: its own address (a subdomain), its own name,
   and no sign that other offices exist.
+- **Intake**: what Nhịp asks a new agency before setting anything up: which CRM it already
+  uses, its Zalo OA and WhatsApp number, its people, its guests (#128). The answer picks the
+  agency's CRM path.
 - **Office setup**: the platform admin's single step that creates an office and invites
   its first manager. Operators never create, switch or leave offices.
 
@@ -123,7 +129,10 @@ is renamed.
   original. Stored per message per operator locale (ADR 0007).
 - **Operator language**: EN or VI, from the operator's locale setting. The target for
   translations and the language of the operator note.
-- **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class.
+- **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class. Any
+  other language reads as EN, except Latin-script text with accents Vietnamese shares (French,
+  Spanish, Portuguese), which reads as VI. Either way the first reply and the translation use
+  the wrong language.
 
 ## Integrations
 
@@ -140,9 +149,15 @@ is renamed.
   are blocked with the reason shown, and the platform admin is alerted to reconnect it with
   the owner. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses. Source of truth
-  for closings and lost (ADR 0003). Nhịp does not become a CRM. The adapters are the
-  **mock CRM**, which keeps its leads in Nhịp's database and is for development and demos only;
-  HubSpot's free CRM, the demo (ADR 0003, spec #59); and Attio, the first client's CRM (#101).
+  for closings and lost (ADR 0003). The office connects the CRM it already uses; Nhịp never
+  sets one up for it, and an office with no CRM has no connection and no won or lost. The
+  adapters are the **mock CRM**, which keeps its leads in Nhịp's database and is for
+  development and demos only; HubSpot's free CRM, the demo and a client's own (ADR 0003, spec
+  #59); and Attio, for an agency already on it (#101).
+- **Built-in CRM**: the CRM Nhịp will host for an agency that has none (#126, Twenty-based).
+  One more adapter behind the same seam, never inbox tables. Not built; only the platform
+  admin's CRM selector names it, as coming soon. A glossary name: the name agencies see is
+  decided in #126's spec.
 - **CRM lead**: the guest's record in the office's CRM (a contact with its deal). Not the
   funnel's **Lead**, which is a guest who wrote in.
 - **CRM link**: the stored association between a thread and its CRM lead. Nhịp makes it when a
@@ -157,8 +172,9 @@ Nhịp is not, and is not becoming, any of these; recorded so they do not creep 
 - **Not a guest-facing bot.** Guests talk to the agency; every message they receive was
   approved by a human.
 - **Not legal advice.** Paperwork is flagged to the agent, never explained to the guest.
-- **Not a CRM.** It links to the office's CRM through an adapter and never becomes the
-  record of deals.
+- **Not the record of deals.** The inbox links to a CRM through an adapter and never holds
+  deals itself. The CRM is the office's own, or the built-in CRM Nhịp hosts beside the inbox
+  (#126).
 - **Not a listings database.** Listing match reads from a pool the office already keeps;
   Nhịp does not scrape or maintain listings.
 - **Not a marketplace or a rental operator.** No guest-side accounts, no bookings, no
