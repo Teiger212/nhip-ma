@@ -134,6 +134,8 @@ one real round trip from a phone over WhatsApp and Zalo.
   iteration.
 - After every staging deploy, `.github/workflows/staging-smoke.yml` runs the read-only
   staging smoke (`pnpm --filter saas smoke`, `tests/smoke/`) against the deployment.
+  The same suite gates production as a Vercel Deployment Check
+  (`.github/workflows/production-smoke.yml`, #113; see "Cutting a release").
 
 **Neon (staging and prod, ADR 0016).** This folder is linked to Neon project
 `lingering-bonus-85587787` (`.neon`, git-ignored; `neon.ts` is the project config). Pass
@@ -225,8 +227,20 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
 - has a passing staging smoke run.
 
 The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
-then fast-forwards `production` with the deploy key and links Vercel's production deployment
-in the run summary. To check a commit beforehand, run
+then fast-forwards `production` with the deploy key, and Vercel builds production from it.
+
+**A production deployment reaches the domain only after its smoke check passes (#113).**
+Vercel holds each production deployment off the production domain until its Deployment
+Checks pass: Vercel's Lint and TypeCheck, and the GitHub check "Production smoke |
+production-smoke (nhip - production)". That check is `.github/workflows/production-smoke.yml`,
+which runs on Vercel's `vercel.deployment.ready` dispatch. It runs the read-only
+`tests/smoke/` suite against the new deployment's own URL and writes nothing. A failing check
+keeps the previous deployment on the domain and fails the run visibly. The release run waits
+until the domain (`vars.PRODUCTION_URL`) serves the new deployment, comparing the `data-dpl-id`
+on each page's `<html>`, and then links it in the run summary. If the smoke check fails or
+never passes, the release run fails too. **Force Promote** in Vercel skips the checks: use it
+only in an emergency, and say so in the release notes. A smoke run that died (cancelled, or a
+runner failure) leaves the deployment held: re-run the job. To check a commit beforehand, run
 `scripts/release/check-release.sh <sha>`. To go back, use Vercel's instant rollback, never an
 older release: the gate refuses one. `scripts/release/check-release.test.sh` checks the gate
 against known commits; it reads GitHub, so it runs by hand. Notes:
@@ -236,7 +250,13 @@ against known commits; it reads GitHub, so it runs by hand. Notes:
 - **Commits from before `release.yml` merged** start no run, because GitHub runs the workflow
   from the tagged commit. The first release must target a later commit.
 - **The release after an instant rollback** builds, but doesn't take the production domain
-  until it's promoted in Vercel (or the rollback is undone).
+  until it's promoted in Vercel (or the rollback is undone). Its release run fails after 30
+  minutes, saying the domain doesn't serve it.
+- **Until `vars.PRODUCTION_URL` is set**, the release run stops once the smoke check passes,
+  and warns that it didn't check the domain.
+- **The first production deployment isn't held by the smoke check.** Vercel offers a GitHub
+  check only after it has run once, so Eyal requires it after the first release
+  (docs/setup-checklist.md); from the second release on, it holds.
 - **Release one at a time:** a third release cancels the second while it waits.
 
 The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.

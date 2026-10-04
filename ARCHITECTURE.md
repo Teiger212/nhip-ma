@@ -281,6 +281,11 @@ ADR 0016 and its amendment. One Vercel project `nhip`, one Neon project, both in
 - **Staging smoke** (`.github/workflows/staging-smoke.yml`): on each successful Preview
   deployment, `pnpm --filter saas smoke` (`playwright.smoke.config.ts`, `tests/smoke/`)
   checks read-only that pages load, signed-out APIs refuse and webhooks fail closed.
+- **Production smoke** (`.github/workflows/production-smoke.yml`, #113): the same suite as a
+  Vercel Deployment Check. When a production deployment is built, Vercel's
+  `vercel.deployment.ready` dispatch runs the suite against that deployment's own URL. Vercel
+  gives the deployment the production domain only once this check passes, along with Vercel's
+  Lint and TypeCheck.
 - **Prod** builds from the `production` branch. Ruleset 24113338 ("production: releases
   only") blocks updates, non-fast-forward pushes and deletion, and has no bypass actor, so
   nothing moves `production` today. The release workflow that will move it to a commit

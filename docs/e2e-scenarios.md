@@ -139,7 +139,9 @@ not driven here; a test sets up a connected or disconnected OA directly, as setu
 ## Staging smoke (ADR 0016)
 
 After every staging deploy, a read-only check that the deployed app is up and still guarded.
-It runs against the deployment itself, signs nobody in, and writes nothing.
+It runs against the deployment itself, signs nobody in, and writes nothing. The same checks
+gate production: each production deployment passes them before Vercel gives it the domain
+(`.github/workflows/production-smoke.yml`, #113).
 
 1. **The app answers.** The login page loads in English and Vietnamese with its sign-in
    button; the auth API says it is up. Spec: `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 1).
