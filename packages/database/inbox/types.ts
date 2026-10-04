@@ -307,8 +307,9 @@ export type WebhookDelivery = WebhookDeliveryRecord & { id: string; receivedAt: 
 
 export type InboxStore = {
 	/**
-	 * Every thread the viewer can open, with everything under it. Scripts and tests read this; the inbox's list
-	 * reads `listConversationSummaries`, which stays small however long the threads get.
+	 * Every thread the viewer can open, with everything under it. Scripts and tests read
+	 * this; the inbox's list reads `listConversationSummaries`, which stays small however
+	 * long the threads get.
 	 */
 	listConversations: (viewer: InboxViewer) => Promise<Conversation[]>;
 	/** The threads this viewer can open (ADR 0015), most recently active first, as summaries. */
@@ -472,7 +473,7 @@ export type InboxStore = {
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
 	 * thread is already claimed or linked. The database decides, so two first messages make one lead.
 	 */
-	claimCrmLink: (conversationId: string, officeId: string) => Promise<boolean>;
+	claimCrmLink: (officeId: string, conversationId: string) => Promise<boolean>;
 	/** Give up a claim that linked nothing, so a later guest message tries again. */
 	releaseCrmLink: (officeId: string, conversationId: string) => Promise<void>;
 	/** Record the lead a claimed thread is linked to. */

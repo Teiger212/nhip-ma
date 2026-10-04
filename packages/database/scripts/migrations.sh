@@ -37,12 +37,29 @@ case "${1:-}" in
     if ! grep -qv '^--' "$dir/migration.sql"; then rm -rf "$dir"; echo "No schema changes; nothing written."; exit 0; fi
     echo "Wrote $dir/migration.sql — review it before committing." ;;
   baseline)
-    if psql "$DATABASE_URL" -tAc "select to_regclass('_prisma_migrations')" | grep -q .; then
+    # libpq refuses Prisma's own URL parameters; use a direct (not pooled) URL on Neon.
+    TARGET_URL=$(node -e 'const u=new URL(process.env.DATABASE_URL);u.search="";process.stdout.write(u.toString())')
+    if psql "$TARGET_URL" -tAc "select to_regclass('_prisma_migrations')" | grep -q .; then
       echo "This database already has a migration history; run migrate deploy." ; exit 0
     fi
-    # Same tables, columns, indexes and constraints; column order may differ (db push appends).
-    schema_of() { pg_dump -s -O -x -T _prisma_migrations "$1" | grep -v -e '^--' -e '^\\' -e '^$' | sed 's/,$//' | sort; }
-    target="$(schema_of "$DATABASE_URL")"
+    # Same statements: tables, columns, enums, indexes and constraints. Only a table's column
+    # order may differ (db push appends), so columns are sorted inside their own table.
+    schema_of() {
+      pg_dump -s -O -x -T _prisma_migrations "$1" | python3 -c '
+import sys
+lines = [l for l in sys.stdin.read().splitlines() if l and not l.startswith(("--", "\\"))]
+statements = []
+for s in "\n".join(lines).split(";\n"):
+    s = s.strip()
+    if s.startswith("CREATE TABLE"):
+        head, _, rest = s.partition("(\n")
+        body, _, tail = rest.rpartition("\n)")
+        columns = sorted(c.strip().rstrip(",") for c in body.split("\n"))
+        s = head + "(\n" + "\n".join(columns) + "\n)" + tail
+    statements.append(s)
+print("\n;\n".join(sorted(statements)))'
+    }
+    target="$(schema_of "$TARGET_URL")"
     total=0 matched=0 names=""
     for dir in prisma/migrations/*/; do
       psql "$SCRATCH_URL" -q -v ON_ERROR_STOP=1 -f "$dir/migration.sql" >/dev/null

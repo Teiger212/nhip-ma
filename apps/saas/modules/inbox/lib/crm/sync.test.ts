@@ -354,8 +354,8 @@ test("an office connected to HubSpot keeps its token sealed, and its CRM is open
 	expect(seen).toEqual(["pat-eu1-first-token"]);
 });
 
-// #95: two admins saving at once. A token is sealed for its CRM kind, so a token replaced while
-// the office's CRM changed kind underneath is never written onto the new kind.
+// ADR 0017, #95: a token is sealed for its office and CRM kind. Two admins saving at once: a
+// token replaced while the office's CRM changed kind underneath is never written onto the new kind.
 test("a token is replaced only on the CRM kind it was sealed for", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");

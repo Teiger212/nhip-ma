@@ -572,20 +572,20 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 			const q = shot.qualification;
 			const paperwork = { mentioned: shot.paperwork.mentioned, flag: shot.paperwork.flag };
-			const thread = { conversationId_officeId: { conversationId: id, officeId } };
+			const threadKey = { conversationId_officeId: { conversationId: id, officeId } };
 			await db.$transaction([
 				db.qualification.upsert({
-					where: thread,
+					where: threadKey,
 					create: { conversationId: id, officeId, ...q },
 					update: { ...q },
 				}),
 				db.draft.upsert({
-					where: thread,
+					where: threadKey,
 					create: { conversationId: id, officeId, ...shot.draft },
 					update: { ...shot.draft },
 				}),
 				db.paperwork.upsert({
-					where: thread,
+					where: threadKey,
 					create: { conversationId: id, officeId, ...paperwork },
 					update: paperwork,
 				}),
@@ -1118,7 +1118,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count > 0;
 		},
 
-		async claimCrmLink(conversationId, officeId) {
+		async claimCrmLink(officeId, conversationId) {
 			const { count } = await db.crmLink.createMany({
 				data: [{ conversationId, officeId }],
 				skipDuplicates: true,
@@ -1131,7 +1131,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async completeCrmLink(officeId, conversationId, link) {
-			await db.crmLink.update({
+			await db.crmLink.updateMany({
 				where: { conversationId, officeId },
 				data: { ...link, linkedAt: new Date() },
 			});

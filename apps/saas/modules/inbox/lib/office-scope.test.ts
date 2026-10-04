@@ -41,7 +41,7 @@ async function theirThread(store: Store) {
 	});
 	if (!begun.ok) throw new Error(begun.reason);
 	await store.setCrmConnection(THEIRS, "mock");
-	await store.claimCrmLink(thread.id, THEIRS);
+	await store.claimCrmLink(THEIRS, thread.id);
 	return { thread, inboundId, answerId: begun.answer.id };
 }
 

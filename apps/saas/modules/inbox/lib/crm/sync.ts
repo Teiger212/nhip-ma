@@ -147,7 +147,7 @@ export function createCrmSync(deps: {
 		async newGuest(conversation: Conversation): Promise<void> {
 			const connection = (await connectionOf(conversation.officeId))?.connection;
 			if (!connection) return;
-			if (!(await store.claimCrmLink(conversation.id, conversation.officeId))) return;
+			if (!(await store.claimCrmLink(conversation.officeId, conversation.id))) return;
 			try {
 				await linkLead(
 					conversation,

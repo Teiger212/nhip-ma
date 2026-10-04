@@ -411,7 +411,9 @@ model Draft {
   officeId         String
   conversation     Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   reply            String
-  /// The guest message this reply answers; null once that message is gone.
+  /// The guest message this reply answers; null once that message is gone. Keyed by the
+  /// message alone, not with the office like the thread: a composite key would set
+  /// `officeId` null too on delete, and Prisma cannot set only one of its columns null.
   answersMessageId String?
   answersMessage   Message?     @relation(fields: [answersMessageId], references: [id], onDelete: SetNull)
   source           DraftSource  @default(template)
