@@ -37,12 +37,13 @@ Open http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. Locale pr
 are required; the redirects and the rejected cookie-only locale are in
 [ARCHITECTURE.md](./ARCHITECTURE.md), with layout and data details.
 
-`pnpm seed` (when `DATABASE_URL` is Postgres) creates two logins with password
-`walkthrough`: `walk@nhip.local`, the agent (a member of the walk office, sees Inbox and
-Home), and `admin@nhip.local`, the platform admin (owner of the walk office, also sees the
-kit's admin area where offices are created and agents invited). It writes four invented
-threads into the walk office once: Minji and Thảo as just written (Your turn), Yuki and
-Alexei three days old (Quiet). A re-run skips existing threads; `pnpm seed --reset`
+`pnpm seed` (when `DATABASE_URL` is Postgres) creates four logins with password
+`walkthrough`, all in the walk office: `walk@nhip.local` and `walk2@nhip.local`, the agents
+(members, see Inbox and Home); `manager@nhip.local`, the office's manager (kit role `admin`,
+sees every thread and reassigns); and `admin@nhip.local`, the platform admin (owner of the
+walk office, also sees the kit's admin area where offices are created and agents invited).
+It writes four invented threads into the walk office once: Minji and Thảo as just written
+(Your turn), Yuki and Alexei three days old (Quiet). A re-run skips existing threads; `pnpm seed --reset`
 rewrites them as of now, which the fresh pair needs after 48 hours. There is no auth
 bypass route and public sign-up is closed (ADR 0010). Inbox stays invented threads +
 `SEND_MODE=mock`.
@@ -53,7 +54,10 @@ tables first. A schema change that would lose data there is not accepted silentl
 `dropdb supastarter_test` and run again.
 
 This walk only needs `apps/saas` on port 3010, including its admin area (offices, pipe
-connections, webhook deliveries). Do not build or ship `apps/marketing`.
+connections, webhook deliveries). Port 3010 is Eyal's dev server; an agent runs its own on
+another port, trusting that origin:
+`AUTH_TRUSTED_ORIGINS=http://localhost:3011 pnpm --filter saas exec next dev --port 3011`.
+Do not build or ship `apps/marketing`.
 The compose `postgres` service is PostgreSQL 16 on port 5432; compose also defines MinIO
 for storage.
 
@@ -68,17 +72,17 @@ pnpm dev
 
 ### Root commands
 
-| Command                             | Purpose                            |
-| ----------------------------------- | ---------------------------------- |
-| `pnpm dev`                          | Start development tasks            |
-| `pnpm build`                        | Build the workspace                |
-| `pnpm start`                        | Start built applications           |
-| `pnpm lint` / `pnpm lint:fix`       | Check / fix Oxlint issues          |
-| `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting     |
-| `pnpm type-check`                   | Run workspace type checks          |
-| `pnpm test`                         | Run Vitest workspace tests         |
-| `pnpm seed`                         | Seed invented threads + walk login |
-| `pnpm clean`                        | Clear Turbo outputs                |
+| Command                             | Purpose                             |
+| ----------------------------------- | ----------------------------------- |
+| `pnpm dev`                          | Start development tasks             |
+| `pnpm build`                        | Build the workspace                 |
+| `pnpm start`                        | Start built applications            |
+| `pnpm lint` / `pnpm lint:fix`       | Check / fix Oxlint issues           |
+| `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting      |
+| `pnpm type-check`                   | Run workspace type checks           |
+| `pnpm test`                         | Run Vitest workspace tests          |
+| `pnpm seed`                         | Seed invented threads + walk logins |
+| `pnpm clean`                        | Clear Turbo outputs                 |
 
 Required gates:
 
@@ -137,7 +141,9 @@ one real round trip from a phone over WhatsApp and Zalo.
 linked branch's `DATABASE_URL` into `.env.local` and repoints dev without asking.
 Neon branches: `production` (default), `staging` (schema from `prisma migrate deploy`,
 never seeded: the seed's password is public), and `dev` (a schema-only copy of `staging`,
-seeded with the demo logins and threads; nothing real).
+seeded with the demo logins and threads; nothing real). Staging and production each have one
+login role, `neondb_owner`; a separate app role `nhip_app` for the app's pooled connection is
+planned (#98).
 
 **Worktree databases (decided 2026-10-03).** Each worktree has its own databases, so worktrees
 on different schemas never break each other. `scripts/worktree-db.sh <worktree>` creates the dev
@@ -164,6 +170,7 @@ applied the longest run, from the first, whose schema equals the database's; it 
 database no run reproduces, and does nothing on one that already has a history. Write new
 migrations with `migrate:new <name>` and read them: Prisma cannot fill a new required column on
 a table that has rows, so add it nullable, backfill it, then set it `NOT NULL`, in the same file.
+The main dev DB was baselined on 2026-10-04.
 
 **Schema changes are expand/contract.** A deploy runs `migrate deploy` before the new code
 serves, while the previous deployment still serves, so every migration must work with the code
@@ -193,9 +200,12 @@ exception: its required `officeId` columns shipped in one deploy, before any off
 `turbo run build --filter=saas` (runs `^generate`), Node 22, functions in `sin1`. Staging is
 `main`'s deployment at `https://nhip-staging.vercel.app`, with its env vars scoped to Preview
 on branch `main`. The production branch is `production`: a GitHub ruleset blocks every push
-and deletion, and only the release workflow (milestone 6) moves it to a commit staging ran. Vercel
-builds only `main` (staging) and `production` (Ignored Build Step); PR previews wait for a
-database of their own (phase B). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
+and deletion, and only the release workflow (#112, not built yet) will move it to a commit
+staging ran. Vercel builds only `main` (staging) and `production` (Ignored Build Step); PR
+previews wait for a database of their own (phase B). Never run `vercel env pull` or `vercel link` without care: they write `.env.local`.
+The repo is not linked; agents read the project with the Vercel CLI by passing
+`VERCEL_ORG_ID=team_ADLKpom8d1SF6Gi0X4EaZxlR VERCEL_PROJECT_ID=prj_SLx3Ca2WEF7KpmpHXewJBrwe0rVG`.
+Eyal changes project settings in the UI.
 Hosted builds run `pnpm run build:vercel` (`apps/saas/scripts/vercel-build.sh`): `prisma migrate
 deploy` against `DIRECT_DATABASE_URL` (the environment's direct Neon URL), then the build; a
 failed migration fails the build and the previous deployment keeps serving.
@@ -424,6 +434,23 @@ workspace package that imports them.
   [HANDOFF.md](./HANDOFF.md) when intention, shape, or walk rules change.
 - Update `AGENTS.md` when conventions, aliases, scripts, or app boundaries change.
 - Keep product work scoped to `apps/saas` unless asked otherwise.
+
+## Ticket workflow
+
+1. **Epic spec**: ADR → spec → tickets as sub-issues of the epic
+   ([docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)).
+2. **One worktree per ticket**: `git worktree add -b <branch> .claude/worktrees/<name> origin/main`,
+   then `scripts/worktree-db.sh` run from the main checkout with the worktree's path.
+3. **Red first**: the `test-author` agent writes the E2E spec and sees it fail; no behaviour
+   code before that.
+4. **Implement.**
+5. **Code review on two axes**: the repo's standards and the ticket's spec.
+6. **New specs pass `--repeat-each=3`**, then the PR.
+
+No stacked PRs: merged branches are not deleted automatically, so a stacked PR is not
+retargeted when its base merges. Pre-MVP edge cases: explore and record them; fix only the
+cheap ones and defer the rest on the issue or PR. In reports and PRs, name a scenario by what
+it checks ("won or lost leaves the queue"), not by its number.
 
 ## Before you're done
 

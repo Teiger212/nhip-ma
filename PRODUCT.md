@@ -102,9 +102,11 @@ well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
 ## Integrations
 
 - **Pipes**: WhatsApp Cloud API, Zalo OA. One adapter each.
-- **CRM**: one adapter per system; Attio first (provisional), a mock for offices without
-  one. Guests match to CRM leads by phone number, or by the agent linking once. Nhịp
-  reads outcomes; it does not become the CRM.
+- **CRM**: one adapter per system. Attio for the first client (#101, decided 2026-10-04: the
+  client's own free workspace, one default deal owner per office); HubSpot is the demo CRM;
+  the mock is for development and demos only and never goes to production for a client.
+  Guests match to CRM leads by phone number; managers link the rest by hand (ADR 0003,
+  amended 2026-10-03). Nhịp reads outcomes; it does not become the CRM.
 - **Drafting**: one adapter per model provider, with the template drafter as fallback.
 
 ## Advanced MVP
@@ -121,10 +123,10 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 **In scope**
 
 - Everything built: capture, translate, extract, draft, queue, approve and send, follow-up,
-  Home, office tenancy, invitations, the account lifecycle. The CRM seam with its mock was
-  prototyped on `feat/crm-seam` and lands in slices in milestone 5
-  (`reports/crm-seam-plan-2026-10-03.md`); searching the CRM to link a thread by hand is
-  for managers only (2026-10-03).
+  Home, office tenancy, invitations, the account lifecycle. The CRM seam has shipped with the
+  mock and HubSpot (#72, #74, #75, #76, #88, #90); open: #64, #67, #68, #69–#71 and the
+  staging demo (#116). Searching the CRM to link a thread by hand is for managers only
+  (2026-10-03).
 - Pool then owner inside an office; managers invite their own agents; offices, pipes and
   managers set up in the admin area without a script (ADR 0015).
 - Each office sends from its own numbers (per-connection pipe credentials).
@@ -132,7 +134,8 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
   images sent; the WhatsApp reopen template for guests past the 24-hour window.
 - Drafts that cannot invent a fact or be steered by a guest: a decision-model spike (Jev,
   Laya or an LLM behind one seam) for typed guardrail checks; a per-office model cost guard.
-- Billing, minimal: per seat and the lapse lock (ADR 0014); the 30-day close by hand.
+- Billing, minimal: per seat and the lapse lock (ADR 0014: decided, but it lives on branch
+  `docs/adr-0014-office-pays` and lands with its build, #93); the 30-day close by hand.
   Until then the kit's own billing screens (priced per user) stay hidden.
 - Error tracking, logs, uptime and a webhook delivery log; rate limits on public endpoints;
   a tested backup restore; deleting a guest's data on request. Error reports never carry a
@@ -142,13 +145,15 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 
 **Later, shown as "Coming soon"**: saved replies (a decision model picks from the office's
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
-CSV export, Attio (built when a beta agency names its CRM).
+CSV export.
 
 **Later, not shown**: internal notes, an admin audit log, a per-office AI kill switch,
-listing match, writing back to the CRM, per-agent performance, nudges.
+listing match, per-agent performance, nudges, native iOS and Android apps built from the web
+app (#124).
 
 **"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
-live, and only if we are confident it ships. It names the feature, never a date.
+live, and only if we are confident it ships. It names the feature, never a date. One exception (2026-10-04): the CRM selector lists the CRMs on the roadmap as disabled
+"coming soon" options (Bitrix24, Getfly CRM, Zoho CRM; #123), to show Nhịp is CRM-agnostic.
 
 **Trust bar**
 
@@ -167,7 +172,7 @@ checklist includes a real round trip from a phone.
 
 ## Build order
 
-Each milestone leaves staging better than it found it. Status as of 2026-10-03, from merged
+Each milestone leaves staging better than it found it. Status as of 2026-10-04, from merged
 PRs; "open" means not started unless it says otherwise.
 
 1. **Foundations, staging live**: CI (lint, types, Vitest, Playwright over HTTPS), the
@@ -194,14 +199,15 @@ PRs; "open" means not started unless it says otherwise.
    _Open_.
 5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
    "Coming soon" controls.
-   _In progress_: the CRM seam, reviewed and planned in slices after #52
-   (`reports/crm-seam-plan-2026-10-03.md`), now unblocked. _Open_: billing (the kit's screens stay
-   hidden), guest-data deletion, "Coming soon" controls.
+   _In progress_: the CRM seam has shipped (#72, #74, #75, #76, #88, #90); open: #64, #67,
+   #68, #69–#71, the staging demo (#116) and Attio for the first client (#101). _Open_: billing
+   (#93; the kit's screens stay hidden), guest-data deletion, "Coming soon" controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
-   impact assessment filed with A05 for hosting in Singapore and the model providers,
-   confirmed with a Vietnamese lawyer), the first GitHub Release to prod.
-   _Open_.
+   impact assessment filed with A05 for hosting in Singapore, the model providers, the
+   client's CRM (Attio) and HubSpot's EU portal for the demo, confirmed with a Vietnamese
+   lawyer), the first GitHub Release to prod.
+   _Open_. Go-live target: first client on production by 2026-10-18 (#99).
 
 **Pulled forward (2026-09-28)**, so staging can dogfood a real pipe: from milestone 2,
 roles and landing (the platform admin lands in the admin area; office setup is one step,

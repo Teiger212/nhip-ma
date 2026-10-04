@@ -13,8 +13,9 @@ things are.
 
 ## Run locally
 
-Setup, the two seeded logins (`walk@nhip.local`, the agent; `admin@nhip.local`, the
-platform admin) and the test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
+Setup, the four seeded logins (`walk@nhip.local` and `walk2@nhip.local`, the agents;
+`manager@nhip.local`, the office's manager; `admin@nhip.local`, the platform admin) and the
+test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
 injects an inbound locally (404 in production). Only the exact `SEND_MODE` value `live`
 talks to a vendor, and live needs the webhook secrets set or inbound is refused.
 
