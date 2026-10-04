@@ -29,11 +29,11 @@ export type CrmAdapter = {
 	/** What the CRM says now about each of these leads; leads it does not know are absent. */
 	outcomesFor(leadIds: string[]): Promise<Record<string, LeadOutcome>>;
 	/**
-	 * The CRM's own id for the account the office's connection reaches, for a CRM whose one app
-	 * serves many accounts and whose webhook names the account (#66). Absent where the webhook
-	 * names the office itself (the mock).
+	 * The CRM's own id for the account the office's connection reaches, which its webhook names
+	 * (#66). Asked only of a kind whose one app serves many accounts (`crmKindHasAccount`); the
+	 * mock's account is the office itself.
 	 */
-	accountId?(): Promise<string>;
+	accountId(): Promise<string>;
 };
 
 /**
@@ -41,3 +41,6 @@ export type CrmAdapter = {
  * id) and the leads that changed there. One webhook call can carry several accounts' notices.
  */
 export type CrmNotice = { account: string; leadIds: string[] };
+
+/** A CRM webhook's request, as its reader needs it: nothing but these is signed. */
+export type CrmWebhookRequest = { method: string; rawBody: string; headers: Headers };

@@ -85,7 +85,7 @@ const envSchema = z
 			ctx.addIssue({
 				code: "custom",
 				path: ["HUBSPOT_WEBHOOK_URL"],
-				message: `HUBSPOT_WEBHOOK_URL must be the https URL HubSpot calls (the app's targetUrl), got "${env.HUBSPOT_WEBHOOK_URL}"`,
+				message: "HUBSPOT_WEBHOOK_URL must be the https URL HubSpot calls (the app's targetUrl)",
 			});
 		}
 		if (env.SEND_MODE !== undefined && env.SEND_MODE !== "mock" && env.SEND_MODE !== "live") {

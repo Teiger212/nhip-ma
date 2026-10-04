@@ -189,25 +189,3 @@ test("events that are not a deal's stage changing are ignored", () => {
 	const nothing = JSON.stringify([stageChange(111, 9001, { propertyName: "amount" })]);
 	expect(readHubSpotWebhook(delivery(nothing), settings, at(1000))).toEqual([]);
 });
-
-// The classic `legacyCrmObjects` subscription reports the same change as `deal.propertyChange`.
-test("a classic deal.propertyChange on the stage is read the same way", () => {
-	const raw = JSON.stringify([
-		{
-			eventId: 1,
-			subscriptionId: 2,
-			portalId: 111,
-			appId: 777,
-			occurredAt: SENT_AT,
-			subscriptionType: "deal.propertyChange",
-			attemptNumber: 0,
-			objectId: 9001,
-			propertyName: "dealstage",
-			propertyValue: "closedwon",
-			changeSource: "CRM_UI",
-		},
-	]);
-	expect(readHubSpotWebhook(delivery(raw), settings, at(1000))).toEqual([
-		{ account: "111", leadIds: ["9001"] },
-	]);
-});

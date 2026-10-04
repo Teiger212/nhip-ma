@@ -5,7 +5,7 @@ import { hubspotCrmAdapter } from "./hubspot";
 import { readHubSpotWebhook } from "./hubspot-webhook";
 import { mockCrmAdapter } from "./mock";
 import { readMockCrmWebhook } from "./mock-webhook";
-import type { CrmAdapter, CrmNotice } from "./types";
+import type { CrmAdapter, CrmNotice, CrmWebhookRequest } from "./types";
 
 /**
  * The office's CRM as an adapter is opened with: its kind and, for a kind that takes one, the
@@ -25,7 +25,7 @@ export function crmKindTakesToken(kind: CrmKind | null): boolean {
 /**
  * The CRM kinds whose one app serves many accounts, so a webhook names the CRM's account and
  * the office on it is found by the account id its adapter reports (#66). For the others the
- * account a webhook names is the office itself.
+ * account a webhook names is the office itself, and their adapter is never asked for it.
  */
 const KINDS_WITH_ACCOUNT: readonly CrmKind[] = ["hubspot"];
 
@@ -47,9 +47,6 @@ export function crmAdapterFor(
 			return hubspotCrmAdapter({ token: connection.token });
 	}
 }
-
-/** A CRM webhook's request, as its reader needs it: nothing but these is signed. */
-export type CrmWebhookRequest = { method: string; rawBody: string; headers: Headers };
 
 /**
  * How a CRM kind's outcome webhook is verified and read (ADR 0003): the accounts and their

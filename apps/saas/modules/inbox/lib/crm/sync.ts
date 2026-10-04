@@ -39,13 +39,11 @@ export function createCrmSync(deps: {
 	const adapterFor = deps.adapterFor ?? crmAdapterFor;
 	const { store, secretsKey } = deps;
 
-	/** The office's CRM, with its access token opened for the adapter; null when it has none. */
-	async function connectionOf(officeId: string): Promise<CrmAdapterConnection | null> {
-		return (await sealedConnectionOf(officeId))?.connection ?? null;
-	}
-
-	/** The office's CRM opened for the adapter, with the sealed token it was opened from. */
-	async function sealedConnectionOf(
+	/**
+	 * The office's CRM, with its access token opened for the adapter and the sealed token it was
+	 * opened from; null when it has none.
+	 */
+	async function connectionOf(
 		officeId: string,
 	): Promise<{ connection: CrmAdapterConnection; sealed: string | null } | null> {
 		const connection = await store.getCrmConnection(officeId);
@@ -66,11 +64,9 @@ export function createCrmSync(deps: {
 	 * for a CRM whose webhook names the office itself. Throws what the CRM refused.
 	 */
 	async function resolveAccount(officeId: string): Promise<void> {
-		const opened = await sealedConnectionOf(officeId);
+		const opened = await connectionOf(officeId);
 		if (!opened || !crmKindHasAccount(opened.connection.kind)) return;
-		const crm = adapterFor(opened.connection, { store, officeId });
-		if (!crm.accountId) return;
-		const accountId = await crm.accountId();
+		const accountId = await adapterFor(opened.connection, { store, officeId }).accountId();
 		// Written only if the connection is still the one asked about (a new token clears it).
 		await store.setCrmAccountId(
 			officeId,
@@ -81,17 +77,18 @@ export function createCrmSync(deps: {
 
 	/**
 	 * The offices on the CRM `kind` whose account is `account`. When none is, the few offices on
-	 * it whose account is not known yet are asked first (`lookups` holds that, once per webhook).
+	 * it whose account is not known yet are asked first, once per webhook: its first unknown
+	 * account starts `pendingAccountLookup`, and every later one waits on that same lookup.
 	 */
 	async function officesOnAccount(
 		kind: CrmKind,
 		account: string,
-		lookups: { done?: Promise<void> },
+		pendingAccountLookup: { done?: Promise<void> },
 	): Promise<string[]> {
 		if (!crmKindHasAccount(kind)) return [account];
 		const known = await store.crmOfficesOnAccount(kind, account);
 		if (known.length > 0) return known;
-		lookups.done ??= (async () => {
+		pendingAccountLookup.done ??= (async () => {
 			const unknown = await store.crmOfficesWithoutAccount(kind, MAX_ACCOUNT_LOOKUPS);
 			await Promise.all(
 				unknown.map((officeId) =>
@@ -105,7 +102,7 @@ export function createCrmSync(deps: {
 				),
 			);
 		})();
-		await lookups.done;
+		await pendingAccountLookup.done;
 		return store.crmOfficesOnAccount(kind, account);
 	}
 
@@ -147,7 +144,7 @@ export function createCrmSync(deps: {
 		 * thread goes on, so two first messages make one lead. Nothing when the office has no CRM.
 		 */
 		async newGuest(conversation: Conversation): Promise<void> {
-			const connection = await connectionOf(conversation.officeId);
+			const connection = (await connectionOf(conversation.officeId))?.connection;
 			if (!connection) return;
 			if (!(await store.claimCrmLink(conversation.id, conversation.officeId))) return;
 			try {
@@ -175,7 +172,7 @@ export function createCrmSync(deps: {
 			options: { from?: CrmKind } = {},
 		): Promise<void> {
 			if (leadIds.length === 0) return;
-			const connection = await connectionOf(officeId);
+			const connection = (await connectionOf(officeId))?.connection;
 			if (!connection) return;
 			// A CRM speaks only for the offices connected to it.
 			if (options.from && connection.kind !== options.from) return;
@@ -201,9 +198,9 @@ export function createCrmSync(deps: {
 		 * office is on is ignored.
 		 */
 		async noticesReceived(kind: CrmKind, notices: CrmNotice[], now: Date): Promise<void> {
-			const lookups = {};
+			const pendingAccountLookup = {};
 			for (const notice of notices) {
-				for (const officeId of await officesOnAccount(kind, notice.account, lookups)) {
+				for (const officeId of await officesOnAccount(kind, notice.account, pendingAccountLookup)) {
 					await sync.outcomesChanged(officeId, notice.leadIds, now, { from: kind });
 				}
 			}

@@ -321,6 +321,6 @@ test("the account a token reaches is its portal id", async () => {
 	const recording = recorded("account-details");
 	const { adapter, allUsed } = replay(recording.exchanges);
 
-	expect(await adapter.accountId?.()).toBe(recording.expected);
+	expect(await adapter.accountId()).toBe(recording.expected);
 	allUsed();
 });

@@ -1,5 +1,5 @@
 import { runInBackground } from "@inbox/lib/background";
-import { crmKindHasAccount, crmKindTakesToken } from "@inbox/lib/crm/adapters";
+import { crmKindTakesToken } from "@inbox/lib/crm/adapters";
 import { crmSyncFor } from "@inbox/lib/inbox";
 import { requirePlatformAdmin } from "@inbox/lib/require-platform-admin";
 import { getRuntime } from "@inbox/lib/runtime";
@@ -64,9 +64,7 @@ export async function PUT(request: Request): Promise<Response> {
 			// The deployment cannot store a token encrypted (PIPE_SECRETS_KEY unset, ADR 0017).
 			return NextResponse.json({ error: "secrets_key_missing" }, { status: 503 });
 		case "connected":
-			if (kind && crmKindHasAccount(kind)) {
-				void runInBackground(`crm account ${officeId}`, () => sync.resolveAccount(officeId));
-			}
+			void runInBackground(`crm account ${officeId}`, () => sync.resolveAccount(officeId));
 			return NextResponse.json({ kind, tokenSet: crmKindTakesToken(kind) });
 	}
 }

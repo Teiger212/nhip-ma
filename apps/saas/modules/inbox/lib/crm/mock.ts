@@ -26,5 +26,8 @@ export function mockCrmAdapter(store: InboxStore, officeId: string): CrmAdapter 
 			const lead = await store.createMockCrmLead({ officeId, ...guest });
 			return { id: lead.id, name: lead.name };
 		},
+		async accountId() {
+			return officeId;
+		},
 	};
 }

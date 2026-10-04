@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { z } from "zod";
 
-import type { CrmNotice } from "./types";
+import type { CrmNotice, CrmWebhookRequest } from "./types";
 
 /**
  * HubSpot's outcome webhook (ADR 0003, #66), read only when its v3 signature holds:
@@ -35,6 +35,7 @@ const DECODED: Record<string, string> = {
 	"%2C": ",",
 	"%3B": ";",
 };
+const ENCODED = new RegExp(Object.keys(DECODED).join("|"), "g");
 
 const Id = z.union([z.number(), z.string().min(1)]).transform(String);
 /** One event of the batch: the parts that say which deal's stage changed, on which portal. */
@@ -58,7 +59,7 @@ export type HubSpotWebhookSettings = {
  * a stage change); null when the request is not verified. `now` is the clock it is checked at.
  */
 export function readHubSpotWebhook(
-	request: { method: string; rawBody: string; headers: Headers },
+	request: CrmWebhookRequest,
 	settings: HubSpotWebhookSettings,
 	now: Date,
 ): CrmNotice[] | null {
@@ -78,12 +79,7 @@ function signedUri(url: string): string {
 	const uri = url.split("#")[0];
 	const query = uri.indexOf("?");
 	if (query === -1) return uri;
-	return (
-		uri.slice(0, query + 1) +
-		uri
-			.slice(query + 1)
-			.replace(/%(3A|2F|3F|40|21|24|27|28|29|2A|2C|3B)/g, (match) => DECODED[match])
-	);
+	return uri.slice(0, query + 1) + uri.slice(query + 1).replace(ENCODED, (match) => DECODED[match]);
 }
 
 /**
@@ -110,11 +106,11 @@ function stageChanges(rawBody: string): CrmNotice[] {
 	return [...byPortal].map(([account, deals]) => ({ account, leadIds: [...deals] }));
 }
 
-/** A deal's stage changed: the `object.propertyChange` format, or the classic `deal.propertyChange`. */
+/** A deal's stage changed, as the app's one subscription (`object.propertyChange`) reports it. */
 function isStageChange(event: z.infer<typeof Event>): boolean {
-	if (event.propertyName !== STAGE_PROPERTY) return false;
-	if (event.subscriptionType === "object.propertyChange") {
-		return event.objectTypeId === DEAL_OBJECT_TYPE;
-	}
-	return event.subscriptionType === "deal.propertyChange";
+	return (
+		event.subscriptionType === "object.propertyChange" &&
+		event.objectTypeId === DEAL_OBJECT_TYPE &&
+		event.propertyName === STAGE_PROPERTY
+	);
 }
