@@ -13,6 +13,21 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+## How work is divided (decided 2026-10-04)
+
+The board is the GitHub project **Nhịp** (https://github.com/users/Teiger212/projects/4), linked to this repo.
+
+- **Epic**: a parent issue titled `Epic: …`, one job to be done (e.g. #101, "Attio as the first client's CRM").
+  - Its body says the job, lists the PRs it **shipped**, and says what's open.
+  - Once specced, its body is the spec, as #59's is.
+  - Every issue, done or not, sits under exactly one epic, as a GitHub **sub-issue**: `gh api -X POST repos/Teiger212/nhip-ma/issues/<epic>/sub_issues -F sub_issue_id=<child-db-id>`, where `<child-db-id>` comes from `gh api repos/Teiger212/nhip-ma/issues/<n> --jq .id`.
+- **Ticket**: one sub-issue = one PR = one agent session, independently testable (red first). Size S or M; an L is split.
+- **Task**: a checklist inside a ticket, never its own issue.
+- **Milestone** says _when_: `First client · 2026-10-18` or `After first client`. Every open ticket has one; epics don't, since they span milestones.
+- **Labels** stay the triage state (`needs-triage` … `ready-for-agent`); the board adds views, not a second status.
+- **A new ticket** goes under its epic, with a milestone and a triage label, and onto the board: `gh project item-add 4 --owner Teiger212 --url <issue-url>`. Built-in workflows add it automatically once Eyal turns them on.
+- **A merged PR with no ticket** is listed in its epic's "Shipped" section.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
