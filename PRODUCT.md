@@ -26,6 +26,8 @@ colleague will be in touch".
 - **Manager**: the customer. Reads Home, sees every thread, invites the agents.
 - **Office**: the tenant. A thread starts in its pool and belongs to the agent who answers it
   (ADR 0015).
+- **Guest**: the person writing in, often an expat on a foreign number. A WhatsApp number is
+  always read with its country code; full international input comes after go-live (#125).
 
 Full definitions are in CONTEXT.md. Not mass-market brokerage. Not a rental operator. Not
 a marketplace.
@@ -42,7 +44,10 @@ web
 - **Managers** read Home and reassign threads, on a laptop or a phone.
 - **Languages**: the interface is English and Vietnamese (operators); guests write in
   English, Vietnamese, Japanese, Korean and Russian, and see only the agency's own
-  WhatsApp or Zalo, never Nhịp.
+  WhatsApp or Zalo, never Nhịp. At go-live any other language reads as English, except
+  Latin-script text with accents Vietnamese shares (French, Spanish), which reads as
+  Vietnamese; either way the first reply and the translation use the wrong language. Chinese
+  (Han script) is the likeliest next language.
 - **Speed is the product**: a guest answered in minutes, at any hour, with a human approving
   every message.
 
@@ -95,18 +100,32 @@ well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
 8. **Count.** Home shows the office funnel: leads in, engaged, in conversation, closings,
    lost, then leads by day and response time (the median, and how many leads were answered
    within 5, 15 and 60 minutes), over the office's last 30 local days. Closings and lost
-   come from the office's CRM. Same numbers for every operator; no per-agent breakdown yet.
+   come from the office's CRM; an office with no CRM shows them hatched with a neutral
+   "No CRM" chip, never a call to connect one, since managers can't. A deleted guest stays in
+   these numbers as an anonymous lead tally (ADR 0020). Same numbers for every operator; no
+   per-agent breakdown yet.
    Beside them, **Waiting now** lists the guests whose turn it is, oldest first, that this
    operator can open, each one tap from its thread.
 
 ## Integrations
 
 - **Pipes**: WhatsApp Cloud API, Zalo OA. One adapter each.
-- **CRM**: one adapter per system. Attio for the first client (#101, decided 2026-10-04: the
-  client's own free workspace, one default deal owner per office); HubSpot is the demo CRM;
-  the mock is for development and demos only and never goes to production for a client.
-  Guests match to CRM leads by phone number; managers link the rest by hand (ADR 0003,
-  amended 2026-10-03). Nhịp reads outcomes; it does not become the CRM.
+- **CRM** (ADR 0003, amended 2026-10-04): one adapter per system. An agency connects the CRM it
+  already uses, or later Nhịp's **built-in CRM** (#126, Twenty-based; the leading option is
+  unmodified and self-hosted in Vietnam). Nhịp never sets up a third-party CRM for an agency,
+  and an office with no CRM goes live with no connection: it writes nothing and shows no won
+  or lost. Which CRM the first client uses comes from intake (#128):
+  - **HubSpot:** a production static app of Nhịp's own, installed in the client's portal
+    (the adapter is verified by E2E, recorded tests and a local rehearsal on the test account,
+    #65 and #66). Webhooks check one app
+    secret per deployment, so OAuth, or a per-office secret, comes at the second HubSpot
+    agency. HubSpot is also the demo CRM.
+  - **Attio:** only for an agency already on it (#101, specced; 3–4 days of build).
+  - **The mock:** development and demos only; never in production for a client.
+
+  Guests match to CRM leads by Zalo id and by phone; managers link the rest by hand. Nhịp
+  reads outcomes; its inbox never becomes the record of deals.
+
 - **Drafting**: one adapter per model provider, with the template drafter as fallback.
 
 ## Advanced MVP
@@ -118,7 +137,8 @@ agency can be onboarded without an engineer).
 
 **Environments** (ADR 0016): dev on each machine with mock sends; staging and prod on Vercel
 and Neon in Singapore. Staging runs real WhatsApp and Zalo pipes with test identities. main
-deploys to staging; prod ships by GitHub Release of a commit staging already ran.
+deploys to staging; prod ships by GitHub Release of a commit staging already ran and
+smoked, each one approved by Eyal (#112).
 
 **In scope**
 
@@ -130,15 +150,19 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 - Pool then owner inside an office; managers invite their own agents; offices, pipes and
   managers set up in the admin area without a script (ADR 0015).
 - Each office sends from its own numbers (per-connection pipe credentials).
-- New-message alerts (web push, installable app); photos and voice notes shown in threads,
-  images sent; the WhatsApp reopen template for guests past the 24-hour window.
+- New-message alerts by web push from an installable app (ADR 0019, #84): a pool guest (or a
+  thread returned to the pool) alerts every agent and manager, an owned thread's guest its
+  owner only, a reassignment the new owner; the guest's name, pipe and language, never the
+  message; one alert per thread. No email. Photos and voice notes shown in threads, images
+  sent; the WhatsApp reopen template for guests past the 24-hour window.
 - Drafts that cannot invent a fact or be steered by a guest: a decision-model spike (Jev,
   Laya or an LLM behind one seam) for typed guardrail checks; a per-office model cost guard.
 - Billing, minimal: per seat and the lapse lock (ADR 0014: decided, but it lives on branch
   `docs/adr-0014-office-pays` and lands with its build, #93); the 30-day close by hand.
   Until then the kit's own billing screens (priced per user) stay hidden.
 - Error tracking, logs, uptime and a webhook delivery log; rate limits on public endpoints;
-  a tested backup restore; deleting a guest's data on request. Error reports never carry a
+  a tested backup restore; deleting a guest's data on request (a manager, from the thread;
+  Home keeps an anonymous lead tally so its numbers don't move; ADR 0020). Error reports never carry a
   guest's personal data: message text, names and phone numbers are scrubbed before anything
   leaves the app.
 - English and Vietnamese only.
@@ -147,13 +171,16 @@ deploys to staging; prod ships by GitHub Release of a commit staging already ran
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
 CSV export.
 
-**Later, not shown**: internal notes, an admin audit log, a per-office AI kill switch,
+**Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,
 listing match, per-agent performance, nudges, native iOS and Android apps built from the web
-app (#124).
+app (#124; for alerts they change only the transport), escalation when an owner does not
+answer (#131), no alert while the operator is viewing that thread, alerts to the agent on
+Zalo or WhatsApp.
 
 **"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
-live, and only if we are confident it ships. It names the feature, never a date. One exception (2026-10-04): the CRM selector lists the CRMs on the roadmap as disabled
-"coming soon" options (Bitrix24, Getfly CRM, Zoho CRM; #123), to show Nhịp is CRM-agnostic.
+live, and only if we are confident it ships. It names the feature, never a date. One exception (2026-10-04): the platform admin's CRM selector lists the CRMs on the
+roadmap as disabled "coming soon" options (the built-in CRM, Bitrix24, Getfly CRM, Zoho CRM;
+#123), to show Nhịp is CRM-agnostic. Managers never see a promise of the built-in CRM.
 
 **Trust bar**
 
@@ -190,22 +217,28 @@ PRs; "open" means not started unless it says otherwise.
    owner (#46), per-connection credentials for Zalo (#38), office setup in the admin area in
    two steps. _Open_: the one-step setup (ADR 0018); managers inviting their own agents (the
    kit's members page exists but nothing links to it); WhatsApp credentials per connection
-   (one number per deployment from env today).
+   (one number per deployment from env today); the intake checklist for a new agency (#128),
+   whose answers go on #99.
 3. **Send and model safety**: the red team's send-path fixes, guest-proof drafts through the
    decision-model spike, the model cost guard.
    _Partly done_: the send-safety fixes in #32 (status-guarded retry, inbound dedupe, Zalo
    replay window). _Open_: the decision-model spike, the cost guard.
 4. **Reaching the agent**: alerts, photos and voice, the WhatsApp reopen template.
-   _Open_.
+   _Open_. Alerts are specced (ADR 0019, #84) and due for go-live; _waiting on Eyal_: the
+   VAPID keys on staging and prod (docs/setup-checklist.md).
 5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
    "Coming soon" controls.
    _In progress_: the CRM seam has shipped (#72, #74, #75, #76, #88, #90); open: #64, #67,
-   #68, #69–#71, the staging demo (#116) and Attio for the first client (#101). _Open_: billing
-   (#93; the kit's screens stay hidden), guest-data deletion, "Coming soon" controls.
+   #68, #69–#71, the staging demo (#116), and the client's own CRM as intake answers it
+   (#101 if Attio). With any real CRM, the WhatsApp `wa_id` "+" fix ships at go-live; the
+   rest of #125 after. The built-in CRM (#126) comes after go-live. _Open_: billing
+   (#93; the kit's screens stay hidden), guest-data deletion (#85, decided in ADR 0020),
+   "Coming soon" controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
-   impact assessment filed with A05 for hosting in Singapore, the model providers, the
-   client's CRM (Attio) and HubSpot's EU portal for the demo, confirmed with a Vietnamese
+   impact assessment filed with A05 for hosting in Singapore, the model providers, the push
+   services that carry alerts (Apple, Google, Mozilla, Microsoft), the
+   client's CRM, if any, and HubSpot's EU portal for the demo, confirmed with a Vietnamese
    lawyer), the first GitHub Release to prod.
    _Open_. Go-live target: first client on production by 2026-10-18 (#99).
 
@@ -226,6 +259,7 @@ account lifecycle (ADR 0013). Listing match stays the horizon.
 
 ## Deliberately not
 
-Not a guest-facing bot. Not legal advice. Not a CRM. Not a listings database. Not a
+Not a guest-facing bot. Not legal advice. Not the record of deals: deals live in a CRM, the
+office's own or the built-in one beside the inbox. Not a listings database. Not a
 marketplace or rental operator. Not a per-agent performance tool, yet. Full list with
 reasons in CONTEXT.md.

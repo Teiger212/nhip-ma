@@ -479,7 +479,7 @@ The office's Your-turn queue in inbox order, oldest first, at most five rows. Th
 
 ### Funnel Strip (Home)
 
-One panel, five cells split by hairlines: Leads in, Engaged, In conversation, Closings, Lost. Each cell has a mono stage number (full Slate Note) beside its label, a Figure, a thin 4px share bar on the track (Chart Strong), and a Body Small hint. Closings and Lost come from the office's CRM: until one is connected, the cell shows a 40px hatched box with a white "Connect your CRM" chip instead of a figure.
+One panel, five cells split by hairlines: Leads in, Engaged, In conversation, Closings, Lost. Each cell has a mono stage number (full Slate Note) beside its label, a Figure, a thin 4px share bar on the track (Chart Strong), and a Body Small hint. Closings and Lost come from the office's CRM: until one is connected, the cell shows a 40px hatched box with a white "No CRM" chip instead of a figure, and the panel's hint reads "Closings and lost come from your CRM. Nhịp connects the one your office uses." Never a call to connect: managers can't (PRODUCT.md, 2026-10-04).
 
 ### Charts (Home)
 

@@ -50,7 +50,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 5. **The reconcile catches a missed outcome** (#67). A lead marked lost with no notice to Nhịp
    is resolved after the reconcile runs.
 6. **Home counts deals from the CRM** (#68). Home shows Closings and Lost "as of" the last check,
-   and loads at once with the CRM failing. Two threads on one won lead count one closing.
+   and loads at once with the CRM failing. Two threads on one won lead count one closing. An
+   office with no CRM shows Closings and Lost hatched with "No CRM" and the line "Closings and
+   lost come from your CRM. Nhịp connects the one your office uses.", and no call to connect
+   one.
 7. **A manager links or unlinks by hand** (#70). As the manager, search the CRM ("min", 3
    characters at least) and link Minji's thread to Minji Park; the agent sees it read-only and
    has no link controls. Unlinked, it stays unlinked. Another office's lead or thread answers
@@ -69,6 +72,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    and from the `PUT`'s; the token field is a password field and empty after a reload; "not
    saved" with no token is the card asking for it and the office still on None, and `PUT` with
    no token answering 400; "refused" is as in CRM 2, before and after the office has a token).
+9. **Only CRMs Nhịp can connect are choosable** (#123). As the platform admin, the CRM
+   selector lists the CRMs on the roadmap (the built-in CRM, Bitrix24, Getfly CRM, Zoho CRM)
+   as disabled "coming soon" options that can't be saved. In production, the mock CRM isn't
+   offered.
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 
@@ -227,3 +234,171 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
    new guest, and in the admin area).
 5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
    wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.
+
+## Alerts (ADR 0019, spec #84)
+
+A phone's lock screen is out of reach of a test, so E2E reads the **alert log**. E2E runs with
+`SEND_MODE=mock` and a throwaway VAPID pair (`.env.e2e`): Nhịp decides every alert exactly as
+it would live, writes one `inbox_alert` row per operator per alert (who, which thread, kind
+`guest`, `returned`, `assigned` or `test`, whether it sounded, and its link
+`/<locale>/inbox?alert=<the row's own id>`), and sends no push. Reading that log
+(`alertState.alerts(officeId)`, through `tests/support/alert-state.ts` run by tsx, like
+`crm-state.ts`) is looking at the operators' phones; `alertState.devices(userId)` lists an
+operator's devices. No test writes the log or a device row.
+
+- **Recipients are exact:** guests write through signed Zalo webhooks to an office of the
+  test's own (as in Pool), with two invited agents, an invited manager, and the platform admin
+  who created it (its kit `owner`).
+- **A device** is added through the app's own API, in the test's own signed-in session:
+  `POST /api/alerts/devices` with
+  `{ "endpoint": "https://fcm.googleapis.com/fcm/send/e2e-<random>", "keys": { "p256dh": <a
+base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 201. The host is
+  on the push-service allow-list; a mock deployment never calls it. Headless Chromium cannot
+  subscribe to a real push service, so the browser's own subscribe is proven on staging's
+  phones.
+- **Permission state** is set before the page loads with `addInitScript` (overriding
+  `Notification.permission` and `Notification.requestPermission`): headless Chromium reports
+  "denied" by default.
+- **Red first for the right reason:** the migration and `alert-state.ts` land unwired before
+  the red run, so a red test fails on the missing alert, not a missing table.
+
+1. **A pool guest alerts every agent and manager** (#132). A new guest writes: the log
+   holds one sounding `guest` alert for agent 1, agent 2 and the manager, and none for anyone
+   else. Each alert's link starts with its operator's locale and carries no thread id: `/en/`
+   for an operator set to English, `/vi/` for one with no locale set.
+2. **An owned thread's guest alerts only its owner** (#132). Agent 1 answers a pool guest
+   (claims it); the guest writes again: one new alert, for agent 1. Agent 2 and the manager get
+   none for that message.
+3. **A reassignment alerts the new owner, with a bell row** (#133). The manager gives agent
+   1's thread to agent 2 through the header's Owner control: the log holds one `assigned` alert
+   for agent 2 and none for anyone else; agent 2's bell shows "A manager gave you a thread",
+   with no guest's name, and it opens the thread. The manager gives a thread to themselves: no
+   alert, no bell row. (No email: Vitest on the kit producer; E2E mail is not readable.)
+4. **A thread returned to the pool alerts the pool** (#133). The manager returns agent 1's
+   thread to the pool: the log holds one `returned` alert for agent 1 and agent 2, none for the
+   manager who returned it (whoever acts is never alerted for it), and none for the platform
+   admin. No bell row.
+5. **A vendor retry alerts no one** (#132). The same signed Zalo message is delivered
+   twice: the thread holds one message, and the log holds one alert per recipient, not two.
+6. **A burst makes one sounding alert** (#132). A pool guest writes five messages within 20
+   seconds, two of them at the same moment: each recipient has exactly one sounding alert on
+   that thread; the rest are silent replacements. (The 2-minute window itself is a Vitest rule
+   with an explicit clock.)
+7. **The platform admin is never alerted** (#132). In an office of its own, a pool guest
+   writes, then an agent claims the thread and the guest writes again: the agents and manager
+   have their rows, and the platform admin, the office's kit `owner`, has none.
+8. **An alert for a thread a colleague took shows a neutral notice** (#136). Agent 2 opens
+   the link of their alert for a pool guest after agent 1 has claimed that thread: the Inbox
+   says "A colleague is answering this guest" ("Một đồng nghiệp đang trả lời khách này") and
+   shows nothing of the thread (no guest name, message or pipe on the page); the queue is usable
+   beside it. Agent 2 opening agent 1's alert link, or an alert id that never existed, gets the
+   same notice. Agent 1's own link opens the thread.
+9. **The alerts panel asks, and only when asked to** (#135). Permission not yet asked
+   (`addInitScript`): loading the Inbox shows no browser prompt, and the canvas shows "Get an
+   alert when a guest writes." with one blue "Turn on alerts" pill and "Not now".
+   - **Not now:** the panel goes and stays gone across reloads; with the page's clock moved 7
+     days on, it is back. Another browser context still shows it.
+   - **Blocked:** permission "denied": the panel says how to unblock notifications in the
+     browser's settings and offers no pill.
+   - **iPhone, not installed:** an iPhone's user agent, not opened from the Home Screen: the
+     panel shows the Add to Home Screen steps instead of the pill.
+   - **On:** permission "granted" and a device added for this session: no panel.
+   - Nothing on it is red.
+10. **Signing out removes the device** (#134). An agent signs in with a login of the test's
+    own (signing out ends the session it uses), adds a device as above, and adds a second one
+    from a second signed-in context. They sign out through the user menu in the first:
+    `alertState.devices` lists only the second. `DELETE /api/alerts/devices` answers 401 signed
+    out.
+11. **Send test alert** (#135). With permission "granted" and a device added for this
+    session, Settings → Notifications' "This device" row says alerts are on; "Send test alert"
+    writes one `test` alert for that operator and says it was sent. The same through the API:
+    `POST /api/alerts/devices/test` → 202; signed out, 401; with no device on this session,
+    409 and the row offers to turn alerts on instead.
+12. **While Nhịp is open, the tab and a toast say so** (#136). An agent on Settings: a new
+    pool guest writes; within the poll the tab title reads "(n) Inbox", n the nav's Your-turn
+    count, and one toast says "Minji is waiting"; the same guest writing again replaces it, not
+    a second toast; four guests show at most three toasts; tapping one opens that thread. On the
+    Inbox list: the tab title changes, no toast. A guest on a colleague's thread raises neither.
+
+## Guest deletion (ADR 0020, spec #85)
+
+A guest asks the agency to delete their data; a manager does it from the thread (Vietnam's
+PDPL; not legal advice). Each scenario uses an office of the test's own with an invited agent
+and an invited manager (the kit's `admin`), and guests on the test's own Zalo OA, so counts are
+exact. The office's CRM, where there is one, is the mock CRM: `connectMockCrm` is setup;
+`mockCrmLeads` is looking at the CRM; `addMockCrmLead` is the office adding a contact in its CRM
+before the guest writes. `guestDeletionRecords` is the platform admin reading the office's
+deletion receipts and lead tallies on request; nothing in the app shows them yet.
+
+1. **A manager deletes a guest's data.** An office with no CRM. A guest writes three messages and
+   the agent approves a reply to the first one. As the manager, the thread header's
+   "Thread actions" menu has "Delete guest data". It opens a dialog:
+   - Its title is "Delete <guest>'s data?".
+   - It says Nhịp deletes the thread's "4 messages" (the guest's three and the reply) with their
+     translations, the suggested reply and the extracted details.
+   - It says the chat is "Kept elsewhere: the chat in your Zalo OA".
+   - It says "This can't be undone."
+   - It has no CRM checkbox, and its only red control is the "Delete guest data" button.
+
+   Confirming does three things:
+   - The thread leaves the manager's Inbox under every view and every owner filter, and a
+     search for the guest finds nothing.
+   - The agent's Inbox drops it too, and so does the nav count.
+   - `GET /api/conversations/:id` answers 404 for both.
+
+   The toast says "Guest data deleted".
+
+2. **Home's numbers don't move when a guest is deleted.** Three guests write. The agent answers
+   two of them, and one of those two writes back. Note Home's
+   numbers:
+   - Leads in, Engaged and In conversation;
+   - the median, the 90th percentile and every response-time band;
+   - each day of leads by day.
+
+   The manager deletes the guest who wrote back. Home, reloaded, shows every one of those numbers
+   unchanged, for the agent and the manager alike. Waiting now no longer lists a deleted guest.
+
+3. **An agent can't delete.** On the agent's own thread and on a pool thread, the header offers
+   no "Delete guest data". `POST /api/conversations/:id/deletion` as the agent answers 403, with
+   `deleteInCrm` true or false. The thread and its messages are unchanged afterwards, for the
+   agent and the manager.
+4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
+   `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
+   another office it answers 404.
+5. **The CRM box is ticked when Nhịp created the lead.** The office is on the mock CRM. A new
+   guest writes, and the thread says "In CRM: <guest>"; the mock CRM holds the lead Nhịp made.
+   - The manager's dialog has "Also delete <guest> in Mock CRM", ticked. Confirming leaves no
+     lead for that guest in the mock CRM, and the toast says "Guest data deleted. Also deleted in
+     Mock CRM."
+   - For a second guest, the manager unticks the box before confirming. The thread is gone, the
+     lead is still in the mock CRM, and the toast says "Guest data deleted. The lead stays in
+     Mock CRM."
+6. **The CRM box is unticked when Nhịp found the lead.** The office is on the mock CRM, and
+   `addMockCrmLead` puts a lead with the guest's Zalo id in it first. The guest writes, and the
+   thread says "In CRM: <that lead's name>".
+   - The manager's dialog has the box unticked. Confirming keeps the lead in the mock CRM
+     unchanged, while the thread is gone.
+   - For a second such guest, ticking the box deletes the lead.
+7. **No CRM, no checkbox.** In an office with no CRM, the dialog has no CRM checkbox (as in 1),
+   and the deletion API, given `deleteInCrm: true`, deletes the thread and touches no CRM.
+8. **Not while a reply is sending.** `holdReplySending` holds the agent's approved reply in
+   "sending":
+   - The manager's "Delete guest data" is disabled with "A reply is still sending".
+   - `POST /api/conversations/:id/deletion` answers 409 with `reply_sending`.
+   - The thread is unchanged.
+
+   Once the helper's release step marks the reply sent, deleting works.
+
+9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
+   CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
+   fresh:
+   - It is in the pool, shows only the new message, and is Your turn for both agents.
+   - Home's Leads in counts it as one more lead.
+   - The mock CRM holds one lead for that guest again: a new one.
+10. **The record names no guest.** After deletions with the box ticked, unticked and with no CRM,
+    `guestDeletionRecords` returns one receipt per deletion:
+    - each with the manager's name, a time, the message and reply counts;
+    - the CRM result: `deleted`, `unlinked`, or none.
+
+    No value in any receipt or lead tally contains the guest's name, their Zalo user id, the
+    thread's id or the CRM lead's id.

@@ -66,7 +66,8 @@ and they land in the admin area. "Never a member" in this ADR reads as "never an
   Managers see every thread with its owner's name. Home stays office-level for everyone.
 - **Reassign**: managers only, to any operator of the office or back to the pool; agents
   never hand threads on. When an owner's account ends (ADR 0013) their threads return to the
-  pool. No notification to the new owner until alerts (milestone 4).
+  pool. No notification to the new owner until alerts (milestone 4); superseded by ADR 0019:
+  the new owner is alerted, and a thread returned to the pool alerts the pool.
 - **Rollout**: existing threads are backfilled once: a thread with a sent Answer belongs to
   the operator who approved its first sent Answer, if still an operator of that office;
   everything else starts in the pool.

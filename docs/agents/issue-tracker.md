@@ -17,7 +17,7 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 The board is the GitHub project **Nhịp** (https://github.com/users/Teiger212/projects/4), linked to this repo.
 
-- **Epic**: a parent issue titled `Epic: …`, one job to be done (e.g. #101, "Attio as the first client's CRM").
+- **Epic**: a parent issue titled `Epic: …`, one job to be done (e.g. #101, "Attio as a CRM for an agency already on Attio").
   - Its body says the job, lists the PRs it **shipped**, and says what's open.
   - Once specced, its body is the spec, as #59's is.
   - Every issue, done or not, sits under exactly one epic, as a GitHub **sub-issue**: `gh api -X POST repos/Teiger212/nhip-ma/issues/<epic>/sub_issues -F sub_issue_id=<child-db-id>`, where `<child-db-id>` comes from `gh api repos/Teiger212/nhip-ma/issues/<n> --jq .id`.

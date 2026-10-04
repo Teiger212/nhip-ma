@@ -1,6 +1,8 @@
 # 0009. Build order: conversation loop, then Home and CRM
 
-Date: 2026-09-17. Status: accepted.
+Date: 2026-09-17. Status: accepted; its CRM points are superseded by PRODUCT.md's build order
+and ADR 0003's 2026-10-04 amendment (the agency's own CRM or the built-in one, not Attio by
+default; Home says "No CRM", not "connect your CRM").
 
 ## Context
 

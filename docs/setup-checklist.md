@@ -41,7 +41,7 @@ from milestone 6.
 
 The demo is a round trip on Zalo (above): a guest writes, the contact and deal appear in
 HubSpot, the deal is marked won there, and Nhịp's Home counts the closing. It is the demo
-path only; the first client is on Attio (below). The staging end-to-end steps are #116.
+path only; the first client's CRM comes from intake (#128): HubSpot or Attio (below), or none. The staging end-to-end steps are #116.
 
 - [ ] **HubSpot free account** for the demo office (free CRM, no trial clock).
 - [ ] **Install the `nhip-demo` app** (`integrations/hubspot-demo-app`) on the demo portal,
@@ -56,9 +56,19 @@ path only; the first client is on Attio (below). The staging end-to-end steps ar
       above. `PIPE_SECRETS_KEY` must be set too, or the token cannot be saved. Verify: mark the
       demo deal won in HubSpot, and the thread shows "Won" in Nhịp within seconds.
 
-### Client CRM: Attio (#101, decided 2026-10-04)
+### Client CRM: from intake (#128), decided 2026-10-04
 
-Answered: the first client uses Attio. The mock never goes to production for a client.
+The first client's CRM is unknown until intake. Nhịp never sets up a third-party CRM for an
+agency; with none, it goes live with no CRM connection. The mock never goes to production for a
+client.
+
+- [ ] **If HubSpot:** a production static app of Nhịp's own (a new CLI project, e.g.
+      `nhip-prod`), installed in the client's portal by a user with access to it (you, added
+      by their admin); production's `HUBSPOT_APP_CLIENT_SECRET` and `HUBSPOT_WEBHOOK_URL`; its
+      token pasted into the office's Connections card. A second HubSpot agency needs OAuth or a
+      per-office webhook secret.
+
+**If Attio** (#101):
 
 - [x] **Nhịp's own free dev workspace** "Nhip Dev", Deals enabled, with an API key. Done
       2026-10-04; the key is in the main checkout's `.env.local` as `ATTIO_TEST_TOKEN`.
@@ -66,6 +76,23 @@ Answered: the first client uses Attio. The mock never goes to production for a c
       admin can create one); never paste the key in chat or a file.
 - [ ] **One default deal owner per office** (e.g. the manager), chosen when the office
       connects.
+
+### New-message alerts (ADR 0019, #84)
+
+Web push needs a VAPID key pair per environment: staging's and prod's are different, so a
+staging device never receives prod's guests. Until they are set, alerts are logged and not
+pushed, and "Turn on alerts" stays hidden.
+
+- [ ] **Generate the pair** in your own terminal: `npx web-push generate-vapid-keys`. Don't
+      paste the private key in chat or a file.
+- [ ] **Vercel, staging, all three together:** `VAPID_PUBLIC_KEY` (not sensitive),
+      `VAPID_PRIVATE_KEY` (Sensitive), `VAPID_SUBJECT` = `mailto:` an inbox you read (push
+      services write there about abuse). Then redeploy.
+- [ ] **Verify on your phones:** Android Chrome, and an iPhone with Nhịp added to the Home
+      Screen (iOS 16.4+): turn alerts on in the Inbox; "Send test alert" in Settings →
+      Notifications arrives; a guest message from your second Zalo account shows "<name>
+      is waiting · Zalo · <language>" on the lock screen, never the text; signing out stops
+      them.
 
 ### Error tracking (PostHog, PR #41)
 
@@ -98,16 +125,45 @@ Answered: the first client uses Attio. The mock never goes to production for a c
 - [ ] **Choose the production URL** (`NEXT_PUBLIC_SAAS_URL`, fixed at build time).
 - [ ] **Prod env vars** (Production scope; none exist yet, #99): every staging value above,
       each with prod's own value (own Zalo app, own Meta app, own PostHog project or
-      environment, a new `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`). `DATABASE_URL` is prod's
+      environment, a new `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`, a new VAPID key pair
+      with its `VAPID_SUBJECT`). `DATABASE_URL` is prod's
       pooled Neon URL as the app role `nhip_app` (#98); `DIRECT_DATABASE_URL` is its direct URL
       as `neondb_owner`. `DRAFT_API_KEY` and `DRAFT_MODEL`, set on neither staging nor prod
       yet. Never set `MOCK_CRM_WEBHOOK_SECRET` or `AUTH_TRUSTED_ORIGINS` in production.
 - [ ] **Vietnam's Personal Data Protection Law:** the cross-border transfer impact
       assessment filed with the Ministry of Public Security (A05) within 60 days of the first
       transfer, naming every processor (hosting in Singapore, model providers, PostHog, the
-      client's CRM, HubSpot's EU portal for the demo), confirmed with a Vietnamese lawyer. Ask
+      push services that carry alerts (Apple, Google, Mozilla, Microsoft), the client's CRM,
+      HubSpot's EU portal for the demo), confirmed with a Vietnamese lawyer. Ask the lawyer
+      whether an alert's guest name and language, end-to-end encrypted, change the
+      assessment. Ask
       the lawyer whether Decree 356 requires a processing-service certificate (unverified).
       Not legal advice.
+- [ ] **Guest-data deletion, for the lawyer** (#85, ADR 0020). Ask, before the first client's
+      guests reach prod. Not legal advice.
+  - **Deadlines:** Decree 356's 2 working days to reply, and 20 days to delete (30 with a
+    processor). Are these right, and who answers the guest, the agency or Nhịp?
+  - **Roles:** is the agency the controller and Nhịp its processor? Does the client contract
+    need to say so, and who carries out a request?
+  - **The CRM:** is archiving the HubSpot deal Nhịp made, and a contact Nhịp created (contacts are
+    restorable for 90 days), enough, or is HubSpot's permanent GDPR delete required? Nhịp leaves
+    a contact the office already had, and, when the manager unticks the box, a deal Nhịp made
+    on it. Is that acceptable? A failed CRM delete is left to the manager by hand.
+  - **The lead tally:** a deleted guest leaves office, first contact and first reply times,
+    pipe, language and outcome, with no identifier. Is that anonymous? Must times be coarser?
+  - **The receipt:** office, manager, time, row counts and the CRM result, with no guest. How
+    long may it be kept?
+  - **Retention:** must threads expire after a set period? Is Neon's point-in-time history
+    (its window, on prod's plan) acceptable as backup retention after a deletion?
+  - **Elsewhere:** what about these, and do they need naming in the A05 dossier or in a reply
+    to the guest?
+    - the model provider's retention (OpenRouter);
+    - Vercel's request logs, whose URL paths carry the thread id, and so the guest's phone or
+      Zalo id;
+    - the webhook log's vendor message ids (kept about 30 days);
+    - alerts already shown on operators' devices.
+  - **Access:** is an export of the guest's data required before or instead of deletion? (Not
+    built; #109.)
 - [ ] **The release workflow's deploy key** (#112), so only `.github/workflows/release.yml`
       can move `production`. The ruleset's bypass is "Deploy keys", and the repo has none
       today, so this key is the only one. Never add a second deploy key with write access:

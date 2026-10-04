@@ -19,13 +19,16 @@ is renamed.
 ## People
 
 - **Guest**: the person who wrote in. A prospective tenant or buyer, or someone writing
-  on their behalf (HR, a relocation firm). Never sees Nhịp; sees the agency number.
+  on their behalf (HR, a relocation firm). Never sees Nhịp; sees the agency number. Often an
+  expat on a foreign number: a WhatsApp number is always read with its country code; full
+  international input comes after go-live (#125).
 - **Agent**: the person who answers guests. The **user** of the queue. Works mostly in
   Vietnamese, some English, on a phone and at a desk about equally. Sees the office's pool and the threads they own
   (ADR 0015).
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
-  office, reassigns owners, and invites the office's agents (ADR 0015). An office may have
+  office, reassigns owners, invites the office's agents (ADR 0015), and deletes a guest's data
+  on request (ADR 0020). An office may have
   several. (In the kit: a member with the role `owner` or `admin`; an agent is `member`.)
   _Avoid_: admin, office admin (admin means the platform admin only).
 - **Platform admin**: Nhịp's own staff. Creates offices, connects each office's pipes and
@@ -34,11 +37,15 @@ is renamed.
 - **Operator**: any signed-in person, agent or manager. Used in code and copy where the
   role does not matter ("Operator note", "Your turn"). Exists only inside an office: when
   the membership ends, the account ends, except the platform admin's (ADR 0013).
-- **Office**: the tenant (ADR 0008). Owns its pipes, CRM connection, agents, and threads.
+- **Office**: the tenant (ADR 0008). Owns its pipes, its CRM connection if any, its agents, and
+  its threads.
   A thread starts in the office's pool and belongs to its owner once answered (ADR 0015).
   One agency, one office is the MVP; multi-office agencies later. Every office lives in
   one shared Nhịp, yet each feels standalone: its own address (a subdomain), its own name,
   and no sign that other offices exist.
+- **Intake**: what Nhịp asks a new agency before setting anything up: which CRM it already
+  uses, its Zalo OA and WhatsApp number, its people, its guests (#128). The answer picks the
+  agency's CRM path.
 - **Office setup**: the platform admin's single step that creates an office and invites
   its first manager. Operators never create, switch or leave offices.
 
@@ -76,7 +83,8 @@ is renamed.
 
 ## Funnel
 
-- **Lead**: a guest who wrote in. One per conversation.
+- **Lead**: a guest who wrote in. One per conversation. A deleted guest's lead still counts,
+  through its lead tally (ADR 0020).
 - **Engaged**: a lead who received at least one office reply: an approved send, or a reply
   an agent sent from the WhatsApp or Zalo app itself. Mock sends count only in a mock
   deployment.
@@ -123,7 +131,10 @@ is renamed.
   original. Stored per message per operator locale (ADR 0007).
 - **Operator language**: EN or VI, from the operator's locale setting. The target for
   translations and the language of the operator note.
-- **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class.
+- **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class. Any
+  other language reads as EN, except Latin-script text with accents Vietnamese shares (French,
+  Spanish, Portuguese), which reads as VI. Either way the first reply and the translation use
+  the wrong language.
 
 ## Integrations
 
@@ -140,15 +151,42 @@ is renamed.
   are blocked with the reason shown, and the platform admin is alerted to reconnect it with
   the owner. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses. Source of truth
-  for closings and lost (ADR 0003). Nhịp does not become a CRM. The adapters are the
-  **mock CRM**, which keeps its leads in Nhịp's database and is for development and demos only;
-  HubSpot's free CRM, the demo (ADR 0003, spec #59); and Attio, the first client's CRM (#101).
+  for closings and lost (ADR 0003). The office connects the CRM it already uses; Nhịp never
+  sets one up for it, and an office with no CRM has no connection and no won or lost. The
+  adapters are the **mock CRM**, which keeps its leads in Nhịp's database and is for
+  development and demos only; HubSpot's free CRM, the demo and a client's own (ADR 0003, spec
+  #59); and Attio, for an agency already on it (#101).
+- **Built-in CRM**: the CRM Nhịp will host for an agency that has none (#126, Twenty-based).
+  One more adapter behind the same seam, never inbox tables. Not built; only the platform
+  admin's CRM selector names it, as coming soon. A glossary name: the name agencies see is
+  decided in #126's spec.
 - **CRM lead**: the guest's record in the office's CRM (a contact with its deal). Not the
   funnel's **Lead**, which is a guest who wrote in.
 - **CRM link**: the stored association between a thread and its CRM lead. Nhịp makes it when a
   guest writes on a thread that has none: it finds the guest's CRM lead (by phone on WhatsApp,
   by the Zalo user id Nhịp stored on Zalo) or creates one. A guest who matches two CRM leads is
   linked to neither. The thread header shows the CRM lead, read-only.
+
+## Guest data
+
+- **Guest deletion**: a manager deleting one guest's data from Nhịp on request (Vietnam's
+  PDPL; ADR 0020), from the thread header's ⋯ menu.
+  - **What goes:** the thread and everything under it: messages, translations, the suggested
+    reply, sent replies, the extracted details and the CRM link.
+  - **The CRM lead goes too only if the manager ticks it.** The box is ticked by default when
+    Nhịp created the lead, and unticked when Nhịp found it there. Ticked, Nhịp deletes what it
+    made in the CRM: the deal, and the contact only if Nhịp created it and it has no other deal.
+    Unticked, Nhịp only unlinks. A failed CRM delete isn't retried; the manager deletes it there.
+  - **When it's refused:** while a reply is sending.
+  - **Who can't:** agents ask a manager, and the platform admin never deletes.
+  - **What stays:** a lead tally and a receipt (`GuestDeletion`: office, who, when, row counts,
+    the CRM result). Neither names the guest, and receipts are read on request, not shown in the app.
+  - A guest who writes again is a new guest, with a fresh thread. There is no list of deleted
+    guests.
+- **Lead tally**: what a deleted guest leaves in Home's numbers: the office, first contact and
+  first reply times, whether they reached in conversation, the CRM outcome, the pipe and the
+  language. No identifier and no text. Home counts tallies with the office's threads, so a past
+  period's numbers never move when a guest is deleted.
 
 ## Deliberately not
 
@@ -157,8 +195,9 @@ Nhịp is not, and is not becoming, any of these; recorded so they do not creep 
 - **Not a guest-facing bot.** Guests talk to the agency; every message they receive was
   approved by a human.
 - **Not legal advice.** Paperwork is flagged to the agent, never explained to the guest.
-- **Not a CRM.** It links to the office's CRM through an adapter and never becomes the
-  record of deals.
+- **Not the record of deals.** The inbox links to a CRM through an adapter and never holds
+  deals itself. The CRM is the office's own, or the built-in CRM Nhịp hosts beside the inbox
+  (#126).
 - **Not a listings database.** Listing match reads from a pool the office already keeps;
   Nhịp does not scrape or maintain listings.
 - **Not a marketplace or a rental operator.** No guest-side accounts, no bookings, no
