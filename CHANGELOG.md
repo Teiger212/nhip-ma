@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-05 (a guest's new message alerts the operators, logged)
+
+### Added
+
+- **A guest's new message is an alert, decided and logged** (#132, ADR 0019). A pool guest alerts every agent and manager of the office; a guest on an owned thread alerts its owner only; the platform admin, the kit `owner` of the offices they created, is never alerted. Each operator gets one row in the new alert log (`inbox_alert`, migration `20261004213801_inbox_alert`, a new table): its kind, whether it sounded, and its link `/<locale>/inbox?alert=<the row's own id>` in the operator's language (Vietnamese when none is set), which names no thread and no guest. An alert sounds only after 2 minutes of quiet on that thread for that operator, decided under an advisory lock so a burst sounds once. Its text is "Minji is waiting · Zalo · Korean" (EN/VI), "A guest is waiting" without a name, never the message. No push is sent yet: a mock deployment and, until #134, a live one write the log only. The log is pruned after 30 days without a scheduler, like webhook deliveries.
+
+### Changed
+
+- **A vendor's retry of a message alerts no one.** `upsertInbound` returns `{ conversation, inserted }`; only an inserted guest message is alerted.
+
 ## 2026-10-04 (no notification emails)
 
 ### Changed
