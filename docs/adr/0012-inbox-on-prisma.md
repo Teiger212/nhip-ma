@@ -36,8 +36,9 @@ and that the funnel (PR #24) lands first so its tests can prove the move.
 - **`officeId` is required.** Every thread has an office from birth (ADR 0010: webhooks
   drop inbound on unconnected pipes; the dev route files under the operator's office).
   `adoptUnownedThreads`, `--adopt-unowned` and the seed's adopt step are removed. The
-  unique key is (office, pipe, guest); the id keeps the `office:pipe:guest` shape because
-  it is part of every route.
+  unique key is (office, pipe, guest). The id kept the `office:pipe:guest` shape until
+  #141 made it opaque (ADR 0010's 2026-10-04 amendment): it is part of every route, so it
+  must not name the guest.
 - **The seam holds.** `InboxStore` keeps its methods and its domain types; only
   `filePath` goes. `createInboxStore(db)` takes the Prisma client instead of a path, and
   the runtime hands it the kit's singleton. Routes, the approve path, Home, the seed and

@@ -137,7 +137,6 @@ test("the rollout backfill: the first sent Answer's approver owns it, if still a
 		await store.completeAnswer(conv.officeId, begun.answer.id, {
 			mock: true,
 			pipe: "whatsapp",
-			to: conv.guestId,
 			vendorMessageId: `v-${conv.guestId}`,
 		});
 	}

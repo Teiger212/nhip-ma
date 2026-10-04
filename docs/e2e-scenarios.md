@@ -139,7 +139,9 @@ not driven here; a test sets up a connected or disconnected OA directly, as setu
 ## Staging smoke (ADR 0016)
 
 After every staging deploy, a read-only check that the deployed app is up and still guarded.
-It runs against the deployment itself, signs nobody in, and writes nothing.
+It runs against the deployment itself, signs nobody in, and writes nothing. The same checks
+gate production: each production deployment passes them before Vercel gives it the domain
+(`.github/workflows/production-smoke.yml`, #113).
 
 1. **The app answers.** The login page loads in English and Vietnamese with its sign-in
    button; the auth API says it is up. Spec: `apps/saas/tests/smoke/staging.spec.ts` (Staging smoke 1).
@@ -160,10 +162,15 @@ time: nothing in it can be trusted.
    deliveries, newest first: a signed message to a connected Zalo OA shows as filed to its
    office; one to an OA no office holds shows as dropped (no office); an unsigned one shows
    as refused (bad signature). Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 1;
-   a refused delivery carries no endpoint or message id, so the spec knows its own by where it
-   sits between two signed ones).
-2. **No guest data in the log.** The page never shows a message's text or the guest's id.
-   Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 2; the API's answer too).
+   each signed delivery goes to an OA id of its own and is known by that endpoint; a refused
+   delivery carries no endpoint, so the spec knows its own by where it sits between two signed
+   ones).
+2. **No guest data in the log.** The page never shows a message's text, the guest's id, or the
+   vendor's message id (a WhatsApp message id can carry the guest's number; #141 stores only a
+   keyed hash of it, which the page does not show). A delivery is known by its endpoint and
+   outcome.
+   Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 2; the API's answer too; Zalo
+   message ids stand in for WhatsApp's, the rule being the same for every vendor id).
 3. **Only the platform admin sees it.** An agent sees no Webhooks page; its API refuses the
    agent (403) and a visitor who is signed out (401). Spec: `apps/saas/tests/webhooks.spec.ts`
    (Webhook deliveries 3).
@@ -234,6 +241,33 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
    new guest, and in the admin area).
 5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
    wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.
+
+## Thread links (ADR 0010, #141)
+
+A thread's id is opaque: it names the thread, never the guest. The guest's phone number or Zalo
+id is stored once, on the thread, and travels in no address.
+
+1. **A thread's address names no guest.** A WhatsApp guest writes from their phone number. Every
+   address that opens their thread carries its id and never the phone: Home's Waiting now link,
+   the link on their lead in the office's CRM, and the inbox's request for the thread
+   (`/api/conversations/<id>`). That link opens the guest's thread.
+   Spec: `apps/saas/tests/thread-links.spec.ts` (Thread links 1; an office of the test's own on
+   the mock CRM, holding a WhatsApp number of its own, with one invited agent and two guests, the
+   linked one second in the queue; the three addresses carry one id, and the phone is in none of
+   them, raw or decoded; Home's and the CRM's links each open the guest's thread).
+2. **A stale or unknown link opens no one's thread.** The agent follows an inbox link whose
+   `?thread=` names no thread they can open: an old link, a made-up id, or a thread of another
+   office. The inbox says the conversation isn't here (`data-test="thread-not-found"`) and shows
+   no thread, never the first guest in the queue; the list still shows the agent's guests, and
+   choosing one opens it.
+   Spec: `apps/saas/tests/thread-links.spec.ts` (Thread links 2; "an old link" is
+   `<office>:whatsapp:<the guest's phone>`, the id's shape before ADR 0010's opaque ids; "another
+   office" is a walk-office thread; "no thread" is no guest's message in the open thread and
+   nothing to answer).
+3. **A link to an answered thread opens that thread.** A link to a thread the agent already
+   answered (in Sent, not Your turn) opens that thread, not the first guest waiting.
+   Spec: `apps/saas/tests/thread-links.spec.ts` (Thread links 3; the link is the one on the
+   answered guest's lead in the mock CRM; the thread shows the guest's message and the reply).
 
 ## Alerts (ADR 0019, spec #84)
 

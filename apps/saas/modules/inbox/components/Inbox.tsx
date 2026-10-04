@@ -56,11 +56,14 @@ export function Inbox() {
 	const { role } = useOfficeRole();
 	const manager = role === "manager";
 	const agents = useOfficeAgents(manager);
-	// `?thread=` opens one thread on arrival (Home's Waiting now links here); it is read once,
-	// then dropped from the URL, so the selection stays local like every other click.
+	// `?thread=` opens one thread on arrival (Home's Waiting now and CRM leads link here); it
+	// is read once, then dropped from the URL, so the selection stays local like every other click.
 	const [threadParam, setThreadParam] = useQueryState("thread");
-	const [selectedId, setSelectedId] = useState<string | null>(threadParam);
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [detailOpen, setDetailOpen] = useState(threadParam !== null);
+	// The link named no thread this operator can open (an old link, another office's thread):
+	// say so, and open nothing until they choose, never another guest's thread (#141).
+	const [linkMissing, setLinkMissing] = useState(false);
 	const [sendError, setSendError] = useState<string | null>(null);
 
 	const conversations = useMemo(() => {
@@ -76,14 +79,48 @@ export function Inbox() {
 	);
 	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
 
-	// Selection follows the list: stays put while the thread is there, otherwise advances
-	// (this is what moves to the next waiting guest after a send).
+	// A link (`?thread=`) waits for the list, then is judged against every thread the operator
+	// can open, not just the current view's: one they can't is "not here", never another
+	// guest's thread; one outside the view, search or owner filter (answered, say) opens in All.
+	// Otherwise selection follows the list: it stays put while the thread is there, otherwise
+	// advances (this is what moves to the next waiting guest after a send).
 	useEffect(() => {
-		if (conversationsQuery.isPending) return;
+		if (threadParam !== null) {
+			if (!conversationsQuery.isSuccess) return;
+			if (!conversationsQuery.data.some((conversation) => conversation.id === threadParam)) {
+				setLinkMissing(true);
+				setSelectedId(null);
+				void setThreadParam(null);
+				return;
+			}
+			if (!ordered.some((conversation) => conversation.id === threadParam)) {
+				void setView("all");
+				void setQuery(null);
+				void setOwnerFilter(null);
+				return;
+			}
+			setLinkMissing(false);
+			setSelectedId(threadParam);
+			setDetailOpen(true);
+			void setThreadParam(null);
+			return;
+		}
+		if (conversationsQuery.isPending || linkMissing) return;
 		const next = nextSelection(ordered, selectedId);
 		if (next !== selectedId) setSelectedId(next);
-		if (threadParam !== null) void setThreadParam(null);
-	}, [conversationsQuery.isPending, ordered, selectedId, threadParam, setThreadParam]);
+	}, [
+		conversationsQuery.isPending,
+		conversationsQuery.isSuccess,
+		conversationsQuery.data,
+		ordered,
+		selectedId,
+		threadParam,
+		setThreadParam,
+		setView,
+		setQuery,
+		setOwnerFilter,
+		linkMissing,
+	]);
 
 	const detailQuery = useConversation(selectedId);
 	const row = conversations.find((conversation) => conversation.id === selectedId) ?? null;
@@ -146,6 +183,7 @@ export function Inbox() {
 	}
 
 	function openThread(id: string) {
+		setLinkMissing(false);
 		setSelectedId(id);
 		setDetailOpen(true);
 	}
@@ -197,7 +235,10 @@ export function Inbox() {
 						query={query}
 						onQueryChange={(value) => void setQuery(value || null)}
 						view={view}
-						onViewChange={(next) => void setView(next)}
+						onViewChange={(next) => {
+							setLinkMissing(false);
+							void setView(next);
+						}}
 						counts={queue.counts}
 					/>
 					<div
@@ -223,7 +264,25 @@ export function Inbox() {
 						detailOpen ? "flex" : "md:flex hidden",
 					)}
 				>
-					{!selected ? (
+					{linkMissing ? (
+						<ThreadListState
+							testId="thread-not-found"
+							title={t("threadNotFound")}
+							action={
+								<Button
+									type="button"
+									variant="outline"
+									className="mt-3 min-h-11 md:hidden"
+									onClick={() => {
+										setLinkMissing(false);
+										setDetailOpen(false);
+									}}
+								>
+									{t("back")}
+								</Button>
+							}
+						/>
+					) : !selected ? (
 						!listed || detailGone ? (
 							<ThreadListState title={t("noneSelected")} />
 						) : detailQuery.isError ? (

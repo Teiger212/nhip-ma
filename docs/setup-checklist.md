@@ -150,6 +150,10 @@ pushed, and "Turn on alerts" stays hidden.
 
 - [x] Staging platform admin created (`create:user`), passkey and 2FA on.
 - [x] Resend: `RESEND_API_KEY` and `MAIL_FROM` on staging (from `lanternroute.com` for now).
+- **Rotating `BETTER_AUTH_SECRET`** (any environment) signs everyone out and re-keys the hash
+  vendor message ids are stored as (#141): a WhatsApp or Zalo retry of a message that arrived
+  before the rotation is not recognised as a duplicate and is filed again. Rotate only when
+  needed, ideally at a quiet hour.
 
 ## Before prod (milestone 6)
 
@@ -223,5 +227,57 @@ pushed, and "Turn on alerts" stays hidden.
       immutability. Once a release is published, its tag and assets can't be moved or
       swapped, so the commit you approved is the commit that ships (GitHub's "Immutable
       releases"; titles and notes stay editable).
+- [ ] **Production smoke as a Vercel Deployment Check** (#113). Vercel keeps each production
+      deployment off the domain until `.github/workflows/production-smoke.yml` passes on it.
+  - [x] **Plan:** the team is on Pro, and Deployment Checks are under Project → Settings →
+        Build and Deployment → Deployment Checks. Vercel's Lint and TypeCheck are already on
+        there for Preview and Production. Checked 2026-10-04.
+  - [ ] **Automatic production aliasing on:** Settings → Environments → Production. The
+        project reads `autoAssignCustomDomains: true` (2026-10-04); confirm it in the UI.
+        Deployment Checks hold nothing without it.
+  - [x] **Deployment Protection is off** on the project (no Vercel Authentication or
+        password; read 2026-10-04), so production's own deployment URLs are public and the
+        smoke run needs no bypass secret. If you ever turn protection on (Standard Protection
+        covers production's deployment URLs), first create a Protection Bypass for
+        Automation (Settings → Deployment Protection) and store it as the GitHub secret
+        `VERCEL_AUTOMATION_BYPASS_SECRET`, then tell Claude to send it as the
+        `x-vercel-protection-bypass` header. Until then every release would be held, since the
+        smoke fails on Vercel's login wall.
+  - [ ] **The production URL** as a repository variable. The release run then waits until
+        that domain serves the release. Without it, the run stops at "smoke passed" and says
+        the domain wasn't checked:
+        `gh variable set PRODUCTION_URL -R Teiger212/nhip-ma --body https://<domain>`. Until
+        the custom domain exists, use production's `.vercel.app` alias (Vercel → the
+        production deployment → Domains), and switch it when the domain is added.
+  - [ ] **After this merges:** the next staging deploy starts a "Production smoke" run in
+        Actions, with its job skipped (staging is not production). That proves Vercel sends
+        its `repository_dispatch` events to this repo. If no run appears, check Vercel →
+        Settings → Git.
+  - [ ] **After the first production deployment** (the first release, #99): check its
+        "Production smoke" run passed and its commit shows the status
+        `Production smoke | production-smoke (nhip - production)`. Then Deployment Checks →
+        Add Checks → GitHub → pick that name exactly, for Production. Don't pick the bare
+        job "production smoke": a dispatched run's check run is filed on whatever commit
+        `main`'s head is when Vercel's event arrives, not on the deployed commit. That's why
+        Vercel's docs say to report through the commit status. Vercel only lists a check that
+        has run once, so the first release isn't held by it.
+  - [ ] **Prove a failure holds**, before go-live, with a real release of a fresh commit:
+    1. `gh variable set PRODUCTION_SMOKE_FORCE_FAIL -R Teiger212/nhip-ma --body true`.
+    2. Release a commit that has never been released (merged to `main`, staged and smoked):
+       `gh release create vX.Y.Z --target <sha> --generate-notes`, and approve it.
+    3. Check that its Production smoke run fails, that Vercel shows the deployment held,
+       that the domain keeps serving the previous release, and that the release run fails
+       with the smoke message.
+    4. `gh variable delete PRODUCTION_SMOKE_FORCE_FAIL -R Teiger212/nhip-ma`, then re-run
+       the failed Production smoke job. Check that the deployment is promoted and the
+       domain serves it.
+    5. Note what you saw on #113.
+
+    Don't use a Redeploy in Vercel for this. It reuses a commit that already has a
+    `success` status under the same name, and Vercel may read that status before the new
+    run marks it pending, so the deployment could be promoted without proving anything.
+
+  - [ ] **Force Promote** (on a deployment's page in Vercel) skips every check. It's for
+        emergencies only.
 - [ ] **Restore drill** of the prod database, done once and timed.
 - [ ] Optional: restrict the admin area by IP in the Vercel Firewall.

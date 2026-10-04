@@ -24,7 +24,6 @@ test("transmit stays mock unless the send mode is exactly live, even with creden
 	});
 	expect(result.mock).toBe(true);
 	expect(result.pipe).toBe("whatsapp");
-	expect(result.to).toBe("16315551181");
 });
 
 test("a live deployment refuses a thread with no endpoint or an unconnected one, never mocks it", async () => {

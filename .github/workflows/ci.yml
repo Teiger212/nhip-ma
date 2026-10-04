@@ -1,7 +1,14 @@
 name: CI
 
+# A pull request that changes only documentation skips this workflow; GitHub skips it only when
+# every changed file matches. format.yml still checks Markdown formatting on every PR. Pushes to
+# main always run it all. main has no required status checks, so a skipped run blocks nothing.
 on:
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "reports/**"
   push:
     branches:
       - main
@@ -58,9 +65,6 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-
-      - name: Format check
-        run: pnpm format:check
 
       - name: Type check
         run: pnpm type-check
