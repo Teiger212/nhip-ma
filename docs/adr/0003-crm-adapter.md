@@ -134,6 +134,7 @@ in the 2026-10-03 amendment holds unless a point below differs.
   One markdown note per deal, titled as maintained by Nhịp ("Nhịp · Zalo thread
   (auto-updated)"), carries the clickable link and the summary. Nhịp patches that one
   note by its stored id and overwrites any edits; agents write their own notes.
+
 - **Person.** Nhịp tries, in order:
   1. the Attio person id stored on the thread's link;
   2. `nhip_zalo_user_id`;
@@ -141,6 +142,7 @@ in the 2026-10-03 amendment holds unless a point below differs.
 
   It creates a person only when all three miss, under a Nhịp-side lock. Several matches mean
   the person is ambiguous: no link, and a manager links by hand through record search.
+
 - **Deal.** Nhịp tries, in order:
   1. the stored id;
   2. `nhip_thread_id`;
@@ -149,6 +151,7 @@ in the 2026-10-03 amendment holds unless a point below differs.
   A second thread from a known person reuses the open deal. `stage` and `owner` are sent
   only on create, never in an update: an upsert that carried `stage` moved a Won deal back
   to Lead in the probe.
+
 - **Owner.** Attio requires one. It's the thread's agent, matched to an Attio member by
   email, or else the office's default owner. If the default owner is `suspended`, Nhịp stops
   writing and shows "Not in CRM yet: owner missing" until the admin picks another (#64
@@ -170,6 +173,7 @@ in the 2026-10-03 amendment holds unless a point below differs.
   200 within 5 s and does the work in the background. A stage change re-reads the deal;
   deletes and merges are handled as below. The hourly reconcile asks only
   for stages changed since its last run (`stage.active_from`), which also dates the outcome.
+
 - **Deleted or merged in Attio.** A deleted deal shows "Not in CRM". Nhịp never recreates it;
   a manager re-links. A merge makes a new record, so every link to either original moves to
   it first, and `merge_in_progress` is retried. A person whose stored id stops resolving is

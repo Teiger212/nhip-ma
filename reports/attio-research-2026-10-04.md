@@ -137,7 +137,7 @@ Five sub-agents. The live probe's full results are in `reports/attio-probe-2026-
    - members read;
    - webhooks read/write;
    - **notes read/write**.
-   The app and OAuth come at the second agency on Attio, or when this one asks for a panel.
+     The app and OAuth come at the second agency on Attio, or when this one asks for a panel.
 3. **Thread details: a hybrid.**
    - Columns: `nhip_thread_id` (unique) plus the filterable fields (pipe, area, rent or buy, budget).
    - One markdown note per deal with the clickable link and the summary. Nhịp stores the note id and PATCHes that note, never creates a second one.
@@ -186,6 +186,7 @@ Five sub-agents. The live probe's full results are in `reports/attio-probe-2026-
 ## Grill round 2: decided (Eyal, 2026-10-04, all as recommended)
 
 Round 1 stands, with these corrections:
+
 - Decision 6: "the default owner has gone" means their `access_level` is `suspended`.
 - Decision 4: a lost webhook secret can probably be recovered from the developer settings.
 
@@ -201,6 +202,7 @@ Round 1 stands, with these corrections:
    - people `record.merged`.
 
    The URL carries a Nhịp connection key that picks the secret. Verify the body HMAC, then check `webhook_id` and `workspace_id`.
+
 4. **Handling:**
    - loop over `events[]`;
    - deduplicate on `Idempotency-Key` for 7 days;
@@ -224,10 +226,12 @@ Round 1 stands, with these corrections:
 2. **A stage added later:** it counts as open, and Connections shows a notice ("N new stages in Attio aren't mapped to won or lost") whenever the webhook or the reconcile meets an unmapped stage. "Re-check setup" re-reads the stages.
 
 **Actions:**
+
 - Eyal adds `note:read-write` to the Nhip Dev token; the client's key needs it too.
 - Attio is named as a processor in the A05 dossier (goes into #99 with the tickets).
 
 **Noted for later:**
+
 - #125: the international phone normalizer.
 - #126: an epic for a built-in CRM forked from Twenty.
 
