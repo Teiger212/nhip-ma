@@ -19,6 +19,19 @@ import { alertTransport } from "./transport";
 /** How long the alert log keeps a row: well past any link an operator still opens. */
 export const ALERT_RETENTION_DAYS = 30;
 
+/** Some recipients' alerts failed; says how many and the first error's kind, nothing more. */
+class RecipientsFailed extends Error {
+	constructor(kinds: string[]) {
+		super(`failed for ${kinds.length} recipient(s) (${kinds[0]})`);
+		this.name = "RecipientsFailed";
+	}
+}
+
+/**
+ * Alerts are rendered in the background (`after()`), in scripts and in tests: outside a request,
+ * so `next-intl/server`'s request config is not there. The core translator renders the same
+ * catalogs.
+ */
 async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
 	const messages = await getMessagesForLocale(locale, "saas");
 	// The catalog is loaded untyped here, so next-intl cannot check keys; the content tests do.
@@ -30,7 +43,8 @@ async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
  * operators, or the owner. Each gets one row in the log, decided by the burst rule under the
  * store's lock, in their own language, and the transport sends it (nothing in a mock
  * deployment). Recipients are written one after another, so one message's alerts never
- * compete with each other for connections.
+ * compete with each other for connections; one operator's failure never costs the others
+ * theirs.
  */
 export async function alertGuestMessage(
 	runtime: Runtime,
@@ -40,11 +54,13 @@ export async function alertGuestMessage(
 	const { store, config } = runtime;
 	const operators = await store.officeOperators(conversation.officeId);
 	const recipients = guestAlertRecipients({ ownerId: conversation.owner?.id ?? null }, operators);
-	if (recipients.length > 0) {
-		const tag = alertTag(conversation.id);
-		const transport = alertTransport(config);
-		const translators = new Map<AlertLocale, AlertTranslate>();
-		for (const recipient of recipients) {
+	const tag = recipients.length > 0 ? alertTag(conversation.id) : "";
+	const transport = alertTransport(config);
+	const translators = new Map<AlertLocale, AlertTranslate>();
+	// Error kinds only: an error's text can carry guest data (PDPL).
+	const failures: string[] = [];
+	for (const recipient of recipients) {
+		try {
 			const locale = alertLocale(recipient.locale);
 			let t = translators.get(locale);
 			if (!t) {
@@ -76,11 +92,16 @@ export async function alertGuestMessage(
 				url: alert.link,
 				sound: alert.sounded,
 			});
+		} catch (error) {
+			failures.push(error instanceof Error ? error.name : "unknown");
 		}
 	}
 	// Retention without a scheduler, like webhook deliveries: about one alert in a hundred prunes.
 	if (Math.random() < 0.01) {
-		await store.pruneAlerts(new Date(Date.now() - ALERT_RETENTION_DAYS * 24 * 60 * 60 * 1000));
+		await store.pruneAlerts(new Date(now().getTime() - ALERT_RETENTION_DAYS * 24 * 60 * 60 * 1000));
+	}
+	if (failures.length > 0) {
+		throw new RecipientsFailed(failures);
 	}
 }
 
@@ -94,6 +115,7 @@ export function scheduleGuestAlert(runtime: Runtime, conversation: Conversation)
 		try {
 			await alertGuestMessage(runtime, conversation);
 		} catch (error) {
+			if (error instanceof RecipientsFailed) throw error;
 			throw new Error(`guest alert failed (${error instanceof Error ? error.name : "unknown"})`);
 		}
 	});

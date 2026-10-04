@@ -1,9 +1,12 @@
 import { expect, test } from "vitest";
 
+import { mockInboxConfig } from "../config";
+import { noDraftAdapter } from "../drafts";
 import { testDb, testInboxStore } from "../test-store";
 import type { Store } from "../types";
 import { alertSounds } from "./burst";
 import { alertLink } from "./content";
+import { alertGuestMessage } from "./index";
 
 /**
  * The alert log against the test database (ADR 0019 "Bursts", spec #84 testing seam 3): the
@@ -104,11 +107,74 @@ test("old alerts are pruned; recent ones stay to resolve their links", async () 
 	await store.close();
 });
 
+async function member(officeId: string, userId: string, role: string) {
+	await testDb.member.upsert({
+		where: { organizationId_userId: { organizationId: officeId, userId } },
+		create: {
+			id: `m-${officeId}-${userId}`,
+			organizationId: officeId,
+			userId,
+			role,
+			createdAt: at,
+		},
+		update: { role },
+	});
+}
+
+test("an operator in two offices opens no thread (ADR 0010), so no office alerts them", async () => {
+	const store = await testInboxStore();
+	await testDb.member.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
+	await member(OFFICE, "agent-1", "member");
+	await member(OFFICE, "agent-2", "member");
+	await member("office-b", "agent-2", "member");
+	const operators = (await store.officeOperators(OFFICE)).map((operator) => operator.userId);
+	expect(operators).toContain("agent-1");
+	expect(operators).not.toContain("agent-2");
+	await store.close();
+});
+
 test("a thread's alerts go with the thread (guest deletion, ADR 0020)", async () => {
 	const store = await testInboxStore();
 	const conversationId = await thread(store, "deleted");
 	await guestAlert(store, "agent-1", conversationId, at);
 	await store.deleteConversations(OFFICE, [conversationId]);
 	expect(await testDb.inboxAlert.count({ where: { conversationId } })).toBe(0);
+	await store.close();
+});
+
+test("one operator's failed alert never costs the others theirs", async () => {
+	const store = await testInboxStore();
+	await testDb.member.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
+	await member(OFFICE, "agent-1", "member");
+	await member(OFFICE, "agent-2", "member");
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId: "one-fails",
+			guestName: null,
+			text: "Hi",
+			vendorMessageId: null,
+		},
+		OFFICE,
+	);
+	// The store refuses agent-2's alert, as a database error would; everyone else's is written.
+	const failing: Store = {
+		...store,
+		recordAlert: async (alert) => {
+			if (alert.userId === "agent-2") throw new TypeError("refused");
+			return store.recordAlert(alert);
+		},
+	};
+	const runtime = { store: failing, config: mockInboxConfig(), drafts: noDraftAdapter };
+	await expect(alertGuestMessage(runtime, conversation)).rejects.toThrow(
+		"failed for 1 recipient(s) (TypeError)",
+	);
+	const alerted = await testDb.inboxAlert.findMany({
+		where: { conversationId: conversation.id },
+		select: { userId: true },
+	});
+	expect(alerted.map((row) => row.userId)).toContain("agent-1");
+	expect(alerted.map((row) => row.userId)).not.toContain("agent-2");
 	await store.close();
 });

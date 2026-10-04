@@ -1,9 +1,6 @@
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import type { AlertOperator } from "@repo/database/inbox";
 
-/** An office member as the alert rules see them (ADR 0019). */
-export type OfficeOperator = AlertOperator;
-
 /**
  * Who a guest's message alerts (ADR 0019 "Who"). A pool thread alerts every operator of the
  * office; an owned thread alerts its owner only. The platform admin is the kit `owner` of every
@@ -13,8 +10,8 @@ export type OfficeOperator = AlertOperator;
  */
 export function guestAlertRecipients(
 	thread: { ownerId: string | null },
-	operators: OfficeOperator[],
-): OfficeOperator[] {
+	operators: AlertOperator[],
+): AlertOperator[] {
 	const operating = operators.filter((operator) => !isPlatformAdmin(operator.platformRole));
 	if (thread.ownerId === null) {
 		return operating;

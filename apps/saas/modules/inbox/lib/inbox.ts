@@ -89,9 +89,8 @@ export function crmSyncFor(runtime: Runtime) {
 /**
  * Everything that follows a guest message: the one-shot now, then the alert (a new message
  * only), translation and, for a guest who wrote back after a send, the model draft in the
- * background. A thread with no
- * lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
- * queue never wait on the CRM. The first reply keeps the template until the model draft is
+ * background. A thread with no lead yet gets one in the office's CRM, in the background too
+ * (spec #59): the guest and the queue never wait on the CRM. The first reply keeps the template until the model draft is
  * shown to be better on the invented threads (ADR 0005).
  */
 export async function afterGuestInbound(

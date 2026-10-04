@@ -15,13 +15,11 @@ export type AlertPayload = {
 
 /** Sends one operator's alert to their devices; the row in `inbox_alert` is already written. */
 export type AlertTransport = {
-	readonly mode: InboxConfig["sendMode"];
 	send: (userId: string, payload: AlertPayload) => Promise<void>;
 };
 
 /** `SEND_MODE=mock`: alerts are decided and logged exactly as live, and nothing is pushed. */
 const mockTransport: AlertTransport = {
-	mode: "mock",
 	send: async () => {},
 };
 
@@ -30,7 +28,6 @@ const mockTransport: AlertTransport = {
  * the live push). Until then it writes the log only, like the mock.
  */
 const liveTransport: AlertTransport = {
-	mode: "live",
 	send: async () => {},
 };
 

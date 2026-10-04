@@ -1,22 +1,23 @@
+import type { AlertOperator } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
-import { guestAlertRecipients, type OfficeOperator } from "./recipients";
+import { guestAlertRecipients } from "./recipients";
 
 /**
  * Who a guest's message alerts (ADR 0019 "Who", spec #84 "Recipients"): a pool thread alerts
  * every member of the office except the platform admin; an owned thread alerts its owner only.
  * Recipients equal visibility (ADR 0015): nobody is alerted about a thread they cannot open.
  */
-const agent1: OfficeOperator = { userId: "agent-1", platformRole: "user", locale: "en" };
-const agent2: OfficeOperator = { userId: "agent-2", platformRole: null, locale: null };
-const manager: OfficeOperator = { userId: "manager", platformRole: "user", locale: "vi" };
+const agent1: AlertOperator = { userId: "agent-1", platformRole: "user", locale: "en" };
+const agent2: AlertOperator = { userId: "agent-2", platformRole: null, locale: null };
+const manager: AlertOperator = { userId: "manager", platformRole: "user", locale: "vi" };
 /** The office's creator, its kit `owner`: their membership opens nothing (ADR 0015). */
-const platformAdmin: OfficeOperator = { userId: "admin", platformRole: "admin", locale: "en" };
+const platformAdmin: AlertOperator = { userId: "admin", platformRole: "admin", locale: "en" };
 /** A platform admin whose role is a comma list (`packages/auth/lib/roles.ts`). */
-const listedAdmin: OfficeOperator = { userId: "admin-2", platformRole: "user,admin", locale: null };
+const listedAdmin: AlertOperator = { userId: "admin-2", platformRole: "user,admin", locale: null };
 
 const office = [agent1, agent2, manager, platformAdmin, listedAdmin];
-const ids = (operators: OfficeOperator[]) => operators.map((operator) => operator.userId).sort();
+const ids = (operators: AlertOperator[]) => operators.map((operator) => operator.userId).sort();
 
 test("a pool guest alerts every agent and manager, never the platform admin", () => {
 	expect(ids(guestAlertRecipients({ ownerId: null }, office))).toEqual([

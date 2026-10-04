@@ -964,13 +964,21 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			const members = await db.member.findMany({
 				where: { organizationId: officeId },
 				orderBy: { createdAt: "asc" },
-				select: { user: { select: { id: true, role: true, locale: true } } },
+				select: {
+					user: {
+						select: { id: true, role: true, locale: true, _count: { select: { members: true } } },
+					},
+				},
 			});
-			return members.map(({ user }) => ({
-				userId: user.id,
-				platformRole: user.role,
-				locale: user.locale,
-			}));
+			// A member of two offices opens no thread at all (ADR 0010, `resolveOffice`), and an
+			// alert never names a guest someone cannot open (ADR 0019).
+			return members
+				.filter(({ user }) => user._count.members === 1)
+				.map(({ user }) => ({
+					userId: user.id,
+					platformRole: user.role,
+					locale: user.locale,
+				}));
 		},
 
 		async recordAlert({ officeId, conversationId, userId, kind, now, link, sounds }) {
