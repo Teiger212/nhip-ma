@@ -150,6 +150,28 @@ Run single test files through the env, or they fall back to the shared `supastar
 from `apps/saas`, `pnpm exec dotenv -c -e ../../.env -- vitest run <file>` (root `pnpm test`
 already loads it).
 
+**Migrations (decided 2026-10-04, #95).** Dev databases are built with `db push`; staging and
+production only ever run `prisma migrate deploy`. To make a dev database deploy-ready (or to bring
+one forward with `migrate deploy` instead of `push`), give it a migration history once:
+
+```bash
+pnpm --filter @repo/database migrate:baseline   # marks applied the migrations its schema already has
+pnpm --filter @repo/database migrate:deploy     # applies the rest
+```
+
+`migrate:baseline` replays `prisma/migrations` one by one into a throwaway database and marks
+applied the longest run, from the first, whose schema equals the database's; it refuses a
+database no run reproduces, and does nothing on one that already has a history. Write new
+migrations with `migrate:new <name>` and read them: Prisma cannot fill a new required column on
+a table that has rows, so add it nullable, backfill it, then set it `NOT NULL`, in the same file.
+
+**Schema changes are expand/contract.** A deploy runs `migrate deploy` while the previous
+deployment still serves, so every migration must work with the code before it. Add first
+(a nullable column, a new table, a new index), switch the code, and remove or rename only in a
+later release. A required column the old code does not write breaks this; ship it only when the
+environments it reaches have no live writers, and say so in the PR. #95's `officeId` columns did,
+before any office was live.
+
 **What Eyal sets by hand** (accounts, secrets, vendor settings) is tracked in
 [docs/setup-checklist.md](docs/setup-checklist.md); add to it whenever work needs one.
 
