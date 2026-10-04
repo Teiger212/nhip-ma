@@ -42,6 +42,7 @@ model User {
   notificationPreferences  UserNotificationPreference[]
   answers                  Answer[]
   ownedConversations       Conversation[]               @relation("ConversationOwner")
+  inboxAlerts              InboxAlert[]
 
   @@unique([email])
   @@map("user")
@@ -164,6 +165,7 @@ model Organization {
   pipeConnections    PipeConnection[]
   crmConnection      CrmConnection?
   mockCrmLeads       MockCrmLead[]
+  inboxAlerts        InboxAlert[]
 
   @@unique([slug])
   @@map("organization")
@@ -325,6 +327,7 @@ model Conversation {
   paperwork          Paperwork?
   answers            Answer[]
   crmLink            CrmLink?
+  alerts             InboxAlert[]
 
   @@unique([officeId, pipe, guestId])
   /// What every office-owned row's foreign key points at, so a row's office is its thread's.
@@ -626,4 +629,43 @@ model MockCrmLead {
   @@index([officeId, phone])
   @@index([officeId, zaloUserId])
   @@map("inbox_mock_crm_lead")
+}
+
+/// What an alert is about (ADR 0019): a guest's message, a thread a manager returned to the pool,
+/// a thread a manager gave the operator, or a test the operator sent their own device.
+enum AlertKind {
+  guest
+  returned
+  assigned
+  test
+}
+
+/// One alert to one operator (ADR 0019), whatever their devices: the burst rule's memory (an
+/// alert sounds only after 2 minutes of quiet on the thread for that operator), what an alert's
+/// link resolves, and E2E's evidence (a mock deployment writes it and pushes nothing). Its id is
+/// the only thing an alert carries: the link names no thread and nothing of the guest. Pruned
+/// without a scheduler, like webhook deliveries.
+model InboxAlert {
+  /// Opaque (a cuid), and the link's only parameter.
+  id             String        @id
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Null for a test alert, which has no thread.
+  conversationId String?
+  officeId       String
+  conversation   Conversation? @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
+  office         Organization  @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind           AlertKind
+  /// Whether it sounded; false is a silent replacement of the thread's last alert.
+  sounded        Boolean
+  /// `/<locale>/inbox?alert=<id>`, in the operator's locale.
+  link           String
+  createdAt      DateTime      @default(now())
+
+  /// The burst rule's read: this operator's latest alert on this thread.
+  @@index([userId, conversationId, createdAt])
+  @@index([conversationId, officeId])
+  @@index([officeId])
+  @@index([createdAt])
+  @@map("inbox_alert")
 }

@@ -300,9 +300,13 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    holds one sounding `guest` alert for agent 1, agent 2 and the manager, and none for anyone
    else. Each alert's link starts with its operator's locale and carries no thread id: `/en/`
    for an operator set to English, `/vi/` for one with no locale set.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 1; agent 1 sets English through the kit's
+   user update, the others never chose one).
 2. **An owned thread's guest alerts only its owner** (#132). Agent 1 answers a pool guest
    (claims it); the guest writes again: one new alert, for agent 1. Agent 2 and the manager get
    none for that message.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 2; agent 1 answers through the approve API.
+   Their second alert is within 2 minutes of the first, so it is a silent replacement.)
 3. **A reassignment alerts the new owner, with a bell row** (#133). The manager gives agent
    1's thread to agent 2 through the header's Owner control: the log holds one `assigned` alert
    for agent 2 and none for anyone else; agent 2's bell shows "A manager gave you a thread",
@@ -314,13 +318,16 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    admin. No bell row.
 5. **A vendor retry alerts no one** (#132). The same signed Zalo message is delivered
    twice: the thread holds one message, and the log holds one alert per recipient, not two.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 5; one signed body, same `msg_id`, posted twice).
 6. **A burst makes one sounding alert** (#132). A pool guest writes five messages within 20
    seconds, two of them at the same moment: each recipient has exactly one sounding alert on
    that thread; the rest are silent replacements. (The 2-minute window itself is a Vitest rule
    with an explicit clock.)
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 6).
 7. **The platform admin is never alerted** (#132). In an office of its own, a pool guest
    writes, then an agent claims the thread and the guest writes again: the agents and manager
    have their rows, and the platform admin, the office's kit `owner`, has none.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 7).
 8. **An alert for a thread a colleague took shows a neutral notice** (#136). Agent 2 opens
    the link of their alert for a pool guest after agent 1 has claimed that thread: the Inbox
    says "A colleague is answering this guest" ("Một đồng nghiệp đang trả lời khách này") and

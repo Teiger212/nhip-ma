@@ -4,6 +4,7 @@ import { runInBackground } from "./background";
 import { createCrmSync } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
+import { scheduleGuestAlert } from "./guest-alerts";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
@@ -86,17 +87,23 @@ export function crmSyncFor(runtime: Runtime) {
 }
 
 /**
- * Everything that follows a guest message: the one-shot now, then translation and, for a
- * guest who wrote back after a send, the model draft in the background. A thread with no
- * lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
- * queue never wait on the CRM. The first reply keeps the template until the model draft is
+ * Everything that follows a guest message: the one-shot now, then the alert (a new message
+ * only), translation and, for a guest who wrote back after a send, the model draft in the
+ * background. A thread with no lead yet gets one in the office's CRM, in the background too
+ * (spec #59): the guest and the queue never wait on the CRM. The first reply keeps the template until the model draft is
  * shown to be better on the invented threads (ADR 0005).
  */
 export async function afterGuestInbound(
 	runtime: Runtime,
 	conversation: Conversation,
+	{ inserted }: { inserted: boolean },
 ): Promise<Conversation> {
 	const updated = (await applyOneShot(runtime.store, conversation)) ?? conversation;
+	// Only a new message alerts: a vendor's retry of one already stored alerts no one (ADR 0019).
+	// After the one-shot, so the alert can name the guest's language.
+	if (inserted) {
+		scheduleGuestAlert(runtime, updated);
+	}
 	if (!updated.crm) {
 		void runInBackground(`crm lead ${updated.id}`, async () => {
 			try {
@@ -146,10 +153,10 @@ export async function ingestEvents(
 			summary.dropped.push({ endpoint, vendorMessageId: event.vendorMessageId });
 			continue;
 		}
-		const conv = await runtime.store.upsertInbound(event, officeId);
+		const { conversation, inserted } = await runtime.store.upsertInbound(event, officeId);
 		summary.filed.push({ endpoint, officeId, vendorMessageId: event.vendorMessageId });
 		if (event.source === "guest") {
-			await afterGuestInbound(runtime, conv);
+			await afterGuestInbound(runtime, conversation, { inserted });
 		}
 	}
 	return summary;
@@ -165,7 +172,7 @@ export async function injectDevInbound(input: {
 	at?: number | string | Date;
 }): Promise<Conversation> {
 	const runtime = getRuntime();
-	const conv = await runtime.store.upsertInbound(
+	const { conversation, inserted } = await runtime.store.upsertInbound(
 		{
 			pipe: input.pipe,
 			guestId: input.guestId,
@@ -177,7 +184,7 @@ export async function injectDevInbound(input: {
 		},
 		input.officeId,
 	);
-	return afterGuestInbound(runtime, conv);
+	return afterGuestInbound(runtime, conversation, { inserted });
 }
 
 export type InboxResult =

@@ -12,8 +12,8 @@ import type { Store } from "./types";
 const OURS = "office-a";
 const THEIRS = "office-b";
 
-const guestWrites = (store: Store, officeId: string, guestId: string) =>
-	store.upsertInbound(
+const guestWrites = async (store: Store, officeId: string, guestId: string) => {
+	const { conversation } = await store.upsertInbound(
 		{
 			pipe: "zalo",
 			source: "guest",
@@ -25,6 +25,8 @@ const guestWrites = (store: Store, officeId: string, guestId: string) =>
 		},
 		officeId,
 	);
+	return conversation;
+};
 
 /** Another office's thread with a sending Answer, a translation failure and a CRM claim. */
 async function theirThread(store: Store) {

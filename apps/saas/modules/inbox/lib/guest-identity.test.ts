@@ -24,31 +24,35 @@ afterEach(async () => {
 test("no stored thread id, answer or vendor-id column contains the guest's id", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
-	const written = await store.upsertInbound(
-		{
-			pipe: "whatsapp",
-			source: "guest",
-			guestId: PHONE,
-			guestName: "Minh",
-			text: "Hello, I'm looking for a flat",
-			vendorMessageId: INBOUND_WAMID,
-			pipeExternalId: "office-number-1",
-		},
-		OFFICE,
-	);
+	const written = (
+		await store.upsertInbound(
+			{
+				pipe: "whatsapp",
+				source: "guest",
+				guestId: PHONE,
+				guestName: "Minh",
+				text: "Hello, I'm looking for a flat",
+				vendorMessageId: INBOUND_WAMID,
+				pipeExternalId: "office-number-1",
+			},
+			OFFICE,
+		)
+	).conversation;
 	// The vendor retries the same message: still one message (the dedupe works on what is stored).
-	const thread = await store.upsertInbound(
-		{
-			pipe: "whatsapp",
-			source: "guest",
-			guestId: PHONE,
-			guestName: "Minh",
-			text: "Hello, I'm looking for a flat",
-			vendorMessageId: INBOUND_WAMID,
-			pipeExternalId: "office-number-1",
-		},
-		OFFICE,
-	);
+	const thread = (
+		await store.upsertInbound(
+			{
+				pipe: "whatsapp",
+				source: "guest",
+				guestId: PHONE,
+				guestName: "Minh",
+				text: "Hello, I'm looking for a flat",
+				vendorMessageId: INBOUND_WAMID,
+				pipeExternalId: "office-number-1",
+			},
+			OFFICE,
+		)
+	).conversation;
 	expect(thread.id).toBe(written.id);
 	expect(thread.messages).toHaveLength(1);
 	await store.setOneShot(OFFICE, thread.id, {

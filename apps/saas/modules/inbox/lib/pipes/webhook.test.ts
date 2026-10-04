@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { settleBackgroundWork } from "../background";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
 import { peekTestRuntime, setRuntimeForTests } from "../runtime";
@@ -46,6 +47,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	// Alerts follow a guest message in the background (ADR 0019); they finish before the reset.
+	await settleBackgroundWork();
 	vi.restoreAllMocks();
 	const runtime = peekTestRuntime();
 	if (runtime) {

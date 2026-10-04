@@ -25,7 +25,7 @@ async function member(userId: string, role: string) {
 }
 
 async function guestWrites(guestId: string) {
-	return store.upsertInbound(
+	const { conversation } = await store.upsertInbound(
 		{
 			pipe: "whatsapp",
 			source: "guest",
@@ -37,6 +37,7 @@ async function guestWrites(guestId: string) {
 		},
 		OFFICE,
 	);
+	return conversation;
 }
 
 beforeEach(async () => {

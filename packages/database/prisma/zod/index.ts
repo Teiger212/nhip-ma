@@ -172,6 +172,12 @@ export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name'
 
 export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEnumSchema>;
 
+// File: InboxAlertScalarFieldEnum.schema.ts
+
+export const InboxAlertScalarFieldEnumSchema = z.enum(['id', 'userId', 'conversationId', 'officeId', 'kind', 'sounded', 'link', 'createdAt'])
+
+export type InboxAlertScalarFieldEnum = z.infer<typeof InboxAlertScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -273,6 +279,12 @@ export type CrmLinkMethod = z.infer<typeof CrmLinkMethodSchema>;
 export const CrmOutcomeStatusSchema = z.enum(['open', 'won', 'lost'])
 
 export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatusSchema>;
+
+// File: AlertKind.schema.ts
+
+export const AlertKindSchema = z.enum(['guest', 'returned', 'assigned', 'test'])
+
+export type AlertKind = z.infer<typeof AlertKindSchema>;
 
 // File: User.schema.ts
 
@@ -712,4 +724,20 @@ export const MockCrmLeadSchema = z.object({
 });
 
 export type MockCrmLeadType = z.infer<typeof MockCrmLeadSchema>;
+
+
+// File: InboxAlert.schema.ts
+
+export const InboxAlertSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  conversationId: z.string().nullish(),
+  officeId: z.string(),
+  kind: AlertKindSchema,
+  sounded: z.boolean(),
+  link: z.string(),
+  createdAt: z.date(),
+});
+
+export type InboxAlertType = z.infer<typeof InboxAlertSchema>;
 

@@ -15,7 +15,7 @@ afterEach(async () => {
 });
 
 async function guestWrites(pipe: "zalo" | "whatsapp", guestId: string, guestName: string | null) {
-	return store.upsertInbound(
+	const { conversation } = await store.upsertInbound(
 		{
 			pipe,
 			source: "guest",
@@ -26,6 +26,7 @@ async function guestWrites(pipe: "zalo" | "whatsapp", guestId: string, guestName
 		},
 		OFFICE,
 	);
+	return conversation;
 }
 
 // Spec #59 stories 13, 14, 18 (#61): a new guest becomes a lead, Zalo id and thread link on it, no text.
@@ -274,17 +275,19 @@ test("choosing the office's CRM again keeps its links; choosing none drops them,
 	expect(await sync.connectOffice(OFFICE, "mock")).toBe("connected");
 	expect(await sync.connectOffice("office-b", "mock")).toBe("connected");
 	const ours = await guestWrites("zalo", "zalo-user-9", "Minh");
-	const theirs = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "zalo-user-10",
-			guestName: "Lan",
-			text: "Chào",
-			vendorMessageId: null,
-		},
-		"office-b",
-	);
+	const theirs = (
+		await store.upsertInbound(
+			{
+				pipe: "zalo",
+				source: "guest",
+				guestId: "zalo-user-10",
+				guestName: "Lan",
+				text: "Chào",
+				vendorMessageId: null,
+			},
+			"office-b",
+		)
+	).conversation;
 	await sync.newGuest(ours);
 	await sync.newGuest(theirs);
 
@@ -403,17 +406,19 @@ async function wonThread(
 	guestId: string,
 	name: string,
 ) {
-	const conversation = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName: name,
-			text: "Chào",
-			vendorMessageId: null,
-		},
-		officeId,
-	);
+	const conversation = (
+		await store.upsertInbound(
+			{
+				pipe: "zalo",
+				source: "guest",
+				guestId,
+				guestName: name,
+				text: "Chào",
+				vendorMessageId: null,
+			},
+			officeId,
+		)
+	).conversation;
 	await sync.newGuest(conversation);
 	const { leadId } = await leadOf(conversation);
 	await store.setMockCrmLeadOutcome(officeId, leadId!, { status: "won", at: null, reason: null });

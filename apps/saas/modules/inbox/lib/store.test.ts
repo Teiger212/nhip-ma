@@ -54,7 +54,7 @@ async function answer(store: Store, conversationId: string, inboundId: string, t
 
 test("one Answer per guest message: two approvals in the same instant let one in", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("race"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("race"), OFFICE)).conversation;
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
@@ -73,7 +73,7 @@ test("one Answer per guest message: two approvals in the same instant let one in
 test("message ids are unique cuids, not COUNT(*)+1", async () => {
 	const store = await testInboxStore();
 	await store.upsertInbound(inbound("g1"), OFFICE);
-	const conv = await store.upsertInbound(inbound("g1"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("g1"), OFFICE)).conversation;
 	expect(conv.messages).toHaveLength(2);
 	const ids = new Set(conv.messages.map((message) => message.id));
 	expect(ids.size).toBe(2);
@@ -105,15 +105,16 @@ test("threads belong to one office, are shared inside it and invisible outside i
 
 test("one thread per guest per office: the same guest at two offices never merges", async () => {
 	const store = await testInboxStore();
-	const atA = await store.upsertInbound(inbound("same-guest", "private A"), OFFICE);
-	const atB = await store.upsertInbound(inbound("same-guest", "private B"), OTHER_OFFICE);
+	const atA = (await store.upsertInbound(inbound("same-guest", "private A"), OFFICE)).conversation;
+	const atB = (await store.upsertInbound(inbound("same-guest", "private B"), OTHER_OFFICE))
+		.conversation;
 	expect(atA.id).toBe(await zalo("same-guest"));
 	expect(atB.id).toBe(await threadId(OTHER_OFFICE, "same-guest"));
 	expect(atA.id).not.toBe(atB.id);
 	expect(atA.messages.map((m) => m.text)).toEqual(["private A"]);
 	expect(atB.messages.map((m) => m.text)).toEqual(["private B"]);
 	// A follow-up at A lands in A's thread only.
-	const again = await store.upsertInbound(inbound("same-guest", "again A"), OFFICE);
+	const again = (await store.upsertInbound(inbound("same-guest", "again A"), OFFICE)).conversation;
 	expect(again.id).toBe(atA.id);
 	expect(again.messages.map((m) => m.text)).toEqual(["private A", "again A"]);
 	expect((await store.getOfficeConversation(atB.officeId, atB.id))?.messages).toHaveLength(1);
@@ -122,13 +123,13 @@ test("one thread per guest per office: the same guest at two offices never merge
 
 test("each message remembers the office endpoint it travelled through", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("ep", "hi", "oa-1"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("ep", "hi", "oa-1"), OFFICE)).conversation;
 	expect(conv.messages[0].pipeExternalId).toBe("oa-1");
 	const sent = await answer(store, conv.id, conv.messages[0].id, "hello");
 	// The reply went out on the endpoint the guest wrote to.
 	expect(sent?.messages[1]).toMatchObject({ source: "nhip", pipeExternalId: "oa-1" });
 	// A dev injection has no endpoint, and that is allowed.
-	const dev = await store.upsertInbound(inbound("ep", "again"), OFFICE);
+	const dev = (await store.upsertInbound(inbound("ep", "again"), OFFICE)).conversation;
 	expect(dev.messages[2].pipeExternalId).toBeNull();
 	await store.close();
 });
@@ -154,12 +155,13 @@ test("a pipe endpoint maps to the office that owns it", async () => {
 
 test("your turn is derived from the messages: the guest spoke last and nothing answers it", async () => {
 	const store = await testInboxStore();
-	const fresh = await store.upsertInbound(inbound("turn"), OFFICE);
+	const fresh = (await store.upsertInbound(inbound("turn"), OFFICE)).conversation;
 	const firstInbound = fresh.messages[0].id;
 	expect(fresh.unansweredInboundId).toBe(firstInbound);
 
 	// Two guest messages in a row: the latest is the one to answer.
-	const burst = await store.upsertInbound(inbound("turn", "and one more thing"), OFFICE);
+	const burst = (await store.upsertInbound(inbound("turn", "and one more thing"), OFFICE))
+		.conversation;
 	const secondInbound = burst.messages[1].id;
 	expect(burst.unansweredInboundId).toBe(secondInbound);
 
@@ -168,22 +170,25 @@ test("your turn is derived from the messages: the guest spoke last and nothing a
 	expect(sent?.sentAt).toBeTruthy();
 
 	// The guest writes back: Your turn again, and sentAt is no longer terminal.
-	const back = await store.upsertInbound(inbound("turn", "thanks, one question"), OFFICE);
+	const back = (await store.upsertInbound(inbound("turn", "thanks, one question"), OFFICE))
+		.conversation;
 	expect(back.unansweredInboundId).toBe(back.messages[3].id);
 	expect(back.sentAt).toBe(sent?.sentAt);
 
 	// An agent answering from the OA app directly also ends the guest's turn.
-	const echoed = await store.upsertInbound(
-		{ ...inbound("turn", "answered from the OA app"), source: "oa-echo" },
-		OFFICE,
-	);
+	const echoed = (
+		await store.upsertInbound(
+			{ ...inbound("turn", "answered from the OA app"), source: "oa-echo" },
+			OFFICE,
+		)
+	).conversation;
 	expect(echoed.unansweredInboundId).toBeNull();
 	await store.close();
 });
 
 test("an Answer is on record from approval and carries the send's lifecycle", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("life", "hi", "oa-1"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("life", "hi", "oa-1"), OFFICE)).conversation;
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
@@ -268,7 +273,7 @@ test("an Answer is on record from approval and carries the send's lifecycle", as
 
 test("an Answer of unknown outcome blocks every further approval of that message", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("unknown"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("unknown"), OFFICE)).conversation;
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
@@ -291,7 +296,7 @@ test("an Answer of unknown outcome blocks every further approval of that message
 
 test("your turn reads the Answers, not message order: a guest message mid-send stays open", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("mid", "M1"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("mid", "M1"), OFFICE)).conversation;
 	const m1 = conv.unansweredInboundId!;
 	const begun = await store.beginAnswer({
 		officeId: OFFICE,
@@ -302,7 +307,7 @@ test("your turn reads the Answers, not message order: a guest message mid-send s
 	});
 	if (!begun.ok) throw new Error(begun.reason);
 	// M2 lands while M1's reply is with the vendor.
-	const withM2 = await store.upsertInbound(inbound("mid", "M2"), OFFICE);
+	const withM2 = (await store.upsertInbound(inbound("mid", "M2"), OFFICE)).conversation;
 	const m2 = withM2.unansweredInboundId!;
 	expect(m2).not.toBe(m1);
 	// M1's reply is acknowledged and stored last on the thread.
@@ -321,7 +326,7 @@ test("your turn reads the Answers, not message order: a guest message mid-send s
 
 test("translations are stored per message per operator language and read back", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("tr", "안녕하세요"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("tr", "안녕하세요"), OFFICE)).conversation;
 	const id = conv.messages[0].id;
 	expect(conv.messages[0].translations).toEqual({});
 	await store.setTranslation(OFFICE, id, "vi", "Xin chào");
@@ -334,7 +339,8 @@ test("translations are stored per message per operator language and read back", 
 
 test("the suggested reply records which guest message it answers and where it came from", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("draft", "Looking to rent in Tay Ho"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("draft", "Looking to rent in Tay Ho"), OFFICE))
+		.conversation;
 	const inboundId = conv.unansweredInboundId!;
 	const shot = await store.setOneShot(
 		OFFICE,
@@ -382,7 +388,7 @@ test("an Answer keeps its sender's name after the account is deleted (ADR 0013)"
 			updatedAt: now,
 		},
 	});
-	const conv = await store.upsertInbound(inbound("price"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("price"), OFFICE)).conversation;
 	const begun = await store.beginAnswer({
 		officeId: OFFICE,
 		conversationId: await zalo("price"),
@@ -400,7 +406,7 @@ test("an Answer keeps its sender's name after the account is deleted (ADR 0013)"
 
 test("Answers approved before ADR 0013 get their sender's name filled in", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("old"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("old"), OFFICE)).conversation;
 	await answer(store, await zalo("old"), conv.unansweredInboundId!, "reply");
 	await testDb.answer.updateMany({ data: { operatorName: null } });
 	expect(await backfillAnswerOperatorNames(testDb)).toBe(1);
@@ -412,7 +418,7 @@ test("Answers approved before ADR 0013 get their sender's name filled in", async
 
 test("two approvals racing the retry of a failed Answer let one in", async () => {
 	const store = await testInboxStore();
-	const conv = await store.upsertInbound(inbound("retry-race"), OFFICE);
+	const conv = (await store.upsertInbound(inbound("retry-race"), OFFICE)).conversation;
 	const inboundId = conv.unansweredInboundId!;
 	const input = {
 		officeId: OFFICE,
@@ -441,7 +447,7 @@ const NOT_FOUND = { ok: false, reason: "not_found" };
 
 /** A guest's thread in office A, and the approval of its unanswered message. */
 async function approvable(store: Store, guestId: string, operatorId: string | null = "agent-1") {
-	const conv = await store.upsertInbound(inbound(guestId), OFFICE);
+	const { conversation: conv } = await store.upsertInbound(inbound(guestId), OFFICE);
 	const input = {
 		officeId: OFFICE,
 		conversationId: conv.id,
@@ -513,6 +519,34 @@ test("a vendor retry of one message is stored once, even when both land at the s
 	await Promise.all([store.upsertInbound(event, OFFICE), store.upsertInbound(event, OFFICE)]);
 	const conv = await store.getOfficeConversation(OFFICE, await zalo("retried"));
 	expect(conv?.messages).toHaveLength(1);
+	await store.close();
+});
+
+test("the store says whether an inbound was new: a vendor retry is not (ADR 0019)", async () => {
+	const store = await testInboxStore();
+	const event = { ...inbound("said"), vendorMessageId: "vendor-said-1" };
+	const first = await store.upsertInbound(event, OFFICE);
+	const retry = await store.upsertInbound(event, OFFICE);
+	const next = await store.upsertInbound({ ...event, vendorMessageId: "vendor-said-2" }, OFFICE);
+	const noId = await store.upsertInbound(inbound("said"), OFFICE);
+	expect([first.inserted, retry.inserted, next.inserted, noId.inserted]).toEqual([
+		true,
+		false,
+		true,
+		true,
+	]);
+	expect(retry.conversation.id).toBe(first.conversation.id);
+	expect(retry.conversation.messages).toHaveLength(1);
+	await store.close();
+});
+
+test("a vendor retry landing at the same time as the message: only one of them is new", async () => {
+	const store = await testInboxStore();
+	const event = { ...inbound("raced"), vendorMessageId: "vendor-raced-1" };
+	const results = await Promise.all(
+		Array.from({ length: 4 }, () => store.upsertInbound(event, OFFICE)),
+	);
+	expect(results.filter((result) => result.inserted)).toHaveLength(1);
 	await store.close();
 });
 

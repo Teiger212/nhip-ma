@@ -848,6 +848,11 @@
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
 		},
+		"alerts": {
+			"waiting": "{name} đang chờ",
+			"waitingUnnamed": "Một khách đang chờ",
+			"body": "{pipe} · {language}"
+		},
 		"guestLanguage": {
 			"en": "tiếng Anh",
 			"vi": "tiếng Việt",

@@ -61,7 +61,7 @@ export async function resetInboxTables(
 	{ offices = [], operators = [] }: { offices?: string[]; operators?: string[] } = {},
 ): Promise<void> {
 	await db.$executeRawUnsafe(
-		`TRUNCATE "inbox_conversation", "inbox_pipe_connection", "inbox_crm_connection", "inbox_mock_crm_lead", "inbox_webhook_delivery" CASCADE`,
+		`TRUNCATE "inbox_conversation", "inbox_pipe_connection", "inbox_crm_connection", "inbox_mock_crm_lead", "inbox_webhook_delivery", "inbox_alert" CASCADE`,
 	);
 	const now = new Date();
 	for (const id of offices) {
