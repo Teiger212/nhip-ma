@@ -125,5 +125,9 @@ Answered: the first client uses Attio. The mock never goes to production for a c
   5. Let the key through the ruleset: Settings → Rules → Rulesets → "production: releases
      only" (24113338) → Bypass list → Add bypass → Deploy keys → Always allow.
   6. Delete both key files.
+- [ ] **Immutable releases** (#112): Settings → General → Releases → enable release
+      immutability. Once a release is published, its tag and assets can't be moved or
+      swapped, so the commit you approved is the commit that ships (GitHub's "Immutable
+      releases"; titles and notes stay editable).
 - [ ] **Restore drill** of the prod database, done once and timed.
 - [ ] Optional: restrict the admin area by IP in the Vercel Firewall.
