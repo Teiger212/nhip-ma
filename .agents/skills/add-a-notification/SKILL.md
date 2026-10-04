@@ -18,7 +18,7 @@ Use for typed notification events, delivered in-app (the bell). Nhịp sends no 
    pnpm --filter @repo/database migrate:new <name>
    ```
 3. Add the value to `NOTIFICATION_TYPES` in `packages/notifications/src/types.ts`, then update `NotificationTypeId` and, if user-configurable, the ordered group in `packages/notifications/src/catalog.ts`.
-4. Add `settings.notificationsPage.types.<TYPE>.label` to every `packages/i18n/translations/*/saas.json`. Update the `onToggle` type in `apps/saas/modules/settings/components/NotificationPreferencesForm.tsx` if its explicit union does not yet include the type.
+4. If user-configurable, add `settings.notificationsPage.types.<TYPE>.label` to every `packages/i18n/translations/*/saas.json`. A type outside the catalog cannot be turned off: `createNotification` ignores preferences for it. Update the `onToggle` type in `apps/saas/modules/settings/components/NotificationPreferencesForm.tsx` if its explicit union does not yet include the type.
 5. Add a producer and call `createNotification({ userId, type, data, link })`. Store the facts in `data` and render the row in the reader's language in `apps/saas/modules/shared/components/NotificationCenter.tsx` (`app.notifications.*`), rather than frozen copy.
 6. Trigger the producer only after the underlying transaction succeeds. Keep failures observable with `@repo/logs` when notification delivery must not roll back the primary action.
 7. Test who gets the bell row, its data, and that nothing is emailed (mock `@repo/mail` and point the app client at the test database: `useTestDatabaseForAppClient`).

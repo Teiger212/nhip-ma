@@ -696,8 +696,7 @@
 			},
 			"columns": {
 				"type": "Notification",
-				"inApp": "In-app",
-				"email": "Email"
+				"inApp": "In-app"
 			}
 		},
 		"menu": {

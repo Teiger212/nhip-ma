@@ -696,8 +696,7 @@
 			},
 			"columns": {
 				"type": "Thông báo",
-				"inApp": "Trong ứng dụng",
-				"email": "Email"
+				"inApp": "Trong ứng dụng"
 			}
 		},
 		"menu": {
