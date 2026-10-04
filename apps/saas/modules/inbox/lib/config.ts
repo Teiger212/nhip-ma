@@ -48,6 +48,8 @@ const envSchema = z
 		ZALO_OA_SECRET_KEY: trimmed,
 		PIPE_SECRETS_KEY: trimmed,
 		MOCK_CRM_WEBHOOK_SECRET: trimmed,
+		HUBSPOT_APP_CLIENT_SECRET: trimmed,
+		HUBSPOT_WEBHOOK_URL: trimmed,
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
@@ -66,6 +68,24 @@ const envSchema = z
 				path: ["MOCK_CRM_WEBHOOK_SECRET"],
 				message:
 					"MOCK_CRM_WEBHOOK_SECRET must not be set in production: the mock CRM's webhook is for development and E2E",
+			});
+		}
+		// HubSpot's webhook is verified with both (#66): the secret, over the URL HubSpot calls.
+		const hubspotWebhook = ["HUBSPOT_APP_CLIENT_SECRET", "HUBSPOT_WEBHOOK_URL"] as const;
+		if (hubspotWebhook.some((key) => env[key])) {
+			for (const key of hubspotWebhook.filter((k) => !env[k])) {
+				ctx.addIssue({
+					code: "custom",
+					path: [key],
+					message: `${key} must be set: HubSpot's webhook needs both HUBSPOT_APP_CLIENT_SECRET and HUBSPOT_WEBHOOK_URL`,
+				});
+			}
+		}
+		if (env.HUBSPOT_WEBHOOK_URL && !env.HUBSPOT_WEBHOOK_URL.startsWith("https://")) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["HUBSPOT_WEBHOOK_URL"],
+				message: `HUBSPOT_WEBHOOK_URL must be the https URL HubSpot calls (the app's targetUrl), got "${env.HUBSPOT_WEBHOOK_URL}"`,
 			});
 		}
 		if (env.SEND_MODE !== undefined && env.SEND_MODE !== "mock" && env.SEND_MODE !== "live") {
@@ -243,6 +263,13 @@ export type InboxConfig = {
 	 */
 	mockCrmWebhookSecret?: string;
 	/**
+	 * HubSpot's outcome webhook (#66): the app's client secret, which signs it, and the public
+	 * URL HubSpot calls (the app's `targetUrl`), which the signature covers. Unset, either one,
+	 * the webhook answers 404. One app serves every office on HubSpot.
+	 */
+	hubspotAppClientSecret?: string;
+	hubspotWebhookUrl?: string;
+	/**
 	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
 	 * a key there is no model: no translation is shown and every suggested reply is a
 	 * template. The model id is whatever the office chose; nothing here names a vendor.
@@ -279,6 +306,8 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 		},
 		pipeSecretsKey: clean(env.PIPE_SECRETS_KEY),
 		mockCrmWebhookSecret: clean(env.MOCK_CRM_WEBHOOK_SECRET),
+		hubspotAppClientSecret: clean(env.HUBSPOT_APP_CLIENT_SECRET),
+		hubspotWebhookUrl: clean(env.HUBSPOT_WEBHOOK_URL),
 		drafts: {
 			apiKey: clean(env.DRAFT_API_KEY),
 			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,

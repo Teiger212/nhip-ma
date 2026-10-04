@@ -525,9 +525,14 @@ model CrmConnection {
   /// this table (ADR 0017's encryption). Write-only: never read back to a client. Another kind
   /// replaces the row, so the token goes with it.
   accessToken String?      @db.Text
+  /// The CRM's own id for the account the office is on, where one app serves many accounts and
+  /// its webhooks name the account, not the office (HubSpot's portal id, #66). Null until learned
+  /// from the CRM; a new access token clears it, since it may reach another account.
+  accountId   String?
   links       CrmLink[]
   updatedAt   DateTime     @updatedAt
 
+  @@index([kind, accountId])
   @@map("inbox_crm_connection")
 }
 

@@ -91,3 +91,21 @@ test("a production deployment refuses the mock CRM's webhook secret, whatever it
 	expect(errorsOf({ ...mock, VERCEL_ENV: "preview" })).toEqual([]);
 	expect(errorsOf(mock)).toEqual([]);
 });
+
+// #66: HubSpot's webhook is verified with the app's client secret over the URL HubSpot calls;
+// one without the other cannot verify anything, and the URL is the https one HubSpot is given.
+test("HubSpot's webhook settings are set together, its URL an https one", () => {
+	const secret = { HUBSPOT_APP_CLIENT_SECRET: "client-secret" };
+	const url = { HUBSPOT_WEBHOOK_URL: "https://nhip.example/webhooks/crm/hubspot" };
+	expect(errorsOf({ ...BASE, ...secret }).join("\n")).toContain("HUBSPOT_WEBHOOK_URL");
+	expect(errorsOf({ ...BASE, ...url }).join("\n")).toContain("HUBSPOT_APP_CLIENT_SECRET");
+	expect(
+		errorsOf({
+			...BASE,
+			...secret,
+			HUBSPOT_WEBHOOK_URL: "http://localhost:3010/webhooks/crm/hubspot",
+		}),
+	).toHaveLength(1);
+	expect(errorsOf({ ...BASE, ...secret, ...url })).toEqual([]);
+	expect(errorsOf(BASE)).toEqual([]);
+});

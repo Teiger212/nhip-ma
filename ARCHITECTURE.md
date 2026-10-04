@@ -68,7 +68,13 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   otherwise creates the contact if there is none, then an unassigned deal associated with it;
   `hubspot.test.ts` replays its calls against recorded HubSpot exchanges. Outcomes arrive by
   the CRM's webhook
-  (`/webhooks/crm/mock`, signed with `MOCK_CRM_WEBHOOK_SECRET`; absent where unset): the sync's
+  (`/webhooks/crm/mock`, signed with `MOCK_CRM_WEBHOOK_SECRET`; `/webhooks/crm/hubspot`, #66,
+  signed v3 with `HUBSPOT_APP_CLIENT_SECRET` over `HUBSPOT_WEBHOOK_URL`; each absent where unset).
+  The kind's reader (`crmWebhookFor`) returns the CRM accounts its notice names and their changed
+  leads; the sync's `noticesReceived` finds the offices on each account (the mock's account is
+  the office; HubSpot's is the portal id the adapter's `accountId` reports, kept on
+  `inbox_crm_connection.accountId` after the token is saved, or asked lazily) and only theirs
+  are touched (ADR 0008). There the sync's
   `outcomesChanged` asks the adapter for the changed leads' outcomes and caches them on the link,
   observed when Nhịp first heard them (`observeOutcome`). The thread summary carries the link, so
   the queue rule (`isResolved`, `inQueue`) and the nav count read it on the client. Home still

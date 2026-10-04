@@ -48,7 +48,13 @@ needed until the HubSpot slice is ready; start whenever.
       token for the next step; never paste it in chat or a file.
 - [ ] **Hand the token over** where the HubSpot slice says (Admin → Connections once
       built; it is stored encrypted per office).
-- [ ] **Webhook on deal stage changes** to the staging URL the slice names.
+- [ ] **Webhook on deal stage changes** (#66): in `integrations/hubspot-demo-app/src/app/webhooks/webhooks-hsmeta.json`
+      set `targetUrl` to `https://nhip-staging.vercel.app/webhooks/crm/hubspot` (or the
+      rehearsal's tunnel URL) and upload the project again.
+- [ ] **Vercel, staging, Sensitive, both together:** `HUBSPOT_APP_CLIENT_SECRET` (the app's
+      client secret, from its Auth tab) and `HUBSPOT_WEBHOOK_URL`, exactly the `targetUrl`
+      above. `PIPE_SECRETS_KEY` must be set too, or the token cannot be saved. Verify: mark the
+      demo deal won in HubSpot, and the thread shows "Won" in Nhịp within seconds.
 - [ ] **Ask the first beta agencies which CRM they use** (or spreadsheets, Bitrix24, Getfly)
       before a second adapter is built.
 

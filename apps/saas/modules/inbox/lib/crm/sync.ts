@@ -3,10 +3,21 @@ import type { InboxStore } from "@repo/database/inbox";
 import { displayName } from "../display-name";
 import { crmTokenContext, decryptSecret, encryptSecret } from "../pipes/secrets";
 import type { Conversation, CrmKind } from "../types";
-import { type CrmAdapterConnection, crmAdapterFor, crmKindTakesToken } from "./adapters";
+import {
+	type CrmAdapterConnection,
+	crmAdapterFor,
+	crmKindHasAccount,
+	crmKindTakesToken,
+} from "./adapters";
 import { guestIdentity } from "./phone";
 import { decideLead, observeOutcome } from "./rules";
-import type { CrmAdapter } from "./types";
+import type { CrmAdapter, CrmNotice } from "./types";
+
+/**
+ * How many offices on a CRM, their account not known yet, one notice from an unknown account
+ * asks the CRM about: the CRM waits on the answer, and may give up after a few seconds.
+ */
+const MAX_ACCOUNT_LOOKUPS = 5;
 
 /**
  * The CRM sync module (spec #59): it owns a thread's link to its lead in the office's CRM.
@@ -30,18 +41,75 @@ export function createCrmSync(deps: {
 
 	/** The office's CRM, with its access token opened for the adapter; null when it has none. */
 	async function connectionOf(officeId: string): Promise<CrmAdapterConnection | null> {
+		return (await sealedConnectionOf(officeId))?.connection ?? null;
+	}
+
+	/** The office's CRM opened for the adapter, with the sealed token it was opened from. */
+	async function sealedConnectionOf(
+		officeId: string,
+	): Promise<{ connection: CrmAdapterConnection; sealed: string | null } | null> {
 		const connection = await store.getCrmConnection(officeId);
 		if (!connection) return null;
-		if (!crmKindTakesToken(connection.kind)) return { kind: connection.kind, token: null };
+		if (!crmKindTakesToken(connection.kind)) {
+			return { connection: { kind: connection.kind, token: null }, sealed: null };
+		}
 		const sealed = await store.getCrmAccessToken(officeId);
 		const token =
 			sealed && secretsKey
 				? decryptSecret(sealed, secretsKey, crmTokenContext(connection.kind, officeId))
 				: null;
-		return { kind: connection.kind, token };
+		return { connection: { kind: connection.kind, token }, sealed };
 	}
 
-	return {
+	/**
+	 * Ask the office's CRM which account its connection reaches, and remember it (#66); nothing
+	 * for a CRM whose webhook names the office itself. Throws what the CRM refused.
+	 */
+	async function resolveAccount(officeId: string): Promise<void> {
+		const opened = await sealedConnectionOf(officeId);
+		if (!opened || !crmKindHasAccount(opened.connection.kind)) return;
+		const crm = adapterFor(opened.connection, { store, officeId });
+		if (!crm.accountId) return;
+		const accountId = await crm.accountId();
+		// Written only if the connection is still the one asked about (a new token clears it).
+		await store.setCrmAccountId(
+			officeId,
+			{ kind: opened.connection.kind, accessToken: opened.sealed },
+			accountId,
+		);
+	}
+
+	/**
+	 * The offices on the CRM `kind` whose account is `account`. When none is, the few offices on
+	 * it whose account is not known yet are asked first (`lookups` holds that, once per webhook).
+	 */
+	async function officesOnAccount(
+		kind: CrmKind,
+		account: string,
+		lookups: { done?: Promise<void> },
+	): Promise<string[]> {
+		if (!crmKindHasAccount(kind)) return [account];
+		const known = await store.crmOfficesOnAccount(kind, account);
+		if (known.length > 0) return known;
+		lookups.done ??= (async () => {
+			const unknown = await store.crmOfficesWithoutAccount(kind, MAX_ACCOUNT_LOOKUPS);
+			await Promise.all(
+				unknown.map((officeId) =>
+					resolveAccount(officeId).catch((error: unknown) => {
+						// The CRM's error names its operation, status and category only (story 43).
+						console.warn("crm: account lookup failed", {
+							officeId,
+							reason: error instanceof Error ? error.message : "unknown",
+						});
+					}),
+				),
+			);
+		})();
+		await lookups.done;
+		return store.crmOfficesOnAccount(kind, account);
+	}
+
+	const sync = {
 		/**
 		 * The platform admin sets the office's CRM, or none (spec #59, Q6). The same CRM again
 		 * keeps the office's links; another, or none, drops them: another CRM's leads mean nothing.
@@ -126,7 +194,29 @@ export function createCrmSync(deps: {
 				);
 			}
 		},
+
+		/**
+		 * A CRM's verified webhook (#66): each notice names the CRM's account and its changed
+		 * leads, and goes to the offices on that account, only them (ADR 0008). An account no
+		 * office is on is ignored.
+		 */
+		async noticesReceived(kind: CrmKind, notices: CrmNotice[], now: Date): Promise<void> {
+			const lookups = {};
+			for (const notice of notices) {
+				for (const officeId of await officesOnAccount(kind, notice.account, lookups)) {
+					await sync.outcomesChanged(officeId, notice.leadIds, now, { from: kind });
+				}
+			}
+		},
+
+		/**
+		 * Learn which account of its CRM the office's connection reaches (#66), right after its
+		 * token is saved; a webhook from an account no office is known on asks again.
+		 */
+		resolveAccount,
 	};
+
+	return sync;
 
 	async function linkLead(conversation: Conversation, crm: CrmAdapter): Promise<void> {
 		const identity = guestIdentity(conversation);

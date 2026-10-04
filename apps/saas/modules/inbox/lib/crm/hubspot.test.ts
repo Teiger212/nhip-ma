@@ -315,3 +315,12 @@ test("a rate-limited request is retried once after Retry-After", async () => {
 	expect(await adapter.findLeads(recording.input as GuestIdentity)).toEqual(recording.expected);
 	allUsed();
 });
+
+// #66: HubSpot's webhooks name the portal; the token says which portal it was installed on.
+test("the account a token reaches is its portal id", async () => {
+	const recording = recorded("account-details");
+	const { adapter, allUsed } = replay(recording.exchanges);
+
+	expect(await adapter.accountId?.()).toBe(recording.expected);
+	allUsed();
+});

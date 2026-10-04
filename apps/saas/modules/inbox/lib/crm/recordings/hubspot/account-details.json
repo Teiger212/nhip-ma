@@ -1,0 +1,31 @@
+{
+	"call": "accountId",
+	"scenario": "The portal the token was installed on",
+	"recordedAt": "2026-10-04T04:45:49.740Z",
+	"expected": "149475500",
+	"exchanges": [
+		{
+			"request": {
+				"method": "GET",
+				"path": "/account-info/2026-09/details",
+				"body": null
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"portalId": 149475500,
+					"accountType": "DEVELOPER_TEST",
+					"timeZone": "US/Eastern",
+					"companyCurrency": "USD",
+					"additionalCurrencies": [],
+					"utcOffset": "-04:00",
+					"utcOffsetMilliseconds": -14400000,
+					"portalName": "nhip-crm-dev",
+					"createdAt": 1791027748000,
+					"uiDomain": "app-eu1.hubspot.com",
+					"dataHostingLocation": "eu1"
+				}
+			}
+		}
+	]
+}

@@ -17,6 +17,7 @@ const CONTACTS = `/crm/objects/${VERSION}/contacts`;
 const DEALS = `/crm/objects/${VERSION}/deals`;
 const PIPELINES = `/crm/pipelines/${VERSION}/deals`;
 const CONTACT_PROPERTIES = `/crm/properties/${VERSION}/contacts`;
+const ACCOUNT_DETAILS = `/account-info/${VERSION}/details`;
 
 /** The contact property Nhịp creates for the Zalo user id: unique, so one Zalo guest is one contact. */
 const ZALO_ID_PROPERTY = "zalo_user_id";
@@ -52,6 +53,7 @@ const Properties = z.record(z.string(), z.string().nullable());
 type Properties = z.infer<typeof Properties>;
 const HubSpotObject = z.object({ id: z.string(), properties: Properties });
 const Results = z.object({ results: z.array(HubSpotObject) });
+const AccountDetails = z.object({ portalId: z.number() });
 const Pipelines = z.object({
 	results: z.array(
 		z.object({
@@ -306,6 +308,12 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 				for (const deal of read.results) outcomes[deal.id] = outcome(deal.properties);
 			}
 			return outcomes;
+		},
+
+		/** The portal the token was installed on, which HubSpot's webhooks name (#66). */
+		async accountId() {
+			const details = await request("read account details", AccountDetails, "GET", ACCOUNT_DETAILS);
+			return String(details.portalId);
 		},
 	};
 }
