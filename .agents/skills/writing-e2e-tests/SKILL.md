@@ -1,6 +1,6 @@
 ---
 name: writing-e2e-tests
-description: Use when adding Playwright coverage for a user-visible Nhịp workflow (SaaS or marketing) — anything a person does: an agent, manager or platform admin clicking, linking, approving, configuring.
+description: "Use when adding Playwright coverage for a user-visible Nhịp workflow (SaaS or marketing) — anything a person does: an agent, manager or platform admin clicking, linking, approving, configuring."
 ---
 
 # Write E2E tests (Nhịp)
