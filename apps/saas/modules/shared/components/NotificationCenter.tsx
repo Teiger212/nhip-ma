@@ -1,10 +1,11 @@
 "use client";
 
 import { useSession } from "@auth/hooks/use-session";
+import { PIPE_NAMES } from "@inbox/lib/pipe-names";
 import { Button, cn, Popover, PopoverContent, PopoverTrigger } from "@repo/ui";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellIcon, InfoIcon, PartyPopperIcon, SparklesIcon } from "lucide-react";
+import { BellIcon, InfoIcon, PartyPopperIcon, SparklesIcon, UnplugIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ComponentType } from "react";
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react";
 const TYPE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
 	WELCOME: PartyPopperIcon,
 	APP_UPDATE: SparklesIcon,
+	PIPE_DISCONNECTED: UnplugIcon,
 	system: InfoIcon,
 	announcement: InfoIcon,
 };
@@ -148,10 +150,21 @@ export function NotificationCenter({ className }: { className?: string }) {
 										? (n.data as {
 												title?: string;
 												message?: string;
+												pipe?: string;
+												office?: string | null;
 											})
 										: {};
-								const title = payload.title ?? n.type ?? t("fallbackTitle");
-								const message = payload.message ?? "";
+								let title = payload.title ?? n.type ?? t("fallbackTitle");
+								let message = payload.message ?? "";
+								// Nhịp's own types are written in the reader's language from their data.
+								if (n.type === "PIPE_DISCONNECTED") {
+									const pipe =
+										PIPE_NAMES[payload.pipe as keyof typeof PIPE_NAMES] ?? payload.pipe ?? "";
+									title = payload.office
+										? t("pipeDisconnected.title", { pipe, office: payload.office })
+										: t("pipeDisconnected.titleNoOffice", { pipe });
+									message = t("pipeDisconnected.message");
+								}
 								const Icon = getNotificationIcon(n.type);
 								const inner = (
 									<div

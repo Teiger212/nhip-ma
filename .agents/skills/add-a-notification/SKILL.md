@@ -1,42 +1,41 @@
 ---
 name: add-a-notification
-description: Use when adding an in-app or email notification type, preference, producer, or presentation.
+description: Use when adding an in-app notification type, preference, producer, or presentation.
 ---
 
 # Add a notification
 
 ## Scope
 
-Use for typed notification events delivered in-app and/or by email. Do not bypass preference checks with direct database inserts or direct mail sends.
+Use for typed notification events, delivered in-app (the bell). Nhịp sends no notification emails (PRODUCT.md "Deliberately not"): `createNotification` emails only the types in its `EMAIL_TYPES` allow-list, which holds the kit's `WELCOME` alone. Do not add to it, and do not bypass it with direct mail sends; an email the person is waiting for is a transactional template (`add-or-edit-an-email`). Do not bypass preference checks with direct database inserts.
 
 ## Procedure
 
 1. Add the type to `NotificationType` in `packages/database/prisma/schema.prisma`.
-2. Mirror the value in PostgreSQL/MySQL `notificationTypeEnum`, SQLite text-enum arrays for both notification tables, and the `NotificationType` constant in `packages/database/drizzle/schema/index.ts`.
-3. Generate and migrate:
+2. Generate, and write the migration (an added enum value is one deploy, AGENTS.md "Migrations"):
    ```bash
    pnpm --filter @repo/database generate
-   pnpm --filter @repo/database migrate
+   pnpm --filter @repo/database migrate:new <name>
    ```
-4. Add the value to `NOTIFICATION_TYPES` in `packages/notifications/src/types.ts`, then update `NotificationTypeId` and, if user-configurable, the ordered group in `packages/notifications/src/catalog.ts`.
-5. Add `settings.notificationsPage.types.<TYPE>.label` to every `packages/i18n/translations/*/saas.json`. Update the `onToggle` type in `apps/saas/modules/settings/components/NotificationPreferencesForm.tsx` if its explicit union does not yet include the type.
-6. Add a producer under `packages/notifications/src` and export it from `src/index.ts`. Call `createNotification({ userId, type, data, link })`; the generic email derives its subject from `data.headline` or `data.title` and optionally renders `data.message`.
-7. Trigger the producer only after the underlying transaction succeeds. Keep failures observable with `@repo/logs` when notification delivery must not roll back the primary action.
-8. Test preference suppression for `IN_APP` and `EMAIL`, persisted data, locale selection, and relative-link expansion through `resolveNotificationLink`.
-9. Run database/API/SaaS tests and repository gates.
+3. Add the value to `NOTIFICATION_TYPES` in `packages/notifications/src/types.ts`, then update `NotificationTypeId` and, if user-configurable, the ordered group in `packages/notifications/src/catalog.ts`.
+4. Add `settings.notificationsPage.types.<TYPE>.label` to every `packages/i18n/translations/*/saas.json`. Update the `onToggle` type in `apps/saas/modules/settings/components/NotificationPreferencesForm.tsx` if its explicit union does not yet include the type.
+5. Add a producer and call `createNotification({ userId, type, data, link })`. Store the facts in `data` and render the row in the reader's language in `apps/saas/modules/shared/components/NotificationCenter.tsx` (`app.notifications.*`), rather than frozen copy.
+6. Trigger the producer only after the underlying transaction succeeds. Keep failures observable with `@repo/logs` when notification delivery must not roll back the primary action.
+7. Test who gets the bell row, its data, and that nothing is emailed (mock `@repo/mail` and point the app client at the test database: `useTestDatabaseForAppClient`).
+8. Run database/API/SaaS tests and repository gates.
 
 ## Canonical reference
 
-`packages/notifications/src/welcome.ts` calls `createNotification`, and `packages/auth/auth.ts` triggers `createWelcomeNotification` after user creation while logging delivery failures.
+`apps/saas/modules/inbox/lib/pipes/alerts.ts` gives every platform admin a `PIPE_DISCONNECTED` bell row, logging failures without blocking the send path; `alerts.test.ts` beside it is the test.
 
 ## Done
 
-The enum is synchronized across Prisma, all Drizzle variants, `NOTIFICATION_TYPES`, the catalog, Zod generation, settings UI, and every locale; migration/generation succeed; both query layers still implement the notification contract; channel-preference tests and gates pass.
+The enum is synchronized across Prisma, its migration, `NOTIFICATION_TYPES`, the catalog, Zod generation, settings UI, and every locale; `migrate:check` passes; tests and gates pass.
 
 ## Common mistakes
 
 - Editing generated Prisma enum output.
 - Adding the enum only to Prisma or only to the settings catalog.
-- Updating PostgreSQL but leaving MySQL/SQLite enum arrays stale.
+- Adding a type to `EMAIL_TYPES`.
 - Calling `insertNotification` directly and skipping channel preferences.
 - Adding a settings row without extending the form's explicit type union.

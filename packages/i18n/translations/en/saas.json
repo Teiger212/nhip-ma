@@ -187,6 +187,11 @@
 			"fallbackTitle": "Notification",
 			"aria": {
 				"open": "Open notifications"
+			},
+			"pipeDisconnected": {
+				"title": "{pipe} disconnected for {office}",
+				"titleNoOffice": "{pipe} disconnected",
+				"message": "Replies on it are blocked until you reconnect it, with the owner present, in the office's Connections. Guests' messages still arrive."
 			}
 		}
 	},

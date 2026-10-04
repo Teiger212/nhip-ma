@@ -11,6 +11,13 @@ import { sendEmail } from "@repo/mail";
 
 import { resolveNotificationLink } from "./resolve-link";
 
+/**
+ * The only types that may email (PRODUCT.md "Deliberately not": no notification emails).
+ * The kit's welcome stays as it is for now; every other type is a bell row only, whatever
+ * the person's email preferences say.
+ */
+const EMAIL_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>(["WELCOME"]);
+
 export async function createNotification(input: {
 	userId: string;
 	type: NotificationType;
@@ -24,11 +31,9 @@ export async function createNotification(input: {
 		NotificationTarget.IN_APP,
 	);
 
-	const emailDisabled = await isNotificationDisabled(
-		input.userId,
-		input.type,
-		NotificationTarget.EMAIL,
-	);
+	const emailDisabled =
+		!EMAIL_TYPES.has(input.type) ||
+		(await isNotificationDisabled(input.userId, input.type, NotificationTarget.EMAIL));
 
 	const absoluteLink = resolveNotificationLink(input.link);
 	let created: NotificationModel | null = null;

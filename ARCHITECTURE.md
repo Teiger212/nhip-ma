@@ -102,7 +102,7 @@ packages/database     Prisma schema + client; inbox/ is the inbox store (ADR 001
 packages/api          Kit oRPC procedures (admin lists, organizations, users, ...)
 packages/i18n         en + vi catalogs; Nhịp copy is inbox.* in translations/{en,vi}
 packages/ui           Shared components (Base UI wrapped), theme
-packages/mail         Invitation and auth emails; the pipe-disconnected alert
+packages/mail         Invitation and auth emails, and the kit's welcome (no other email)
 ```
 
 The kit apps `apps/marketing`, `apps/docs` and `apps/mail-preview` are unused. `apps/saas`
@@ -213,8 +213,8 @@ UPDATE` and writes the new pair in the same transaction. **WhatsApp** is not yet
   vendor. In a live deployment a send goes out only from a connected endpoint the thread's
   office holds; anything else is refused, never mocked (`409 pipe_not_connected`). Mock
   deployments mock every send.
-- **Disconnected**: a failed Zalo refresh marks the credential disconnected and emails every
-  platform admin. Guests' messages still arrive; replies from that OA are refused
+- **Disconnected**: a failed Zalo refresh marks the credential disconnected and gives every
+  platform admin a bell row naming the pipe and the office (no email, ADR 0017 amended). Guests' messages still arrive; replies from that OA are refused
   (`409 pipe_disconnected`) and the inbox shows why (`/api/pipes/status`); other endpoints
   are unaffected. Connections shows "Needs reconnect". **Disconnecting** releases the
   endpoint: no more sends, no more filing; its threads stay.
