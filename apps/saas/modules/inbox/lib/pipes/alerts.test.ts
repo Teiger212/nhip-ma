@@ -51,6 +51,7 @@ beforeEach(async () => {
 	await account("alerts-manager", "user", "admin");
 	await account("alerts-agent", "user", "member");
 	await testDb.notification.deleteMany({ where: { type: "PIPE_DISCONNECTED" } });
+	await testDb.userNotificationPreference.deleteMany({ where: { type: "PIPE_DISCONNECTED" } });
 });
 
 test("a disconnected Zalo OA gives every platform admin one bell row naming the pipe and the office, and emails no one", async () => {
@@ -71,4 +72,16 @@ test("a disconnected Zalo OA gives every platform admin one bell row naming the 
 		"only platform admins get it: not the office's manager or agent",
 	).toEqual([]);
 	expect(sendEmail).not.toHaveBeenCalled();
+});
+
+test("a platform admin cannot turn the broken-pipe bell row off: it is not in the settings, and a stored preference is ignored", async () => {
+	await testDb.userNotificationPreference.create({
+		data: { userId: "alerts-admin", type: "PIPE_DISCONNECTED", target: "IN_APP" },
+	});
+	await notifyPipeDisconnected({ pipe: "zalo", externalId: OA, reason: "refresh refused" });
+	expect(
+		await testDb.notification.count({
+			where: { userId: "alerts-admin", type: "PIPE_DISCONNECTED" },
+		}),
+	).toBe(1);
 });

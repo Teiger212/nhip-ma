@@ -1,5 +1,5 @@
 import { sendEmail } from "@repo/mail";
-import { createNotification } from "@repo/notifications";
+import { createNotification, NOTIFICATION_TYPES } from "@repo/notifications";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { testDb, useTestDatabaseForAppClient } from "../../inbox/lib/test-store";
@@ -34,11 +34,12 @@ beforeEach(async () => {
 });
 
 test("a notification other than the welcome is a bell row and is never emailed, with email on in preferences", async () => {
-	for (const type of ["APP_UPDATE", "PIPE_DISCONNECTED"] as const) {
+	const others = Object.values(NOTIFICATION_TYPES).filter((type) => type !== "WELCOME");
+	for (const type of others) {
 		await createNotification({ userId: USER, type, data: { title: `A ${type}` } });
 	}
 	const rows = await testDb.notification.findMany({ where: { userId: USER } });
-	expect(rows.map((row) => row.type).sort()).toEqual(["APP_UPDATE", "PIPE_DISCONNECTED"]);
+	expect(rows.map((row) => row.type).sort()).toEqual([...others].sort());
 	expect(sendEmail).not.toHaveBeenCalled();
 });
 
