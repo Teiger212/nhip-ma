@@ -164,7 +164,26 @@ pushed, and "Turn on alerts" stays hidden.
     - alerts already shown on operators' devices.
   - **Access:** is an export of the guest's data required before or instead of deletion? (Not
     built; #109.)
-- [ ] **Release workflow's identity as the bypass actor** of the `production` branch ruleset
-      (24113338; none today), so only it may move the branch. The workflow is #112.
+- [ ] **The release workflow's deploy key** (#112), so only `.github/workflows/release.yml`
+      can move `production`. The ruleset's bypass is "Deploy keys", and the repo has none
+      today, so this key is the only one. Never add a second deploy key with write access:
+      the bypass covers every deploy key. Run these from any folder outside the repo:
+  1. Make the key: `ssh-keygen -t ed25519 -N "" -C "nhip production release" -f nhip-release-key`.
+  2. Add its public half with write access:
+     `gh repo deploy-key add nhip-release-key.pub -R Teiger212/nhip-ma --allow-write --title "production release"`.
+  3. Make the `release` environment: Settings → Environments → New environment `release`.
+     - Under Deployment protection rules, tick Required reviewers and add yourself. GitHub
+       runs the release workflow from the tagged commit, so this approval is what stops a tag
+       on an edited workflow from getting the key.
+     - Under Deployment branches and tags, choose Selected → Add rule → Tag `v*`.
+  4. Store the private half there:
+     `gh secret set PRODUCTION_DEPLOY_KEY --env release -R Teiger212/nhip-ma < nhip-release-key`.
+  5. Let the key through the ruleset: Settings → Rules → Rulesets → "production: releases
+     only" (24113338) → Bypass list → Add bypass → Deploy keys → Always allow.
+  6. Delete both key files.
+- [ ] **Immutable releases** (#112): Settings → General → Releases → enable release
+      immutability. Once a release is published, its tag and assets can't be moved or
+      swapped, so the commit you approved is the commit that ships (GitHub's "Immutable
+      releases"; titles and notes stay editable).
 - [ ] **Restore drill** of the prod database, done once and timed.
 - [ ] Optional: restrict the admin area by IP in the Vercel Firewall.
