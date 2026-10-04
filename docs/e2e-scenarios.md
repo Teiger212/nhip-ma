@@ -319,3 +319,86 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     count, and one toast says "Minji is waiting"; the same guest writing again replaces it, not
     a second toast; four guests show at most three toasts; tapping one opens that thread. On the
     Inbox list: the tab title changes, no toast. A guest on a colleague's thread raises neither.
+
+## Guest deletion (ADR 0020, spec #85)
+
+A guest asks the agency to delete their data; a manager does it from the thread (Vietnam's
+PDPL; not legal advice). Each scenario uses an office of the test's own with an invited agent
+and an invited manager (the kit's `admin`), and guests on the test's own Zalo OA, so counts are
+exact. The office's CRM, where there is one, is the mock CRM: `connectMockCrm` is setup;
+`mockCrmLeads` is looking at the CRM; `addMockCrmLead` is the office adding a contact in its CRM
+before the guest writes. `guestDeletionRecords` is the platform admin reading the office's
+deletion receipts and lead tallies on request; nothing in the app shows them yet.
+
+1. **A manager deletes a guest's data.** An office with no CRM. A guest writes three messages and
+   the agent approves a reply to the first one. As the manager, the thread header's
+   "Thread actions" menu has "Delete guest data". It opens a dialog:
+   - Its title is "Delete <guest>'s data?".
+   - It says Nhịp deletes the thread's "4 messages" (the guest's three and the reply) with their
+     translations, the suggested reply and the extracted details.
+   - It says the chat is "Kept elsewhere: the chat in your Zalo OA".
+   - It says "This can't be undone."
+   - It has no CRM checkbox, and its only red control is the "Delete guest data" button.
+
+   Confirming does three things:
+   - The thread leaves the manager's Inbox under every view and every owner filter, and a
+     search for the guest finds nothing.
+   - The agent's Inbox drops it too, and so does the nav count.
+   - `GET /api/conversations/:id` answers 404 for both.
+
+   The toast says "Guest data deleted".
+
+2. **Home's numbers don't move when a guest is deleted.** Three guests write. The agent answers
+   two of them, and one of those two writes back. Note Home's
+   numbers:
+   - Leads in, Engaged and In conversation;
+   - the median, the 90th percentile and every response-time band;
+   - each day of leads by day.
+
+   The manager deletes the guest who wrote back. Home, reloaded, shows every one of those numbers
+   unchanged, for the agent and the manager alike. Waiting now no longer lists a deleted guest.
+
+3. **An agent can't delete.** On the agent's own thread and on a pool thread, the header offers
+   no "Delete guest data". `POST /api/conversations/:id/deletion` as the agent answers 403, with
+   `deleteInCrm` true or false. The thread and its messages are unchanged afterwards, for the
+   agent and the manager.
+4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
+   `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
+   another office it answers 404.
+5. **The CRM box is ticked when Nhịp created the lead.** The office is on the mock CRM. A new
+   guest writes, and the thread says "In CRM: <guest>"; the mock CRM holds the lead Nhịp made.
+   - The manager's dialog has "Also delete <guest> in Mock CRM", ticked. Confirming leaves no
+     lead for that guest in the mock CRM, and the toast says "Guest data deleted. Also deleted in
+     Mock CRM."
+   - For a second guest, the manager unticks the box before confirming. The thread is gone, the
+     lead is still in the mock CRM, and the toast says "Guest data deleted. The lead stays in
+     Mock CRM."
+6. **The CRM box is unticked when Nhịp found the lead.** The office is on the mock CRM, and
+   `addMockCrmLead` puts a lead with the guest's Zalo id in it first. The guest writes, and the
+   thread says "In CRM: <that lead's name>".
+   - The manager's dialog has the box unticked. Confirming keeps the lead in the mock CRM
+     unchanged, while the thread is gone.
+   - For a second such guest, ticking the box deletes the lead.
+7. **No CRM, no checkbox.** In an office with no CRM, the dialog has no CRM checkbox (as in 1),
+   and the deletion API, given `deleteInCrm: true`, deletes the thread and touches no CRM.
+8. **Not while a reply is sending.** `holdReplySending` holds the agent's approved reply in
+   "sending":
+   - The manager's "Delete guest data" is disabled with "A reply is still sending".
+   - `POST /api/conversations/:id/deletion` answers 409 with `reply_sending`.
+   - The thread is unchanged.
+
+   Once the helper's release step marks the reply sent, deleting works.
+
+9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
+   CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
+   fresh:
+   - It is in the pool, shows only the new message, and is Your turn for both agents.
+   - Home's Leads in counts it as one more lead.
+   - The mock CRM holds one lead for that guest again: a new one.
+10. **The record names no guest.** After deletions with the box ticked, unticked and with no CRM,
+    `guestDeletionRecords` returns one receipt per deletion:
+    - each with the manager's name, a time, the message and reply counts;
+    - the CRM result: `deleted`, `unlinked`, or none.
+
+    No value in any receipt or lead tally contains the guest's name, their Zalo user id, the
+    thread's id or the CRM lead's id.

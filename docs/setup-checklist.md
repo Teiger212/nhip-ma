@@ -139,6 +139,31 @@ pushed, and "Turn on alerts" stays hidden.
       assessment. Ask
       the lawyer whether Decree 356 requires a processing-service certificate (unverified).
       Not legal advice.
+- [ ] **Guest-data deletion, for the lawyer** (#85, ADR 0020). Ask, before the first client's
+      guests reach prod. Not legal advice.
+  - **Deadlines:** Decree 356's 2 working days to reply, and 20 days to delete (30 with a
+    processor). Are these right, and who answers the guest, the agency or Nhịp?
+  - **Roles:** is the agency the controller and Nhịp its processor? Does the client contract
+    need to say so, and who carries out a request?
+  - **The CRM:** is archiving the HubSpot deal Nhịp made, and a contact Nhịp created (contacts are
+    restorable for 90 days), enough, or is HubSpot's permanent GDPR delete required? Nhịp leaves
+    a contact the office already had, and, when the manager unticks the box, a deal Nhịp made
+    on it. Is that acceptable? A failed CRM delete is left to the manager by hand.
+  - **The lead tally:** a deleted guest leaves office, first contact and first reply times,
+    pipe, language and outcome, with no identifier. Is that anonymous? Must times be coarser?
+  - **The receipt:** office, manager, time, row counts and the CRM result, with no guest. How
+    long may it be kept?
+  - **Retention:** must threads expire after a set period? Is Neon's point-in-time history
+    (its window, on prod's plan) acceptable as backup retention after a deletion?
+  - **Elsewhere:** what about these, and do they need naming in the A05 dossier or in a reply
+    to the guest?
+    - the model provider's retention (OpenRouter);
+    - Vercel's request logs, whose URL paths carry the thread id, and so the guest's phone or
+      Zalo id;
+    - the webhook log's vendor message ids (kept about 30 days);
+    - alerts already shown on operators' devices.
+  - **Access:** is an export of the guest's data required before or instead of deletion? (Not
+    built; #109.)
 - [ ] **Release workflow's identity as the bypass actor** of the `production` branch ruleset
       (24113338; none today), so only it may move the branch. The workflow is #112.
 - [ ] **Restore drill** of the prod database, done once and timed.

@@ -27,7 +27,8 @@ is renamed.
   (ADR 0015).
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
-  office, reassigns owners, and invites the office's agents (ADR 0015). An office may have
+  office, reassigns owners, invites the office's agents (ADR 0015), and deletes a guest's data
+  on request (ADR 0020). An office may have
   several. (In the kit: a member with the role `owner` or `admin`; an agent is `member`.)
   _Avoid_: admin, office admin (admin means the platform admin only).
 - **Platform admin**: Nhịp's own staff. Creates offices, connects each office's pipes and
@@ -82,7 +83,8 @@ is renamed.
 
 ## Funnel
 
-- **Lead**: a guest who wrote in. One per conversation.
+- **Lead**: a guest who wrote in. One per conversation. A deleted guest's lead still counts,
+  through its lead tally (ADR 0020).
 - **Engaged**: a lead who received at least one office reply: an approved send, or a reply
   an agent sent from the WhatsApp or Zalo app itself. Mock sends count only in a mock
   deployment.
@@ -164,6 +166,27 @@ is renamed.
   guest writes on a thread that has none: it finds the guest's CRM lead (by phone on WhatsApp,
   by the Zalo user id Nhịp stored on Zalo) or creates one. A guest who matches two CRM leads is
   linked to neither. The thread header shows the CRM lead, read-only.
+
+## Guest data
+
+- **Guest deletion**: a manager deleting one guest's data from Nhịp on request (Vietnam's
+  PDPL; ADR 0020), from the thread header's ⋯ menu.
+  - **What goes:** the thread and everything under it: messages, translations, the suggested
+    reply, sent replies, the extracted details and the CRM link.
+  - **The CRM lead goes too only if the manager ticks it.** The box is ticked by default when
+    Nhịp created the lead, and unticked when Nhịp found it there. Ticked, Nhịp deletes what it
+    made in the CRM: the deal, and the contact only if Nhịp created it and it has no other deal.
+    Unticked, Nhịp only unlinks. A failed CRM delete isn't retried; the manager deletes it there.
+  - **When it's refused:** while a reply is sending.
+  - **Who can't:** agents ask a manager, and the platform admin never deletes.
+  - **What stays:** a lead tally and a receipt (`GuestDeletion`: office, who, when, row counts,
+    the CRM result). Neither names the guest, and receipts are read on request, not shown in the app.
+  - A guest who writes again is a new guest, with a fresh thread. There is no list of deleted
+    guests.
+- **Lead tally**: what a deleted guest leaves in Home's numbers: the office, first contact and
+  first reply times, whether they reached in conversation, the CRM outcome, the pipe and the
+  language. No identifier and no text. Home counts tallies with the office's threads, so a past
+  period's numbers never move when a guest is deleted.
 
 ## Deliberately not
 

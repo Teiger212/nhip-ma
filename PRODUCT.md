@@ -101,7 +101,9 @@ well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
    lost, then leads by day and response time (the median, and how many leads were answered
    within 5, 15 and 60 minutes), over the office's last 30 local days. Closings and lost
    come from the office's CRM; an office with no CRM shows them hatched with a neutral
-   "No CRM" chip, never a call to connect one, since managers can't. Same numbers for every operator; no per-agent breakdown yet.
+   "No CRM" chip, never a call to connect one, since managers can't. A deleted guest stays in
+   these numbers as an anonymous lead tally (ADR 0020). Same numbers for every operator; no
+   per-agent breakdown yet.
    Beside them, **Waiting now** lists the guests whose turn it is, oldest first, that this
    operator can open, each one tap from its thread.
 
@@ -159,7 +161,8 @@ smoked, each one approved by Eyal (#112).
   `docs/adr-0014-office-pays` and lands with its build, #93); the 30-day close by hand.
   Until then the kit's own billing screens (priced per user) stay hidden.
 - Error tracking, logs, uptime and a webhook delivery log; rate limits on public endpoints;
-  a tested backup restore; deleting a guest's data on request. Error reports never carry a
+  a tested backup restore; deleting a guest's data on request (a manager, from the thread;
+  Home keeps an anonymous lead tally so its numbers don't move; ADR 0020). Error reports never carry a
   guest's personal data: message text, names and phone numbers are scrubbed before anything
   leaves the app.
 - English and Vietnamese only.
@@ -168,7 +171,7 @@ smoked, each one approved by Eyal (#112).
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
 CSV export.
 
-**Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a per-office AI kill switch,
+**Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,
 listing match, per-agent performance, nudges, native iOS and Android apps built from the web
 app (#124; for alerts they change only the transport), escalation when an owner does not
 answer (#131), no alert while the operator is viewing that thread, alerts to the agent on
@@ -229,7 +232,8 @@ PRs; "open" means not started unless it says otherwise.
    #68, #69–#71, the staging demo (#116), and the client's own CRM as intake answers it
    (#101 if Attio). With any real CRM, the WhatsApp `wa_id` "+" fix ships at go-live; the
    rest of #125 after. The built-in CRM (#126) comes after go-live. _Open_: billing
-   (#93; the kit's screens stay hidden), guest-data deletion, "Coming soon" controls.
+   (#93; the kit's screens stay hidden), guest-data deletion (#85, decided in ADR 0020),
+   "Coming soon" controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
    impact assessment filed with A05 for hosting in Singapore, the model providers, the push
