@@ -6,6 +6,12 @@
 
 - **A guest's new message is an alert, decided and logged** (#132, ADR 0019). A pool guest alerts every agent and manager of the office; a guest on an owned thread alerts its owner only; the platform admin, the kit `owner` of the offices they created, is never alerted. Each operator gets one row in the new alert log (`inbox_alert`, migration `20261004213801_inbox_alert`, a new table): its kind, whether it sounded, and its link `/<locale>/inbox?alert=<the row's own id>` in the operator's language (Vietnamese when none is set), which names no thread and no guest. An alert sounds only after 2 minutes of quiet on that thread for that operator, decided under an advisory lock so a burst sounds once. Its text is "Minji is waiting · Zalo · Korean" (EN/VI), "A guest is waiting" without a name, never the message. No push is sent yet: a mock deployment and, until #134, a live one write the log only. The log is pruned after 30 days without a scheduler, like webhook deliveries. A vendor's retry of a message already stored alerts no one: `upsertInbound` returns `{ conversation, inserted }`, and only an inserted guest message is alerted.
 
+## 2026-10-05 (approve on a deleted thread)
+
+### Fixed
+
+- **Approving a reply on a thread deleted under it answers 404** (#137, ADR 0020, the first step of guest-data deletion). Approve now locks the thread (`FOR KEY SHARE`) before it reads or writes an Answer, on a first send and on the retry of a failed one, which is the order the coming deletion locks in. A thread deleted before the approval, or while it waited, is `not_found` and the route answers 404. Before, a first send failed its foreign key with a 500, a retry on an owned thread approved a reply on a thread already gone, and a retry on a pool thread could deadlock (`40P01`). The new lock doesn't make approvals queue behind each other: two agents on one pool thread end with one owner, and the other is told the reply is being sent.
+
 ## 2026-10-04 (no notification emails)
 
 ### Changed

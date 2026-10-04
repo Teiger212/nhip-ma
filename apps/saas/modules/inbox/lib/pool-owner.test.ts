@@ -72,7 +72,9 @@ test("the first approval claims: the owner keeps it, the other agent loses it, t
 	expect((await store.getConversation(conv.id, manager))?.owner?.id).toBe("agent-1");
 });
 
-test("two agents approving the same pool thread at once end with one owner", async () => {
+// ADR 0020: approve's lock on the conversation is `FOR KEY SHARE`, which the owner claim's
+// update does not wait on, so two approvals still let one in and refuse the other.
+test("two agents approving the same pool thread at once end with one owner and one in_progress", async () => {
 	const conv = await guestWrites("g-race");
 	const approve = (operatorId: string) =>
 		store.beginAnswer({
@@ -83,6 +85,10 @@ test("two agents approving the same pool thread at once end with one owner", asy
 			operatorId,
 		});
 	const [a, b] = await Promise.all([approve("agent-1"), approve("agent-2")]);
+	expect([a, b].map((result) => (result.ok ? "ok" : result.reason)).sort()).toEqual([
+		"in_progress",
+		"ok",
+	]);
 	const winner = [a, b].filter((result) => result.ok);
 	expect(winner).toHaveLength(1);
 	const owner = (await store.getConversation(conv.id, manager))?.owner?.id;
