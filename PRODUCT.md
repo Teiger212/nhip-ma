@@ -152,7 +152,8 @@ listing match, per-agent performance, nudges, native iOS and Android apps built 
 app (#124).
 
 **"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
-live, and only if we are confident it ships. It names the feature, never a date.
+live, and only if we are confident it ships. It names the feature, never a date. One exception (2026-10-04): the CRM selector lists the CRMs on the roadmap as disabled
+"coming soon" options (Bitrix24, Getfly CRM, Zoho CRM; #123), to show Nhịp is CRM-agnostic.
 
 **Trust bar**
 
