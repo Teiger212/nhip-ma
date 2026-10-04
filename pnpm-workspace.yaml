@@ -5,6 +5,10 @@ packages:
 
 minimumReleaseAge: 1440
 
+overrides:
+  # One pg: @prisma/adapter-pg uses the app's pool only if it is an instance of its own pg (#98).
+  "@prisma/adapter-pg>pg": "catalog:"
+
 allowBuilds:
   "@parcel/watcher": true
   "@prisma/client": true

@@ -71,6 +71,14 @@ jobs:
       - name: Migrations match the schema
         run: pnpm --filter @repo/database migrate:check
 
+      # Squawk on the migrations this PR adds, never on applied ones (#98). HEAD is the PR's merge
+      # commit, so the diff against the base's tip is what the PR adds.
+      - name: Lint new migrations
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"
+          pnpm --filter @repo/database migrate:lint --since FETCH_HEAD
+
       - name: Seed script loads
         run: pnpm --filter saas seed:check
 
