@@ -1,5 +1,5 @@
 import { sendEmail } from "@repo/mail";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { testDb, testInboxStore, useTestDatabaseForAppClient } from "../test-store";
 import { notifyPipeDisconnected } from "./alerts";
@@ -12,6 +12,8 @@ vi.mock("@repo/mail", () => ({ sendEmail: vi.fn(async () => true) }));
 useTestDatabaseForAppClient();
 
 const OFFICE = "office-a";
+/** The office's name differs from its id, so the row is seen naming the office, not its id. */
+const OFFICE_NAME = "Alerts Office";
 const OA = "oa-alerts";
 
 async function account(id: string, role: string | null, memberRole?: string) {
@@ -46,12 +48,18 @@ beforeEach(async () => {
 	vi.mocked(sendEmail).mockClear();
 	const store = await testInboxStore();
 	await store.claimPipe({ pipe: "zalo", externalId: OA, officeId: OFFICE });
+	await testDb.organization.update({ where: { id: OFFICE }, data: { name: OFFICE_NAME } });
 	await account("alerts-admin", "admin", "owner");
 	await account("alerts-admin-2", "user,admin");
 	await account("alerts-manager", "user", "admin");
 	await account("alerts-agent", "user", "member");
 	await testDb.notification.deleteMany({ where: { type: "PIPE_DISCONNECTED" } });
 	await testDb.userNotificationPreference.deleteMany({ where: { type: "PIPE_DISCONNECTED" } });
+});
+
+// The shared fixture office keeps its id as its name for the other test files.
+afterEach(async () => {
+	await testDb.organization.update({ where: { id: OFFICE }, data: { name: OFFICE } });
 });
 
 test("a disconnected Zalo OA gives every platform admin one bell row naming the pipe and the office, and emails no one", async () => {
@@ -64,7 +72,7 @@ test("a disconnected Zalo OA gives every platform admin one bell row naming the 
 	for (const admin of ["alerts-admin", "alerts-admin-2"]) {
 		const own = rows.filter((row) => row.userId === admin);
 		expect(own, `${admin} gets one bell row`).toHaveLength(1);
-		expect(own[0]?.data).toMatchObject({ pipe: "zalo", office: OFFICE, externalId: OA });
+		expect(own[0]?.data).toMatchObject({ pipe: "zalo", office: OFFICE_NAME, externalId: OA });
 		expect(own[0]?.link).toMatch(new RegExp(`/admin/organizations/${OFFICE}$`));
 	}
 	expect(
