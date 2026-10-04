@@ -4,10 +4,13 @@ export type NotificationGroupId = "general";
 /** Mirrors Prisma `NotificationType` — keep in sync with schema. */
 export type NotificationTypeId = "WELCOME" | "APP_UPDATE" | "PIPE_DISCONNECTED";
 
+/** Types a person may turn off; a broken pipe always reaches the platform admin. */
+export type ConfigurableNotificationTypeId = Exclude<NotificationTypeId, "PIPE_DISCONNECTED">;
+
 export interface NotificationGroupConfig {
 	id: NotificationGroupId;
 	/** Notification types in this section, in display order. */
-	types: readonly NotificationTypeId[];
+	types: readonly ConfigurableNotificationTypeId[];
 }
 
 /**

@@ -214,9 +214,9 @@ UPDATE` and writes the new pair in the same transaction. **WhatsApp** is not yet
   office holds; anything else is refused, never mocked (`409 pipe_not_connected`). Mock
   deployments mock every send.
 - **Disconnected**: a failed Zalo refresh marks the credential disconnected and gives every
-  platform admin a bell row naming the pipe and the office (no email, ADR 0017 amended). Guests' messages still arrive; replies from that OA are refused
-  (`409 pipe_disconnected`) and the inbox shows why (`/api/pipes/status`); other endpoints
-  are unaffected. Connections shows "Needs reconnect". **Disconnecting** releases the
+  platform admin a bell row naming the pipe and the office (no email, ADR 0017 amended).
+  Guests' messages still arrive; replies from that OA are refused (`409 pipe_disconnected`)
+  and the inbox shows why (`/api/pipes/status`); other endpoints are unaffected. Connections shows "Needs reconnect". **Disconnecting** releases the
   endpoint: no more sends, no more filing; its threads stay.
 - **Approve and send** (ADRs 0006, 0011): the request names the inbound and the exact text.
   The `Answer` row is written in `sending` before the vendor call (unique on `inboundId`);

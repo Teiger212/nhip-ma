@@ -40,11 +40,7 @@ export function NotificationPreferencesForm() {
 
 	const isEnabled = (type: string, target: TargetKey) => !disabledSet.has(`${type}:${target}`);
 
-	const onToggle = (
-		type: "WELCOME" | "APP_UPDATE" | "PIPE_DISCONNECTED",
-		target: TargetKey,
-		nextEnabled: boolean,
-	) => {
+	const onToggle = (type: "WELCOME" | "APP_UPDATE", target: TargetKey, nextEnabled: boolean) => {
 		updateMutation.mutate({
 			type,
 			target,
