@@ -12,21 +12,21 @@ import type { Store } from "./types";
 const OURS = "office-a";
 const THEIRS = "office-b";
 
-const guestWrites = (store: Store, officeId: string, guestId: string) =>
-	store
-		.upsertInbound(
-			{
-				pipe: "zalo",
-				source: "guest",
-				guestId,
-				guestName: null,
-				text: "Looking to rent in Tay Ho",
-				vendorMessageId: null,
-				pipeExternalId: null,
-			},
-			officeId,
-		)
-		.then((result) => result.conversation);
+const guestWrites = async (store: Store, officeId: string, guestId: string) => {
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId,
+			guestName: null,
+			text: "Looking to rent in Tay Ho",
+			vendorMessageId: null,
+			pipeExternalId: null,
+		},
+		officeId,
+	);
+	return conversation;
+};
 
 /** Another office's thread with a sending Answer, a translation failure and a CRM claim. */
 async function theirThread(store: Store) {

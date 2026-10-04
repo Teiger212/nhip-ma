@@ -15,19 +15,18 @@ afterEach(async () => {
 });
 
 async function guestWrites(pipe: "zalo" | "whatsapp", guestId: string, guestName: string | null) {
-	return store
-		.upsertInbound(
-			{
-				pipe,
-				source: "guest",
-				guestId,
-				guestName,
-				text: "Xin chào, tôi cần thuê căn hộ",
-				vendorMessageId: null,
-			},
-			OFFICE,
-		)
-		.then((result) => result.conversation);
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe,
+			source: "guest",
+			guestId,
+			guestName,
+			text: "Xin chào, tôi cần thuê căn hộ",
+			vendorMessageId: null,
+		},
+		OFFICE,
+	);
+	return conversation;
 }
 
 // Spec #59 stories 13, 14, 18 (#61): a new guest becomes a lead, Zalo id and thread link on it, no text.

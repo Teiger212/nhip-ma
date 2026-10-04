@@ -79,20 +79,19 @@ async function connectZaloOa(oaId: string, { disconnected = false } = {}): Promi
 
 /** A guest message that arrived on the office's endpoint `pipeExternalId`. */
 async function arriveOn(pipe: "zalo" | "whatsapp", pipeExternalId: string, guestId: string) {
-	return peekTestRuntime()!
-		.store.upsertInbound(
-			{
-				pipe,
-				source: "guest",
-				guestId,
-				guestName: null,
-				text: "Hello",
-				vendorMessageId: null,
-				pipeExternalId,
-			},
-			"walk-office",
-		)
-		.then((result) => result.conversation);
+	const { conversation } = await peekTestRuntime()!.store.upsertInbound(
+		{
+			pipe,
+			source: "guest",
+			guestId,
+			guestName: null,
+			text: "Hello",
+			vendorMessageId: null,
+			pipeExternalId,
+		},
+		"walk-office",
+	);
+	return conversation;
 }
 
 /**

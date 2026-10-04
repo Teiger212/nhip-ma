@@ -25,20 +25,19 @@ async function member(userId: string, role: string) {
 }
 
 async function guestWrites(guestId: string) {
-	return store
-		.upsertInbound(
-			{
-				pipe: "whatsapp",
-				source: "guest",
-				guestId,
-				guestName: guestId,
-				text: "Hello",
-				vendorMessageId: null,
-				pipeExternalId: "phone-a",
-			},
-			OFFICE,
-		)
-		.then((result) => result.conversation);
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe: "whatsapp",
+			source: "guest",
+			guestId,
+			guestName: guestId,
+			text: "Hello",
+			vendorMessageId: null,
+			pipeExternalId: "phone-a",
+		},
+		OFFICE,
+	);
+	return conversation;
 }
 
 beforeEach(async () => {

@@ -549,10 +549,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			// unique index (thread per guest, message per vendor id); run again and it finds
 			// the winner's row, so only one of them says it inserted (ADR 0019: only a new
 			// message alerts).
-			const written = await write().catch((error: unknown) => {
-				if (isUniqueViolation(error)) return write();
-				throw error;
-			});
+			let written: { id: string; inserted: boolean };
+			try {
+				written = await write();
+			} catch (error) {
+				if (!isUniqueViolation(error)) throw error;
+				written = await write();
+			}
 			return {
 				conversation: (await load(officeId, written.id)) as Conversation,
 				inserted: written.inserted,

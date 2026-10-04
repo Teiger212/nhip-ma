@@ -36,9 +36,15 @@ async function main(): Promise<void> {
 	}
 }
 
-main()
-	.then(() => process.exit(0))
-	.catch((error) => {
+async function run(): Promise<void> {
+	try {
+		await main();
+		process.exit(0);
+	} catch (error) {
 		console.error(error);
 		process.exit(1);
-	});
+	}
+}
+
+// tsx runs this as CommonJS, which has no top-level await; `run` settles every outcome itself.
+void run();

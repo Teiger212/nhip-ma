@@ -1,6 +1,7 @@
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
+import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import { oneShot } from "./draft";
 import { noDraftAdapter } from "./drafts";
@@ -11,6 +12,8 @@ import { resetTestInbox, testDb } from "./test-store";
 import { WALK_OFFICE_ID } from "./walk-user";
 
 afterEach(async () => {
+	// Alerts follow a guest message in the background (ADR 0019); they finish before the reset.
+	await settleBackgroundWork();
 	const runtime = peekTestRuntime();
 	if (runtime) {
 		await runtime.store.close();

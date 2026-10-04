@@ -19,27 +19,26 @@ const at = (minutes: number) => new Date(T0 + minutes * 60_000);
 
 let store: Store;
 
-function write(
+async function write(
 	guestId: string,
 	source: "guest" | "oa-echo",
 	text: string,
 	minutes: number,
 	officeId = OFFICE,
 ) {
-	return store
-		.upsertInbound(
-			{
-				pipe: "zalo",
-				source,
-				guestId,
-				guestName: guestId,
-				text,
-				vendorMessageId: null,
-				at: at(minutes),
-			},
-			officeId,
-		)
-		.then((result) => result.conversation);
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source,
+			guestId,
+			guestName: guestId,
+			text,
+			vendorMessageId: null,
+			at: at(minutes),
+		},
+		officeId,
+	);
+	return conversation;
 }
 
 /** An approval of the guest's waiting message, left in flight unless `then` settles it. */
