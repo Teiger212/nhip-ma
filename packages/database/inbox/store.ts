@@ -357,11 +357,20 @@ function mapSummary(row: SummaryRow): ConversationSummary {
 	};
 }
 
-/** Prisma's unique-violation code. Duck-typed so no error class has to be imported. */
+/** Prisma's error code, duck-typed so no error class has to be imported. */
+function prismaCode(error: unknown): unknown {
+	return typeof error === "object" && error !== null
+		? (error as { code?: unknown }).code
+		: undefined;
+}
+
 function isUniqueViolation(error: unknown): boolean {
-	return (
-		typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002"
-	);
+	return prismaCode(error) === "P2002";
+}
+
+/** A foreign key refused the write: the row it points at (a thread) is gone. */
+function isForeignKeyViolation(error: unknown): boolean {
+	return prismaCode(error) === "P2003";
 }
 
 /** The nearest-rank percentile of an ascending list: `p` in (0, 1], never interpolated. */
@@ -641,6 +650,15 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		async beginAnswer(input) {
 			try {
 				return await db.$transaction(async (tx): Promise<BeginAnswerResult> => {
+					// The conversation first, then its Answers: the order guest deletion locks in
+					// (ADR 0020), so the two never deadlock. `FOR KEY SHARE` waits for a delete but
+					// not for another approval or the owner claim. A thread deleted before or under
+					// this approval has no row once the delete commits.
+					const thread = await tx.$queryRaw<Array<{ found: number }>>`
+						SELECT 1 AS found FROM "inbox_conversation"
+						WHERE "id" = ${input.conversationId} AND "officeId" = ${input.officeId}
+						FOR KEY SHARE`;
+					if (thread.length === 0) return { ok: false, reason: "not_found" };
 					const inbound = await tx.message.findFirst({
 						where: {
 							id: input.inboundId,
@@ -726,6 +744,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				// Two approvals in the same instant: the unique index on inboundId lets one in.
 				if (isUniqueViolation(error)) {
 					return { ok: false, reason: "in_progress" };
+				}
+				// The thread went between the lock and a write; the lock makes it rare.
+				if (isForeignKeyViolation(error)) {
+					return { ok: false, reason: "not_found" };
 				}
 				throw error;
 			}
