@@ -135,7 +135,7 @@ in the 2026-10-03 amendment holds unless a point below differs.
   (auto-updated)"), carries the clickable link and the summary. Nhịp patches that one
   note by its stored id and overwrites any edits; agents write their own notes.
 - **Person.** Nhịp tries, in order:
-  1. the Attio id stored on the contact;
+  1. the Attio person id stored on the thread's link;
   2. `nhip_zalo_user_id`;
   3. the phone in `+` form.
 
