@@ -1,7 +1,7 @@
 import { createInboxStore, Pipe } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { resetTestInbox, testDb } from "./test-store";
+import { deleteThreadUnder, resetTestInbox, testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -373,6 +373,13 @@ test("approve of a missing thread is 404", async () => {
 	);
 	expect(missing.res.status).toBe(404);
 	expect(missing.body.error).toBe("not_found");
+});
+
+test("approve of a thread deleted under it is 404, never a 500 (ADR 0020)", async () => {
+	const conv = await arrive({ pipe: "zalo", guestId: "guest-deleted", text: "Hello" });
+	const approved = await deleteThreadUnder(conv.officeId, conv.id, () => approveReply(conv));
+	expect(approved.res.status).toBe(404);
+	expect(approved.body.error).toBe("not_found");
 });
 
 test("list and get conversation return the invented inbound", async () => {

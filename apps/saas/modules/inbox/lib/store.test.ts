@@ -2,7 +2,7 @@ import { backfillAnswerOperatorNames } from "@repo/database";
 import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
-import { testDb, testInboxStore } from "./test-store";
+import { deleteThreadUnder, testDb, testInboxStore } from "./test-store";
 
 const OFFICE = "office-a";
 const OTHER_OFFICE = "office-b";
@@ -431,6 +431,81 @@ test("two approvals racing the retry of a failed Answer let one in", async () =>
 	const outcomes = [first, second].map((r) => (r.ok ? "ok" : r.reason)).sort();
 	expect(outcomes).toEqual(["in_progress", "ok"]);
 	expect(await testDb.answer.count({ where: { inboundId } })).toBe(1);
+	await store.close();
+});
+
+// Guest deletion (ADR 0020, "How it is built"): approve locks the conversation before it reads
+// or writes an Answer, the order the delete locks in, so an approval of a deleted thread is
+// `not_found`: never a 500, never a deadlock (40P01), never a reply on a thread that is gone.
+const NOT_FOUND = { ok: false, reason: "not_found" };
+
+/** A guest's thread in office A, and the approval of its unanswered message. */
+async function approvable(store: Store, guestId: string, operatorId: string | null = "agent-1") {
+	const conv = await store.upsertInbound(inbound(guestId), OFFICE);
+	const input = {
+		officeId: OFFICE,
+		conversationId: conv.id,
+		inboundId: conv.unansweredInboundId!,
+		text: "reply",
+		operatorId,
+	};
+	return { conv, input };
+}
+
+/** The thread's first approval failed at the vendor, so the next one is a retry. */
+async function failedOnce(store: Store, input: Parameters<Store["beginAnswer"]>[0]) {
+	const begun = await store.beginAnswer(input);
+	if (!begun.ok) throw new Error(begun.reason);
+	await store.failAnswer(OFFICE, begun.answer.id, "token expired");
+}
+
+test("approving a thread already deleted is not_found, on a first send and on a retry (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	const fresh = await approvable(store, "gone-first");
+	const retried = await approvable(store, "gone-retry");
+	await failedOnce(store, retried.input);
+	expect(await store.deleteConversations(OFFICE, [fresh.conv.id, retried.conv.id])).toBe(2);
+	expect(await store.beginAnswer(fresh.input)).toEqual(NOT_FOUND);
+	expect(await store.beginAnswer({ ...retried.input, text: "second try" })).toEqual(NOT_FOUND);
+	await store.close();
+});
+
+test("a delete committed under the first approval of a pool thread makes it not_found (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	const { conv, input } = await approvable(store, "under-first");
+	expect(conv.owner).toBeNull();
+	const approved = await deleteThreadUnder(OFFICE, conv.id, () => store.beginAnswer(input));
+	expect(approved).toEqual(NOT_FOUND);
+	expect(await testDb.conversation.count({ where: { id: conv.id } })).toBe(0);
+	expect(await testDb.answer.count({ where: { inboundId: input.inboundId } })).toBe(0);
+	await store.close();
+});
+
+test("a delete committed under the retry of a failed Answer makes it not_found (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	// The failed first approval claimed the thread: it has an owner.
+	const { conv, input } = await approvable(store, "under-retry", "agent-1");
+	await failedOnce(store, input);
+	const approved = await deleteThreadUnder(OFFICE, conv.id, () =>
+		store.beginAnswer({ ...input, text: "second try" }),
+	);
+	expect(approved).toEqual(NOT_FOUND);
+	expect(await testDb.answer.count({ where: { inboundId: input.inboundId } })).toBe(0);
+	await store.close();
+});
+
+test("a delete committed under the retry on an ownerless pool thread is not_found, not a deadlock (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	// The failed first approval had no operator, so the thread is still in the pool and the
+	// retry's approval claims it: approve then writes the Answer and the conversation.
+	const { conv, input } = await approvable(store, "under-pool-retry", null);
+	await failedOnce(store, input);
+	expect((await store.getOfficeConversation(OFFICE, conv.id))?.owner).toBeNull();
+	const approved = await deleteThreadUnder(OFFICE, conv.id, () =>
+		store.beginAnswer({ ...input, text: "second try", operatorId: "agent-2" }),
+	);
+	expect(approved).toEqual(NOT_FOUND);
+	expect(await testDb.conversation.count({ where: { id: conv.id } })).toBe(0);
 	await store.close();
 });
 
