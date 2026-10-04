@@ -31,8 +31,9 @@ refresh token works once. The pilot kept one set of credentials in env vars and 
   two instances never spend the single-use refresh token twice, and a failed refresh writes
   nothing.
 - **A broken connection is visible.** Guests' messages still arrive; replies on that pipe
-  are blocked in the inbox with the reason, other pipes are unaffected, and the platform
-  admin is emailed and sees "Needs reconnect" on the office.
+  are blocked in the inbox with the reason, other pipes are unaffected, and every platform
+  admin gets a bell row naming the pipe and the office and sees "Needs reconnect" on the
+  office (amended 2026-10-04, below).
 
 ## Considered options
 
@@ -50,3 +51,12 @@ refresh token works once. The pilot kept one set of credentials in env vars and 
   happens on the platform admin's machine.
 - Losing the encryption key disconnects every pipe; reconnecting fixes it.
 - The pilot's `ZALO_OA_ACCESS_TOKEN` and `ZALO_OA_ID` env vars go away.
+
+## Amendment, 2026-10-04 (#148): a broken pipe is a bell row, not an email
+
+Nhịp sends no notification emails (PRODUCT.md "Deliberately not"; ADR 0019 made the same
+call for guest alerts). A newly disconnected connection gives every platform admin one bell
+row (`PIPE_DISCONNECTED`, in-app only) naming the pipe and the office, linking to that
+office in the admin area, and the office shows "Needs reconnect" as before. Nobody else gets
+it, and no one is emailed. The row is not in the notification settings, so it cannot be
+turned off. A web push to platform admins can follow once alerts ship (#134).

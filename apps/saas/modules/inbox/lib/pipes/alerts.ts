@@ -1,13 +1,15 @@
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { db } from "@repo/database";
-import { sendEmail } from "@repo/mail";
+import { createNotification, NOTIFICATION_TYPES } from "@repo/notifications";
 
-import { PIPE_NAMES } from "../pipe-names";
 import type { Pipe } from "../types";
 
 /**
- * A pipe connection stopped working (ADR 0017): every platform admin is emailed, since only
- * they reconnect it. Best effort: a failed alert is logged and never blocks the send path.
+ * A pipe connection stopped working (ADR 0017): every platform admin gets a bell row naming
+ * the pipe and the office, since only they reconnect it, and the office shows "Needs
+ * reconnect". No email (PRODUCT.md "Deliberately not"). The bell renders the row in the
+ * reader's language from `data`. Best effort: a failed alert is logged and never blocks the
+ * send path.
  */
 export async function notifyPipeDisconnected(input: {
 	pipe: Pipe;
@@ -17,23 +19,24 @@ export async function notifyPipeDisconnected(input: {
 	try {
 		const connection = await db.pipeConnection.findUnique({
 			where: { pipe_externalId: { pipe: input.pipe, externalId: input.externalId } },
-			select: { office: { select: { name: true } } },
+			select: { office: { select: { id: true, name: true } } },
 		});
 		const admins = await db.user.findMany({
 			where: { role: { contains: "admin" } },
-			select: { email: true, role: true },
+			select: { id: true, role: true },
 		});
-		const office = connection?.office.name ?? "an office";
-		const name = PIPE_NAMES[input.pipe];
+		const office = connection?.office;
 		for (const admin of admins.filter((user) => isPlatformAdmin(user.role))) {
-			await sendEmail({
-				to: admin.email,
-				subject: `${name} disconnected for ${office}`,
-				text: [
-					`${name} (${input.externalId}) of ${office} can no longer send: ${input.reason}.`,
-					"Guests' messages still arrive; replies on this pipe are blocked until you reconnect it",
-					"with the owner present: Admin → Organizations → the office → Connections.",
-				].join("\n"),
+			await createNotification({
+				userId: admin.id,
+				type: NOTIFICATION_TYPES.PIPE_DISCONNECTED,
+				data: {
+					pipe: input.pipe,
+					externalId: input.externalId,
+					office: office?.name ?? null,
+					reason: input.reason,
+				},
+				link: office ? `/admin/organizations/${office.id}` : "/admin/organizations",
 			});
 		}
 	} catch (err) {

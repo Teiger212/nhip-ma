@@ -409,6 +409,8 @@ Create server-side notifications with `createNotification` from
 `packages/notifications/src/create-notification.ts`. Types and kinds live in
 `packages/notifications/src/types.ts`, and the settings catalog lives in
 `packages/notifications/src/catalog.ts`; keep the database enum, catalog, and i18n labels in sync.
+A notification is a bell row only: `createNotification` emails just the types in its `EMAIL_TYPES`
+allow-list (the kit's `WELCOME`), whatever the preferences say (PRODUCT.md "Deliberately not").
 
 For client data fetching, use the oRPC helpers in
 `apps/saas/modules/shared/lib/orpc-query-utils.ts` with TanStack Query.

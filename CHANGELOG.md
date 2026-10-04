@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-04 (no notification emails)
+
+### Changed
+
+- **No notification emails, except the welcome** (#148). `createNotification` emails only the kit's welcome (an allow-list in code); every other type is a bell row only, whatever the person's email preferences say, and the notification settings no longer show email switches. Transactional emails are unchanged: the invitation, the sign-in link, verification, email change and password reset.
+- **A broken pipe is a bell row** (ADR 0017, amended). When a Zalo OA disconnects, every platform admin gets a bell row naming the pipe and the office, in their language, linking to the office in the admin area; it is no longer emailed. New notification type `PIPE_DISCONNECTED` (migration `20261004192216_pipe_disconnected_notification`, an additive enum value).
+- **`pnpm lint` passes `--disable-nested-config`**, so a checkout with agent worktrees under `.claude/worktrees/` lints instead of failing on their configs, and `pnpm format` no longer formats those worktrees' files.
+
 ## 2026-10-04 (safer migrations and connections before go-live)
 
 ### Changed

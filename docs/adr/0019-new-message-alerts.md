@@ -9,7 +9,9 @@ Speed is the product: a guest answered in minutes, at any hour. Today an agent s
 message only with the Inbox open (it polls every 10 seconds); there is no realtime
 connection, no scheduler and no push. Agents work on a phone between viewings as much as
 at a desk. The kit's notifications module writes a bell row and sends an email, and its
-preferences are opt-out, so any new kit type emails by default. A vendor retries a webhook
+preferences are opt-out, so any new kit type emails by default. (Since #148,
+`createNotification` emails only the kit's welcome; every other type is a bell row only,
+and a broken pipe is a bell row too: ADR 0017's amendment.) A vendor retries a webhook
 until it is answered, and today a retried guest message runs everything after it again. A
 thread's id carries the guest's WhatsApp phone, so it must not travel in an alert.
 

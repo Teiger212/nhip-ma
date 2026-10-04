@@ -9,7 +9,20 @@ import {
 import type { Locale } from "@repo/i18n";
 import { sendEmail } from "@repo/mail";
 
+import { NOTIFICATION_GROUPS } from "./catalog";
 import { resolveNotificationLink } from "./resolve-link";
+
+/**
+ * The only types that may email (PRODUCT.md "Deliberately not": no notification emails).
+ * The kit's welcome stays as it is for now; every other type is a bell row only, whatever
+ * the person's email preferences say.
+ */
+const EMAIL_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>(["WELCOME"]);
+
+/** Only a type the settings offer can be turned off; any other (a broken pipe) always lands. */
+const CONFIGURABLE_TYPES: ReadonlySet<string> = new Set(
+	NOTIFICATION_GROUPS.flatMap((group) => group.types),
+);
 
 export async function createNotification(input: {
 	userId: string;
@@ -18,17 +31,13 @@ export async function createNotification(input: {
 	link?: string | null;
 	read?: boolean;
 }) {
-	const inAppDisabled = await isNotificationDisabled(
-		input.userId,
-		input.type,
-		NotificationTarget.IN_APP,
-	);
+	const inAppDisabled =
+		CONFIGURABLE_TYPES.has(input.type) &&
+		(await isNotificationDisabled(input.userId, input.type, NotificationTarget.IN_APP));
 
-	const emailDisabled = await isNotificationDisabled(
-		input.userId,
-		input.type,
-		NotificationTarget.EMAIL,
-	);
+	const emailDisabled =
+		!EMAIL_TYPES.has(input.type) ||
+		(await isNotificationDisabled(input.userId, input.type, NotificationTarget.EMAIL));
 
 	const absoluteLink = resolveNotificationLink(input.link);
 	let created: NotificationModel | null = null;

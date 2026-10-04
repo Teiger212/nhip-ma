@@ -204,3 +204,7 @@ Nhịp is not, and is not becoming, any of these; recorded so they do not creep 
   payments between guest and agency.
 - **Not a per-agent performance tool** in this version. Office numbers only.
 - **Not mass-market brokerage.** High-end apartments, multinational guests.
+- **No notification emails.** They get ignored. Nhịp emails only what the person is waiting
+  for that moment (the invitation, the sign-in link, email verification, password reset,
+  email change), plus the welcome email when a person joins. Everything else is a bell row
+  or an alert (ADR 0019); a broken pipe is a bell row for the platform admin (ADR 0017).

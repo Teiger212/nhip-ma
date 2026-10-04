@@ -187,6 +187,11 @@
 			"fallbackTitle": "Thông báo",
 			"aria": {
 				"open": "Mở thông báo"
+			},
+			"pipeDisconnected": {
+				"title": "{pipe} của {office} đã mất kết nối",
+				"titleNoOffice": "{pipe} đã mất kết nối",
+				"message": "Chưa gửi được trả lời trên kênh này cho đến khi bạn kết nối lại, cùng chủ tài khoản, trong mục Kết nối của văn phòng. Tin nhắn của khách vẫn đến."
 			}
 		}
 	},
@@ -691,8 +696,7 @@
 			},
 			"columns": {
 				"type": "Thông báo",
-				"inApp": "Trong ứng dụng",
-				"email": "Email"
+				"inApp": "Trong ứng dụng"
 			}
 		},
 		"menu": {

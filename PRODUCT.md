@@ -261,5 +261,7 @@ account lifecycle (ADR 0013). Listing match stays the horizon.
 
 Not a guest-facing bot. Not legal advice. Not the record of deals: deals live in a CRM, the
 office's own or the built-in one beside the inbox. Not a listings database. Not a
-marketplace or rental operator. Not a per-agent performance tool, yet. Full list with
+marketplace or rental operator. Not a per-agent performance tool, yet. No notification
+emails; only emails the person is waiting for (invitation, sign-in link, email verification,
+password reset, email change), plus the welcome email when a person joins. Full list with
 reasons in CONTEXT.md.
