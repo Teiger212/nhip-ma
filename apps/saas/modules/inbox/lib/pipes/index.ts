@@ -138,7 +138,6 @@ export async function transmit(
 		return {
 			mock: true,
 			pipe,
-			to,
 			text: input.text,
 			vendorMessageId: `mock-${crypto.randomUUID()}`,
 		};

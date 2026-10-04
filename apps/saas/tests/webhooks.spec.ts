@@ -107,16 +107,26 @@ async function listedDeliveries(page: Page): Promise<ListedDelivery[]> {
 	);
 }
 
-/** The listed delivery that carries this vendor message id. */
-function deliveryOf(page: Page, msgId: string) {
-	return page.getByTestId("webhook-delivery").filter({ hasText: msgId });
+/** What a delivery says of the endpoint it came to (admin.webhooks.endpoint). */
+function endpointOf(oaId: string): string {
+	return `to ${oaId}`;
+}
+
+/**
+ * The listed delivery that came to this OA. The log never shows the vendor's message id as sent
+ * (#141), so a delivery is known by its endpoint: each signed delivery of a test goes to an OA
+ * id no other delivery uses.
+ */
+function deliveryTo(page: Page, oaId: string) {
+	return page.getByTestId("webhook-delivery").filter({ hasText: endpointOf(oaId) });
 }
 
 /**
  * Three deliveries of this test, in this order: a signed message to an OA the office holds
  * (filed), a signed one to an OA no office holds (dropped), an unsigned one (refused), and a
- * last signed one after it. The refused delivery carries no id of ours (nothing unsigned is
- * trusted), so it is known by where it sits: between the dropped one and the last one.
+ * last signed one after it, to an OA of its own. The refused delivery carries no id of ours
+ * (nothing unsigned is trusted), so it is known by where it sits: between the dropped one and the
+ * last one.
  */
 async function sendTheDeliveries(admin: Admin, request: APIRequestContext, newOa: () => string) {
 	const office = await admin.createOffice("Delivery log");
@@ -151,7 +161,7 @@ test.describe("Webhook deliveries 1 — every delivery is on record", () => {
 		request,
 		newOa,
 	}) => {
-		const { office, heldOa, filed, dropped, last } = await sendTheDeliveries(admin, request, newOa);
+		const { office, heldOa, dropped, last } = await sendTheDeliveries(admin, request, newOa);
 		const { page } = admin;
 
 		// Admin → Webhooks, through the admin menu.
@@ -162,28 +172,26 @@ test.describe("Webhook deliveries 1 — every delivery is on record", () => {
 		await expect(page).toHaveURL(/\/en\/admin\/webhooks/);
 		await expect(page.getByTestId("webhook-deliveries")).toBeVisible();
 
-		// Filed: to the office that holds the OA, on that OA, with Zalo's message id.
-		const filedItem = deliveryOf(page, filed.msgId);
+		// Filed: on the OA the office holds, to that office.
+		const filedItem = deliveryTo(page, heldOa);
 		await expect(filedItem).toHaveCount(1);
 		await expect(filedItem).toHaveAttribute("data-outcome", "filed");
 		await expect(filedItem.getByTestId("webhook-delivery-outcome")).toHaveText(
 			OUTCOME.filed(office.name),
 		);
-		await expect(filedItem).toContainText(`to ${heldOa}`);
 
 		// Dropped: no office holds the OA it came to.
-		const droppedItem = deliveryOf(page, dropped.msgId);
+		const droppedItem = deliveryTo(page, dropped.oaId);
 		await expect(droppedItem).toHaveCount(1);
 		await expect(droppedItem).toHaveAttribute("data-outcome", "dropped");
 		await expect(droppedItem.getByTestId("webhook-delivery-outcome")).toHaveText(OUTCOME.dropped);
-		await expect(droppedItem).toContainText(`to ${dropped.oaId}`);
-		await expect(deliveryOf(page, last.msgId)).toHaveCount(1);
+		await expect(deliveryTo(page, last.oaId)).toHaveCount(1);
 
 		// Newest first, and the unsigned one is on record as refused, where it came in.
 		await expect(async () => {
 			const listed = await listedDeliveries(page);
-			const at = (msgId: string) => listed.findIndex((d) => d.text.includes(msgId));
-			const [lastAt, droppedAt, filedAt] = [at(last.msgId), at(dropped.msgId), at(filed.msgId)];
+			const at = (oaId: string) => listed.findIndex((d) => d.text.includes(endpointOf(oaId)));
+			const [lastAt, droppedAt, filedAt] = [at(last.oaId), at(dropped.oaId), at(heldOa)];
 			expect(lastAt, "the last delivery is listed").toBeGreaterThanOrEqual(0);
 			expect(lastAt, "the last delivery is above the dropped one").toBeLessThan(droppedAt);
 			expect(droppedAt, "the dropped delivery is above the filed one").toBeLessThan(filedAt);
@@ -198,22 +206,27 @@ test.describe("Webhook deliveries 1 — every delivery is on record", () => {
 
 // scenario: docs/e2e-scenarios.md Webhook deliveries 2
 test.describe("Webhook deliveries 2 — no guest data in the log", () => {
-	test("neither the page nor its API shows a message's text or the guest's id, signed or not", async ({
+	test("neither the page nor its API shows a message's text, the guest's id or the vendor's message id, signed or not", async ({
 		admin,
 		request,
 		newOa,
 	}) => {
-		const { filed, dropped, refused } = await sendTheDeliveries(admin, request, newOa);
-		const guestData = [filed, dropped, refused].flatMap((m) => [
+		const { heldOa, filed, dropped, refused, last } = await sendTheDeliveries(
+			admin,
+			request,
+			newOa,
+		);
+		const guestData = [filed, dropped, refused, last].flatMap((m) => [
 			["guest id", m.guestId],
 			["message text", m.text],
+			["vendor message id as sent", m.msgId],
 		]);
 		const { page } = admin;
 
 		await page.goto("/en/admin/webhooks");
 		// Judge the page with this test's deliveries on it, not an empty one.
-		await expect(deliveryOf(page, filed.msgId)).toHaveCount(1);
-		await expect(deliveryOf(page, dropped.msgId)).toHaveCount(1);
+		await expect(deliveryTo(page, heldOa)).toHaveCount(1);
+		await expect(deliveryTo(page, dropped.oaId)).toHaveCount(1);
 		const html = await page.content();
 		for (const [what, value] of guestData) {
 			expect(html, `the page shows no ${what}`).not.toContain(value);
@@ -223,7 +236,7 @@ test.describe("Webhook deliveries 2 — no guest data in the log", () => {
 		const res = await admin.api.get(DELIVERIES_API);
 		expect(res.status()).toBe(200);
 		const body = await res.text();
-		expect(body, "the API lists this test's delivery").toContain(filed.msgId);
+		expect(body, "the API lists this test's delivery, by its endpoint").toContain(heldOa);
 		for (const [what, value] of guestData) {
 			expect(body, `the API gives no ${what}`).not.toContain(value);
 		}

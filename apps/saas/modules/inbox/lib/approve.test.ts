@@ -165,7 +165,6 @@ test("inbound does not send; approve is required, and it records an Answer", asy
 		status: "sent",
 		mock: true,
 		pipe: "zalo",
-		to: "guest-1",
 	});
 	expect(after.lastAnswer?.sentAt).toBeTruthy();
 });
@@ -254,7 +253,6 @@ test("a guest message arriving mid-send stays Your turn", async () => {
 	const done = await runtime.store.completeAnswer(conv.officeId, begun.answer.id, {
 		mock: true,
 		pipe: "zalo",
-		to: "guest-mid",
 		vendorMessageId: "mock-1",
 	});
 	expect(done?.messages.at(-1)?.source).toBe("nhip");
@@ -314,18 +312,28 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	let state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(state?.unansweredInboundId).toBe(refused.unansweredInboundId);
-	vi.stubGlobal(
-		"fetch",
-		vi.fn(async () => Response.json({ error: 0, data: { message_id: "z-1" } })),
+	const zaloSend = vi.fn(async (_url: string, _init?: RequestInit) =>
+		Response.json({ error: 0, data: { message_id: "z-1" } }),
 	);
+	vi.stubGlobal("fetch", zaloSend);
 	const retried = await approveReply(refused, { reply: "Second try" });
 	expect(retried.res.status).toBe(200);
+	// The reply goes to the thread's guest: the recipient is read from the thread's guestId,
+	// where the thread keeps it (#141), never from a copy on the Answer.
+	const body = zaloSend.mock.calls.at(-1)?.[1]?.body;
+	const sent = JSON.parse(typeof body === "string" ? body : "{}") as {
+		recipient?: { user_id?: string };
+	};
+	expect(sent.recipient?.user_id, "Zalo is asked to deliver to the thread's guest").toBe(
+		refused.guestId,
+	);
 	state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.answers).toHaveLength(1);
 	expect(state?.lastAnswer).toMatchObject({
 		status: "sent",
 		text: "Second try",
-		vendorMessageId: "z-1",
+		// Kept keyed and hashed, never as the vendor wrote it (#141).
+		vendorMessageId: expect.stringMatching(/^[0-9a-f]{64}$/),
 		mock: false,
 	});
 
@@ -449,6 +457,18 @@ test("POST /dev/inbound is 404 in production", async () => {
 	}
 });
 
+/** A guest's thread id in the walk office, found as the store finds it: by (office, pipe, guest). */
+async function walkThreadId(pipe: string, guestId: string): Promise<string> {
+	const threads = await peekTestRuntime()!.store.listConversations({
+		userId: "walk-user",
+		officeId: "walk-office",
+		role: "manager",
+	});
+	const thread = threads.find((c) => c.pipe === pipe && c.guestId === guestId);
+	if (!thread) throw new Error(`no ${pipe} thread for ${guestId}`);
+	return thread.id;
+}
+
 test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 	// `Pipe` being importable as a value at all is the point: the app checks against the
 	// same declaration the store parses with. Driving the loop off `Pipe.options` rather
@@ -463,7 +483,7 @@ test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 		// End to end: the value survives the write and the strict parse on the way back out.
 		const stored = await peekTestRuntime()?.store.getOfficeConversation(
 			"walk-office",
-			`walk-office:${pipe}:${guestId}`,
+			await walkThreadId(pipe, guestId),
 		);
 		expect(stored?.pipe, pipe).toBe(pipe);
 	}
@@ -531,10 +551,13 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 	const runtime = peekTestRuntime();
 	const trimmed = await runtime?.store.getOfficeConversation(
 		"walk-office",
-		"walk-office:zalo:guest-trim",
+		await walkThreadId("zalo", "guest-trim"),
 	);
 	expect(trimmed?.messages[0]?.text).toBe("Looking to rent in Tay Ho");
-	const degraded = await runtime?.store.getOfficeConversation("walk-office", "walk-office:zalo:g4");
+	const degraded = await runtime?.store.getOfficeConversation(
+		"walk-office",
+		await walkThreadId("zalo", "g4"),
+	);
 	expect(degraded?.guestName).toBeNull();
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
 });

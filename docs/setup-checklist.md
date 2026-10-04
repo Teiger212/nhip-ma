@@ -116,6 +116,10 @@ pushed, and "Turn on alerts" stays hidden.
 
 - [x] Staging platform admin created (`create:user`), passkey and 2FA on.
 - [x] Resend: `RESEND_API_KEY` and `MAIL_FROM` on staging (from `lanternroute.com` for now).
+- **Rotating `BETTER_AUTH_SECRET`** (any environment) signs everyone out and re-keys the hash
+  vendor message ids are stored as (#141): a WhatsApp or Zalo retry of a message that arrived
+  before the rotation is not recognised as a duplicate and is filed again. Rotate only when
+  needed, ideally at a quiet hour.
 
 ## Before prod (milestone 6)
 

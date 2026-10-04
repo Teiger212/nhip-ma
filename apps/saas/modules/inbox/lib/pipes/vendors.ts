@@ -310,7 +310,6 @@ export async function sendWhatsApp(input: {
 	return {
 		mock: false,
 		pipe: "whatsapp",
-		to: input.to,
 		vendorMessageId: typeof first.id === "string" ? first.id : null,
 	};
 }
@@ -443,7 +442,6 @@ export async function sendZalo(input: {
 	return {
 		mock: false,
 		pipe: "zalo",
-		to: input.to,
 		vendorMessageId: typeof data.message_id === "string" ? data.message_id : null,
 	};
 }

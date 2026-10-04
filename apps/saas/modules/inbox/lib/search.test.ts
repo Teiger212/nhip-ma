@@ -40,7 +40,7 @@ test("search matches guest name or last inbound text", () => {
 test("Ciputra matches the invented Alexei thread only", () => {
 	const threads = DEMO_THREADS.map((demo) =>
 		conv({
-			id: `${demo.pipe}:${demo.guestId}`,
+			id: `thread-${demo.guestName}`,
 			guestName: demo.guestName,
 			pipe: demo.pipe,
 			guestId: demo.guestId,

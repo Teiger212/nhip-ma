@@ -298,8 +298,11 @@ enum AnswerStatus {
   unknown
 }
 
-/// One thread per guest per office (ADR 0010). The id is `office:pipe:guest` because it
-/// is part of every route; the unique key is the triple.
+/// One thread per guest per office (ADR 0010): the unique key is (office, pipe, guest). The id
+/// is opaque (a cuid; threads from before #141 were re-keyed to UUIDs) and never names the
+/// guest, because it is part of every route. `guestId` is the guest's phone or Zalo id as the
+/// thread knows it; other copies (a CRM link's `leadName`, mock CRM leads, message text) are
+/// guest deletion's to clear (ADR 0020, #138).
 model Conversation {
   id                 String         @id
   pipe               Pipe
@@ -341,6 +344,8 @@ model Message {
   source              MessageSource
   text                String
   at                  DateTime
+  /// The vendor's message id as a keyed hash (HMAC-SHA256, `inbox/vendor-id.ts`), never raw:
+  /// a WhatsApp id can carry the guest's number. Only the duplicate check compares it.
   vendorMessageId     String?
   mock                Boolean              @default(false)
   pipeExternalId      String?
@@ -456,8 +461,8 @@ model Answer {
   status          AnswerStatus
   mock            Boolean      @default(false)
   pipe            Pipe
-  to              String
   pipeExternalId  String?
+  /// The sent reply's vendor id as a keyed hash, like `Message.vendorMessageId`.
   vendorMessageId String?
   approvedAt      DateTime
   sentAt          DateTime?
@@ -520,6 +525,7 @@ model WebhookDelivery {
   filed            Int      @default(0)
   /// Messages to an endpoint no office holds.
   dropped          Int      @default(0)
+  /// Its messages' vendor ids as keyed hashes (`inbox/vendor-id.ts`), never raw.
   vendorMessageIds String[]
   /// The error's kind when ingest failed (no message: it can carry guest data).
   errorKind        String?
