@@ -42,7 +42,7 @@ Start here in a fresh session. This replaces every earlier handoff, all deleted.
 - **PostHog:** the production project.
 - **Trust gates:** the restore drill, the A05 filing with a lawyer.
 - **Open:** #120 (the real material behind PRODUCT.md); #122 (rename DESIGN.md's North Star and colour names, Eyal picks).
-- **The demo** (#116): on staging, Nhịp saves to more than one CRM, HubSpot and Attio. The HubSpot half is Eyal's setup steps.
+- **The demo** (#116): one CRM flow end to end on staging (HubSpot now, Attio after #101), plus a CRM selector listing several CRMs with disabled "coming soon" entries (#123: Bitrix24 and one Eyal picks; Mock hidden in production).
 
 ## State
 
