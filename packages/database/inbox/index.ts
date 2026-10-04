@@ -52,4 +52,4 @@ export type {
 	WebhookDelivery,
 	WebhookDeliveryRecord,
 } from "./types";
-export { conversationId, createInboxStore, nowIso } from "./store";
+export { createInboxStore, nowIso } from "./store";

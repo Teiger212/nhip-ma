@@ -11,8 +11,10 @@ give 2 working days to reply and 20 days to delete, or 30 when a processor or th
 deletes. The office is the controller and Nhịp its processor (inferred). Guests have no
 accounts (CONTEXT, "Deliberately not"), so a request reaches the agency, and a manager acts on it.
 
-A guest's data in Nhịp is one thread and everything under it. The id `office:pipe:guest` holds
-the guest's Zalo user id or phone, so the id itself is personal data. `Conversation` cascades to
+A guest's data in Nhịp is one thread and everything under it. Before #141 the id was
+`office:pipe:guest`, holding the guest's Zalo user id or phone, so the id itself was personal
+data; it is opaque now (ADR 0010's 2026-10-04 amendment), and the thread keeps the guest's id in
+`guestId`. A CRM link's `leadName`, the mock CRM's leads and message text can still name them. `Conversation` cascades to
 Message, Translation, TranslationFailure, Qualification, Draft, Paperwork, Answer and CrmLink
 (ADR 0012), and `store.deleteConversations` already deletes the whole tree, though only the seed
 calls it. The guest may also be a lead in the office's CRM. `CrmAdapter` has no delete.
@@ -174,7 +176,7 @@ round 2 R1 to R3, and the follow-ups on the CRM).
 ## Considered options
 
 - **Anonymise in place**: blank the text and keep the rows. Rejected: rows keyed by
-  `office:pipe:guest` stay personal data whatever is blanked.
+  `office:pipe:guest` (the thread id before #141) stayed personal data whatever was blanked.
 - **Hard delete with no tally**: the funnel shrinks after the fact. Rejected (Q2).
 - **Always delete the CRM lead, or never touch it.** Always deleting would remove a lead the office
   owned before Nhịp found it. Never touching it leaves the lead Nhịp itself created, which the

@@ -10,7 +10,7 @@ const answer = (status: Answer["status"]): Answer =>
 
 const thread = (overrides: Partial<Conversation> = {}): Conversation =>
 	({
-		id: "office:zalo:guest",
+		id: "thread-1",
 		unansweredInboundId: null,
 		sentAt: "2026-09-20T10:00:00.000Z",
 		lastAnswer: answer("sent"),

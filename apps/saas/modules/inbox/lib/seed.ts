@@ -1,5 +1,3 @@
-import { conversationId } from "@repo/database/inbox";
-
 import { injectDevInbound } from "./inbox";
 import { getRuntime } from "./runtime";
 import type { Conversation, Pipe } from "./types";
@@ -55,20 +53,25 @@ export async function seedInbox(
 	{ reset = false, now = Date.now() }: { reset?: boolean; now?: number } = {},
 ): Promise<Conversation[]> {
 	const { store } = getRuntime();
-	if (reset) {
-		// Rewrite the demo threads as of `now`, so the fresh pair is back in Your turn.
-		await store.deleteConversations(
-			officeId,
-			DEMO_THREADS.map((thread) => conversationId(officeId, thread.pipe, thread.guestId)),
-		);
-	}
-	const owned = await store.listConversations({ userId: "seed", officeId, role: "manager" });
-	const result: Conversation[] = [];
-	for (const thread of DEMO_THREADS) {
-		const existing = owned.find(
+	const viewer = { userId: "seed", officeId, role: "manager" } as const;
+	// A demo thread is found by (office, pipe, guest), as inbound finds it: its id is opaque.
+	const demoThreadOf = (owned: Conversation[], thread: DemoThread) =>
+		owned.find(
 			(conversation) =>
 				conversation.pipe === thread.pipe && conversation.guestId === thread.guestId,
 		);
+	if (reset) {
+		// Rewrite the demo threads as of `now`, so the fresh pair is back in Your turn.
+		const owned = await store.listConversations(viewer);
+		await store.deleteConversations(
+			officeId,
+			DEMO_THREADS.flatMap((thread) => demoThreadOf(owned, thread)?.id ?? []),
+		);
+	}
+	const owned = await store.listConversations(viewer);
+	const result: Conversation[] = [];
+	for (const thread of DEMO_THREADS) {
+		const existing = demoThreadOf(owned, thread);
 		if (existing) {
 			result.push(existing);
 			continue;

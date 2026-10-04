@@ -240,7 +240,12 @@ pipe_credential, webhook_delivery.
 - **The store is the only writer** of `inbox_*`: `createInboxStore(db)` in
   `packages/database/inbox/store.ts`, zod vocabularies in `schema.ts`, domain types in
   `types.ts`. Routes call its methods, never Prisma directly.
-- **Thread identity** is (office, pipe, guest); the id keeps the `office:pipe:guest` shape.
+- **Thread identity** is (office, pipe, guest), the unique key inbound finds a thread by; the
+  id is opaque (a `cuid()`; older threads were re-keyed to UUIDs) and never names the guest
+  (ADR 0010, amended by #141). The thread keeps the guest's phone or Zalo id in `guestId`; no
+  Answer copies it, and vendor message ids are stored as keyed hashes
+  (`packages/database/inbox/vendor-id.ts`). A CRM link's `leadName`, the mock CRM's leads and
+  message text can still hold it; guest deletion clears those (ADR 0020, #138).
 - **The office line is held by the database** (#95). Every office-owned row carries
   `officeId`, and composite foreign keys to `(id, officeId)` keep it equal to its thread's
   (or its message's); every store method names its office and filters by it in the query.
@@ -281,10 +286,18 @@ ADR 0016 and its amendment. One Vercel project `nhip`, one Neon project, both in
 - **Staging smoke** (`.github/workflows/staging-smoke.yml`): on each successful Preview
   deployment, `pnpm --filter saas smoke` (`playwright.smoke.config.ts`, `tests/smoke/`)
   checks read-only that pages load, signed-out APIs refuse and webhooks fail closed.
+- **Production smoke** (`.github/workflows/production-smoke.yml`, #113): the same suite as a
+  Vercel Deployment Check. When a production deployment is built, Vercel's
+  `vercel.deployment.ready` dispatch runs the suite against that deployment's own URL. Vercel
+  gives the deployment the production domain only once this check passes, along with Vercel's
+  Lint and TypeCheck.
 - **Prod** builds from the `production` branch. Ruleset 24113338 ("production: releases
-  only") blocks updates, non-fast-forward pushes and deletion, and has no bypass actor, so
-  nothing moves `production` today. The release workflow that will move it to a commit
-  staging ran, and runs prod migrations first, is #112 and not built yet. The production
+  only") blocks updates, non-fast-forward pushes and deletion; its one bypass is deploy keys.
+  The release workflow (`.github/workflows/release.yml`, #112) is the only holder of a deploy
+  key: on a published GitHub Release that Eyal approves, it fast-forwards `production` to a
+  commit staging deployed and smoked. Vercel's build runs prod migrations first
+  (`build:vercel`). The key itself is one of Eyal's setup steps
+  (`docs/setup-checklist.md`). The production
   Neon branch is empty (no tables, no migration history); the first release migrates it
   from `0_init`. There are no Production-scope env vars yet (#99). No release has shipped.
 

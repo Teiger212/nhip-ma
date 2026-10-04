@@ -819,6 +819,7 @@
 		"retry": "Thử lại",
 		"noMatches": "Không có cuộc hội thoại phù hợp.",
 		"noneSelected": "Chưa chọn cuộc hội thoại.",
+		"threadNotFound": "Không có cuộc hội thoại này. Có thể liên kết đã cũ, hoặc cuộc hội thoại đã được chuyển hay đã bị xóa.",
 		"sent": "Đã gửi",
 		"yourTurn": "Đến lượt bạn",
 		"quiet": "Đã lắng ({count})",

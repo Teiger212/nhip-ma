@@ -8,6 +8,9 @@ export default defineConfig({
 		environment: "node",
 		exclude: ["**/node_modules/**", "**/tests/**", "**/.next/**"],
 		globalSetup: ["./vitest.global-setup.ts"],
+		// The store hashes vendor message ids under a key from this secret (#141); tests bring
+		// their own, so they never need (or read) a real one.
+		env: { BETTER_AUTH_SECRET: "vitest-only-not-a-secret-0123456789abcdef-nhip" },
 		// Store tests share one database and truncate it; files must not interleave.
 		fileParallelism: false,
 	},

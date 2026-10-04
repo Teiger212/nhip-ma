@@ -34,6 +34,7 @@ import type {
 	Translations,
 	WebhookDelivery,
 } from "./types";
+import { storedVendorMessageId } from "./vendor-id";
 
 export function nowIso(at?: number | string | Date): string {
 	if (at instanceof Date) {
@@ -46,15 +47,6 @@ export function nowIso(at?: number | string | Date): string {
 		return new Date(at).toISOString();
 	}
 	return new Date().toISOString();
-}
-
-/**
- * One thread per guest per office (ADR 0010). The office is part of the identity, so the
- * same guest writing to two offices is two threads that never see each other. The id is
- * part of every route, so it keeps this shape; the unique key is the triple.
- */
-export function conversationId(officeId: string, pipe: string, guestId: string): string {
-	return `${officeId}:${pipe}:${guestId}`;
 }
 
 /** Everything a `Conversation` is built from, in one read. */
@@ -251,7 +243,6 @@ function mapAnswer(row: AnswerRecord): Answer {
 		status: row.status,
 		mock: row.mock,
 		pipe: row.pipe,
-		to: row.to,
 		pipeExternalId: row.pipeExternalId,
 		vendorMessageId: row.vendorMessageId,
 		approvedAt: iso(row.approvedAt),
@@ -491,16 +482,19 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 
 		async upsertInbound(event: InboundEvent, officeId: string) {
 			const at = new Date(nowIso(event.at));
+			// Stored and compared only as its keyed hash: the raw id can carry the guest's number.
+			const vendorMessageId = storedVendorMessageId(event.vendorMessageId);
 			const write = () =>
 				db.$transaction(async (tx) => {
-					// The thread is found by (office, pipe, guest), never by the id's shape.
+					// One thread per guest per office (ADR 0010): found by (office, pipe, guest), the
+					// unique key. Its id is opaque and never names the guest (#141).
 					const existing = await tx.conversation.findUnique({
 						where: {
 							officeId_pipe_guestId: { officeId, pipe: event.pipe, guestId: event.guestId },
 						},
 						select: { id: true, guestName: true },
 					});
-					const threadId = existing?.id ?? conversationId(officeId, event.pipe, event.guestId);
+					const threadId = existing?.id ?? cuid();
 					if (existing) {
 						await tx.conversation.update({
 							where: { id: threadId },
@@ -519,9 +513,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						});
 					}
 
-					if (event.vendorMessageId) {
+					if (vendorMessageId) {
 						const duplicate = await tx.message.findFirst({
-							where: { conversationId: threadId, vendorMessageId: event.vendorMessageId },
+							where: { conversationId: threadId, vendorMessageId },
 							select: { id: true },
 						});
 						if (duplicate) {
@@ -538,7 +532,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							source: toDbSource(event.source),
 							text: event.text,
 							at,
-							vendorMessageId: event.vendorMessageId || null,
+							vendorMessageId,
 							pipeExternalId: event.pipeExternalId ?? null,
 						},
 					});
@@ -656,7 +650,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						select: {
 							direction: true,
 							pipeExternalId: true,
-							conversation: { select: { pipe: true, guestId: true } },
+							conversation: { select: { pipe: true } },
 						},
 					});
 					if (!inbound || inbound.direction !== "in") {
@@ -714,7 +708,6 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							operatorName,
 							status: "sending",
 							pipe: inbound.conversation.pipe,
-							to: inbound.conversation.guestId,
 							pipeExternalId: inbound.pipeExternalId,
 							approvedAt: now,
 						},
@@ -747,16 +740,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				throw new Error(`Inbox store: completeAnswer on an Answer that is ${answer.status}.`);
 			}
 			const at = new Date();
+			const vendorMessageId = storedVendorMessageId(result.vendorMessageId);
 			await db.$transaction([
 				db.answer.update({
 					where: { id: answerId, officeId },
-					data: {
-						status: "sent",
-						sentAt: at,
-						mock: result.mock,
-						vendorMessageId: result.vendorMessageId,
-						to: result.to,
-					},
+					data: { status: "sent", sentAt: at, mock: result.mock, vendorMessageId },
 				}),
 				db.message.create({
 					data: {
@@ -767,7 +755,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						source: "nhip",
 						text: answer.text,
 						at,
-						vendorMessageId: result.vendorMessageId || null,
+						vendorMessageId,
 						mock: result.mock,
 						pipeExternalId: answer.pipeExternalId,
 					},
@@ -945,7 +933,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async recordWebhookDelivery(delivery) {
-			await db.webhookDelivery.create({ data: delivery });
+			// Kept to match a delivery to its messages, never to say who the guest is (#141).
+			const vendorMessageIds = delivery.vendorMessageIds.flatMap(
+				(id) => storedVendorMessageId(id) ?? [],
+			);
+			await db.webhookDelivery.create({ data: { ...delivery, vendorMessageIds } });
 		},
 
 		async listWebhookDeliveries({ limit, pipe }) {

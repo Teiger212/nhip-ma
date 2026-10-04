@@ -59,7 +59,6 @@ async function approve(
 		await store.completeAnswer(OFFICE, begun.answer.id, {
 			mock: true,
 			pipe: "zalo",
-			to: conversationId,
 			vendorMessageId: `mock-${begun.answer.id}`,
 		});
 	}

@@ -819,6 +819,7 @@
 		"retry": "Try again",
 		"noMatches": "No matching threads.",
 		"noneSelected": "No conversation selected.",
+		"threadNotFound": "This conversation isn't here. The link may be out of date, or the thread was moved or deleted.",
 		"sent": "Sent",
 		"yourTurn": "Your turn",
 		"quiet": "Quiet ({count})",

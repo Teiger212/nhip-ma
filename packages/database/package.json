@@ -15,6 +15,7 @@
 		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
 		"type-check": "tsc --noEmit",
+		"test": "vitest run",
 		"migrate:deploy": "dotenv -c -e ../../.env -- prisma migrate deploy",
 		"migrate:check": "dotenv -c -e ../../.env -- ./scripts/migrations.sh check",
 		"migrate:new": "dotenv -c -e ../../.env -- ./scripts/migrations.sh new",
@@ -33,6 +34,7 @@
 		"dotenv": "catalog:",
 		"dotenv-cli": "catalog:",
 		"prisma": "catalog:",
-		"prisma-zod-generator": "catalog:"
+		"prisma-zod-generator": "catalog:",
+		"vitest": "catalog:"
 	}
 }
