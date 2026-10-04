@@ -99,8 +99,99 @@ supersede the matching, write-back, refresh and Attio points above where they di
 - **Won and Lost are neutral badges** in place of the turn while a thread is resolved
   (DESIGN.md).
 
-Pending (2026-10-04): Attio is the first client's CRM (#101); its amendment follows the grill,
-see `reports/attio-research-2026-10-04.md`.
+## Amendment (2026-10-04): Attio for an agency already on Attio; otherwise Nhịp's own CRM
+
+Decided with Eyal in a four-round grill (`reports/attio-research-2026-10-04.md`, with the
+live probe in `reports/attio-probe-2026-10-04.md`). The spec is GitHub issue #101. Everything
+in the 2026-10-03 amendment holds unless a point below differs.
+
+- **Which CRM an office gets.** An agency connects the CRM it already uses, through an
+  adapter, or uses Nhịp's built-in CRM (#126; the leading option is Twenty, self-hosted in
+  Vietnam). Nhịp never sets up a
+  third-party CRM for an agency that has none, so Attio is only for agencies that already
+  use it. HubSpot stays the demo CRM. The mock never goes to production for a client; an
+  office with no CRM has no connection, writes nothing, and shows no won or lost until
+  #126. This replaces the 2026-09-17 decision that the mock serves offices without a CRM
+  and is the fallback when matching fails, and the 2026-10-03 line that production stays on
+  the mock (Q2). The first client's CRM is unknown until Eyal asks (#99). Attio's build waits for
+  that answer.
+- **Credential.** The platform admin pastes the agency's workspace API key, sealed per
+  office (ADR 0017). Its scopes: object configuration and records read-write, members read,
+  webhooks read-write, notes read-write. An Attio app, OAuth or a record panel comes at the
+  second agency on Attio, or when an agency asks for the panel. REST stays the only writer.
+- **Setup at connect, safe to repeat.** Nhịp creates its attributes and the webhook, and reads
+  the stages and members. For an attribute, a 409 means fetch it, unarchive it, and check
+  its type and uniqueness. A webhook secret comes back only on create. A lost one can
+  probably be copied from Attio's developer settings; otherwise Nhịp deletes and recreates
+  the webhook. A "Re-check setup" action re-runs the whole setup.
+- **Attributes.** On deals:
+  - `nhip_thread_id`, unique text;
+  - `nhip_pipe` and `nhip_rent_or_buy`, selects with options Nhịp owns;
+  - as text: `nhip_thread_url`, `nhip_language`, `nhip_area`, `nhip_timeframe`,
+    `nhip_household`, `nhip_budget` and `nhip_agent`.
+
+  On people, `nhip_zalo_user_id` is text. Attio refuses custom unique attributes on People.
+  One markdown note per deal, titled as maintained by Nhịp ("Nhịp · Zalo thread
+  (auto-updated)"), carries the clickable link and the summary. Nhịp patches that one
+  note by its stored id and overwrites any edits; agents write their own notes.
+
+- **Person.** Nhịp tries, in order:
+  1. the Attio person id stored on the thread's link;
+  2. `nhip_zalo_user_id`;
+  3. the phone in `+` form.
+
+  It creates a person only when all three miss, under a Nhịp-side lock. Several matches mean
+  the person is ambiguous: no link, and a manager links by hand through record search.
+
+- **Deal.** Nhịp tries, in order:
+  1. the stored id;
+  2. `nhip_thread_id`;
+  3. the person's open deals (none: create; one: reuse; several: ambiguous).
+
+  A second thread from a known person reuses the open deal. `stage` and `owner` are sent
+  only on create, never in an update: an upsert that carried `stage` moved a Won deal back
+  to Lead in the probe.
+
+- **Owner.** Attio requires one. It's the thread's agent, matched to an Attio member by
+  email, or else the office's default owner. If the default owner is `suspended`, Nhịp stops
+  writing and shows "Not in CRM yet: owner missing" until the admin picks another (#64
+  retries). On the free plan's three seats most deals fall to the default owner, so
+  Connections shows how many agents have an Attio seat, and `nhip_agent` keeps who handled
+  the lead.
+- **Won and lost** stay on `deals.stage`, Attio's default board. The admin ticks the won and
+  lost stages at connect, stored by stage id, with the defaults pre-ticked by title. An
+  unmapped stage counts as open, and Connections flags any new one. The setting's shape
+  (board, status attribute, won ids, lost ids) leaves room for an Attio list later.
+- **Webhook.** One per workspace, subscribed to:
+  - deals `record.updated` filtered to `stage`;
+  - deals `record.deleted` and `record.merged`;
+  - people `record.merged`.
+
+  Its URL carries a Nhịp connection key that picks the secret. Nhịp verifies the body's
+  HMAC before parsing, then checks `webhook_id` and `workspace_id`. Attio's signature has no
+  timestamp, so `Idempotency-Key`s are kept for 7 days. Nhịp loops over `events[]`, answers
+  200 within 5 s and does the work in the background. A stage change re-reads the deal;
+  deletes and merges are handled as below. The hourly reconcile asks only
+  for stages changed since its last run (`stage.active_from`), which also dates the outcome.
+
+- **Deleted or merged in Attio.** A deleted deal shows "Not in CRM". Nhịp never recreates it;
+  a manager re-links. A merge makes a new record, so every link to either original moves to
+  it first, and `merge_in_progress` is retried. A person whose stored id stops resolving is
+  found again by Zalo id, then phone. Before the reconcile marks a deal gone, it searches
+  by `nhip_thread_id` once more.
+- **Phones.** A WhatsApp `wa_id` is always read as `+` and its digits, never tried as
+  Vietnamese first. Any other number without a country code is Vietnamese if it's valid as
+  one, and otherwise no phone, never a guess. The CRM-side re-check uses the same rule. This
+  changes today's `toE164`, which tries Vietnamese first. Nhịp serves expats; full
+  international input is #125, after the first client.
+- **Tests that must exist:** "a Won deal stays Won when Nhịp re-saves it" and "two concurrent
+  leads from one person make one person".
+- **PDPL.** Attio is named as a processor in the A05 dossier if an agency uses it.
+- **HubSpot as a client's own CRM** (decided the same day). A production static app of
+  Nhịp's own, installed in the client's portal by a user with access to it. HubSpot's static
+  auth installs in "a single account… the same you use for development or another account
+  that the installing user has access to". The webhook check reads one app secret per
+  deployment, so OAuth or a per-office secret comes at the second HubSpot agency.
 
 ## HubSpot accounts (2026-10-03)
 
