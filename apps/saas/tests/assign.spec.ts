@@ -205,6 +205,8 @@ async function openInbox(page: Page) {
 			.locator(
 				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"]',
 			)
+			// A Quiet row sits folded away until opened, so only a shown one counts.
+			.filter({ visible: true })
 			.first(),
 	).toBeVisible();
 }
