@@ -12,7 +12,7 @@ import { useState } from "react";
 
 import { yourTurnCount } from "./queue";
 import { summarize } from "./summary";
-import type { Conversation, ConversationSummary, Pipe } from "./types";
+import type { Conversation, ConversationSummary, GuestDeletionReason, Pipe } from "./types";
 
 /**
  * Server data for the inbox lives in TanStack Query; nothing else caches it. Everything
@@ -200,13 +200,21 @@ export function useSetOwner() {
 export function useDeleteGuest() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: ({ id, deleteInCrm }: { id: string; deleteInCrm: boolean }) =>
+		mutationFn: ({
+			id,
+			...choice
+		}: {
+			id: string;
+			deleteInCrm: boolean;
+			reason: GuestDeletionReason;
+			note: string | null;
+		}) =>
 			api<{ crm: "deleted" | "unlinked" | "failed" | null }>(
 				`/api/conversations/${encodeURIComponent(id)}/deletion`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ deleteInCrm }),
+					body: JSON.stringify(choice),
 				},
 			),
 		onSettled: async (_result, error, { id }) => {

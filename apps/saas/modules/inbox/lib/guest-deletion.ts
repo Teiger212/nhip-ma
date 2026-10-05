@@ -1,4 +1,9 @@
-import type { GuestDeletionResult, InboxStore, InboxViewer } from "@repo/database/inbox";
+import type {
+	GuestDeletionReason,
+	GuestDeletionResult,
+	InboxStore,
+	InboxViewer,
+} from "@repo/database/inbox";
 
 /**
  * The guest-deletion module (ADR 0020): the deletion route's only caller, like the CRM sync
@@ -11,11 +16,13 @@ export function createGuestDeletion(deps: { store: InboxStore; countMock: boolea
 		async deleteGuest(
 			viewer: InboxViewer,
 			conversationId: string,
-			_choice: { deleteInCrm: boolean },
+			choice: { deleteInCrm: boolean; reason: GuestDeletionReason; note: string | null },
 		): Promise<GuestDeletionResult> {
 			return deps.store.deleteGuest(viewer.officeId, conversationId, {
 				countMock: deps.countMock,
 				actorId: viewer.userId,
+				reason: choice.reason,
+				note: choice.note,
 			});
 		},
 	};
