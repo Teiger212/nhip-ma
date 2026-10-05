@@ -19,6 +19,11 @@
 ### Changed
 
 - **The new Vietnamese wording waits on a native read** (#78): the alerts panel's and the "This device" row's strings ("Bật cảnh báo", "Để sau", "Thiết bị này", "Gửi cảnh báo thử", and the rest).
+## 2026-10-05 (only the platform admin deletes an office)
+
+### Fixed
+
+- **Only the platform admin deletes an office** (#185, ADR 0015). Better Auth let a manager holding the kit's `owner` role delete the whole office through `/organization/delete`, taking every thread, guest and member with it. An auth before-hook beside the owner and membership guards now refuses that route from anyone signed in but the platform admin: 403 `OFFICE_DELETE_PLATFORM_ADMIN_ONLY`. A request with no session is still the kit's to refuse (401). The platform admin's delete, from Admin → Organizations, is unchanged.
 
 ## 2026-10-05 (a late alert, the tab title and toasts)
 

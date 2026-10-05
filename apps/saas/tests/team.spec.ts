@@ -2,11 +2,11 @@ import type { Browser, Locator, Page } from "@playwright/test";
 
 import type { Admin } from "./support/fixtures";
 import { expect, test } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import { newcomer, openInboxAsNewAccount } from "./support/invitee";
 import type { Office } from "./support/offices";
 import { AGENT, AGENT_2, MANAGER, PLATFORM_ADMIN, WALK_OFFICE_ID } from "./support/seed";
 import type { Api } from "./support/session";
-import { apiAs, clientIpHeaders, withOrigin } from "./support/session";
+import { apiAs, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
 
 /** Team's words (docs/e2e-scenarios.md "Team"): Nhịp's roles, never member, admin or owner. */
@@ -44,7 +44,6 @@ const NEWCOMER_NAME = "E2E Invitee";
 /** The kit's success toast for an invitation, in Nhịp's words. */
 const INVITATION_SENT = "Invitation sent";
 
-type KitRole = "member" | "admin" | "owner";
 type Member = { id: string; role: string; userId: string; user: { email: string } };
 type Invitation = { id: string; email: string; role: string; status: string };
 
@@ -110,39 +109,6 @@ function team(page: Page) {
 		/** The options of the open role select. */
 		options: page.getByRole("listbox").getByRole("option"),
 	};
-}
-
-/**
- * A newcomer invited into an office by the platform admin, signed up through the invitation
- * link in a browser context of their own (its own client IP: sign-ups are rate limited).
- */
-async function newcomer(
-	browser: Browser,
-	admin: Admin,
-	office: Office,
-	tag: string,
-	role: KitRole,
-	ownerInvitations: string[],
-) {
-	const email = admin.newEmail(tag);
-	let invitationId: string;
-	if (role === "owner") {
-		// The fixture's invite knows agents and managers only; an owner is setup here.
-		const res = await admin.api.post("/api/auth/organization/invite-member", {
-			email,
-			role,
-			organizationId: office.id,
-		});
-		expect(res.ok(), `the platform admin invites an owner: ${await res.text()}`).toBe(true);
-		invitationId = ((await res.json()) as { id: string }).id;
-		ownerInvitations.push(invitationId);
-	} else {
-		invitationId = await admin.invite(email, office.id, role);
-	}
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(tag) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	return { email, page, api: withOrigin(page.request), close: () => context.close() };
 }
 
 /**

@@ -292,6 +292,20 @@ export const authOptions = {
 					});
 				}
 			}
+			// Only the platform admin deletes an office (#185, ADR 0015): Better Auth lets any member
+			// holding the kit's `owner` delete it, and with it every thread, guest and member. The
+			// exact path: `/organization/delete-role` is another route, and the router answers 404
+			// to any other spelling. No session is the kit's
+			// to refuse (401).
+			if (ctx.path === "/organization/delete") {
+				const session = await getSessionFromCtx(ctx);
+				if (session && !isPlatformAdmin(session.user.role)) {
+					throw new APIError("FORBIDDEN", {
+						code: "OFFICE_DELETE_PLATFORM_ADMIN_ONLY",
+						message: "Only Nhịp deletes an office.",
+					});
+				}
+			}
 			// The platform admin's membership is theirs alone (#174): no manager removes it or
 			// changes its role. Better Auth lets a manager holding the kit's `owner` do both, and
 			// any manager once the role is no longer `owner`.

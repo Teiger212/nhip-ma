@@ -89,3 +89,11 @@ managers only; agents see the CRM status read-only. The CRM link reads threads t
 same visibility as everything else, so an agent never sees a colleague's thread's lead. A
 resolved thread (won or lost) leaves its owner's queue like any other until the guest writes
 again; resolution changes no ownership.
+
+## Amendment (2026-10-05): only the platform admin deletes an office
+
+The 2026-09-30 amendment's "only `owner` deletes an office" now reads "only the platform
+admin": the kit lets any member holding `owner` delete the office, and a manager can hold it
+when the platform admin made them one. The auth before-hook refuses `/organization/delete`
+from anyone signed in but the platform admin (#185). Closing an office stays the platform
+admin's job (ADR 0014's 30-day close is later).
