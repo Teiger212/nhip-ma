@@ -37,3 +37,30 @@ jobs:
 
       - name: Format check
         run: pnpm format:check
+
+  # A pull request adds its changelog entry as a fragment in changelog.d/; changelog.yml folds it
+  # into CHANGELOG.md on main (#200). Here, not in ci.yml, because ci.yml skips docs-only PRs.
+  changelog:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The whole history, so the PR's own diff (base...head) has its merge base.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: The PR leaves CHANGELOG.md alone
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # --no-renames, so a rename of CHANGELOG.md shows its old path too.
+          if git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA" | grep -qx 'CHANGELOG.md'; then
+            echo "::error file=CHANGELOG.md::This PR edits CHANGELOG.md. Put its entry in a fragment, changelog.d/<issue>-<slug>.md, instead (changelog.d/README.md); a workflow folds it in on main."
+            exit 1
+          fi
+
+      - name: Each fragment is one dated section
+        run: node scripts/changelog/fold.mjs --check

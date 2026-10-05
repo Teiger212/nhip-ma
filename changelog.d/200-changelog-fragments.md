@@ -1,0 +1,5 @@
+## 2026-10-05 (changelog entries are fragments, folded on main)
+
+### Changed
+
+- **A pull request adds its changelog entry as a fragment, never to `CHANGELOG.md`** (#200). Each PR adds one file, `changelog.d/<issue>-<slug>.md`, holding its section as entries are written today (`changelog.d/README.md`), so two PRs no longer conflict over the top of `CHANGELOG.md`. On every push to main that adds fragments, `.github/workflows/changelog.yml` folds them into `CHANGELOG.md` with `scripts/changelog/fold.mjs`: newest on top, in the order they reached main (the first-parent log of the commits that added them, never their filenames). It then deletes them, runs oxfmt and pushes the result as github-actions[bot] in a commit named `docs(changelog): fold <n> fragment(s)`. If main moved meanwhile, it folds again on the new tip, up to five times. Runs are serialized and never cancelled. The format check now fails a PR whose diff edits `CHANGELOG.md` and checks each fragment's shape. The `CHANGELOG.md` union merge in `.gitattributes` goes.

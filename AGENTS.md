@@ -531,7 +531,12 @@ workspace package that imports them.
 ## Change management
 
 - Use conventional commits such as `feat:`, `fix:`, `docs:`, or `refactor:`.
-- Update `CHANGELOG.md` for consumer-impacting changes.
+- For consumer-impacting changes, add a changelog fragment, `changelog.d/<issue>-<slug>.md`,
+  holding the PR's section (format in [changelog.d/README.md](./changelog.d/README.md)). Never
+  edit `CHANGELOG.md`: the format check fails a PR that does. On main,
+  `.github/workflows/changelog.yml` folds the fragments into it, newest on top in the order
+  they reached main, and pushes the fold as github-actions[bot]. The fold's tests:
+  `node --test scripts/changelog/fold.test.mjs`.
 - Update [PRODUCT.md](./PRODUCT.md), [ARCHITECTURE.md](./ARCHITECTURE.md), or
   [HANDOFF.md](./HANDOFF.md) when intention, shape, or walk rules change.
 - Update `AGENTS.md` when conventions, aliases, scripts, or app boundaries change.
@@ -551,9 +556,8 @@ workspace package that imports them.
    flaky spec is fixed after merge.
 7. **Before every push, merge main**: `git fetch origin`, and if `origin/main` moved,
    `git merge origin/main`, resolve any conflict, re-run the gates the conflict touched, then
-   push. `CHANGELOG.md` merges as a union (`.gitattributes`), keeping both sides' entries, since
-   entries are only ever added on top. GitHub ignores that driver, so a PR can still show a
-   CHANGELOG conflict after main moves again; the next merge of main clears it.
+   push. The PR's changelog entry is a fragment of its own in `changelog.d/` (see "Change
+   management"), so two PRs never conflict over `CHANGELOG.md`.
 
 No stacked PRs: merged branches are not deleted automatically, so a stacked PR is not
 retargeted when its base merges. Pre-MVP edge cases: explore and record them; fix only the
@@ -569,6 +573,6 @@ it checks ("won or lost leaves the queue"), not by its number.
 - [ ] No `console.log` statements were added
 - [ ] No unjustified `any` types were added
 - [ ] User-facing strings have translations
-- [ ] Relevant docs and `CHANGELOG.md` are updated
+- [ ] Relevant docs are updated, and the changelog entry is a fragment in `changelog.d/`
 
 See [README.md](./README.md) for the product entry and [HANDOFF.md](./HANDOFF.md) to pick up work cold.

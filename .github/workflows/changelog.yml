@@ -1,0 +1,84 @@
+name: Changelog
+
+# A pull request adds its changelog entry as a fragment in changelog.d/ and never edits
+# CHANGELOG.md (#200; format.yml enforces it). On every push to main that adds fragments, this
+# folds them all into CHANGELOG.md, newest on top in the order they reached main
+# (scripts/changelog/fold.mjs), deletes them, and pushes the result as github-actions[bot].
+#
+# A push made with GITHUB_TOKEN starts no other workflow (no CI, no new fold), so the fold commit
+# has no CI run of its own. The release gate accepts it on its parent's CI, and only when it
+# changes nothing but CHANGELOG.md and deleted fragments (scripts/release/check-release.sh).
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "changelog.d/**"
+
+# One fold at a time, never cancelled. A newer pending run may replace an older pending one;
+# nothing is lost, since each run folds every fragment on main's tip.
+concurrency:
+  group: changelog-fold
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  fold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The whole history: the fold orders fragments by the first-parent log that added them.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # If main moved meanwhile, the push is refused: start again from main's new tip and fold
+      # again. Folding again, rather than `git rebase`, can't conflict with a PR that still edited
+      # CHANGELOG.md itself, and picks up any fragment the newer push added.
+      - name: Fold and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch --quiet origin main
+            git reset --quiet --hard origin/main
+            node scripts/changelog/fold.mjs
+            pnpm exec oxfmt CHANGELOG.md
+            git add CHANGELOG.md changelog.d
+            if git diff --cached --quiet; then
+              echo "Nothing to fold."
+              exit 0
+            fi
+            # The release gate accepts exactly this shape; anything else would be refused there.
+            if git diff --cached --no-renames --name-status |
+              grep -vE $'^(M\tCHANGELOG\\.md|D\tchangelog\\.d/[^/]+\\.md)$'; then
+              echo "::error::The fold changed more than CHANGELOG.md and the fragments (above)."
+              exit 1
+            fi
+            n=$(git diff --cached --name-only --diff-filter=D -- changelog.d | wc -l | tr -d ' ')
+            git commit --quiet -m "docs(changelog): fold $n fragment(s)"
+            if git push --quiet origin HEAD:main; then
+              echo "Folded $n fragment(s) into CHANGELOG.md."
+              exit 0
+            fi
+            echo "main moved (attempt $attempt); folding again on its new tip."
+            sleep $((attempt * 5))
+          done
+          echo "::error::main kept moving; the fragments stay for the next push to fold."
+          exit 1

@@ -72,6 +72,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Changelog fold tests
+        run: node --test scripts/changelog/fold.test.mjs
+
       - name: Migrations match the schema
         run: pnpm --filter @repo/database migrate:check
 
