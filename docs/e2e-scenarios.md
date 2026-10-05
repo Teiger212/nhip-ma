@@ -146,8 +146,35 @@ are not here (the onboarding grill).
    invitation made and the role unchanged; and so does a manager who holds the kit's `owner`
    role (invited as `owner` by the platform admin into an office of the test's own), who
    otherwise sees Team as any manager does.
+4. **Removing someone asks first** (#174). As a manager, "Remove from office" on an agent's row
+   opens a confirmation (the kit's alert dialog) before anything happens: "Remove {name} from
+   the office?", "Removing {name} ends their account. Their guests return to Unassigned.", with
+   "Cancel" and a red "Remove" ({name} is the person's name, or their email when they have
+   none). Cancel closes it and the agent stays, on Team and in the office. Remove removes them
+   in that one step: their row leaves Team, and the account is gone (ADR 0013). In Vietnamese
+   the dialog reads "Xóa {name} khỏi văn phòng?", "Xóa {name} sẽ xóa tài khoản của họ. Khách
+   của họ trở về Chưa giao.", "Hủy" and "Xóa" (to be reviewed in #78).
+5. **The platform admin's membership is theirs alone** (#174). In an office of the test's own,
+   created by the platform admin (so their inert kit `owner` membership is in it), a manager who
+   holds the kit's `owner` role, and a manager who is the kit's `admin`, each ask the API to
+   remove the platform admin's membership (`POST /api/auth/organization/remove-member`, by
+   member id and by email) and to change its role
+   (`POST /api/auth/organization/update-member-role`, to `admin` and to `member`). Every ask
+   answers 403, and the platform admin is still in the office, as `owner`.
+6. **The platform admin never reaches a manager's browser** (#174). As the walk office's
+   manager, opening Team: neither the page itself nor any `/api/auth/` answer the browser gets
+   contains `admin@nhip.local`. Asked directly, the office as the manager reads it
+   (`GET /api/auth/organization/get-full-organization`, `GET /api/auth/organization/list-members`)
+   lists no platform admin, and `list-members`' `total` counts only the members it lists. The
+   platform admin's own view of the office still lists them: in the admin area (Admin →
+   Organizations → the office), their own row reads "Platform admin" (VI "Quản trị viên nền
+   tảng") rather than "Manager".
+7. **No thread goes to the platform admin** (#174, ADR 0022). The manager asks the owner API
+   (`POST /api/conversations/:id/owner`) to give a thread of the office to the platform admin
+   (their user id, read from the platform admin's view of the office): it answers 400, and the
+   thread's owner is unchanged.
 
-Spec: `apps/saas/tests/team.spec.ts` (Team 1–3; the agent's and the managers' API refusals run
+Spec: `apps/saas/tests/team.spec.ts` (Team 1–7; the agent's and the managers' API refusals run
 in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
 was taken costs no seeded login; "no invitation made" and "role unchanged" are read through the
 platform admin's view of the office).

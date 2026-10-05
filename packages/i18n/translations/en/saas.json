@@ -467,6 +467,12 @@
 				},
 				"pendingInvitations": "Pending invitations",
 				"removeMember": "Remove from office",
+				"confirmRemove": {
+					"title": "Remove {name} from the office?",
+					"message": "Removing {name} ends their account. Their guests return to Unassigned.",
+					"confirm": "Remove"
+				},
+				"platformAdmin": "Platform admin",
 				"title": "Team",
 				"people": "People"
 			},

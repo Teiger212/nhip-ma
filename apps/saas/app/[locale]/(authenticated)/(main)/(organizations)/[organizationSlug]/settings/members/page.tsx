@@ -1,8 +1,6 @@
 import { getActiveOrganization, getSession } from "@auth/lib/server";
 import { InviteMemberForm } from "@organizations/components/InviteMemberForm";
 import { OrganizationMembersBlock } from "@organizations/components/OrganizationMembersBlock";
-import { isPlatformAdmin } from "@repo/auth/lib/roles";
-import { db } from "@repo/database";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
 import { permix, setupPermissions } from "@shared/lib/permix";
@@ -44,16 +42,6 @@ export default async function OrganizationSettingsPage({
 		return notFound();
 	}
 
-	// The platform admin's membership is inert (ADR 0015): not one of the office's people.
-	const platformAdminIds = (
-		await db.member.findMany({
-			where: { organizationId: organization.id },
-			select: { userId: true, user: { select: { role: true } } },
-		})
-	)
-		.filter((member) => isPlatformAdmin(member.user.role))
-		.map((member) => member.userId);
-
 	const t = await getTranslations("organizations.settings");
 
 	return (
@@ -62,11 +50,8 @@ export default async function OrganizationSettingsPage({
 
 			<SettingsList>
 				<InviteMemberForm organizationId={organization.id} />
-				<OrganizationMembersBlock
-					organizationId={organization.id}
-					hiddenUserIds={platformAdminIds}
-					lockOwnRow
-				/>
+				{/* The auth API leaves the platform admin's inert row out for managers (#174). */}
+				<OrganizationMembersBlock organizationId={organization.id} lockOwnRow />
 			</SettingsList>
 		</>
 	);
