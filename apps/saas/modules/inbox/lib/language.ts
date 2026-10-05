@@ -16,7 +16,12 @@ export function detectLanguage(text: string): GuestLanguage {
 	if (/[ăâđơưảẻỉỏủỷạẹịọụỵẽĩũỹằắẳẵặầấẩẫậềếểễệồốổỗộờớởỡợừứửữự]/i.test(sample)) {
 		return "vi";
 	}
-	if (/\b(tôi|mình|muốn|thuê|mua|căn|hộ|phòng|ngủ|nhà|giá|quận|anh|chị)\b/i.test(sample)) {
+	// Whole words by any letter, not \b's ASCII: "thuê" and "nhà" end in a non-ASCII letter.
+	if (
+		/(?<!\p{L})(tôi|mình|muốn|thuê|mua|căn|hộ|phòng|ngủ|nhà|giá|quận|anh|chị)(?!\p{L})/iu.test(
+			sample,
+		)
+	) {
 		return "vi";
 	}
 	return "en";
