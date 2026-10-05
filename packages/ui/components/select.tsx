@@ -26,7 +26,11 @@ const SelectTrigger = ({
 		{...props}
 	>
 		{children}
-		<SelectPrimitive.Icon render={<ChevronsUpDownIcon className="size-4 opacity-50" />} />
+		{/* The icon as a child, not `render`: Base UI's default "▼" child would land in the svg
+		    and in the trigger's text ("Agent▼"). */}
+		<SelectPrimitive.Icon className="flex shrink-0 opacity-50">
+			<ChevronsUpDownIcon className="size-4" />
+		</SelectPrimitive.Icon>
 	</SelectPrimitive.Trigger>
 );
 

@@ -178,7 +178,8 @@
 			"documentation": "Tài liệu",
 			"home": "Trang chủ",
 			"language": "Ngôn ngữ",
-			"logout": "Đăng xuất"
+			"logout": "Đăng xuất",
+			"team": "Nhóm"
 		},
 		"notifications": {
 			"title": "Thông báo",
@@ -359,9 +360,9 @@
 			"title": "Văn phòng của bạn"
 		},
 		"roles": {
-			"admin": "Quản trị viên",
-			"member": "Thành viên",
-			"owner": "Chủ sở hữu",
+			"admin": "Quản lý",
+			"member": "Nhân viên",
+			"owner": "Quản lý",
 			"info": {
 				"description": "Các vai trò được liệt kê từ ít quyền nhất đến nhiều quyền nhất:",
 				"title": "Quyền theo vai trò"
@@ -386,10 +387,10 @@
 				"title": "Logo văn phòng"
 			},
 			"members": {
-				"activeMembers": "Thành viên đang hoạt động",
-				"description": "Xem tất cả thành viên đang hoạt động và các lời mời đang chờ của văn phòng.",
+				"activeMembers": "Đã tham gia",
+				"description": "Quản lý và nhân viên của văn phòng, và những người đã được mời.",
 				"invitations": {
-					"empty": "Bạn chưa mời thành viên nào.",
+					"empty": "Chưa mời ai.",
 					"expiresAt": "Hết hạn vào {date}",
 					"invitationStatus": {
 						"accepted": "Đã chấp nhận",
@@ -401,33 +402,33 @@
 					"resend": "Gửi lại lời mời"
 				},
 				"inviteMember": {
-					"description": "Để mời thành viên mới, hãy gửi lời mời cho họ.",
+					"description": "Mời một người vào văn phòng qua email, làm nhân viên hoặc quản lý.",
 					"email": "Email",
 					"notifications": {
 						"error": {
-							"description": "Chúng tôi không thể mời thành viên này. Vui lòng thử lại sau.",
-							"title": "Không mời được thành viên"
+							"description": "Chúng tôi không gửi được lời mời. Vui lòng thử lại sau.",
+							"title": "Không gửi được lời mời"
 						},
 						"success": {
-							"description": "Đã gửi lời mời cho thành viên.",
-							"title": "Đã mời thành viên"
+							"description": "Lời mời đang được gửi đi.",
+							"title": "Đã gửi lời mời"
 						}
 					},
 					"role": "Vai trò",
 					"submit": "Mời",
-					"title": "Mời thành viên"
+					"title": "Mời"
 				},
 				"leaveOrganization": "Rời văn phòng",
 				"notifications": {
 					"removeMember": {
 						"error": {
-							"description": "Không xóa được thành viên khỏi văn phòng. Vui lòng thử lại."
+							"description": "Không xóa được khỏi văn phòng. Vui lòng thử lại."
 						},
 						"loading": {
-							"description": "Đang xóa thành viên khỏi văn phòng..."
+							"description": "Đang xóa khỏi văn phòng..."
 						},
 						"success": {
-							"description": "Đã xóa thành viên khỏi văn phòng của bạn."
+							"description": "Đã xóa khỏi văn phòng."
 						}
 					},
 					"revokeInvitation": {
@@ -443,13 +444,13 @@
 					},
 					"updateMembership": {
 						"error": {
-							"description": "Không cập nhật được tư cách thành viên. Vui lòng thử lại."
+							"description": "Không đổi được vai trò. Vui lòng thử lại."
 						},
 						"loading": {
-							"description": "Đang cập nhật tư cách thành viên..."
+							"description": "Đang đổi vai trò..."
 						},
 						"success": {
-							"description": "Đã cập nhật tư cách thành viên"
+							"description": "Đã đổi vai trò"
 						}
 					},
 					"resendInvitation": {
@@ -465,8 +466,9 @@
 					}
 				},
 				"pendingInvitations": "Lời mời đang chờ",
-				"removeMember": "Xóa thành viên",
-				"title": "Thành viên"
+				"removeMember": "Xóa khỏi văn phòng",
+				"title": "Nhóm",
+				"people": "Mọi người"
 			},
 			"notifications": {
 				"organizationDeleted": "Đã xóa văn phòng của bạn.",

@@ -158,6 +158,14 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
 - **Office setup** today is two steps in the admin area: create the organization, then on
   its page invite members (`InviteMemberForm`) and connect pipes. ADR 0018's single step is
   not built.
+- **Team** (#82): a manager's user menu links to the kit's members page,
+  `/{locale}/{office slug}/settings/members` (`/api/office` returns the slug). The page is
+  managers only (`organization.manage`; anyone else gets a 404) and hides the platform admin's
+  row and the manager's own Leave and role. The role select offers Agent (`member`) and
+  Manager (`admin`) everywhere, the admin area included; an auth before-hook refuses `owner`
+  (alone, in a comma list or an array) in `invite-member` and `update-member-role` to anyone
+  but the platform admin. Better Auth alone refuses `owner` from a kit `admin` but grants it
+  from a manager who holds `owner`; it refuses an agent's invite, role change and removal itself.
 - **Assigning leads** (ADR 0022, replacing ADR 0015's pool): a thread starts Unassigned
   (`ownerId` null). The viewer is `{ userId, officeId, role }`: an **agent** sees only
   their own threads (`visibleTo`, `visibleSql`); a **manager** (a kit `owner` or `admin`
@@ -166,7 +174,7 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
   Unassigned; the last call wins). A manager whose approved reply is written on an
   Unassigned thread claims it, inside `beginAnswer`'s transaction and only while it is
   still unowned; a reply sent from the vendor's own app, or the auto-reply (ADR 0021),
-  claims nothing. `/api/office` returns the role and `/api/office/agents` the people a
+  claims nothing. `/api/office` returns the role (and the office's slug, for Team) and `/api/office/agents` the people a
   thread can go to. An owner whose account ends leaves their threads Unassigned
   (`onDelete: SetNull`). Spec: `tests/assign.spec.ts`.
 - **Offboarding** (ADR 0013): when a membership ends, the account is deleted in the same

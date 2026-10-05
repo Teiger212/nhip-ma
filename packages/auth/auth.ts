@@ -28,7 +28,7 @@ import { parseCookie as parseCookies } from "cookie";
 import { config } from "./config";
 import { officeEndHooks } from "./lib/offboarding";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
-import { isPlatformAdmin } from "./lib/roles";
+import { grantsOwner, isPlatformAdmin } from "./lib/roles";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
 const getLocaleFromRequest = (request?: Request) => {
@@ -195,6 +195,23 @@ export const authOptions = {
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
+			// A manager grants Agent or Manager, never the kit's `owner` (#82): only the platform
+			// admin makes an office's owner. Better Auth refuses `owner` to a kit `admin` (400 or
+			// 403), but grants it when the manager holds `owner`; this hook refuses both with 403,
+			// however the role is spelled (alone, in a comma list, in an array).
+			if (
+				(ctx.path.startsWith("/organization/invite-member") ||
+					ctx.path.startsWith("/organization/update-member-role")) &&
+				grantsOwner(ctx.body?.role)
+			) {
+				const session = await getSessionFromCtx(ctx);
+				if (session && !isPlatformAdmin(session.user.role)) {
+					throw new APIError("FORBIDDEN", {
+						code: "OWNER_NOT_GRANTABLE",
+						message: "Only Nhịp makes an office's owner.",
+					});
+				}
+			}
 			// One operator, one office (ADR 0010): an account already in an office cannot
 			// accept an invitation into another. The gate would refuse it as ambiguous anyway;
 			// refusing here keeps the membership table true.

@@ -227,8 +227,9 @@ PRs; "open" means not started unless it says otherwise.
    platform admin out of offices, pool then owner, per-connection pipe credentials.
    _Done_: the platform admin out of offices and landing in the admin area (#37), pool then
    owner (#46), per-connection credentials for Zalo (#38), office setup in the admin area in
-   two steps. _Open_: the one-step setup (ADR 0018); managers inviting their own agents (the
-   kit's members page exists but nothing links to it); WhatsApp credentials per connection
+   two steps, managers inviting their own agents from Team in the user menu (#82). _Open_:
+   the one-step setup (ADR 0018); the invite's language and the invitee's path (the onboarding
+   grill); WhatsApp credentials per connection
    (one number per deployment from env today); the intake checklist for a new agency (#128),
    whose answers go on #99.
 3. **Send and model safety**: the red team's send-path fixes, guest-proof drafts through the
