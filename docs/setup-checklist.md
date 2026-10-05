@@ -135,10 +135,10 @@ go-live.
 
 - [ ] **Choose a model that neither trains on nor keeps guests' text.** WhatsApp's Business
       Solution Terms 4.7 apply. On OpenRouter, every model call (greeting, translation,
-      follow-up) asks for zero-retention endpoints only (`provider: { zdr: true,
-    data_collection: "deny" }`). In OpenRouter's
-      model list, filter to models with a ZDR endpoint. Another provider needs a written
-      zero-retention or no-training term.
+      follow-up) asks for zero-retention endpoints only, with
+      `provider: { zdr: true, data_collection: "deny" }`. In OpenRouter's model list, filter
+      to models with a ZDR endpoint. Another provider needs a written zero-retention or
+      no-training term.
 - [ ] **Run the greeting test set** (first messages in EN, VI, JA, KO, RU, from the
       greeting ticket) on the cheapest candidates. Keep the cheapest one whose replies all
       pass the post-check and read well to you. If none passes, tell Claude before relaxing
