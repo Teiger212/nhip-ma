@@ -58,11 +58,12 @@ export function ThreadRow({
 							{preview}
 						</span>
 					) : null}
-					<span className={cn("mt-1.5 gap-1 flex flex-wrap items-center", action && "pr-24")}>
+					<span className={cn("mt-1.5 gap-1 flex flex-wrap items-center", action && "pr-20")}>
 						<ThreadFlags conversation={conversation} />
 					</span>
 				</span>
 			</button>
+			{/* Its 44px target centred on the badges' last line. */}
 			{action ? <div className="right-1.5 bottom-0 absolute">{action}</div> : null}
 		</li>
 	);
