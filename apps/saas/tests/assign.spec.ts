@@ -5,8 +5,8 @@ import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test
 import { assignerAs, userIdOf } from "./support/assign";
 import { ownerCopy } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
-import type { Joined } from "./support/invitee";
-import { joinOffice } from "./support/invitee";
+import type { Joined } from "./support/operators";
+import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Login } from "./support/seed";
 import { AGENT, AGENT_2, MANAGER, WALK_OFFICE_ID } from "./support/seed";
@@ -40,8 +40,8 @@ type Member = Person & { userId: string };
 
 /**
  * An office of the test's own (the platform admin creates it; deleted afterwards), with a Zalo OA
- * of its own, two agents and one or two managers (the kit's `admin`) who joined it through their
- * invitation links. No other spec writes to it, so its counts are exact.
+ * of its own, two agents and one or two managers (the kit's `admin`) who accepted their
+ * invitations into it. No other spec writes to it, so its counts are exact.
  */
 type OwnOffice = {
 	id: string;

@@ -9,8 +9,8 @@ import { assignerAs } from "./support/assign";
 import type { MockCrmLead } from "./support/crm";
 import { connectMockCrm, mockCrmLeads } from "./support/crm";
 import { expect, test as base } from "./support/fixtures";
-import type { Joined } from "./support/invitee";
-import { joinOffice } from "./support/invitee";
+import type { Joined } from "./support/operators";
+import { joinOffice } from "./support/operators";
 import { AGENT } from "./support/seed";
 import { apiAs } from "./support/session";
 
@@ -36,7 +36,7 @@ type Guest = {
 /** An office of the test's own, with a WhatsApp number of its own, one agent and a manager. */
 type Office = {
 	id: string;
-	/** The office's only agent, joined through the invitation link, in a browser of their own. */
+	/** The office's only agent, who accepted their invitation, in a browser of their own. */
 	agent: Joined;
 	/** A new guest writes to the office's WhatsApp number from their phone. */
 	guestWrites: () => Promise<Guest>;
@@ -48,7 +48,7 @@ type Office = {
  * `newOffice` makes an office of the test's own (deleted afterwards by the `admin` fixture), on
  * the mock CRM or on none, holding a WhatsApp number no other office holds (so it never takes the
  * walk office's number from another spec), with one agent and one manager (the kit's `admin`) who
- * joined through the invitation link; a new guest waits in Unassigned until the manager gives them
+ * accepted their invitations; a new guest waits in Unassigned until the manager gives them
  * to the agent (ADR 0022). No other spec writes to it, so its queue is this test's only.
  */
 const test = base.extend<{
