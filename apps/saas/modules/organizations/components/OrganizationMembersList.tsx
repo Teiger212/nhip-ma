@@ -29,7 +29,15 @@ import { useState } from "react";
 
 import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
 
-export function OrganizationMembersList({ organizationId }: { organizationId: string }) {
+export function OrganizationMembersList({
+	organizationId,
+	hiddenUserIds = [],
+	lockOwnRow = false,
+}: {
+	organizationId: string;
+	hiddenUserIds?: string[];
+	lockOwnRow?: boolean;
+}) {
 	const t = useTranslations();
 	const queryClient = useQueryClient();
 	const { user } = useSession();
@@ -140,48 +148,53 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 			accessorKey: "actions",
 			header: "",
 			cell: ({ row }) => {
+				const ownRow = row.original.userId === user?.id;
+				const locked = lockOwnRow && ownRow;
 				return (
 					<div className="gap-2 flex flex-row justify-end">
 						{canManageOrganization ? (
 							<>
 								<OrganizationRoleSelect
+									dataTest="team-member-role"
 									value={row.original.role}
 									onSelect={async (value) => updateMemberRole(row.original.id, value)}
-									disabled={!canManageOrganization || row.original.role === "owner"}
+									disabled={!canManageOrganization || row.original.role === "owner" || locked}
 								/>
-								<DropdownMenu>
-									<DropdownMenuTrigger
-										render={
-											<Button size="icon" variant="ghost">
-												<MoreVerticalIcon className="size-4" />
-											</Button>
-										}
-									/>
-									<DropdownMenuContent>
-										{row.original.userId !== user?.id && (
-											<DropdownMenuItem
-												disabled={!canManageOrganization}
-												className="text-destructive"
-												onClick={async () => removeMember(row.original.id)}
-											>
-												<TrashIcon className="mr-2 size-4" />
-												{t("organizations.settings.members.removeMember")}
-											</DropdownMenuItem>
-										)}
-										{row.original.userId === user?.id && (
-											<DropdownMenuItem
-												className="text-destructive"
-												onClick={async () => removeMember(row.original.id)}
-											>
-												<LogOutIcon className="mr-2 size-4" />
-												{t("organizations.settings.members.leaveOrganization")}
-											</DropdownMenuItem>
-										)}
-									</DropdownMenuContent>
-								</DropdownMenu>
+								{locked ? null : (
+									<DropdownMenu>
+										<DropdownMenuTrigger
+											render={
+												<Button size="icon" variant="ghost">
+													<MoreVerticalIcon className="size-4" />
+												</Button>
+											}
+										/>
+										<DropdownMenuContent>
+											{row.original.userId !== user?.id && (
+												<DropdownMenuItem
+													disabled={!canManageOrganization}
+													className="text-destructive"
+													onClick={async () => removeMember(row.original.id)}
+												>
+													<TrashIcon className="mr-2 size-4" />
+													{t("organizations.settings.members.removeMember")}
+												</DropdownMenuItem>
+											)}
+											{row.original.userId === user?.id && (
+												<DropdownMenuItem
+													className="text-destructive"
+													onClick={async () => removeMember(row.original.id)}
+												>
+													<LogOutIcon className="mr-2 size-4" />
+													{t("organizations.settings.members.leaveOrganization")}
+												</DropdownMenuItem>
+											)}
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
 							</>
 						) : (
-							<span className="font-medium text-sm text-foreground/60">
+							<span data-test="team-member-role" className="font-medium text-sm text-foreground/60">
 								{memberRoles[row.original.role as keyof typeof memberRoles]}
 							</span>
 						)}
@@ -193,7 +206,7 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 
 	const table = useTable({
 		features: clientDataTableFeatures,
-		data: organization?.members ?? [],
+		data: (organization?.members ?? []).filter((member) => !hiddenUserIds.includes(member.userId)),
 		columns,
 		manualPagination: true,
 		onSortingChange: setSorting,
@@ -210,7 +223,7 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id}>
+							<TableRow key={row.id} data-test="team-member">
 								{row.getVisibleCells().map((cell) => (
 									<TableCell key={cell.id}>
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}

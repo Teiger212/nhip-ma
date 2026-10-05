@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { OrganizationRoleSelect } from "@organizations/components/OrganizationRoleSelect";
+import { grantableMemberRoles } from "@organizations/hooks/member-roles";
 import { fullOrganizationQueryKey } from "@organizations/lib/api";
 import { authClient } from "@repo/auth/client";
 import { Button } from "@repo/ui/components/button";
@@ -16,7 +17,7 @@ import { z } from "zod";
 
 const formSchema = z.object({
 	email: z.email(),
-	role: z.enum(["member", "owner", "admin"]),
+	role: z.enum(grantableMemberRoles),
 });
 
 export function InviteMemberForm({ organizationId }: { organizationId: string }) {
@@ -76,7 +77,7 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
 									<FormItem>
 										<FormLabel>{t("organizations.settings.members.inviteMember.email")}</FormLabel>
 										<FormControl>
-											<Input type="email" {...field} />
+											<Input type="email" data-test="team-invite-email" {...field} />
 										</FormControl>
 									</FormItem>
 								)}
@@ -91,7 +92,13 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
 									<FormItem>
 										<FormLabel>{t("organizations.settings.members.inviteMember.role")}</FormLabel>
 										<FormControl>
-											<OrganizationRoleSelect value={field.value} onSelect={field.onChange} />
+											<OrganizationRoleSelect
+												dataTest="team-invite-role"
+												value={field.value}
+												onSelect={(role) => {
+													if (role !== "owner") field.onChange(role);
+												}}
+											/>
 										</FormControl>
 									</FormItem>
 								)}
@@ -100,7 +107,11 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
 					</div>
 
 					<div className="mt-4 flex justify-end">
-						<Button type="submit" loading={form.formState.isSubmitting}>
+						<Button
+							type="submit"
+							data-test="team-invite-submit"
+							loading={form.formState.isSubmitting}
+						>
 							{t("organizations.settings.members.inviteMember.submit")}
 						</Button>
 					</div>

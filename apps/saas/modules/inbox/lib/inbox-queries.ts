@@ -155,14 +155,28 @@ export function replyEndpoint(conversation: Conversation): string | null {
 	return null;
 }
 
-/** The signed-in operator and their role in the office (ADR 0015). */
-export function useOfficeRole(): { userId: string | null; role: "agent" | "manager" } {
+type OfficeViewer = { userId: string; role: "agent" | "manager"; officeSlug: string | null };
+
+/**
+ * The signed-in operator, their role in the office (ADR 0015) and the office's slug. An
+ * agent until known. Off for the platform admin, whom `/api/office` refuses.
+ */
+export function useOfficeRole({ enabled = true }: { enabled?: boolean } = {}): {
+	userId: string | null;
+	role: "agent" | "manager";
+	officeSlug: string | null;
+} {
 	const query = useQuery({
 		queryKey: ["inbox", "office"],
-		queryFn: () => api<{ userId: string; role: "agent" | "manager" }>("/api/office"),
+		queryFn: () => api<OfficeViewer>("/api/office"),
 		staleTime: 5 * 60_000,
+		enabled,
 	});
-	return { userId: query.data?.userId ?? null, role: query.data?.role ?? "agent" };
+	return {
+		userId: query.data?.userId ?? null,
+		role: query.data?.role ?? "agent",
+		officeSlug: query.data?.officeSlug ?? null,
+	};
 }
 
 export type OfficeAgent = { id: string; name: string; manager: boolean };

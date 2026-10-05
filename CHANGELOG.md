@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05 (managers invite their own agents from Team)
+
+### Added
+
+- **Team: a manager invites the office's agents** (#82, ADR 0015). A manager's user menu has "Team" (VI "Nhóm"), the kit's members page at `/<locale>/<office slug>/settings/members`: invite by email as Agent or Manager, see pending invitations, change an agent's role, remove someone. The roles read Agent and Manager (VI Nhân viên, Quản lý), in the admin area too, and `owner` is never offered. The page hides the platform admin's inert owner row and the manager's own Leave (ADR 0013 would delete the account) and role. An agent gets a 404 there and has no Team item; the API refuses an agent's invite, role change and removal (Better Auth), and an auth hook refuses `owner` in an invite or role change from anyone but the platform admin. `/api/office` also returns the office's slug.
+
 ## 2026-10-05 (a guest's new message alerts the operators, logged)
 
 ### Added

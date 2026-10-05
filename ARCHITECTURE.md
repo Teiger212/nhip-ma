@@ -158,6 +158,13 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
 - **Office setup** today is two steps in the admin area: create the organization, then on
   its page invite members (`InviteMemberForm`) and connect pipes. ADR 0018's single step is
   not built.
+- **Team** (#82): a manager's user menu links to the kit's members page,
+  `/{locale}/{office slug}/settings/members` (`/api/office` returns the slug). The page is
+  managers only (`organization.manage`; anyone else gets a 404) and hides the platform admin's
+  row and the manager's own Leave and role. The role select offers Agent (`member`) and
+  Manager (`admin`) everywhere, the admin area included; an auth before-hook refuses `owner`
+  in `invite-member` and `update-member-role` to anyone but the platform admin (Better Auth
+  already refuses it to a kit `admin`, and an agent invites, re-roles and removes no one).
 - **Pool then owner** (ADR 0015): a thread starts in the office's pool (`ownerId` null).
   The first agent whose approved reply is written claims it, inside `beginAnswer`'s
   transaction and only while it is still unowned, so two agents answering at once end with
@@ -165,7 +172,8 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
   `{ userId, officeId, role }`: an **agent** sees the pool and their own threads; a
   **manager** (a kit `owner` or `admin` member, mapped in `resolveOffice`) sees every thread
   and reassigns through `/api/conversations/:id/owner` (`setOwner`: to a member of the
-  office, or back to the pool). `/api/office` returns the role and `/api/office/agents` the
+  office, or back to the pool). `/api/office` returns the role (and the office's slug, for
+  Team) and `/api/office/agents` the
   people a thread can go to. An owner whose account ends leaves their threads to the pool
   (`onDelete: SetNull`). Spec: `tests/pool-owner.spec.ts`.
 - **Offboarding** (ADR 0013): when a membership ends, the account is deleted in the same

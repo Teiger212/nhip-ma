@@ -7,13 +7,23 @@ import { useState } from "react";
 import { OrganizationInvitationsList } from "./OrganizationInvitationsList";
 import { OrganizationMembersList } from "./OrganizationMembersList";
 
-export function OrganizationMembersBlock({ organizationId }: { organizationId: string }) {
+export function OrganizationMembersBlock({
+	organizationId,
+	hiddenUserIds,
+	lockOwnRow,
+}: {
+	organizationId: string;
+	/** Members not listed (Team hides the platform admin's inert owner row, #82). */
+	hiddenUserIds?: string[];
+	/** No Leave and no role change on your own row (Team, #82; ADR 0013). */
+	lockOwnRow?: boolean;
+}) {
 	const t = useTranslations();
 	const [activeTab, setActiveTab] = useState("members");
 
 	return (
 		<SettingsItem
-			title={t("organizations.settings.members.title")}
+			title={t("organizations.settings.members.people")}
 			description={t("organizations.settings.members.description")}
 		>
 			<Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab)}>
@@ -26,7 +36,11 @@ export function OrganizationMembersBlock({ organizationId }: { organizationId: s
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="members">
-					<OrganizationMembersList organizationId={organizationId} />
+					<OrganizationMembersList
+						organizationId={organizationId}
+						hiddenUserIds={hiddenUserIds}
+						lockOwnRow={lockOwnRow}
+					/>
 				</TabsContent>
 				<TabsContent value="invitations">
 					<OrganizationInvitationsList organizationId={organizationId} />

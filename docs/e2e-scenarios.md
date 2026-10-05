@@ -109,6 +109,48 @@ creates an office its owner). That membership must open nothing.
    Spec: `apps/saas/tests/roles.spec.ts` (Roles 2; also a thread of the office,
    `/api/conversations/:id`, answers 403).
 
+## Team (ADR 0015, #82)
+
+A manager invites the office's agents from **Team**, the kit's members page refitted (decided
+2026-10-05 on #82). It is reached from the user menu (no sidebar item: the sidebar stays Home
+and Inbox) and lives at `/<locale>/<office slug>/settings/members` (the walk office's slug is
+`walk`). Its words are Nhịp's: the roles read **Agent** and **Manager** (VI **Nhân viên**,
+**Quản lý**), never member, admin or owner. A manager is the kit's `admin` or `owner`, an agent
+its `member` (CONTEXT.md). The invite's language, resend and expiry, and the invitee's path
+are not here (the onboarding grill).
+
+1. **A manager invites an agent from Team.** As the walk office's manager, the user menu (the
+   ⋯ beside their name in the sidebar) has a "Team" item; it opens `/en/walk/settings/members`,
+   whose page title is "Team". The invite form's role offers exactly "Agent" and "Manager",
+   with "Agent" chosen; there is no "Owner". The manager invites a new email as Agent: a toast
+   says "Invitation sent", and under "Pending invitations" the email shows with role "Agent".
+   Inviting another email as Manager shows it with role "Manager". In Vietnamese
+   (`/vi/walk/settings/members`) the menu item is "Nhóm", the page title "Nhóm", and the role
+   options "Nhân viên" and "Quản lý".
+2. **An agent has no Team.** As an agent of the walk office, the user menu has no "Team", and
+   opening `/en/walk/settings/members` shows the not-found page (404) with no member list and
+   no invite form. The kit's API refuses the agent too: inviting into the office
+   (`POST /api/auth/organization/invite-member`, any role) answers 403 and no invitation is
+   made; changing a member's role (`POST /api/auth/organization/update-member-role`) answers
+   403 and the role is unchanged; removing a colleague
+   (`POST /api/auth/organization/remove-member`) is refused (4xx) and the colleague stays. The
+   platform admin's user menu (in the admin area) has no "Team" either.
+3. **No owner, no Leave, no platform admin on Team.** As the manager, Team's member list shows
+   the office's managers and agents, each with role "Manager" or "Agent"; the platform admin
+   (`admin@nhip.local`), whose kit `owner` membership is inert (ADR 0015), is not listed. The
+   manager's own row has no "Leave" (leaving would delete the account, ADR 0013) and no menu,
+   and their own role can't be changed there. An agent's row offers the roles "Agent" and
+   "Manager" only. The API never makes an owner from Team: a manager (the kit's `admin`)
+   inviting with role `owner`, or changing an agent's role to `owner`, answers 403, with no
+   invitation made and the role unchanged; and so does a manager who holds the kit's `owner`
+   role (invited as `owner` by the platform admin into an office of the test's own), who
+   otherwise sees Team as any manager does.
+
+Spec: `apps/saas/tests/team.spec.ts` (Team 1–3; the agent's and the managers' API refusals run
+in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
+was taken costs no seeded login; "no invitation made" and "role unchanged" are read through the
+platform admin's view of the office).
+
 ## Pipe connections (ADR 0017)
 
 The consent on Zalo's own screens (the OA owner approving Nhịp's app) happens at Zalo and is

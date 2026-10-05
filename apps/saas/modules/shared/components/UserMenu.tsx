@@ -3,7 +3,9 @@
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
+import { useOfficeRole } from "@inbox/lib/inbox-queries";
 import { authClient } from "@repo/auth/client";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import {
 	cn,
 	ColorModeToggle,
@@ -24,6 +26,7 @@ import {
 	LogOutIcon,
 	MoreVerticalIcon,
 	SettingsIcon,
+	UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -37,6 +40,12 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const pathname = useLocalePathname();
 	const settingsActive = pathname.startsWith("/settings/");
 	const marketingUrl = config.marketingUrl;
+	// Team is the manager's: the office's members page (#82). The platform admin has no office.
+	const office = useOfficeRole({ enabled: !!user && !isPlatformAdmin(user.role) });
+	const teamHref =
+		office.role === "manager" && office.officeSlug
+			? `/${office.officeSlug}/settings/members`
+			: null;
 
 	const onLogout = async () => {
 		await authClient.signOut({
@@ -161,6 +170,22 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 							>
 								<SettingsIcon className="mr-2 size-4" />
 								{t("app.userMenu.accountSettings")}
+							</LocaleLink>
+						)}
+					/>
+				) : null}
+
+				{teamHref ? (
+					<DropdownMenuItem
+						nativeButton={false}
+						render={(props) => (
+							<LocaleLink
+								{...props}
+								href={teamHref}
+								className={cn(props.className, "flex items-center")}
+							>
+								<UsersIcon className="mr-2 size-4" />
+								{t("app.userMenu.team")}
 							</LocaleLink>
 						)}
 					/>
