@@ -8,6 +8,7 @@ import {
 } from "@organizations/lib/api";
 import type { OrganizationMemberRole } from "@repo/auth";
 import { authClient } from "@repo/auth/client";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { checkPermission } from "@repo/permissions";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { Table, TableBody, TableCell, TableRow } from "@repo/ui/components/table";
 import { toast } from "@repo/ui/components/toast";
+import { useConfirmationAlert } from "@shared/components/ConfirmationAlertProvider";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { clientDataTableFeatures } from "@shared/lib/table-features";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,20 +31,17 @@ import { useMemo, useState } from "react";
 
 import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
 
-const NO_HIDDEN_USERS: string[] = [];
-
 export function OrganizationMembersList({
 	organizationId,
-	hiddenUserIds = NO_HIDDEN_USERS,
 	lockOwnRow = false,
 }: {
 	organizationId: string;
-	hiddenUserIds?: string[];
 	lockOwnRow?: boolean;
 }) {
 	const t = useTranslations();
 	const queryClient = useQueryClient();
 	const { user } = useSession();
+	const { confirm } = useConfirmationAlert();
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -159,6 +158,17 @@ export function OrganizationMembersList({
 			cell: ({ row }) => {
 				const ownRow = row.original.userId === user?.id;
 				const locked = lockOwnRow && ownRow;
+				// The admin area: the platform admin's own (inert) membership is not a manager's (#174).
+				if (ownRow && isPlatformAdmin(user?.role)) {
+					return (
+						<div className="gap-2 flex flex-row justify-end">
+							<span data-test="team-member-role" className="font-medium text-sm text-foreground/60">
+								{t("organizations.settings.members.platformAdmin")}
+							</span>
+						</div>
+					);
+				}
+				const name = row.original.user?.name || row.original.user?.email || "";
 				return (
 					<div className="gap-2 flex flex-row justify-end">
 						{canManageOrganization ? (
@@ -183,7 +193,22 @@ export function OrganizationMembersList({
 												<DropdownMenuItem
 													disabled={!canManageOrganization}
 													variant="destructive"
-													onClick={async () => removeMember(row.original.id)}
+													onClick={() =>
+														// Removal ends the account (ADR 0013), so it asks first (#174).
+														confirm({
+															title: t("organizations.settings.members.confirmRemove.title", {
+																name,
+															}),
+															message: t("organizations.settings.members.confirmRemove.message", {
+																name,
+															}),
+															confirmLabel: t(
+																"organizations.settings.members.confirmRemove.confirm",
+															),
+															destructive: true,
+															onConfirm: async () => removeMember(row.original.id),
+														})
+													}
 												>
 													<TrashIcon className="mr-2 size-4" />
 													{t("organizations.settings.members.removeMember")}
@@ -213,10 +238,7 @@ export function OrganizationMembersList({
 		},
 	];
 
-	const members = useMemo(
-		() => (organization?.members ?? []).filter((member) => !hiddenUserIds.includes(member.userId)),
-		[organization?.members, hiddenUserIds],
-	);
+	const members = useMemo(() => organization?.members ?? [], [organization?.members]);
 
 	const table = useTable({
 		features: clientDataTableFeatures,

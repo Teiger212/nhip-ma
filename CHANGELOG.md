@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-05 (Team asks before removing someone, and protects the platform admin)
+
+### Fixed
+
+- **Removing someone from Team asks first** (#174, ADR 0013). "Remove from office" opens the kit's alert dialog: "Remove {name} from the office?", "Removing {name} ends their account. Their guests return to Unassigned.", with Cancel and a red Remove (VI "Xóa {name} khỏi văn phòng?", "Xóa {name} sẽ xóa tài khoản của họ. Khách của họ trở về Chưa giao.", Hủy, Xóa; for review in #78). Remove still removes in that one step.
+- **No manager touches the platform admin's membership** (#174). Better Auth let a manager holding the kit's `owner` remove the platform admin's inert `owner` membership or change its role, and any manager change it once it was no longer `owner`. An auth before-hook beside the owner guard now refuses `remove-member` (by member id or email) and `update-member-role` on the platform admin's membership from anyone but the platform admin: 403 `PLATFORM_ADMIN_MEMBERSHIP`.
+- **The platform admin's row never reaches a manager's browser** (#174). An auth after-hook drops the platform admin from `get-full-organization` and `list-members` (with its `total`) for every caller but the platform admin, so their email is in no answer Team, the office layout or the client gets. Team no longer hides the row itself. In the admin area the platform admin's own row reads "Platform admin" (VI "Quản trị viên nền tảng") rather than "Manager".
+- **A thread can't be given to the platform admin** (#174, ADR 0022). `setOwner` refuses them, so `POST /api/conversations/:id/owner` answers 400 for their user id, as for anyone not in the office; such a thread would have been seen and alerted by no one.
+
 ## 2026-10-05 (a new guest is greeted at once)
 
 ### Added

@@ -2,12 +2,14 @@ import { passkey } from "@better-auth/passkey";
 import {
 	db,
 	deletePushSubscriptionsForSession,
+	findPlatformAdminIds,
 	getInvitationById,
 	getOrganizationMembershipsForUser,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
 	getUserById,
+	isPlatformAdminMembership,
 	keepOldestMembership,
 } from "@repo/database";
 import { config as i18nConfig, type Locale } from "@repo/i18n";
@@ -69,6 +71,25 @@ const github = socialProvider(
 	process.env.GITHUB_CLIENT_SECRET,
 	(credentials) => ({ ...credentials, scope: ["user:email"], disableImplicitSignUp: true }),
 );
+
+/** A kit answer that lists an office's members (`get-full-organization`, `list-members`). */
+function hasMembers(
+	value: unknown,
+): value is { members: { userId: string }[]; total?: unknown } & Record<string, unknown> {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"members" in value &&
+		Array.isArray(value.members) &&
+		value.members.every(
+			(member: unknown) =>
+				typeof member === "object" &&
+				member !== null &&
+				"userId" in member &&
+				typeof member.userId === "string",
+		)
+	);
+}
 
 /** Cancel the subscriptions among these purchases (the kit's rule, on every delete path). */
 async function cancelSubscriptions(purchases: Awaited<ReturnType<typeof getPurchasesByUserId>>) {
@@ -206,6 +227,33 @@ export const authOptions = {
 				) {
 					await officeEnd.afterLeave(left.userId);
 				}
+			} else if (
+				ctx.path === "/organization/get-full-organization" ||
+				ctx.path === "/organization/list-members"
+			) {
+				// The platform admin's membership is inert (ADR 0015): their row, email included,
+				// never reaches anyone else's browser (#174). Filtered here, so every caller of the
+				// kit's member lists (Team, the office layout, the client) gets the office's people only.
+				const returned: unknown = ctx.context.returned;
+				if (!hasMembers(returned)) {
+					return;
+				}
+				const session = await getSessionFromCtx(ctx);
+				if (!session || isPlatformAdmin(session.user.role)) {
+					return;
+				}
+				const hidden = await findPlatformAdminIds(returned.members.map((m) => m.userId));
+				if (hidden.length === 0) {
+					return;
+				}
+				const members = returned.members.filter((m) => !hidden.includes(m.userId));
+				return ctx.json({
+					...returned,
+					members,
+					...(typeof returned.total === "number"
+						? { total: returned.total - (returned.members.length - members.length) }
+						: {}),
+				});
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
@@ -234,6 +282,30 @@ export const authOptions = {
 					throw new APIError("FORBIDDEN", {
 						code: "OWNER_NOT_GRANTABLE",
 						message: "Only Nhịp makes an office's owner.",
+					});
+				}
+			}
+			// The platform admin's membership is theirs alone (#174): no manager removes it or
+			// changes its role. Better Auth lets a manager holding the kit's `owner` do both, and
+			// any manager once the role is no longer `owner`.
+			if (
+				ctx.path.startsWith("/organization/remove-member") ||
+				ctx.path.startsWith("/organization/update-member-role")
+			) {
+				const target: unknown = ctx.body?.memberIdOrEmail ?? ctx.body?.memberId;
+				const session = typeof target === "string" ? await getSessionFromCtx(ctx) : null;
+				if (
+					typeof target === "string" &&
+					session &&
+					!isPlatformAdmin(session.user.role) &&
+					(await isPlatformAdminMembership(
+						target,
+						ctx.body?.organizationId || session.session.activeOrganizationId,
+					))
+				) {
+					throw new APIError("FORBIDDEN", {
+						code: "PLATFORM_ADMIN_MEMBERSHIP",
+						message: "Only Nhịp changes its own membership.",
 					});
 				}
 			}

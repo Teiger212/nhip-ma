@@ -9,12 +9,9 @@ import { OrganizationMembersList } from "./OrganizationMembersList";
 
 export function OrganizationMembersBlock({
 	organizationId,
-	hiddenUserIds,
 	lockOwnRow,
 }: {
 	organizationId: string;
-	/** Members not listed (Team hides the platform admin's inert owner row, #82). */
-	hiddenUserIds?: string[];
 	/** No Leave and no role change on your own row (Team, #82; ADR 0013). */
 	lockOwnRow?: boolean;
 }) {
@@ -36,11 +33,7 @@ export function OrganizationMembersBlock({
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="members">
-					<OrganizationMembersList
-						organizationId={organizationId}
-						hiddenUserIds={hiddenUserIds}
-						lockOwnRow={lockOwnRow}
-					/>
+					<OrganizationMembersList organizationId={organizationId} lockOwnRow={lockOwnRow} />
 				</TabsContent>
 				<TabsContent value="invitations">
 					<OrganizationInvitationsList organizationId={organizationId} />
