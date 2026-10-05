@@ -149,13 +149,14 @@ describe("a new guest's first message gets one auto-reply (G1)", () => {
 	});
 
 	test("the seed's guests are not greeted; a dev-injected guest is", async () => {
-		await injectDevInbound({
-			pipe: "zalo",
+		const seeded = {
+			pipe: "zalo" as const,
 			guestId: "seeded",
 			text: "Hello",
 			officeId: OFFICE,
 			autoReply: false,
-		});
+		};
+		await injectDevInbound(seeded);
 		await injectDevInbound({ pipe: "zalo", guestId: "injected", text: "Hello", officeId: OFFICE });
 		await settleBackgroundWork();
 		expect(autoReplies(await thread("seeded"))).toHaveLength(0);
