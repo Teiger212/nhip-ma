@@ -14,7 +14,7 @@ import {
 } from "./content";
 import { guestAlertRecipients } from "./recipients";
 import { alertTag } from "./tag";
-import { alertTransport } from "./transport";
+import { type AlertTransport, alertTransport } from "./transport";
 
 /** How long the alert log keeps a row: well past any link an operator still opens. */
 export const ALERT_RETENTION_DAYS = 30;
@@ -34,7 +34,8 @@ class RecipientsFailed extends Error {
  */
 async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
 	const messages = await getMessagesForLocale(locale, "saas");
-	// The catalog is loaded untyped here, so next-intl cannot check keys; the content tests do.
+	// The catalog is loaded untyped here, so next-intl cannot check keys; alert-log.test.ts
+	// renders through this translator.
 	return createTranslator({ locale, messages, namespace: "inbox" }) as unknown as AlertTranslate;
 }
 
@@ -49,13 +50,15 @@ async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
 export async function alertGuestMessage(
 	runtime: Runtime,
 	conversation: Conversation,
-	now: () => Date = () => new Date(),
+	{
+		now = () => new Date(),
+		transport = alertTransport(runtime.config),
+	}: { now?: () => Date; transport?: AlertTransport } = {},
 ): Promise<void> {
-	const { store, config } = runtime;
+	const { store } = runtime;
 	const operators = await store.officeOperators(conversation.officeId);
 	const recipients = guestAlertRecipients({ ownerId: conversation.owner?.id ?? null }, operators);
 	const tag = recipients.length > 0 ? alertTag(conversation.id) : "";
-	const transport = alertTransport(config);
 	const translators = new Map<AlertLocale, AlertTranslate>();
 	// Error kinds only: an error's text can carry guest data (PDPL).
 	const failures: string[] = [];
@@ -96,12 +99,12 @@ export async function alertGuestMessage(
 			failures.push(error instanceof Error ? error.name : "unknown");
 		}
 	}
+	if (failures.length > 0) {
+		throw new RecipientsFailed(failures);
+	}
 	// Retention without a scheduler, like webhook deliveries: about one alert in a hundred prunes.
 	if (Math.random() < 0.01) {
 		await store.pruneAlerts(new Date(now().getTime() - ALERT_RETENTION_DAYS * 24 * 60 * 60 * 1000));
-	}
-	if (failures.length > 0) {
-		throw new RecipientsFailed(failures);
 	}
 }
 
