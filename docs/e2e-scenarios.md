@@ -146,8 +146,35 @@ are not here (the onboarding grill).
    invitation made and the role unchanged; and so does a manager who holds the kit's `owner`
    role (invited as `owner` by the platform admin into an office of the test's own), who
    otherwise sees Team as any manager does.
+4. **Removing someone asks first** (#174). As a manager, "Remove from office" on an agent's row
+   opens a confirmation (the kit's alert dialog) before anything happens: "Remove {name} from
+   the office?", "Removing {name} ends their account. Their guests return to Unassigned.", with
+   "Cancel" and a red "Remove" ({name} is the person's name, or their email when they have
+   none). Cancel closes it and the agent stays, on Team and in the office. Remove removes them
+   in that one step: their row leaves Team, and the account is gone (ADR 0013). In Vietnamese
+   the dialog reads "Xóa {name} khỏi văn phòng?", "Xóa {name} sẽ xóa tài khoản của họ. Khách
+   của họ trở về Chưa giao.", "Hủy" and "Xóa" (to be reviewed in #78).
+5. **The platform admin's membership is theirs alone** (#174). In an office of the test's own,
+   created by the platform admin (so their inert kit `owner` membership is in it), a manager who
+   holds the kit's `owner` role, and a manager who is the kit's `admin`, each ask the API to
+   remove the platform admin's membership (`POST /api/auth/organization/remove-member`, by
+   member id and by email) and to change its role
+   (`POST /api/auth/organization/update-member-role`, to `admin` and to `member`). Every ask
+   answers 403, and the platform admin is still in the office, as `owner`.
+6. **The platform admin never reaches a manager's browser** (#174). As the walk office's
+   manager, opening Team: neither the page itself nor any `/api/auth/` answer the browser gets
+   contains `admin@nhip.local`. Asked directly, the office as the manager reads it
+   (`GET /api/auth/organization/get-full-organization`, `GET /api/auth/organization/list-members`)
+   lists no platform admin, and `list-members`' `total` counts only the members it lists. The
+   platform admin's own view of the office still lists them: in the admin area (Admin →
+   Organizations → the office), their own row reads "Platform admin" (VI "Quản trị viên nền
+   tảng") rather than "Manager".
+7. **No thread goes to the platform admin** (#174, ADR 0022). The manager asks the owner API
+   (`POST /api/conversations/:id/owner`) to give a thread of the office to the platform admin
+   (their user id, read from the platform admin's view of the office): it answers 400, and the
+   thread's owner is unchanged.
 
-Spec: `apps/saas/tests/team.spec.ts` (Team 1–3; the agent's and the managers' API refusals run
+Spec: `apps/saas/tests/team.spec.ts` (Team 1–7; the agent's and the managers' API refusals run
 in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
 was taken costs no seeded login; "no invitation made" and "role unchanged" are read through the
 platform admin's view of the office).
@@ -234,16 +261,25 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
      through the API is a 404.
 
    Spec: `apps/saas/tests/assign.spec.ts` (Assign 1; an office of the test's own with two
-   invited agents and an invited manager, so the agents' counts are exact; "the Unassigned
-   view" is, until #163 adds it, the manager's owner filter set to Unassigned (`?owner=unassigned`),
-   with the flag in the list and the thread header; "not counted" is the agents' views at 0 and
-   no nav count; "by address" is the `?thread=` link showing `thread-not-found`).
+   invited agents and an invited manager, so the agents' counts are exact; it checks the
+   manager's owner filter set to Unassigned (`?owner=unassigned`), not the Unassigned view #163
+   adds (Assign 2 and 10 check the view), with the flag in the list and the thread header; "not
+   counted" is the agents' views at 0 and no nav count; "by address" is the `?thread=` link
+   showing `thread-not-found`).
 
 2. **Assigning gives the thread to that agent only.** On the thread's row in Unassigned, the
    manager picks "Assign to…" → agent 1.
    - The thread leaves Unassigned. Agent 1's Inbox has it, Your turn, marked "Yours".
    - Agent 2 still finds nothing (404).
    - Agent 1 approves a reply: it is sent from agent 1, and the thread stays theirs.
+
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 2; an office of the test's own with two
+   invited agents and an invited manager; agent 1 takes a name of their own, so the row's menu
+   item names them; "leaves Unassigned" is the row gone and the view at 0; agent 1 has no
+   Unassigned view; "stays theirs" is the approved reply (200) putting the thread under agent 1's
+   Sent, still "Yours", the manager's owner flag naming agent 1, and agent 2 still finding
+   nothing. "Sent from agent 1" is not checked: the thread shows no sender beyond "Sent from
+   Nhịp").
 
 3. **Two managers assign at once: the last one wins.** In an office with a second manager,
    manager 1 assigns a new guest to agent 1, then manager 2 assigns it to agent 2 within the
@@ -292,9 +328,18 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     manager's Inbox opens on the Unassigned view, which lists them oldest first with its
     count. "Assign to…" on the oldest row gives it to agent 1, and that row leaves the view:
     its count drops and the next guest heads the list.
+    Spec: `apps/saas/tests/assign.spec.ts` (Assign 10; an office of the test's own, each guest
+    filed before the next writes; "opens on" is `/en/inbox` with no view, the "Unassigned 3"
+    button pressed and first of the four views; "Assign to…" never selects its row: with the
+    newest guest's row selected, opening and closing the oldest row's menu leaves the oldest
+    unselected and its thread unopened; agent 1 then has the oldest guest, "Yours").
 11. **Waiting now lists Unassigned leads first for a manager.** Agent 1's guest has waited
     longer than a new Unassigned guest. The manager's Waiting now lists the Unassigned guest
     first, then agent 1's; agent 1's Waiting now lists only their own.
+    Spec: `apps/saas/tests/assign.spec.ts` (Assign 11; an office of the test's own, each guest
+    filed before the next writes: an Unassigned guest, then agent 1's, then a newer Unassigned
+    guest, so the manager's expected order (both Unassigned oldest first, then agent 1's) is
+    neither oldest-first nor newest-first overall; nameless Zalo guests are listed by their id).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 

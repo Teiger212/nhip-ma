@@ -467,6 +467,12 @@
 				},
 				"pendingInvitations": "Lời mời đang chờ",
 				"removeMember": "Xóa khỏi văn phòng",
+				"confirmRemove": {
+					"title": "Xóa {name} khỏi văn phòng?",
+					"message": "Xóa {name} sẽ xóa tài khoản của họ. Khách của họ trở về Chưa giao.",
+					"confirm": "Xóa"
+				},
+				"platformAdmin": "Quản trị viên nền tảng",
 				"title": "Nhóm",
 				"people": "Mọi người"
 			},
@@ -893,12 +899,14 @@
 		},
 		"views": {
 			"aria": "Lọc cuộc hội thoại",
+			"unassigned": "Chưa giao",
 			"yourTurn": "Đến lượt bạn",
 			"sent": "Đã gửi",
 			"all": "Tất cả"
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
 		"allCaughtUp": "Đã xử lý hết.",
+		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",
 		"sentTo": "Đã gửi cho {name}",
 		"sendFailed": "Gửi không thành công.",

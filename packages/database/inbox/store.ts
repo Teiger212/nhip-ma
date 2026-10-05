@@ -2,7 +2,7 @@ import { createId as cuid } from "@paralleldrive/cuid2";
 import { z } from "zod";
 
 import { Prisma, type PrismaClient } from "../prisma/generated/client";
-import { operatorNameOf } from "../prisma/queries/operators";
+import { isPlatformAdmin, operatorNameOf } from "../prisma/queries/operators";
 import { maskContactDetails } from "./mask-note";
 import {
 	AnswerStatus,
@@ -1172,10 +1172,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 
 		async setOwner(conversationId, ownerId, officeId) {
 			if (ownerId) {
-				const member = await db.member.count({
-					where: { organizationId: officeId, userId: ownerId },
+				// An operator of the office, never the platform admin: their membership is inert, so
+				// their thread would be seen and alerted by no one (ADR 0022, #174).
+				const member = await db.member.findUnique({
+					where: { organizationId_userId: { organizationId: officeId, userId: ownerId } },
+					select: { user: { select: { role: true } } },
 				});
-				if (member === 0) return false;
+				if (!member || isPlatformAdmin(member.user.role)) return false;
 			}
 			const { count } = await db.conversation.updateMany({
 				where: { id: conversationId, officeId },

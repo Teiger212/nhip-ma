@@ -12,6 +12,27 @@
 
 - **The nav count reads the list's poll on every page** (#136). The toasts need the guests' names, so the shell polls `/api/conversations` everywhere and `/api/conversations/your-turn` goes; the database is asked once per poll, as before.
 
+## 2026-10-05 (managers hand out leads from Unassigned)
+
+### Added
+
+- **A manager's Inbox opens on Unassigned** (#163, ADR 0022, spec #160). A new first view, "Unassigned" (VI "Chưa giao"; `?view=unassigned`), lists every thread with no owner, whatever its turn, oldest guest message first, with its count, and no Quiet fold. It is a manager's default view; agents don't have it, and an agent's `?view=unassigned` opens Your turn. The Inbox waits for the operator's role before it lists, so a manager never sees Your turn first. The owner filter sits this view out (it could only narrow it to itself or to nothing). Empty while the office has threads, it reads "Every lead is assigned." (VI "Mọi khách đã được giao.", `data-test="inbox-all-assigned"`). A manager's reply on a lead there makes it theirs, as before, and the view moves on to the next lead.
+- **"Assign to…" on each Unassigned row** (#163, DESIGN.md Thread Row). It's a small ghost pill at the row's end, on the badges' line, with a 44px tap target. It opens the kit's dropdown of the office's operators (`GET /api/office/agents`). Choosing one assigns at once through the owner route, and the row leaves the view. The pill sits beside the row's button, not inside it, so it never opens the thread. The thread list is now a list (`ul`/`li`).
+
+### Changed
+
+- **Home's Waiting now lists Unassigned leads first for a manager** (#163, ADR 0022): the Unassigned Your-turn threads, then the rest, each group in the queue's order (quiet last), at most five. An agent's is unchanged.
+- **The new Vietnamese wording waits on a native read** (#78): the view's "Chưa giao" (#162's label, reused) and "Mọi khách đã được giao."
+
+## 2026-10-05 (Team asks before removing someone, and protects the platform admin)
+
+### Fixed
+
+- **Removing someone from Team asks first** (#174, ADR 0013). "Remove from office" opens the kit's alert dialog: "Remove {name} from the office?", "Removing {name} ends their account. Their guests return to Unassigned.", with Cancel and a red Remove (VI "Xóa {name} khỏi văn phòng?", "Xóa {name} sẽ xóa tài khoản của họ. Khách của họ trở về Chưa giao.", Hủy, Xóa; for review in #78). Remove still removes in that one step.
+- **No manager touches the platform admin's membership** (#174). Better Auth let a manager holding the kit's `owner` remove the platform admin's inert `owner` membership or change its role, and any manager change it once it was no longer `owner`. An auth before-hook beside the owner guard now refuses `remove-member` (by member id or email) and `update-member-role` on the platform admin's membership from anyone but the platform admin: 403 `PLATFORM_ADMIN_MEMBERSHIP`. It reads the target from the field each route acts on, so a stray `memberIdOrEmail` beside `update-member-role`'s `memberId` doesn't get past it.
+- **The platform admin's row never reaches a manager's browser** (#174). An auth after-hook drops the platform admin from `get-full-organization` and `list-members` (with its `total`) for every caller but the platform admin, so their email is in no answer Team, the office layout or the client gets. Team no longer hides the row itself. In the admin area the platform admin's own row reads "Platform admin" (VI "Quản trị viên nền tảng") rather than "Manager", with no role select or Leave (the membership is inert, ADR 0015).
+- **A thread can't be given to the platform admin** (#174, ADR 0022). `setOwner` refuses them, so `POST /api/conversations/:id/owner` answers 400 for their user id, as for anyone not in the office; such a thread would have been seen and alerted by no one.
+
 ## 2026-10-05 (a new guest is greeted at once)
 
 ### Added
