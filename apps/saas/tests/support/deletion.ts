@@ -11,6 +11,10 @@ export type GuestDeletionReceipt = {
 	actorName: string;
 	/** ISO time of the deletion. */
 	at: string;
+	/** Why the manager deleted. */
+	reason: "guest_request" | "duplicate_or_spam" | "test_data" | "other";
+	/** The manager's note, phone numbers and emails masked; null without one. */
+	note: string | null;
 	messages: number;
 	/** Replies that went out. */
 	answers: number;

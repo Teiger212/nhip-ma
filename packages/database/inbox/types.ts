@@ -5,6 +5,7 @@ import type {
 	CrmLinkMethod,
 	CrmOutcomeStatus,
 	DraftSource,
+	GuestDeletionReason,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
@@ -425,12 +426,18 @@ export type InboxStore = {
 	 * that name it, in one transaction that also writes the anonymous lead tally (if the guest
 	 * wrote in) and the receipt. Locks the thread, then its Answers, as approve does; refused
 	 * while a reply is sending. `countMock` is the deployment's, as Home reads the funnel with
-	 * it; `actorId` is the manager who deletes.
+	 * it; `actorId` is the manager who deletes, `reason` and `note` why. The note is stored with
+	 * its phone numbers and emails masked; an empty one is none.
 	 */
 	deleteGuest: (
 		officeId: string,
 		conversationId: string,
-		options: { countMock: boolean; actorId: string },
+		options: {
+			countMock: boolean;
+			actorId: string;
+			reason: GuestDeletionReason;
+			note: string | null;
+		},
 	) => Promise<GuestDeletionResult>;
 	setOneShot: (officeId: string, id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */

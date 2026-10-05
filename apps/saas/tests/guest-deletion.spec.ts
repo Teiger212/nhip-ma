@@ -5,6 +5,7 @@ import path from "node:path";
 import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
 
 import { mockCrmLeads } from "./support/crm";
+import type { GuestDeletionReceipt } from "./support/deletion";
 import { guestDeletionRecords, holdReplySending } from "./support/deletion";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
@@ -38,6 +39,12 @@ const saas = JSON.parse(
 			cancel: string;
 			confirm: string;
 			done: string;
+			reasonLabel: string;
+			reasons: Record<Reason, string>;
+			noteLabel: string;
+			noteOptional: string;
+			noteHint: string;
+			noteRequired: string;
 		};
 	};
 	home: {
@@ -55,6 +62,10 @@ const deletionCopy = {
 	what: (count: number) => plural(saas.inbox.deletion.what, count),
 };
 const homeCopy = saas.home;
+
+/** Why a manager deletes a guest's data: one of a short list, always given. */
+type Reason = GuestDeletionReceipt["reason"];
+const REASONS: readonly Reason[] = ["guest_request", "duplicate_or_spam", "test_data", "other"];
 
 /** An ICU `{count, plural, one {…} other {…}}` rendered for `count`, as the app shows it. */
 function plural(template: string, count: number): string {
@@ -350,6 +361,46 @@ function confirmButton(dialog: Locator) {
 	return dialog.getByRole("button", { name: deletionCopy.confirm, exact: true });
 }
 
+/** The dialog's Reason select (a combobox). */
+function reasonSelect(dialog: Locator) {
+	return dialog.getByRole("combobox", { name: deletionCopy.reasonLabel });
+}
+
+/** A reason in the open Reason select's list (the list sits outside the dialog). */
+function reasonOption(page: Page, reason: Reason) {
+	return page.getByRole("option", { name: deletionCopy.reasons[reason], exact: true });
+}
+
+/** The manager opens the Reason select and picks a reason; the select shows it. */
+async function chooseReason(page: Page, dialog: Locator, reason: Reason) {
+	await reasonSelect(dialog).click();
+	await reasonOption(page, reason).click();
+	await expect(reasonOption(page, reason), "the reasons list closes").toHaveCount(0);
+	await expect(reasonSelect(dialog), "the select shows the chosen reason").toContainText(
+		deletionCopy.reasons[reason],
+	);
+}
+
+/** The note box: "Note (optional)", or "Note" when the reason is Other. */
+function noteBox(dialog: Locator, reason?: Reason) {
+	return dialog.getByRole("textbox", {
+		name: reason === "other" ? deletionCopy.noteLabel : deletionCopy.noteOptional,
+		exact: true,
+	});
+}
+
+/** The manager gives a reason, and a note when one is given, in the open dialog. */
+async function giveReason(page: Page, dialog: Locator, reason: Reason, note?: string) {
+	await chooseReason(page, dialog, reason);
+	if (note !== undefined) {
+		await noteBox(dialog, reason).fill(note);
+	}
+	await expect(
+		confirmButton(dialog),
+		"with a reason given, the confirm can be pressed",
+	).toBeEnabled();
+}
+
 /** The manager confirms in the dialog: the deletion is taken and the toast says so. */
 async function confirmDeletion(page: Page, dialog: Locator) {
 	const confirm = confirmButton(dialog);
@@ -365,10 +416,18 @@ async function confirmDeletion(page: Page, dialog: Locator) {
 	).toBeVisible();
 }
 
-/** The manager deletes the guest's data from their thread, through the dialog. */
-async function deleteAsManager(manager: Operator, guest: Guest) {
+/**
+ * The manager deletes the guest's data from their thread, through the dialog, giving a reason
+ * (the guest asked, unless said otherwise) and, when given, a note.
+ */
+async function deleteAsManager(
+	manager: Operator,
+	guest: Guest,
+	{ reason = "guest_request", note }: { reason?: Reason; note?: string } = {},
+) {
 	await openThreadOf(manager, guest);
 	const dialog = await openDeletionDialog(manager.page, guest);
+	await giveReason(manager.page, dialog, reason, note);
 	await confirmDeletion(manager.page, dialog);
 }
 
@@ -559,7 +618,7 @@ test.describe.configure({ timeout: 180_000 });
 
 // scenario: docs/e2e-scenarios.md Guest deletion 1
 test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
-	test("the manager's Thread actions → Delete guest data opens a dialog naming the guest, what goes (5 messages) and what is kept, with no CRM box and only its confirm red; confirming deletes the thread for the manager and the agent, the nav count drops, and the API answers 404", async ({
+	test("the manager's Thread actions → Delete guest data opens a dialog naming the guest, what goes (5 messages) and what is kept, with no CRM box and only its confirm red; the confirm waits for a reason, and for Other a note, under the note's hint; confirming deletes the thread for the manager and the agent, the nav count drops, and the API answers 404", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice("Deletion 1");
@@ -611,14 +670,57 @@ test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
 		).toBeVisible();
 		await expect(dialog.getByRole("checkbox"), "an office with no CRM: no CRM box").toHaveCount(0);
 
-		// Its only red is the Delete guest data button.
+		// A reason is required: until one is chosen, the confirm can't be pressed. The note is
+		// optional, and its hint says what to leave out.
 		const confirm = confirmButton(dialog);
 		await expect(confirm, "the dialog has a Delete guest data button").toBeVisible();
+		await expect(confirm, "no reason chosen: Delete guest data is disabled").toBeDisabled();
+		await expect(reasonSelect(dialog), "the dialog asks for a reason").toBeVisible();
+		await expect(noteBox(dialog), 'the note box is "Note (optional)"').toBeVisible();
+		await expect(
+			dialog.getByText(deletionCopy.noteHint, { exact: true }),
+			`the note's hint says "${deletionCopy.noteHint}"`,
+		).toBeVisible();
+
+		// The reasons offered.
+		await reasonSelect(dialog).click();
+		for (const reason of REASONS) {
+			await expect(
+				reasonOption(manager.page, reason),
+				`the reasons include "${deletionCopy.reasons[reason]}"`,
+			).toBeVisible();
+		}
+
+		// Other needs a note: the box becomes "Note", and the confirm stays disabled while it is
+		// empty (or only spaces), saying so.
+		await reasonOption(manager.page, "other").click();
+		await expect(reasonSelect(dialog)).toContainText(deletionCopy.reasons.other);
+		await expect(noteBox(dialog, "other"), 'with Other, the note box is "Note"').toBeVisible();
+		await expect(noteBox(dialog), 'and no longer "Note (optional)"').toHaveCount(0);
+		const noteRequired = dialog.getByText(deletionCopy.noteRequired, { exact: true });
+		await expect(confirm, "Other with no note: still disabled").toBeDisabled();
+		await expect(noteRequired, `it says "${deletionCopy.noteRequired}"`).toBeVisible();
+		await noteBox(dialog, "other").fill("   ");
+		await expect(confirm, "Other with only spaces for a note: still disabled").toBeDisabled();
+		const note = "Asked at the office to be forgotten";
+		await noteBox(dialog, "other").fill(note);
+		await expect(confirm, "Other with a note: Delete guest data can be pressed").toBeEnabled();
+		await expect(noteRequired, "the note is no longer asked for").toHaveCount(0);
+
+		// Its only red is the Delete guest data button.
 		const confirmRed = await redPartsOf(confirm);
 		expect(confirmRed, "the Delete guest data button is red").not.toEqual([]);
 		expect(await redPartsOf(dialog), "nothing else in the dialog is red").toEqual(confirmRed);
 
 		await confirmDeletion(manager.page, dialog);
+
+		// The receipt keeps the reason and the note (it holds no contact details, so as written).
+		const { receipts } = guestDeletionRecords(office.id);
+		expect(receipts, "one deletion on record").toHaveLength(1);
+		expect(receipts[0], "the receipt says why: Other, with the note").toMatchObject({
+			reason: "other",
+			note,
+		});
 
 		// The agent's open Inbox drops the thread within its poll, and so does the nav count.
 		await expect(view(agent.page, "Your turn", 1), "one guest waits on the agent now").toBeVisible(
@@ -724,12 +826,18 @@ test.describe("Guest deletion 3 — an agent can't delete", () => {
 		const { id: theirsId } = await threadSeenBy(agent, theirs);
 		const { id: poolId } = await threadSeenBy(agent, inPool);
 
-		// Through the API: refused, whatever the body, and before it is read.
+		// Through the API: refused, whatever the body (a full one, with its reason, too), and
+		// before it is read (no reason, or no body at all, is still a 403).
 		for (const [what, threadId] of [
 			["their own thread", theirsId],
 			["a pool thread", poolId],
 		] as const) {
-			for (const body of [{ deleteInCrm: true }, { deleteInCrm: false }, undefined]) {
+			for (const body of [
+				{ deleteInCrm: false, reason: "guest_request" },
+				{ deleteInCrm: true },
+				{ deleteInCrm: false },
+				undefined,
+			]) {
 				const res = await agent.api.post(deletionAddress(threadId), body);
 				const said = body === undefined ? "no body" : JSON.stringify(body);
 				expect(res.status(), `the agent deleting ${what} (${said}) is refused`).toBe(403);
@@ -782,7 +890,7 @@ test.describe("Guest deletion 3 — an agent can't delete", () => {
 
 // scenario: docs/e2e-scenarios.md Guest deletion 4
 test.describe("Guest deletion 4 — the platform admin can't delete", () => {
-	test("the platform admin, owner of the office, gets 403 and the thread is unchanged; signed out, 401; a manager of another office, 404; the office's own manager's same request deletes it", async ({
+	test("the platform admin, owner of the office, gets 403 and the thread is unchanged; signed out, 401; a manager of another office, 404, even with no reason; the office's own manager's same request deletes it", async ({
 		admin,
 		newOffice,
 		request,
@@ -791,7 +899,7 @@ test.describe("Guest deletion 4 — the platform admin can't delete", () => {
 		const { manager } = office;
 		const guest = await office.newGuest();
 		const { id: threadId } = await threadSeenBy(manager, guest);
-		const body = { deleteInCrm: false };
+		const body = { deleteInCrm: false, reason: "guest_request" };
 		expect(
 			await admin.memberEmails(office.id),
 			"the platform admin made the office, so the kit holds them as its owner",
@@ -807,6 +915,13 @@ test.describe("Guest deletion 4 — the platform admin can't delete", () => {
 		try {
 			const byOther = await otherManager.post(deletionAddress(threadId), body);
 			expect(byOther.status(), "a manager of another office finds no such thread").toBe(404);
+			const byOtherNoReason = await otherManager.post(deletionAddress(threadId), {
+				deleteInCrm: false,
+			});
+			expect(
+				byOtherNoReason.status(),
+				"with no reason either: still no such thread (404 before the body's 400)",
+			).toBe(404);
 		} finally {
 			await otherManager.dispose();
 		}
@@ -844,16 +959,24 @@ test.describe("Guest deletion 7 — no CRM, no checkbox", () => {
 		expect((await manager.api.get(threadAddress(threadId))).status(), "nothing deleted").toBe(200);
 
 		// The API, asked to delete in the CRM too: the thread goes, and no CRM is touched.
-		const res = await manager.api.post(deletionAddress(threadId), { deleteInCrm: true });
+		const res = await manager.api.post(deletionAddress(threadId), {
+			deleteInCrm: true,
+			reason: "test_data",
+		});
 		expect(res.status(), "the deletion is taken").toBe(200);
 		expect(await res.json(), "no CRM lead, so no CRM result").toEqual({ crm: null });
 		await expectGoneThroughApi(manager, guest, threadId);
 		expect(mockCrmLeads(office.id), "no lead anywhere for the office").toEqual([]);
 		const { receipts } = guestDeletionRecords(office.id);
 		expect(receipts, "one deletion on record").toHaveLength(1);
-		expect(receipts[0], "the record names no CRM and no CRM result").toMatchObject({
+		expect(
+			receipts[0],
+			"the record names no CRM and no CRM result, and keeps the reason, with no note",
+		).toMatchObject({
 			crmKind: null,
 			crmResult: null,
+			reason: "test_data",
+			note: null,
 		});
 	});
 });
@@ -882,7 +1005,10 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 		await manager.page.keyboard.press("Escape");
 
 		// The API refuses too.
-		const refused = await manager.api.post(deletionAddress(threadId), { deleteInCrm: false });
+		const refused = await manager.api.post(deletionAddress(threadId), {
+			deleteInCrm: false,
+			reason: "guest_request",
+		});
 		expect(refused.status(), "deleting while a reply is sending is refused").toBe(409);
 		expect(await refused.json()).toEqual({ error: "reply_sending" });
 
@@ -903,7 +1029,7 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 
 // scenario: docs/e2e-scenarios.md Guest deletion 10 (the deletions with no CRM; the CRM box's are #139's)
 test.describe("Guest deletion 10 — the record names no guest", () => {
-	test("two deletions in an office with no CRM leave one receipt each, with the manager, a time, the message and reply counts and no CRM result; no receipt or lead tally holds the guest's name, Zalo id, thread id or text", async ({
+	test("the API refuses (400) a deletion with no reason, an unknown one, or Other with no note, deleting and recording nothing; two deletions in an office with no CRM leave one receipt each, with the manager, a time, the message and reply counts, the reason, the note masked ([phone], [email]) or null, and no CRM result; no receipt or lead tally holds the guest's name, Zalo id, thread id, text, or the note's phone or email", async ({
 		newOffice,
 	}) => {
 		const started = Date.now();
@@ -920,21 +1046,57 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 		const { id: answeredId } = await threadSeenBy(manager, answered);
 		const { id: unansweredId } = await threadSeenBy(manager, unanswered);
 
-		// The manager deletes the first through the dialog, the second through the API.
-		await deleteAsManager(manager, answered);
-		const res = await manager.api.post(deletionAddress(unansweredId), { deleteInCrm: false });
-		expect(res.status(), "the second deletion is taken").toBe(200);
-		await expectGoneThroughApi(manager, answered, answeredId);
+		// The manager deletes the unanswered guest through the API: refused with no reason, an
+		// unknown one, or Other with no note (empty, or only spaces); nothing is deleted and
+		// nothing is recorded.
+		for (const [what, body] of [
+			["no reason", { deleteInCrm: false }],
+			["an unknown reason", { deleteInCrm: false, reason: "no_longer_interested" }],
+			["Other with no note", { deleteInCrm: false, reason: "other" }],
+			["Other with an empty note", { deleteInCrm: false, reason: "other", note: "" }],
+			["Other with a note of spaces", { deleteInCrm: false, reason: "other", note: "   " }],
+		] as const) {
+			const refused = await manager.api.post(deletionAddress(unansweredId), body);
+			expect(refused.status(), `deleting with ${what} is refused`).toBe(400);
+		}
+		expect(
+			(await manager.api.get(threadAddress(unansweredId))).status(),
+			"the refused deletions left the thread",
+		).toBe(200);
+		expect(
+			guestDeletionRecords(office.id).receipts,
+			"the refused deletions left no receipt",
+		).toEqual([]);
+
+		// With a reason and no note, it is taken.
+		const res = await manager.api.post(deletionAddress(unansweredId), {
+			deleteInCrm: false,
+			reason: "duplicate_or_spam",
+		});
+		expect(res.status(), "the API deletion is taken").toBe(200);
+
+		// Then the answered guest through the dialog, the guest having asked, with a note that
+		// slips in a Vietnamese mobile number and an email (and no other digit).
+		const phone = "0912 345 678";
+		const email = "guest.mail@example.com";
+		await deleteAsManager(manager, answered, {
+			reason: "guest_request",
+			note: `Asked by phone on ${phone} and by mail from ${email} to be forgotten`,
+		});
 		await expectGoneThroughApi(manager, unanswered, unansweredId);
+		await expectGoneThroughApi(manager, answered, answeredId);
 
 		const { receipts, tallies } = guestDeletionRecords(office.id);
 		expect(receipts, "one receipt per deletion").toHaveLength(2);
 		const expected = [
-			{ messages: 4, answers: 1 },
-			{ messages: 2, answers: 0 },
+			{ messages: 2, answers: 0, reason: "duplicate_or_spam", note: null },
+			{ messages: 4, answers: 1, reason: "guest_request" },
 		];
 		receipts.forEach((receipt, i) => {
-			expect(receipt, `receipt ${i + 1}: the manager, the counts, no CRM result`).toMatchObject({
+			expect(
+				receipt,
+				`receipt ${i + 1}: the manager, the counts, the reason, no CRM result`,
+			).toMatchObject({
 				officeId: office.id,
 				actorId: manager.id,
 				actorName: manager.name,
@@ -954,6 +1116,15 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 		// something to look at).
 		expect(tallies, "one lead tally per deleted guest").toHaveLength(2);
 
+		// The note is kept with its contact details masked: neither the number (nor any part of
+		// it) nor the email is stored.
+		const note = receipts[1].note ?? "";
+		expect(note, "the dialog's note is kept").toContain("to be forgotten");
+		expect(note, "the phone number is masked").toContain("[phone]");
+		expect(note, "the email is masked").toContain("[email]");
+		expect(note, "no part of the phone number is kept").not.toMatch(/\d{3}/);
+		expect(note, "no part of the email is kept").not.toMatch(/@|example\.com|guest\.mail/);
+
 		const record = JSON.stringify({ receipts, tallies });
 		const identifiers: [string, string][] = [
 			["the first guest's name and Zalo id", answered.id],
@@ -965,6 +1136,9 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 				"a message's text",
 				text,
 			]),
+			["the phone number in the note", phone],
+			["the phone number in the note, without spaces", phone.replaceAll(" ", "")],
+			["the email in the note", email],
 		];
 		for (const [what, value] of identifiers) {
 			expect(record, `no receipt or tally holds ${what}`).not.toContain(value);

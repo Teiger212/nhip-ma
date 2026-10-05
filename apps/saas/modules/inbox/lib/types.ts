@@ -9,6 +9,7 @@ export {
 	CrmLinkMethod,
 	CrmOutcomeStatus,
 	DraftSource,
+	GuestDeletionReason,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,

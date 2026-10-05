@@ -192,7 +192,7 @@ export type LeadTallyScalarFieldEnum = z.infer<typeof LeadTallyScalarFieldEnumSc
 
 // File: GuestDeletionScalarFieldEnum.schema.ts
 
-export const GuestDeletionScalarFieldEnumSchema = z.enum(['id', 'officeId', 'actorId', 'actorName', 'at', 'messages', 'answers', 'translations', 'notifications', 'crmKind', 'crmResult'])
+export const GuestDeletionScalarFieldEnumSchema = z.enum(['id', 'officeId', 'actorId', 'actorName', 'at', 'reason', 'note', 'messages', 'answers', 'translations', 'notifications', 'crmKind', 'crmResult'])
 
 export type GuestDeletionScalarFieldEnum = z.infer<typeof GuestDeletionScalarFieldEnumSchema>;
 
@@ -303,6 +303,12 @@ export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatusSchema>;
 export const AlertKindSchema = z.enum(['guest', 'returned', 'assigned', 'test'])
 
 export type AlertKind = z.infer<typeof AlertKindSchema>;
+
+// File: GuestDeletionReason.schema.ts
+
+export const GuestDeletionReasonSchema = z.enum(['guest_request', 'duplicate_or_spam', 'test_data', 'other'])
+
+export type GuestDeletionReason = z.infer<typeof GuestDeletionReasonSchema>;
 
 // File: GuestDeletionCrmResult.schema.ts
 
@@ -803,6 +809,8 @@ export const GuestDeletionSchema = z.object({
   actorId: z.string().nullish(),
   actorName: z.string(),
   at: z.date(),
+  reason: GuestDeletionReasonSchema.default("other"),
+  note: z.string().nullish(),
   messages: z.number().int(),
   answers: z.number().int(),
   translations: z.number().int(),

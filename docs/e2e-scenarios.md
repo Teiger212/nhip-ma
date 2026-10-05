@@ -543,6 +543,12 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - It says the chat is "Kept elsewhere: the chat in your Zalo OA".
    - It says "This can't be undone."
    - It has no CRM checkbox, and its only red control is the "Delete guest data" button.
+   - It asks for a **Reason** (required): "The guest asked to be deleted", "Duplicate or spam",
+     "Test data" or "Other". "Delete guest data" is disabled until one is chosen.
+   - It has a "Note (optional)" box, up to 500 characters, with the hint "Don't include the
+     guest's name or contact details." With "Other" the box is "Note" and required: "Delete
+     guest data" stays disabled, saying "Add a note for "Other".", until the note has text.
+   - The deletion's receipt keeps the reason and the note (see 10).
 
    Confirming does three things:
    - The thread leaves the manager's Inbox under every view and every owner filter, and a
@@ -557,7 +563,11 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    judged on a loaded Inbox; "red" is what the browser paints red (fill, text, border or icon):
    the confirm button is, nothing else in the dialog is, and neither is the menu item (ADR 0020,
    Q5); the agent's open Inbox and nav count drop within the poll; "every owner filter" is each
-   option of the manager's Showing filter).
+   option of the manager's Showing filter. The manager confirms with Other and a note: the
+   confirm is disabled with no reason, and with Other while the note is empty or only spaces
+   (the spaces being this spec's reading of "has text"); the four reasons are offered; the red
+   check runs with the reason and note given; the receipt keeps `other` and the note as typed,
+   which holds no contact details).
 
 2. **Home's numbers don't move when a guest is deleted.** Three guests write. The agent answers
    two of them, and one of those two writes back. Note Home's
@@ -583,16 +593,17 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    `deleteInCrm` true or false. The thread and its messages are unchanged afterwards, for the
    agent and the manager.
    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 3; 403 `{ error: "forbidden" }`
-   also with no body, since the agent is refused before the body is read; the manager's header
+   with a full body (a reason given), and also with no reason or no body, since the agent is
+   refused before the body is read; the manager's header
    on the agent's thread has Thread actions, the positive control; "unchanged" is both threads
    still opening for both, with the guest's message and the agent's reply. It also checks a pool
    thread, which agents still see until ADR 0022 is built; that part goes with the pool).
 4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
    `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
-   another office it answers 404.
+   another office it answers 404, even with no reason (404 before the body's 400).
    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 4; "a manager of another
-   office" is the walk office's manager; the office's own manager's same request then deletes
-   the thread, so the refusals were about who asked).
+   office" is the walk office's manager; every request carries a reason, and the office's own
+   manager's same request then deletes the thread, so the refusals were about who asked).
 5. **The CRM box is ticked when Nhịp created the lead.** The office is on the mock CRM. A new
    guest writes, and the thread says "In CRM: <guest>"; the mock CRM holds the lead Nhịp made.
    - The manager's dialog has "Also delete <guest> in Mock CRM", ticked. Confirming leaves no
@@ -611,7 +622,8 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    and the deletion API, given `deleteInCrm: true`, deletes the thread and touches no CRM.
    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 7; the dialog says nothing
    about a CRM, and Cancel deletes nothing; "touches no CRM" is the answer's `{ crm: null }`, no
-   lead in the mock CRM for the office, and a receipt with no CRM and no CRM result).
+   lead in the mock CRM for the office, and a receipt with no CRM and no CRM result; the API's
+   reason, `test_data`, is on the receipt, with `note: null`).
 8. **Not while a reply is sending.** `holdReplySending` holds the agent's approved reply in
    "sending":
    - The manager's "Delete guest data" is disabled with "A reply is still sending".
@@ -633,13 +645,24 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 10. **The record names no guest.** After deletions with the box ticked, unticked and with no CRM,
     `guestDeletionRecords` returns one receipt per deletion:
     - each with the manager's name, a time, the message and reply counts;
+    - the reason the manager gave (`guest_request`, `duplicate_or_spam`, `test_data` or
+      `other`);
+    - the note, with every phone number and email masked on the server before saving
+      (`[phone]`, `[email]`), or none when no note was given;
     - the CRM result: `deleted`, `unlinked`, or none.
 
     No value in any receipt or lead tally contains the guest's name, their Zalo user id, the
-    thread's id or the CRM lead's id.
+    thread's id or the CRM lead's id, nor a phone number or email typed into the note.
+
+    `POST /api/conversations/:id/deletion` (`{ deleteInCrm, reason, note? }`) answers 400 with no
+    reason, an unknown reason, or `other` with no note (empty or only spaces counting as none),
+    and deletes and records nothing.
     Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 10, the deletions with no CRM
     only; the ticked and unticked ones come with the CRM box, #139. Two deletions, one through the
-    dialog and one through the API: each receipt has the manager's id and name, a time within the
-    test, its messages (the reply included) and replies, and no CRM; one lead tally per deleted
-    guest (ADR 0020), so the identifier check has something to read; no message text either,
-    ADR 0020 keeping no free text.)
+    API (`duplicate_or_spam`, no note, after its five 400s: the thread still opens and there is no
+    receipt) and one through the dialog (`guest_request`, a note with "0912 345 678" and an email
+    and no other digit): each receipt has the manager's id and name, a time within the test, its
+    messages (the reply included) and replies, its reason, and no CRM; the API's note is null, the
+    dialog's holds `[phone]` and `[email]` and no run of three digits, no `@` and no part of the
+    email; one lead tally per deleted guest (ADR 0020), so the identifier check has something to
+    read; no message text either, ADR 0020 keeping no free text.)

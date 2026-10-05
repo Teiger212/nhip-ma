@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { Prisma, type PrismaClient } from "../prisma/generated/client";
 import { operatorNameOf } from "../prisma/queries/operators";
+import { maskContactDetails } from "./mask-note";
 import {
 	AnswerStatus,
 	CrmLinkMethod,
@@ -646,7 +647,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
-		async deleteGuest(officeId, conversationId, { countMock, actorId }) {
+		async deleteGuest(officeId, conversationId, { countMock, actorId, reason, note }) {
 			// Short on purpose: an approval waiting on this lock gives up after Prisma's 5 s
 			// transaction timeout (#137). No CRM call in here; the guest-deletion module makes
 			// it after the commit (ADR 0020).
@@ -708,6 +709,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						officeId,
 						actorId: actor ? actorId : null,
 						actorName: actor ? operatorNameOf(actor) : actorId,
+						reason,
+						// Masked here, so no caller can store a guest's number or email on it.
+						note: note?.trim() ? maskContactDetails(note.trim()) : null,
 						messages,
 						answers: answers.filter((answer) => answer.status === "sent").length,
 						translations,
