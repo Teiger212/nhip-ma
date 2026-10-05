@@ -262,7 +262,13 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
   pass, then re-run the release. Only the last commit of each push gets a run. On main each
   commit has its own CI concurrency group, so a newer push never cancels it; a run cancelled by
   hand can simply be re-run. Pushes to main run CI even for docs-only changes: `paths-ignore`
-  applies to pull requests only.
+  applies to pull requests only. The one exception is a changelog fold commit (#200), which
+  github-actions[bot] pushes with `GITHUB_TOKEN` and so starts no CI: with no run of its own,
+  it passes on its parent's CI, and the OK line names that parent's run. It counts as a fold
+  only when `scripts/release/is-changelog-fold.sh` confirms all of this: one parent; author
+  and committer both github-actions[bot]; the fold's subject; and, against its parent, a
+  change to `CHANGELOG.md` plus deleted `changelog.d/` fragments and nothing else. The
+  parent itself gets no exception, so the exception can't chain.
 
 The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
 then fast-forwards `production` with the deploy key, and Vercel builds production from it.
@@ -296,7 +302,8 @@ bad migration noticed the next morning is past it. Before releasing such a migra
 `neon branches create --name pre-vX.Y.Z --parent production --project-id lingering-bonus-85587787`.
 
 `scripts/release/check-release.test.sh` checks the gate against known commits; it reads GitHub,
-so it runs by hand. Notes:
+so it runs by hand. Its changelog fold cases run offline, on commits it fabricates in a
+throwaway repository with a stub `gh`. Notes:
 
 - **A refused release** leaves its tag behind; remove both with
   `gh release delete vX.Y.Z --cleanup-tag`.
