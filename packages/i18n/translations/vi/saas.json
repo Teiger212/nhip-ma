@@ -896,12 +896,14 @@
 		},
 		"views": {
 			"aria": "Lọc cuộc hội thoại",
+			"unassigned": "Chưa giao",
 			"yourTurn": "Đến lượt bạn",
 			"sent": "Đã gửi",
 			"all": "Tất cả"
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
 		"allCaughtUp": "Đã xử lý hết.",
+		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",
 		"sentTo": "Đã gửi cho {name}",
 		"sendFailed": "Gửi không thành công.",

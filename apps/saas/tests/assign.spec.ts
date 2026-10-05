@@ -200,11 +200,11 @@ async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
 		// A row (it carries its owner flag), or the list saying it is empty, caught up, unmatched,
-		// or that only Quiet threads wait.
+		// that every lead is assigned (a manager's Unassigned), or that only Quiet threads wait.
 		// The view buttons above the list are buttons too, so a button proves nothing.
 		threadList(page)
 			.locator(
-				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"]',
+				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
 			)
 			// A Quiet row sits folded away until opened, so only a shown one counts.
 			.filter({ visible: true })
@@ -213,8 +213,8 @@ async function openInbox(page: Page) {
 	).toBeVisible();
 }
 
-/** A view button (Your turn / Sent / All) with its count. */
-function view(page: Page, name: "Your turn" | "Sent" | "All", count?: number) {
+/** A view button (Unassigned, a manager's only / Your turn / Sent / All) with its count. */
+function view(page: Page, name: "Unassigned" | "Your turn" | "Sent" | "All", count?: number) {
 	return page.getByRole("button", {
 		name: count === undefined ? new RegExp(`^${name} \\d+$`) : `${name} ${count}`,
 		exact: count !== undefined,
@@ -225,6 +225,50 @@ function view(page: Page, name: "Your turn" | "Sent" | "All", count?: number) {
 async function showAll(page: Page) {
 	await view(page, "All").click();
 	await expect(view(page, "All")).toHaveAttribute("aria-pressed", "true");
+}
+
+/** The view buttons, left to right: each read as its view's name. */
+const VIEW_TAB = /^(Unassigned|Your turn|Sent|All) \d+$/;
+
+/** Any of this file's guests, by the Zalo id they are listed by. */
+const ANY_GUEST = /^e2e-assign-guest-/;
+
+/** Every guest's row in the list, top to bottom. */
+function guestRows(page: Page) {
+	return threadList(page).getByRole("button", { name: ANY_GUEST });
+}
+
+/** Text that holds this guest's id (a row, a Waiting now entry): for ordered `toHaveText`. */
+function naming(guest: Guest) {
+	return new RegExp(escapeRegExp(guest.id));
+}
+
+/**
+ * The row's own "Assign to…" (a manager's Unassigned view): a button beside the row's button, in
+ * the same list item. The inner locator is rooted at the page, as `filter({ has })` looks for it
+ * inside each list item.
+ */
+function assignFromRow(page: Page, guest: Guest) {
+	return threadList(page)
+		.getByRole("listitem")
+		.filter({ has: page.getByRole("button", { name: new RegExp(`^${guest.id}\\b`) }) })
+		.getByRole("button", { name: copy.assignTo, exact: true });
+}
+
+/** The open "Assign to…" menu's item for an operator, by their name. */
+function assignMenuItem(page: Page, name: string) {
+	return page.getByRole("menu").getByRole("menuitem", { name, exact: true });
+}
+
+/** Home, with Waiting now drawn. */
+async function openHome(page: Page) {
+	await page.goto("/en/home");
+	await expect(page.getByRole("heading", { name: "Waiting now" })).toBeVisible();
+}
+
+/** Every guest Home's Waiting now lists, top to bottom: each is a link named by the guest. */
+function waitingNow(page: Page) {
+	return page.getByRole("main").getByRole("link", { name: ANY_GUEST });
 }
 
 async function search(page: Page, text: string) {
@@ -419,6 +463,69 @@ test.describe("Assign 1 — a new guest waits in Unassigned, for managers only",
 			await expect(navCount(agent.page), `${agent.label}: the nav counts nothing`).toHaveCount(0);
 			await expectHasNot(agent, guest, threadId);
 		}
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Assigning leads 2
+test.describe("Assign 2 — assigning gives the thread to that agent only", () => {
+	test("from the row's Assign to… in the manager's Unassigned view, choosing agent 1 takes the thread out of Unassigned; agent 1 has it in Your turn, marked Yours, agent 2 finds nothing (404); agent 1 approves a reply and the thread stays theirs", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await newOffice();
+		const [one, two] = office.agents;
+		const [manager] = office.managers;
+		// Agent 1 goes by a name of their own, so the menu item and the owner flag name them.
+		const oneName = await rename(one);
+		const guest = await office.newGuest();
+		const threadId = await assignerAs(manager.api).threadOf(guest.id);
+
+		// The manager, in Unassigned: the row's Assign to… → agent 1.
+		const { page } = manager;
+		await openInbox(page);
+		await expect(view(page, "Unassigned"), "the manager has an Unassigned view").toBeVisible();
+		await view(page, "Unassigned").click();
+		await expect(view(page, "Unassigned", 1), "the guest waits in Unassigned").toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		await expect(rowOf(page, guest)).toBeVisible();
+		await expect(assignFromRow(page, guest), "the row has its own Assign to…").toBeVisible();
+		await assignFromRow(page, guest).click();
+		await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
+		await assignMenuItem(page, oneName).click();
+		await expect(rowOf(page, guest), "the thread leaves Unassigned").toHaveCount(0);
+		await expect(view(page, "Unassigned", 0), "Unassigned counts nothing").toBeVisible();
+
+		// Agent 1: Your turn, theirs.
+		await openInbox(one.page);
+		await expect(view(one.page, "Unassigned"), "an agent has no Unassigned view").toHaveCount(0);
+		await search(one.page, guest.id);
+		await expect(view(one.page, "Your turn", 1)).toHaveAttribute("aria-pressed", "true");
+		const row = rowOf(one.page, guest);
+		await expect(row, "the guest is waiting on agent 1").toBeVisible();
+		await expectOwner(row, "mine", "agent 1's row says Yours");
+
+		// Agent 2: nothing.
+		await expectHasNot(two, guest, threadId);
+
+		// Agent 1 answers: the reply goes out, and the thread is still theirs.
+		await openInbox(one.page);
+		await search(one.page, guest.id);
+		await rowOf(one.page, guest).click();
+		await expect(openThread(one.page).getByText(guest.id).first()).toBeVisible();
+		await one.page.getByRole("textbox", { name: "Reply" }).fill(`Reply to ${guest.id}`);
+		const sent = one.page.waitForResponse((r) => r.url().endsWith("/approve"));
+		await one.page.getByTestId("approve-and-send").click();
+		expect((await sent).status(), "agent 1's reply is sent").toBe(200);
+		await view(one.page, "Sent").click();
+		await expect(view(one.page, "Sent", 1), "the answered thread is under Sent").toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		await expectOwner(rowOf(one.page, guest), "mine", "after the reply, still agent 1's");
+		await expectHas(manager, guest, { other: oneName });
+		await expectHasNot(two, guest, threadId);
 	});
 });
 
@@ -735,5 +842,118 @@ test.describe("Assign 9 — an agent cannot assign", () => {
 		await expectHas(manager, unassigned, "unassigned");
 		await expectHasNot(one, unassigned, unassignedId);
 		await expectHasNot(two, unassigned, unassignedId);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Assigning leads 10
+test.describe("Assign 10 — Unassigned comes first, oldest first", () => {
+	test("the manager's Inbox opens on Unassigned, the first view, listing three new guests oldest first with its count; Assign to… on the oldest row, not selecting it, gives it to agent 1: the row leaves, the count drops and the next guest heads the list", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await newOffice();
+		const [one] = office.agents;
+		const [manager] = office.managers;
+		const oneName = await rename(one);
+		const assigner = assignerAs(manager.api);
+		// One after another, each filed before the next writes, so their order is certain.
+		const guests: Guest[] = [];
+		for (let i = 0; i < 3; i++) {
+			const guest = await office.newGuest();
+			await assigner.threadOf(guest.id);
+			guests.push(guest);
+		}
+		const [oldest, middle, newest] = guests;
+
+		// The Inbox opens on Unassigned, the first of the views.
+		const { page } = manager;
+		await openInbox(page);
+		await expect(view(page, "Unassigned", 3), "the Inbox opens on Unassigned").toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		await expect(
+			page.getByRole("button", { name: VIEW_TAB }),
+			"Unassigned comes before Your turn, Sent and All",
+		).toHaveText([/^Unassigned\s*3$/, /^Your turn\s*\d+$/, /^Sent\s*\d+$/, /^All\s*\d+$/]);
+		await expect(guestRows(page), "oldest first").toHaveText(guests.map(naming));
+
+		// Assign to… never selects its row: with the newest guest open, the oldest's pill opens
+		// the menu, and the newest stays open.
+		await rowOf(page, newest).click();
+		await expect(rowOf(page, newest)).toHaveAttribute("aria-current", "true");
+		await expect(openThread(page).getByText(newest.id).first()).toBeVisible();
+		await expect(
+			assignFromRow(page, oldest),
+			"the oldest row has its own Assign to…",
+		).toBeVisible();
+		await assignFromRow(page, oldest).click();
+		await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
+		await page.keyboard.press("Escape");
+		await expect(page.getByRole("menu")).toHaveCount(0);
+		await expect(
+			rowOf(page, oldest),
+			"the oldest row is not selected by its Assign to…",
+		).not.toHaveAttribute("aria-current", "true");
+		await expect(rowOf(page, newest), "the newest is still selected").toHaveAttribute(
+			"aria-current",
+			"true",
+		);
+		await expect(
+			openThread(page).getByText(oldest.id),
+			"the oldest guest's thread is not opened",
+		).toHaveCount(0);
+
+		// Given to agent 1: it leaves Unassigned, and the next guest heads the list.
+		await assignFromRow(page, oldest).click();
+		await assignMenuItem(page, oneName).click();
+		await expect(rowOf(page, oldest), "the oldest row leaves Unassigned").toHaveCount(0);
+		await expect(view(page, "Unassigned", 2), "its count drops").toBeVisible();
+		await expect(
+			rowOf(page, newest),
+			"choosing someone selects nothing: the newest is still selected",
+		).toHaveAttribute("aria-current", "true");
+		await expect(
+			openThread(page).getByText(newest.id).first(),
+			"the newest guest's thread is still the one open",
+		).toBeVisible();
+		await expect(guestRows(page), "the next guest heads the list").toHaveText(
+			[middle, newest].map(naming),
+		);
+		await expectHas(one, oldest, "mine");
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Assigning leads 11
+test.describe("Assign 11 — Waiting now lists Unassigned leads first for a manager", () => {
+	test("an Unassigned guest, then agent 1's guest, then a newer Unassigned guest write: the manager's Waiting now lists both Unassigned guests oldest first, then agent 1's; agent 1's lists only their own", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await newOffice();
+		const [one] = office.agents;
+		const [manager] = office.managers;
+		const assigner = assignerAs(manager.api);
+		// Each filed before the next writes, so who waited longer is certain.
+		const olderUnassigned = await office.newGuest();
+		await assigner.threadOf(olderUnassigned.id);
+		const onesGuest = await office.newGuest();
+		await assigner.assignGuestTo(onesGuest.id, one.userId);
+		const newerUnassigned = await office.newGuest();
+		await assigner.threadOf(newerUnassigned.id);
+
+		// Agent 1: only their own guest.
+		await openHome(one.page);
+		await expect(waitingNow(one.page), "agent 1's Waiting now lists only their own").toHaveText([
+			naming(onesGuest),
+		]);
+
+		// The manager: the Unassigned guests first, oldest first, then agent 1's, though it waited
+		// longer than the newer Unassigned guest.
+		await openHome(manager.page);
+		await expect(
+			waitingNow(manager.page),
+			"Unassigned first, each group oldest waiting first",
+		).toHaveText([olderUnassigned, newerUnassigned, onesGuest].map(naming));
 	});
 });

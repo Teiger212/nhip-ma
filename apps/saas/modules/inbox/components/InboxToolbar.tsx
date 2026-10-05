@@ -4,7 +4,7 @@ import { cn, Input } from "@repo/ui";
 import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { INBOX_VIEWS, type InboxView, type QueueCounts } from "../lib/queue";
+import type { InboxView, QueueCounts } from "../lib/queue";
 
 /**
  * The two rows at the top of the thread list: search, then the view tabs with their counts
@@ -13,13 +13,17 @@ import { INBOX_VIEWS, type InboxView, type QueueCounts } from "../lib/queue";
 export function InboxToolbar({
 	query,
 	onQueryChange,
+	views,
 	view,
 	onViewChange,
 	counts,
 }: {
 	query: string;
 	onQueryChange: (query: string) => void;
-	view: InboxView;
+	/** The operator's views, in order (a manager's start with Unassigned, ADR 0022). */
+	views: readonly InboxView[];
+	/** The view shown; none while the Inbox doesn't yet know which one it opens on. */
+	view: InboxView | null;
 	onViewChange: (view: InboxView) => void;
 	counts: QueueCounts;
 }) {
@@ -44,7 +48,7 @@ export function InboxToolbar({
 			</div>
 			<div className="px-3 py-2 gap-2 flex shrink-0 flex-wrap items-center justify-between border-b">
 				<div className="gap-0 p-0.5 shadow-hairline inline-flex rounded-full bg-muted">
-					{INBOX_VIEWS.map((option) => {
+					{views.map((option) => {
 						const active = option === view;
 						return (
 							<button

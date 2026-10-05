@@ -18,17 +18,26 @@ import {
 	useRegenerateDraft,
 } from "../lib/inbox-queries";
 import { PIPE_NAMES } from "../lib/pipe-names";
-import { buildQueueView, INBOX_VIEWS, nextSelection } from "../lib/queue";
+import {
+	buildQueueView,
+	INBOX_VIEWS,
+	inView,
+	nextSelection,
+	openingView,
+	viewsFor,
+} from "../lib/queue";
 import { sendStatusFor } from "../lib/send-status";
 import { summarize } from "../lib/summary";
 import type { ConversationSummary } from "../lib/types";
 import { replyKey, useReplyDraft } from "../lib/use-reply-draft";
 import { InboxToolbar } from "./InboxToolbar";
+import { AssignFromRow } from "./OwnerControl";
 import { ThreadDetail, ThreadDetailSkeleton } from "./ThreadDetail";
 import { ThreadList } from "./ThreadList";
 import { ThreadListState } from "./ThreadParts";
 
-const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("yourTurn");
+// No default here: which view an Inbox opens on depends on who opens it (`openingView`).
+const viewParser = parseAsStringLiteral(INBOX_VIEWS);
 
 /** What a row shows about a thread's state; when the row's differs from the open thread's, one of them is behind. */
 function turnState(thread: ConversationSummary): string {
@@ -49,13 +58,20 @@ export function Inbox() {
 	const conversationsQuery = useConversations();
 	const approve = useApproveAndSend();
 	const regenerate = useRegenerateDraft();
-	const [view, setView] = useQueryState("view", viewParser);
+	const [viewParam, setView] = useQueryState("view", viewParser);
 	const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""));
 	// A manager narrows the office's threads to Unassigned or one operator (ADR 0022).
 	const [ownerFilter, setOwnerFilter] = useQueryState("owner", parseAsString.withDefault("all"));
-	const { role } = useOfficeRole();
+	const { role, pending: rolePending } = useOfficeRole();
 	const manager = role === "manager";
 	const agents = useOfficeAgents(manager);
+	// A manager's Inbox opens on Unassigned, an agent's on Your turn (ADR 0022). Until the role is
+	// known the list waits, so a manager never sees Your turn flash by first.
+	const views = viewsFor(manager);
+	const view = openingView(manager, viewParam);
+	// The owner filter can only narrow Unassigned to itself or to nothing, so it sits that view out.
+	const ownerFiltered = manager && ownerFilter !== "all" && view !== "unassigned";
+	const listPending = conversationsQuery.isPending || rolePending;
 	// `?thread=` opens one thread on arrival (Home's Waiting now and CRM leads link here); it
 	// is read once, then dropped from the URL, so the selection stays local like every other click.
 	const [threadParam, setThreadParam] = useQueryState("thread");
@@ -68,11 +84,11 @@ export function Inbox() {
 
 	const conversations = useMemo(() => {
 		const all = conversationsQuery.data ?? [];
-		if (!manager || ownerFilter === "all") return all;
+		if (!ownerFiltered) return all;
 		return all.filter((conversation) =>
 			ownerFilter === "unassigned" ? !conversation.owner : conversation.owner?.id === ownerFilter,
 		);
-	}, [conversationsQuery.data, manager, ownerFilter]);
+	}, [conversationsQuery.data, ownerFiltered, ownerFilter]);
 	const queue = useMemo(
 		() => buildQueueView(conversations, view, query),
 		[conversations, view, query],
@@ -86,15 +102,20 @@ export function Inbox() {
 	// advances (this is what moves to the next waiting guest after a send).
 	useEffect(() => {
 		if (threadParam !== null) {
-			if (!conversationsQuery.isSuccess) return;
-			if (!conversationsQuery.data.some((conversation) => conversation.id === threadParam)) {
+			if (!conversationsQuery.isSuccess || rolePending) return;
+			const linked = conversationsQuery.data.find(
+				(conversation) => conversation.id === threadParam,
+			);
+			if (!linked) {
 				setLinkMissing(true);
 				setSelectedId(null);
 				void setThreadParam(null);
 				return;
 			}
 			if (!ordered.some((conversation) => conversation.id === threadParam)) {
-				void setView("all");
+				// The first of the operator's views that holds it: an owned Your-turn thread opens
+				// in Your turn for a manager too, whose Inbox opens on Unassigned.
+				void setView(views.find((option) => inView(linked, option)) ?? "all");
 				void setQuery(null);
 				void setOwnerFilter(null);
 				return;
@@ -105,11 +126,12 @@ export function Inbox() {
 			void setThreadParam(null);
 			return;
 		}
-		if (conversationsQuery.isPending || linkMissing) return;
+		if (listPending || linkMissing) return;
 		const next = nextSelection(ordered, selectedId);
 		if (next !== selectedId) setSelectedId(next);
 	}, [
-		conversationsQuery.isPending,
+		listPending,
+		rolePending,
 		conversationsQuery.isSuccess,
 		conversationsQuery.data,
 		ordered,
@@ -120,6 +142,7 @@ export function Inbox() {
 		setQuery,
 		setOwnerFilter,
 		linkMissing,
+		views,
 	]);
 
 	const detailQuery = useConversation(selectedId);
@@ -163,7 +186,9 @@ export function Inbox() {
 				title: t("sentTo", { name: displayName(result.conversation) }),
 				type: "success",
 			});
-			if (view !== "yourTurn") setSelectedId(result.conversation.id);
+			// Sent and All keep the answered thread open; Your turn and Unassigned move on, since
+			// it has left them (a manager's reply on a lead makes it theirs, ADR 0022).
+			if (view === "sent" || view === "all") setSelectedId(result.conversation.id);
 		} catch (error) {
 			setSendError(error instanceof Error ? error.message : t("sendFailed"));
 		}
@@ -209,7 +234,7 @@ export function Inbox() {
 						detailOpen ? "md:flex hidden" : "md:flex-none flex flex-1",
 					)}
 				>
-					{manager ? (
+					{manager && view !== "unassigned" ? (
 						<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
 							<label htmlFor="inbox-owner-filter">{t("owner.filter")}</label>
 							<select
@@ -234,7 +259,9 @@ export function Inbox() {
 					<InboxToolbar
 						query={query}
 						onQueryChange={(value) => void setQuery(value || null)}
-						view={view}
+						views={views}
+						// No view is pressed until the role says which one this Inbox opens on.
+						view={rolePending ? null : view}
 						onViewChange={(next) => {
 							setLinkMissing(false);
 							void setView(next);
@@ -247,7 +274,7 @@ export function Inbox() {
 					>
 						<ThreadList
 							queue={queue}
-							loading={conversationsQuery.isPending}
+							loading={listPending}
 							failed={conversationsQuery.isError}
 							total={conversations.length}
 							selectedId={selectedId}
@@ -255,6 +282,11 @@ export function Inbox() {
 							onRetry={() => void conversationsQuery.refetch()}
 							onViewSent={() => void setView("sent")}
 							emptyTitle={manager ? undefined : t("emptyAssigned")}
+							rowAction={
+								manager && view === "unassigned"
+									? (conversation) => <AssignFromRow conversationId={conversation.id} />
+									: undefined
+							}
 						/>
 					</div>
 				</aside>

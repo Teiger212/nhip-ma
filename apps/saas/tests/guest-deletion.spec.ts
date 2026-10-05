@@ -292,8 +292,13 @@ function rowOf(page: Page, guest: Guest) {
 	return threadList(page).getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
 }
 
-type ViewName = "Your turn" | "Sent" | "All";
+type ViewName = "Unassigned" | "Your turn" | "Sent" | "All";
 const VIEWS: readonly ViewName[] = ["Your turn", "Sent", "All"];
+
+/** The views the person's Inbox shows: a manager's start with Unassigned (ADR 0022). */
+async function viewsOf(page: Page): Promise<readonly ViewName[]> {
+	return (await view(page, "Unassigned").count()) > 0 ? ["Unassigned", ...VIEWS] : VIEWS;
+}
 
 /** A view button of the Inbox with its count (any count when none is given). */
 function view(page: Page, name: ViewName, count?: number) {
@@ -312,11 +317,12 @@ function navCount(page: Page) {
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		// A row (it carries its owner flag), or the list saying it is empty, caught up or unmatched.
+		// A row (it carries its owner flag), or the list saying it is empty, caught up, unmatched,
+		// or that every lead is assigned (a manager's Unassigned, ADR 0022).
 		// The view buttons above the list are buttons too, so a button proves nothing.
 		threadList(page)
 			.locator(
-				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"]',
+				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
 			)
 			// A Quiet row sits folded away until opened, so only a shown one counts.
 			.filter({ visible: true })
@@ -502,6 +508,9 @@ async function redPartsOf(root: Locator): Promise<string[]> {
 async function expectGoneFromInbox(operator: Operator, gone: Guest, stays: Guest) {
 	const { page } = operator;
 	await openInbox(page);
+	const views = await viewsOf(page);
+	// A manager's Inbox opens on Unassigned, which the owner filter sits out: look under All.
+	await showView(page, "All");
 	const filter = page.getByTestId("owner-filter");
 	// Only a manager filters by owner; an agent has the one list.
 	const owners = (await filter.count()) > 0 ? await filter.locator("option").count() : 1;
@@ -509,7 +518,8 @@ async function expectGoneFromInbox(operator: Operator, gone: Guest, stays: Guest
 		if (owners > 1) {
 			await filter.selectOption({ index: owner });
 		}
-		for (const name of VIEWS) {
+		// Ends on All, where the filter shows again for the next owner.
+		for (const name of views) {
 			await showView(page, name);
 			await expect(
 				rowOf(page, gone),
@@ -525,7 +535,7 @@ async function expectGoneFromInbox(operator: Operator, gone: Guest, stays: Guest
 	await expect(rowOf(page, gone), `${operator.label}: ${gone.id} is not listed`).toHaveCount(0);
 
 	await search(page, gone.id);
-	for (const name of VIEWS) {
+	for (const name of views) {
 		await expect(
 			view(page, name, 0),
 			`${operator.label}: searching ${gone.id}, ${name} counts nothing`,

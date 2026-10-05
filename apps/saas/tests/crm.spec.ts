@@ -218,9 +218,12 @@ function openThread(page: Page) {
 	return page.getByRole("article");
 }
 
-/** The agent opens the Inbox and, in it, the guest's thread (their first message showing). */
-async function openThreadOf(page: Page, guest: Guest) {
-	await page.goto("/en/inbox");
+/**
+ * The agent opens the Inbox and, in it, the guest's thread (their first message showing). A
+ * manager's Inbox opens on Unassigned (ADR 0022), so a manager looks under All.
+ */
+async function openThreadOf(page: Page, guest: Guest, { all = false } = {}) {
+	await page.goto(all ? "/en/inbox?view=all" : "/en/inbox");
 	const row = threadList(page).getByRole("button", { name: new RegExp(`^${nameOf(guest)}\\b`) });
 	await expect(row, `the agent has ${guest.id}'s thread`).toBeVisible();
 	await row.click();
@@ -526,7 +529,7 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 
 		// The manager sees it too, on the same thread.
 		const manager = office.manager.page;
-		await openThreadOf(manager, guest);
+		await openThreadOf(manager, guest, { all: true });
 		await expect(
 			manager.getByTestId("owner-filter"),
 			"they are the office's manager (only a manager filters by owner, Assign 9)",

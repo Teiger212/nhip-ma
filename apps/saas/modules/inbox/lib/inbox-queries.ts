@@ -159,23 +159,30 @@ type OfficeViewer = { userId: string; role: "agent" | "manager"; officeSlug: str
 
 /**
  * The signed-in operator, their role in the office (ADR 0015) and the office's slug. An
- * agent until known. Off for the platform admin, whom `/api/office` refuses.
+ * agent until known (`pending` until `/api/office` answers). Off for the platform admin, whom
+ * `/api/office` refuses.
  */
 export function useOfficeRole({ enabled = true }: { enabled?: boolean } = {}): {
 	userId: string | null;
 	role: "agent" | "manager";
 	officeSlug: string | null;
+	pending: boolean;
 } {
 	const query = useQuery({
 		queryKey: ["inbox", "office"],
 		queryFn: () => api<OfficeViewer>("/api/office"),
 		staleTime: 5 * 60_000,
 		enabled,
+		// A refusal (no office, two offices) won't change on asking again; the Inbox and Waiting
+		// now wait for this answer, so don't hold them through retries.
+		retry: (failures, error) =>
+			!(error instanceof InboxApiError && error.code !== null) && failures < 3,
 	});
 	return {
 		userId: query.data?.userId ?? null,
 		role: query.data?.role ?? "agent",
 		officeSlug: query.data?.officeSlug ?? null,
+		pending: enabled && query.isPending,
 	};
 }
 
