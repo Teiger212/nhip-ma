@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Checks the release gate against commits whose staging history is known (#112). It reads
-# GitHub, so it runs by hand, not in CI: `scripts/release/check-release.test.sh`.
+# Checks the release gate against commits whose staging and CI history is known (#112, #190).
+# It reads GitHub, so it runs by hand, not in CI: `scripts/release/check-release.test.sh`.
 # Needs `gh` signed in and `origin` fetched.
 set -uo pipefail
 
@@ -26,9 +26,11 @@ expect() {
 
 git fetch --quiet origin main production
 
-expect accept bf0767d "staging deployed" "a main merge that staging deployed and smoked is released"
+expect accept bf0767d "its CI on main passed" "a main merge that staging deployed and smoked, and CI passed on, is released"
+expect refuse 2f3a499 "CI on main was cancelled" "a main merge staging smoked, whose CI on main was cancelled, is refused (#190)"
 expect refuse fe5cc27 "never deployed on staging" "a main commit staging never built (only its merge was) is refused"
-expect refuse "$(git rev-parse origin/docs/attio-adr 2>/dev/null || echo c091e3c)" "not on main" "a branch commit is refused"
+# #146's probe, closed unmerged ("do not merge"); docs/attio-adr, used before, has since merged.
+expect refuse 420893d "not on main" "a branch commit is refused"
 expect refuse 7baa32d "already" "production's own commit has nothing to release"
 expect refuse 7baa32d~1 "behind production" "an older commit is refused: rollback is Vercel's instant rollback"
 expect refuse 0000000000000000000000000000000000000000 "not a commit" "an unknown commit is refused"

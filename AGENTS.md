@@ -244,7 +244,7 @@ Rate limits: Better Auth's (sign-in 3/10s per IP, counters in the `rateLimit` ta
 Firewall rule of 300 requests/min per IP on `/api/` and `/webhooks/`.
 
 **Cutting a release (#112).** Publish a GitHub Release on a commit of `main` that staging
-deployed and smoked:
+deployed and smoked, and that passed CI on main:
 `gh release create vX.Y.Z --target <sha> --generate-notes`.
 Always pass `--target`: without it the tag lands on `main`'s HEAD, which may not have finished
 on staging yet, and the gate refuses it. The workflow (`.github/workflows/release.yml`) runs
@@ -253,7 +253,13 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
 - is on `main`;
 - is ahead of `production`;
 - has a successful `Preview` deployment;
-- has a passing staging smoke run.
+- has a passing staging smoke run;
+- passed CI on main (#190): a successful `ci.yml` run, both its `ci` and `e2e` jobs, from the
+  push to main of that very commit. A run still going refuses the release: wait for it to
+  pass, then re-run the release. Only the last commit of each push gets a run, and a newer push
+  cancels one still going, so release a commit whose CI finished green (re-run a cancelled
+  run if that commit is the one to ship). Pushes to main run CI even for docs-only changes:
+  `paths-ignore` applies to pull requests only.
 
 The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
 then fast-forwards `production` with the deploy key, and Vercel builds production from it.
