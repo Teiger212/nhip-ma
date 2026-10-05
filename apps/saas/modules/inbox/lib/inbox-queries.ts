@@ -155,14 +155,28 @@ export function replyEndpoint(conversation: Conversation): string | null {
 	return null;
 }
 
-/** The signed-in operator and their role in the office (ADR 0015). */
-export function useOfficeRole(): { userId: string | null; role: "agent" | "manager" } {
+type OfficeViewer = { userId: string; role: "agent" | "manager"; officeSlug: string | null };
+
+/**
+ * The signed-in operator, their role in the office (ADR 0015) and the office's slug. An
+ * agent until known. Off for the platform admin, whom `/api/office` refuses.
+ */
+export function useOfficeRole({ enabled = true }: { enabled?: boolean } = {}): {
+	userId: string | null;
+	role: "agent" | "manager";
+	officeSlug: string | null;
+} {
 	const query = useQuery({
 		queryKey: ["inbox", "office"],
-		queryFn: () => api<{ userId: string; role: "agent" | "manager" }>("/api/office"),
+		queryFn: () => api<OfficeViewer>("/api/office"),
 		staleTime: 5 * 60_000,
+		enabled,
 	});
-	return { userId: query.data?.userId ?? null, role: query.data?.role ?? "agent" };
+	return {
+		userId: query.data?.userId ?? null,
+		role: query.data?.role ?? "agent",
+		officeSlug: query.data?.officeSlug ?? null,
+	};
 }
 
 export type OfficeAgent = { id: string; name: string; manager: boolean };
@@ -189,6 +203,36 @@ export function useSetOwner() {
 			}),
 		onSuccess: (conversation) => putConversation(queryClient, conversation),
 		onSettled: () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
+	});
+}
+
+/**
+ * A manager deletes a guest's data (ADR 0020). The thread leaves the list and its open view at
+ * once, so the Inbox selects the next thread; then the list, every thread and the your-turn
+ * count (the nav) refresh from the server.
+ */
+export function useDeleteGuest() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, deleteInCrm }: { id: string; deleteInCrm: boolean }) =>
+			api<{ crm: "deleted" | "unlinked" | "failed" | null }>(
+				`/api/conversations/${encodeURIComponent(id)}/deletion`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ deleteInCrm }),
+				},
+			),
+		onSettled: async (_result, error, { id }) => {
+			// Gone either way: deleted now, or already (`not_found`).
+			if (!error || (error instanceof InboxApiError && error.code === "not_found")) {
+				queryClient.setQueryData<ConversationSummary[]>(listQueryKey, (list) =>
+					list?.filter((item) => item.id !== id),
+				);
+				queryClient.removeQueries({ queryKey: detailQueryKey(id) });
+			}
+			await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+		},
 	});
 }
 

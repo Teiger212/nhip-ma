@@ -109,6 +109,48 @@ creates an office its owner). That membership must open nothing.
    Spec: `apps/saas/tests/roles.spec.ts` (Roles 2; also a thread of the office,
    `/api/conversations/:id`, answers 403).
 
+## Team (ADR 0015, #82)
+
+A manager invites the office's agents from **Team**, the kit's members page refitted (decided
+2026-10-05 on #82). It is reached from the user menu (no sidebar item: the sidebar stays Home
+and Inbox) and lives at `/<locale>/<office slug>/settings/members` (the walk office's slug is
+`walk`). Its words are Nhịp's: the roles read **Agent** and **Manager** (VI **Nhân viên**,
+**Quản lý**), never member, admin or owner. A manager is the kit's `admin` or `owner`, an agent
+its `member` (CONTEXT.md). The invite's language, resend and expiry, and the invitee's path
+are not here (the onboarding grill).
+
+1. **A manager invites an agent from Team.** As the walk office's manager, the user menu (the
+   ⋯ beside their name in the sidebar) has a "Team" item; it opens `/en/walk/settings/members`,
+   whose page title is "Team". The invite form's role offers exactly "Agent" and "Manager",
+   with "Agent" chosen; there is no "Owner". The manager invites a new email as Agent: a toast
+   says "Invitation sent", and under "Pending invitations" the email shows with role "Agent".
+   Inviting another email as Manager shows it with role "Manager". In Vietnamese
+   (`/vi/walk/settings/members`) the menu item is "Nhóm", the page title "Nhóm", and the role
+   options "Nhân viên" and "Quản lý".
+2. **An agent has no Team.** As an agent of the walk office, the user menu has no "Team", and
+   opening `/en/walk/settings/members` shows the not-found page (404) with no member list and
+   no invite form. The kit's API refuses the agent too: inviting into the office
+   (`POST /api/auth/organization/invite-member`, any role) answers 403 and no invitation is
+   made; changing a member's role (`POST /api/auth/organization/update-member-role`) answers
+   403 and the role is unchanged; removing a colleague
+   (`POST /api/auth/organization/remove-member`) is refused (4xx) and the colleague stays. The
+   platform admin's user menu (in the admin area) has no "Team" either.
+3. **No owner, no Leave, no platform admin on Team.** As the manager, Team's member list shows
+   the office's managers and agents, each with role "Manager" or "Agent"; the platform admin
+   (`admin@nhip.local`), whose kit `owner` membership is inert (ADR 0015), is not listed. The
+   manager's own row has no "Leave" (leaving would delete the account, ADR 0013) and no menu,
+   and their own role can't be changed there. An agent's row offers the roles "Agent" and
+   "Manager" only. The API never makes an owner from Team: a manager (the kit's `admin`)
+   inviting with role `owner`, or changing an agent's role to `owner`, answers 403, with no
+   invitation made and the role unchanged; and so does a manager who holds the kit's `owner`
+   role (invited as `owner` by the platform admin into an office of the test's own), who
+   otherwise sees Team as any manager does.
+
+Spec: `apps/saas/tests/team.spec.ts` (Team 1–3; the agent's and the managers' API refusals run
+in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
+was taken costs no seeded login; "no invitation made" and "role unchanged" are read through the
+platform admin's view of the office).
+
 ## Pipe connections (ADR 0017)
 
 The consent on Zalo's own screens (the OA owner approving Nhịp's app) happens at Zalo and is
@@ -507,6 +549,13 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 
    The toast says "Guest data deleted".
 
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 1; the reply goes to the first
+   message before the guest's other two, and a second guest waits in the pool so every absence is
+   judged on a loaded Inbox; "red" is what the browser paints red (fill, text, border or icon):
+   the confirm button is, nothing else in the dialog is, and neither is the menu item (ADR 0020,
+   Q5); the agent's open Inbox and nav count drop within the poll; "every owner filter" is each
+   option of the manager's Showing filter).
+
 2. **Home's numbers don't move when a guest is deleted.** Three guests write. The agent answers
    two of them, and one of those two writes back. Note Home's
    numbers:
@@ -517,13 +566,30 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    The manager deletes the guest who wrote back. Home, reloaded, shows every one of those numbers
    unchanged, for the agent and the manager alike. Waiting now no longer lists a deleted guest.
 
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 2; the numbers are first
+   checked to be 3 leads in, 2 engaged, 1 in conversation, 2 answered under 5 minutes, so a
+   deletion that shrank them would show; each day of leads by day is read from the chart's
+   tooltip, stepping through it from the keyboard, one reading per day of the window, adding up
+   to Leads in; Waiting now still lists the guest nobody answered. Not provable here: every reply
+   is sent within a minute of the guest's message, since Zalo's signature refuses a backdated
+   timestamp, so the median and 90th percentile read "0 min" with or without the deleted guest,
+   and every lead falls on today.)
+
 3. **An agent can't delete.** On the agent's own thread, the header offers
    no "Delete guest data". `POST /api/conversations/:id/deletion` as the agent answers 403, with
    `deleteInCrm` true or false. The thread and its messages are unchanged afterwards, for the
    agent and the manager.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 3; 403 `{ error: "forbidden" }`
+   also with no body, since the agent is refused before the body is read; the manager's header
+   on the agent's thread has Thread actions, the positive control; "unchanged" is both threads
+   still opening for both, with the guest's message and the agent's reply. It also checks a pool
+   thread, which agents still see until ADR 0022 is built; that part goes with the pool).
 4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
    `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
    another office it answers 404.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 4; "a manager of another
+   office" is the walk office's manager; the office's own manager's same request then deletes
+   the thread, so the refusals were about who asked).
 5. **The CRM box is ticked when Nhịp created the lead.** The office is on the mock CRM. A new
    guest writes, and the thread says "In CRM: <guest>"; the mock CRM holds the lead Nhịp made.
    - The manager's dialog has "Also delete <guest> in Mock CRM", ticked. Confirming leaves no
@@ -540,6 +606,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - For a second such guest, ticking the box deletes the lead.
 7. **No CRM, no checkbox.** In an office with no CRM, the dialog has no CRM checkbox (as in 1),
    and the deletion API, given `deleteInCrm: true`, deletes the thread and touches no CRM.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 7; the dialog says nothing
+   about a CRM, and Cancel deletes nothing; "touches no CRM" is the answer's `{ crm: null }`, no
+   lead in the mock CRM for the office, and a receipt with no CRM and no CRM result).
 8. **Not while a reply is sending.** `holdReplySending` holds the agent's approved reply in
    "sending":
    - The manager's "Delete guest data" is disabled with "A reply is still sending".
@@ -547,6 +616,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - The thread is unchanged.
 
    Once the helper's release step marks the reply sent, deleting works.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 8; the reason is judged shown
+   while the menu is open; "deleting works" is the manager's dialog after the release, the thread
+   then 404 and gone from every view and owner filter).
 
 9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
    CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
@@ -562,3 +634,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 
     No value in any receipt or lead tally contains the guest's name, their Zalo user id, the
     thread's id or the CRM lead's id.
+    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 10, the deletions with no CRM
+    only; the ticked and unticked ones come with the CRM box, #139. Two deletions, one through the
+    dialog and one through the API: each receipt has the manager's id and name, a time within the
+    test, its messages (the reply included) and replies, and no CRM; one lead tally per deleted
+    guest (ADR 0020), so the identifier check has something to read; no message text either,
+    ADR 0020 keeping no free text.)

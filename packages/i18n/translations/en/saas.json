@@ -178,7 +178,8 @@
 			"documentation": "Documentation",
 			"home": "Home",
 			"language": "Language",
-			"logout": "Log out"
+			"logout": "Log out",
+			"team": "Team"
 		},
 		"notifications": {
 			"title": "Notifications",
@@ -359,9 +360,9 @@
 			"title": "Your organizations"
 		},
 		"roles": {
-			"admin": "Admin",
-			"member": "Member",
-			"owner": "Owner",
+			"admin": "Manager",
+			"member": "Agent",
+			"owner": "Manager",
 			"info": {
 				"description": "Roles are listed from least to most access:",
 				"title": "Role permissions"
@@ -386,10 +387,10 @@
 				"title": "Organization logo"
 			},
 			"members": {
-				"activeMembers": "Active members",
-				"description": "See all active members and the pending invites of your organization.",
+				"activeMembers": "Joined",
+				"description": "The office's managers and agents, and who is invited.",
 				"invitations": {
-					"empty": "You have not invited any members yet.",
+					"empty": "No one is invited.",
 					"expiresAt": "Expires at {date}",
 					"invitationStatus": {
 						"accepted": "Accepted",
@@ -401,33 +402,33 @@
 					"resend": "Resend invitation"
 				},
 				"inviteMember": {
-					"description": "To invite a new member, send them an invitation.",
+					"description": "Invite someone to the office by email, as an agent or a manager.",
 					"email": "Email",
 					"notifications": {
 						"error": {
-							"description": "We were unable to invite the member. Please try again later.",
-							"title": "Could not invite member"
+							"description": "We could not send the invitation. Please try again later.",
+							"title": "Could not send the invitation"
 						},
 						"success": {
-							"description": "The member has been invited.",
-							"title": "Member invited"
+							"description": "The invitation is on its way.",
+							"title": "Invitation sent"
 						}
 					},
 					"role": "Role",
 					"submit": "Invite",
-					"title": "Invite member"
+					"title": "Invite"
 				},
-				"leaveOrganization": "Leave organization",
+				"leaveOrganization": "Leave office",
 				"notifications": {
 					"removeMember": {
 						"error": {
-							"description": "Could not remove the member from your organization. Please try again."
+							"description": "Could not remove them from the office. Please try again."
 						},
 						"loading": {
-							"description": "Removing member from organization..."
+							"description": "Removing from the office..."
 						},
 						"success": {
-							"description": "The member has been successfully removed from your organization."
+							"description": "Removed from the office."
 						}
 					},
 					"revokeInvitation": {
@@ -443,13 +444,13 @@
 					},
 					"updateMembership": {
 						"error": {
-							"description": "Could not update organization membership. Please try again."
+							"description": "Could not change the role. Please try again."
 						},
 						"loading": {
-							"description": "Updating membership..."
+							"description": "Changing the role..."
 						},
 						"success": {
-							"description": "Membership was updated successfully"
+							"description": "Role changed"
 						}
 					},
 					"resendInvitation": {
@@ -465,8 +466,9 @@
 					}
 				},
 				"pendingInvitations": "Pending invitations",
-				"removeMember": "Remove member",
-				"title": "Members"
+				"removeMember": "Remove from office",
+				"title": "Team",
+				"people": "People"
 			},
 			"notifications": {
 				"organizationDeleted": "Your organization has been deleted.",
@@ -916,6 +918,22 @@
 			"inCrm": "In CRM: {name}",
 			"won": "Won",
 			"lost": "Lost"
+		},
+		"deletion": {
+			"actions": "Thread actions",
+			"delete": "Delete guest data",
+			"sendingReason": "A reply is still sending",
+			"title": "Delete {name}'s data?",
+			"what": "Nhịp deletes this thread's {count, plural, one {# message} other {# messages}} with their translations, the suggested reply and the extracted details.",
+			"keptZalo": "Kept elsewhere: the chat in your Zalo OA.",
+			"keptWhatsapp": "Kept elsewhere: the chat in your WhatsApp.",
+			"irreversible": "This can't be undone.",
+			"cancel": "Cancel",
+			"confirm": "Delete guest data",
+			"deleting": "Deleting…",
+			"done": "Guest data deleted",
+			"failed": "Could not delete the guest's data. Try again.",
+			"gone": "This thread was already deleted."
 		}
 	}
 }

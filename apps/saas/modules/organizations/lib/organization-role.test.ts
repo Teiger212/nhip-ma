@@ -1,4 +1,5 @@
 import { isOrganizationAdmin, isOrganizationOwner } from "@repo/auth/lib/helper";
+import { grantsOwner } from "@repo/auth/lib/roles";
 import { checkPermission } from "@repo/permissions";
 import { describe, expect, it } from "vitest";
 
@@ -66,5 +67,22 @@ describe("organization permission checks", () => {
 		).toBe(false);
 		expect(isOrganizationOwner(organization, user)).toBe(false);
 		expect(isOrganizationAdmin(organization, user)).toBe(true);
+	});
+});
+
+describe("grantsOwner (#82: only the platform admin makes an office's owner)", () => {
+	it("finds owner in a role, a comma list or an array", () => {
+		expect(grantsOwner("owner")).toBe(true);
+		expect(grantsOwner("member, owner")).toBe(true);
+		expect(grantsOwner(["admin", "owner"])).toBe(true);
+	});
+
+	it("passes Agent and Manager, and anything that is not a role", () => {
+		expect(grantsOwner("member")).toBe(false);
+		expect(grantsOwner("admin,member")).toBe(false);
+		expect(grantsOwner(["admin"])).toBe(false);
+		expect(grantsOwner("owners")).toBe(false);
+		expect(grantsOwner(undefined)).toBe(false);
+		expect(grantsOwner(42)).toBe(false);
 	});
 });

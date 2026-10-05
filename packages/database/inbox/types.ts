@@ -134,6 +134,16 @@ export type BeginAnswerResult =
 			reason: "already_answered" | "in_progress" | "unknown" | "not_found";
 	  };
 
+/**
+ * A guest deletion's outcome (ADR 0020). `crm` is what became of the thread's CRM lead: null
+ * with no lead; `unlinked` when the cascade removed Nhịp's link and the CRM was not asked.
+ * `not_found`: the office has no such thread (another office's, or already deleted).
+ * `reply_sending`: an Answer is between approve and the vendor's reply.
+ */
+export type GuestDeletionResult =
+	| { ok: true; crm: "unlinked" | null }
+	| { ok: false; reason: "not_found" | "reply_sending" };
+
 export type Conversation = {
 	id: string;
 	pipe: Pipe;
@@ -397,6 +407,18 @@ export type InboxStore = {
 	) => Promise<T>;
 	/** Delete these threads of the office with everything under them. Returns how many went. */
 	deleteConversations: (officeId: string, ids: string[]) => Promise<number>;
+	/**
+	 * Delete a guest's data (ADR 0020): the thread and everything under it, and the bell rows
+	 * that name it, in one transaction that also writes the anonymous lead tally (if the guest
+	 * wrote in) and the receipt. Locks the thread, then its Answers, as approve does; refused
+	 * while a reply is sending. `countMock` is the deployment's, as Home reads the funnel with
+	 * it; `actorId` is the manager who deletes.
+	 */
+	deleteGuest: (
+		officeId: string,
+		conversationId: string,
+		options: { countMock: boolean; actorId: string },
+	) => Promise<GuestDeletionResult>;
 	setOneShot: (officeId: string, id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
 	setDraft: (officeId: string, id: string, draft: Draft) => Promise<Conversation | null>;
