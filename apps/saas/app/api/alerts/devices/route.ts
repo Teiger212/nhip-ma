@@ -1,4 +1,4 @@
-import { DeviceRegistration } from "@inbox/lib/guest-alerts/devices";
+import { DeviceRegistration, refuseImpersonation } from "@inbox/lib/guest-alerts/devices";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { addPushSubscription, deletePushSubscriptionsForSession } from "@repo/database";
 import { NextResponse } from "next/server";
@@ -16,6 +16,8 @@ const USER_AGENT_LENGTH = 256;
 export async function POST(request: Request): Promise<Response> {
 	const gate = await requireInboxSession(request);
 	if (gate.denied) return gate.denied;
+	const impersonating = refuseImpersonation(gate.session);
+	if (impersonating) return impersonating;
 	const parsed = DeviceRegistration.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 	await addPushSubscription({

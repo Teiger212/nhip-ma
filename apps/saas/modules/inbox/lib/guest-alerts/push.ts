@@ -1,3 +1,5 @@
+import { parse } from "node:url";
+
 import {
 	deletePushSubscription,
 	markPushSubscriptionDelivered,
@@ -10,25 +12,46 @@ import { sendNotification } from "web-push";
 import type { Vapid } from "../config";
 import type { AlertDelivery, AlertPayload, AlertTransport } from "./transport";
 
-/** The push services' hosts (spec #84): Google's, Mozilla's exactly; Apple's, Microsoft's by domain. */
+/** The push services' hosts (spec #84): Google's and Mozilla's exactly. */
 const EXACT_HOSTS = ["fcm.googleapis.com", "updates.push.services.mozilla.com"];
-const HOST_DOMAINS = [".push.apple.com", ".notify.windows.com"];
+/** Apple's and Microsoft's: the domain itself or a name under it, on a dot boundary. */
+const HOST_DOMAINS = ["push.apple.com", "notify.windows.com"];
+const HOSTNAME = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 
 /**
- * Whether a subscription's endpoint is a push service Nhịp posts to (spec #84): `https` on
- * Google's, Apple's, Mozilla's or Microsoft's push host, on the default port, with no
- * credentials. The server never posts anywhere else.
+ * A subscription's endpoint in the one form Nhịp checks, stores and posts to, or null when it
+ * is not a push service Nhịp posts to (spec #84): `https` on Google's, Apple's, Mozilla's or
+ * Microsoft's push host, on the default port, with no credentials. Parsed once by the WHATWG
+ * URL parser (which lowercases and percent-decodes the host), one trailing dot dropped, and
+ * returned as `href`, so what was checked is exactly what is requested. The server never
+ * posts anywhere else.
  */
-export function isAllowedPushEndpoint(endpoint: string): boolean {
+export function normalizePushEndpoint(endpoint: string): string | null {
 	let url: URL;
 	try {
 		url = new URL(endpoint);
 	} catch {
-		return false;
+		return null;
 	}
-	if (url.protocol !== "https:" || url.port !== "" || url.username || url.password) return false;
-	const host = url.hostname;
-	return EXACT_HOSTS.includes(host) || HOST_DOMAINS.some((domain) => host.endsWith(domain));
+	if (url.protocol !== "https:" || url.port !== "" || url.username || url.password) return null;
+	const host = url.hostname.endsWith(".") ? url.hostname.slice(0, -1) : url.hostname;
+	// Plain DNS labels only: a host with any other character is one Node's legacy parser, which
+	// web-push connects with, may read as another host.
+	if (!HOSTNAME.test(host)) return null;
+	const allowed =
+		EXACT_HOSTS.includes(host) ||
+		HOST_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+	if (!allowed) return null;
+	url.hostname = host;
+	// And what web-push will request must be the very host just checked.
+	const legacy = parse(url.href);
+	if (legacy.protocol !== "https:" || legacy.hostname !== host || legacy.port) return null;
+	return url.href;
+}
+
+/** Whether the endpoint is a push service Nhịp posts to (`normalizePushEndpoint`). */
+export function isAllowedPushEndpoint(endpoint: string): boolean {
+	return normalizePushEndpoint(endpoint) !== null;
 }
 
 /** At most this many pushes in flight per event (#134, Q4); #177's job queue replaces it. */
@@ -114,7 +137,9 @@ export function webPushTransport(
 					? await devices.forSession(userId, sessionId)
 					: await devices.forUser(userId);
 				for (const device of targets) {
-					if (isAllowedPushEndpoint(device.endpoint)) pushes.push({ device, payload });
+					// Checked again for rows stored earlier, and posted at the form that was checked.
+					const endpoint = normalizePushEndpoint(device.endpoint);
+					if (endpoint) pushes.push({ device: { ...device, endpoint }, payload });
 					else console.warn("alerts: push skipped", { category: "endpoint not allowed" });
 				}
 			}
@@ -134,7 +159,6 @@ export function webPushTransport(
 						JSON.stringify(payload),
 						options,
 					);
-					await devices.delivered(device.id, now());
 				} catch (error) {
 					const category = failureCategory(error);
 					try {
@@ -145,6 +169,12 @@ export function webPushTransport(
 						});
 					}
 					console.warn("alerts: push failed", { category });
+					return;
+				}
+				try {
+					await devices.delivered(device.id, now());
+				} catch (error) {
+					console.warn("alerts: delivery not recorded", { category: failureCategory(error) });
 				}
 			});
 		},

@@ -1,11 +1,12 @@
 import { pushSubscriptionsForSession } from "@repo/database";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { runInBackground } from "../background";
 import type { Runtime } from "../runtime";
 import { alertLink, alertLocale } from "./content";
 import { inboxTranslator } from "./index";
-import { isAllowedPushEndpoint } from "./push";
+import { normalizePushEndpoint } from "./push";
 import { type AlertTransport, alertTransport } from "./transport";
 
 /** A base64url string that decodes to exactly `bytes` bytes. */
@@ -23,9 +24,30 @@ function base64urlOf(bytes: number) {
  * arbitrary URL.
  */
 export const DeviceRegistration = z.object({
-	endpoint: z.string().max(2048).refine(isAllowedPushEndpoint),
+	// Stored in the normal form it was checked in, which is what the push posts to.
+	endpoint: z
+		.string()
+		.max(2048)
+		.transform((endpoint, ctx) => {
+			const normal = normalizePushEndpoint(endpoint);
+			if (!normal) {
+				ctx.addIssue({ code: "custom", message: "not an allowed push service" });
+				return z.NEVER;
+			}
+			return normal;
+		}),
 	keys: z.object({ p256dh: base64urlOf(65), auth: base64urlOf(16) }),
 });
+
+/**
+ * The platform admin looking through an operator's eyes (the kit's impersonation) never makes
+ * their own browser one of that operator's devices.
+ */
+export function refuseImpersonation(session: { impersonated: boolean }): Response | null {
+	return session.impersonated
+		? NextResponse.json({ error: "impersonating" }, { status: 403 })
+		: null;
+}
 
 /** A test alert's tag: a new one replaces the last on the device, like a thread's. */
 export const TEST_ALERT_TAG = "nhip-test";
@@ -58,21 +80,21 @@ export async function sendTestAlert(
 		link: (id) => alertLink(locale, id),
 		sounds: () => true,
 	});
-	void runInBackground("test alert", () =>
-		transport.send([
-			{
-				userId: who.userId,
-				sessionId: who.sessionId,
-				payload: {
-					alertId: alert.id,
-					tag: TEST_ALERT_TAG,
-					title: t("alerts.testTitle"),
-					body: t("alerts.testBody"),
-					url: alert.link,
-					sound: alert.sounded,
-				},
-			},
-		]),
-	);
+	const payload = {
+		alertId: alert.id,
+		tag: TEST_ALERT_TAG,
+		title: t("alerts.testTitle"),
+		body: t("alerts.testBody"),
+		url: alert.link,
+		sound: alert.sounded,
+	};
+	void runInBackground("test alert", async () => {
+		try {
+			await transport.send([{ userId: who.userId, sessionId: who.sessionId, payload }]);
+		} catch (error) {
+			// An error's text can name the device or the operator; the log keeps only its kind.
+			throw new Error(`test alert failed (${error instanceof Error ? error.name : "unknown"})`);
+		}
+	});
 	return "sent";
 }

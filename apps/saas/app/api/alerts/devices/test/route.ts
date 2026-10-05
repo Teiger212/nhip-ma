@@ -1,4 +1,4 @@
-import { sendTestAlert } from "@inbox/lib/guest-alerts/devices";
+import { refuseImpersonation, sendTestAlert } from "@inbox/lib/guest-alerts/devices";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { getRuntime } from "@inbox/lib/runtime";
 import { NextResponse } from "next/server";
@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request): Promise<Response> {
 	const gate = await requireInboxSession(request);
 	if (gate.denied) return gate.denied;
+	const impersonating = refuseImpersonation(gate.session);
+	if (impersonating) return impersonating;
 	const outcome = await sendTestAlert(getRuntime(), {
 		userId: gate.viewer.userId,
 		officeId: gate.viewer.officeId,

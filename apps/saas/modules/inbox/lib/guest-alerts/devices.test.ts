@@ -158,6 +158,10 @@ test("the API takes a browser's subscription on an allowed push host, and nothin
 	expect(DeviceRegistration.safeParse(body("https://web.push.apple.com/QG-token")).success).toBe(
 		true,
 	);
+	// What is stored (and later posted to) is the endpoint's normal form, the one checked.
+	expect(
+		DeviceRegistration.parse(body("HTTPS://FCM.googleapis.com./fcm/send/e2e-1")).endpoint,
+	).toBe(good);
 
 	for (const refused of [
 		body("http://fcm.googleapis.com/fcm/send/e2e-1"),

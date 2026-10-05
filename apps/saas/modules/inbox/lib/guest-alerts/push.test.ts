@@ -1,3 +1,5 @@
+import { parse } from "node:url";
+
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -6,7 +8,7 @@ import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
 import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "../test-store";
 import { alertGuestMessage } from "./index";
-import { isAllowedPushEndpoint, webPushTransport } from "./push";
+import { isAllowedPushEndpoint, normalizePushEndpoint, webPushTransport } from "./push";
 import type { AlertPayload } from "./transport";
 
 /**
@@ -173,8 +175,11 @@ test("the allow-list: https on Google's, Apple's, Mozilla's and Microsoft's push
 		"https://fcm.googleapis.com/fcm/send/abc:def",
 		"https://web.push.apple.com/QGfx-token",
 		"https://api.push.apple.com/3/device/x",
+		"https://push.apple.com/x",
 		"https://updates.push.services.mozilla.com/wpush/v2/gAAAA",
 		"https://wns2-par02p.notify.windows.com/w/?token=BQYAAA",
+		"https://notify.windows.com/x",
+		"https://fcm.googleapis.com:443/fcm/send/x",
 	]) {
 		expect(isAllowedPushEndpoint(endpoint), endpoint).toBe(true);
 	}
@@ -182,20 +187,68 @@ test("the allow-list: https on Google's, Apple's, Mozilla's and Microsoft's push
 		"http://fcm.googleapis.com/fcm/send/abc",
 		"https://fcm.googleapis.com.attacker.example/x",
 		"https://evilfcm.googleapis.com/x",
-		"https://push.apple.com/x",
 		"https://evilpush.apple.com/x",
 		"https://push.apple.com.attacker.example/x",
+		"https://push.apple.com.evil.com/x",
+		"https://evilnotify.windows.com/x",
 		"https://updates.push.services.mozilla.com.attacker.example/x",
-		"https://notify.windows.com/x",
 		"https://user:pass@fcm.googleapis.com/x",
+		"https://fcm.googleapis.com@evil.com/x",
 		"https://fcm.googleapis.com:8443/x",
 		"https://169.254.169.254/latest/meta-data",
+		"https://142.250.0.1/x",
+		"https://[::1]/x",
 		"https://localhost/x",
+		"https://evil.com/fcm.googleapis.com",
+		"https://evil.com\\@fcm.googleapis.com/x",
 		"not a url",
 		"",
 	]) {
 		expect(isAllowedPushEndpoint(endpoint), endpoint).toBe(false);
 	}
+});
+
+test("an endpoint is checked and sent in one normal form: case, a trailing dot, %2e, the default port", () => {
+	for (const [raw, normal] of [
+		["HTTPS://FCM.GoogleAPIs.COM/fcm/send/AbC", "https://fcm.googleapis.com/fcm/send/AbC"],
+		["https://fcm.googleapis.com./fcm/send/x", "https://fcm.googleapis.com/fcm/send/x"],
+		["https://web.push.apple.com.:443/QG", "https://web.push.apple.com/QG"],
+		["https://fcm%2egoogleapis%2ecom/fcm/send/x", "https://fcm.googleapis.com/fcm/send/x"],
+	]) {
+		expect(normalizePushEndpoint(raw), raw).toBe(normal);
+	}
+	expect(normalizePushEndpoint("https://evil%2ecom/x")).toBeNull();
+	expect(normalizePushEndpoint("https://fcm.googleapis.com../x")).toBeNull();
+});
+
+// web-push connects to what Node's legacy `url.parse` reads, not the WHATWG parser's host: a
+// host the two read differently must never pass (the review of #134 found these).
+test("an endpoint whose host two URL parsers read differently is refused", () => {
+	for (const sneaky of [";", "{", "}", "`", '"', "'", "%2e", "|", "^"]) {
+		const endpoint = `https://evil.com${sneaky}.push.apple.com/x`;
+		expect(normalizePushEndpoint(endpoint), endpoint).toBeNull();
+	}
+	for (const raw of [
+		"https:evil.com.push.apple.com/x",
+		"https:/evil.push.apple.com/x",
+		"https://fcm.googleapis.com/fcm/send/abc:def",
+		"https://wns2-par02p.notify.windows.com/w/?token=BQYAAA",
+	]) {
+		const normal = normalizePushEndpoint(raw);
+		expect(normal, raw).not.toBeNull();
+		const legacy = parse(normal!);
+		expect(legacy.protocol, raw).toBe("https:");
+		expect(legacy.hostname, raw).toBe(new URL(normal!).hostname);
+		expect(legacy.port, raw).toBeNull();
+	}
+});
+
+test("a device stored in another form is pushed at its normal form, the one that was checked", async () => {
+	await device("agent-1", "https://FCM.googleapis.com./fcm/send/Mixed");
+
+	await webPushTransport(VAPID).send([{ userId: "agent-1", payload: PAYLOAD }]);
+
+	expect(postedEndpoints()).toEqual(["https://fcm.googleapis.com/fcm/send/Mixed"]);
 });
 
 test("without VAPID keys the live transport says push is not configured and sends nothing", async () => {

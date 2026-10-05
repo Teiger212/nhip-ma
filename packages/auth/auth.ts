@@ -126,6 +126,19 @@ export const authOptions = {
 					};
 				},
 			},
+			// A device alerts until its sign-in ends (ADR 0019, #134). Every way Better Auth ends a
+			// live session deletes its row through here: sign-out, revoking one session or the
+			// others, a ban or the admin's revoke, a password change or reset that revokes, the
+			// end of an impersonation. Its devices go first. A session that merely expired is
+			// cleaned up through here too and keeps its devices (spec #84, A5); the account's
+			// end removes them by cascade.
+			delete: {
+				before: async (session) => {
+					if (session.expiresAt > new Date()) {
+						await deletePushSubscriptionsForSession(session.id);
+					}
+				},
+			},
 		},
 		user: {
 			delete: {
@@ -198,7 +211,8 @@ export const authOptions = {
 		before: createAuthMiddleware(async (ctx) => {
 			// Signing out on a device stops its alerts (ADR 0019, #134), whatever the client does:
 			// the session's devices go before the session does. Only the session's own id
-			// decides which; recipients are always by user.
+			// decides which; recipients are always by user. (The session delete hook above covers
+			// the same and every other way a session ends; this keeps sign-out explicit.)
 			if (ctx.path === "/sign-out") {
 				const sessionId = (await getSessionFromCtx(ctx))?.session.id;
 				if (sessionId) {
