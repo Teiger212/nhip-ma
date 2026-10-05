@@ -136,9 +136,7 @@ test.describe("Auth 6 — deleting an office needs permission first", () => {
 			try {
 				// The precondition: the manager is in the office, holding the kit's owner role, as
 				// does the platform admin who created it.
-				expect(await officesOf(manager.page)).toEqual([
-					expect.objectContaining({ id: office.id }),
-				]);
+				expect(await officesOf(manager.page)).toEqual([expect.objectContaining({ id: office.id })]);
 				const before = await rolesIn(admin, office);
 				expect(before[manager.email], "the manager holds the kit's owner role").toBe("owner");
 				expect(before[PLATFORM_ADMIN.email], "the platform admin is the office's kit owner").toBe(
@@ -180,7 +178,9 @@ async function rolesIn(admin: Admin, office: Office): Promise<Record<string, str
 		organizationId: office.id,
 	});
 	expect(res.ok(), "the platform admin reads the office").toBe(true);
-	const { members } = (await res.json()) as { members: { role: string; user: { email: string } }[] };
+	const { members } = (await res.json()) as {
+		members: { role: string; user: { email: string } }[];
+	};
 	return Object.fromEntries(members.map((m) => [m.user.email, m.role]));
 }
 
