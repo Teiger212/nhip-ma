@@ -85,7 +85,7 @@ function postedEndpoints(): string[] {
 	return sendNotification.mock.calls.map(([subscription]) => subscription.endpoint).sort(byText);
 }
 
-test("each of the operator's devices gets the payload, high urgency, a 1-hour TTL and VAPID, nothing else", async () => {
+test("each of the operator's devices gets the payload, high urgency, a 1-hour TTL, a 10-second timeout and VAPID, nothing else", async () => {
 	const phone = await device("agent-1", fcm("phone"));
 	const laptop = await device("agent-1", fcm("laptop"));
 	await device("agent-2", fcm("colleague"));
@@ -103,6 +103,8 @@ test("each of the operator's devices gets the payload, high urgency, a 1-hour TT
 		expect(options).toEqual({
 			urgency: "high",
 			TTL: 3600,
+			// A push service that hangs cannot stall the background job (#135).
+			timeout: 10_000,
 			vapidDetails: {
 				subject: VAPID.subject,
 				publicKey: VAPID.publicKey,

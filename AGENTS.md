@@ -104,7 +104,10 @@ tests. User flows have Playwright specs (`apps/saas/tests`) that CI runs on ever
 runner (a production build behind a local HTTPS proxy, its own Postgres 18, mock pipes); each scenario in `docs/e2e-scenarios.md` becomes a
 spec. After every staging deploy a read-only Playwright smoke run checks the deployment
 (`tests/smoke/`). Each release checklist includes
-one real round trip from a phone over WhatsApp and Zalo.
+one real round trip from a phone over WhatsApp and Zalo, and alerts on real phones (#135):
+Android Chrome, and an iPhone from the Home Screen. On each, tapping an alert opens its
+thread, the lock screen shows the guest's name, pipe and language and no message, a burst
+sounds once, and signing out stops the alerts.
 
 **Test quality (decided 2026-09-27).** A test proves intent, not the code in front of it.
 

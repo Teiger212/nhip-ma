@@ -84,7 +84,23 @@ url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devi
   session delete hook does the same for every other way a live session ends (revoking it or
   the others, a ban, a password reset that revokes, the end of an impersonation), while an
   expired session keeps its devices (A5). An impersonating admin cannot add a device. `pnpm seed`
-  always uses the mock transport.
+  always uses the mock transport. Registering is proof of possession (#135): an endpoint
+  another operator holds moves only with the same `p256dh` and `auth` (the same browser),
+  else 409, decided under an advisory lock on the endpoint; and the registration holds the
+  session row `FOR SHARE` and keeps no device if its session is gone, while a session delete
+  after-hook removes the session's devices once its row is gone, so a sign-out racing a
+  registration leaves none. A push gives up after 10 seconds.
+- **Installable app and service worker** (#135): `app/manifest.ts` (standalone, starts on the
+  Inbox, icons in `public/icons/`) and `public/sw.js`, served `no-cache` (`next.config.ts`);
+  both pass the locale proxy, whose matcher skips dotted paths. The worker has no fetch
+  handler and caches nothing: it shows a push (`showNotification` with the payload's title,
+  body and `tag`, and `renotify` from `sound` except on Apple's WebKit) and on a click focuses
+  an open Nhịp window and takes it to the alert's link, or opens one. The page registers it
+  and subscribes only on "Turn on alerts" (`modules/inbox/lib/this-device.ts`), with the VAPID
+  public key from `GET /api/alerts/devices` (which also says whether this sign-in has a
+  device). The Inbox's alerts panel and Settings → Notifications' "This device" row read that;
+  signing out also unsubscribes the browser. E2E and CI make a fresh VAPID pair per run; a
+  production, staging or live deployment refuses the retired E2E key at startup.
 - **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
   (`crmAdapterFor`: the mock and HubSpot), pure rules (`rules.ts`, `phone.ts`), and the CRM
   sync module (`sync.ts`), which owns a thread's link to its lead and persists through the
