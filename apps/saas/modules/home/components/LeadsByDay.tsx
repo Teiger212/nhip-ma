@@ -101,6 +101,10 @@ export function LeadsByDay({ days, total }: { days: Day[]; total: number }) {
 								<Cell
 									key={day.day}
 									fill={index === last ? "var(--chart-strong)" : "var(--color-leads)"}
+									// The day and its count, for E2E to read what each bar draws (Home 5).
+									data-test="leads-by-day-bar"
+									data-day={day.day}
+									data-leads={day.leads}
 								/>
 							))}
 						</Bar>

@@ -16,8 +16,8 @@ E2E the office's CRM is the **mock CRM**: connecting an office to it is setup
 would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario names its ticket.
 
 1. **A new guest becomes a lead in the CRM** (#61). An office on the mock CRM: a new guest
-   writes on Zalo. The agent opens the thread and its header says "In CRM: <the guest's name>"
-   (read-only); the office's manager sees the same on that thread.
+   writes on Zalo. The manager assigns the thread to the agent, who opens it, and its header
+   says "In CRM: <the guest's name>" (read-only); the office's manager sees the same on that thread.
    The mock CRM holds one lead for that guest, with their Zalo user id, pipe and a link to the
    thread, and no message text. The guest writes again: still one lead. An office with no CRM:
    the header says nothing about a CRM, and no lead is made.
@@ -39,7 +39,7 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    in Your turn, and the nav count drops. The guest writes again: back in Your turn. A won lead
    shows "Won". A notice with a bad signature is refused.
    Spec: `apps/saas/tests/crm.spec.ts` (CRM 3; an office of the test's own with one invited agent
-   and a second waiting guest, so the counts are exact; "neutral" is the tone of the row's pipe
+   and a second waiting guest, both assigned to the agent, so the counts are exact; "neutral" is the tone of the row's pipe
    badge; the CRM telling Nhịp again that the lead is lost, after the guest wrote, keeps them in
    Your turn (the outcome is timed from when Nhịp first saw it, ADR 0003), judged once another
    lead marked won after it has left Your turn; a notice signed with the wrong secret, or not
@@ -132,7 +132,7 @@ not driven here; a test sets up a connected or disconnected OA directly, as setu
    Sent, a mock send in E2E).
 4. **Disconnecting.** The platform admin disconnects the office's Zalo OA: Connections shows
    it "Not connected", and a new guest message to that OA no longer arrives in the office.
-   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 4; a new office with an invited member who
+   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 4; a new office with an invited manager who
    watches the inbox; the confirmation names the OA; the thread stays, the same guest's next
    message and a new guest's first message do not arrive).
 
@@ -175,72 +175,114 @@ time: nothing in it can be trusted.
    agent (403) and a visitor who is signed out (401). Spec: `apps/saas/tests/webhooks.spec.ts`
    (Webhook deliveries 3).
 
-## Pool then owner (ADR 0015)
+## Assigning leads (ADR 0022, spec #160)
 
 Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and a manager
 (`manager@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
-1's, Yuki is agent 2's, Alexei and Thảo are in the pool.
+1's, Yuki is agent 2's, and Alexei and Thảo are Unassigned. "A second manager" is an invited
+kit `admin` of an office of the test's own. Every new guest also gets the auto-reply (ADR
+0021); nothing here depends on it.
 
-1. **A new guest lands in the pool.** A guest writes to the office for the first time: both
-   agents see the thread in their Inbox, marked as in the pool, and so does the manager.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 1; a new Zalo guest on the test's own OA, in the list and the thread header).
-2. **The first agent to answer owns it.** Agent 1 approves a reply on a pool thread: it stays
-   in agent 1's Inbox, shown as theirs, and leaves agent 2's Inbox, counts and search. Agent 2
-   opening it by address, or through the API, finds nothing (404).
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 2; the Inbox has no per-thread address, so "by address" is
-   `GET /api/conversations/:id`; "counts and search" is searching the guest under All: every
-   count says 0. Agent 1's "Yours" is checked after reloading the Inbox: after a send in Your
-   turn, the Inbox moves on to the next waiting guest (the sent thread leaves Your turn), so
-   the header then shows that next thread).
-3. **Two agents answering at once end with one owner.** Agent 1 and agent 2 approve the same
-   pool thread at the same moment: one reply is sent, and the thread belongs to whoever sent it.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 3; both approvals fired at once through the API: exactly one
-   is 200, the manager sees only that reply and that sender as owner, the other agent 404).
-4. **The guest's next message goes to the owner.** The guest writes again on an owned thread:
-   it is Your turn for agent 1 only; agent 2 still does not see it.
+1. **A new guest waits in Unassigned, for managers only.** A guest writes to the office for
+   the first time.
+   - The manager sees the thread in the Unassigned view, marked "Unassigned".
+   - Neither agent sees it: it is not listed, counted or searched. Opening it by address or
+     through the API is a 404.
+
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 1; a new Zalo guest on the test's own OA,
+   in the list and the thread header).
+
+2. **Assigning gives the thread to that agent only.** On the thread's row in Unassigned, the
+   manager picks "Assign to…" → agent 1.
+   - The thread leaves Unassigned. Agent 1's Inbox has it, Your turn, marked "Yours".
+   - Agent 2 still finds nothing (404).
+   - Agent 1 approves a reply: it is sent from agent 1, and the thread stays theirs.
+
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 2, rewritten).
+
+3. **Two managers assign at once: the last one wins.** In an office with a second manager,
+   manager 1 assigns a new guest to agent 1, then manager 2 assigns it to agent 2 within the
+   same second.
+   - The thread is agent 2's: both managers see agent 2 as owner.
+   - Agent 1 finds nothing (404).
+
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 3, rewritten; both through the owner API).
+
+4. **The guest's next message goes to the owner.** The guest writes again on a thread assigned
+   to agent 1: it is Your turn for agent 1 only; agent 2 still does not see it.
    Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 4).
-5. **The manager sees every thread and reassigns.** The manager sees pool threads and every
-   agent's threads, each marked with its owner. Reassigning agent 1's thread to agent 2 moves
-   it: agent 2 now has it, agent 1 no longer does. Returning it to the pool shows it to both
-   agents again. Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 5; owners shown on the test's own threads and,
-   read only, on the seed's Minji and Yuki; reassigning through the header's Owner control).
-6. **A reply from the vendor's own app claims nothing.** A reply the office sent from the
-   WhatsApp or Zalo app itself leaves the thread in the pool.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 6; Zalo only: an `oa_send_text` echo shows in the thread and
-   the thread stays Pool for both agents and the manager; the next agent to answer in Nhịp
-   owns it. The WhatsApp echo is not tested yet).
-7. **The manager filters by owner.** The manager's Inbox filter All / Pool / an operator shows
-   exactly those threads.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 7; under the All view: each filter lists its threads, not the
-   others, and every listed thread carries that owner).
-8. **A new agent's first day.** A newly joined agent sees only the pool; with nothing in it,
-   the Inbox says guests waiting for anyone appear there.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 8; one newcomer joins the walk office and sees only pool
-   threads; another joins a new office with no guests and sees the empty-pool text).
-9. **An agent cannot reassign.** An agent's thread has no Owner control, and the reassign API
-   refuses an agent (403).
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 9; the manager's control on the same thread is the positive
-   control; 403 for handing on, returning to the pool and taking a pool thread; nothing moves).
+5. **The manager sees every thread and reassigns.** The manager sees the Unassigned threads and
+   every agent's threads, each marked with its owner.
+   - Reassigning agent 1's thread to agent 2 moves it: agent 2 now has it, agent 1 no longer
+     does.
+   - Returning it to Unassigned takes it from agent 2, and neither agent sees it.
+
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 5; owners shown on the test's own threads
+   and, read only, on the seed's Minji and Yuki; through the header's owner menu).
+
+6. **A reply from the vendor's own app assigns nothing.** A reply the office sent from the
+   WhatsApp or Zalo app itself shows in the thread, and the thread stays Unassigned: the
+   manager sees it there, and neither agent sees it.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 6; Zalo only, an `oa_send_text` echo. The
+   WhatsApp echo is not tested yet).
+7. **The manager filters by owner.** The manager's Inbox filter (All, Unassigned, or an
+   operator) shows exactly those threads.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 7; under the All view, each filter lists
+   its own threads and not the others, and every listed thread carries that owner).
+8. **A new agent's first day.** A newly joined agent sees no thread at all, even in an office
+   with Unassigned guests. With nothing assigned, the Inbox says "Nothing assigned to you
+   yet."
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 8; one newcomer joins the walk office,
+   which has Alexei and Thảo Unassigned).
+9. **An agent cannot assign.** An agent's thread has no owner menu and no "Assign to…". The
+   owner API refuses an agent (403) for handing a thread on, returning it to Unassigned, and
+   taking an Unassigned thread, and nothing moves.
+   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 9; the manager's control on the same
+   thread is the positive control).
+10. **Unassigned comes first, oldest first.** Three new guests write, one after another. The
+    manager's Inbox opens on the Unassigned view, which lists them oldest first with its
+    count. "Assign to…" on the oldest row gives it to agent 1, and that row leaves the view:
+    its count drops and the next guest heads the list.
+11. **Waiting now lists Unassigned leads first for a manager.** Agent 1's guest has waited
+    longer than a new Unassigned guest. The manager's Waiting now lists the Unassigned guest
+    first, then agent 1's; agent 1's Waiting now lists only their own.
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
 1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,
    oldest waiting first and quiet ones last, the same order as the inbox's Your turn. Choosing
    one opens the inbox with that thread selected (on a phone, the thread itself).
+   Spec: `apps/saas/tests/home.spec.ts` (Home 1; an office of the test's own, holding a WhatsApp
+   number of its own, with one invited agent; five WhatsApp guests with explicit write times (30,
+   20 and 10 minutes ago; 5 and 3 days ago, Quiet), sent in another order; Waiting now's order is
+   the rule's and the inbox's Your turn order with Quiet opened; "selected" is that guest's thread
+   open beside the list, not the first guest's; on a phone, a Quiet guest's thread with no list).
 2. **Waiting now lists only what the operator can open.** A thread another agent owns is not
    in agent 1's Waiting now; the manager's lists it.
 3. **Nobody waiting.** With every guest answered, Waiting now says "No guest is waiting."
+   Spec: `apps/saas/tests/home.spec.ts` (Home 3; an office of the test's own with one invited
+   agent and two guests, answered one by one through the Inbox: Waiting now lists both, then the
+   one left and no empty text, then says "No guest is waiting." and lists no guest).
 4. **The nav counts Your turn on every page.** The amber number beside Inbox in the sidebar
    equals the inbox's Your turn count, on Home, the Inbox and Settings alike. Approving a
    reply lowers it; a guest writing in raises it within the inbox's poll. The platform admin
    sees no number. Spec: `apps/saas/tests/nav-count.spec.ts` (Home 4; an office of the test's
-   own with one invited agent, so the counts are exact: three guests, one approved, so Your
+   own with one invited agent, so the counts are exact: three guests, each assigned to the agent
+   by the office's manager, one approved, so Your
    turn 2 differs from Sent and All; Home and Settings loaded afresh; a guest raises it on
    Settings, the Inbox and Home without a reload; the platform admin, owner of that office,
    is judged on a Settings page opened before the agent's and after the agent's has shown a
    new guest, and in the admin area).
 5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
    wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.
+   Spec: `apps/saas/tests/home.spec.ts` (Home 5; an office of the test's own with one invited
+   agent; WhatsApp guests with explicit write times: one at 17:30 UTC ten days back (00:30 in
+   Vietnam the next day) who writes again today, one today, one three days back, and two either
+   side of the window's first Vietnamese midnight; a bar is `data-test="leads-by-day-bar"` with
+   `data-day` and `data-leads`, a day with no bar has no lead. The bars must be exactly the
+   guests' first-write Vietnamese days inside Home's 30 days, worked out when Home loads, one lead
+   per guest: this per-day match catches a lead counted per message, a window a day short, and (at
+   most hours of the day) a rolling 30×24 hours. Leads in, read from the funnel, equals their sum).
 
 ## Thread links (ADR 0010, #141)
 
@@ -252,7 +294,8 @@ id is stored once, on the thread, and travels in no address.
    the link on their lead in the office's CRM, and the inbox's request for the thread
    (`/api/conversations/<id>`). That link opens the guest's thread.
    Spec: `apps/saas/tests/thread-links.spec.ts` (Thread links 1; an office of the test's own on
-   the mock CRM, holding a WhatsApp number of its own, with one invited agent and two guests, the
+   the mock CRM, holding a WhatsApp number of its own, with one invited agent and two guests
+   assigned to them, the
    linked one second in the queue; the three addresses carry one id, and the phone is in none of
    them, raw or decoded; Home's and the CRM's links each open the guest's thread).
 2. **A stale or unknown link opens no one's thread.** The agent follows an inbox link whose
@@ -281,8 +324,9 @@ it would live, writes one `inbox_alert` row per operator per alert (who, which t
 operator's devices. No test writes the log or a device row.
 
 - **Recipients are exact:** guests write through signed Zalo webhooks to an office of the
-  test's own (as in Pool), with two invited agents, an invited manager, and the platform admin
-  who created it (its kit `owner`).
+  test's own (as in Assigning leads), with two invited agents, an invited manager, a second
+  invited manager where a scenario says so, and the platform admin who created it (its kit
+  `owner`). A thread is given to an agent through the owner API, as the manager.
 - **A device** is added through the app's own API, in the test's own signed-in session:
   `POST /api/alerts/devices` with
   `{ "endpoint": "https://fcm.googleapis.com/fcm/send/e2e-<random>", "keys": { "p256dh": <a
@@ -296,44 +340,52 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 - **Red first for the right reason:** the migration and `alert-state.ts` land unwired before
   the red run, so a red test fails on the missing alert, not a missing table.
 
-1. **A pool guest alerts every agent and manager** (#132). A new guest writes: the log
-   holds one sounding `guest` alert for agent 1, agent 2 and the manager, and none for anyone
-   else. Each alert's link starts with its operator's locale and carries no thread id: `/en/`
-   for an operator set to English, `/vi/` for one with no locale set.
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 1; agent 1 sets English through the kit's
-   user update, the others never chose one).
-2. **An owned thread's guest alerts only its owner** (#132). Agent 1 answers a pool guest
-   (claims it); the guest writes again: one new alert, for agent 1. Agent 2 and the manager get
-   none for that message.
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 2; agent 1 answers through the approve API.
-   Their second alert is within 2 minutes of the first, so it is a silent replacement.)
-3. **A reassignment alerts the new owner, with a bell row** (#133). The manager gives agent
-   1's thread to agent 2 through the header's Owner control: the log holds one `assigned` alert
-   for agent 2 and none for anyone else; agent 2's bell shows "A manager gave you a thread",
-   with no guest's name, and it opens the thread. The manager gives a thread to themselves: no
-   alert, no bell row. (No email: Vitest on the kit producer; E2E mail is not readable.)
-4. **A thread returned to the pool alerts the pool** (#133). The manager returns agent 1's
-   thread to the pool: the log holds one `returned` alert for agent 1 and agent 2, none for the
-   manager who returned it (whoever acts is never alerted for it), and none for the platform
-   admin. No bell row.
+1. **A new guest alerts the managers only** (#132; ADR 0022). A new guest writes: the log
+   holds one sounding `guest` alert for each manager, and none for either agent or anyone
+   else. Each alert's link starts with its manager's locale and carries no thread id: `/en/`
+   for a manager set to English, `/vi/` for one with no locale set.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 1, rewritten; two managers, the first set to
+   English through the kit's user update).
+2. **An owned thread's guest alerts only its owner** (#132). The manager assigns a new guest to
+   agent 1, and the guest writes again: one new `guest` alert, for agent 1. Agent 2 and the
+   managers get none for that message.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 2, rewritten).
+3. **An assignment alerts the chosen agent, with a bell row** (#133).
+   - The manager assigns an Unassigned guest to agent 1 through "Assign to…". The log holds
+     one `assigned` alert, for agent 1 only. Agent 1's bell shows "A manager gave you a
+     thread", with no guest's name, and it opens the thread.
+   - Reassigning the thread to agent 2 makes one `assigned` alert, for agent 2. Agent 1, who
+     lost it, gets no alert but a bell row naming the guest: "Minji was moved to another
+     agent". It doesn't say to whom (ADR 0022, P4).
+   - A manager who gives a thread to themselves gets no alert and no bell row.
+   - No email: Vitest on the kit producer, since E2E can't read mail.
+4. **A thread returned to Unassigned alerts the other managers** (#133). Manager 1 returns
+   agent 1's thread to Unassigned. The log holds one `returned` alert, for manager 2. There is
+   none for manager 1, who returned it (whoever acts is never alerted for it), none for either
+   agent, and none for the platform admin. Agent 1, who lost the thread, gets only the bell
+   row naming the guest, with no push. This follows from recipients equalling visibility
+   (ADR 0022, S2).
 5. **A vendor retry alerts no one** (#132). The same signed Zalo message is delivered
-   twice: the thread holds one message, and the log holds one alert per recipient, not two.
+   twice: the thread holds that message once, and the log holds one alert per recipient, not two.
    Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 5; one signed body, same `msg_id`, posted twice).
-6. **A burst makes one sounding alert** (#132). A pool guest writes five messages within 20
-   seconds, two of them at the same moment: each recipient has exactly one sounding alert on
+6. **A burst makes one sounding alert** (#132). A new guest writes five messages within 20
+   seconds, two of them at the same moment: each manager has exactly one sounding alert on
    that thread; the rest are silent replacements. (The 2-minute window itself is a Vitest rule
    with an explicit clock.)
    Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 6).
-7. **The platform admin is never alerted** (#132). In an office of its own, a pool guest
-   writes, then an agent claims the thread and the guest writes again: the agents and manager
-   have their rows, and the platform admin, the office's kit `owner`, has none.
+7. **The platform admin is never alerted** (#132). In an office of its own, a new guest writes.
+   The manager assigns the thread to an agent, and the guest writes again. The manager and the
+   agent have their rows; the platform admin, the office's kit `owner`, has none.
    Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 7).
-8. **An alert for a thread a colleague took shows a neutral notice** (#136). Agent 2 opens
-   the link of their alert for a pool guest after agent 1 has claimed that thread: the Inbox
-   says "A colleague is answering this guest" ("Một đồng nghiệp đang trả lời khách này") and
-   shows nothing of the thread (no guest name, message or pipe on the page); the queue is usable
-   beside it. Agent 2 opening agent 1's alert link, or an alert id that never existed, gets the
-   same notice. Agent 1's own link opens the thread.
+8. **An alert for a thread now someone else's shows a neutral notice** (#136).
+   - Agent 1 holds a thread, and its guest writes, so agent 1 has a `guest` alert. The manager
+     then reassigns the thread to agent 2.
+   - Agent 1 opens that alert's link. The Inbox says "A colleague is answering this guest"
+     ("Một đồng nghiệp đang trả lời khách này") and shows nothing of the thread: no guest
+     name, message or pipe on the page. The queue is usable beside it.
+   - Agent 2 opening agent 1's alert link, or anyone opening an alert id that never existed,
+     gets the same notice.
+   - A manager's own link to that guest still opens the thread.
 9. **The alerts panel asks, and only when asked to** (#135). Permission not yet asked
    (`addInitScript`): loading the Inbox shows no browser prompt, and the canvas shows "Get an
    alert when a guest writes." with one blue "Turn on alerts" pill and "Not now".
@@ -355,11 +407,77 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     writes one `test` alert for that operator and says it was sent. The same through the API:
     `POST /api/alerts/devices/test` → 202; signed out, 401; with no device on this session,
     409 and the row offers to turn alerts on instead.
-12. **While Nhịp is open, the tab and a toast say so** (#136). An agent on Settings: a new
-    pool guest writes; within the poll the tab title reads "(n) Inbox", n the nav's Your-turn
-    count, and one toast says "Minji is waiting"; the same guest writing again replaces it, not
-    a second toast; four guests show at most three toasts; tapping one opens that thread. On the
-    Inbox list: the tab title changes, no toast. A guest on a colleague's thread raises neither.
+12. **While Nhịp is open, the tab and a toast say so** (#136). An agent is on Settings, and a
+    guest on a thread assigned to them writes.
+    - Within the poll, the tab title reads "(n) Inbox", where n is the nav's Your-turn count,
+      and one toast says "Minji is waiting".
+    - The same guest writing again replaces the toast; it doesn't add a second one.
+    - Four of their guests show at most three toasts. Tapping one opens that thread.
+    - On the Inbox list, the tab title changes and no toast shows.
+    - A guest on a colleague's thread raises neither, and neither does a new Unassigned guest.
+    - As the manager on Settings, a new guest raises the toast.
+
+## First greeting (ADR 0021, spec #159)
+
+**How these run.**
+
+- E2E runs with `SEND_MODE=mock` and no `DRAFT_*` key, so every auto-reply is the fixed
+  template, sent as a mock send. Reading the thread as the manager is looking at the guest's
+  phone.
+- The model's path is proven in Vitest (the post-check, the cap, the request's zero-retention
+  routing), by the greeting test set run by hand, and on staging (`docs/setup-checklist.md`).
+- Guests write through signed Zalo webhooks to an office of the test's own, named "Saigon
+  Prime Test", with a manager and an invited agent. The auto-reply is on, because that is the
+  default.
+
+1. **A new guest is greeted at once, and it's still their turn.** A guest writes in English,
+   "Hi, we're looking to rent an apartment in Tay Ho". Within seconds the thread holds a
+   second message, from the office.
+   - **What it says.** It thanks the guest and acknowledges renting in Tây Hồ. It asks about
+     budget and move-in time (R3's order, two at most) and contains no digit. Its last line
+     reads "Auto-reply from Saigon Prime Test: a colleague will continue with you right
+     here."
+   - **Its meta line** carries "Auto-reply", "Template" and the mock badge.
+   - **The queue doesn't move.** The thread is still Your turn and has no owner. The nav count
+     includes it, and Sent is 0.
+2. **Only the first message is greeted.**
+   - The guest writes again: no second auto-reply, so the thread holds exactly one.
+   - A new guest's first two messages, delivered at the same moment, get one auto-reply.
+   - A thread whose first message came from the office's own app (an `oa_send_text` echo)
+     gets no auto-reply when the guest then writes.
+3. **The greeting counts nowhere in the funnel.**
+   - After the auto-reply, Home reads Leads in 1, Engaged 0, In conversation 0, and no
+     answered leads under response time.
+   - The guest writes back before any human reply: still In conversation 0.
+   - The manager approves a reply: Engaged 1, and the response time runs from the guest's
+     first message to that reply.
+   - The guest writes again: In conversation 1.
+4. **The guest's language picks the greeting.** Guests write in Vietnamese, Japanese, Korean
+   and Russian. Each auto-reply, label included, is in the guest's language: a letter only
+   Vietnamese uses, kana, Hangul or Cyrillic. A guest writing "Bonjour, je cherche un
+   appartement à louer" is greeted in English, and so is one writing in Spanish ("Hola, busco
+   un apartamento, está disponible?").
+5. **A manager turns the auto-reply off.**
+   - In the office's settings, the manager switches the auto-reply off. A new guest then gets
+     no auto-reply, and the reply box holds today's first-reply template.
+   - Switched back on, the next new guest is greeted. A guest whose thread began while it was
+     off writes again and is not greeted (S1).
+   - An agent sees no switch, and its API refuses an agent (403) and a signed-out caller
+     (401).
+6. **No greeting on a disconnected pipe.** With the office's Zalo OA disconnected, a new
+   guest's first message arrives and is Your turn, with no auto-reply.
+7. **The greeting's echo is not a reply.** Zalo delivers the `oa_send_text` echo of the
+   auto-reply, with the auto-reply's message id. The thread still holds one auto-reply and
+   no app reply, stays Your turn, and Home's Engaged stays 0.
+   - In a mock deployment the auto-reply's message id is deterministic,
+     `mock-auto-reply-<thread id>`. The test reads the thread id as the manager, through
+     `/api/conversations`.
+8. **After the greeting, the reply box doesn't greet again.** The manager opens a guest's
+   thread after its auto-reply. The reply box holds the follow-up template (E2E has no
+   model), never the first-reply template's "Thanks for writing". The guest writes again,
+   and the box still holds the follow-up template.
+   - With a model configured, it would hold the model's follow-up draft. That case is
+     covered by Vitest.
 
 ## Guest deletion (ADR 0020, spec #85)
 
@@ -415,14 +533,15 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    timestamp, so the median and 90th percentile read "0 min" with or without the deleted guest,
    and every lead falls on today.)
 
-3. **An agent can't delete.** On the agent's own thread and on a pool thread, the header offers
+3. **An agent can't delete.** On the agent's own thread, the header offers
    no "Delete guest data". `POST /api/conversations/:id/deletion` as the agent answers 403, with
    `deleteInCrm` true or false. The thread and its messages are unchanged afterwards, for the
    agent and the manager.
    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 3; 403 `{ error: "forbidden" }`
    also with no body, since the agent is refused before the body is read; the manager's header
    on the agent's thread has Thread actions, the positive control; "unchanged" is both threads
-   still opening for both, with the guest's message and the agent's reply).
+   still opening for both, with the guest's message and the agent's reply. It also checks a pool
+   thread, which agents still see until ADR 0022 is built; that part goes with the pool).
 4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
    `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
    another office it answers 404.
@@ -462,7 +581,8 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
    CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
    fresh:
-   - It is in the pool, shows only the new message, and is Your turn for both agents.
+   - It is Unassigned, shows the new message and its auto-reply, and is Your turn for the
+     manager; neither agent sees it.
    - Home's Leads in counts it as one more lead.
    - The mock CRM holds one lead for that guest again: a new one.
 10. **The record names no guest.** After deletions with the box ticked, unticked and with no CRM,
