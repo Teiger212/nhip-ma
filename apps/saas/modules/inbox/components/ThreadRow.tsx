@@ -30,13 +30,14 @@ export function ThreadRow({
 	const name = displayName(conversation);
 	const when = conversation.lastGuestInboundAt;
 	return (
-		<li className="relative">
+		// The row stays lit while the pointer is on its action, which sits over it.
+		<li className="group relative">
 			<button
 				type="button"
 				aria-current={active ? "true" : undefined}
 				className={cn(
 					"gap-2.5 px-3 py-2.5 text-sm min-w-0 my-0.5 mx-1.5 w-row-inset ease-out flex cursor-pointer items-start overflow-hidden rounded-xl text-left transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none",
-					active ? "bg-accent" : "hover:bg-muted/70",
+					active ? "bg-accent" : "group-hover:bg-muted/70",
 				)}
 				onClick={onOpen}
 			>

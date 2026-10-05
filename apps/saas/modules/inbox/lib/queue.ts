@@ -19,12 +19,14 @@ export function isInboxView(value: unknown): value is InboxView {
 	return typeof value === "string" && (INBOX_VIEWS as readonly string[]).includes(value);
 }
 
+const AGENT_VIEWS: readonly InboxView[] = INBOX_VIEWS.filter((view) => view !== "unassigned");
+
 /**
  * The views an operator has, in order. Unassigned is the managers' alone, and their first and
  * default view (ADR 0022): a lead waits there until a manager gives it to someone.
  */
 export function viewsFor(manager: boolean): readonly InboxView[] {
-	return manager ? INBOX_VIEWS : INBOX_VIEWS.filter((view) => view !== "unassigned");
+	return manager ? INBOX_VIEWS : AGENT_VIEWS;
 }
 
 /** The view an operator's Inbox opens on, and the one a view they don't have falls back to. */

@@ -909,6 +909,14 @@ test.describe("Assign 10 — Unassigned comes first, oldest first", () => {
 		await assignMenuItem(page, oneName).click();
 		await expect(rowOf(page, oldest), "the oldest row leaves Unassigned").toHaveCount(0);
 		await expect(view(page, "Unassigned", 2), "its count drops").toBeVisible();
+		await expect(
+			rowOf(page, newest),
+			"choosing someone selects nothing: the newest is still selected",
+		).toHaveAttribute("aria-current", "true");
+		await expect(
+			openThread(page).getByText(newest.id).first(),
+			"the newest guest's thread is still the one open",
+		).toBeVisible();
 		await expect(guestRows(page), "the next guest heads the list").toHaveText(
 			[middle, newest].map(naming),
 		);

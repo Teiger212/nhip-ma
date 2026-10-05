@@ -18,7 +18,14 @@ import {
 	useRegenerateDraft,
 } from "../lib/inbox-queries";
 import { PIPE_NAMES } from "../lib/pipe-names";
-import { buildQueueView, INBOX_VIEWS, nextSelection, openingView, viewsFor } from "../lib/queue";
+import {
+	buildQueueView,
+	INBOX_VIEWS,
+	inView,
+	nextSelection,
+	openingView,
+	viewsFor,
+} from "../lib/queue";
 import { sendStatusFor } from "../lib/send-status";
 import { summarize } from "../lib/summary";
 import type { ConversationSummary } from "../lib/types";
@@ -96,14 +103,19 @@ export function Inbox() {
 	useEffect(() => {
 		if (threadParam !== null) {
 			if (!conversationsQuery.isSuccess || rolePending) return;
-			if (!conversationsQuery.data.some((conversation) => conversation.id === threadParam)) {
+			const linked = conversationsQuery.data.find(
+				(conversation) => conversation.id === threadParam,
+			);
+			if (!linked) {
 				setLinkMissing(true);
 				setSelectedId(null);
 				void setThreadParam(null);
 				return;
 			}
 			if (!ordered.some((conversation) => conversation.id === threadParam)) {
-				void setView("all");
+				// The first of the operator's views that holds it: an owned Your-turn thread opens
+				// in Your turn for a manager too, whose Inbox opens on Unassigned.
+				void setView(views.find((option) => inView(linked, option)) ?? "all");
 				void setQuery(null);
 				void setOwnerFilter(null);
 				return;
@@ -130,6 +142,7 @@ export function Inbox() {
 		setQuery,
 		setOwnerFilter,
 		linkMissing,
+		views,
 	]);
 
 	const detailQuery = useConversation(selectedId);
@@ -247,7 +260,8 @@ export function Inbox() {
 						query={query}
 						onQueryChange={(value) => void setQuery(value || null)}
 						views={views}
-						view={view}
+						// No view is pressed until the role says which one this Inbox opens on.
+						view={rolePending ? null : view}
 						onViewChange={(next) => {
 							setLinkMissing(false);
 							void setView(next);

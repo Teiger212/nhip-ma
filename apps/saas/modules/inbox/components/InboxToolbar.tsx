@@ -22,7 +22,8 @@ export function InboxToolbar({
 	onQueryChange: (query: string) => void;
 	/** The operator's views, in order (a manager's start with Unassigned, ADR 0022). */
 	views: readonly InboxView[];
-	view: InboxView;
+	/** The view shown; none while the Inbox doesn't yet know which one it opens on. */
+	view: InboxView | null;
 	onViewChange: (view: InboxView) => void;
 	counts: QueueCounts;
 }) {

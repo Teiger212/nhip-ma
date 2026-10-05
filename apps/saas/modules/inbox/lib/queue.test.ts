@@ -10,6 +10,8 @@ import {
 	threadStatus,
 	waitingNow,
 	nextSelection,
+	openingView,
+	viewsFor,
 	QUIET_AFTER_MS,
 	yourTurnCount,
 } from "./queue";
@@ -272,6 +274,17 @@ test("a thread's status: the outcome while resolved, the turn otherwise", () => 
 });
 
 /* ADR 0022 (#163): the managers' Unassigned view, and Waiting now's Unassigned leads first. */
+
+// CONTEXT "Unassigned": only managers see it, and their Inbox opens on it.
+test("Unassigned is a manager's first and opening view; an agent has no such view", () => {
+	expect(viewsFor(true)).toEqual(["unassigned", "yourTurn", "sent", "all"]);
+	expect(viewsFor(false)).toEqual(["yourTurn", "sent", "all"]);
+	expect(openingView(true, null)).toBe("unassigned");
+	expect(openingView(false, null)).toBe("yourTurn");
+	expect(openingView(false, "unassigned")).toBe("yourTurn");
+	expect(openingView(true, "sent")).toBe("sent");
+	expect(openingView(false, "all")).toBe("all");
+});
 
 const agentOne = { id: "agent-1", name: "Agent One" };
 /** Unassigned, waiting since four hours ago. */
