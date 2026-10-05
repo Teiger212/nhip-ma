@@ -67,10 +67,11 @@ const test = base.extend<{
 			contexts.push(agent);
 			const manager = await joinOffice(admin, browser, office.id, "admin", "thread-links-manager");
 			contexts.push(manager);
+			const assigner = assignerAs(manager.api);
 			return {
 				id: office.id,
 				agent,
-				assignToAgent: (guest) => assignerAs(manager.api).assignGuestTo(guest.phone, agent.userId),
+				assignToAgent: (guest) => assigner.assignGuestTo(guest.phone, agent.userId),
 				guestWrites: async () => {
 					const guest = newWhatsAppGuest();
 					await whatsAppWebhook(request, number, guest);

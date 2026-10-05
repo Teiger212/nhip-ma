@@ -22,7 +22,7 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    thread, and no message text. The guest writes again: still one lead. An office with no CRM:
    the header says nothing about a CRM, and no lead is made.
    Spec: `apps/saas/tests/crm.spec.ts` (CRM 1; offices of the test's own with an invited agent
-   and an invited manager (the kit's `admin`), who assigns each guest to the agent;
+   and an invited manager (the kit's `admin`), who assigns each guest the agent opens to them;
    a nameless Zalo guest's name is their Zalo id, as the Inbox lists them; "no second lead" and
    "no lead" are judged once a later guest's lead, on the mock CRM, has arrived).
 2. **The admin sets an office's CRM** (#62). As the platform admin, the office's Connections
@@ -256,16 +256,16 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
    one opens the inbox with that thread selected (on a phone, the thread itself).
    Spec: `apps/saas/tests/home.spec.ts` (Home 1; an office of the test's own, holding a WhatsApp
    number of its own, with one invited agent; five WhatsApp guests, assigned to the agent by an
-   invited manager, with explicit write times (30,
-   20 and 10 minutes ago; 5 and 3 days ago, Quiet), sent in another order; Waiting now's order is
+   invited manager, with explicit write times (30, 20 and 10 minutes ago; 5 and 3 days ago,
+   Quiet), sent in another order; Waiting now's order is
    the rule's and the inbox's Your turn order with Quiet opened; "selected" is that guest's thread
    open beside the list, not the first guest's; on a phone, a Quiet guest's thread with no list).
 2. **Waiting now lists only what the operator can open.** A thread another agent owns is not
    in agent 1's Waiting now; the manager's lists it.
 3. **Nobody waiting.** With every guest answered, Waiting now says "No guest is waiting."
    Spec: `apps/saas/tests/home.spec.ts` (Home 3; an office of the test's own with one invited
-   agent and two guests, assigned to the agent by an invited manager and answered one by one through the Inbox: Waiting now lists both, then the
-   one left and no empty text, then says "No guest is waiting." and lists no guest).
+   agent and two guests, assigned to the agent by an invited manager and answered one by one
+   through the Inbox: Waiting now lists both, then the one left and no empty text, then says "No guest is waiting." and lists no guest).
 4. **The nav counts Your turn on every page.** The amber number beside Inbox in the sidebar
    equals the inbox's Your turn count, on Home, the Inbox and Settings alike. Approving a
    reply lowers it; a guest writing in raises it within the inbox's poll. The platform admin

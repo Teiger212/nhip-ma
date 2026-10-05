@@ -96,9 +96,14 @@ export async function joinOffice(
 	const email = admin.newEmail(tag);
 	const invitationId = await admin.invite(email, officeId, role);
 	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	const api = withOrigin(context.request);
-	return { page, api, userId: await userIdOf(api), close: () => context.close() };
+	try {
+		const page = await context.newPage();
+		await signUpByInvitationLink(page, invitationId, email);
+		await openInboxAsNewAccount(page);
+		const api = withOrigin(context.request);
+		return { page, api, userId: await userIdOf(api), close: () => context.close() };
+	} catch (error) {
+		await context.close();
+		throw error;
+	}
 }

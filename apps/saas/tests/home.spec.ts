@@ -63,15 +63,22 @@ const test = base.extend<{ ownOffice: OwnOffice }>({
  */
 async function agentOf(admin: Admin, browser: Browser, officeId: string, guests: Guest[] = []) {
 	const agent = await joinOffice(admin, browser, officeId, "member", "home");
-	if (guests.length > 0) {
+	if (guests.length === 0) {
+		return agent;
+	}
+	try {
 		const manager = await joinOffice(admin, browser, officeId, "admin", "home-manager");
 		try {
+			const assigner = assignerAs(manager.api);
 			for (const guest of guests) {
-				await assignerAs(manager.api).assignGuestTo(guest.phone, agent.userId);
+				await assigner.assignGuestTo(guest.phone, agent.userId);
 			}
 		} finally {
 			await manager.close();
 		}
+	} catch (error) {
+		await agent.close();
+		throw error;
 	}
 	return agent;
 }

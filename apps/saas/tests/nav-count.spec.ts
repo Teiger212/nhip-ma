@@ -4,6 +4,7 @@ import type { APIRequestContext, Page } from "@playwright/test";
 
 import { assignerAs } from "./support/assign";
 import { expect, test as base } from "./support/fixtures";
+import type { Joined } from "./support/invitee";
 import { joinOffice } from "./support/invitee";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { sendZaloText } from "./support/zalo";
@@ -131,13 +132,16 @@ test.describe("Home 4 — the nav counts Your turn on every page", () => {
 		await openSettings(admin.page);
 
 		// The office's only agent, and its manager, who gives each new guest to the agent (ADR 0022).
-		const agent = await joinOffice(admin, browser, ownOffice.id, "member", "nav-count");
-		const manager = await joinOffice(admin, browser, ownOffice.id, "admin", "nav-count-manager");
-		const assignToAgent = (guest: { id: string }) =>
-			assignerAs(manager.api).assignGuestTo(guest.id, agent.userId);
-		const guestWritesToAgent = async () => assignToAgent(await ownOffice.guestWrites());
-		const { page } = agent;
+		let agent: Joined | undefined;
+		let manager: Joined | undefined;
 		try {
+			agent = await joinOffice(admin, browser, ownOffice.id, "member", "nav-count");
+			manager = await joinOffice(admin, browser, ownOffice.id, "admin", "nav-count-manager");
+			const assigner = assignerAs(manager.api);
+			const agentId = agent.userId;
+			const assignToAgent = (guest: { id: string }) => assigner.assignGuestTo(guest.id, agentId);
+			const guestWritesToAgent = async () => assignToAgent(await ownOffice.guestWrites());
+			const { page } = agent;
 			for (const guest of [first, second, third]) {
 				await assignToAgent(guest);
 			}
@@ -192,8 +196,8 @@ test.describe("Home 4 — the nav counts Your turn on every page", () => {
 				"on Home, a guest writing in raises the count within its poll",
 			).toHaveText("5", WITHIN_A_POLL);
 		} finally {
-			await agent.close();
-			await manager.close();
+			await manager?.close();
+			await agent?.close();
 		}
 	});
 });

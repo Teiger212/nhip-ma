@@ -122,6 +122,7 @@ const test = base.extend<{
 			};
 			const joinedAgent = agent ? await join("member") : undefined;
 			const joinedManager = manager ? await join("admin") : undefined;
+			const assigner = joinedManager && assignerAs(joinedManager.api);
 			return {
 				...office,
 				newGuest: async () => {
@@ -147,10 +148,10 @@ const test = base.extend<{
 					return joinedManager;
 				},
 				assignToAgent: async (guest) => {
-					if (!joinedAgent || !joinedManager) {
+					if (!joinedAgent || !assigner) {
 						throw new Error(`${label} needs an agent and a manager to assign a guest`);
 					}
-					await assignerAs(joinedManager.api).assignGuestTo(guest.id, joinedAgent.userId);
+					await assigner.assignGuestTo(guest.id, joinedAgent.userId);
 				},
 			};
 		});
