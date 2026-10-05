@@ -5,7 +5,15 @@ import { PIPE_NAMES } from "@inbox/lib/pipe-names";
 import { Button, cn, Popover, PopoverContent, PopoverTrigger } from "@repo/ui";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellIcon, InfoIcon, PartyPopperIcon, SparklesIcon, UnplugIcon } from "lucide-react";
+import {
+	ArrowRightLeftIcon,
+	BellIcon,
+	InfoIcon,
+	PartyPopperIcon,
+	SparklesIcon,
+	UnplugIcon,
+	UserPlusIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ComponentType } from "react";
@@ -15,6 +23,8 @@ const TYPE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
 	WELCOME: PartyPopperIcon,
 	APP_UPDATE: SparklesIcon,
 	PIPE_DISCONNECTED: UnplugIcon,
+	THREAD_ASSIGNED: UserPlusIcon,
+	THREAD_MOVED: ArrowRightLeftIcon,
 	system: InfoIcon,
 	announcement: InfoIcon,
 };
@@ -152,6 +162,7 @@ export function NotificationCenter({ className }: { className?: string }) {
 												message?: string;
 												pipe?: string;
 												office?: string | null;
+												guestName?: string | null;
 											})
 										: {};
 								let title = payload.title ?? n.type ?? t("fallbackTitle");
@@ -164,6 +175,16 @@ export function NotificationCenter({ className }: { className?: string }) {
 										? t("pipeDisconnected.title", { pipe, office: payload.office })
 										: t("pipeDisconnected.titleNoOffice", { pipe });
 									message = t("pipeDisconnected.message");
+								}
+								// A thread given to the reader names no guest (ADR 0019); one moved away from
+								// them names the guest, never who has it now (ADR 0022, P4).
+								if (n.type === "THREAD_ASSIGNED") {
+									title = t("threadAssigned.title");
+								}
+								if (n.type === "THREAD_MOVED") {
+									title = payload.guestName
+										? t("threadMoved.title", { name: payload.guestName })
+										: t("threadMoved.titleUnnamed");
 								}
 								const Icon = getNotificationIcon(n.type);
 								const inner = (

@@ -2,10 +2,21 @@
 export type NotificationGroupId = "general";
 
 /** Mirrors Prisma `NotificationType` — keep in sync with schema. */
-export type NotificationTypeId = "WELCOME" | "APP_UPDATE" | "PIPE_DISCONNECTED";
+export type NotificationTypeId =
+	| "WELCOME"
+	| "APP_UPDATE"
+	| "PIPE_DISCONNECTED"
+	| "THREAD_ASSIGNED"
+	| "THREAD_MOVED";
 
-/** Types a person may turn off; a broken pipe always reaches the platform admin. */
-export type ConfigurableNotificationTypeId = Exclude<NotificationTypeId, "PIPE_DISCONNECTED">;
+/**
+ * Types a person may turn off. A broken pipe always reaches the platform admin, and a thread
+ * given to or moved away from an operator always reaches them (ADR 0022, #133).
+ */
+export type ConfigurableNotificationTypeId = Exclude<
+	NotificationTypeId,
+	"PIPE_DISCONNECTED" | "THREAD_ASSIGNED" | "THREAD_MOVED"
+>;
 
 export interface NotificationGroupConfig {
 	id: NotificationGroupId;
