@@ -35,6 +35,16 @@ test("a common word inside a longer word is not that word", () => {
 	expect(detectLanguage("ramua")).toBe("en");
 });
 
+// Some keyboards send a tone or a horn as its own combining mark (decomposed, NFD): "ơ" as
+// o + U+031B. It is the same letter, so it reads the same.
+test("decomposed Vietnamese reads as Vietnamese", () => {
+	const camOn = "Ca\u0309m o\u031Bn"; // "Cảm ơn"
+	const toiNguoiViet = "To\u0302i la\u0300 ngu\u031Bo\u031B\u0300i Vie\u0323\u0302t"; // "Tôi là người Việt"
+	expect(camOn).not.toBe(camOn.normalize("NFC"));
+	expect(detectLanguage(camOn)).toBe("vi");
+	expect(detectLanguage(toiNguoiViet)).toBe("vi");
+});
+
 test("Korean, Japanese and Russian are read from their scripts", () => {
 	expect(detectLanguage("안녕하세요")).toBe("ko");
 	expect(detectLanguage("こんにちは")).toBe("ja");

@@ -59,6 +59,19 @@ test("Vietnamese inbound is first-class", () => {
 	expect(got.qualification.bedsOrHousehold).toBe("2 bed");
 });
 
+test("decomposed Vietnamese inbound is read like the same text composed", () => {
+	// "Em muốn thuê căn 2 ngủ ở Tây Hồ", each tone and horn sent as its own combining mark (NFD).
+	const decomposed =
+		"Em muo\u0302\u0301n thue\u0302 ca\u0306n 2 ngu\u0309 o\u031B\u0309 Ta\u0302y Ho\u0302\u0300 tu\u031B\u0300 \u0111a\u0302\u0300u tha\u0301ng 9";
+	expect(decomposed).not.toBe(decomposed.normalize("NFC"));
+	const got = extractFromInbound(decomposed);
+	expect(got.language).toBe("vi");
+	expect(got.qualification.areaOfInterest).toBe("Tây Hồ");
+	expect(got.qualification.rentOrBuy).toBe("rent");
+	expect(got.qualification.bedsOrHousehold).toBe("2 bed");
+	expect(got.qualification.timeframe).toBe("đầu tháng 9");
+});
+
 test("paperwork flag does not invent Vietnamese law", () => {
 	const shot = oneShot("Can foreigners get a pink book if we buy in Tay Ho next month?");
 	expect(shot.paperwork.mentioned).toBe(true);
