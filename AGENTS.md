@@ -257,9 +257,10 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
 - passed CI on main (#190): a successful `ci.yml` run, both its `ci` and `e2e` jobs, from the
   push to main of that very commit. A run still going refuses the release: wait for it to
   pass, then re-run the release. Only the last commit of each push gets a run, and a newer push
-  cancels one still going, so release a commit whose CI finished green (re-run a cancelled
-  run if that commit is the one to ship). Pushes to main run CI even for docs-only changes:
-  `paths-ignore` applies to pull requests only.
+  cancels one still going, so release a commit whose CI finished green. To ship a commit whose
+  run was cancelled, re-run it while no other CI runs on main: a re-run joins main's
+  concurrency group and cancels the newer push's run. Pushes to main run CI even for
+  docs-only changes: `paths-ignore` applies to pull requests only.
 
 The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
 then fast-forwards `production` with the deploy key, and Vercel builds production from it.
