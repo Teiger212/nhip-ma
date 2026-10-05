@@ -427,7 +427,7 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md Assigning leads 1
 test.describe("Assign 1 — a new guest waits in Unassigned, for managers only", () => {
-	test("the manager finds the new guest under the Unassigned filter, marked Unassigned in the list and the thread; for both agents it is not listed, counted or searched, its link opens nothing and the API answers 404", async ({
+	test("the manager finds the new guest in the Unassigned view, marked Unassigned in the list and the thread; for both agents it is not listed, counted or searched, its link opens nothing and the API answers 404", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
@@ -436,14 +436,14 @@ test.describe("Assign 1 — a new guest waits in Unassigned, for managers only",
 		const guest = await office.newGuest();
 		const threadId = await assignerAs(manager.api).threadOf(guest.id);
 
-		// The manager: under All threads, and under Unassigned, marked so in the list and the thread.
+		// The manager: in the Unassigned view, which their Inbox opens on, marked so in the list
+		// and the thread.
 		const { page } = manager;
 		await openInbox(page);
-		await showAll(page);
-		await expect(ownerFilter(page), "the manager filters by owner").toBeVisible();
-		await expect(rowOf(page, guest), "the manager lists the new guest").toBeVisible();
-		await choose(ownerFilter(page), copy.unassigned);
-		await expect(page, "the filter is in the address").toHaveURL(/[?&]owner=unassigned\b/);
+		await expect(view(page, "Unassigned", 1), "the Inbox opens on Unassigned").toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
 		const row = rowOf(page, guest);
 		await expect(row, "the new guest is under Unassigned").toBeVisible();
 		await expectOwner(row, "unassigned", "the row says Unassigned");
@@ -696,7 +696,7 @@ test.describe("Assign 6 — a reply from the vendor's own app assigns nothing", 
 
 // scenario: docs/e2e-scenarios.md Assigning leads 7
 test.describe("Assign 7 — the manager filters by owner", () => {
-	test("the Inbox filter shows all threads, only Unassigned, or only one operator's threads", async ({
+	test("the Inbox filter shows all threads or only one operator's threads, and offers no Unassigned (its own view)", async ({
 		newGuest,
 		signedIn,
 	}) => {
@@ -725,11 +725,11 @@ test.describe("Assign 7 — the manager filters by owner", () => {
 		await expect(filter).toBeVisible();
 		await expect(filter, "the filter is Showing").toHaveAccessibleName(copy.filter);
 		await expectListed([unassigned, agentOnes, agentTwos, "Minji", "Yuki"], []);
-
-		await choose(filter, copy.unassigned);
-		await expect(page).toHaveURL(/[?&]owner=unassigned\b/);
-		await expectListed([unassigned], [agentOnes, agentTwos, "Minji", "Yuki"]);
-		await expect(flags.filter({ hasNotText: new RegExp(`^${copy.unassigned}$`) })).toHaveCount(0);
+		// Unassigned is a view of its own (Assign 10), not an owner to filter by.
+		await expect(
+			filter.locator("option").filter({ hasText: new RegExp(`^${copy.unassigned}$`) }),
+			"the filter offers no Unassigned",
+		).toHaveCount(0);
 
 		await choose(filter, NAME.agent);
 		await expectListed([agentOnes, "Minji"], [unassigned, agentTwos, "Yuki"]);

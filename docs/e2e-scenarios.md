@@ -261,9 +261,8 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
      through the API is a 404.
 
    Spec: `apps/saas/tests/assign.spec.ts` (Assign 1; an office of the test's own with two
-   invited agents and an invited manager, so the agents' counts are exact; it checks the
-   manager's owner filter set to Unassigned (`?owner=unassigned`), not the Unassigned view #163
-   adds (Assign 2 and 10 check the view), with the flag in the list and the thread header; "not
+   invited agents and an invited manager, so the agents' counts are exact; the Unassigned view
+   the manager's Inbox opens on, with the flag in the list and the thread header; "not
    counted" is the agents' views at 0 and no nav count; "by address" is the `?thread=` link
    showing `thread-not-found`).
 
@@ -310,8 +309,8 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
    manager sees it there, and neither agent sees it.
    Spec: `apps/saas/tests/assign.spec.ts` (Assign 6; Zalo only, an `oa_send_text` echo. The
    WhatsApp echo is not tested yet).
-7. **The manager filters by owner.** The manager's Inbox filter (All, Unassigned, or an
-   operator) shows exactly those threads.
+7. **The manager filters by owner.** The manager's Inbox filter (All, or an operator) shows
+   exactly those threads. It offers no Unassigned: that is a view of its own (10).
    Spec: `apps/saas/tests/assign.spec.ts` (Assign 7; under the All view, each filter lists
    its own threads and not the others, and every listed thread carries that owner).
 8. **A new agent's first day.** A newly joined agent sees no thread at all, even in an office
