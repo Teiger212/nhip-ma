@@ -128,6 +128,26 @@ pushed, and "Turn on alerts" stays hidden.
       is waiting · Zalo · <language>" on the lock screen, never the text; signing out stops
       them.
 
+### The greeting's model (ADR 0021)
+
+Until `DRAFT_*` is set, every automatic greeting is the fixed template, so nothing here blocks
+go-live.
+
+- [ ] **Choose a model that neither trains on nor keeps guests' text.** WhatsApp's Business
+      Solution Terms 4.7 apply. On OpenRouter, every model call (greeting, translation,
+      follow-up) asks for zero-retention endpoints only, with
+      `provider: { zdr: true, data_collection: "deny" }`. In OpenRouter's model list, filter
+      to models with a ZDR endpoint. Another provider needs a written zero-retention or
+      no-training term.
+- [ ] **Run the greeting test set** (first messages in EN, VI, JA, KO, RU, from the
+      greeting ticket) on the cheapest candidates. Keep the cheapest one whose replies all
+      pass the post-check and read well to you. If none passes, tell Claude before relaxing
+      to `data_collection: "deny"` alone.
+- [ ] **Vercel, staging:** `DRAFT_API_KEY` (Sensitive) and `DRAFT_MODEL`. Then redeploy. This
+      also turns on the model's translations and follow-ups (ADR 0005, ADR 0007).
+- [ ] **Verify from your second Zalo account:** a first message gets the auto-reply within
+      seconds, with the label naming the office, and its badge says "Model".
+
 ### Error tracking (PostHog, PR #41)
 
 - [ ] **PostHog project** "Nhịp Staging" (EU or US region).
@@ -206,6 +226,22 @@ pushed, and "Turn on alerts" stays hidden.
     - alerts already shown on operators' devices.
   - **Access:** is an export of the guest's data required before or instead of deletion? (Not
     built; #109.)
+- [ ] **The automatic greeting, for the lawyer** (ADR 0021). Ask before the first client's
+      guests reach prod. Not legal advice.
+  - **AI Law 134/2025, Art 11(1)** (in force 1 March 2026): a system interacting with people
+    must be recognisable as one. Is Nhịp the provider, the agency the deployer, or both? Does
+    the always-on label ("Auto-reply from <office>: a colleague will continue with you right
+    here") meet it, or must it say "AI-assisted auto-reply"? First line or last?
+  - **Medium-risk classification:** with the label, is the greeting outside medium risk? If
+    not, what goes in the dossier, and who files the notice to the Ministry of Science and
+    Technology, and when?
+  - **Decree 356, Art 10(3):** the privacy notice covering automated processing and the
+    opt-out. Who writes it (the agency, as controller?), where it's linked (the agency's Zalo
+    OA and WhatsApp profile), and how a guest opts out. Does it go on the A05 list too?
+  - **WhatsApp and Zalo:** WhatsApp has no disclosure rule but needs a clear path to a human;
+    Zalo bans misleading messages. Does the label satisfy both?
+  - **The model provider:** with zero-retention routing, is OpenRouter (and the endpoint
+    behind it) still a processor to name in the A05 dossier?
 - [ ] **The release workflow's deploy key** (#112), so only `.github/workflows/release.yml`
       can move `production`. The ruleset's bypass is "Deploy keys", and the repo has none
       today, so this key is the only one. Never add a second deploy key with write access:

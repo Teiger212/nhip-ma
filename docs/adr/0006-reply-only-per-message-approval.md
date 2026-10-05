@@ -1,6 +1,7 @@
 # 0006. Reply-only: every send answers one guest message
 
-Date: 2026-09-17. Status: accepted.
+Date: 2026-09-17. Status: accepted. Amended by ADR 0021: one automatic greeting per thread,
+which is not an Answer and is approved by no one.
 
 ## Context
 
@@ -16,8 +17,8 @@ the window and requires paid templates; Zalo has no such rule.
   inbound. A second approve against the same inbound is refused (409), as a second send
   on a thread is today.
 - The unit of approval is the **inbound message**, not the thread. `Approval` and `Send`
-  record the inbound they answer. The thread's `sentAt` becomes "last office message at"
-  and stops being terminal.
+  record the inbound they answer. The thread's `sentAt` becomes "last human office message
+  at" (the automatic greeting of ADR 0021 doesn't set it) and stops being terminal.
 - **Your turn** therefore means "there is an unanswered inbound", which equals "the
   guest spoke last", the queue rule as already written.
 - The atomic claim before transmit (from the audit remediation) moves from the thread to

@@ -412,10 +412,10 @@ Confident, compact pills that press in slightly.
 
 - **One component:** `Badge` (`packages/ui/components/badge.tsx`) is the only status mark, in the inbox, on Home and in Admin. 20px tall (`h-5`), 8px horizontal padding, 4.8px radius (`rounded-md`), Label type (500, `text-micro`), no border.
 - **Tones:** each is its color as text on a 12% tint of itself. Neutral (default) is Slate Note on Morning Wash; info is Dispatch Blue; success is Sent Green; warning is Your-Turn Amber; error is Signal Red.
-- **In the inbox:** Your turn is warning, Sent is success, the pipe (WhatsApp / Zalo) and the owner are neutral. Row and thread header use the same badges in the same order: pipe, owner, then turn. The thread header adds the CRM status last ("In CRM: <name>", neutral), metadata like the owner.
+- **In the inbox:** Your turn is warning, Sent is success, the pipe (WhatsApp / Zalo) and the owner (a name, "Yours" or "Unassigned") are neutral. Row and thread header use the same badges in the same order: pipe, owner, then turn. The thread header adds the CRM status last ("In CRM: <name>", neutral), metadata like the owner.
 - **Won and Lost:** while a thread is resolved (ADR 0003), the CRM's outcome takes the turn's place as a neutral badge, on the row and the header. Neither is colored: an outcome is not the turn (The Turn Is The Signal Rule), and Lost is not an error. When the guest writes again, the turn badge comes back.
 - **Count (`numeric`):** the same badge in Count type (Plex Mono, tabular). The amber count of Your-turn threads rides on the Inbox nav item on every page, and on Waiting now's title.
-- **Inline (`size="sm"`):** 16px, 6px padding, Micro Caps size in sentence case; the info-toned mock badge on a message's meta line.
+- **Inline (`size="sm"`):** 16px, 6px padding, Micro Caps size in sentence case; the info-toned mock badge on a message's meta line, and the neutral "Auto-reply" badge on the automatic greeting's, followed by "Model" or "Template" in Slate Note (ADR 0021).
 - **In Admin:** connected and filed are success; banned, needs-reconnect, failed and refused are error; an office with no pipe ("none") and a dropped delivery are neutral, because an absence is not a failure.
 
 ### Cards / Panels
@@ -458,6 +458,7 @@ The unit of the desk: who, when, what they said, whose turn.
 - **Rest:** transparent, 8.4px radius. **Hover:** 70% Morning Wash.
 - **Active (`aria-current`):** a Hairline Blue fill, and the guest mark turns solid Dispatch Blue with white initials (200ms). No press-scale, no stripe.
 - **Quiet threads** fold under a `<details>` disclosure at the list's foot (44px summary, Body Small, Slate Note).
+- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule), with a 44px tap target. It never selects the row, and it acts at once, as the header's owner menu does.
 
 ### Message
 
@@ -475,7 +476,7 @@ A strip under the thread: card background tinted 40% Morning Wash, top hairline,
 
 ### Waiting Now (Home)
 
-The office's Your-turn queue in inbox order, oldest first, at most five rows. The card is `min-w-0`, so a long name truncates instead of widening the grid. Each row (at least 56px, 8.4px radius) opens its thread: guest mark, name, pipe badge and language, and the wait time in amber on the right. A full-width outline Open inbox button closes the panel.
+The office's Your-turn queue in inbox order, oldest first, at most five rows; a manager's lists Unassigned leads first (ADR 0022). The card is `min-w-0`, so a long name truncates instead of widening the grid. Each row (at least 56px, 8.4px radius) opens its thread: guest mark, name, pipe badge and language, and the wait time in amber on the right. A full-width outline Open inbox button closes the panel.
 
 ### Funnel Strip (Home)
 
