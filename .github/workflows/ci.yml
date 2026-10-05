@@ -13,9 +13,11 @@ on:
     branches:
       - main
 
+# A pull request's newer push cancels its older run. On main every commit gets its own group, so
+# no run is cancelled or dropped while queued: the release gate needs each one's verdict (#190).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/supastarter

@@ -256,11 +256,10 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
 - has a passing staging smoke run;
 - passed CI on main (#190): a successful `ci.yml` run, both its `ci` and `e2e` jobs, from the
   push to main of that very commit. A run still going refuses the release: wait for it to
-  pass, then re-run the release. Only the last commit of each push gets a run, and a newer push
-  cancels one still going, so release a commit whose CI finished green. To ship a commit whose
-  run was cancelled, re-run it while no other CI runs on main: a re-run joins main's
-  concurrency group and cancels the newer push's run. Pushes to main run CI even for
-  docs-only changes: `paths-ignore` applies to pull requests only.
+  pass, then re-run the release. Only the last commit of each push gets a run. On main each
+  commit has its own CI concurrency group, so a newer push never cancels it; a run cancelled by
+  hand can simply be re-run. Pushes to main run CI even for docs-only changes: `paths-ignore`
+  applies to pull requests only.
 
 The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
 then fast-forwards `production` with the deploy key, and Vercel builds production from it.
