@@ -60,7 +60,7 @@ export function Inbox() {
 	const regenerate = useRegenerateDraft();
 	const [viewParam, setView] = useQueryState("view", viewParser);
 	const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""));
-	// A manager narrows the office's threads to Unassigned or one operator (ADR 0022).
+	// A manager narrows the office's threads to one operator's (ADR 0022); Unassigned is a view.
 	const [ownerFilter, setOwnerFilter] = useQueryState("owner", parseAsString.withDefault("all"));
 	const { role, pending: rolePending } = useOfficeRole();
 	const manager = role === "manager";
@@ -69,8 +69,13 @@ export function Inbox() {
 	// known the list waits, so a manager never sees Your turn flash by first.
 	const views = viewsFor(manager);
 	const view = openingView(manager, viewParam);
-	// The owner filter can only narrow Unassigned to itself or to nothing, so it sits that view out.
-	const ownerFiltered = manager && ownerFilter !== "all" && view !== "unassigned";
+	// The operator the list is narrowed to: one the office has (an old `?owner=` naming no one,
+	// such as `unassigned`, filters nothing). It could only narrow Unassigned to nothing, so it
+	// sits that view out.
+	const filterOwner =
+		manager && view !== "unassigned" && agents.data?.some((agent) => agent.id === ownerFilter)
+			? ownerFilter
+			: null;
 	const listPending = conversationsQuery.isPending || rolePending;
 	// `?thread=` opens one thread on arrival (Home's Waiting now and CRM leads link here); it
 	// is read once, then dropped from the URL, so the selection stays local like every other click.
@@ -84,11 +89,9 @@ export function Inbox() {
 
 	const conversations = useMemo(() => {
 		const all = conversationsQuery.data ?? [];
-		if (!ownerFiltered) return all;
-		return all.filter((conversation) =>
-			ownerFilter === "unassigned" ? !conversation.owner : conversation.owner?.id === ownerFilter,
-		);
-	}, [conversationsQuery.data, ownerFiltered, ownerFilter]);
+		if (!filterOwner) return all;
+		return all.filter((conversation) => conversation.owner?.id === filterOwner);
+	}, [conversationsQuery.data, filterOwner]);
 	const queue = useMemo(
 		() => buildQueueView(conversations, view, query),
 		[conversations, view, query],
@@ -241,13 +244,12 @@ export function Inbox() {
 								id="inbox-owner-filter"
 								data-test="owner-filter"
 								className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
-								value={ownerFilter}
+								value={filterOwner ?? "all"}
 								onChange={(event) =>
 									void setOwnerFilter(event.target.value === "all" ? null : event.target.value)
 								}
 							>
 								<option value="all">{t("owner.all")}</option>
-								<option value="unassigned">{t("owner.unassigned")}</option>
 								{agents.data?.map((agent) => (
 									<option key={agent.id} value={agent.id}>
 										{agent.name}
