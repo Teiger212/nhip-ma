@@ -531,7 +531,7 @@ workspace package that imports them.
 ## Change management
 
 - Use conventional commits such as `feat:`, `fix:`, `docs:`, or `refactor:`.
-- Update `CHANGELOG.md` for consumer-impacting changes.
+- No hand-written changelog (dropped 2026-10-05): a release's notes come from `gh release create --generate-notes`, built from PR titles, so a PR's title says what changed for a person. Never add a CHANGELOG file.
 - Update [PRODUCT.md](./PRODUCT.md), [ARCHITECTURE.md](./ARCHITECTURE.md), or
   [HANDOFF.md](./HANDOFF.md) when intention, shape, or walk rules change.
 - Update `AGENTS.md` when conventions, aliases, scripts, or app boundaries change.
@@ -563,6 +563,6 @@ it checks ("won or lost leaves the queue"), not by its number.
 - [ ] No `console.log` statements were added
 - [ ] No unjustified `any` types were added
 - [ ] User-facing strings have translations
-- [ ] Relevant docs and `CHANGELOG.md` are updated
+- [ ] Relevant docs are updated, and the PR title says what changed (it becomes the release note)
 
 See [README.md](./README.md) for the product entry and [HANDOFF.md](./HANDOFF.md) to pick up work cold.
