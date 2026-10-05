@@ -158,3 +158,8 @@ Thread header (manager)
 - A vendor redelivering an old message minutes after a deletion recreates the thread with it.
 - A pending CRM retry dies with the cascaded `CrmLink`.
 - `MockCrmLead` never holds real guests (the mock is never in production), so deletion needn't reach it in production. Dev and tests may still clean it.
+
+## Added (Eyal, 2026-10-05)
+
+- **Who deletes:** managers, option (a), confirmed. Options considered: an office-owner role, platform-admin-only on request, a notice to the admin.
+- **A required reason, option (b):** a short list (`guest_request`, `duplicate_or_spam`, `test_data`, `other`), plus an optional note required for `other`. The note is masked for phones and emails before saving, so the receipt still holds no guest identifier. Both are stored on the receipt, next to who and when. The UI polish comes later.
