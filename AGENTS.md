@@ -547,7 +547,13 @@ workspace package that imports them.
    code before that.
 4. **Implement.**
 5. **Code review on two axes**: the repo's standards and the ticket's spec.
-6. **New specs pass `--repeat-each=3`**, then the PR.
+6. **The PR.** One green CI run is the merge gate; there's no `--repeat-each` and no re-runs, and a
+   flaky spec is fixed after merge.
+7. **Before every push, merge main**: `git fetch origin`, and if `origin/main` moved,
+   `git merge origin/main`, resolve any conflict, re-run the gates the conflict touched, then
+   push. `CHANGELOG.md` merges as a union (`.gitattributes`), keeping both sides' entries, since
+   entries are only ever added on top. GitHub ignores that driver, so a PR can still show a
+   CHANGELOG conflict after main moves again; the next merge of main clears it.
 
 No stacked PRs: merged branches are not deleted automatically, so a stacked PR is not
 retargeted when its base merges. Pre-MVP edge cases: explore and record them; fix only the
