@@ -110,3 +110,42 @@ test("a session that merely expired keeps its device (A5)", async () => {
 
 	expect(await endpointsOf(AGENT)).toEqual(["phone"]);
 });
+
+/** Waits until some statement is waiting on a lock, its text matching `query`. */
+async function waitForLockWait(query: string) {
+	for (let i = 0; i < 100; i++) {
+		const rows = await testDb.$queryRaw<{ n: bigint }[]>`
+			SELECT count(*) AS n FROM pg_stat_activity
+			WHERE wait_event_type = 'Lock' AND query ILIKE ${`%${query}%`}`;
+		if (Number(rows[0]?.n ?? 0) > 0) return;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	throw new Error(`nothing waited on a lock for ${query}`);
+}
+
+test("a device registered while its sign-in is being revoked does not outlive it (#135)", async () => {
+	const phone = await signIn(AGENT);
+	const laptop = await signIn(AGENT);
+	let revoking: Promise<unknown> | undefined;
+
+	// A registration in flight: it holds the session row as `addPushSubscription` does and stores
+	// the device; the revoke's before-hook can't see it yet, and its delete waits on the row.
+	await testDb.$transaction(async (tx) => {
+		await tx.$queryRaw`SELECT "id" FROM "session" WHERE "id" = ${phone.session.id} FOR SHARE`;
+		await tx.pushSubscription.create({
+			data: {
+				userId: AGENT,
+				sessionId: phone.session.id,
+				endpoint: "https://fcm.googleapis.com/fcm/send/in-flight",
+				p256dh: "p256dh",
+				auth: "auth",
+			},
+		});
+		revoking = auth.api.revokeSession({ headers: laptop.headers, body: { token: phone.token } });
+		await waitForLockWait("session");
+	});
+	await revoking;
+
+	expect(await testDb.session.count({ where: { id: phone.session.id } })).toBe(0);
+	expect(await endpointsOf(AGENT)).toEqual([]);
+});

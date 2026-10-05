@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
+import { generateVAPIDKeys } from "web-push";
 
 /**
  * Two ways to run (AGENTS.md, "Test quality"):
@@ -25,6 +26,14 @@ if (devServer) {
 	dotenv.config({ path: path.resolve(__dirname, "../../.env.e2e") });
 	// The app's own URL is baked into the build: the HTTPS address, whatever the ports.
 	process.env.NEXT_PUBLIC_SAAS_URL = e2eUrl;
+	// Web push's VAPID pair is made fresh for every run (#135), here and so in CI, and never
+	// committed: only its subject is in .env.e2e. The runner sets it once; its workers and the
+	// web server inherit it, so they all share the one pair.
+	if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+		const pair = generateVAPIDKeys();
+		process.env.VAPID_PUBLIC_KEY = pair.publicKey;
+		process.env.VAPID_PRIVATE_KEY = pair.privateKey;
+	}
 	// Same server and credentials as dev, its own database: like the unit-test database, the
 	// E2E one is dev's DATABASE_URL renamed, unless .env.local names it (E2E_DATABASE_URL: a
 	// worktree whose dev database is on Neon keeps E2E local). CI sets DATABASE_URL itself.
