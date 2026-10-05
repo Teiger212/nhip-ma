@@ -193,6 +193,13 @@
 				"title": "{pipe} disconnected for {office}",
 				"titleNoOffice": "{pipe} disconnected",
 				"message": "Replies on it are blocked until you reconnect it, with the owner present, in the office's Connections. Guests' messages still arrive."
+			},
+			"threadAssigned": {
+				"title": "A manager gave you a thread"
+			},
+			"threadMoved": {
+				"title": "{name} was moved to another agent",
+				"titleUnnamed": "A guest was moved to another agent"
 			}
 		}
 	},

@@ -193,6 +193,13 @@
 				"title": "{pipe} của {office} đã mất kết nối",
 				"titleNoOffice": "{pipe} đã mất kết nối",
 				"message": "Chưa gửi được trả lời trên kênh này cho đến khi bạn kết nối lại, cùng chủ tài khoản, trong mục Kết nối của văn phòng. Tin nhắn của khách vẫn đến."
+			},
+			"threadAssigned": {
+				"title": "Một quản lý đã giao cho bạn một cuộc trò chuyện"
+			},
+			"threadMoved": {
+				"title": "{name} đã được chuyển cho nhân viên khác",
+				"titleUnnamed": "Một khách đã được chuyển cho nhân viên khác"
 			}
 		}
 	},

@@ -94,7 +94,9 @@ is renamed.
 
 - **Alert**: a web push telling an operator a guest is waiting (ADR 0019). It goes to the
   operators who can open the thread: an Unassigned guest alerts the office's managers; an
-  owned thread's guest alerts its owner only (ADR 0022). Whoever acts is never alerted for
+  owned thread's guest alerts its owner only (ADR 0022). An assignment alerts the operator
+  given the thread, with a bell row that names no guest ("A manager gave you a thread"); a
+  thread returned to Unassigned alerts the managers. Whoever acts is never alerted for
   their own action, and the platform admin is never alerted. It says the guest's name ("A
   guest" when there is none), pipe and language in the operator's language, never the
   message, and nothing that identifies the thread. One per thread: a new one replaces the

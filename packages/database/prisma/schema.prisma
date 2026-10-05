@@ -239,6 +239,11 @@ enum NotificationType {
   WELCOME
   APP_UPDATE
   PIPE_DISCONNECTED
+  /// A manager gave the reader a thread (ADR 0022, #133): names no guest, in-app only.
+  THREAD_ASSIGNED
+  /// A manager moved the reader's thread away from them (ADR 0022, P4; #133): names the guest,
+  /// in-app only, `data.threadId` so guest deletion takes it.
+  THREAD_MOVED
 }
 
 model Notification {
