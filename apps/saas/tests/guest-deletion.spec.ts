@@ -280,7 +280,8 @@ function navCount(page: Page) {
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		threadList(page).getByRole("button").first().or(page.getByTestId("inbox-empty")),
+		// A row carries its owner flag; the view buttons above the list are buttons too.
+		threadList(page).getByTestId("thread-owner").first().or(page.getByTestId("inbox-empty")),
 	).toBeVisible();
 }
 
