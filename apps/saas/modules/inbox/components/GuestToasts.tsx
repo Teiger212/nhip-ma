@@ -1,5 +1,6 @@
 "use client";
 
+import { isInboxPath } from "@i18n/lib/locale-path";
 import { LocaleLink } from "@i18n/routing";
 import { toast } from "@repo/ui";
 import { useTranslations } from "next-intl";
@@ -92,9 +93,12 @@ export function GuestToasts({ enabled }: { enabled: boolean }) {
 						data-test="guest-toast"
 						// The whole toast is the tap target; the close button sits above it.
 						className="after:inset-0 after:absolute after:rounded-xl"
-						onClick={() => {
+						onClick={(event) => {
 							handOffThread(thread.id);
 							close(thread.id);
+							// Already on the Inbox (a phone, on a thread): it takes the thread in memory,
+							// and a navigation would remount it without the handoff.
+							if (isInboxPath(window.location.pathname)) event.preventDefault();
 						}}
 					>
 						{title}

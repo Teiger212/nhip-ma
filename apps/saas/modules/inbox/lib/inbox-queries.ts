@@ -189,6 +189,8 @@ export function useSetOwner() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ ownerId }),
 			}),
+		// Before a poll can show the new owner: giving a thread to yourself raises no toast.
+		onMutate: ({ id, ownerId }) => noteOwnAction(id, ownerId),
 		onSuccess: (conversation) => putConversation(queryClient, conversation),
 		onSettled: () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
 	});
