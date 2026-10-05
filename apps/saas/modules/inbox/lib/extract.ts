@@ -138,7 +138,10 @@ export function extractFromInbound(text: string): {
 	qualification: Qualification;
 	paperwork: { mentioned: boolean; flag: string | null };
 } {
-	const inbound = String(text || "").trim();
+	// Composed (NFC), as the patterns are: a decomposed "Tây Hồ" is still Tây Hồ.
+	const inbound = String(text || "")
+		.normalize("NFC")
+		.trim();
 	const language = detectLanguage(inbound);
 	if (!inbound) {
 		return {
