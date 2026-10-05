@@ -1,7 +1,8 @@
 import type { GuestLanguage } from "./types";
 
 export function detectLanguage(text: string): GuestLanguage {
-	const sample = String(text || "");
+	// Composed (NFC), so a tone or horn sent as its own combining mark is the same letter.
+	const sample = String(text || "").normalize("NFC");
 	if (/[\uac00-\ud7af]/.test(sample)) {
 		return "ko";
 	}
