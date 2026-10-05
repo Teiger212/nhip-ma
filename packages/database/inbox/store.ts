@@ -576,6 +576,14 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
+		async deleteGuest(officeId, conversationId) {
+			// Red first (#138): a bare delete, with no locks, no lead tally and no receipt yet.
+			const { count } = await db.conversation.deleteMany({
+				where: { officeId, id: conversationId },
+			});
+			return count === 1 ? { ok: true, crm: null } : { ok: false, reason: "not_found" };
+		},
+
 		async setOneShot(officeId, id, shot: OneShot) {
 			if (!(await exists(officeId, id))) {
 				return null;

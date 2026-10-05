@@ -389,6 +389,13 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 
    The toast says "Guest data deleted".
 
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 1; the reply goes to the first
+   message before the guest's other two, and a second guest waits in the pool so every absence is
+   judged on a loaded Inbox; "red" is what the browser paints red (fill, text, border or icon):
+   the confirm button is, nothing else in the dialog is, and neither is the menu item (ADR 0020,
+   Q5); the agent's open Inbox and nav count drop within the poll; "every owner filter" is each
+   option of the manager's Showing filter).
+
 2. **Home's numbers don't move when a guest is deleted.** Three guests write. The agent answers
    two of them, and one of those two writes back. Note Home's
    numbers:
@@ -399,13 +406,29 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    The manager deletes the guest who wrote back. Home, reloaded, shows every one of those numbers
    unchanged, for the agent and the manager alike. Waiting now no longer lists a deleted guest.
 
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 2; the numbers are first
+   checked to be 3 leads in, 2 engaged, 1 in conversation, 2 answered under 5 minutes, so a
+   deletion that shrank them would show; each day of leads by day is read from the chart's
+   tooltip, stepping through it from the keyboard, one reading per day of the window, adding up
+   to Leads in; Waiting now still lists the guest nobody answered. Not provable here: every reply
+   is sent within a minute of the guest's message, since Zalo's signature refuses a backdated
+   timestamp, so the median and 90th percentile read "0 min" with or without the deleted guest,
+   and every lead falls on today.)
+
 3. **An agent can't delete.** On the agent's own thread and on a pool thread, the header offers
    no "Delete guest data". `POST /api/conversations/:id/deletion` as the agent answers 403, with
    `deleteInCrm` true or false. The thread and its messages are unchanged afterwards, for the
    agent and the manager.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 3; 403 `{ error: "forbidden" }`
+   also with no body, since the agent is refused before the body is read; the manager's header
+   on the agent's thread has Thread actions, the positive control; "unchanged" is both threads
+   still opening for both, with the guest's message and the agent's reply).
 4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
    `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
    another office it answers 404.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 4; "a manager of another
+   office" is the walk office's manager; the office's own manager's same request then deletes
+   the thread, so the refusals were about who asked).
 5. **The CRM box is ticked when Nhịp created the lead.** The office is on the mock CRM. A new
    guest writes, and the thread says "In CRM: <guest>"; the mock CRM holds the lead Nhịp made.
    - The manager's dialog has "Also delete <guest> in Mock CRM", ticked. Confirming leaves no
@@ -422,6 +445,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - For a second such guest, ticking the box deletes the lead.
 7. **No CRM, no checkbox.** In an office with no CRM, the dialog has no CRM checkbox (as in 1),
    and the deletion API, given `deleteInCrm: true`, deletes the thread and touches no CRM.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 7; the dialog says nothing
+   about a CRM, and Cancel deletes nothing; "touches no CRM" is the answer's `{ crm: null }`, no
+   lead in the mock CRM for the office, and a receipt with no CRM and no CRM result).
 8. **Not while a reply is sending.** `holdReplySending` holds the agent's approved reply in
    "sending":
    - The manager's "Delete guest data" is disabled with "A reply is still sending".
@@ -429,6 +455,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - The thread is unchanged.
 
    Once the helper's release step marks the reply sent, deleting works.
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 8; the reason is judged shown
+   while the menu is open; "deleting works" is the manager's dialog after the release, the thread
+   then 404 and gone from every view and owner filter).
 
 9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
    CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
@@ -443,3 +472,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 
     No value in any receipt or lead tally contains the guest's name, their Zalo user id, the
     thread's id or the CRM lead's id.
+    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 10, the deletions with no CRM
+    only; the ticked and unticked ones come with the CRM box, #139. Two deletions, one through the
+    dialog and one through the API: each receipt has the manager's id and name, a time within the
+    test, its messages (the reply included) and replies, and no CRM; one lead tally per deleted
+    guest (ADR 0020), so the identifier check has something to read; no message text either,
+    ADR 0020 keeping no free text.)

@@ -34,6 +34,7 @@ export type {
 	CrmOutcome,
 	ConversationSummary,
 	Draft,
+	GuestDeletionResult,
 	InboundEvent,
 	InboundResult,
 	InboxStore,
