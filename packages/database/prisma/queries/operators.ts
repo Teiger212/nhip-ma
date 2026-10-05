@@ -2,9 +2,50 @@ import { db } from "../client";
 
 type Client = typeof db;
 
-/** The platform admin (`role` "admin", alone or in a comma list) is never an ended account. */
-function isPlatformAdmin(role: string | null): boolean {
+/**
+ * The platform admin: `role` "admin", alone or in a comma list. Never an ended account, never a
+ * thread's owner, and no manager touches their membership.
+ */
+export function isPlatformAdmin(role: string | null | undefined): boolean {
 	return role?.split(",").includes("admin") ?? false;
+}
+
+/**
+ * Of these users, the platform admins: their kit `owner` membership is inert (ADR 0015), so an
+ * office's member lists leave them out for everyone else (#174).
+ */
+export async function findPlatformAdminIds(
+	userIds: string[],
+	client: Client = db,
+): Promise<string[]> {
+	if (userIds.length === 0) return [];
+	const users = await client.user.findMany({
+		where: { id: { in: userIds } },
+		select: { id: true, role: true },
+	});
+	return users.filter((user) => isPlatformAdmin(user.role)).map((user) => user.id);
+}
+
+/**
+ * Whether the membership a kit member route names is the platform admin's (#174): a member id,
+ * or an email within the office (Better Auth reads `memberIdOrEmail` the same way, the email
+ * lowercased).
+ */
+export async function isPlatformAdminMembership(
+	memberIdOrEmail: string,
+	organizationId: string | null | undefined,
+	client: Client = db,
+): Promise<boolean> {
+	const select = { user: { select: { role: true } } } as const;
+	const member = memberIdOrEmail.includes("@")
+		? organizationId
+			? await client.member.findFirst({
+					where: { organizationId, user: { email: memberIdOrEmail.toLowerCase() } },
+					select,
+				})
+			: null
+		: await client.member.findUnique({ where: { id: memberIdOrEmail }, select });
+	return isPlatformAdmin(member?.user.role);
 }
 
 /** The users in an office, read before the office is deleted (ADR 0013). */

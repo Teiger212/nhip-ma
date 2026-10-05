@@ -467,6 +467,12 @@
 				},
 				"pendingInvitations": "Lời mời đang chờ",
 				"removeMember": "Xóa khỏi văn phòng",
+				"confirmRemove": {
+					"title": "Xóa {name} khỏi văn phòng?",
+					"message": "Xóa {name} sẽ xóa tài khoản của họ. Khách của họ trở về Chưa giao.",
+					"confirm": "Xóa"
+				},
+				"platformAdmin": "Quản trị viên nền tảng",
 				"title": "Nhóm",
 				"people": "Mọi người"
 			},

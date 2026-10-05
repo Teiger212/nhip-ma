@@ -525,8 +525,9 @@ export type InboxStore = {
 		window: { since: Date; countMock: boolean; timeZone: string },
 	) => Promise<Funnel>;
 	/**
-	 * Give a thread to an operator, or back to Unassigned (null); the last call wins. The new owner must be a member
-	 * of the thread's office; returns false when the thread or the member is not found.
+	 * Give a thread to an operator, or back to Unassigned (null); the last call wins. The new
+	 * owner must be a member of the thread's office, and not the platform admin (ADR 0022);
+	 * returns false when the thread or such a member is not found.
 	 */
 	setOwner: (conversationId: string, ownerId: string | null, officeId: string) => Promise<boolean>;
 	recordWebhookDelivery: (delivery: WebhookDeliveryRecord) => Promise<void>;
