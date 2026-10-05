@@ -13,6 +13,8 @@
  * Reads one JSON request per line on stdin, `{ id, email, name, password }`, and answers each on
  * stdout with a line `@@account {"id", "userId", "cookies"}` or `@@account {"id", "error"}`.
  * Anything else on stdout (a library's notice) is not an answer. Exits when stdin closes.
+ * The welcome notification (and its email, where the env sends mail) is made here, not by the
+ * server, as the sign-up's own hook would; no spec reads it from a mailbox.
  */
 import readline from "node:readline";
 

@@ -2,10 +2,11 @@
  * Operators who joined an office, made without the sign-up page (#186): only the Auth specs and
  * Team prove signing up through the invitation link (invitee.ts); everywhere else it is setup.
  */
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import type { ChildProcessByStdio } from "node:child_process";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import readline from "node:readline";
+import type { Readable, Writable } from "node:stream";
 
 import { expect } from "@playwright/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
@@ -30,40 +31,57 @@ type Answer = { id: number; error?: string } & Partial<Account>;
 
 const ANSWER = "@@account ";
 
-/** This worker's account maker (accounts.ts), started on first use; it ends with the worker. */
-let accounts:
-	| {
-			child: ChildProcessWithoutNullStreams;
-			waiting: Map<number, (answer: Answer) => void>;
-			next: number;
-	  }
-	| undefined;
+/** How long one account may take before the test fails naming the account maker. */
+const ANSWER_TIMEOUT_MS = 30_000;
 
-function accountMaker() {
-	if (accounts && accounts.child.exitCode === null) return accounts;
+type AccountMaker = {
+	child: ChildProcessByStdio<Writable, Readable, null>;
+	waiting: Map<number, (answer: Answer) => void>;
+	next: number;
+	/** Why it can no longer answer, once it can't. */
+	dead?: string;
+};
+
+/** This worker's account maker (accounts.ts), started on first use, and again if it died. */
+let accounts: AccountMaker | undefined;
+
+function accountMaker(): AccountMaker {
+	if (accounts && !accounts.dead) return accounts;
 	const saas = path.resolve(__dirname, "../..");
 	const child = spawn(
 		path.join(saas, "node_modules/.bin/tsx"),
 		["--tsconfig", "tsconfig.json", "tests/support/accounts.ts"],
-		{ cwd: saas, stdio: ["pipe", "pipe", "inherit"] as never },
-	) as ChildProcessWithoutNullStreams;
-	const waiting = new Map<number, (answer: Answer) => void>();
+		{ cwd: saas, stdio: ["pipe", "pipe", "inherit"] },
+	);
+	const maker: AccountMaker = { child, waiting: new Map(), next: 1 };
+	// Every waiter fails with the reason, rather than the test timing out with nothing to go on.
+	const die = (reason: string) => {
+		maker.dead ??= reason;
+		for (const [id, settle] of maker.waiting) {
+			settle({ id, error: `the account maker ${maker.dead}` });
+		}
+		maker.waiting.clear();
+	};
 	readline.createInterface({ input: child.stdout }).on("line", (line) => {
 		if (!line.startsWith(ANSWER)) return;
-		const answer = JSON.parse(line.slice(ANSWER.length)) as Answer;
-		waiting.get(answer.id)?.(answer);
-		waiting.delete(answer.id);
-	});
-	child.on("exit", (code) => {
-		for (const [id, settle] of waiting) {
-			settle({ id, error: `the account maker exited (${code})` });
+		let answer: Answer;
+		try {
+			answer = JSON.parse(line.slice(ANSWER.length)) as Answer;
+		} catch {
+			die(`answered something unreadable: ${line.slice(0, 200)}`);
+			return;
 		}
-		waiting.clear();
+		maker.waiting.get(answer.id)?.(answer);
+		maker.waiting.delete(answer.id);
 	});
-	// The worker never waits on it to exit: it ends when the worker's end closes its stdin.
+	child.on("exit", (code, signal) => die(`exited (${signal ?? code})`));
+	child.on("error", (error) => die(`could not run: ${error.message}`));
+	child.stdin.on("error", (error) => die(`stopped reading: ${error.message}`));
+	// Nothing here keeps the worker alive or outlives it: Playwright ends the worker with
+	// process.exit, which closes the child's stdin, and accounts.ts exits when stdin closes.
 	child.unref();
-	accounts = { child, waiting, next: 1 };
-	return accounts;
+	accounts = maker;
+	return maker;
 }
 
 /** The account the invitation sign-up page would make for `email`, and a session for it. */
@@ -71,7 +89,14 @@ async function signedUpAccount(email: string): Promise<Account> {
 	const maker = accountMaker();
 	const id = maker.next++;
 	const answer = await new Promise<Answer>((resolve) => {
-		maker.waiting.set(id, resolve);
+		const timer = setTimeout(() => {
+			maker.waiting.delete(id);
+			resolve({ id, error: `the account maker did not answer in ${ANSWER_TIMEOUT_MS / 1000} s` });
+		}, ANSWER_TIMEOUT_MS);
+		maker.waiting.set(id, (settled) => {
+			clearTimeout(timer);
+			resolve(settled);
+		});
 		maker.child.stdin.write(
 			`${JSON.stringify({ id, email, name: "E2E Invitee", password: NEW_PASSWORD })}\n`,
 		);
