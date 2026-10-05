@@ -227,9 +227,17 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
 1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,
    oldest waiting first and quiet ones last, the same order as the inbox's Your turn. Choosing
    one opens the inbox with that thread selected (on a phone, the thread itself).
+   Spec: `apps/saas/tests/home.spec.ts` (Home 1; an office of the test's own, holding a WhatsApp
+   number of its own, with one invited agent; five WhatsApp guests with explicit write times (30,
+   20 and 10 minutes ago; 5 and 3 days ago, Quiet), sent in another order; Waiting now's order is
+   the rule's and the inbox's Your turn order with Quiet opened; "selected" is that guest's thread
+   open beside the list, not the first guest's; on a phone, a Quiet guest's thread with no list).
 2. **Waiting now lists only what the operator can open.** A thread another agent owns is not
    in agent 1's Waiting now; the manager's lists it.
 3. **Nobody waiting.** With every guest answered, Waiting now says "No guest is waiting."
+   Spec: `apps/saas/tests/home.spec.ts` (Home 3; an office of the test's own with one invited
+   agent and two guests, answered one by one through the Inbox: Waiting now lists both, then the
+   one left and no empty text, then says "No guest is waiting." and lists no guest).
 4. **The nav counts Your turn on every page.** The amber number beside Inbox in the sidebar
    equals the inbox's Your turn count, on Home, the Inbox and Settings alike. Approving a
    reply lowers it; a guest writing in raises it within the inbox's poll. The platform admin
@@ -241,6 +249,13 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
    new guest, and in the admin area).
 5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
    wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.
+   Spec: `apps/saas/tests/home.spec.ts` (Home 5; an office of the test's own with one invited
+   agent; WhatsApp guests with explicit write times: one at 17:30 UTC ten days back (00:30 in
+   Vietnam the next day) who writes again today, one today, one three days back, and two either
+   side of the window's first Vietnamese midnight, so a rolling 30×24 hours would, at most hours
+   of the day, not add up; a bar is `data-test="leads-by-day-bar"` with `data-day` and
+   `data-leads`, a day with no bar has no lead; Leads in is read from the funnel; every bar is one
+   of Home's 30 days).
 
 ## Thread links (ADR 0010, #141)
 
