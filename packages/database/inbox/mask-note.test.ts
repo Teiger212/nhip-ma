@@ -18,6 +18,11 @@ test.each([
 	["a UK number", "+44 20 7946 0958", "[phone]"],
 	["a Korean mobile", "Minji's 010-1234-5678", "Minji's [phone]"],
 	["a Zalo user id", "zalo id 4381927364519283746", "zalo id [phone]"],
+	["a mobile with en dashes", "0912–345–678 called", "[phone] called"],
+	["a mobile with slashes", "0912/345/678", "[phone]"],
+	["a mobile with underscores", "0912_345_678", "[phone]"],
+	["a mobile with middle dots", "0912·345·678", "[phone]"],
+	["fullwidth digits", "SĐT ０９１２３４５６７８", "SĐT [phone]"],
 ])("masks %s", (_kind, note, masked) => {
 	expect(maskContactDetails(note)).toBe(masked);
 });
@@ -25,6 +30,7 @@ test.each([
 test.each([
 	["an email", "wrote from hoa.nguyen@gmail.com", "wrote from [email]"],
 	["an email with a plus and a subdomain", "a+b@mail.example.co.uk asked", "[email] asked"],
+	["a fullwidth at sign", "hoa＠gmail.com", "[email]"],
 	[
 		"two of each",
 		"a@b.vn, 0912345678; c@d.com / +84 987 654 321",
