@@ -21,6 +21,8 @@ test("Vietnamese reads as Vietnamese, from its letters or its common words", () 
 	expect(detectLanguage("phòng")).toBe("vi");
 });
 
+// The word list stays (ADR 0021) and keeps working once the letters narrow: "thuê nhà" read
+// as Vietnamese on main only through ê and à, which are no longer Vietnamese letters.
 test("a common word that ends in an accented letter is still a Vietnamese word", () => {
 	// No decided letter here: ê and à are French too, so only the words can say Vietnamese.
 	expect(detectLanguage("thuê nhà")).toBe("vi");

@@ -2,13 +2,13 @@ import type { GuestLanguage } from "./types";
 
 export function detectLanguage(text: string): GuestLanguage {
 	const sample = String(text || "");
-	if (/[가-힯]/.test(sample)) {
+	if (/[\uac00-\ud7af]/.test(sample)) {
 		return "ko";
 	}
-	if (/[぀-ヿ]/.test(sample)) {
+	if (/[\u3040-\u30ff]/.test(sample)) {
 		return "ja";
 	}
-	if (/[Ѐ-ӿ]/.test(sample)) {
+	if (/[\u0400-\u04ff]/.test(sample)) {
 		return "ru";
 	}
 	// Only letters Vietnamese alone uses (ADR 0021): ă â đ ơ ư; a hook above or a dot below;
