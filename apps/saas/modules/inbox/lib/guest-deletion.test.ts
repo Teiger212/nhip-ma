@@ -521,10 +521,10 @@ async function failedOnce(store: Store, guestId: string, operatorId: string | nu
 	return thread;
 }
 
-test("deletion and the first approval of a pool thread, either first: exactly one is refused (ADR 0020)", async () => {
+test("deletion and the first approval of an Unassigned thread, either first: exactly one is refused (ADR 0020)", async () => {
 	const store = await testInboxStore();
-	await approvedFirst(store, await write(store, "pool-a", Date.now() - MINUTE), "agent-1");
-	await deletedFirst(store, await write(store, "pool-d", Date.now() - MINUTE), "agent-1");
+	await approvedFirst(store, await write(store, "unassigned-a", Date.now() - MINUTE), "walk-user");
+	await deletedFirst(store, await write(store, "unassigned-d", Date.now() - MINUTE), "walk-user");
 	await store.close();
 });
 
@@ -535,9 +535,9 @@ test("deletion and the retry of a failed Answer, either first: exactly one is re
 	await store.close();
 });
 
-test("deletion and the retry on an ownerless pool thread, either first: exactly one is refused (ADR 0020)", async () => {
+test("deletion and the retry on an Unassigned thread, either first: exactly one is refused (ADR 0020)", async () => {
 	const store = await testInboxStore();
-	// The failed first approval had no operator: the retry claims the pool thread, so approve
+	// The failed first approval had no operator: the retry claims the Unassigned thread, so approve
 	// writes the Answer and the conversation.
 	const approvedThread = await failedOnce(store, "ownerless-a", null);
 	expect((await store.getOfficeConversation(OFFICE, approvedThread.id))?.owner).toBeNull();

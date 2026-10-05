@@ -10,7 +10,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 const body = z.object({ ownerId: z.string().min(1).nullable() });
 
 /**
- * A manager gives a thread to an agent of the office, or back to the pool (ADR 0015).
+ * A manager gives a thread to an operator of the office, or back to Unassigned (ADR 0022).
  * Agents cannot reassign (403); the new owner must be a member of the thread's office.
  */
 export async function POST(request: Request, context: RouteContext): Promise<Response> {

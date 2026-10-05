@@ -89,7 +89,7 @@ const elsewhere: InboxViewer = { userId: "agent-1", officeId: OTHER_OFFICE, role
 beforeEach(async () => {
 	store = await testInboxStore();
 
-	// Nobody has answered: Your turn, in the pool. The one-shot has run on it.
+	// Nobody has answered: Your turn, Unassigned. The one-shot has run on it.
 	const fresh = await write("fresh", "guest", "Looking to rent in Tay Ho", 0);
 	await store.setOneShot(
 		fresh.officeId,

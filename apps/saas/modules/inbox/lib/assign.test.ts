@@ -3,18 +3,37 @@ import path from "node:path";
 
 import { beforeEach, expect, test } from "vitest";
 
+import { yourTurnCount } from "./queue";
 import { testDb, testInboxStore } from "./test-store";
 import type { Store } from "./types";
 
 /**
- * Pool then owner (ADR 0015) in the store: who sees what, who claims, what a leaver leaves,
- * and the one-off backfill. The screens are covered end to end (docs/e2e-scenarios.md).
+ * Managers assign every new lead (ADR 0022) in the store: an Unassigned thread is the
+ * managers' alone, an agent reads only their own threads, the last assignment wins, a manager's
+ * reply claims an Unassigned lead (P1), and an ended owner's threads go back to Unassigned. The
+ * screens are covered end to end (docs/e2e-scenarios.md "Assigning leads").
  */
 const OFFICE = "office-a";
 const agent = (userId: string) => ({ userId, officeId: OFFICE, role: "agent" as const });
 const manager = { userId: "walk-user", officeId: OFFICE, role: "manager" as const };
+const manager2 = { userId: "manager-2", officeId: OFFICE, role: "manager" as const };
 
 let store: Store;
+
+async function user(id: string) {
+	await testDb.user.upsert({
+		where: { id },
+		create: {
+			id,
+			name: id,
+			email: `${id}@test.nhip.local`,
+			emailVerified: true,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		},
+		update: {},
+	});
+}
 
 async function member(userId: string, role: string) {
 	await testDb.member.upsert({
@@ -40,41 +59,84 @@ async function guestWrites(guestId: string) {
 	return conversation;
 }
 
+/** What `viewer` reaches of thread `id`: listed, summarised (the list, search), counted, opened. */
+async function reach(viewer: Parameters<Store["listConversations"]>[0], id: string) {
+	const summaries = await store.listConversationSummaries(viewer);
+	return {
+		listed: (await store.listConversations(viewer)).some((c) => c.id === id),
+		summarised: summaries.some((c) => c.id === id),
+		counted: yourTurnCount(summaries.filter((c) => c.id === id)),
+		opened: (await store.getConversation(id, viewer)) !== null,
+	};
+}
+const NONE = { listed: false, summarised: false, counted: 0, opened: false };
+const ALL = { listed: true, summarised: true, counted: 1, opened: true };
+
 beforeEach(async () => {
 	store = await testInboxStore();
 	await testDb.member.deleteMany({ where: { organizationId: OFFICE } });
+	await user("manager-2");
 	await member("agent-1", "member");
 	await member("agent-2", "member");
 	await member("walk-user", "admin");
+	await member("manager-2", "owner");
 });
 
-test("a new thread is in the pool: every agent and the manager see it", async () => {
-	const conv = await guestWrites("g-pool");
+test("a new thread is Unassigned and the managers' only: no agent lists, counts or opens it", async () => {
+	const conv = await guestWrites("g-new");
 	expect(conv.owner).toBeNull();
-	for (const viewer of [agent("agent-1"), agent("agent-2"), manager]) {
-		expect((await store.listConversations(viewer)).map((c) => c.id)).toContain(conv.id);
+	for (const viewer of [manager, manager2]) {
+		expect(await reach(viewer, conv.id)).toEqual(ALL);
+	}
+	for (const viewer of [agent("agent-1"), agent("agent-2")]) {
+		expect(await reach(viewer, conv.id)).toEqual(NONE);
 	}
 });
 
-test("the first approval claims: the owner keeps it, the other agent loses it, the manager sees it", async () => {
-	const conv = await guestWrites("g-claim");
+test("an assigned thread is its owner's and the managers': the other agent still reaches nothing", async () => {
+	const conv = await guestWrites("g-assigned");
+	expect(await store.setOwner(conv.id, "agent-1", OFFICE)).toBe(true);
+	expect(await reach(agent("agent-1"), conv.id)).toEqual(ALL);
+	expect(await reach(manager, conv.id)).toEqual(ALL);
+	expect(await reach(agent("agent-2"), conv.id)).toEqual(NONE);
+});
+
+test("two managers assigning: the last setOwner wins, and the first-chosen agent loses the thread", async () => {
+	const conv = await guestWrites("g-last-wins");
+	expect(await store.setOwner(conv.id, "agent-1", OFFICE)).toBe(true);
+	expect(await store.setOwner(conv.id, "agent-2", OFFICE)).toBe(true);
+	for (const viewer of [manager, manager2]) {
+		expect((await store.getConversation(conv.id, viewer))?.owner?.id).toBe("agent-2");
+	}
+	expect(await reach(agent("agent-2"), conv.id)).toEqual(ALL);
+	expect(await reach(agent("agent-1"), conv.id)).toEqual(NONE);
+});
+
+test("returned to Unassigned, a thread leaves its agent", async () => {
+	const conv = await guestWrites("g-returned");
+	await store.setOwner(conv.id, "agent-1", OFFICE);
+	expect(await store.setOwner(conv.id, null, OFFICE)).toBe(true);
+	expect((await store.getConversation(conv.id, manager))?.owner).toBeNull();
+	expect(await reach(agent("agent-1"), conv.id)).toEqual(NONE);
+});
+
+test("a manager who approves a reply on an Unassigned lead owns it (P1)", async () => {
+	const conv = await guestWrites("g-manager-claims");
 	const begun = await store.beginAnswer({
 		officeId: conv.officeId,
 		conversationId: conv.id,
 		inboundId: conv.unansweredInboundId!,
 		text: "Hi",
-		operatorId: "agent-1",
+		operatorId: "walk-user",
 	});
 	expect(begun.ok).toBe(true);
-	expect((await store.getConversation(conv.id, agent("agent-1")))?.owner?.id).toBe("agent-1");
-	expect(await store.getConversation(conv.id, agent("agent-2"))).toBeNull();
-	expect((await store.listConversations(agent("agent-2"))).map((c) => c.id)).not.toContain(conv.id);
-	expect((await store.getConversation(conv.id, manager))?.owner?.id).toBe("agent-1");
+	expect((await store.getConversation(conv.id, manager2))?.owner?.id).toBe("walk-user");
+	expect(await reach(agent("agent-1"), conv.id)).toEqual(NONE);
 });
 
 // ADR 0020: approve's lock on the conversation is `FOR KEY SHARE`, which the owner claim's
 // update does not wait on, so two approvals still let one in and refuse the other.
-test("two agents approving the same pool thread at once end with one owner and one in_progress", async () => {
+test("two managers approving the same Unassigned lead at once end with one owner and one in_progress", async () => {
 	const conv = await guestWrites("g-race");
 	const approve = (operatorId: string) =>
 		store.beginAnswer({
@@ -84,7 +146,7 @@ test("two agents approving the same pool thread at once end with one owner and o
 			text: `from ${operatorId}`,
 			operatorId,
 		});
-	const [a, b] = await Promise.all([approve("agent-1"), approve("agent-2")]);
+	const [a, b] = await Promise.all([approve("walk-user"), approve("manager-2")]);
 	expect([a, b].map((result) => (result.ok ? "ok" : result.reason)).sort()).toEqual([
 		"in_progress",
 		"ok",
@@ -95,34 +157,21 @@ test("two agents approving the same pool thread at once end with one owner and o
 	expect(owner).toBe(winner[0]!.ok ? winner[0]!.answer.operatorId : null);
 });
 
-test("an owner whose account ends leaves their threads to the pool", async () => {
+test("an owner whose account ends leaves their threads to Unassigned, which no agent sees", async () => {
 	const conv = await guestWrites("g-leaver");
-	await store.setOwner(conv.id, "agent-2", OFFICE);
-	await testDb.user.upsert({
-		where: { id: "leaver" },
-		create: {
-			id: "leaver",
-			name: "Leaver",
-			email: "leaver@test.nhip.local",
-			emailVerified: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-		update: {},
-	});
+	await user("leaver");
 	await member("leaver", "member");
 	expect(await store.setOwner(conv.id, "leaver", OFFICE)).toBe(true);
 	await testDb.user.delete({ where: { id: "leaver" } });
-	const after = await store.getConversation(conv.id, agent("agent-1"));
-	expect(after?.owner).toBeNull();
+	expect((await store.getConversation(conv.id, manager))?.owner).toBeNull();
+	expect(await reach(agent("agent-1"), conv.id)).toEqual(NONE);
 });
 
-test("reassigning only to a member of the thread's office", async () => {
-	const conv = await guestWrites("g-reassign");
+test("assigning only to a member of the thread's office", async () => {
+	const conv = await guestWrites("g-member");
 	expect(await store.setOwner(conv.id, "agent-2", OFFICE)).toBe(true);
 	expect(await store.setOwner(conv.id, "not-a-member", OFFICE)).toBe(false);
-	expect(await store.setOwner(conv.id, null, OFFICE)).toBe(true);
-	expect((await store.getConversation(conv.id, manager))?.owner).toBeNull();
+	expect((await store.getConversation(conv.id, manager))?.owner?.id).toBe("agent-2");
 });
 
 test("the rollout backfill: the first sent Answer's approver owns it, if still an operator", async () => {

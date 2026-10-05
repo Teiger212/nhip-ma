@@ -903,14 +903,14 @@
 		"pipeDisconnected": "{pipe} đã mất kết nối nên không gửi được trả lời trên {pipe}. Nhịp đã được thông báo.",
 		"pipeDisconnectedBanner": "{pipes} đã mất kết nối nên chưa gửi được trả lời trên đó. Nhịp đã được thông báo.",
 		"owner": {
-			"pool": "Chung",
+			"unassigned": "Chưa giao",
+			"assignTo": "Giao cho…",
 			"mine": "Của bạn",
-			"label": "Người phụ trách",
 			"failed": "Không chuyển được cuộc trò chuyện. Hãy thử lại.",
 			"filter": "Hiển thị",
 			"all": "Tất cả cuộc trò chuyện"
 		},
-		"emptyPool": "Khách đang chờ bất kỳ ai sẽ hiện ở đây. Khi bạn trả lời, cuộc trò chuyện là của bạn.",
+		"emptyAssigned": "Chưa có khách nào được giao cho bạn.",
 		"source": {
 			"guest": "Khách",
 			"nhip": "Gửi từ Nhịp",

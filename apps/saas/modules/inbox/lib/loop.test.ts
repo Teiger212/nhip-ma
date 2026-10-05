@@ -12,7 +12,10 @@ vi.mock("@repo/auth", () => ({
 }));
 
 vi.mock("@repo/database", () => ({
-	getOrganizationMembershipsForUser: vi.fn(async () => [{ organizationId: "walk-office" }]),
+	// The office's manager, who reaches every thread, Unassigned included (ADR 0022).
+	getOrganizationMembershipsForUser: vi.fn(async () => [
+		{ organizationId: "walk-office", role: "admin" },
+	]),
 }));
 
 import { auth } from "@repo/auth";
@@ -34,7 +37,7 @@ import type { Conversation, ConversationSummary } from "./types";
 /**
  * The done line of ADR 0009, walked end to end against a fake draft adapter: a guest who
  * writes back after an approved send returns to Your turn with their message translated
- * under the original and an AI-suggested follow-up in the reply box; the agent approves it
+ * under the original and an AI-suggested follow-up in the reply box; the manager approves it
  * and it sends; a third approve with no new inbound is 409. No auto-send path exists.
  */
 
@@ -133,7 +136,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(followUps).toEqual([]);
 	expect(conv.oneShot?.draft.source).toBe("template");
 
-	// 2. The agent approves the first reply, naming the message it answers.
+	// 2. The manager approves the first reply, naming the message it answers.
 	const sentFirst = await json(
 		await approve(
 			post(`http://localhost/api/conversations/${conv.id}/approve`, {
@@ -195,7 +198,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	);
 	expect(inList?.unansweredInboundId).toBe(secondInbound);
 
-	// 4. The agent approves the suggested follow-up. It sends.
+	// 4. The manager approves the suggested follow-up. It sends.
 	const sentSecond = await json(
 		await approve(
 			post(`http://localhost/api/conversations/${conv.id}/approve`, {

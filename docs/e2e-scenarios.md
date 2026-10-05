@@ -233,8 +233,11 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
    - Neither agent sees it: it is not listed, counted or searched. Opening it by address or
      through the API is a 404.
 
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 1; a new Zalo guest on the test's own OA,
-   in the list and the thread header).
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 1; an office of the test's own with two
+   invited agents and an invited manager, so the agents' counts are exact; "the Unassigned
+   view" is, until #163 adds it, the manager's owner filter set to Unassigned (`?owner=unassigned`),
+   with the flag in the list and the thread header; "not counted" is the agents' views at 0 and
+   no nav count; "by address" is the `?thread=` link showing `thread-not-found`).
 
 2. **Assigning gives the thread to that agent only.** On the thread's row in Unassigned, the
    manager picks "Assign to…" → agent 1.
@@ -242,46 +245,48 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
    - Agent 2 still finds nothing (404).
    - Agent 1 approves a reply: it is sent from agent 1, and the thread stays theirs.
 
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 2, rewritten).
-
 3. **Two managers assign at once: the last one wins.** In an office with a second manager,
    manager 1 assigns a new guest to agent 1, then manager 2 assigns it to agent 2 within the
    same second.
    - The thread is agent 2's: both managers see agent 2 as owner.
    - Agent 1 finds nothing (404).
 
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 3, rewritten; both through the owner API).
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 3; an office of the test's own with two
+   invited managers, both through the owner API, one after the other within a second; agent 2
+   takes a name of their own through the kit's user update, so the managers' owner flag names
+   them).
 
 4. **The guest's next message goes to the owner.** The guest writes again on a thread assigned
    to agent 1: it is Your turn for agent 1 only; agent 2 still does not see it.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 4).
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 4; assigned by the walk office's manager
+   through the owner API).
 5. **The manager sees every thread and reassigns.** The manager sees the Unassigned threads and
    every agent's threads, each marked with its owner.
    - Reassigning agent 1's thread to agent 2 moves it: agent 2 now has it, agent 1 no longer
      does.
    - Returning it to Unassigned takes it from agent 2, and neither agent sees it.
 
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 5; owners shown on the test's own threads
-   and, read only, on the seed's Minji and Yuki; through the header's owner menu).
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 5; owners shown on the test's own threads
+   and, read only, on the seed's Minji and Yuki; through the header's "Assign to…").
 
 6. **A reply from the vendor's own app assigns nothing.** A reply the office sent from the
    WhatsApp or Zalo app itself shows in the thread, and the thread stays Unassigned: the
    manager sees it there, and neither agent sees it.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 6; Zalo only, an `oa_send_text` echo. The
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 6; Zalo only, an `oa_send_text` echo. The
    WhatsApp echo is not tested yet).
 7. **The manager filters by owner.** The manager's Inbox filter (All, Unassigned, or an
    operator) shows exactly those threads.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 7; under the All view, each filter lists
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 7; under the All view, each filter lists
    its own threads and not the others, and every listed thread carries that owner).
 8. **A new agent's first day.** A newly joined agent sees no thread at all, even in an office
    with Unassigned guests. With nothing assigned, the Inbox says "Nothing assigned to you
    yet."
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 8; one newcomer joins the walk office,
-   which has Alexei and Thảo Unassigned).
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 8; one newcomer joins the walk office,
+   which has Alexei and Thảo Unassigned, and a guest of the test's own).
 9. **An agent cannot assign.** An agent's thread has no owner menu and no "Assign to…". The
    owner API refuses an agent (403) for handing a thread on, returning it to Unassigned, and
    taking an Unassigned thread, and nothing moves.
-   Spec: `apps/saas/tests/pool-owner.spec.ts` (Pool 9; the manager's control on the same
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 9; the manager's "Assign to…" on the same
    thread is the positive control).
 10. **Unassigned comes first, oldest first.** Three new guests write, one after another. The
     manager's Inbox opens on the Unassigned view, which lists them oldest first with its
@@ -563,9 +568,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 
    The toast says "Guest data deleted".
 
-   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 1; the reply goes to the first
-   message before the guest's other two, and a second guest waits in the pool so every absence is
-   judged on a loaded Inbox; "red" is what the browser paints red (fill, text, border or icon):
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 1; the manager assigns both
+   guests to the agent; the reply goes to the first message before the guest's other two, and the
+   second guest waits on the agent so every absence is judged on a loaded Inbox; "red" is what the browser paints red (fill, text, border or icon):
    the confirm button is, nothing else in the dialog is, and neither is the menu item (ADR 0020,
    Q5); the agent's open Inbox and nav count drop within the poll; "every owner filter" is each
    option of the manager's Showing filter. The manager confirms with Other and a note: the
@@ -600,9 +605,9 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 3; 403 `{ error: "forbidden" }`
    with a full body (a reason given), and also with no reason or no body, since the agent is
    refused before the body is read; the manager's header
-   on the agent's thread has Thread actions, the positive control; "unchanged" is both threads
-   still opening for both, with the guest's message and the agent's reply. It also checks a pool
-   thread, which agents still see until ADR 0022 is built; that part goes with the pool).
+   on the agent's thread has Thread actions, the positive control; "unchanged" is the thread
+   still opening for both, with the guest's message and the agent's reply. An Unassigned thread
+   is not checked: agents can't open one, ADR 0022).
 4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
    `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
    another office it answers 404, even with no reason (404 before the body's 400).
@@ -647,6 +652,14 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
      manager; neither agent sees it.
    - Home's Leads in counts it as one more lead.
    - The mock CRM holds one lead for that guest again: a new one.
+
+   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 9, with no CRM only: the
+   ticked box and the new lead come with the CRM box, #139. The guest was the agent's and
+   answered before the deletion, so the fresh thread is told from the old one: it shows the new
+   message, not the old one or the agent's reply. The auto-reply is not checked; the office has
+   one agent, who neither lists nor opens (404) the fresh thread; Leads in is read from the
+   manager's Home before and after).
+
 10. **The record names no guest.** After deletions with the box ticked, unticked and with no CRM,
     `guestDeletionRecords` returns one receipt per deletion:
     - each with the manager's name, a time, the message and reply counts;

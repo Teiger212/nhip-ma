@@ -191,7 +191,7 @@ export function useOfficeAgents(enabled: boolean) {
 	});
 }
 
-/** A manager gives a thread to an agent, or back to the pool (null). */
+/** A manager gives a thread to an operator, or back to Unassigned (null). */
 export function useSetOwner() {
 	const queryClient = useQueryClient();
 	return useMutation({

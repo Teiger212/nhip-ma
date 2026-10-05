@@ -82,8 +82,16 @@ test("inbound on a connected pipe is filed under that office and stays there", a
 		200,
 	);
 
-	const a = await store.listConversations({ userId: "agent", officeId: "office-a" });
-	const b = await store.listConversations({ userId: "agent", officeId: "office-b" });
+	const a = await store.listConversations({
+		userId: "manager",
+		officeId: "office-a",
+		role: "manager",
+	});
+	const b = await store.listConversations({
+		userId: "manager",
+		officeId: "office-b",
+		role: "manager",
+	});
 	expect(a.map((c) => c.guestId)).toEqual(["guest-1"]);
 	expect(b.map((c) => c.guestId)).toEqual(["guest-2"]);
 	expect(a[0].officeId).toBe("office-a");
@@ -108,7 +116,11 @@ test("a delivery is on the log with its message's stored vendor id, never the ra
 
 	expect((await handleInboundWebhook("zalo", request)).status).toBe(200);
 
-	const [thread] = await store.listConversations({ userId: "agent", officeId: "office-a" });
+	const [thread] = await store.listConversations({
+		userId: "manager",
+		officeId: "office-a",
+		role: "manager",
+	});
 	const stored = thread.messages[0].vendorMessageId;
 	expect(stored, "the message keeps a vendor id, for retries").toBeTruthy();
 	expect(stored).not.toBe(message.msg_id);

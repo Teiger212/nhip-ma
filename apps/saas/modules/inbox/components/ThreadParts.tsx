@@ -43,7 +43,7 @@ const STATUS_BADGE = {
 } as const satisfies Record<ThreadStatus, "neutral" | "success" | "warning">;
 
 /**
- * The pipe, who holds the thread (the pool, you, or another agent, ADR 0015) and the status
+ * The pipe, who holds the thread (Unassigned, you, or another operator, ADR 0022) and the status
  * (Your turn / Sent, or the CRM's Won / Lost while resolved, ADR 0003), on a row and on the
  * thread header alike.
  */
@@ -65,9 +65,9 @@ export function ThreadFlags({
 			<Badge
 				status="neutral"
 				data-test="thread-owner"
-				data-owner={!owner ? "pool" : owner.id === userId ? "mine" : "other"}
+				data-owner={!owner ? "unassigned" : owner.id === userId ? "mine" : "other"}
 			>
-				{!owner ? t("owner.pool") : owner.id === userId ? t("owner.mine") : owner.name}
+				{!owner ? t("owner.unassigned") : owner.id === userId ? t("owner.mine") : owner.name}
 			</Badge>
 			<Badge status={STATUS_BADGE[status]} data-test="thread-status" data-status={status}>
 				{isDecided(status) ? t(`crm.${status}`) : t(status)}
