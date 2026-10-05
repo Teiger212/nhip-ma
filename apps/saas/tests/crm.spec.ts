@@ -2,16 +2,18 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, APIResponse, Browser, Locator, Page } from "@playwright/test";
+import type { APIRequestContext, APIResponse, Locator, Page } from "@playwright/test";
 
+import { assignerAs } from "./support/assign";
 import type { MockCrmLead } from "./support/crm";
 import { connectMockCrm, markInMockCrm, mockCrmLeads } from "./support/crm";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import type { Joined } from "./support/invitee";
+import { joinOffice } from "./support/invitee";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
-import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
+import { appOrigin } from "./support/session";
 
 /**
  * The thread's CRM status and turn, as an operator reads them (inbox), and the platform admin's
@@ -66,7 +68,7 @@ type Guest = {
 };
 
 /** An operator of an office, signed in in a browser of their own, on their Inbox. */
-type Operator = { page: Page; api: Api };
+type Operator = Joined;
 
 /** An office of the test's own, with a Zalo OA of its own. */
 type TestOffice = {
@@ -78,13 +80,17 @@ type TestOffice = {
 	agent: Operator;
 	/** The office's invited manager (only when asked for). */
 	manager: Operator;
+	/** The manager gives the guest's thread to the agent (ADR 0022), before the agent acts on it. */
+	assignToAgent: (guest: Guest) => Promise<void>;
 };
 
 /**
  * `newOffice` makes an office of the test's own (the platform admin creates it; it is deleted
  * afterwards), on the mock CRM or on none, with a Zalo OA of its own (released afterwards, even
  * when the test failed) and, when asked, an agent and a manager who joined it through the
- * invitation link. No other spec writes to it, so its leads are this test's leads only.
+ * invitation link. A new guest waits in Unassigned until the manager assigns them (ADR 0022), so
+ * an office whose agent opens or counts a guest asks for a manager too. No other spec writes to
+ * it, so its leads are this test's leads only.
  */
 const test = base.extend<{
 	newOffice: (
@@ -104,12 +110,19 @@ const test = base.extend<{
 			oaIds.push(oaId);
 			connectZaloOa(office.id, oaId);
 			const join = async (role: "member" | "admin") => {
-				const newcomer = await newOperatorOf(admin, browser, office.id, role);
+				const newcomer = await joinOffice(
+					admin,
+					browser,
+					office.id,
+					role,
+					role === "admin" ? "crm-manager" : "crm-agent",
+				);
 				contexts.push(newcomer);
 				return newcomer;
 			};
 			const joinedAgent = agent ? await join("member") : undefined;
 			const joinedManager = manager ? await join("admin") : undefined;
+			const assigner = joinedManager && assignerAs(joinedManager.api);
 			return {
 				...office,
 				newGuest: async () => {
@@ -133,6 +146,12 @@ const test = base.extend<{
 				get manager(): Operator {
 					if (!joinedManager) throw new Error(`${label} was made without a manager`);
 					return joinedManager;
+				},
+				assignToAgent: async (guest) => {
+					if (!joinedAgent || !assigner) {
+						throw new Error(`${label} needs an agent and a manager to assign a guest`);
+					}
+					await assigner.assignGuestTo(guest.id, joinedAgent.userId);
 				},
 			};
 		});
@@ -176,25 +195,6 @@ async function zaloWebhook(
 		headers: { "content-type": "application/json", "X-ZEvent-Signature": `mac=${mac}` },
 	});
 	expect(res.ok(), `the Zalo webhook is taken (${res.status()})`).toBe(true);
-}
-
-/**
- * A newly joined operator of `officeId`, signed up through the invitation link, on their Inbox:
- * an agent (the kit's `member`) or a manager (the kit's `admin`).
- */
-async function newOperatorOf(
-	admin: Admin,
-	browser: Browser,
-	officeId: string,
-	role: "member" | "admin",
-) {
-	const email = admin.newEmail(role === "admin" ? "crm-manager" : "crm-agent");
-	const invitationId = await admin.invite(email, officeId, role);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	return { page, api: withOrigin(context.request), close: () => context.close() };
 }
 
 /**
@@ -512,6 +512,7 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		const { page, api } = office.agent;
 
 		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
 
 		// The agent opens the thread: its header says the guest is in the CRM, by name. The lead
 		// is written in the background, so the agent opens it again until it shows.
@@ -579,13 +580,14 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		newOffice,
 	}) => {
 		test.setTimeout(150_000);
-		const office = await newOffice("CRM 1 none", { crm: "none" });
+		const office = await newOffice("CRM 1 none", { crm: "none", manager: true });
 		// A second office, on the mock CRM, only as a clock: once its guest's lead is in, lead
 		// writing has had its chance for the guest who wrote to the office with no CRM before it.
 		const clock = await newOffice("CRM 1 clock", { crm: "mock", agent: false });
 		const { page } = office.agent;
 
 		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
 		const clockGuest = await clock.newGuest();
 		await expectLeadAppears(
 			clock.id,
@@ -611,7 +613,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 	}) => {
 		test.setTimeout(150_000);
 		// An office on no CRM: only the admin's setting puts it on the mock CRM.
-		const office = await newOffice("CRM 2 mock", { crm: "none" });
+		const office = await newOffice("CRM 2 mock", { crm: "none", manager: true });
 
 		const setting = await openCrmSetting(admin, office.id);
 		await setting.shows("none", "a new office has no CRM");
@@ -623,6 +625,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 
 		// A new guest writes: they become a lead in the mock CRM, and the agent sees it.
 		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
 		await expectInCrmOnThread(office.agent.page, guest);
 		const leads = leadsOf(office.id, guest);
 		expect(leads, "the office's CRM holds one lead for the guest").toHaveLength(1);
@@ -631,12 +634,13 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 
 	test("choosing None takes the thread's In CRM status away", async ({ admin, newOffice }) => {
 		test.setTimeout(150_000);
-		const office = await newOffice("CRM 2 none", { crm: "none" });
+		const office = await newOffice("CRM 2 none", { crm: "none", manager: true });
 		const { page } = office.agent;
 
 		// On the mock CRM through the setting, a new guest's thread is In CRM.
 		await (await openCrmSetting(admin, office.id)).choose("mock");
 		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
 		await expectInCrmOnThread(page, guest);
 
 		// The admin chooses None (a fresh page, so the earlier "CRM saved." is gone).
@@ -715,12 +719,15 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 		request,
 	}) => {
 		test.setTimeout(240_000);
-		const office = await newOffice("CRM 3 lost", { crm: "mock" });
+		const office = await newOffice("CRM 3 lost", { crm: "mock", manager: true });
 		const { page } = office.agent;
 
-		// Two guests wait on the office's only agent; the second keeps the counts above zero.
+		// Two guests wait on the office's only agent, the manager having given both to them; the
+		// second keeps the counts above zero.
 		const guest = await office.newGuest();
 		const other = await office.newGuest();
+		await office.assignToAgent(guest);
+		await office.assignToAgent(other);
 		const lead = await leadOf(office.id, guest);
 		const otherLead = await leadOf(office.id, other);
 
@@ -787,11 +794,12 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 		request,
 	}) => {
 		test.setTimeout(180_000);
-		const office = await newOffice("CRM 3 won", { crm: "mock" });
+		const office = await newOffice("CRM 3 won", { crm: "mock", manager: true });
 		const { page } = office.agent;
 
 		const guest = await office.newGuest();
-		await office.newGuest();
+		await office.assignToAgent(guest);
+		await office.assignToAgent(await office.newGuest());
 		const lead = await leadOf(office.id, guest);
 
 		await page.goto("/en/inbox");

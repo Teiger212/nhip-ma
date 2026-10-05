@@ -1,14 +1,16 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 
+import { userIdOf, walkManager } from "./support/assign";
 import { pipeCopy } from "./support/copy";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import type { Joined } from "./support/invitee";
+import { joinOffice } from "./support/invitee";
 import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { AGENT, WALK_OFFICE_ID } from "./support/seed";
-import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
+import { appOrigin, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
 
 const copy = pipeCopy("en");
@@ -159,19 +161,6 @@ async function openConnections(admin: Admin, officeId: string) {
 	};
 }
 
-/** A new member of `officeId`, joined through the invitation link, on their inbox. */
-async function memberOf(admin: Admin, browser: Browser, officeId: string) {
-	const email = admin.newEmail("pipes-member");
-	const invitationId = await admin.invite(email, officeId);
-	const context = await browser.newContext({
-		extraHTTPHeaders: clientIpHeaders("member"),
-	});
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	return { page, close: () => context.close() };
-}
-
 // scenario: docs/e2e-scenarios.md Pipe connections 1
 test.describe("Pipes 1 — the platform admin starts connecting a Zalo OA", () => {
 	test("Connections lists Zalo and WhatsApp as not connected, and Connect Zalo OA goes to Zalo's consent page for Nhịp's app", async ({
@@ -251,6 +240,8 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		admin,
 		newOa,
 	}) => {
+		// Three pipe set-ups and the manager's three assignments outlast the default 30 s under load.
+		test.setTimeout(90_000);
 		// The walk office, the agent's: one OA that breaks, one that stays connected, and the
 		// office's WhatsApp number.
 		const brokenOa = newOa();
@@ -270,6 +261,16 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		await guestWritesOnZalo(request, brokenOa, guestId, first);
 		await guestWritesOnZalo(request, workingOa, otherGuestId, `Hello from ${otherGuestId}`);
 		await guestWritesOnWhatsApp(request, whatsappGuest, `Hello from ${whatsappGuest.id}`);
+		// The walk office's manager gives the three new guests to the agent (ADR 0022).
+		const manager = await walkManager();
+		try {
+			const agentId = await userIdOf(agent);
+			for (const guest of [guestId, otherGuestId, whatsappGuest.id]) {
+				await manager.assignGuestTo(guest, agentId);
+			}
+		} finally {
+			await manager.dispose();
+		}
 		connectZaloOa(WALK_OFFICE_ID, brokenOa, "disconnected");
 
 		await page.goto("/en/inbox");
@@ -351,8 +352,8 @@ test.describe("Pipes 4 — disconnecting", () => {
 		request,
 		newOa,
 	}) => {
-		// An office of its own with one member, so its Connections show exactly this OA and
-		// someone in the office can see what arrives.
+		// An office of its own with one manager, so its Connections show exactly this OA and
+		// someone in the office sees whatever arrives, assigned or not (ADR 0022).
 		const office = await admin.createOffice("Pipes 4");
 		const oaId = newOa();
 		const guestId = uniqueId("guest");
@@ -361,13 +362,13 @@ test.describe("Pipes 4 — disconnecting", () => {
 		const after = `Hello from ${guestId}, after`;
 
 		connectZaloOa(office.id, oaId);
-		let member: Awaited<ReturnType<typeof memberOf>> | undefined;
+		let manager: Joined | undefined;
 		try {
-			member = await memberOf(admin, browser, office.id);
+			manager = await joinOffice(admin, browser, office.id, "admin", "pipes-manager");
 			// While connected, a guest's message reaches the office.
 			await guestWritesOnZalo(request, oaId, guestId, before);
-			await member.page.reload();
-			await expect(threadOf(member.page, guestId)).toBeVisible();
+			await manager.page.reload();
+			await expect(threadOf(manager.page, guestId)).toBeVisible();
 
 			const connections = await openConnections(admin, office.id);
 			const oa = connections.oa(oaId);
@@ -384,15 +385,15 @@ test.describe("Pipes 4 — disconnecting", () => {
 			// After it, neither the same guest nor a new one reaches the office.
 			await guestWritesOnZalo(request, oaId, guestId, after);
 			await guestWritesOnZalo(request, oaId, newGuestId, `Hello from ${newGuestId}`);
-			await member.page.reload();
-			await expect(threadOf(member.page, guestId), "the thread stays").toBeVisible();
-			await threadOf(member.page, guestId).click();
-			const thread = member.page.getByRole("article");
+			await manager.page.reload();
+			await expect(threadOf(manager.page, guestId), "the thread stays").toBeVisible();
+			await threadOf(manager.page, guestId).click();
+			const thread = manager.page.getByRole("article");
 			await expect(thread.getByText(before)).toBeVisible();
 			await expect(thread.getByText(after)).toHaveCount(0);
-			await expect(threadOf(member.page, newGuestId)).toHaveCount(0);
+			await expect(threadOf(manager.page, newGuestId)).toHaveCount(0);
 		} finally {
-			await member?.close();
+			await manager?.close();
 		}
 	});
 });

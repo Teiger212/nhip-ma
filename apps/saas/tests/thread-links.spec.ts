@@ -3,16 +3,16 @@ import { createHmac, randomInt, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, Browser, Page, Request } from "@playwright/test";
+import type { APIRequestContext, Page, Request } from "@playwright/test";
 
+import { assignerAs } from "./support/assign";
 import type { MockCrmLead } from "./support/crm";
 import { connectMockCrm, mockCrmLeads } from "./support/crm";
-import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import type { Joined } from "./support/invitee";
+import { joinOffice } from "./support/invitee";
 import { AGENT } from "./support/seed";
-import type { Api } from "./support/session";
-import { apiAs, clientIpHeaders, withOrigin } from "./support/session";
+import { apiAs } from "./support/session";
 
 /** What the Inbox says when a link names no thread the operator can open (inbox.threadNotFound). */
 const THREAD_NOT_FOUND = (() => {
@@ -33,22 +33,23 @@ type Guest = {
 	text: string;
 };
 
-/** The office's only agent, joined through the invitation link, in a browser of their own. */
-type Agent = { page: Page; api: Api };
-
-/** An office of the test's own, with a WhatsApp number of its own and one agent. */
+/** An office of the test's own, with a WhatsApp number of its own, one agent and a manager. */
 type Office = {
 	id: string;
-	agent: Agent;
+	/** The office's only agent, joined through the invitation link, in a browser of their own. */
+	agent: Joined;
 	/** A new guest writes to the office's WhatsApp number from their phone. */
 	guestWrites: () => Promise<Guest>;
+	/** The office's manager gives the guest's thread to the agent (ADR 0022). */
+	assignToAgent: (guest: Guest) => Promise<void>;
 };
 
 /**
  * `newOffice` makes an office of the test's own (deleted afterwards by the `admin` fixture), on
  * the mock CRM or on none, holding a WhatsApp number no other office holds (so it never takes the
- * walk office's number from another spec), with one agent who joined through the invitation link.
- * No other spec writes to it, so its queue is this test's only.
+ * walk office's number from another spec), with one agent and one manager (the kit's `admin`) who
+ * joined through the invitation link; a new guest waits in Unassigned until the manager gives them
+ * to the agent (ADR 0022). No other spec writes to it, so its queue is this test's only.
  */
 const test = base.extend<{
 	newOffice: (label: string, options: { crm: "mock" | "none" }) => Promise<Office>;
@@ -62,11 +63,15 @@ const test = base.extend<{
 			}
 			const number = `e2e-links-${randomUUID()}`;
 			holdWhatsAppNumber(office.id, number);
-			const agent = await agentOf(admin, browser, office.id);
+			const agent = await joinOffice(admin, browser, office.id, "member", "thread-links");
 			contexts.push(agent);
+			const manager = await joinOffice(admin, browser, office.id, "admin", "thread-links-manager");
+			contexts.push(manager);
+			const assigner = assignerAs(manager.api);
 			return {
 				id: office.id,
 				agent,
+				assignToAgent: (guest) => assigner.assignGuestTo(guest.phone, agent.userId),
 				guestWrites: async () => {
 					const guest = newWhatsAppGuest();
 					await whatsAppWebhook(request, number, guest);
@@ -141,16 +146,6 @@ async function whatsAppWebhook(request: APIRequestContext, phoneNumberId: string
 		headers: { "content-type": "application/json", "X-Hub-Signature-256": `sha256=${signature}` },
 	});
 	expect(res.ok(), `the WhatsApp webhook takes the message (${res.status()})`).toBe(true);
-}
-
-async function agentOf(admin: Admin, browser: Browser, officeId: string) {
-	const email = admin.newEmail("thread-links");
-	const invitationId = await admin.invite(email, officeId);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	return { page, api: withOrigin(context.request), close: () => context.close() };
 }
 
 /* ---------------------------------------------------------------- what a person sees */
@@ -285,6 +280,8 @@ test.describe("Thread links 1 — a thread's address names no guest", () => {
 		// the link's doing.
 		const first = await office.guestWrites();
 		const guest = await office.guestWrites();
+		await office.assignToAgent(first);
+		await office.assignToAgent(guest);
 		const requests = watchThreadRequests(page);
 
 		// Home's Waiting now links to the guest's thread by its id, not their phone.
@@ -344,6 +341,9 @@ test.describe("Thread links 2 — a stale or unknown link opens no one's thread"
 		const first = await office.guestWrites();
 		const guest = await office.guestWrites();
 		const guests = [first, guest];
+		for (const g of guests) {
+			await office.assignToAgent(g);
+		}
 
 		// A thread of another office: the walk office's agent has threads of their own.
 		const walkAgent = await apiAs(AGENT);
@@ -384,6 +384,8 @@ test.describe("Thread links 3 — a link to an answered thread opens that thread
 		const { page } = office.agent;
 		const answered = await office.guestWrites();
 		const waiting = await office.guestWrites();
+		await office.assignToAgent(answered);
+		await office.assignToAgent(waiting);
 
 		// The agent answers the first guest; the other is still waiting, first in Your turn.
 		await page.reload();
