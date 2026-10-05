@@ -32,7 +32,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	const { store } = runtime;
 	const conv = await store.getConversation(decodeURIComponent(id), gate.viewer);
 	if (!conv) return NextResponse.json({ error: "not_found" }, { status: 404 });
-	const moved = await store.setOwner(conv.id, parsed.data.ownerId, gate.viewer.officeId);
+	const moved = await store.reassign(conv.id, parsed.data.ownerId, gate.viewer.officeId);
 	if (!moved) {
 		return NextResponse.json(
 			{ error: "not_a_member", message: "That person is not an agent of this office." },
@@ -40,7 +40,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 		);
 	}
 	scheduleOwnerChangeAlert(runtime, conv, {
-		previousOwnerId: conv.owner?.id ?? null,
+		previousOwnerId: moved.previousOwnerId,
 		newOwnerId: parsed.data.ownerId,
 		actorId: gate.viewer.userId,
 	});
