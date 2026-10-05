@@ -10,7 +10,12 @@ import { useOperatorLanguage } from "./ThreadParts";
 /** One message on the thread, with its translation under the original for a guest message. */
 
 /** Who a message came from, as a person reads it (the stored values are internal). */
-const SOURCE_KEYS = { guest: "guest", nhip: "nhip", "oa-echo": "oaEcho" } as const;
+const SOURCE_KEYS = {
+	guest: "guest",
+	nhip: "nhip",
+	"oa-echo": "oaEcho",
+	"auto-reply": "autoReply",
+} as const;
 
 export function ThreadMessage({ message }: { message: Message }) {
 	const t = useTranslations("inbox");

@@ -207,11 +207,15 @@ function mapMockCrmLead(row: Prisma.MockCrmLeadGetPayload<object>): MockCrmLead 
 }
 
 function toDbSource(source: MessageSource): DbMessageSource {
-	return source === "oa-echo" ? "oa_echo" : source;
+	if (source === "oa-echo") return "oa_echo";
+	if (source === "auto-reply") return "auto_reply";
+	return source;
 }
 
 function fromDbSource(source: DbMessageSource): MessageSource {
-	return source === "oa_echo" ? "oa-echo" : source;
+	if (source === "oa_echo") return "oa-echo";
+	if (source === "auto_reply") return "auto-reply";
+	return source;
 }
 
 function mapMessage(row: MessageRecord): Message {
@@ -229,6 +233,7 @@ function mapMessage(row: MessageRecord): Message {
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
 		pipeExternalId: row.pipeExternalId,
+		writtenBy: row.writtenBy,
 		translations,
 	};
 }

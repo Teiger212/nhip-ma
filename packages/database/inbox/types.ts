@@ -78,6 +78,8 @@ export type Message = {
 	 * wrote to, or what the reply went out on. `null` for dev injections and old files.
 	 */
 	pipeExternalId: string | null;
+	/** Who wrote an auto-reply (ADR 0021): the template or the model. Null for any other message. */
+	writtenBy: DraftSource | null;
 	/** Empty for office messages: they are never translated back (ADR 0007). */
 	translations: Translations;
 };
