@@ -90,6 +90,22 @@ is renamed.
   gated by role. Office-level only. The headline is the **funnel** (ADR 0002); response
   time is a supporting widget. No per-agent breakdown (future feature).
 
+## Alerts
+
+- **Alert**: a web push telling an operator a guest is waiting (ADR 0019). It goes to the
+  operators who can open the thread: an Unassigned guest alerts the office's managers; an
+  owned thread's guest alerts its owner only (ADR 0022). Whoever acts is never alerted for
+  their own action, and the platform admin is never alerted. It says the guest's name ("A
+  guest" when there is none), pipe and language in the operator's language, never the
+  message, and nothing that identifies the thread. One per thread: a new one replaces the
+  last and sounds again only after 2 minutes of quiet. Only a message Nhịp had not stored
+  before alerts; a vendor's retry does not. In a mock deployment alerts are decided and
+  logged, and never pushed. _Avoid_: notification (the kit's bell row).
+- **Device**: a browser or installed app on which an operator turned alerts on. Every device
+  gets every alert until the operator signs out on it, the account ends, or its push service
+  says it is gone. An operator keeps at most 10; a phone that changes hands moves to whoever
+  turns alerts on there next.
+
 ## Funnel
 
 - **Lead**: a guest who wrote in. One per conversation. A deleted guest's lead still counts,
@@ -178,8 +194,8 @@ is renamed.
   messages to the office; its threads stay, read-only on that pipe.
 - **Disconnected**: a pipe connection that can no longer send (its vendor authorization
   lapsed or was revoked). Guests' messages still arrive; replies that would go out from it
-  are blocked with the reason shown, and the platform admin is alerted to reconnect it with
-  the owner. The office's other numbers and OAs are unaffected.
+  are blocked with the reason shown, and the platform admin gets a bell row to reconnect it
+  with the owner (ADR 0017), not an alert. The office's other numbers and OAs are unaffected.
 - **CRM adapter**: one interface, one implementation per CRM the office uses. Source of truth
   for closings and lost (ADR 0003). The office connects the CRM it already uses; Nhịp never
   sets one up for it, and an office with no CRM has no connection and no won or lost. The

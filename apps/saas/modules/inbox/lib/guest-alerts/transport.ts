@@ -1,4 +1,5 @@
 import type { InboxConfig } from "../config";
+import { webPushTransport } from "./push";
 
 /**
  * What reaches an operator's device (ADR 0019): the alert's opaque id, the per-thread tag, the
@@ -13,25 +14,29 @@ export type AlertPayload = {
 	sound: boolean;
 };
 
-/** Sends one operator's alert to their devices; the row in `inbox_alert` is already written. */
+/**
+ * One alert to one operator, whose row in `inbox_alert` is already written: to every device
+ * of theirs, or with `sessionId` to that sign-in's devices only (the test alert).
+ */
+export type AlertDelivery = { userId: string; payload: AlertPayload; sessionId?: string };
+
+/**
+ * Sends one event's alerts to the operators' devices. Never throws for a device: a push that
+ * fails is logged as a category and costs no one else theirs.
+ */
 export type AlertTransport = {
-	send: (userId: string, payload: AlertPayload) => Promise<void>;
+	send: (deliveries: AlertDelivery[]) => Promise<void>;
 };
 
 /** `SEND_MODE=mock`: alerts are decided and logged exactly as live, and nothing is pushed. */
-const mockTransport: AlertTransport = {
+export const mockAlertTransport: AlertTransport = {
 	send: async () => {},
 };
 
 /**
- * `SEND_MODE=live`: web push to each of the operator's devices arrives with #134 (devices and
- * the live push). Until then it writes the log only, like the mock.
+ * The transport seam, chosen by the deployment's send mode: live pushes with web push (#134),
+ * VAPID-signed, and only logs "push not configured" until the VAPID keys are set.
  */
-const liveTransport: AlertTransport = {
-	send: async () => {},
-};
-
-/** The transport seam, chosen by the deployment's send mode. */
-export function alertTransport(config: Pick<InboxConfig, "sendMode">): AlertTransport {
-	return config.sendMode === "live" ? liveTransport : mockTransport;
+export function alertTransport(config: Pick<InboxConfig, "sendMode" | "vapid">): AlertTransport {
+	return config.sendMode === "live" ? webPushTransport(config.vapid) : mockAlertTransport;
 }

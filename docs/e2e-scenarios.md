@@ -447,6 +447,11 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     from a second signed-in context. They sign out through the user menu in the first:
     `alertState.devices` lists only the second. `DELETE /api/alerts/devices` answers 401 signed
     out.
+    Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 10; an office of the test's own with one
+    invited agent, signed up through the invitation link in the first browser and signed in
+    through the login page in the second; "only the second" is the second device's id alone,
+    so removing nothing and removing every device both fail; the signed-in second browser's
+    same `DELETE` answering 204 is the positive control).
 11. **Send test alert** (#135). With permission "granted" and a device added for this
     session, Settings → Notifications' "This device" row says alerts are on; "Send test alert"
     writes one `test` alert for that operator and says it was sent. The same through the API:

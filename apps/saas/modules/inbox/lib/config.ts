@@ -53,6 +53,9 @@ const envSchema = z
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
+		VAPID_PUBLIC_KEY: trimmed,
+		VAPID_PRIVATE_KEY: trimmed,
+		VAPID_SUBJECT: trimmed,
 		BETTER_AUTH_SECRET: z.string().optional(),
 		BETTER_AUTH_URL: trimmed,
 		NEXT_PUBLIC_SAAS_URL: trimmed,
@@ -130,6 +133,25 @@ const envSchema = z
 					});
 				}
 			}
+		}
+		// Web push's VAPID keys are a set (#134): none means alerts are logged and never pushed.
+		const vapidKeys = ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"] as const;
+		const vapidSet = vapidKeys.filter((key) => env[key]);
+		if (vapidSet.length > 0 && vapidSet.length < vapidKeys.length) {
+			for (const key of vapidKeys.filter((k) => !env[k])) {
+				ctx.addIssue({
+					code: "custom",
+					path: [key],
+					message: `${key} must be set: web push needs VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT together (${vapidSet.join(", ")} set)`,
+				});
+			}
+		}
+		if (env.VAPID_SUBJECT && !/^(mailto:|https:\/\/)/.test(env.VAPID_SUBJECT)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["VAPID_SUBJECT"],
+				message: "VAPID_SUBJECT must be a mailto: or https: address push services can write to",
+			});
 		}
 		for (const pipe of PIPES_WITH_STORED_TOKENS) {
 			if (PIPE_SETTINGS[pipe].some((key) => env[key]) && !env.PIPE_SECRETS_KEY) {
@@ -279,7 +301,15 @@ export type InboxConfig = {
 		baseUrl: string;
 		model?: string;
 	};
+	/**
+	 * Web push's VAPID key pair and subject (ADR 0019), read as a set: null until all three are
+	 * set, and then a live deployment logs alerts and pushes nothing ("push not configured").
+	 */
+	vapid: Vapid | null;
 };
+
+/** Web push's VAPID key pair and its subject (a `mailto:` or `https:` address). */
+export type Vapid = { publicKey: string; privateKey: string; subject: string };
 
 /** OpenRouter fronts every vendor behind one prepaid balance, which doubles as the budget. */
 export const DEFAULT_DRAFT_BASE_URL = "https://openrouter.ai/api/v1";
@@ -313,7 +343,20 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,
 			model: clean(env.DRAFT_MODEL),
 		},
+		vapid: vapidFromEnv(
+			clean(env.VAPID_PUBLIC_KEY),
+			clean(env.VAPID_PRIVATE_KEY),
+			clean(env.VAPID_SUBJECT),
+		),
 	};
+}
+
+function vapidFromEnv(
+	publicKey: string | undefined,
+	privateKey: string | undefined,
+	subject: string | undefined,
+): Vapid | null {
+	return publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null;
 }
 
 export type ValidateInboxEnvResult =
@@ -339,6 +382,7 @@ export function mockInboxConfig(overrides: Partial<InboxConfig> = {}): InboxConf
 		whatsapp: {},
 		zalo: {},
 		drafts: { baseUrl: DEFAULT_DRAFT_BASE_URL },
+		vapid: null,
 		...overrides,
 	};
 }

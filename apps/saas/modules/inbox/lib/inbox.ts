@@ -6,6 +6,7 @@ import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
 import { greetingTemplate } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
+import type { AlertTransport } from "./guest-alerts/transport";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
@@ -189,13 +190,17 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 export async function afterGuestInbound(
 	runtime: Runtime,
 	conversation: Conversation,
-	{ inserted, autoReply = true }: { inserted: boolean; autoReply?: boolean },
+	{
+		inserted,
+		alerts,
+		autoReply = true,
+	}: { inserted: boolean; alerts?: AlertTransport; autoReply?: boolean },
 ): Promise<Conversation> {
 	const updated = (await applyOneShot(runtime.store, conversation)) ?? conversation;
 	// Only a new message alerts: a vendor's retry of one already stored alerts no one (ADR 0019).
 	// After the one-shot, so the alert can name the guest's language.
 	if (inserted) {
-		scheduleGuestAlert(runtime, updated);
+		scheduleGuestAlert(runtime, updated, alerts);
 	}
 	// A new message on a thread the office has not spoken on and nobody has claimed. The job's
 	// claim is what makes it one greeting; this only spares a job for every later message.
@@ -269,17 +274,22 @@ export async function ingestEvents(
 	return summary;
 }
 
-export async function injectDevInbound(input: {
-	pipe: Pipe;
-	guestId: string;
-	text: string;
-	officeId: string;
-	guestName?: string | null;
-	vendorMessageId?: string | null;
-	at?: number | string | Date;
-	/** False for the seed: the walk's demo threads keep the states they are written in. */
-	autoReply?: boolean;
-}): Promise<Conversation> {
+export async function injectDevInbound(
+	input: {
+		pipe: Pipe;
+		guestId: string;
+		text: string;
+		officeId: string;
+		guestName?: string | null;
+		vendorMessageId?: string | null;
+		at?: number | string | Date;
+	},
+	/**
+	 * The seed passes the mock transport (a seed run never pushes, #134, Q3) and no auto-reply:
+	 * the walk's demo threads keep the states they are written in (ADR 0021).
+	 */
+	{ alerts, autoReply = true }: { alerts?: AlertTransport; autoReply?: boolean } = {},
+): Promise<Conversation> {
 	const runtime = getRuntime();
 	const { conversation, inserted } = await runtime.store.upsertInbound(
 		{
@@ -293,7 +303,7 @@ export async function injectDevInbound(input: {
 		},
 		input.officeId,
 	);
-	return afterGuestInbound(runtime, conversation, { inserted, autoReply: input.autoReply ?? true });
+	return afterGuestInbound(runtime, conversation, { inserted, alerts, autoReply });
 }
 
 export type InboxResult =
