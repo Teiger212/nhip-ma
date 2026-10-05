@@ -20,6 +20,8 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
                      inbox store (Postgres) ◀──── one-shot: language, extract, template
                         │                    ◀──── model adapter, in after(): translation
                         │                          into en + vi, follow-up draft
+                        │                    ◀──── auto-reply, in after(): a new guest's first
+                        │                          message, claimed once, sent (ADR 0021)
                         ▼
                      Inbox (operator) ── polls /api/conversations (summaries) and the
                         │                  open thread's /api/conversations/:id, every 10 s
@@ -51,6 +53,18 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   count has no SQL copy. All three share one
   visibility rule and one Your-turn rule, and live under one TanStack Query key, so a send or
   reassignment refreshes them together.
+- **The auto-reply** (ADR 0021, `sendAutoReply` in `inbox.ts`): after the one-shot,
+  `afterGuestInbound` schedules it in the background for a new guest message on a thread the
+  office hasn't spoken on. The job reads the office's switch (`inbox_office_setting`, no row
+  means on), then claims the thread with one conditional update (`autoReplyAt` null → now, and
+  still no office message), so two first messages at once make one greeting. It sends through
+  `connectionFor` and `transmit` like an Answer (never from a disconnected endpoint; a mock
+  send reports `mock-auto-reply-<thread id>`), once, and files an outbound with source
+  `auto_reply`, `writtenBy`, and the hashed vendor id, so the vendor's echo is a duplicate. It
+  is not an Answer: no `sentAt`, no owner, and the queue and funnel SQL read only Answers and
+  `oa_echo`, so the thread stays Your turn. The text is `greetingTemplate` (`greeting.ts`) in
+  the guest's language, ending with the label; the model writes it from #168. The seed passes
+  `autoReply: false`.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
   platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.
 - **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
