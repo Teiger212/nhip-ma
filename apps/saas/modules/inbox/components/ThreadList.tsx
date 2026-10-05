@@ -2,6 +2,7 @@
 
 import { Button, Skeleton } from "@repo/ui";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 import type { QueueView } from "../lib/queue";
 import type { ConversationSummary } from "../lib/types";
@@ -40,6 +41,7 @@ export function ThreadList({
 	onRetry,
 	onViewSent,
 	emptyTitle,
+	rowAction,
 }: {
 	queue: QueueView;
 	loading: boolean;
@@ -52,18 +54,25 @@ export function ThreadList({
 	onViewSent: () => void;
 	/** What an empty inbox says to this operator (an agent's: nothing assigned yet, ADR 0022). */
 	emptyTitle?: string;
+	/** What sits at each row's end (a manager's "Assign to…" in Unassigned, ADR 0022). */
+	rowAction?: (conversation: ConversationSummary) => ReactNode;
 }) {
 	const t = useTranslations("inbox");
 
 	function rows(list: ConversationSummary[]) {
-		return list.map((conversation) => (
-			<ThreadRow
-				key={conversation.id}
-				conversation={conversation}
-				active={conversation.id === selectedId}
-				onOpen={() => onOpen(conversation.id)}
-			/>
-		));
+		return (
+			<ul>
+				{list.map((conversation) => (
+					<ThreadRow
+						key={conversation.id}
+						conversation={conversation}
+						active={conversation.id === selectedId}
+						onOpen={() => onOpen(conversation.id)}
+						action={rowAction?.(conversation)}
+					/>
+				))}
+			</ul>
+		);
 	}
 
 	if (loading) return <ThreadListSkeleton />;
@@ -79,6 +88,9 @@ export function ThreadList({
 				}
 			/>
 		);
+	}
+	if (queue.allAssigned) {
+		return <ThreadListState testId="inbox-all-assigned" title={t("allAssigned")} />;
 	}
 	if (queue.visible.length === 0 && queue.quiet.length === 0) {
 		const title =

@@ -200,11 +200,11 @@ async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
 		// A row (it carries its owner flag), or the list saying it is empty, caught up, unmatched,
-		// or that only Quiet threads wait.
+		// that every lead is assigned (a manager's Unassigned), or that only Quiet threads wait.
 		// The view buttons above the list are buttons too, so a button proves nothing.
 		threadList(page)
 			.locator(
-				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"]',
+				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
 			)
 			// A Quiet row sits folded away until opened, so only a shown one counts.
 			.filter({ visible: true })

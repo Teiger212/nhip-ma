@@ -9,7 +9,7 @@ import type { ConversationSummary } from "./types";
  * QueueView; it does not restate any of this. The queue reads thread summaries, which is
  * all the list loads; the open thread is loaded whole on its own.
  */
-export const INBOX_VIEWS = ["yourTurn", "sent", "all"] as const;
+export const INBOX_VIEWS = ["unassigned", "yourTurn", "sent", "all"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
 
 /** A product constant, not a setting, until someone asks (ADR 0004). */
@@ -17,6 +17,20 @@ export const QUIET_AFTER_MS = 48 * 60 * 60 * 1000;
 
 export function isInboxView(value: unknown): value is InboxView {
 	return typeof value === "string" && (INBOX_VIEWS as readonly string[]).includes(value);
+}
+
+/**
+ * The views an operator has, in order. Unassigned is the managers' alone, and their first and
+ * default view (ADR 0022): a lead waits there until a manager gives it to someone.
+ */
+export function viewsFor(manager: boolean): readonly InboxView[] {
+	return manager ? INBOX_VIEWS : INBOX_VIEWS.filter((view) => view !== "unassigned");
+}
+
+/** The view an operator's Inbox opens on, and the one a view they don't have falls back to. */
+export function openingView(manager: boolean, asked: InboxView | null): InboxView {
+	const views = viewsFor(manager);
+	return asked && views.includes(asked) ? asked : views[0];
 }
 
 /** The guest spoke last. A fact, not a judgment. */
@@ -80,16 +94,29 @@ export function isQuiet(conversation: QueueFields, now: number = Date.now()): bo
 	return inQueue(conversation) && last > 0 && now - last > QUIET_AFTER_MS;
 }
 
-export function inView(conversation: QueueFields, view: InboxView): boolean {
+/** Nobody owns it yet: a lead waiting on a manager to assign it (ADR 0022). */
+export function isUnassigned(conversation: Pick<ConversationSummary, "owner">): boolean {
+	return !conversation.owner;
+}
+
+/** Unassigned holds every thread with no owner, whatever its turn (ADR 0022). */
+export function inView(
+	conversation: QueueFields & Pick<ConversationSummary, "owner">,
+	view: InboxView,
+): boolean {
 	if (view === "all") return true;
+	if (view === "unassigned") return isUnassigned(conversation);
 	return view === "sent" ? !inQueue(conversation) : inQueue(conversation);
 }
 
-/** Oldest waiting guest first in the queue; most recent activity first elsewhere. */
+/**
+ * Oldest waiting guest first in the queue and in Unassigned; most recent activity first
+ * elsewhere.
+ */
 export function compareForView(
 	view: InboxView,
 ): (a: ConversationSummary, b: ConversationSummary) => number {
-	return view === "yourTurn"
+	return view === "yourTurn" || view === "unassigned"
 		? (a, b) => time(a.lastGuestInboundAt) - time(b.lastGuestInboundAt)
 		: (a, b) => time(b.updatedAt) - time(a.updatedAt);
 }
@@ -108,6 +135,8 @@ export type QueueView = {
 	counts: QueueCounts;
 	/** Whether the queue is empty because every guest has been answered. */
 	caughtUp: boolean;
+	/** Whether Unassigned is empty because every lead has been given to someone. */
+	allAssigned: boolean;
 };
 
 export function buildQueueView(
@@ -117,7 +146,12 @@ export function buildQueueView(
 	now: number = Date.now(),
 ): QueueView {
 	const matching = conversations.filter((conversation) => matchesThreadSearch(conversation, query));
-	const counts: QueueCounts = { yourTurn: yourTurnCount(matching), sent: 0, all: matching.length };
+	const counts: QueueCounts = {
+		unassigned: matching.filter(isUnassigned).length,
+		yourTurn: yourTurnCount(matching),
+		sent: 0,
+		all: matching.length,
+	};
 	counts.sent = counts.all - counts.yourTurn;
 	const inOrder = matching
 		.filter((conversation) => inView(conversation, view))
@@ -126,16 +160,14 @@ export function buildQueueView(
 		view === "yourTurn" ? inOrder.filter((conversation) => isQuiet(conversation, now)) : [];
 	const visible =
 		view === "yourTurn" ? inOrder.filter((conversation) => !isQuiet(conversation, now)) : inOrder;
+	const emptyUnsearched =
+		!query.trim() && conversations.length > 0 && visible.length === 0 && quiet.length === 0;
 	return {
 		visible,
 		quiet,
 		counts,
-		caughtUp:
-			view === "yourTurn" &&
-			!query.trim() &&
-			conversations.length > 0 &&
-			visible.length === 0 &&
-			quiet.length === 0,
+		caughtUp: view === "yourTurn" && emptyUnsearched,
+		allAssigned: view === "unassigned" && emptyUnsearched,
 	};
 }
 
@@ -157,13 +189,17 @@ export function nextSelection(
 }
 
 /**
- * Home's Waiting now: the Your-turn threads in the queue's order (visible, then quiet).
+ * Home's Waiting now: the Your-turn threads in the queue's order (visible, then quiet). A
+ * manager's lists the Unassigned ones first, then the rest, each in that order (ADR 0022): the
+ * leads only a manager can move come before the ones their owners are already on.
  */
 export function waitingNow(
 	conversations: ConversationSummary[],
-	_options: { manager: boolean },
+	{ manager }: { manager: boolean },
 	now: number = Date.now(),
 ): ConversationSummary[] {
 	const queue = buildQueueView(conversations, "yourTurn", "", now);
-	return [...queue.visible, ...queue.quiet];
+	const ordered = [...queue.visible, ...queue.quiet];
+	if (!manager) return ordered;
+	return [...ordered.filter(isUnassigned), ...ordered.filter((c) => !isUnassigned(c))];
 }

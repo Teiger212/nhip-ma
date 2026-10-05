@@ -3,8 +3,8 @@
 import { LocaleLink } from "@i18n/routing";
 import { GuestMark, ThreadListState } from "@inbox/components/ThreadParts";
 import { displayName } from "@inbox/lib/display-name";
-import { useConversations } from "@inbox/lib/inbox-queries";
-import { buildQueueView } from "@inbox/lib/queue";
+import { useConversations, useOfficeRole } from "@inbox/lib/inbox-queries";
+import { waitingNow } from "@inbox/lib/queue";
 import { Badge, Button, Card, Skeleton } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -17,15 +17,16 @@ const SHOWN = 5;
 /**
  * Waiting now: the guests whose turn it is, in the inbox's own order (oldest waiting
  * first, quiet threads last), read from the inbox's query so the two never disagree. Each
- * row opens its thread. Only threads this operator can open are listed (ADR 0022).
+ * row opens its thread. Only threads this operator can open are listed, and a manager's lists
+ * the Unassigned leads first (ADR 0022).
  */
 export function WaitingNow() {
 	const t = useTranslations("home");
 	const tInbox = useTranslations("inbox");
 	const locale = useLocale();
 	const query = useConversations();
-	const queue = buildQueueView(query.data ?? [], "yourTurn", "");
-	const waiting = [...queue.visible, ...queue.quiet];
+	const { role, pending: rolePending } = useOfficeRole();
+	const waiting = waitingNow(query.data ?? [], { manager: role === "manager" });
 	const shown = waiting.slice(0, SHOWN);
 	const more = waiting.length - shown.length;
 	const now = Date.now();
@@ -44,7 +45,7 @@ export function WaitingNow() {
 			>
 				{t("waitingNow")}
 			</PanelTitle>
-			{query.isPending ? (
+			{query.isPending || rolePending ? (
 				<ul aria-hidden="true" className="gap-1 px-2 pt-2 flex flex-col">
 					{[0, 1, 2].map((row) => (
 						<li key={row} className="gap-2.5 px-3 py-2.5 flex items-center">

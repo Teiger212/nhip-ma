@@ -1,10 +1,55 @@
 "use client";
 
-import { toast } from "@repo/ui";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	toast,
+} from "@repo/ui";
 import { useTranslations } from "next-intl";
 
 import { useOfficeAgents, useOfficeRole, useSetOwner } from "../lib/inbox-queries";
 import type { Conversation } from "../lib/types";
+
+/**
+ * "Assign to…" on a manager's Unassigned row (ADR 0022, DESIGN.md Thread Row): a ghost pill that
+ * opens the office's operators. It sits beside the row, never in it, so it never selects the
+ * row; choosing someone assigns at once, and the row leaves Unassigned.
+ */
+export function AssignFromRow({ conversationId }: { conversationId: string }) {
+	const t = useTranslations("inbox.owner");
+	const agents = useOfficeAgents(true);
+	const setOwner = useSetOwner();
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger
+				disabled={setOwner.isPending || !agents.data}
+				render={
+					<Button type="button" variant="ghost" size="sm" className="min-h-11">
+						{t("assignTo")}
+					</Button>
+				}
+			/>
+			<DropdownMenuContent align="end" className="min-w-44">
+				{agents.data?.map((agent) => (
+					<DropdownMenuItem
+						key={agent.id}
+						onClick={() =>
+							setOwner.mutate(
+								{ id: conversationId, ownerId: agent.id },
+								{ onError: () => toast.add({ title: t("failed"), type: "error" }) },
+							)
+						}
+					>
+						{agent.name}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
 
 const UNASSIGNED = "__unassigned__";
 

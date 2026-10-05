@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-05 (managers hand out leads from Unassigned)
+
+### Added
+
+- **A manager's Inbox opens on Unassigned** (#163, ADR 0022, spec #160). A new first view, "Unassigned" (VI "Chưa giao"; `?view=unassigned`), lists every thread with no owner, whatever its turn, oldest guest message first, with its count, and no Quiet fold. It is a manager's default view; agents don't have it, and an agent's `?view=unassigned` opens Your turn. The Inbox waits for the operator's role before it lists, so a manager never sees Your turn first. The owner filter sits this view out (it could only narrow it to itself or to nothing). Empty while the office has threads, it reads "Every lead is assigned." (VI "Mọi khách đã được giao.", `data-test="inbox-all-assigned"`). A manager's reply on a lead there makes it theirs, as before, and the view moves on to the next lead.
+- **"Assign to…" on each Unassigned row** (#163, DESIGN.md Thread Row). It's a small ghost pill at the row's end, on the badges' line, with a 44px tap target. It opens the kit's dropdown of the office's operators (`GET /api/office/agents`). Choosing one assigns at once through the owner route, and the row leaves the view. The pill sits beside the row's button, not inside it, so it never opens the thread. The thread list is now a list (`ul`/`li`).
+
+### Changed
+
+- **Home's Waiting now lists Unassigned leads first for a manager** (#163, ADR 0022): the Unassigned Your-turn threads, then the rest, each group in the queue's order (quiet last), at most five. An agent's is unchanged.
+- **The new Vietnamese wording waits on a native read** (#78): the view's "Chưa giao" (#162's label, reused) and "Mọi khách đã được giao."
+
 ## 2026-10-05 (a new guest is greeted at once)
 
 ### Added

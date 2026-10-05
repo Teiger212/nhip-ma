@@ -2,58 +2,68 @@
 
 import { cn } from "@repo/ui";
 import { useLocale } from "next-intl";
+import type { ReactNode } from "react";
 
 import { displayName } from "../lib/display-name";
 import { formatInboxTimestamp } from "../lib/time";
 import type { ConversationSummary } from "../lib/types";
 import { GuestMark, ThreadFlags } from "./ThreadParts";
 
-/** One thread in the list: guest, when they last wrote, a preview, the pipe and the turn. */
+/**
+ * One thread in the list: guest, when they last wrote, a preview, the pipe and the turn. An
+ * `action` (a manager's "Assign to…" on Unassigned rows, ADR 0022) sits at the row's end, on the
+ * badges' line, beside the row's button rather than in it: a click on it never opens the thread.
+ */
 export function ThreadRow({
 	conversation,
 	active,
 	onOpen,
+	action,
 }: {
 	conversation: ConversationSummary;
 	active: boolean;
 	onOpen: () => void;
+	action?: ReactNode;
 }) {
 	const locale = useLocale();
 	const preview = conversation.lastInboundText;
 	const name = displayName(conversation);
 	const when = conversation.lastGuestInboundAt;
 	return (
-		<button
-			type="button"
-			aria-current={active ? "true" : undefined}
-			className={cn(
-				"gap-2.5 px-3 py-2.5 text-sm min-w-0 my-0.5 mx-1.5 w-row-inset ease-out flex cursor-pointer items-start overflow-hidden rounded-xl text-left transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none",
-				active ? "bg-accent" : "hover:bg-muted/70",
-			)}
-			onClick={onOpen}
-		>
-			<GuestMark name={name} selected={active} />
-			<span className="min-w-0 flex-1">
-				<span className="gap-2 flex w-full items-baseline justify-between">
-					<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
-					{when ? (
-						<time
-							className="text-micro shrink-0 text-muted-foreground tabular-nums"
-							dateTime={when}
-						>
-							{formatInboxTimestamp(when, locale)}
-						</time>
-					) : null}
-				</span>
-				{preview ? (
-					<span className="text-xs mt-0.5 leading-snug line-clamp-2 w-full text-muted-foreground">
-						{preview}
+		<li className="relative">
+			<button
+				type="button"
+				aria-current={active ? "true" : undefined}
+				className={cn(
+					"gap-2.5 px-3 py-2.5 text-sm min-w-0 my-0.5 mx-1.5 w-row-inset ease-out flex cursor-pointer items-start overflow-hidden rounded-xl text-left transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none",
+					active ? "bg-accent" : "hover:bg-muted/70",
+				)}
+				onClick={onOpen}
+			>
+				<GuestMark name={name} selected={active} />
+				<span className="min-w-0 flex-1">
+					<span className="gap-2 flex w-full items-baseline justify-between">
+						<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
+						{when ? (
+							<time
+								className="text-micro shrink-0 text-muted-foreground tabular-nums"
+								dateTime={when}
+							>
+								{formatInboxTimestamp(when, locale)}
+							</time>
+						) : null}
 					</span>
-				) : null}
-				<span className="mt-1.5 gap-1 flex flex-wrap items-center">
-					<ThreadFlags conversation={conversation} />
+					{preview ? (
+						<span className="text-xs mt-0.5 leading-snug line-clamp-2 w-full text-muted-foreground">
+							{preview}
+						</span>
+					) : null}
+					<span className={cn("mt-1.5 gap-1 flex flex-wrap items-center", action && "pr-24")}>
+						<ThreadFlags conversation={conversation} />
+					</span>
 				</span>
-			</span>
-		</button>
+			</button>
+			{action ? <div className="right-1.5 bottom-0 absolute">{action}</div> : null}
+		</li>
 	);
 }
