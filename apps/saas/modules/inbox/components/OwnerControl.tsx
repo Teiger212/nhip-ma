@@ -27,8 +27,8 @@ export function AssignFromRow({ conversationId }: { conversationId: string }) {
 			<DropdownMenuTrigger
 				disabled={setOwner.isPending || !agents.data}
 				render={
-					// A 44px target (DESIGN.md Thread Row); ghost, so it shows as a pill only on hover.
-					<Button type="button" variant="ghost" size="sm" className="min-h-11">
+					// A 44px target to a thumb; the small pill itself from `md`, as the view tabs.
+					<Button type="button" variant="ghost" size="sm" className="min-h-11 md:min-h-0">
 						{t("assignTo")}
 					</Button>
 				}

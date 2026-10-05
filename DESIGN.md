@@ -458,7 +458,7 @@ The unit of the desk: who, when, what they said, whose turn.
 - **Rest:** transparent, 8.4px radius. **Hover:** 70% Morning Wash.
 - **Active (`aria-current`):** a Hairline Blue fill, and the guest mark turns solid Dispatch Blue with white initials (200ms). No press-scale, no stripe.
 - **Quiet threads** fold under a `<details>` disclosure at the list's foot (44px summary, Body Small, Slate Note).
-- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule), with a 44px tap target. It never selects the row, and it acts at once, as the header's owner menu does.
+- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule). Below `md` it's a 44px tap target on the badges' last line; from `md` it's the 24px pill on the name's line, as the view tabs shrink from `md`, so the badges keep the row's whole width. It never selects the row, and it acts at once, as the header's owner menu does.
 
 ### Message
 
