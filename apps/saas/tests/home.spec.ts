@@ -1,10 +1,10 @@
 import type { Browser, Locator, Page } from "@playwright/test";
 
+import { assignerAs } from "./support/assign";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import { joinOffice } from "./support/invitee";
 import { connectWhatsAppNumber } from "./support/pipes";
-import { clientIpHeaders } from "./support/session";
 import type { WhatsAppGuest } from "./support/whatsapp";
 import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
 
@@ -56,15 +56,24 @@ const test = base.extend<{ ownOffice: OwnOffice }>({
 	},
 });
 
-/** The office's only agent, newly joined through the invitation link, on their Inbox. */
-async function agentOf(admin: Admin, browser: Browser, officeId: string) {
-	const email = admin.newEmail("home");
-	const invitationId = await admin.invite(email, officeId);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders("agent") });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	return { page, close: () => context.close() };
+/**
+ * The office's only agent, newly joined through the invitation link, on their Inbox. A new guest
+ * waits in Unassigned until a manager gives them out (ADR 0022): the office's manager, joined the
+ * same way, gives the agent these guests.
+ */
+async function agentOf(admin: Admin, browser: Browser, officeId: string, guests: Guest[] = []) {
+	const agent = await joinOffice(admin, browser, officeId, "member", "home");
+	if (guests.length > 0) {
+		const manager = await joinOffice(admin, browser, officeId, "admin", "home-manager");
+		try {
+			for (const guest of guests) {
+				await assignerAs(manager.api).assignGuestTo(guest.phone, agent.userId);
+			}
+		} finally {
+			await manager.close();
+		}
+	}
+	return agent;
 }
 
 function minutesAgo(minutes: number): Date {
@@ -228,7 +237,7 @@ test.describe("Home 1 — Waiting now opens the thread", () => {
 			quietThreeDays,
 		].map((g) => g.name);
 
-		const agent = await agentOf(admin, browser, ownOffice.id);
+		const agent = await agentOf(admin, browser, ownOffice.id, guests);
 		const { page } = agent;
 		try {
 			// The Inbox's Your turn, the Quiet group opened.
@@ -289,7 +298,7 @@ test.describe("Home 3 — nobody waiting", () => {
 		const nobodyWaiting = (page: Page) =>
 			page.getByRole("main").getByText("No guest is waiting.", { exact: true });
 
-		const agent = await agentOf(admin, browser, ownOffice.id);
+		const agent = await agentOf(admin, browser, ownOffice.id, [first, second]);
 		const { page } = agent;
 		try {
 			// Both guests wait.
