@@ -252,10 +252,11 @@ Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and
    Spec: `apps/saas/tests/home.spec.ts` (Home 5; an office of the test's own with one invited
    agent; WhatsApp guests with explicit write times: one at 17:30 UTC ten days back (00:30 in
    Vietnam the next day) who writes again today, one today, one three days back, and two either
-   side of the window's first Vietnamese midnight, so a rolling 30×24 hours would, at most hours
-   of the day, not add up; a bar is `data-test="leads-by-day-bar"` with `data-day` and
-   `data-leads`, a day with no bar has no lead; Leads in is read from the funnel; every bar is one
-   of Home's 30 days).
+   side of the window's first Vietnamese midnight; a bar is `data-test="leads-by-day-bar"` with
+   `data-day` and `data-leads`, a day with no bar has no lead. The bars must be exactly the
+   guests' first-write Vietnamese days inside Home's 30 days, worked out when Home loads, one lead
+   per guest: this per-day match catches a lead counted per message, a window a day short, and (at
+   most hours of the day) a rolling 30×24 hours. Leads in, read from the funnel, equals their sum).
 
 ## Thread links (ADR 0010, #141)
 

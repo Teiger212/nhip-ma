@@ -1,16 +1,12 @@
-import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page } from "@playwright/test";
 
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import { connectWhatsAppNumber } from "./support/pipes";
 import { clientIpHeaders } from "./support/session";
 import type { WhatsAppGuest } from "./support/whatsapp";
-import {
-	holdWhatsAppNumber,
-	newWhatsAppGuest,
-	newWhatsAppNumber,
-	sendWhatsAppText,
-} from "./support/whatsapp";
+import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
 
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
@@ -21,8 +17,8 @@ const OFFICE_TIME_ZONE = "Asia/Ho_Chi_Minh";
 /** Home counts the leads of the last 30 local days, today included. */
 const WINDOW_DAYS = 30;
 
-/** A guest of the test's own office, with the text they wrote first. */
-type Guest = WhatsAppGuest & { text: string };
+/** A guest of the test's own office, with the text they wrote first and when. */
+type Guest = WhatsAppGuest & { text: string; firstWrote: Date };
 
 /**
  * An office of the test's own (deleted afterwards by the `admin` fixture), holding a WhatsApp
@@ -39,31 +35,26 @@ type OwnOffice = {
 const test = base.extend<{ ownOffice: OwnOffice }>({
 	ownOffice: async ({ admin, request }, use) => {
 		const office = await admin.createOffice("Home");
-		const number = newWhatsAppNumber("home");
-		holdWhatsAppNumber(office.id, number);
+		const phoneNumberId = newWhatsAppNumber("home");
+		connectWhatsAppNumber(office.id, phoneNumberId);
 		await use({
 			id: office.id,
 			guestWrites: async (at) => {
 				const guest = newWhatsAppGuest();
 				const text = `Hello, is the flat still free? ${guest.name}`;
-				await writes(request, number, guest, text, at);
-				return { ...guest, text };
+				await sendWhatsAppText(request, { phoneNumberId, guest, text, at });
+				return { ...guest, text, firstWrote: at };
 			},
 			writesAgain: (guest, at) =>
-				writes(request, number, guest, `One more thing, ${guest.name}`, at),
+				sendWhatsAppText(request, {
+					phoneNumberId,
+					guest,
+					text: `One more thing, ${guest.name}`,
+					at,
+				}),
 		});
 	},
 });
-
-async function writes(
-	request: APIRequestContext,
-	phoneNumberId: string,
-	guest: WhatsAppGuest,
-	text: string,
-	at: Date,
-) {
-	await sendWhatsAppText(request, { phoneNumberId, guest, text, at });
-}
 
 /** The office's only agent, newly joined through the invitation link, on their Inbox. */
 async function agentOf(admin: Admin, browser: Browser, officeId: string) {
@@ -176,26 +167,37 @@ async function leadsIn(page: Page): Promise<number> {
 	const item = page
 		.getByRole("list", { name: "Funnel" })
 		.getByRole("listitem")
-		// Case-sensitive: Engaged and In conversation say "% of leads in".
-		.filter({ hasText: /Leads in/ });
+		// The label reads "1 Leads in", its step in the funnel; no element holds "Leads in" alone.
+		.filter({ has: page.getByText(/^\d+\s*Leads in$/) });
 	await expect(item, "the funnel shows Leads in").toHaveText(/Leads in\s*\d+/);
 	const match = /Leads in\s*(\d+)/.exec(await item.innerText());
 	return Number(match![1]);
 }
 
-/** A day's bar in Leads by day. */
-function barOf(page: Page, day: string) {
-	return page.getByTestId("leads-by-day-bar").and(page.locator(`[data-day="${day}"]`));
+/** Leads per day, `YYYY-MM-DD` → count, leaving out days with none. */
+type Days = Record<string, number>;
+
+/** Leads by day as drawn. A day with no bar is a day with no lead. */
+async function leadsByDay(page: Page): Promise<Days> {
+	const days: Days = {};
+	for (const bar of await page.getByTestId("leads-by-day-bar").all()) {
+		const day = (await bar.getAttribute("data-day")) ?? "(a bar with no day)";
+		const leads = Number(await bar.getAttribute("data-leads"));
+		if (leads !== 0) {
+			days[day] = (days[day] ?? 0) + leads;
+		}
+	}
+	return days;
 }
 
-/** Leads by day as drawn: each day's count. A day with no bar is a day with no lead. */
-async function leadsByDay(page: Page): Promise<Map<string, number>> {
-	const days = new Map<string, number>();
-	for (const bar of await page.getByTestId("leads-by-day-bar").all()) {
-		const day = await bar.getAttribute("data-day");
-		const leads = await bar.getAttribute("data-leads");
-		expect(day, "each bar names its day").toBeTruthy();
-		days.set(day!, (days.get(day!) ?? 0) + Number(leads));
+/** The guests' leads by the office's day each first wrote, for those who did between the days. */
+function leadsOn(guests: Guest[], firstDay: string, lastDay: string): Days {
+	const days: Days = {};
+	for (const guest of guests) {
+		const day = officeDay(guest.firstWrote);
+		if (day >= firstDay && day <= lastDay) {
+			days[day] = (days[day] ?? 0) + 1;
+		}
 	}
 	return days;
 }
@@ -318,7 +320,7 @@ test.describe("Home 3 — nobody waiting", () => {
 
 // scenario: docs/e2e-scenarios.md Home 5
 test.describe("Home 5 — leads by day adds up", () => {
-	test("Home's 30 days of leads by day sum to Leads in; a guest who first wrote at 00:30 in Vietnam (17:30 UTC the day before) is counted on the Vietnamese day, once, though they wrote again", async ({
+	test("each of Home's 30 Vietnamese days draws the guests who first wrote that day, one lead each, and the bars sum to Leads in; a guest who first wrote at 00:30 in Vietnam (17:30 UTC the day before) is counted on the Vietnamese day, once, though they wrote again", async ({
 		admin,
 		browser,
 		ownOffice,
@@ -335,10 +337,13 @@ test.describe("Home 5 — leads by day adds up", () => {
 
 		// Others on days of their own: today, three days back at noon, and either side of the
 		// window's first midnight (00:30 on its first day; 23:30 the day before it).
-		await ownOffice.guestWrites(minutesAgo(5));
-		await ownOffice.guestWrites(utc(addDays(today, -3), "05:00"));
-		await ownOffice.guestWrites(utc(addDays(today, -WINDOW_DAYS), "17:30"));
-		await ownOffice.guestWrites(utc(addDays(today, -WINDOW_DAYS), "16:30"));
+		const guests = [
+			afterMidnight,
+			await ownOffice.guestWrites(minutesAgo(5)),
+			await ownOffice.guestWrites(utc(addDays(today, -3), "05:00")),
+			await ownOffice.guestWrites(utc(addDays(today, -WINDOW_DAYS), "17:30")),
+			await ownOffice.guestWrites(utc(addDays(today, -WINDOW_DAYS), "16:30")),
+		];
 
 		const agent = await agentOf(admin, browser, ownOffice.id);
 		const { page } = agent;
@@ -347,25 +352,25 @@ test.describe("Home 5 — leads by day adds up", () => {
 			// Home's 30 days as of now, in case the run crossed midnight in Vietnam.
 			const lastDay = officeDay(new Date());
 			const firstDay = addDays(lastDay, -(WINDOW_DAYS - 1));
+			const expected = leadsOn(guests, firstDay, lastDay);
 
-			await expect(
-				barOf(page, vietnameseDay),
-				"the guest who wrote just after midnight is counted on the Vietnamese day, once",
-			).toHaveAttribute("data-leads", "1");
-			const bars = await leadsByDay(page);
+			await expect
+				.poll(() => leadsByDay(page), {
+					message: "each day draws the guests who first wrote on it, one lead each",
+				})
+				.toEqual(expected);
+			const drawn = await leadsByDay(page);
 			expect(
-				bars.get(utcDay) ?? 0,
+				drawn[vietnameseDay],
+				"the guest who wrote just after midnight is counted on the Vietnamese day, once",
+			).toBe(1);
+			expect(
+				drawn[utcDay],
 				"and not on the UTC day, the day before (nobody else wrote then)",
-			).toBe(0);
+			).toBeUndefined();
 
-			for (const day of bars.keys()) {
-				expect
-					.soft(day >= firstDay && day <= lastDay, `the bar for ${day} is one of Home's 30 days`)
-					.toBe(true);
-			}
-			const sum = [...bars.values()].reduce((a, b) => a + b, 0);
-			expect(sum, "the guests well inside the window are drawn too").toBeGreaterThanOrEqual(3);
-			expect(sum, "the bars sum to Leads in").toBe(await leadsIn(page));
+			const sum = Object.values(drawn).reduce((a, b) => a + b, 0);
+			expect(await leadsIn(page), "the bars sum to Leads in").toBe(sum);
 		} finally {
 			await agent.close();
 		}

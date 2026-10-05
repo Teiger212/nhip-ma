@@ -1,6 +1,4 @@
-import { execFileSync } from "node:child_process";
 import { createHmac, randomInt, randomUUID } from "node:crypto";
-import path from "node:path";
 
 import { expect } from "@playwright/test";
 import type { APIRequestContext } from "@playwright/test";
@@ -8,36 +6,14 @@ import type { APIRequestContext } from "@playwright/test";
 /** A WhatsApp guest: their phone number is their WhatsApp id (wa_id); the Inbox lists them by name. */
 export type WhatsAppGuest = { phone: string; name: string };
 
-/**
- * Setup (tests/support/pipe-state.ts): the office holds this WhatsApp number, so signed WhatsApp
- * webhooks to it are filed there. Give each test a number of its own (`newWhatsAppNumber`), never
- * the E2E env's, which the walk office holds for other specs.
- */
-export function holdWhatsAppNumber(officeId: string, phoneNumberId: string) {
-	execFileSync(
-		"pnpm",
-		[
-			"exec",
-			"tsx",
-			"--tsconfig",
-			"tsconfig.json",
-			"tests/support/pipe-state.ts",
-			"connect-whatsapp",
-			officeId,
-			phoneNumberId,
-		],
-		{ cwd: path.resolve(__dirname, "../.."), stdio: "inherit" },
-	);
-}
-
 /** A phone_number_id no other test, repeat or run uses. */
 export function newWhatsAppNumber(tag: string): string {
 	return `e2e-${tag}-${randomUUID()}`;
 }
 
-/** A guest with a Vietnamese mobile number no other test, repeat or run uses, and a name of their own. */
+/** A guest with a Vietnamese mobile number (84 and nine digits) of their own, and a name of their own. */
 export function newWhatsAppGuest(): WhatsAppGuest {
-	const phone = `849${randomInt(100_000_000, 1_000_000_000)}`;
+	const phone = `849${randomInt(10_000_000, 100_000_000)}`;
 	return { phone, name: `Guest ${randomUUID().slice(0, 8)}` };
 }
 
