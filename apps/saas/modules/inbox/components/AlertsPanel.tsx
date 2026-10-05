@@ -92,9 +92,7 @@ export function AlertsPanel() {
 						<p className="mt-0.5 text-xs text-pretty text-muted-foreground">{t(`${state}.body`)}</p>
 					)}
 					{failed ? (
-						<p role="status" className="mt-1.5 text-xs text-foreground">
-							{t("failed")}
-						</p>
+						<output className="mt-1.5 text-xs block text-foreground">{t("failed")}</output>
 					) : null}
 					<div className="mt-2.5 gap-2 flex flex-wrap items-center">
 						{asks ? (
@@ -111,7 +109,7 @@ export function AlertsPanel() {
 						<Button
 							type="button"
 							variant="ghost"
-							className="min-h-11 md:min-h-9 text-muted-foreground"
+							className="min-h-11 md:min-h-9"
 							onClick={onNotNow}
 						>
 							{t("notNow")}

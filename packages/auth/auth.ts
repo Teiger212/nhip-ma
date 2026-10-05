@@ -159,6 +159,13 @@ export const authOptions = {
 						await deletePushSubscriptionsForSession(session.id);
 					}
 				},
+				// And again once the row is gone (#135): a device registered while it was being
+				// deleted held the session `FOR SHARE`, so the delete waited for it, and it goes here.
+				after: async (session) => {
+					if (session.expiresAt > new Date()) {
+						await deletePushSubscriptionsForSession(session.id);
+					}
+				},
 			},
 		},
 		user: {

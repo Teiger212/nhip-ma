@@ -33,7 +33,8 @@ export function ThisDeviceAlerts() {
 		setBrowser(browserAlerts());
 	}, []);
 
-	if (status.isError) return null;
+	// Nothing while loading, nor for the platform admin, whom the API refuses (never alerted).
+	if (!status.data) return null;
 
 	async function onTurnOn(publicKey: string) {
 		setBusy(true);
@@ -126,9 +127,7 @@ export function ThisDeviceAlerts() {
 			<div data-test="this-device" aria-busy={!body}>
 				{body}
 				{said ? (
-					<p role="status" className="mt-2 text-xs text-muted-foreground">
-						{t(said)}
-					</p>
+					<output className="mt-2 text-xs block text-muted-foreground">{t(said)}</output>
 				) : null}
 			</div>
 		</SettingsItem>

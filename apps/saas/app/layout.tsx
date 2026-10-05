@@ -13,6 +13,8 @@ export const metadata: Metadata = {
 		default: config.appName,
 		template: `%s – ${config.appName}`,
 	},
+	// Added to an iPhone's Home Screen, Nhịp opens as an app, where web push works (#135).
+	appleWebApp: { capable: true, title: config.appName, statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {

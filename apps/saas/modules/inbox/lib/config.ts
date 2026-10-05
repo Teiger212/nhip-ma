@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isValidSecretsKey } from "./pipes/secrets";
+import { RETIRED_E2E_VAPID_PUBLIC_KEY } from "./retired-vapid-key";
 import type { SendMode } from "./types";
 
 /** The literal shipped in `.env.local.example`; never valid in a real deployment. */
@@ -145,6 +146,19 @@ const envSchema = z
 					message: `${key} must be set: web push needs VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT together (${vapidSet.join(", ")} set)`,
 				});
 			}
+		}
+		// The E2E pair once committed to the public repo (#135) is anyone's: production, staging
+		// (Vercel's Preview) and any live deployment refuse it. The message never echoes the key.
+		if (
+			env.VAPID_PUBLIC_KEY === RETIRED_E2E_VAPID_PUBLIC_KEY &&
+			(env.VERCEL_ENV === "production" || env.VERCEL_ENV === "preview" || env.SEND_MODE === "live")
+		) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["VAPID_PUBLIC_KEY"],
+				message:
+					"VAPID_PUBLIC_KEY is the retired E2E pair, once committed to the repo: generate a new pair for this environment (npx web-push generate-vapid-keys)",
+			});
 		}
 		if (env.VAPID_SUBJECT && !/^(mailto:|https:\/\/)/.test(env.VAPID_SUBJECT)) {
 			ctx.addIssue({

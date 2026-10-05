@@ -37,6 +37,7 @@ import { sendStatusFor } from "../lib/send-status";
 import { summarize } from "../lib/summary";
 import type { ConversationSummary } from "../lib/types";
 import { replyKey, useReplyDraft } from "../lib/use-reply-draft";
+import { AlertsPanel } from "./AlertsPanel";
 import { InboxToolbar } from "./InboxToolbar";
 import { AssignFromRow } from "./OwnerControl";
 import { ThreadDetail, ThreadDetailSkeleton } from "./ThreadDetail";
@@ -275,69 +276,73 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 				</output>
 			) : null}
 			<div className="min-h-0 min-w-0 md:gap-2.5 flex flex-1 overflow-hidden">
-				<aside
+				<div
 					className={cn(
-						"min-h-0 min-w-0 flex-col overflow-hidden bg-card",
+						"min-h-0 min-w-0 md:gap-2.5 flex-col",
 						"md:w-inbox-list md:min-w-inbox-list md:max-w-inbox-list w-full",
-						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-inbox-list md:rounded-3xl md:border",
+						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-inbox-list",
 						detailOpen ? "md:flex hidden" : "md:flex-none flex flex-1",
 					)}
 				>
-					{manager && view !== "unassigned" ? (
-						<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
-							<label htmlFor="inbox-owner-filter">{t("owner.filter")}</label>
-							<select
-								id="inbox-owner-filter"
-								data-test="owner-filter"
-								className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
-								value={filterOwner ?? "all"}
-								onChange={(event) =>
-									void setOwnerFilter(event.target.value === "all" ? null : event.target.value)
-								}
-							>
-								<option value="all">{t("owner.all")}</option>
-								{agents.data?.map((agent) => (
-									<option key={agent.id} value={agent.id}>
-										{agent.name}
-									</option>
-								))}
-							</select>
-						</div>
-					) : null}
-					<InboxToolbar
-						query={query}
-						onQueryChange={(value) => void setQuery(value || null)}
-						views={views}
-						// No view is pressed until the role says which one this Inbox opens on.
-						view={rolePending ? null : view}
-						onViewChange={(next) => {
-							setNotice(null);
-							void setView(next);
-						}}
-						counts={queue.counts}
-					/>
-					<div
-						className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
-						aria-busy={conversationsQuery.isFetching}
-					>
-						<ThreadList
-							queue={queue}
-							loading={listPending}
-							failed={conversationsQuery.isError}
-							total={conversations.length}
-							selectedId={selectedId}
-							onOpen={openThread}
-							onRetry={() => void conversationsQuery.refetch()}
-							onViewSent={() => void setView("sent")}
-							emptyTitle={manager ? undefined : t("emptyAssigned")}
-							rowAction={
-								manager && view === "unassigned"
-									? (conversation) => <AssignFromRow conversationId={conversation.id} />
-									: undefined
-							}
+					{/* Above the list, a panel of its own (The Canvas And Panel Rule, #135). */}
+					<AlertsPanel />
+					<aside className="min-h-0 min-w-0 md:rounded-3xl md:border flex flex-1 flex-col overflow-hidden bg-card">
+						{manager && view !== "unassigned" ? (
+							<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
+								<label htmlFor="inbox-owner-filter">{t("owner.filter")}</label>
+								<select
+									id="inbox-owner-filter"
+									data-test="owner-filter"
+									className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
+									value={filterOwner ?? "all"}
+									onChange={(event) =>
+										void setOwnerFilter(event.target.value === "all" ? null : event.target.value)
+									}
+								>
+									<option value="all">{t("owner.all")}</option>
+									{agents.data?.map((agent) => (
+										<option key={agent.id} value={agent.id}>
+											{agent.name}
+										</option>
+									))}
+								</select>
+							</div>
+						) : null}
+						<InboxToolbar
+							query={query}
+							onQueryChange={(value) => void setQuery(value || null)}
+							views={views}
+							// No view is pressed until the role says which one this Inbox opens on.
+							view={rolePending ? null : view}
+							onViewChange={(next) => {
+								setNotice(null);
+								void setView(next);
+							}}
+							counts={queue.counts}
 						/>
-					</div>
-				</aside>
+						<div
+							className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+							aria-busy={conversationsQuery.isFetching}
+						>
+							<ThreadList
+								queue={queue}
+								loading={listPending}
+								failed={conversationsQuery.isError}
+								total={conversations.length}
+								selectedId={selectedId}
+								onOpen={openThread}
+								onRetry={() => void conversationsQuery.refetch()}
+								onViewSent={() => void setView("sent")}
+								emptyTitle={manager ? undefined : t("emptyAssigned")}
+								rowAction={
+									manager && view === "unassigned"
+										? (conversation) => <AssignFromRow conversationId={conversation.id} />
+										: undefined
+								}
+							/>
+						</div>
+					</aside>
+				</div>
 				<article
 					className={cn(
 						"min-h-0 min-w-0 md:rounded-3xl md:border flex-1 flex-col overflow-hidden bg-card",

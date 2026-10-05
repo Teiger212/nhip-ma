@@ -4,6 +4,7 @@ import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { useOfficeRole } from "@inbox/lib/inbox-queries";
+import { unsubscribeThisBrowser } from "@inbox/lib/this-device";
 import { authClient } from "@repo/auth/client";
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import {
@@ -48,6 +49,8 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 			: null;
 
 	const onLogout = async () => {
+		// The server removes this sign-in's devices; the browser drops its subscription too (#135).
+		await unsubscribeThisBrowser();
 		await authClient.signOut({
 			fetchOptions: {
 				onSuccess: async () => {
