@@ -300,11 +300,6 @@ export type OfficePipe = {
 	disconnectedReason: string | null;
 };
 
-/**
- * Who is reading: an operator, the office they act for, and their role there (ADR 0015). An
- * agent sees the office's pool and their own threads; a manager sees every thread of the
- * office. No role reads as an agent.
- */
 /** An office's auto-reply switch (ADR 0021), with the name its label signs with. */
 export type OfficeAutoReply = {
 	/** `organization.name`: the auto-reply is signed as the office (G2). */
@@ -314,6 +309,11 @@ export type OfficeAutoReply = {
 	onSince: string | null;
 };
 
+/**
+ * Who is reading: an operator, the office they act for, and their role there (ADR 0015). An
+ * agent sees the office's pool and their own threads; a manager sees every thread of the
+ * office. No role reads as an agent.
+ */
 export type InboxViewer = { userId: string; officeId: string; role?: "agent" | "manager" };
 
 /**

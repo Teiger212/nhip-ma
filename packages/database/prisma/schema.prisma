@@ -681,9 +681,6 @@ model InboxAlert {
   @@map("inbox_alert")
 }
 
-/// One deleted guest who wrote in (ADR 0020), kept so Home's numbers for past days never move:
-/// the funnel adds tallies to its cohort. Computed by the funnel's own per-lead rule when the
-/// thread is deleted. No identifier, no thread id and no text: never the guest.
 /// An office's inbox settings (ADR 0021). No row means the defaults: the auto-reply on, since
 /// the office began.
 model OfficeSetting {
@@ -697,6 +694,9 @@ model OfficeSetting {
   @@map("inbox_office_setting")
 }
 
+/// One deleted guest who wrote in (ADR 0020), kept so Home's numbers for past days never move:
+/// the funnel adds tallies to its cohort. Computed by the funnel's own per-lead rule when the
+/// thread is deleted. No identifier, no thread id and no text: never the guest.
 model LeadTally {
   id             String            @id
   officeId       String

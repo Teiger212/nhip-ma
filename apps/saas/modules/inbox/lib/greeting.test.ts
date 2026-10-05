@@ -92,7 +92,11 @@ describe("the template (R9): greeting, acknowledgement, up to two questions, the
 		"$language: no budget, timeframe or household value is repeated",
 		({ language, qualification }) => {
 			const text = template(language, qualification);
-			for (const value of [qualification.budgetBand, qualification.timeframe]) {
+			for (const value of [
+				qualification.budgetBand,
+				qualification.timeframe,
+				qualification.bedsOrHousehold,
+			]) {
 				if (value) expect(text).not.toContain(value);
 			}
 		},

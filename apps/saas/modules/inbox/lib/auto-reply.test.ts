@@ -231,6 +231,23 @@ describe("one send attempt (ADR 0021, Consequences)", () => {
 		expect(logged).not.toContain(conversation.id);
 		expect(logged).not.toContain("private details");
 	});
+
+	test("a live deployment never greets from an OA the office hasn't connected", async () => {
+		runtime.config = mockInboxConfig({
+			sendMode: "live",
+			zalo: { appId: "app-1", appSecret: "app-secret", oaSecretKey: "oa-secret" },
+			pipeSecretsKey: SECRETS_KEY,
+		});
+		const fetch = vi.fn(async () => new Response("{}"));
+		vi.stubGlobal("fetch", fetch);
+
+		await arrive(guest("l1", "Hello"));
+
+		const conversation = await thread("l1");
+		expect(autoReplies(conversation)).toHaveLength(0);
+		expect(fetch).not.toHaveBeenCalled();
+		expect(conversation.unansweredInboundId).toBe(conversation.messages[0].id);
+	});
 });
 
 describe("the claim (ADR 0021: at most one greeting per thread, held by the database)", () => {
