@@ -933,7 +933,19 @@
 			"deleting": "Deleting…",
 			"done": "Guest data deleted",
 			"failed": "Could not delete the guest's data. Try again.",
-			"gone": "This thread was already deleted."
+			"gone": "This thread was already deleted.",
+			"reasonLabel": "Reason",
+			"reasonPlaceholder": "Choose a reason",
+			"reasons": {
+				"guest_request": "The guest asked to be deleted",
+				"duplicate_or_spam": "Duplicate or spam",
+				"test_data": "Test data",
+				"other": "Other"
+			},
+			"noteLabel": "Note",
+			"noteOptional": "Note (optional)",
+			"noteHint": "Don't include the guest's name or contact details.",
+			"noteRequired": "Add a note for \"Other\"."
 		}
 	}
 }

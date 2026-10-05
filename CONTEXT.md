@@ -210,8 +210,8 @@ is renamed.
     Unticked, Nhịp only unlinks. A failed CRM delete isn't retried; the manager deletes it there.
   - **When it's refused:** while a reply is sending.
   - **Who can't:** agents ask a manager, and the platform admin never deletes.
-  - **What stays:** a lead tally and a receipt (`GuestDeletion`: office, who, when, row counts,
-    the CRM result). Neither names the guest, and receipts are read on request, not shown in the app.
+  - **What stays:** a lead tally and a receipt (`GuestDeletion`: office, who, when, why (a
+    reason, and a note with phone numbers and emails masked), row counts, the CRM result). Neither names the guest, and receipts are read on request, not shown in the app.
   - A guest who writes again is a new guest, with a fresh thread. There is no list of deleted
     guests.
 - **Lead tally**: what a deleted guest leaves in Home's numbers: the office, first contact and

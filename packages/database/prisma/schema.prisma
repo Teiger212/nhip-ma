@@ -704,6 +704,14 @@ enum GuestDeletionCrmResult {
   failed
 }
 
+/// Why a manager deleted a guest's data (ADR 0020): required on every deletion.
+enum GuestDeletionReason {
+  guest_request
+  duplicate_or_spam
+  test_data
+  other
+}
+
 /// The receipt of one guest deletion (ADR 0020): that it happened, in which office, by whom,
 /// when and how many rows went. It never names the guest: no guest name or id, no thread id and
 /// no CRM id. Read on request; no screen shows it yet.
@@ -717,6 +725,11 @@ model GuestDeletion {
   /// Who it was, kept once the account is gone (ADR 0013).
   actorName     String
   at            DateTime                @default(now())
+  /// `other` for a receipt written before reasons were asked for (none in production).
+  reason        GuestDeletionReason     @default(other)
+  /// The manager's note, up to 500 characters (required for `other`), with phone numbers and
+  /// emails masked before it is stored, so the receipt still names no guest.
+  note          String?
   messages      Int
   /// Replies that went out (`sent` Answers).
   answers       Int
