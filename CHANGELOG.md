@@ -5,6 +5,7 @@
 ### Fixed
 
 - **A release needs its commit's CI on main to have passed** (#190, #112). `scripts/release/check-release.sh` now also requires a successful `ci.yml` run, both its `ci` and `e2e` jobs, from the push to main of the release's exact commit. It refuses, naming the run, when the run failed, was cancelled (most likely by a newer push), or is still going ("wait for it to pass, then re-run the release"), and when the commit has no run, since only the last commit of each push gets one. Before, a commit whose E2E failed after merge could still ship. Docs-only commits are covered: `paths-ignore` skips CI on pull requests only, and pushes to main always run it. `check-release.test.sh` gains a cancelled-CI case and drops its branch case's `docs/attio-adr`, which has since merged, for #146's unmerged probe.
+
 ## 2026-10-05 (only the platform admin deletes an office)
 
 ### Fixed
