@@ -35,6 +35,8 @@ export type Admin = {
 	memberEmails: (officeId: string) => Promise<string[]>;
 	/** The office is still there, as the platform admin sees it. */
 	expectOfficeExists: (office: Office) => Promise<void>;
+	/** The office is gone, as the platform admin sees it: it can't be read, and it's not among theirs. */
+	expectOfficeGone: (office: Office) => Promise<void>;
 	/** Admin → Users, searched for this email: the person-visible proof no account exists. */
 	expectNoAccount: (email: string) => Promise<void>;
 	/** Admin → Organizations, searched for a name: the row showing that exact name. */
@@ -105,6 +107,22 @@ export const test = base.extend<{ admin: Admin }>({
 				});
 				expect(res.ok()).toBe(true);
 				expect(await res.json()).toMatchObject({ id: office.id, name: office.name });
+			},
+			expectOfficeGone: async (office) => {
+				const res = await api.get("/api/auth/organization/get-full-organization", {
+					organizationId: office.id,
+				});
+				// "Not found", not a refusal or a failure: the office is gone, not hidden.
+				expect({ status: res.status(), body: await res.json() }, "reading the office").toEqual({
+					status: 400,
+					body: expect.objectContaining({ code: "ORGANIZATION_NOT_FOUND" }),
+				});
+				const listed = await api.get("/api/auth/organization/list");
+				expect(listed.ok()).toBe(true);
+				const ids = ((await listed.json()) as Office[]).map((o) => o.id);
+				expect(ids, "the deleted office is not among the platform admin's").not.toContain(
+					office.id,
+				);
 			},
 			expectNoAccount: async (email) => {
 				await page.goto("/en/admin/users");
