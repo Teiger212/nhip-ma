@@ -15,6 +15,8 @@ export {
 	CrmOutcomeStatus,
 	DraftSource,
 	Funnel,
+	GUEST_DELETION_NOTE_MAX,
+	GuestDeletionReason,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
@@ -58,4 +60,5 @@ export type {
 	WebhookDelivery,
 	WebhookDeliveryRecord,
 } from "./types";
+export { maskContactDetails } from "./mask-note";
 export { createInboxStore, nowIso } from "./store";

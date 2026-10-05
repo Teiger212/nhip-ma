@@ -67,6 +67,18 @@ export type CrmLinkMethod = z.infer<typeof CrmLinkMethod>;
 export const CrmOutcomeStatus = z.enum(["open", "won", "lost"]);
 export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatus>;
 
+/** Why a manager deleted a guest's data (ADR 0020); every deletion gives one. */
+export const GuestDeletionReason = z.enum([
+	"guest_request",
+	"duplicate_or_spam",
+	"test_data",
+	"other",
+]);
+export type GuestDeletionReason = z.infer<typeof GuestDeletionReason>;
+
+/** The longest note a manager may write on a deletion. */
+export const GUEST_DELETION_NOTE_MAX = 500;
+
 /**
  * Every timestamp the store reads or writes is `Date#toISOString` output, so the strict
  * UTC form is the whole contract. A local-time or half-formed string is corrupt state.
