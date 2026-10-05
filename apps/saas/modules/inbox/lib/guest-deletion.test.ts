@@ -1,6 +1,7 @@
 import type { Funnel } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
+import { oneShot } from "./draft";
 import { createGuestDeletion } from "./guest-deletion";
 import { testDb, testInboxStore } from "./test-store";
 
@@ -294,7 +295,10 @@ async function everyRowAsText(): Promise<string[]> {
 	return rows;
 }
 
-test("after a deletion no row anywhere carries the thread, and the records name no guest (ADR 0020)", async () => {
+// Nhịp's own rows only: the lead in the office's CRM (here it would be a mock CRM lead, whose
+// thread link holds the id) is the office's record, deleted only when the manager ticks the box
+// (#139).
+test("after a deletion no row of Nhịp's carries the thread, and the records name no guest (ADR 0020)", async () => {
 	const store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
 	const guestId = "zalo-user-8812734";
@@ -373,84 +377,189 @@ test("bell rows naming the thread go with it and are counted; others stay (ADR 0
 	await store.close();
 });
 
+/** Resolves once `count` other sessions on the test database wait on a lock. */
+async function lockWaiters(count: number): Promise<void> {
+	const deadline = Date.now() + 5_000;
+	while (Date.now() < deadline) {
+		const [row] = await testDb.$queryRaw<Array<{ waiting: number }>>`
+			SELECT count(*)::int AS waiting FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()`;
+		if ((row?.waiting ?? 0) >= count) return;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	throw new Error(`lockWaiters: ${count} never waited on a lock`);
+}
+
+type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
+
+/** Run `work` now and keep its outcome, so a rejection waits to be read instead of escaping. */
+async function settle<T>(work: () => Promise<T>): Promise<Settled<T>> {
+	try {
+		return { ok: true, value: await work() };
+	} catch (error) {
+		return { ok: false, error };
+	}
+}
+
 /**
- * Approve and delete at the same time (ADR 0020, "Approve takes the same locks in the same
- * order"): whichever locks the thread first wins, the other is refused, and neither throws
- * (no 40P01, no P2028). Run a few times, so both orders happen.
+ * Two writers on one thread, queued in a known order (ADR 0020, "Approve takes the same locks
+ * in the same order"): a third session holds the conversation's row lock, `first` starts and
+ * waits on it, then `second` does; Postgres grants the row to its waiters in turn, so `first`
+ * runs first on every run, not by chance. Both outcomes come back; a throw (a `40P01`
+ * deadlock, a timeout) fails the test.
  */
-async function race(
-	store: Store,
+async function inOrder<A, B>(
 	thread: Thread,
-	operatorId: string | null,
-): Promise<"approved" | "deleted"> {
+	first: () => Promise<A>,
+	second: () => Promise<B>,
+): Promise<[A, B]> {
+	let queued: [Promise<Settled<A>>, Promise<Settled<B>>] | undefined;
+	await testDb.$transaction(
+		async (tx) => {
+			await tx.$queryRaw`SELECT 1 FROM "inbox_conversation" WHERE "id" = ${thread.id} FOR UPDATE`;
+			// Not awaited here: both must queue behind this lock before it is released.
+			const a = settle(first);
+			await lockWaiters(1);
+			const b = settle(second);
+			await lockWaiters(2);
+			queued = [a, b];
+		},
+		{ timeout: 15_000 },
+	);
+	const [a, b] = await Promise.all(queued!);
+	if (!a.ok) throw a.error;
+	if (!b.ok) throw b.error;
+	return [a.value, b.value];
+}
+
+/** The thread's first approval, of its latest guest message. */
+async function approval(store: Store, thread: Thread, operatorId: string | null) {
 	const inboundId = await lastInboundId(store, thread);
-	const [approved, deleted] = await Promise.all([
+	return () =>
 		store.beginAnswer({
 			officeId: OFFICE,
 			conversationId: thread.id,
 			inboundId,
 			text: "Reply",
 			operatorId,
-		}),
-		store.deleteGuest(OFFICE, thread.id, deleteOptions(true)),
-	]);
-	if (approved.ok) {
-		expect(deleted).toEqual({ ok: false, reason: "reply_sending" });
-		expect(await testDb.conversation.count({ where: { id: thread.id } })).toBe(1);
-		return "approved";
-	}
-	expect(approved).toEqual({ ok: false, reason: "not_found" });
-	expect(deleted).toEqual({ ok: true, crm: null });
-	expect(await testDb.conversation.count({ where: { id: thread.id } })).toBe(0);
-	return "deleted";
+		});
 }
 
-const ROUNDS = 6;
+const deletion = (store: Store, thread: Thread) => () =>
+	store.deleteGuest(OFFICE, thread.id, deleteOptions(true));
 
-test("a deletion racing the first approval of a pool thread ends with exactly one refused (ADR 0020)", async () => {
+/** Approval first: the delete waits, sees the reply sending and refuses; the thread stays. */
+async function approvedFirst(store: Store, thread: Thread, operatorId: string | null) {
+	const [approved, deleted] = await inOrder(
+		thread,
+		await approval(store, thread, operatorId),
+		deletion(store, thread),
+	);
+	expect(approved.ok).toBe(true);
+	expect(deleted).toEqual({ ok: false, reason: "reply_sending" });
+	expect(await testDb.conversation.count({ where: { id: thread.id } })).toBe(1);
+}
+
+/** Delete first: the approval waits, then finds no thread (`not_found`); nothing is sent. */
+async function deletedFirst(store: Store, thread: Thread, operatorId: string | null) {
+	const [deleted, approved] = await inOrder(
+		thread,
+		deletion(store, thread),
+		await approval(store, thread, operatorId),
+	);
+	expect(deleted).toEqual({ ok: true, crm: null });
+	expect(approved).toEqual({ ok: false, reason: "not_found" });
+	expect(await testDb.conversation.count({ where: { id: thread.id } })).toBe(0);
+	expect(await testDb.answer.count({ where: { conversationId: thread.id } })).toBe(0);
+}
+
+/** A thread whose first approval failed at the vendor, so the next approval is a retry. */
+async function failedOnce(store: Store, guestId: string, operatorId: string | null) {
+	const thread = await write(store, guestId, Date.now() - MINUTE);
+	const begun = await (await approval(store, thread, operatorId))();
+	if (!begun.ok) throw new Error(begun.reason);
+	await store.failAnswer(OFFICE, begun.answer.id, "token expired");
+	return thread;
+}
+
+test("deletion and the first approval of a pool thread, either first: exactly one is refused (ADR 0020)", async () => {
 	const store = await testInboxStore();
-	for (let round = 0; round < ROUNDS; round += 1) {
-		const thread = await write(store, `pool-${round}`, Date.now() - MINUTE);
-		await race(store, thread, "agent-1");
+	await approvedFirst(store, await write(store, "pool-a", Date.now() - MINUTE), "agent-1");
+	await deletedFirst(store, await write(store, "pool-d", Date.now() - MINUTE), "agent-1");
+	await store.close();
+});
+
+test("deletion and the retry of a failed Answer, either first: exactly one is refused (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	await approvedFirst(store, await failedOnce(store, "retry-a", "agent-1"), "agent-1");
+	await deletedFirst(store, await failedOnce(store, "retry-d", "agent-1"), "agent-1");
+	await store.close();
+});
+
+test("deletion and the retry on an ownerless pool thread, either first: exactly one is refused (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	// The failed first approval had no operator: the retry claims the pool thread, so approve
+	// writes the Answer and the conversation.
+	const approvedThread = await failedOnce(store, "ownerless-a", null);
+	expect((await store.getOfficeConversation(OFFICE, approvedThread.id))?.owner).toBeNull();
+	await approvedFirst(store, approvedThread, "agent-2");
+	await deletedFirst(store, await failedOnce(store, "ownerless-d", null), "agent-2");
+	await store.close();
+});
+
+test("the vendor's answer and a deletion, either first: the reply is recorded and nothing deadlocks (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	for (const order of ["vendor first", "delete first"] as const) {
+		const thread = await write(store, `completing-${order}`, Date.now() - MINUTE);
+		const begun = await (await approval(store, thread, "agent-1"))();
+		if (!begun.ok) throw new Error(begun.reason);
+		const complete = () =>
+			store.completeAnswer(OFFICE, begun.answer.id, {
+				mock: true,
+				pipe: "zalo",
+				vendorMessageId: `vendor-${order}`,
+			});
+		const [, deleted] =
+			order === "vendor first"
+				? await inOrder(thread, complete, deletion(store, thread))
+				: (await inOrder(thread, deletion(store, thread), complete)).reverse();
+		if (order === "delete first") {
+			// The delete found the reply still sending and refused; the reply was then recorded.
+			expect(deleted, order).toEqual({ ok: false, reason: "reply_sending" });
+			const answer = await testDb.answer.findUniqueOrThrow({ where: { id: begun.answer.id } });
+			expect(answer.status, order).toBe("sent");
+		} else {
+			// The delete waited for the send to be recorded, then deleted the thread.
+			expect(deleted, order).toEqual({ ok: true, crm: null });
+		}
 	}
 	await store.close();
 });
 
-test("a deletion racing the retry of a failed Answer ends with exactly one refused (ADR 0020)", async () => {
+test("a guest writing as their thread is deleted arrives as a new guest, not an error (ADR 0020, Q6)", async () => {
 	const store = await testInboxStore();
-	for (let round = 0; round < ROUNDS; round += 1) {
-		const thread = await write(store, `retry-${round}`, Date.now() - MINUTE);
-		const begun = await store.beginAnswer({
-			officeId: OFFICE,
-			conversationId: thread.id,
-			inboundId: await lastInboundId(store, thread),
-			text: "Reply",
-			operatorId: "agent-1",
-		});
-		if (!begun.ok) throw new Error(begun.reason);
-		await store.failAnswer(OFFICE, begun.answer.id, "token expired");
-		await race(store, thread, "agent-1");
-	}
+	const thread = await write(store, "writes-again", Date.now() - DAY);
+	const [deleted, arrived] = await inOrder(thread, deletion(store, thread), () =>
+		store.upsertInbound(message("writes-again", Date.now(), { text: "Hello again" }), OFFICE),
+	);
+	expect(deleted).toEqual({ ok: true, crm: null });
+	expect(arrived.inserted).toBe(true);
+	expect(arrived.conversation.id).not.toBe(thread.id);
+	expect(arrived.conversation.messages.map((m) => m.text)).toEqual(["Hello again"]);
 	await store.close();
 });
 
-test("a deletion racing the retry on an ownerless pool thread ends with exactly one refused (ADR 0020)", async () => {
+test("a one-shot landing on a thread being deleted finds no thread, not a deadlock (ADR 0020)", async () => {
 	const store = await testInboxStore();
-	for (let round = 0; round < ROUNDS; round += 1) {
-		const thread = await write(store, `ownerless-${round}`, Date.now() - MINUTE);
-		const begun = await store.beginAnswer({
-			officeId: OFFICE,
-			conversationId: thread.id,
-			inboundId: await lastInboundId(store, thread),
-			text: "Reply",
-			operatorId: null,
-		});
-		if (!begun.ok) throw new Error(begun.reason);
-		await store.failAnswer(OFFICE, begun.answer.id, "token expired");
-		expect((await store.getOfficeConversation(OFFICE, thread.id))?.owner).toBeNull();
-		// The retry claims the pool thread: approve writes the Answer and the conversation.
-		await race(store, thread, "agent-2");
-	}
+	const thread = await write(store, "re-extracted", Date.now() - MINUTE);
+	const inboundId = await lastInboundId(store, thread);
+	// The thread already has its extracted details, so a re-run updates the rows under it.
+	await store.setOneShot(OFFICE, thread.id, oneShot("Looking to rent in Tay Ho", inboundId));
+	const [deleted, shot] = await inOrder(thread, deletion(store, thread), () =>
+		store.setOneShot(OFFICE, thread.id, oneShot("Now looking to buy in Thao Dien", inboundId)),
+	);
+	expect(deleted).toEqual({ ok: true, crm: null });
+	expect(shot).toBeNull();
 	await store.close();
 });
 

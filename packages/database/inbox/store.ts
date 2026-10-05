@@ -624,7 +624,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			try {
 				written = await write();
 			} catch (error) {
-				if (!isUniqueViolation(error)) throw error;
+				// A guest deleted between the lookup and the write (ADR 0020, P2025): run again and
+				// the guest is a new guest, with a fresh thread.
+				if (!isUniqueViolation(error) && prismaCode(error) !== "P2025") throw error;
 				written = await write();
 			}
 			return {
@@ -722,27 +724,35 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			const q = shot.qualification;
 			const paperwork = { mentioned: shot.paperwork.mentioned, flag: shot.paperwork.flag };
 			const threadKey = { conversationId_officeId: { conversationId: id, officeId } };
-			await db.$transaction([
-				db.qualification.upsert({
-					where: threadKey,
-					create: { conversationId: id, officeId, ...q },
-					update: { ...q },
-				}),
-				db.draft.upsert({
-					where: threadKey,
-					create: { conversationId: id, officeId, ...shot.draft },
-					update: { ...shot.draft },
-				}),
-				db.paperwork.upsert({
-					where: threadKey,
-					create: { conversationId: id, officeId, ...paperwork },
-					update: paperwork,
-				}),
-				db.conversation.update({
-					where: { id_officeId: { id, officeId } },
-					data: { language: shot.language, updatedAt: new Date() },
-				}),
-			]);
+			// The conversation first, then the rows under it: guest deletion's lock order (ADR
+			// 0020), so a one-shot landing on a thread being deleted waits instead of deadlocking.
+			try {
+				await db.$transaction([
+					db.conversation.update({
+						where: { id_officeId: { id, officeId } },
+						data: { language: shot.language, updatedAt: new Date() },
+					}),
+					db.qualification.upsert({
+						where: threadKey,
+						create: { conversationId: id, officeId, ...q },
+						update: { ...q },
+					}),
+					db.draft.upsert({
+						where: threadKey,
+						create: { conversationId: id, officeId, ...shot.draft },
+						update: { ...shot.draft },
+					}),
+					db.paperwork.upsert({
+						where: threadKey,
+						create: { conversationId: id, officeId, ...paperwork },
+						update: paperwork,
+					}),
+				]);
+			} catch (error) {
+				// Deleted since `exists` (P2025): there is no thread to write the one-shot on.
+				if (prismaCode(error) === "P2025") return null;
+				throw error;
+			}
 			return load(officeId, id);
 		},
 
@@ -911,7 +921,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 			const at = new Date();
 			const vendorMessageId = storedVendorMessageId(result.vendorMessageId);
+			// The conversation first, then its Answer: guest deletion's lock order (ADR 0020). A
+			// deletion that locked the thread first sees this Answer still `sending` and refuses.
 			await db.$transaction([
+				db.conversation.update({
+					where: { id_officeId: { id: answer.conversationId, officeId } },
+					data: { sentAt: at, updatedAt: at },
+				}),
 				db.answer.update({
 					where: { id: answerId, officeId },
 					data: { status: "sent", sentAt: at, mock: result.mock, vendorMessageId },
@@ -929,10 +945,6 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						mock: result.mock,
 						pipeExternalId: answer.pipeExternalId,
 					},
-				}),
-				db.conversation.update({
-					where: { id_officeId: { id: answer.conversationId, officeId } },
-					data: { sentAt: at, updatedAt: at },
 				}),
 			]);
 			return load(officeId, answer.conversationId);
