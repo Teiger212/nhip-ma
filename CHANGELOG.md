@@ -19,6 +19,7 @@
 ### Changed
 
 - **The new Vietnamese wording waits on a native read** (#78): the alerts panel's and the "This device" row's strings ("Bật cảnh báo", "Để sau", "Thiết bị này", "Gửi cảnh báo thử", and the rest).
+
 ## 2026-10-05 (only the platform admin deletes an office)
 
 ### Fixed
