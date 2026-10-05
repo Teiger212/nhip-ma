@@ -51,7 +51,7 @@ export function Inbox() {
 	const regenerate = useRegenerateDraft();
 	const [view, setView] = useQueryState("view", viewParser);
 	const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""));
-	// A manager narrows the office's threads to the pool or one operator (ADR 0015).
+	// A manager narrows the office's threads to Unassigned or one operator (ADR 0022).
 	const [ownerFilter, setOwnerFilter] = useQueryState("owner", parseAsString.withDefault("all"));
 	const { role } = useOfficeRole();
 	const manager = role === "manager";
@@ -70,7 +70,7 @@ export function Inbox() {
 		const all = conversationsQuery.data ?? [];
 		if (!manager || ownerFilter === "all") return all;
 		return all.filter((conversation) =>
-			ownerFilter === "pool" ? !conversation.owner : conversation.owner?.id === ownerFilter,
+			ownerFilter === "unassigned" ? !conversation.owner : conversation.owner?.id === ownerFilter,
 		);
 	}, [conversationsQuery.data, manager, ownerFilter]);
 	const queue = useMemo(
@@ -222,7 +222,7 @@ export function Inbox() {
 								}
 							>
 								<option value="all">{t("owner.all")}</option>
-								<option value="pool">{t("owner.pool")}</option>
+								<option value="unassigned">{t("owner.unassigned")}</option>
 								{agents.data?.map((agent) => (
 									<option key={agent.id} value={agent.id}>
 										{agent.name}
@@ -254,7 +254,7 @@ export function Inbox() {
 							onOpen={openThread}
 							onRetry={() => void conversationsQuery.refetch()}
 							onViewSent={() => void setView("sent")}
-							emptyTitle={manager ? undefined : t("emptyPool")}
+							emptyTitle={manager ? undefined : t("emptyAssigned")}
 						/>
 					</div>
 				</aside>

@@ -168,7 +168,7 @@ export type Conversation = {
 	answers: Answer[];
 	/** The most recent Answer, whatever its status. */
 	lastAnswer: Answer | null;
-	/** The agent who owns the thread (ADR 0015), or null while it is in the office's pool. */
+	/** The operator who owns the thread (ADR 0022), or null while it is Unassigned. */
 	owner: { id: string; name: string } | null;
 	/** The thread's lead in the office's CRM (ADR 0003); null until Nhịp has linked one. */
 	crm: ConversationCrm | null;
@@ -298,8 +298,8 @@ export type OfficePipe = {
 
 /**
  * Who is reading: an operator, the office they act for, and their role there (ADR 0015). An
- * agent sees the office's pool and their own threads; a manager sees every thread of the
- * office. No role reads as an agent.
+ * agent sees only the threads assigned to them; a manager sees every thread of the office,
+ * Unassigned included (ADR 0022). No role reads as an agent.
  */
 export type InboxViewer = { userId: string; officeId: string; role?: "agent" | "manager" };
 
@@ -362,7 +362,7 @@ export type InboxStore = {
 	getConversation: (id: string, viewer: InboxViewer) => Promise<Conversation | null>;
 	/**
 	 * The office's thread for its own background work (drafts, translation, the CRM), which has
-	 * no viewer: scoped to the office, without the agent's pool-and-own rule.
+	 * no viewer: scoped to the office, without the agent's own-threads rule.
 	 */
 	getOfficeConversation: (officeId: string, id: string) => Promise<Conversation | null>;
 	/**
@@ -482,7 +482,7 @@ export type InboxStore = {
 		window: { since: Date; countMock: boolean; timeZone: string },
 	) => Promise<Funnel>;
 	/**
-	 * Give a thread to an agent, or back to the pool (null). The new owner must be a member
+	 * Give a thread to an operator, or back to Unassigned (null); the last call wins. The new owner must be a member
 	 * of the thread's office; returns false when the thread or the member is not found.
 	 */
 	setOwner: (conversationId: string, ownerId: string | null, officeId: string) => Promise<boolean>;

@@ -901,16 +901,13 @@
 		"pipeDisconnected": "{pipe} is disconnected, so replies on {pipe} can't be sent. Nhịp has been notified.",
 		"pipeDisconnectedBanner": "{pipes} is disconnected, so replies on it can't be sent. Nhịp has been notified.",
 		"owner": {
-			"pool": "Pool",
 			"unassigned": "Unassigned",
 			"assignTo": "Assign to…",
 			"mine": "Yours",
-			"label": "Owner",
 			"failed": "Could not reassign the thread. Try again.",
 			"filter": "Showing",
 			"all": "All threads"
 		},
-		"emptyPool": "Guests waiting for anyone appear here. When you answer one, it's yours.",
 		"emptyAssigned": "Nothing assigned to you yet.",
 		"source": {
 			"guest": "Guest",

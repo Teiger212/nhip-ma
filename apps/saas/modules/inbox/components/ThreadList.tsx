@@ -50,7 +50,7 @@ export function ThreadList({
 	onOpen: (id: string) => void;
 	onRetry: () => void;
 	onViewSent: () => void;
-	/** What an empty inbox says to this operator (an agent's is the pool, ADR 0015). */
+	/** What an empty inbox says to this operator (an agent's: nothing assigned yet, ADR 0022). */
 	emptyTitle?: string;
 }) {
 	const t = useTranslations("inbox");

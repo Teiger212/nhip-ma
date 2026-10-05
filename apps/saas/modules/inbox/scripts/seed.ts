@@ -55,8 +55,8 @@ async function main(): Promise<void> {
 			`${conv.id}  ${conv.guestName}  ${q?.rentOrBuy ?? "—"}  ${q?.timeframe ?? "—"}  ${q?.areaOfInterest ?? "—"}  ${paper}`,
 		);
 	}
-	// Every state of pool then owner (ADR 0015): Minji is agent 1's, Yuki agent 2's, the rest in
-	// the pool. Rewritten on every seed, so the demo always starts the same.
+	// Every state of assignment (ADR 0022): Minji is agent 1's, Yuki agent 2's, the rest Unassigned
+	// (the manager's alone). Rewritten on every seed, so the demo always starts the same.
 	const agent1 = await getUserByEmail(WALK_USER_EMAIL);
 	const agent2 = await getUserByEmail(WALK_AGENT2_EMAIL);
 	const owners: Record<string, string | null> = {
