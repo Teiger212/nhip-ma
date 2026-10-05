@@ -88,17 +88,17 @@ test("threads belong to one office, are shared by its managers and invisible out
 	await store.upsertInbound(inbound("ours"), OFFICE);
 	await store.upsertInbound(inbound("theirs"), OTHER_OFFICE);
 
-	const agentA = { userId: "agent-1", officeId: OFFICE, role: "manager" as const };
-	const agentA2 = { userId: "agent-2", officeId: OFFICE, role: "manager" as const };
-	const agentB = { userId: "agent-3", officeId: OTHER_OFFICE, role: "manager" as const };
+	const managerA = { userId: "agent-1", officeId: OFFICE, role: "manager" as const };
+	const managerA2 = { userId: "agent-2", officeId: OFFICE, role: "manager" as const };
+	const managerB = { userId: "agent-3", officeId: OTHER_OFFICE, role: "manager" as const };
 	const theirs = await threadId(OTHER_OFFICE, "theirs");
 
 	// Any manager of the office sees its threads (ADR 0022); nobody sees another office's.
-	expect((await store.listConversations(agentA)).map((c) => c.guestId)).toEqual(["ours"]);
-	expect((await store.listConversations(agentA2)).map((c) => c.guestId)).toEqual(["ours"]);
-	expect((await store.listConversations(agentB)).map((c) => c.guestId)).toEqual(["theirs"]);
-	expect(await store.getConversation(theirs, agentA)).toBeNull();
-	expect((await store.getConversation(theirs, agentB))?.officeId).toBe(OTHER_OFFICE);
+	expect((await store.listConversations(managerA)).map((c) => c.guestId)).toEqual(["ours"]);
+	expect((await store.listConversations(managerA2)).map((c) => c.guestId)).toEqual(["ours"]);
+	expect((await store.listConversations(managerB)).map((c) => c.guestId)).toEqual(["theirs"]);
+	expect(await store.getConversation(theirs, managerA)).toBeNull();
+	expect((await store.getConversation(theirs, managerB))?.officeId).toBe(OTHER_OFFICE);
 
 	await store.close();
 });
@@ -502,7 +502,7 @@ test("a delete committed under the retry on an Unassigned thread is not_found, n
 	const store = await testInboxStore();
 	// The failed first approval had no operator, so the thread is still Unassigned and the
 	// retry's approval claims it: approve then writes the Answer and the conversation.
-	const { conv, input } = await approvable(store, "under-pool-retry", null);
+	const { conv, input } = await approvable(store, "under-unassigned-retry", null);
 	await failedOnce(store, input);
 	expect((await store.getOfficeConversation(OFFICE, conv.id))?.owner).toBeNull();
 	const approved = await deleteThreadUnder(OFFICE, conv.id, () =>

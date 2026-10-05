@@ -17,7 +17,7 @@ const SHOWN = 5;
 /**
  * Waiting now: the guests whose turn it is, in the inbox's own order (oldest waiting
  * first, quiet threads last), read from the inbox's query so the two never disagree. Each
- * row opens its thread. Only threads this operator can open are listed (ADR 0015).
+ * row opens its thread. Only threads this operator can open are listed (ADR 0022).
  */
 export function WaitingNow() {
 	const t = useTranslations("home");

@@ -484,8 +484,8 @@ async function failedOnce(store: Store, guestId: string, operatorId: string | nu
 
 test("deletion and the first approval of an Unassigned thread, either first: exactly one is refused (ADR 0020)", async () => {
 	const store = await testInboxStore();
-	await approvedFirst(store, await write(store, "pool-a", Date.now() - MINUTE), "agent-1");
-	await deletedFirst(store, await write(store, "pool-d", Date.now() - MINUTE), "agent-1");
+	await approvedFirst(store, await write(store, "unassigned-a", Date.now() - MINUTE), "walk-user");
+	await deletedFirst(store, await write(store, "unassigned-d", Date.now() - MINUTE), "walk-user");
 	await store.close();
 });
 
