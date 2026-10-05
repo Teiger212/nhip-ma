@@ -99,7 +99,7 @@ export async function newcomer(
 	const email = admin.newEmail(tag);
 	let invitationId: string;
 	if (role === "owner") {
-		// The fixture's invite knows agents and managers only; an owner is setup here.
+		// The fixture's invite knows agents and managers only; an owner is set up here.
 		const res = await admin.api.post("/api/auth/organization/invite-member", {
 			email,
 			role,

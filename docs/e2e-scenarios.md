@@ -92,8 +92,8 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 5. **One office, even at once.** One account accepting two offices' invitations at the same
    moment ends in exactly one office; the other accept answers `ONE_OFFICE_PER_OPERATOR`
    (T5). Spec: `apps/saas/tests/auth-join.spec.ts` (Auth 5).
-6. **Deleting an office needs permission first.** An unauthenticated or non-owner delete
-   request is refused before anything (subscriptions included) is touched (T2). Only the
+6. **Deleting an office needs permission first.** A delete request from anyone not signed in,
+   or not the office's owner, is refused before anything (subscriptions included) is touched (T2). Only the
    platform admin deletes an office (#185, ADR 0015): in an office of the test's own, a manager
    who holds the kit's `owner` role (invited as `owner` by the platform admin) asks the API to
    delete it (`POST /api/auth/organization/delete`) and gets 403; the office stays, with the

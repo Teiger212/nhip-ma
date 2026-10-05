@@ -287,7 +287,8 @@ export const authOptions = {
 			}
 			// Only the platform admin deletes an office (#185, ADR 0015): Better Auth lets any member
 			// holding the kit's `owner` delete it, and with it every thread, guest and member. The
-			// exact path: `/organization/delete-*` routes are other things. No session is the kit's
+			// exact path: `/organization/delete-role` is another route, and the router answers 404
+			// to any other spelling. No session is the kit's
 			// to refuse (401).
 			if (ctx.path === "/organization/delete") {
 				const session = await getSessionFromCtx(ctx);

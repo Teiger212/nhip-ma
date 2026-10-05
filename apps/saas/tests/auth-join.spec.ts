@@ -146,6 +146,7 @@ test.describe("Auth 6 — deleting an office needs permission first", () => {
 				const res = await deleteOffice(manager.api, office.id);
 
 				expect(res.status(), "refused: only the platform admin deletes an office").toBe(403);
+				expect(await res.text()).toContain("OFFICE_DELETE_PLATFORM_ADMIN_ONLY");
 				await admin.expectOfficeExists(office);
 				const after = await rolesIn(admin, office);
 				expect(Object.keys(after), "the manager and the platform admin are still in it").toEqual(
