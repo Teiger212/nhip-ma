@@ -50,7 +50,7 @@ export default async function OrganizationSettingsPage({
 
 			<SettingsList>
 				<InviteMemberForm organizationId={organization.id} />
-				{/* The platform admin's inert row never reaches this page: the auth API leaves it out (#174). */}
+				{/* The auth API leaves the platform admin's inert row out for managers (#174). */}
 				<OrganizationMembersBlock organizationId={organization.id} lockOwnRow />
 			</SettingsList>
 		</>

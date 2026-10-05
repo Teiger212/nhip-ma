@@ -288,14 +288,17 @@ export const authOptions = {
 			// The platform admin's membership is theirs alone (#174): no manager removes it or
 			// changes its role. Better Auth lets a manager holding the kit's `owner` do both, and
 			// any manager once the role is no longer `owner`.
-			if (
-				ctx.path.startsWith("/organization/remove-member") ||
-				ctx.path.startsWith("/organization/update-member-role")
-			) {
-				const target: unknown = ctx.body?.memberIdOrEmail ?? ctx.body?.memberId;
-				const session = typeof target === "string" ? await getSessionFromCtx(ctx) : null;
+			// The target is read from the one field each route acts on (a stray other field must not
+			// stand in for it); one that isn't a string is left to the kit, which refuses it.
+			const memberField = ctx.path.startsWith("/organization/remove-member")
+				? "memberIdOrEmail"
+				: ctx.path.startsWith("/organization/update-member-role")
+					? "memberId"
+					: null;
+			const target: unknown = memberField ? ctx.body?.[memberField] : undefined;
+			if (typeof target === "string") {
+				const session = await getSessionFromCtx(ctx);
 				if (
-					typeof target === "string" &&
 					session &&
 					!isPlatformAdmin(session.user.role) &&
 					(await isPlatformAdminMembership(

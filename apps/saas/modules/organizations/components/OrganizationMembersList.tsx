@@ -158,7 +158,8 @@ export function OrganizationMembersList({
 			cell: ({ row }) => {
 				const ownRow = row.original.userId === user?.id;
 				const locked = lockOwnRow && ownRow;
-				// The admin area: the platform admin's own (inert) membership is not a manager's (#174).
+				// The platform admin's own row (in the admin area: office pages send them there) reads
+				// "Platform admin", with no role or Leave: their membership is inert (ADR 0015, #174).
 				if (ownRow && isPlatformAdmin(user?.role)) {
 					return (
 						<div className="gap-2 flex flex-row justify-end">
