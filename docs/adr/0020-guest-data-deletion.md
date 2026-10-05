@@ -64,7 +64,13 @@ round 2 R1 to R3, and the follow-ups on the CRM).
   - the actor, as a set-null link plus a name snapshot, like `Answer.operatorName` (ADR 0013);
   - the time;
   - row counts (messages, sent replies, translations, and the bell rows that named the thread);
-  - the CRM result: `deleted`, `unlinked`, `pending` or `failed`, or null with no lead.
+  - the CRM result: `deleted`, `unlinked`, `pending` or `failed`, or null with no lead;
+  - **why** (amended 2026-10-05): a required reason (`guest_request`, "The guest asked to be
+    deleted"; `duplicate_or_spam`; `test_data`; `other`) and an optional note of up to 500
+    characters, required for `other`. The dialog asks the manager to leave the guest's name and
+    contact details out of it, and the server masks phone numbers and emails in it (`[phone]`,
+    `[email]`) before saving, so the receipt still holds no guest identifier. The API answers
+    400 without a reason, or for `other` without a note.
 
   It holds no guest name, no guest id, no thread id and no CRM id. Receipts are not shown in the
   UI at go-live. They are read on request, and a managers' "Deletions" list comes later (R2).
