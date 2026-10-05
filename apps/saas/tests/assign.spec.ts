@@ -199,7 +199,8 @@ async function zaloWebhook(
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		// A row (it carries its owner flag), or the list saying it is empty, caught up or unmatched.
+		// A row (it carries its owner flag), or the list saying it is empty, caught up, unmatched,
+		// or that only Quiet threads wait.
 		// The view buttons above the list are buttons too, so a button proves nothing.
 		threadList(page)
 			.locator(
@@ -207,6 +208,7 @@ async function openInbox(page: Page) {
 			)
 			// A Quiet row sits folded away until opened, so only a shown one counts.
 			.filter({ visible: true })
+			.or(threadList(page).getByText(copy.onlyQuiet, { exact: true }))
 			.first(),
 	).toBeVisible();
 }

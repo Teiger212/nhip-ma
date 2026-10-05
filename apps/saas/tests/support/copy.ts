@@ -88,6 +88,8 @@ export type OwnerCopy = {
 	allThreads: string;
 	/** What an agent's Inbox says while nothing is assigned to them. */
 	emptyAssigned: string;
+	/** What the list says when every thread waiting on the viewer is Quiet, folded below. */
+	onlyQuiet: string;
 };
 
 export function ownerCopy(locale: Locale): OwnerCopy {
@@ -99,6 +101,7 @@ export function ownerCopy(locale: Locale): OwnerCopy {
 		inbox: {
 			owner: { unassigned: string; mine: string; assignTo: string; filter: string; all: string };
 			emptyAssigned: string;
+			onlyQuiet: string;
 		};
 	};
 	const { owner } = saas.inbox;
@@ -109,5 +112,6 @@ export function ownerCopy(locale: Locale): OwnerCopy {
 		filter: owner.filter,
 		allThreads: owner.all,
 		emptyAssigned: saas.inbox.emptyAssigned,
+		onlyQuiet: saas.inbox.onlyQuiet,
 	};
 }
