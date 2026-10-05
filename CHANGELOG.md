@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05 (French and Spanish stop reading as Vietnamese)
+
+### Fixed
+
+- **Vietnamese is read only from letters Vietnamese alone uses** (#164, ADR 0021). A guest's message reads as Vietnamese from ă, â, đ, ơ, ư, a hook above or a dot below, ẽ ĩ ũ ỹ, or any tone on ă â ê ô ơ ư; á, à, ã, é, í, ó, õ, ú, ý and a bare ê or ô no longer count, so "está disponible", "não" and "à louer" read as English and get the English first-reply template and translations from English. French "château" still reads as Vietnamese, through its â: a known, accepted limit. Toned ê and ô (ế, ệ, ố, ộ…) now count, so "Tiếng Việt" reads as Vietnamese where it read as English. The common-word list is unchanged, but its words now match whole by any letter: "thuê" and "nhà", which end in an accented letter, never matched before. Text with neither, such as "Xin chào" alone, reads as English.
+
 ## 2026-10-05 (a guest's new message alerts the operators, logged)
 
 ### Added
