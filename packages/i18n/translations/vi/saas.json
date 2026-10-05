@@ -853,7 +853,9 @@
 		"alerts": {
 			"waiting": "{name} đang chờ",
 			"waitingUnnamed": "Một khách đang chờ",
-			"body": "{pipe} · {language}"
+			"body": "{pipe} · {language}",
+			"testTitle": "Cảnh báo thử",
+			"testBody": "Thiết bị này đã bật cảnh báo."
 		},
 		"guestLanguage": {
 			"en": "tiếng Anh",

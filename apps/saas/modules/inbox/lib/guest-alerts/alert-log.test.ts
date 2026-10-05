@@ -8,7 +8,7 @@ import { alertSounds } from "./burst";
 import { alertLink } from "./content";
 import { alertGuestMessage } from "./index";
 import { alertTag } from "./tag";
-import type { AlertPayload } from "./transport";
+import type { AlertDelivery } from "./transport";
 
 /**
  * The alert log against the test database (ADR 0019 "Bursts", spec #84 testing seam 3): the
@@ -204,9 +204,9 @@ test("each operator's alert is in their language, and the payload names no threa
 		...conversation,
 		oneShot: { ...conversation.oneShot!, language: "ko" as const },
 	};
-	const sent: { userId: string; payload: AlertPayload }[] = [];
+	const sent: AlertDelivery[] = [];
 	const transport = {
-		send: async (userId: string, payload: AlertPayload) => void sent.push({ userId, payload }),
+		send: async (deliveries: AlertDelivery[]) => void sent.push(...deliveries),
 	};
 	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
 	await alertGuestMessage(runtime, korean, { transport });

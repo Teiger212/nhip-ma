@@ -5,6 +5,7 @@ import { createCrmSync } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
 import { scheduleGuestAlert } from "./guest-alerts";
+import type { AlertTransport } from "./guest-alerts/transport";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
@@ -96,13 +97,13 @@ export function crmSyncFor(runtime: Runtime) {
 export async function afterGuestInbound(
 	runtime: Runtime,
 	conversation: Conversation,
-	{ inserted }: { inserted: boolean },
+	{ inserted, alerts }: { inserted: boolean; alerts?: AlertTransport },
 ): Promise<Conversation> {
 	const updated = (await applyOneShot(runtime.store, conversation)) ?? conversation;
 	// Only a new message alerts: a vendor's retry of one already stored alerts no one (ADR 0019).
 	// After the one-shot, so the alert can name the guest's language.
 	if (inserted) {
-		scheduleGuestAlert(runtime, updated);
+		scheduleGuestAlert(runtime, updated, alerts);
 	}
 	if (!updated.crm) {
 		void runInBackground(`crm lead ${updated.id}`, async () => {
@@ -162,15 +163,19 @@ export async function ingestEvents(
 	return summary;
 }
 
-export async function injectDevInbound(input: {
-	pipe: Pipe;
-	guestId: string;
-	text: string;
-	officeId: string;
-	guestName?: string | null;
-	vendorMessageId?: string | null;
-	at?: number | string | Date;
-}): Promise<Conversation> {
+export async function injectDevInbound(
+	input: {
+		pipe: Pipe;
+		guestId: string;
+		text: string;
+		officeId: string;
+		guestName?: string | null;
+		vendorMessageId?: string | null;
+		at?: number | string | Date;
+	},
+	/** The seed passes the mock transport: a seed run never pushes (#134, Q3). */
+	{ alerts }: { alerts?: AlertTransport } = {},
+): Promise<Conversation> {
 	const runtime = getRuntime();
 	const { conversation, inserted } = await runtime.store.upsertInbound(
 		{
@@ -184,7 +189,7 @@ export async function injectDevInbound(input: {
 		},
 		input.officeId,
 	);
-	return afterGuestInbound(runtime, conversation, { inserted });
+	return afterGuestInbound(runtime, conversation, { inserted, alerts });
 }
 
 export type InboxResult =

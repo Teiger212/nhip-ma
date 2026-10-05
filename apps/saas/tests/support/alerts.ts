@@ -22,7 +22,7 @@ export type AlertRow = {
 	createdAt: string;
 };
 
-/** An operator's device (a push subscription); none exist until #134. */
+/** An operator's device (a push subscription). */
 export type DeviceRow = { id: string; userId: string };
 
 /** Reading the alert log is looking at the operators' phones (alert-state.ts). */
@@ -31,7 +31,7 @@ export const alertState = {
 	alerts(officeId: string): AlertRow[] {
 		return JSON.parse(run(["alerts", officeId])) as AlertRow[];
 	},
-	/** The operator's devices. */
+	/** The operator's devices, oldest first. */
 	devices(userId: string): DeviceRow[] {
 		return JSON.parse(run(["devices", userId])) as DeviceRow[];
 	},

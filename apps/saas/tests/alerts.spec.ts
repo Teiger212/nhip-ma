@@ -1,16 +1,23 @@
-import { randomUUID } from "node:crypto";
+import { createECDH, randomBytes, randomUUID } from "node:crypto";
 
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type {
+	APIRequestContext,
+	APIResponse,
+	Browser,
+	BrowserContext,
+	Page,
+} from "@playwright/test";
 
 import type { AlertRow } from "./support/alerts";
 import { alertState } from "./support/alerts";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import { LoginPage } from "./support/login-page";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
-import { PLATFORM_ADMIN } from "./support/seed";
+import { NEW_PASSWORD, PLATFORM_ADMIN } from "./support/seed";
 import type { Api } from "./support/session";
-import { clientIpHeaders, withOrigin } from "./support/session";
+import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
 import { deliverZalo, sendZaloText, signedZaloText } from "./support/zalo";
 
 /**
@@ -118,7 +125,7 @@ async function newOperatorOf(
 	officeId: string,
 	label: string,
 	role: "member" | "admin",
-): Promise<Operator & { close: () => Promise<void> }> {
+): Promise<Operator & { email: string; close: () => Promise<void> }> {
 	const email = admin.newEmail(role === "admin" ? "alerts-manager" : "alerts-agent");
 	const invitationId = await admin.invite(email, officeId, role);
 	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
@@ -126,7 +133,7 @@ async function newOperatorOf(
 	await signUpByInvitationLink(page, invitationId, email);
 	await openInboxAsNewAccount(page);
 	const api = withOrigin(context.request);
-	return { label, id: await ownId(api), page, api, close: () => context.close() };
+	return { label, email, id: await ownId(api), page, api, close: () => context.close() };
 }
 
 /** The kit's session, as the signed-in person's own browser reads it. */
@@ -406,5 +413,113 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 			alertState.alerts(office.id).filter((row) => row.userId === office.platformAdminId),
 			"the platform admin has no alert in the office",
 		).toEqual([]);
+	});
+});
+
+/* ---------------------------------------------------------------- devices */
+
+/**
+ * A push subscription as a browser hands it over (docs/e2e-scenarios.md "A device"): an endpoint
+ * on an allow-listed push service no other test uses, a real P-256 public key (65 bytes,
+ * uncompressed) and a 16-byte auth secret, both base64url.
+ */
+function newSubscription() {
+	const ecdh = createECDH("prime256v1");
+	ecdh.generateKeys();
+	return {
+		endpoint: `https://fcm.googleapis.com/fcm/send/e2e-${randomUUID()}`,
+		keys: {
+			p256dh: ecdh.getPublicKey().toString("base64url"),
+			auth: randomBytes(16).toString("base64url"),
+		},
+	};
+}
+
+/** The operator's browser adds this session's device, through the app's own API. */
+async function addDevice(context: BrowserContext, who: string) {
+	const res = await withOrigin(context.request).post("/api/alerts/devices", newSubscription());
+	expect(res.status(), `${who} adds a device (${res.status()} ${await res.text()})`).toBe(201);
+}
+
+/** The browser's `DELETE /api/alerts/devices`, carrying the Origin as the app's own calls do. */
+function removeDevices(context: BrowserContext): Promise<APIResponse> {
+	return context.request.delete("/api/alerts/devices", { headers: { origin: appOrigin() } });
+}
+
+/** The user menu (the ⋯ beside the person's name in the desktop sidebar) → Log out. */
+async function logOutThroughUserMenu(page: Page) {
+	await page.getByRole("button", { name: "User menu" }).click();
+	await page.getByRole("menuitem", { name: "Log out", exact: true }).click();
+	await expect(page, "logging out lands on the login page").toHaveURL(/\/en\/login/);
+}
+
+// scenario: docs/e2e-scenarios.md Alerts 10 (#134)
+test.describe("Alerts 10 — signing out removes the device", () => {
+	test.describe.configure({ timeout: 120_000 });
+
+	test("signing out removes the device (Alerts 10): the session that signs out loses its device, the other session keeps its own, and the device API refuses it signed out", async ({
+		admin,
+		browser,
+	}) => {
+		// An agent of the test's own: signing out ends the session it uses.
+		const office = await admin.createOffice("Alerts 10");
+		const agent = await newOperatorOf(admin, browser, office.id, "agent", "member");
+		const first = agent.page.context();
+		const second = await browser.newContext({
+			extraHTTPHeaders: clientIpHeaders(`${agent.email}#2`),
+		});
+		try {
+			// The same agent signs in again in a second browser: a second session of one login.
+			const secondPage = await second.newPage();
+			const login = new LoginPage(secondPage);
+			await login.goto("en");
+			await login.signIn(agent.email, NEW_PASSWORD);
+			await expect(secondPage, "the second browser signs in to the Inbox").toHaveURL(
+				/\/en\/inbox/,
+				{ timeout: 15_000 },
+			);
+			const secondApi = withOrigin(second.request);
+			expect(await ownId(secondApi), "both browsers are the same agent").toBe(agent.id);
+
+			// One device from each browser.
+			await addDevice(first, "the first browser");
+			const afterFirst = alertState.devices(agent.id);
+			expect(afterFirst, "the agent has the first browser's device").toHaveLength(1);
+			const firstDevice = afterFirst[0]!.id;
+
+			await addDevice(second, "the second browser");
+			const afterSecond = alertState.devices(agent.id);
+			expect(
+				afterSecond.map((d) => d.id),
+				"the agent has both browsers' devices, the first browser's first",
+			).toHaveLength(2);
+			expect(afterSecond[0]!.id).toBe(firstDevice);
+			const secondDevice = afterSecond[1]!.id;
+
+			// The agent signs out in the first browser, through the user menu.
+			await logOutThroughUserMenu(agent.page);
+			const firstSession = await first.request.get("/api/auth/get-session");
+			expect(firstSession.status(), "the first browser's session is readable").toBe(200);
+			expect(await firstSession.json(), "nobody is signed in in the first browser").toBeNull();
+			expect(await ownId(secondApi), "the second browser is still signed in").toBe(agent.id);
+
+			await expect
+				.poll(() => alertState.devices(agent.id).map((d) => d.id), {
+					timeout: 15_000,
+					intervals: [1_000],
+					message: "only the second browser's device is left",
+				})
+				.toEqual([secondDevice]);
+
+			// Signed out, the device API refuses the first browser.
+			const signedOut = await removeDevices(first);
+			expect(signedOut.status(), "DELETE /api/alerts/devices signed out").toBe(401);
+			// The same request from the signed-in second browser is taken.
+			const signedIn = await removeDevices(second);
+			expect(signedIn.status(), "DELETE /api/alerts/devices signed in").toBe(204);
+		} finally {
+			await second.close();
+			await agent.close();
+		}
 	});
 });

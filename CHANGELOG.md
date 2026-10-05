@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05 (devices, and the live push to them)
+
+### Added
+
+- **Alerts reach the operators' devices by web push** (#134, ADR 0019, spec #84). A device is a browser's push subscription, kept in the new `push_subscription` table (migration `20261005082256_push_subscription`, a new table, 1 deploy) with the sign-in that registered it and cascading with the user (ADR 0013). `POST /api/alerts/devices` `{ endpoint, keys: { p256dh, auth } }` adds one (201), only for an `https` endpoint on Google's, Apple's, Mozilla's or Microsoft's push service (else 400); an endpoint another operator held moves to whoever registers it, and an operator keeps 10 devices, dropping the oldest. `DELETE /api/alerts/devices` removes this sign-in's (204); `POST /api/alerts/devices/test` writes a `test` alert and pushes it to this sign-in's devices (202), or answers 409 with none. All three answer 401 signed out. Signing out deletes that sign-in's devices (a Better Auth before-hook), and so does every other way a live session ends: revoking it or the user's other sessions, a ban, a password change or reset that revokes, the end of an impersonation (a session delete hook). A session that merely expired keeps its devices. An admin impersonating an operator cannot add a device or send a test alert (403). An endpoint is stored and pushed in the one normal form it was checked in, and a host Node's legacy URL parser would read differently is refused. With `SEND_MODE=live` each alert is pushed to every device of its operator through `web-push` 3.6.7, VAPID-signed, urgency high, a 1-hour TTL, at most 5 pushes at a time per event; a 404 or 410 deletes the device, and a failure is logged as its status only, never the endpoint or the alert. The VAPID keys (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) are a set: without them a live deployment logs "push not configured" and pushes nothing; a partial set is refused at startup. `pnpm seed` never pushes, whatever `SEND_MODE` says. There is no UI yet (#135).
+
 ## 2026-10-05 (French and Spanish stop reading as Vietnamese)
 
 ### Fixed

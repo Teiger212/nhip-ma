@@ -5,7 +5,7 @@
  * operators' phones. Nothing here writes.
  *
  *   tsx tests/support/alert-state.ts alerts <officeId>   the office's alerts as JSON, oldest first
- *   tsx tests/support/alert-state.ts devices <userId>    the operator's devices as JSON ([] until #134)
+ *   tsx tests/support/alert-state.ts devices <userId>    the operator's devices as JSON, oldest first
  */
 import { db } from "@repo/database";
 
@@ -29,8 +29,12 @@ async function main(): Promise<void> {
 		});
 		process.stdout.write(JSON.stringify(rows));
 	} else if (command === "devices") {
-		// Devices (push subscriptions) arrive with #134; until then an operator has none.
-		process.stdout.write(JSON.stringify([]));
+		const rows = await db.pushSubscription.findMany({
+			where: { userId: id },
+			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+			select: { id: true, userId: true },
+		});
+		process.stdout.write(JSON.stringify(rows));
 	} else {
 		throw new Error(`unknown command ${command}`);
 	}

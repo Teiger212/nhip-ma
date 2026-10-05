@@ -1,3 +1,4 @@
+import { mockAlertTransport } from "./guest-alerts/transport";
 import { injectDevInbound } from "./inbox";
 import { getRuntime } from "./runtime";
 import type { Conversation, Pipe } from "./types";
@@ -46,7 +47,9 @@ export const DEMO_THREADS: DemoThread[] = [
 /**
  * Writes the invented threads under `officeId` (the walk office by default), each stamped
  * `hoursAgo` before `now`: Minji and Thảo land in Your turn, Yuki and Alexei in Quiet. A
- * thread that exists (by office, pipe, guest) is left alone unless `reset` rewrites it.
+ * thread that exists (by office, pipe, guest) is left alone unless `reset` rewrites it. Its
+ * alerts are decided and logged, and never pushed, whatever SEND_MODE says (#134, Q3): a seed
+ * run must not reach a real device.
  */
 export async function seedInbox(
 	officeId: string,
@@ -77,14 +80,17 @@ export async function seedInbox(
 			continue;
 		}
 		result.push(
-			await injectDevInbound({
-				pipe: thread.pipe,
-				guestId: thread.guestId,
-				guestName: thread.guestName,
-				text: thread.text,
-				officeId,
-				at: now - thread.hoursAgo * 60 * 60 * 1000,
-			}),
+			await injectDevInbound(
+				{
+					pipe: thread.pipe,
+					guestId: thread.guestId,
+					guestName: thread.guestName,
+					text: thread.text,
+					officeId,
+					at: now - thread.hoursAgo * 60 * 60 * 1000,
+				},
+				{ alerts: mockAlertTransport },
+			),
 		);
 	}
 	return result;
