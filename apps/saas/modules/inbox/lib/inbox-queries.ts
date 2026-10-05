@@ -8,8 +8,8 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
-import { useState } from "react";
 
+import { noteOwnAction } from "./inbox-presence";
 import { yourTurnCount } from "./queue";
 import { summarize } from "./summary";
 import type { Conversation, ConversationSummary, GuestDeletionReason, Pipe } from "./types";
@@ -37,6 +37,9 @@ export class InboxApiError extends Error {
 	}
 }
 
+/** The 403s of an operator the inbox refuses (`requireInboxSession`). */
+const OFFICE_DENIALS = new Set<string | null>(["no_office", "ambiguous_office", "platform_admin"]);
+
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(url, init);
 	const data = (await res.json().catch(() => ({}))) as T & { error?: string; message?: string };
@@ -54,10 +57,13 @@ const conversationListQuery = queryOptions({
 	queryKey: listQueryKey,
 	queryFn: () => api<ConversationSummary[]>("/api/conversations"),
 	refetchInterval: POLL_INTERVAL_MS,
+	// An operator without an office is refused (403); asking again will not change that.
+	retry: (failures, error) =>
+		!(error instanceof InboxApiError && OFFICE_DENIALS.has(error.code)) && failures < 3,
 });
 
-export function useConversations() {
-	return useQuery(conversationListQuery);
+export function useConversations({ enabled = true }: { enabled?: boolean } = {}) {
+	return useQuery({ ...conversationListQuery, enabled });
 }
 
 /**
@@ -91,6 +97,7 @@ export function useConversation(id: string | null) {
  * moves at once; the refetch that follows confirms both.
  */
 function putConversation(queryClient: QueryClient, conversation: Conversation): void {
+	noteOwnAction(conversation.id, conversation.owner?.id ?? null);
 	queryClient.setQueryData(detailQueryKey(conversation.id), conversation);
 	putSummary(queryClient, conversation);
 }
@@ -103,32 +110,13 @@ function putSummary(queryClient: QueryClient, conversation: Conversation): void 
 }
 
 /**
- * How many threads are Your turn for this operator, for the nav on every page. Where the
- * page already polls the conversation list (Inbox, Home), the count is read off it, so the
- * database is asked once; elsewhere only the number comes over the wire. The last value is
- * held while one source hands over to the other, so the number never blinks.
+ * How many threads are Your turn for this operator, for the nav and the tab title on every
+ * page. It reads the list's poll, which every page of the app shell keeps, since the guest
+ * toasts need the guests' names too (#136): the database is asked once per poll.
  */
-export function useYourTurnCount({
-	enabled,
-	listMounted,
-}: {
-	enabled: boolean;
-	listMounted: boolean;
-}): number | null {
-	const list = useQuery({ ...conversationListQuery, enabled: enabled && listMounted });
-	const count = useQuery({
-		queryKey: [...conversationsQueryKey, "yourTurnCount"],
-		queryFn: () => api<{ count: number }>("/api/conversations/your-turn"),
-		refetchInterval: POLL_INTERVAL_MS,
-		enabled: enabled && !listMounted,
-		// An operator without an office is refused (403); asking again will not change that.
-		retry: false,
-	});
-	const listCount = list.data ? yourTurnCount(list.data) : null;
-	const value = listMounted ? listCount : (count.data?.count ?? null);
-	const [held, setHeld] = useState<number | null>(null);
-	if (value !== null && value !== held) setHeld(value);
-	return enabled ? (value ?? held) : null;
+export function useYourTurnCount({ enabled }: { enabled: boolean }): number | null {
+	const list = useConversations({ enabled });
+	return enabled && list.data ? yourTurnCount(list.data) : null;
 }
 
 export type DisconnectedEndpoint = { pipe: Pipe; externalId: string };
@@ -208,6 +196,8 @@ export function useSetOwner() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ ownerId }),
 			}),
+		// Before a poll can show the new owner: giving a thread to yourself raises no toast.
+		onMutate: ({ id, ownerId }) => noteOwnAction(id, ownerId),
 		onSuccess: (conversation) => putConversation(queryClient, conversation),
 		onSettled: () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
 	});
@@ -215,8 +205,8 @@ export function useSetOwner() {
 
 /**
  * A manager deletes a guest's data (ADR 0020). The thread leaves the list and its open view at
- * once, so the Inbox selects the next thread; then the list, every thread and the your-turn
- * count (the nav) refresh from the server.
+ * once, so the Inbox selects the next thread; then the list, every thread and the nav's
+ * Your-turn count refresh from the server.
  */
 export function useDeleteGuest() {
 	const queryClient = useQueryClient();

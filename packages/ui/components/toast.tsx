@@ -129,7 +129,7 @@ function ToastAction({
 		<ToastPrimitive.Action
 			data-slot="toast-action"
 			render={render}
-			className={cn("shrink-0", className)}
+			className={cn("relative shrink-0", className)}
 			{...props}
 		/>
 	);
@@ -145,7 +145,7 @@ function ToastClose({
 		<ToastPrimitive.Close
 			data-slot="toast-close"
 			render={render}
-			className={cn("shrink-0 text-muted-foreground hover:text-foreground", className)}
+			className={cn("relative shrink-0 text-muted-foreground hover:text-foreground", className)}
 			{...props}
 		>
 			{children ?? <XIcon className="size-4" aria-hidden="true" />}

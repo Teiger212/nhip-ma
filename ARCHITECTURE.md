@@ -118,9 +118,9 @@ url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devi
   until offices carry their own); leads by day and the response-time buckets are counted
   from the same rows. Stages, response time and the cohort are defined in CONTEXT.md,
   "Funnel". **Waiting now** on Home reads the inbox's own list query, so it lists what the
-  operator can open, in the queue's order. The sidebar's Your-turn count reads that same list
-  on Inbox and Home, and elsewhere polls `/api/conversations/your-turn`, which returns only
-  the number.
+  operator can open, in the queue's order. The sidebar's Your-turn count, the tab title's
+  "(n) Inbox" and the guest toasts read that same list on every page of the app shell (#136):
+  the toasts need the guests' names, so one poll serves all three.
 
 ## Apps and packages
 

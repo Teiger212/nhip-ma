@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-05 (a late alert, the tab title and toasts)
+
+### Added
+
+- **An alert's link is resolved on the server** (#136, ADR 0019, spec #84). `/<locale>/inbox?alert=<id>` opens the thread only when the alert is the viewer's own and its thread is one they can open now (a manager's own alert still opens a thread they gave an agent). Anything else (a colleague's alert, a thread since given to someone else, an unknown or pruned id, a test alert) says "A colleague is answering this guest" (VI "Một đồng nghiệp đang trả lời khách này") and opens nothing of a thread, with no reason given; the queue stays usable beside it. The thread goes to the Inbox as a prop and `?alert=` leaves the URL, so a thread's id never appears there. `?thread=` and its "not here" notice are unchanged. New store read `alertThread(alertId, viewer)`.
+- **The tab title carries the Your-turn count** (#136). While guests wait, every page's tab reads "(n) Inbox" (VI "(n) Hộp thư"), n being the nav's count; with none, the page's own title.
+- **A toast when a guest writes, or a thread is given to you, away from the Inbox list** (#136). On Home, Settings, or a phone with a thread open, a guest writing on one of the operator's own threads (an agent's assigned threads; a manager's Unassigned ones and their own, the alert recipients' rule) raises a toast in the kit's Base UI Toaster: "Minji is waiting", "Zalo · Korean", the push's words. A thread a manager gives the operator raises "Minji was assigned to you" (VI "Minji đã được giao cho bạn"; nameless "A guest was assigned to you", VI "Một khách đã được giao cho bạn"), for the new owner only (Eyal, 2026-10-05): the previous owner's toast goes, the manager who assigns gets none, and a thread returned to Unassigned toasts no one. One per guest, replaced in place and keeping its place; at most three (a fourth replaces the oldest); none for what was already there when the page loaded. A toast stays until it is tapped, which opens the thread (handed to the Inbox in memory, not in the URL), closed, or has nothing left to say (the guest answered, the thread given away); opening the Inbox list closes them. The kit's toast close and action buttons now sit above a toast-wide link.
+
+### Changed
+
+- **The nav count reads the list's poll on every page** (#136). The toasts need the guests' names, so the shell polls `/api/conversations` everywhere and `/api/conversations/your-turn` goes; the database is asked once per poll, as before.
+
 ## 2026-10-05 (managers hand out leads from Unassigned)
 
 ### Added

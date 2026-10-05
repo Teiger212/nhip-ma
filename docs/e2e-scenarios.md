@@ -480,6 +480,18 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - Agent 2 opening agent 1's alert link, or anyone opening an alert id that never existed,
      gets the same notice.
    - A manager's own link to that guest still opens the thread.
+
+   Spec: `apps/saas/tests/alerts-in-app.spec.ts` (Alerts 8; the guest is a WhatsApp guest named
+   "Minji", so a name can be missing; agent 1 also holds an older Zalo guest who heads their
+   queue, so an Inbox that opens the first guest can't pass the positive control; each link is
+   the one in the log, followed as logged (Vietnamese: invited operators chose no language), and
+   the made-up id is followed at `/en/`. "Nothing of the thread" for agent 1 is no visible guest
+   name, message text or "WhatsApp" anywhere on the page; for agent 2, who now holds the thread
+   and lists it, it is the notice with the thread not opened and nothing to send. "Usable" is
+   the older guest's row opening their thread beside the notice. Agent 1's own link opened while
+   they hold the thread, and the manager's own link after the reassignment, open it; no
+   address, after any link, carries the thread id).
+
 9. **The alerts panel asks, and only when asked to** (#135). Permission not yet asked
    (`addInitScript`): loading the Inbox shows no browser prompt, and the canvas shows "Get an
    alert when a guest writes." with one blue "Turn on alerts" pill and "Not now".
@@ -515,6 +527,35 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     - On the Inbox list, the tab title changes and no toast shows.
     - A guest on a colleague's thread raises neither, and neither does a new Unassigned guest.
     - As the manager on Settings, a new guest raises the toast.
+    - **An assignment raises a toast for the new owner** (Eyal, 2026-10-05). Agent 1 is on
+      Settings and a manager gives them a waiting guest: one toast says "Minji was assigned to
+      you" (VI "Minji đã được giao cho bạn"; a nameless guest "A guest was assigned to you", VI
+      "Một khách đã được giao cho bạn"), with the same rules: one per guest, at most three, a tap opens the
+      thread. The manager then reassigns Minji to agent 2, also on Settings: agent 2 gets the
+      toast, and agent 1 gets none and loses theirs. The manager who assigns is not toasted, and
+      a thread returned to Unassigned toasts no one.
+
+    Spec: `apps/saas/tests/alerts-in-app.spec.ts` (Alerts 12; named guests write on WhatsApp,
+    since a Zalo guest has no name, and one nameless Zalo guest gives "A guest is waiting" with
+    "Zalo" under it. In the "is waiting" tests every guest is assigned before the operator's page
+    loads, so the guests already waiting raise nothing. The assignment test gives Minji, who wrote
+    35 seconds earlier, to agent 1 on Settings ("Minji was assigned to you", one toast, "WhatsApp"
+    under it), then to agent 2 on Settings (agent 2's toast; agent 1's goes, judged after agent
+    2's has shown), and taps agent 2's; the manager, on Settings throughout, never shows an
+    assignment toast; returning Minji to Unassigned is judged by agent 2 having no toast and agent
+    1 exactly one, once agent 1, given a nameless Zalo guest after the return, shows "A guest was
+    assigned to you".
+    The title is "(n) Inbox" ("(n) Hộp thư" in Vietnamese) beside the nav's number on the Inbox,
+    Home and Settings, and after Settings → Inbox through the nav; with nobody waiting it is the
+    page's own title, read before any guest. A toast is `data-test="guest-toast"`, a link named
+    "<guest> is waiting", in the window's top-right quarter. Each absence is judged once a later
+    toast has shown: one Minji toast after she wrote twice, none for agent 2's guest or a new
+    Unassigned guest, and at most three, the fourth replacing the first. Toasts that outlive
+    several polls show they don't auto-dismiss. Tapping one opens that thread with no thread id
+    in the address, and leaves no toast. On the Inbox list, a guest answered and writing again
+    raises the title and no toast. The manager is on Home, with a guest of agent 1's (no toast),
+    a new Unassigned guest and a guest they hold (a toast each); their title follows their nav
+    number. Closing a toast and a guest's answer clearing it are not tested).
 
 ## First greeting (ADR 0021, spec #159)
 

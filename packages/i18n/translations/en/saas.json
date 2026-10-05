@@ -861,7 +861,10 @@
 			"waitingUnnamed": "A guest is waiting",
 			"body": "{pipe} · {language}",
 			"testTitle": "Test alert",
-			"testBody": "Alerts are on for this device."
+			"testBody": "Alerts are on for this device.",
+			"colleagueAnswering": "A colleague is answering this guest",
+			"assignedToYou": "{name} was assigned to you",
+			"assignedToYouUnnamed": "A guest was assigned to you"
 		},
 		"guestLanguage": {
 			"en": "English",
