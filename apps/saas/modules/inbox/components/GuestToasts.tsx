@@ -17,6 +17,7 @@ import {
 } from "../lib/guest-toasts";
 import { handOffThread, takeOwnAction, useInboxListShown } from "../lib/inbox-presence";
 import { useConversations, useOfficeRole } from "../lib/inbox-queries";
+import { inView, viewsFor } from "../lib/queue";
 import type { ConversationSummary } from "../lib/types";
 
 const toastId = (threadId: string) => `guest-${threadId}`;
@@ -89,7 +90,14 @@ export function GuestToasts({ enabled }: { enabled: boolean }) {
 				id: toastId(thread.id),
 				title: (
 					<LocaleLink
-						href="/inbox"
+						// The first of the operator's views that holds the thread, so the Inbox opens on it
+						// at once (a view is no guest's identifier).
+						href={{
+							pathname: "/inbox",
+							query: {
+								view: viewsFor(operator.manager).find((option) => inView(thread, option)) ?? "all",
+							},
+						}}
 						data-test="guest-toast"
 						// The whole toast is the tap target; the close button sits above it.
 						className="after:inset-0 after:absolute after:rounded-xl"
