@@ -119,8 +119,11 @@ async function newcomer(
 	return { email, page, api: withOrigin(page.request), close: () => context.close() };
 }
 
-/** Asks, as `api`, to invite `email` into the office with `role`; returns the answer's status. */
-async function tryInvite(api: Api, officeId: string, email: string, role: KitRole) {
+/**
+ * Asks, as `api`, to invite `email` into the office with `role` (a kit role, or the API's other
+ * spellings of one: a comma list); returns the answer's status.
+ */
+async function tryInvite(api: Api, officeId: string, email: string, role: string) {
 	const res = await api.post("/api/auth/organization/invite-member", {
 		email,
 		role,
@@ -130,8 +133,17 @@ async function tryInvite(api: Api, officeId: string, email: string, role: KitRol
 }
 
 /**
+ * The ways the kit's API can be asked for an owner: the plain role, a comma list with a space
+ * (which the kit itself does not trim, so only Nhịp's own guard refuses it for a kit admin), and,
+ * for a role change, an array.
+ */
+const OWNER_INVITE_ROLES = ["owner", "member, owner"] as const;
+const OWNER_ROLE_CHANGES: (string | string[])[] = ["owner", "member, owner", ["member", " owner"]];
+
+/**
  * The manager (kit admin or owner) asking to make an owner: inviting with role `owner`, and
- * changing an agent's role to `owner`. Both are refused, nothing is invited, the role stays.
+ * changing an agent's role to `owner`, in every spelling the API takes. Each is refused (403),
+ * nothing is invited, the role stays.
  */
 async function expectNoOwnerFrom(
 	manager: Api,
@@ -140,27 +152,39 @@ async function expectNoOwnerFrom(
 	agentEmail: string,
 	who: string,
 ) {
-	const invitee = admin.newEmail(`owner-by-${who}`);
-	expect
-		.soft(await tryInvite(manager, office.id, invitee, "owner"), `${who}: invite as owner`)
-		.toBe(403);
-	expect
-		.soft(await pendingInvitationsTo(admin.api, office.id, invitee), `${who}: no invitation made`)
-		.toEqual([]);
-	await cancelInvitationsTo(admin, office.id, [invitee]);
+	for (const role of OWNER_INVITE_ROLES) {
+		const invitee = admin.newEmail(`owner-by-${who}`);
+		const label = `${who}: invite as ${JSON.stringify(role)}`;
+		expect.soft(await tryInvite(manager, office.id, invitee, role), label).toBe(403);
+		expect
+			.soft(
+				await pendingInvitationsTo(admin.api, office.id, invitee),
+				`${label}: no invitation made`,
+			)
+			.toEqual([]);
+		await cancelInvitationsTo(admin, office.id, [invitee]);
+	}
 
 	const agentMember = (await membersOf(admin.api, office.id)).find(
 		(m) => m.user.email === agentEmail,
 	);
 	expect(agentMember, "the agent is a member of the office").toBeDefined();
-	const changed = await manager.post("/api/auth/organization/update-member-role", {
-		memberId: agentMember?.id,
-		role: "owner",
-		organizationId: office.id,
-	});
-	expect.soft(changed.status(), `${who}: change an agent's role to owner`).toBe(403);
-	const after = (await membersOf(admin.api, office.id)).find((m) => m.user.email === agentEmail);
-	expect.soft(after?.role, `${who}: the agent's role is unchanged`).toBe("member");
+	for (const role of OWNER_ROLE_CHANGES) {
+		const label = `${who}: change an agent's role to ${JSON.stringify(role)}`;
+		const changed = await manager.post("/api/auth/organization/update-member-role", {
+			memberId: agentMember?.id,
+			role,
+			organizationId: office.id,
+		});
+		expect.soft(changed.status(), label).toBe(403);
+		const after = (await membersOf(admin.api, office.id)).find((m) => m.user.email === agentEmail);
+		expect.soft(after?.role, `${label}: the agent's role is unchanged`).toBe("member");
+	}
+}
+
+/** The office's answer that tells the app the operator's role; the menu offers Team only after it. */
+function officeAnswered(page: Page) {
+	return page.waitForResponse((r) => new URL(r.url()).pathname === "/api/office");
 }
 
 // scenario: docs/e2e-scenarios.md Team 1
@@ -253,7 +277,10 @@ test.describe("Team 2 — an agent has no Team", () => {
 		context,
 	}) => {
 		await signInContext(context, AGENT);
+		// "No Team" is judged once the app knows the agent's role, not before.
+		const office = officeAnswered(page);
 		await page.goto("/en/inbox");
+		expect((await office).ok(), "the office answered").toBe(true);
 
 		await openUserMenu(page);
 		await expect(page.getByRole("menuitem", { name: COPY.en.logOut })).toBeVisible();

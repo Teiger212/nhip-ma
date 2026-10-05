@@ -163,8 +163,9 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
   managers only (`organization.manage`; anyone else gets a 404) and hides the platform admin's
   row and the manager's own Leave and role. The role select offers Agent (`member`) and
   Manager (`admin`) everywhere, the admin area included; an auth before-hook refuses `owner`
-  in `invite-member` and `update-member-role` to anyone but the platform admin (Better Auth
-  already refuses it to a kit `admin`, and an agent invites, re-roles and removes no one).
+  (alone, in a comma list or an array) in `invite-member` and `update-member-role` to anyone
+  but the platform admin. Better Auth alone refuses `owner` from a kit `admin` but grants it
+  from a manager who holds `owner`; it refuses an agent's invite, role change and removal itself.
 - **Pool then owner** (ADR 0015): a thread starts in the office's pool (`ownerId` null).
   The first agent whose approved reply is written claims it, inside `beginAnswer`'s
   transaction and only while it is still unowned, so two agents answering at once end with

@@ -25,13 +25,15 @@ import type { ColumnDef, ColumnFiltersState, SortingState } from "@tanstack/reac
 import { flexRender, useTable } from "@tanstack/react-table";
 import { LogOutIcon, MoreVerticalIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
 
+const NO_HIDDEN_USERS: string[] = [];
+
 export function OrganizationMembersList({
 	organizationId,
-	hiddenUserIds = [],
+	hiddenUserIds = NO_HIDDEN_USERS,
 	lockOwnRow = false,
 }: {
 	organizationId: string;
@@ -58,11 +60,15 @@ export function OrganizationMembersList({
 
 	const updateMemberRole = async (memberId: string, role: OrganizationMemberRole) => {
 		const updateRole = async () => {
-			await authClient.organization.updateMemberRole({
+			// The client answers a refusal with `error` rather than throwing; the toast must say so.
+			const { error } = await authClient.organization.updateMemberRole({
 				memberId,
 				role,
 				organizationId,
 			});
+			if (error) {
+				throw error;
+			}
 
 			await queryClient.invalidateQueries({
 				queryKey: fullOrganizationQueryKey(organizationId),
@@ -92,10 +98,13 @@ export function OrganizationMembersList({
 
 	const removeMember = async (memberId: string) => {
 		const remove = async () => {
-			await authClient.organization.removeMember({
+			const { error } = await authClient.organization.removeMember({
 				memberIdOrEmail: memberId,
 				organizationId,
 			});
+			if (error) {
+				throw error;
+			}
 
 			await Promise.all([
 				queryClient.invalidateQueries({
@@ -173,7 +182,7 @@ export function OrganizationMembersList({
 											{row.original.userId !== user?.id && (
 												<DropdownMenuItem
 													disabled={!canManageOrganization}
-													className="text-destructive"
+													variant="destructive"
 													onClick={async () => removeMember(row.original.id)}
 												>
 													<TrashIcon className="mr-2 size-4" />
@@ -182,7 +191,7 @@ export function OrganizationMembersList({
 											)}
 											{row.original.userId === user?.id && (
 												<DropdownMenuItem
-													className="text-destructive"
+													variant="destructive"
 													onClick={async () => removeMember(row.original.id)}
 												>
 													<LogOutIcon className="mr-2 size-4" />
@@ -204,9 +213,14 @@ export function OrganizationMembersList({
 		},
 	];
 
+	const members = useMemo(
+		() => (organization?.members ?? []).filter((member) => !hiddenUserIds.includes(member.userId)),
+		[organization?.members, hiddenUserIds],
+	);
+
 	const table = useTable({
 		features: clientDataTableFeatures,
-		data: (organization?.members ?? []).filter((member) => !hiddenUserIds.includes(member.userId)),
+		data: members,
 		columns,
 		manualPagination: true,
 		onSortingChange: setSorting,
@@ -233,8 +247,8 @@ export function OrganizationMembersList({
 						))
 					) : (
 						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								No results.
+							<TableCell colSpan={columns.length}>
+								<div className="h-24 flex items-center justify-center">No results.</div>
 							</TableCell>
 						</TableRow>
 					)}

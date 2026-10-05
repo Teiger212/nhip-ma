@@ -196,8 +196,9 @@ export const authOptions = {
 		}),
 		before: createAuthMiddleware(async (ctx) => {
 			// A manager grants Agent or Manager, never the kit's `owner` (#82): only the platform
-			// admin makes an office's owner. Better Auth refuses `owner` to a kit `admin` already;
-			// this also refuses it to a manager who holds `owner`.
+			// admin makes an office's owner. Better Auth refuses `owner` to a kit `admin` (400 or
+			// 403), but grants it when the manager holds `owner`; this hook refuses both with 403,
+			// however the role is spelled (alone, in a comma list, in an array).
 			if (
 				(ctx.path.startsWith("/organization/invite-member") ||
 					ctx.path.startsWith("/organization/update-member-role")) &&
