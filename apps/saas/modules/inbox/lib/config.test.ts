@@ -1,7 +1,18 @@
-import { expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-import { DEFAULT_DRAFT_BASE_URL, mockInboxConfig, validateInboxEnv } from "./config";
+import { parse } from "dotenv";
+import { expect, test } from "vitest";
+import { generateVAPIDKeys } from "web-push";
+
+import {
+	DEFAULT_DRAFT_BASE_URL,
+	inboxConfigFromEnv,
+	mockInboxConfig,
+	validateInboxEnv,
+} from "./config";
 import { draftAdapterFromConfig } from "./drafts";
+import { RETIRED_E2E_VAPID_PUBLIC_KEY } from "./retired-vapid-key";
 
 const BASE: NodeJS.ProcessEnv = {
 	NODE_ENV: "test",
@@ -133,4 +144,50 @@ test("VAPID keys are read as a set: all three, or none", () => {
 		"VAPID_SUBJECT",
 	);
 	expect(errorsOf({ ...BASE, ...vapid, VAPID_SUBJECT: "https://nhip.vn" })).toEqual([]);
+});
+
+// #135: the E2E pair once sat in the public repo. Production and staging (Vercel's Preview) and
+// any live deployment refuse it at startup; a fresh pair made for an E2E run is fine.
+test("production, staging and live deployments refuse the retired E2E VAPID key", () => {
+	const retired = {
+		VAPID_PUBLIC_KEY: RETIRED_E2E_VAPID_PUBLIC_KEY,
+		VAPID_PRIVATE_KEY: "whatever-was-paired-with-it",
+		VAPID_SUBJECT: "mailto:alerts@nhip.vn",
+	};
+	for (const where of <NodeJS.ProcessEnv[]>[
+		{ VERCEL_ENV: "production" },
+		{ VERCEL_ENV: "preview" },
+		{ SEND_MODE: "live" },
+		// A self-hosted production build, whatever its send mode.
+		{ NODE_ENV: "production", NEXT_PUBLIC_SAAS_URL: "https://nhip.example" },
+	]) {
+		const errors = errorsOf({ ...BASE, ...retired, ...where }).join("\n");
+		expect(errors, JSON.stringify(where)).toContain("VAPID_PUBLIC_KEY");
+		// The refusal names the key, never its value.
+		expect(errors).not.toContain(RETIRED_E2E_VAPID_PUBLIC_KEY);
+	}
+	// A developer's machine starts with it, but it counts as no keys: nothing is pushed with it,
+	// and the page is handed no key to subscribe with.
+	const dev = validateInboxEnv({ ...BASE, ...retired });
+	expect(dev.ok && dev.config.vapid).toBeNull();
+	expect(inboxConfigFromEnv({ ...BASE, ...retired, SEND_MODE: "live" }).vapid).toBeNull();
+	// And production starts with a pair of its own.
+	const fresh = generateVAPIDKeys();
+	expect(
+		errorsOf({
+			...BASE,
+			...retired,
+			VAPID_PUBLIC_KEY: fresh.publicKey,
+			VAPID_PRIVATE_KEY: fresh.privateKey,
+			VAPID_SUBJECT: "mailto:alerts@nhip.vn",
+			VERCEL_ENV: "production",
+		}),
+	).toEqual([]);
+});
+
+test("the committed E2E profile carries no VAPID key pair (#135)", () => {
+	const profile = parse(readFileSync(resolve(__dirname, "../../../../../.env.e2e")));
+	expect(profile.VAPID_PUBLIC_KEY).toBeUndefined();
+	expect(profile.VAPID_PRIVATE_KEY).toBeUndefined();
+	expect(profile.VAPID_SUBJECT).toBeTruthy();
 });

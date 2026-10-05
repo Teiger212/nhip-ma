@@ -97,6 +97,18 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
+	async headers() {
+		return [
+			{
+				// The service worker (#135) is checked on every visit, so a new one takes over at once.
+				source: "/sw.js",
+				headers: [
+					{ key: "Cache-Control", value: "no-cache" },
+					{ key: "Content-Type", value: "application/javascript; charset=utf-8" },
+				],
+			},
+		];
+	},
 	webpack: (config, { webpack, isServer }) => {
 		config.plugins.push(
 			new webpack.IgnorePlugin({

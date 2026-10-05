@@ -13,9 +13,11 @@ on:
     branches:
       - main
 
+# A pull request's newer push cancels its older run. On main every commit gets its own group, so
+# no run is cancelled or dropped while queued: the release gate needs each one's verdict (#190).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/supastarter
@@ -135,6 +137,22 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm --filter @repo/database generate
+
+      # Web push's VAPID pair is made fresh for this run and never committed (#135); only its
+      # subject is in .env.e2e. playwright.config.ts would make one too; this makes it explicit
+      # and keeps the private key masked in the log.
+      - name: A fresh VAPID pair for this run
+        working-directory: apps/saas
+        run: |
+          node -e '
+            const { generateVAPIDKeys } = require("web-push");
+            const { publicKey, privateKey } = generateVAPIDKeys();
+            console.log(`::add-mask::${privateKey}`);
+            require("node:fs").appendFileSync(
+              process.env.GITHUB_ENV,
+              `VAPID_PUBLIC_KEY=${publicKey}\nVAPID_PRIVATE_KEY=${privateKey}\n`,
+            );
+          '
 
       - name: E2E (Playwright, no retries)
         run: pnpm --filter saas exec playwright test --reporter=line,html

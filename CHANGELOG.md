@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-05 (the release gate needs green CI on main)
+
+### Fixed
+
+- **A release needs its commit's CI on main to have passed** (#190, #112). `scripts/release/check-release.sh` now also requires a successful `ci.yml` run, both its `ci` and `e2e` jobs, from the push to main of the release's exact commit. It refuses, naming the run, when the run failed, was cancelled (most likely by a newer push), or is still going ("wait for it to pass, then re-run the release"), and when the commit has no run, since only the last commit of each push gets one. Before, a commit whose E2E failed after merge could still ship. Docs-only commits are covered: `paths-ignore` skips CI on pull requests only, and pushes to main always run it. `check-release.test.sh` gains a cancelled-CI case and drops its branch case's `docs/attio-adr`, which has since merged, for #146's unmerged probe.
+
+## 2026-10-05 (Nhịp installs as an app, and operators turn alerts on)
+
+### Added
+
+- **Nhịp installs as an app** (#135, ADR 0019). `app/manifest.ts`: standalone, opening on the Inbox, with icons (`public/icons/`, and `app/apple-icon.png` for an iPhone's Home Screen). `public/sw.js` is the service worker, served `no-cache`: it shows a push (`showNotification` with the payload's title, body and tag, and `renotify` from `sound`, left out on Apple's WebKit) and on a click focuses an open Nhịp window and takes it to the alert's link, or opens one. No fetch handler, no caching.
+- **The Inbox's alerts panel** (#135), a panel on the canvas above the list. It never prompts on load: "Get an alert when a guest writes." with one blue "Turn on alerts" pill and "Not now"; an iPhone outside the Home Screen gets the Add to Home Screen steps; a blocked browser gets how to unblock; a sign-in whose device is gone is asked again; with alerts on, or for 7 days after "Not now" (on that device only), it shows nothing, and nothing when the deployment has no VAPID keys. Nothing on it is red. "Turn on alerts" asks the browser, registers the worker, subscribes (`userVisibleOnly`, the server's VAPID public key) and posts the device.
+- **Settings → Notifications: "This device"** (#135): alerts on or off for this sign-in, "Turn on alerts", and "Send test alert" ("Test alert sent."); a 409 turns the row back to offering to turn alerts on. `GET /api/alerts/devices` gives the page the VAPID public key and whether this sign-in has a device.
+- **Signing out also unsubscribes the browser** (#135), best effort, before the sign-out.
+
+### Security
+
+- **Proof of possession before a device moves** (#135). An endpoint another operator holds moves only with the same `p256dh` and `auth` (the same browser re-registering, a shared phone); otherwise `POST /api/alerts/devices` answers 409 and the browser subscribes afresh. Decided under an advisory lock on the endpoint, so a race can't slip past it.
+- **A device registered as its sign-in ends doesn't survive it** (#135). Registration holds the session `FOR SHARE` and stores nothing (401) when it is gone; a session delete after-hook removes the session's devices once its row is gone.
+- **The E2E VAPID pair is no longer committed** (#135). Playwright and CI's e2e job make a fresh pair per run; production, staging and any live deployment refuse the retired pair's key at startup.
+- **A push gives up after 10 seconds** (#135), so a hung push service can't stall the background job; a device is updated or removed only as its operator's own.
+
+### Changed
+
+- **The new Vietnamese wording waits on a native read** (#78): the alerts panel's and the "This device" row's strings ("Bật cảnh báo", "Để sau", "Thiết bị này", "Gửi cảnh báo thử", and the rest).
+
 ## 2026-10-05 (only the platform admin deletes an office)
 
 ### Fixed

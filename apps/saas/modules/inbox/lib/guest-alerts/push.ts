@@ -60,19 +60,28 @@ const CONCURRENCY = 5;
 /** A push the service may keep for an operator whose phone is offline: an hour (spec #84). */
 const TTL_SECONDS = 60 * 60;
 
-/** Where the transport finds and updates devices; the database unless a test says otherwise. */
+/**
+ * How long one push may take (#135): a push service that hangs gives up the push, not the
+ * background job, until #177's queue replaces it.
+ */
+const PUSH_TIMEOUT_MS = 10_000;
+
+/**
+ * Where the transport finds and updates devices; the database unless a test says otherwise.
+ * A device is updated or removed only as the operator's own.
+ */
 export type PushDevices = {
 	forUser: (userId: string) => Promise<PushDevice[]>;
 	forSession: (userId: string, sessionId: string) => Promise<PushDevice[]>;
-	delivered: (id: string, at: Date) => Promise<void>;
-	remove: (id: string) => Promise<void>;
+	delivered: (id: string, userId: string, at: Date) => Promise<void>;
+	remove: (id: string, userId: string) => Promise<void>;
 };
 
 const databaseDevices: PushDevices = {
 	forUser: (userId) => pushSubscriptionsForUser(userId),
 	forSession: (userId, sessionId) => pushSubscriptionsForSession(userId, sessionId),
-	delivered: (id, at) => markPushSubscriptionDelivered(id, at),
-	remove: (id) => deletePushSubscription(id),
+	delivered: (id, userId, at) => markPushSubscriptionDelivered(id, userId, at),
+	remove: (id, userId) => deletePushSubscription(id, userId),
 };
 
 /**
@@ -113,9 +122,9 @@ async function eachLimited<T>(
 
 /**
  * `SEND_MODE=live` (#134): web push to each device of each delivery, VAPID-signed, urgency
- * high, kept by the push service for an hour. The payload is encrypted for the device (RFC
- * 8291); its tag and `sound` travel inside it, and the service worker turns `sound` into
- * `renotify` (#135). One event's pushes share one pool of 5, so a slow push service delays no
+ * high, kept by the push service for an hour, given up after 10 seconds (#135). The payload
+ * is encrypted for the device (RFC 8291); its tag and `sound` travel inside it, and the
+ * service worker turns `sound` into `renotify` (#135). One event's pushes share one pool of 5, so a slow push service delays no
  * one. A 404 or 410 deletes the device. Without the VAPID keys it logs "push not configured"
  * and sends nothing, so a deployment works before its keys are set.
  */
@@ -131,7 +140,7 @@ export function webPushTransport(
 				console.warn("alerts: push not configured (no VAPID keys); alerts are logged only");
 				return;
 			}
-			const pushes: { device: PushDevice; payload: AlertPayload }[] = [];
+			const pushes: { userId: string; device: PushDevice; payload: AlertPayload }[] = [];
 			for (const { userId, sessionId, payload } of deliveries) {
 				const targets = sessionId
 					? await devices.forSession(userId, sessionId)
@@ -139,20 +148,21 @@ export function webPushTransport(
 				for (const device of targets) {
 					// Checked again for rows stored earlier, and posted at the form that was checked.
 					const endpoint = normalizePushEndpoint(device.endpoint);
-					if (endpoint) pushes.push({ device: { ...device, endpoint }, payload });
+					if (endpoint) pushes.push({ userId, device: { ...device, endpoint }, payload });
 					else console.warn("alerts: push skipped", { category: "endpoint not allowed" });
 				}
 			}
 			const options = {
 				urgency: "high" as const,
 				TTL: TTL_SECONDS,
+				timeout: PUSH_TIMEOUT_MS,
 				vapidDetails: {
 					subject: vapid.subject,
 					publicKey: vapid.publicKey,
 					privateKey: vapid.privateKey,
 				},
 			};
-			await eachLimited(pushes, CONCURRENCY, async ({ device, payload }) => {
+			await eachLimited(pushes, CONCURRENCY, async ({ userId, device, payload }) => {
 				try {
 					await sendNotification(
 						{ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
@@ -162,7 +172,7 @@ export function webPushTransport(
 				} catch (error) {
 					const category = failureCategory(error);
 					try {
-						if (isGone(error)) await devices.remove(device.id);
+						if (isGone(error)) await devices.remove(device.id, userId);
 					} catch (cleanup) {
 						console.warn("alerts: gone device not removed", {
 							category: failureCategory(cleanup),
@@ -172,7 +182,7 @@ export function webPushTransport(
 					return;
 				}
 				try {
-					await devices.delivered(device.id, now());
+					await devices.delivered(device.id, userId, now());
 				} catch (error) {
 					console.warn("alerts: delivery not recorded", { category: failureCategory(error) });
 				}

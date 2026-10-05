@@ -1,5 +1,6 @@
 import { getSession } from "@auth/lib/server";
 import { NotificationPreferencesForm } from "@settings/components/NotificationPreferencesForm";
+import { ThisDeviceAlerts } from "@settings/components/ThisDeviceAlerts";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
 import { getTranslations } from "next-intl/server";
@@ -27,6 +28,7 @@ export default async function NotificationSettingsPage() {
 			<PageHeader title={t("title")} subtitle={t("description")} />
 
 			<SettingsList>
+				<ThisDeviceAlerts />
 				<NotificationPreferencesForm />
 			</SettingsList>
 		</>

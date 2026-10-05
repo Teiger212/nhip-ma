@@ -5,7 +5,9 @@
 #   - it is ahead of `production`, so the move is a fast-forward (an older commit is a
 #     rollback, which is Vercel's instant rollback, never a release);
 #   - Vercel deployed it on staging (a `Preview` deployment of that commit that succeeded);
-#   - the staging smoke run passed against that deployment.
+#   - the staging smoke run passed against that deployment;
+#   - CI passed on it on main: a successful `ci.yml` run (its `ci` and `e2e` jobs) from the push
+#     to main of that very commit (#190).
 # Reads git (`origin/main` and `origin/production` must be fetched) and GitHub through `gh`.
 # Usage: scripts/release/check-release.sh <commit-ish>
 set -euo pipefail
@@ -50,4 +52,37 @@ smoked=$(gh api "repos/{owner}/{repo}/actions/workflows/staging-smoke.yml/runs?h
 	--jq '.total_count')
 ((smoked > 0)) || refuse "$short deployed on staging, but no staging smoke run passed for it."
 
-echo "OK: $short is on main, ahead of production (${production:0:7}); staging deployed it ($staging_url) and its smoke run passed."
+# CI on main (#190): ci.yml runs on every push to main, but only on the push's head commit. Each
+# commit has its own concurrency group there, so a newer push never cancels it. Each run reports its latest attempt, so a failed re-run
+# of a green run refuses; if one commit has several push runs (main reset to it), any successful
+# one counts. Sets `ci_url`, or refuses.
+ci_on_main() {
+	local runs verdict
+	# Read first, so a failed API call stops the gate instead of reading as "no run".
+	runs=$(gh api "repos/{owner}/{repo}/actions/workflows/ci.yml/runs?head_sha=$1&event=push&branch=main&per_page=100") ||
+		refuse "couldn't read $short's CI runs on main (above)."
+	verdict=$(jq -r '.workflow_runs
+		| (map(select(.conclusion == "success"))[0]
+			// map(select(.status != "completed"))[0]
+			// .[0])
+		// empty
+		| "\(.status) \(.conclusion // "none") \(.html_url)"' <<<"$runs") ||
+		refuse "couldn't read $short's CI runs on main: unexpected answer from GitHub."
+	[[ -n $verdict ]] ||
+		refuse "$short has no CI run from a push to main. Only the last commit of each push runs CI (and none with [skip ci]); release a later commit whose CI passed."
+	local status conclusion url
+	read -r status conclusion url <<<"$verdict"
+	[[ $status == completed ]] ||
+		refuse "$short's CI on main is still running ($status): $url. Wait for it to pass, then re-run the release."
+	case $conclusion in
+	success) ci_url=$url ;;
+	cancelled)
+		refuse "$short's CI on main was cancelled: $url. Re-run it, and release once it passes." ;;
+	*)
+		refuse "$short's CI on main didn't pass ($conclusion): $url. Fix it on main and release the fix, or, if it was a flake, re-run that run." ;;
+	esac
+}
+ci_url=""
+ci_on_main "$sha"
+
+echo "OK: $short is on main, ahead of production (${production:0:7}); staging deployed it ($staging_url), its smoke run passed, and its CI on main passed ($ci_url)."
