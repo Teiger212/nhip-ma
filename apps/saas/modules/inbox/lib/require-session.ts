@@ -5,8 +5,13 @@ import { resolveOffice } from "./office";
 import type { InboxViewer } from "./types";
 
 type SessionGate =
-	| { denied: Response; viewer?: undefined }
-	| { denied?: undefined; viewer: InboxViewer };
+	| { denied: Response; viewer?: undefined; session?: undefined }
+	| {
+			denied?: undefined;
+			viewer: InboxViewer;
+			/** The sign-in itself, for what belongs to it (its devices, #134) and the language. */
+			session: { id: string; locale: string | null };
+	  };
 
 const DENIALS = {
 	no_office: "This account does not belong to an office yet.",
@@ -34,5 +39,8 @@ export async function requireInboxSession(request: Request): Promise<SessionGate
 			),
 		};
 	}
-	return { viewer: { userId: session.user.id, officeId: office.officeId, role: office.role } };
+	return {
+		viewer: { userId: session.user.id, officeId: office.officeId, role: office.role },
+		session: { id: session.session.id, locale: session.user.locale ?? null },
+	};
 }

@@ -1,5 +1,5 @@
 import { createInboxStore } from "@repo/database/inbox";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
@@ -8,8 +8,14 @@ import { noDraftAdapter } from "./drafts";
 import { isQuiet } from "./queue";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
-import { resetTestInbox, testDb } from "./test-store";
+import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "./test-store";
 import { WALK_OFFICE_ID } from "./walk-user";
+
+// Web push stubbed at its boundary: the seed must never reach it (#134, Q3).
+const { sendNotification } = vi.hoisted(() => ({ sendNotification: vi.fn() }));
+vi.mock("web-push", () => ({ sendNotification, default: { sendNotification } }));
+
+useTestDatabaseForAppClient();
 
 afterEach(async () => {
 	// Alerts follow a guest message in the background (ADR 0019); they finish before the reset.
@@ -141,4 +147,66 @@ test("reset rewrites the demo threads as of now", async () => {
 	expect(reseeded.every((conversation) => conversation.messages.length === 1)).toBe(true);
 	const minji = reseeded.find((conversation) => conversation.guestName === "Minji");
 	expect(minji && isQuiet(minji, now)).toBe(false);
+});
+
+// #134, Q3: `pnpm seed` writes guest messages, and those alert; a seed run must never push to a
+// real device, whatever SEND_MODE says. The alerts are still decided and logged.
+test("seeding never pushes, even live with VAPID keys and a manager's device", async () => {
+	await resetTestInbox();
+	const store = createInboxStore(testDb);
+	// A manager of the walk office alone (a member of two offices is alerted by neither).
+	const manager = "seed-push-manager";
+	const now = new Date();
+	await testDb.user.upsert({
+		where: { id: manager },
+		create: {
+			id: manager,
+			name: manager,
+			email: `${manager}@test.nhip.local`,
+			emailVerified: true,
+			createdAt: now,
+			updatedAt: now,
+		},
+		update: {},
+	});
+	await testDb.member.deleteMany({ where: { organizationId: WALK_OFFICE_ID } });
+	await testDb.member.create({
+		data: {
+			id: "m-seed-push-manager",
+			organizationId: WALK_OFFICE_ID,
+			userId: manager,
+			role: "admin",
+			createdAt: now,
+		},
+	});
+	await testDb.pushSubscription.create({
+		data: {
+			userId: manager,
+			sessionId: "session-manager",
+			endpoint: "https://fcm.googleapis.com/fcm/send/the-managers-real-phone",
+			p256dh: "p256dh",
+			auth: "auth",
+		},
+	});
+	sendNotification.mockReset();
+	sendNotification.mockResolvedValue({ statusCode: 201, body: "", headers: {} });
+	const vapid = {
+		publicKey: "BPub-vitest",
+		privateKey: "priv-vitest",
+		subject: "mailto:a@nhip.local",
+	};
+	setRuntimeForTests({
+		store,
+		config: mockInboxConfig({ sendMode: "live", vapid }),
+		drafts: noDraftAdapter,
+	});
+
+	await seedInbox(WALK_OFFICE_ID, { reset: true });
+	await settleBackgroundWork();
+
+	expect(
+		await testDb.inboxAlert.count({ where: { officeId: WALK_OFFICE_ID, userId: manager } }),
+	).toBe(DEMO_THREADS.length);
+	expect(sendNotification).not.toHaveBeenCalled();
+	await testDb.user.delete({ where: { id: manager } });
 });

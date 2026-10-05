@@ -1,6 +1,7 @@
 import { passkey } from "@better-auth/passkey";
 import {
 	db,
+	deletePushSubscriptionsForSession,
 	getInvitationById,
 	getOrganizationMembershipsForUser,
 	getPurchasesByOrganizationId,
@@ -195,6 +196,16 @@ export const authOptions = {
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
+			// Signing out on a device stops its alerts (ADR 0019, #134), whatever the client does:
+			// the session's devices go before the session does. Only the session's own id
+			// decides which; recipients are always by user.
+			if (ctx.path === "/sign-out") {
+				const sessionId = (await getSessionFromCtx(ctx))?.session.id;
+				if (sessionId) {
+					await deletePushSubscriptionsForSession(sessionId);
+				}
+				return;
+			}
 			// A manager grants Agent or Manager, never the kit's `owner` (#82): only the platform
 			// admin makes an office's owner. Better Auth refuses `owner` to a kit `admin` (400 or
 			// 403), but grants it when the manager holds `owner`; this hook refuses both with 403,
