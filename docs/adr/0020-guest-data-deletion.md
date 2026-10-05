@@ -63,7 +63,7 @@ round 2 R1 to R3, and the follow-ups on the CRM).
   - the office;
   - the actor, as a set-null link plus a name snapshot, like `Answer.operatorName` (ADR 0013);
   - the time;
-  - row counts (messages, sent replies, translations);
+  - row counts (messages, sent replies, translations, and the bell rows that named the thread);
   - the CRM result: `deleted`, `unlinked`, `pending` or `failed`, or null with no lead.
 
   It holds no guest name, no guest id, no thread id and no CRM id. Receipts are not shown in the
@@ -93,6 +93,12 @@ round 2 R1 to R3, and the follow-ups on the CRM).
   4. Compute the tally and insert it, unless the thread has no guest message.
   5. Insert the receipt.
   6. Delete the conversation; the cascade takes the rest.
+
+  Before the receipt, the same transaction deletes the kit's bell rows (`notification`) whose
+  `data.threadId` is the thread's id, and counts them on the receipt (amended 2026-10-05): a
+  bell row that tells an agent a thread moved names the guest. Every notification that refers
+  to a thread carries its id as `data.threadId`, so deletion finds it.
+
 - **Approve takes the same locks in the same order.** `beginAnswer` starts with
   `SELECT … FROM inbox_conversation … FOR KEY SHARE`, on both the first-send path and the retry
   of a `failed` Answer, before it reads or writes an Answer. Both transactions then lock the

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05 (a manager deletes a guest's data)
+
+### Added
+
+- **A manager deletes a guest's data, and Home keeps the numbers** (#138, ADR 0020, spec #85). The thread header's ⋯ "Thread actions" menu has "Delete guest data", for managers only. One dialog says what goes (the thread's messages with their translations, the suggested reply, the extracted details), that the chat stays in the office's Zalo OA or WhatsApp, and that it can't be undone; its confirm is the only red. Confirming hard-deletes the thread and everything under it in one transaction, together with any bell row that names it (`notification.data.threadId`), and writes two records that name no guest: an anonymous **lead tally** (pipe, language, first contact, first reply, in conversation, CRM outcome) and a **receipt** (office, manager, time, row counts, CRM result). Home's funnel adds the office's tallies to its cohort, by the same per-lead rule, so leads in, engaged, in conversation, response time, the bands and leads by day don't move. Refused while a reply is sending (the item is disabled with "A reply is still sending"; the API answers 409). `POST /api/conversations/:id/deletion` takes `{ deleteInCrm }`, required; agents get 403, the platform admin 403, another office's thread 404. A thread's CRM lead is only unlinked for now (receipt `unlinked`); deleting the lead in the CRM is #139. New tables `inbox_lead_tally` and `inbox_guest_deletion` (migration `20261005061004_guest_deletion`, new tables, 1 deploy). Receipts are read on request; no screen shows them.
+
 ## 2026-10-05 (a guest's new message alerts the operators, logged)
 
 ### Added
