@@ -234,16 +234,25 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
      through the API is a 404.
 
    Spec: `apps/saas/tests/assign.spec.ts` (Assign 1; an office of the test's own with two
-   invited agents and an invited manager, so the agents' counts are exact; "the Unassigned
-   view" is, until #163 adds it, the manager's owner filter set to Unassigned (`?owner=unassigned`),
-   with the flag in the list and the thread header; "not counted" is the agents' views at 0 and
-   no nav count; "by address" is the `?thread=` link showing `thread-not-found`).
+   invited agents and an invited manager, so the agents' counts are exact; it checks the
+   manager's owner filter set to Unassigned (`?owner=unassigned`), not the Unassigned view #163
+   adds (Assign 2 and 10 check the view), with the flag in the list and the thread header; "not
+   counted" is the agents' views at 0 and no nav count; "by address" is the `?thread=` link
+   showing `thread-not-found`).
 
 2. **Assigning gives the thread to that agent only.** On the thread's row in Unassigned, the
    manager picks "Assign to…" → agent 1.
    - The thread leaves Unassigned. Agent 1's Inbox has it, Your turn, marked "Yours".
    - Agent 2 still finds nothing (404).
    - Agent 1 approves a reply: it is sent from agent 1, and the thread stays theirs.
+
+   Spec: `apps/saas/tests/assign.spec.ts` (Assign 2; an office of the test's own with two
+   invited agents and an invited manager; agent 1 takes a name of their own, so the row's menu
+   item names them; "leaves Unassigned" is the row gone and the view at 0; agent 1 has no
+   Unassigned view; "stays theirs" is the approved reply (200) putting the thread under agent 1's
+   Sent, still "Yours", the manager's owner flag naming agent 1, and agent 2 still finding
+   nothing. "Sent from agent 1" is not checked: the thread shows no sender beyond "Sent from
+   Nhịp").
 
 3. **Two managers assign at once: the last one wins.** In an office with a second manager,
    manager 1 assigns a new guest to agent 1, then manager 2 assigns it to agent 2 within the
@@ -292,9 +301,18 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     manager's Inbox opens on the Unassigned view, which lists them oldest first with its
     count. "Assign to…" on the oldest row gives it to agent 1, and that row leaves the view:
     its count drops and the next guest heads the list.
+    Spec: `apps/saas/tests/assign.spec.ts` (Assign 10; an office of the test's own, each guest
+    filed before the next writes; "opens on" is `/en/inbox` with no view, the "Unassigned 3"
+    button pressed and first of the four views; "Assign to…" never selects its row: with the
+    newest guest's row selected, opening and closing the oldest row's menu leaves the oldest
+    unselected and its thread unopened; agent 1 then has the oldest guest, "Yours").
 11. **Waiting now lists Unassigned leads first for a manager.** Agent 1's guest has waited
     longer than a new Unassigned guest. The manager's Waiting now lists the Unassigned guest
     first, then agent 1's; agent 1's Waiting now lists only their own.
+    Spec: `apps/saas/tests/assign.spec.ts` (Assign 11; an office of the test's own, each guest
+    filed before the next writes: an Unassigned guest, then agent 1's, then a newer Unassigned
+    guest, so the manager's expected order (both Unassigned oldest first, then agent 1's) is
+    neither oldest-first nor newest-first overall; nameless Zalo guests are listed by their id).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
