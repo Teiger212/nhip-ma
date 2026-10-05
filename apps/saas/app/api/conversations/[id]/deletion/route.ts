@@ -1,6 +1,7 @@
 import { createGuestDeletion } from "@inbox/lib/guest-deletion";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { getRuntime } from "@inbox/lib/runtime";
+import { GUEST_DELETION_NOTE_MAX, GuestDeletionReason } from "@repo/database/inbox";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -8,13 +9,25 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-/** The manager's choice for the thread's CRM lead, always explicit (ADR 0020). */
-const body = z.object({ deleteInCrm: z.boolean() });
+/**
+ * The manager's choice for the thread's CRM lead, always explicit, and why they delete: a
+ * reason, and a note that `other` requires (ADR 0020). The store masks the note.
+ */
+const body = z
+	.object({
+		deleteInCrm: z.boolean(),
+		reason: GuestDeletionReason,
+		note: z.string().max(GUEST_DELETION_NOTE_MAX).nullish(),
+	})
+	.refine((choice) => choice.reason !== "other" || Boolean(choice.note?.trim()), {
+		path: ["note"],
+	})
+	.transform((choice) => ({ ...choice, note: choice.note?.trim() || null }));
 
 /**
  * A manager deletes a guest's data (ADR 0020). Answers in this order: the inbox gate (401, or
  * 403 for the platform admin), 403 for an agent before the body is read, 404 for a thread the
- * office does not have, 400 without `{ deleteInCrm }`, 409 while a reply is sending, else 200
+ * office does not have, 400 without `{ deleteInCrm, reason }` (or `other` without a note), 409 while a reply is sending, else 200
  * with what became of the CRM lead. Nothing here logs the thread id: it is the guest's thread.
  */
 export async function POST(request: Request, context: RouteContext): Promise<Response> {

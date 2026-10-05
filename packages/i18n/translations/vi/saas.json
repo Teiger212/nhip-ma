@@ -933,7 +933,19 @@
 			"deleting": "Đang xóa…",
 			"done": "Đã xóa dữ liệu khách",
 			"failed": "Không xóa được dữ liệu của khách. Hãy thử lại.",
-			"gone": "Cuộc trò chuyện này đã bị xóa."
+			"gone": "Cuộc trò chuyện này đã bị xóa.",
+			"reasonLabel": "Lý do",
+			"reasonPlaceholder": "Chọn lý do",
+			"reasons": {
+				"guest_request": "Khách yêu cầu xóa dữ liệu",
+				"duplicate_or_spam": "Trùng lặp hoặc spam",
+				"test_data": "Dữ liệu thử nghiệm",
+				"other": "Khác"
+			},
+			"noteLabel": "Ghi chú",
+			"noteOptional": "Ghi chú (không bắt buộc)",
+			"noteHint": "Đừng ghi tên hay thông tin liên lạc của khách.",
+			"noteRequired": "Hãy thêm ghi chú cho lý do \"Khác\"."
 		}
 	}
 }

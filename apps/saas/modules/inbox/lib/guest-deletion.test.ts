@@ -78,7 +78,12 @@ async function sent(store: Store, thread: Thread, { mock }: { mock: boolean }) {
 	});
 }
 
-const deleteOptions = (countMock: boolean) => ({ countMock, actorId: MANAGER });
+const deleteOptions = (countMock: boolean) => ({
+	countMock,
+	actorId: MANAGER,
+	reason: "guest_request" as const,
+	note: null,
+});
 
 /** Every number Home shows; `until` is when it was asked, not a number. */
 function numbers(funnel: Funnel): Omit<Funnel, "until"> {
@@ -344,6 +349,40 @@ test("after a deletion no row of Nhịp's carries the thread, and the records na
 	await store.close();
 });
 
+test("the receipt keeps the reason and the note, its phone numbers and emails masked (ADR 0020)", async () => {
+	const store = await testInboxStore();
+	const asked = await write(store, "asked", Date.now() - MINUTE);
+	const spam = await write(store, "spam", Date.now() - MINUTE);
+	expect(
+		(
+			await store.deleteGuest(OFFICE, asked.id, {
+				...deleteOptions(true),
+				reason: "other",
+				note: "  Asked by phone from 0912 345 678, confirmed at hoa@example.vn  ",
+			})
+		).ok,
+	).toBe(true);
+	expect(
+		(
+			await store.deleteGuest(OFFICE, spam.id, {
+				...deleteOptions(true),
+				reason: "duplicate_or_spam",
+				note: "   ",
+			})
+		).ok,
+	).toBe(true);
+	const receipts = await testDb.guestDeletion.findMany({
+		where: { officeId: OFFICE },
+		orderBy: { at: "asc" },
+		select: { reason: true, note: true },
+	});
+	expect(receipts).toEqual([
+		{ reason: "other", note: "Asked by phone from [phone], confirmed at [email]" },
+		{ reason: "duplicate_or_spam", note: null },
+	]);
+	await store.close();
+});
+
 test("bell rows naming the thread go with it and are counted; others stay (ADR 0020)", async () => {
 	const store = await testInboxStore();
 	const thread = await write(store, "moved", Date.now() - MINUTE);
@@ -572,16 +611,20 @@ test("the guest-deletion module deletes as the manager, under the deployment's c
 	expect(
 		await deletion.deleteGuest({ userId: MANAGER, officeId: OFFICE, role: "manager" }, thread.id, {
 			deleteInCrm: true,
+			reason: "test_data",
+			note: null,
 		}),
 	).toEqual({ ok: true, crm: null });
 	const [tally] = await testDb.leadTally.findMany({ where: { officeId: OFFICE } });
 	// Under countMock the mock send is the lead's first reply, as Home reads it in this deployment.
 	expect(tally.firstReplyAt).not.toBeNull();
 	const [receipt] = await testDb.guestDeletion.findMany({ where: { officeId: OFFICE } });
-	expect(receipt.actorId).toBe(MANAGER);
+	expect(receipt).toMatchObject({ actorId: MANAGER, reason: "test_data", note: null });
 	expect(
 		await deletion.deleteGuest({ userId: MANAGER, officeId: OFFICE, role: "manager" }, thread.id, {
 			deleteInCrm: false,
+			reason: "test_data",
+			note: null,
 		}),
 	).toEqual({ ok: false, reason: "not_found" });
 	await store.close();
