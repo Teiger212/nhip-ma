@@ -127,6 +127,11 @@ fold "$green" && del changelog.d/1-a.md && put changelog.d/5-e.md "## e"
 adds_fragment=$(commit "$bot" "$bot" "docs(changelog): fold 1 fragment(s)" "$green")
 fold "$green" && del changelog.d/1-a.md && del changelog.d/README.md
 drops_readme=$(commit "$bot" "$bot" "docs(changelog): fold 2 fragment(s)" "$green")
+git read-tree "$green" && del changelog.d/1-a.md &&
+	git update-index --cacheinfo "120000,$(printf 'apps/x.ts' | git hash-object -w --stdin),CHANGELOG.md"
+symlinked=$(commit "$bot" "$bot" "docs(changelog): fold 1 fragment(s)" "$green")
+fold "$green" && del changelog.d/1-a.md
+zero_subject=$(commit "$bot" "$bot" "docs(changelog): fold 0 fragment(s)" "$green")
 fold "$green"
 no_fragment=$(commit "$bot" "$bot" "docs(changelog): fold 1 fragment(s)" "$green")
 fold "$green" && del changelog.d/1-a.md && del changelog.d/2-b.md
@@ -137,7 +142,7 @@ merge=$(commit "$bot" "$bot" "$m" "$green" "$red")
 
 # main's tip merges every case, so each one is on main and ahead of production.
 tip=$(commit "$eyal" "$eyal" "tip" "$green" "$red" "$no_run" "$real" "$own_red" "$first" "$chained" \
-	"$on_red" "$on_no_run" "$with_code" "$renamed_in" "$adds_fragment" "$drops_readme" "$no_fragment" \
+	"$on_red" "$on_no_run" "$with_code" "$renamed_in" "$adds_fragment" "$drops_readme" "$symlinked" "$zero_subject" "$no_fragment" \
 	"$forged_email" "$human_committer" "$other_subject" "$merge")
 git update-ref refs/remotes/origin/main "$tip"
 git update-ref refs/remotes/origin/production "$production"
@@ -154,6 +159,8 @@ expect refuse "$with_code" "changes more than CHANGELOG.md and deleted fragments
 expect refuse "$renamed_in" "D apps/x.ts" "a bot commit that renames code into changelog.d/ is refused"
 expect refuse "$adds_fragment" "A changelog.d/5-e.md" "a bot commit that adds a fragment is refused"
 expect refuse "$drops_readme" "D changelog.d/README.md" "a bot commit that deletes changelog.d/README.md is refused"
+expect refuse "$symlinked" "T CHANGELOG.md" "a bot commit that turns CHANGELOG.md into a symlink is refused"
+expect refuse "$zero_subject" "isn't a fold's" "a bot commit that says it folded 0 fragments is refused"
 expect refuse "$no_fragment" "doesn't both change CHANGELOG.md and delete fragments" "a bot commit that deletes no fragment is refused"
 expect refuse "$forged_email" "its author is github-actions[bot] <bot@example.com>" "a commit with the bot's name but another email is refused"
 expect refuse "$human_committer" "its committer is Eyal" "a bot-authored commit a person committed is refused"

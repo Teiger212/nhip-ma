@@ -2,7 +2,9 @@
 
 A pull request never edits `CHANGELOG.md`: the format check fails one that does (#200). It adds
 its entry here, as one file, `changelog.d/<issue>-<slug>.md` (for example
-`changelog.d/200-changelog-fragments.md`). Two PRs that each add a fragment never conflict.
+`changelog.d/200-changelog-fragments.md`): the issue number, then a slug of lowercase ASCII
+letters, digits and hyphens (no diacritics). Nothing else goes in this folder. Two PRs that each
+add a fragment never conflict.
 
 A fragment holds one section, written exactly as `CHANGELOG.md` writes them:
 

@@ -186,7 +186,7 @@ void test("refuses a fragment holding a second section, but not a heading inside
 	const repo = makeRepo();
 	repo.write(
 		"changelog.d/1-fenced.md",
-		`${fragment("fenced", "F")}\n\`\`\`sh\n# a shell comment\n\`\`\`\n`,
+		`${fragment("fenced", "F")}\n\`\`\`sh\n# a shell comment\n\`\`\`\n\n~~~\n## not a heading\n~~~\n`,
 	);
 	assert.equal(repo.run("--check").status, 0);
 	repo.write("changelog.d/2-two.md", `${fragment("one", "1")}\n${fragment("two", "2")}`);
@@ -202,4 +202,21 @@ void test("refuses a fragment that isn't committed, and folds nothing", () => {
 	assert.equal(result.status, 1);
 	assert.match(result.stderr, /1-loose\.md isn't in main's history/);
 	assert.equal(repo.changelog(), OLD);
+});
+
+void test("refuses anything in changelog.d/ that isn't a plainly named fragment, even in --check", () => {
+	// git log quotes a non-ASCII name, so it would never match and block every fold.
+	const files = ["201-café.md", "201-Upper.md", "201-notes.markdown", "no-issue.md"];
+	for (const name of [...files, "201-sub"]) {
+		const repo = makeRepo();
+		const path = join(repo.dir, "changelog.d", name);
+		if (files.includes(name)) writeFileSync(path, fragment("named", "N"));
+		else mkdirSync(path);
+		for (const check of [false, true]) {
+			const result = check ? repo.run("--check") : repo.run();
+			assert.equal(result.status, 1, name);
+			assert.match(result.stderr, /isn't a fragment: name it <issue>-<slug>\.md/);
+		}
+		assert.equal(repo.changelog(), OLD);
+	}
 });

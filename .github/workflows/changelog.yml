@@ -45,8 +45,9 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Only oxfmt is needed, and this job holds a write token: no install scripts.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       # If main moved meanwhile, the push is refused: start again from main's new tip and fold
       # again. Folding again, rather than `git rebase`, can't conflict with a PR that still edited
@@ -59,23 +60,26 @@ jobs:
             git fetch --quiet origin main
             git reset --quiet --hard origin/main
             node scripts/changelog/fold.mjs
-            pnpm exec oxfmt CHANGELOG.md
-            git add CHANGELOG.md changelog.d
-            if git diff --cached --quiet; then
-              echo "Nothing to fold."
+            # Nothing folded (a README edit, or an earlier run folded it all): commit nothing.
+            if git diff --quiet -- changelog.d; then
               exit 0
             fi
-            # The release gate accepts exactly this shape; anything else would be refused there.
-            if git diff --cached --no-renames --name-status |
-              grep -vE $'^(M\tCHANGELOG\\.md|D\tchangelog\\.d/[^/]+\\.md)$'; then
-              echo "::error::The fold changed more than CHANGELOG.md and the fragments (above)."
-              exit 1
-            fi
+            node_modules/.bin/oxfmt CHANGELOG.md
+            git add CHANGELOG.md changelog.d
             n=$(git diff --cached --name-only --diff-filter=D -- changelog.d | wc -l | tr -d ' ')
             git commit --quiet -m "docs(changelog): fold $n fragment(s)"
+            # The release gate's own test of a fold commit, so it never meets one it refuses.
+            if ! why=$(scripts/release/is-changelog-fold.sh HEAD); then
+              echo "::error::The release gate wouldn't take this fold commit: $why"
+              exit 1
+            fi
             if git push --quiet origin HEAD:main; then
               echo "Folded $n fragment(s) into CHANGELOG.md."
               exit 0
+            fi
+            if [[ $(git ls-remote origin refs/heads/main | cut -f1) == "$(git rev-parse HEAD^)" ]]; then
+              echo "::error::The push was refused, and not because main moved."
+              exit 1
             fi
             echo "main moved (attempt $attempt); folding again on its new tip."
             sleep $((attempt * 5))

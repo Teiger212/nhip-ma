@@ -51,16 +51,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Against the base branch's current tip, not the event's base.sha, so a branch that merged
+      # main after a fold isn't blamed for the fold's CHANGELOG.md change. --no-renames, so a
+      # rename of CHANGELOG.md shows as its deletion.
       - name: The PR leaves CHANGELOG.md alone
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # --no-renames, so a rename of CHANGELOG.md shows its old path too.
-          if git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA" | grep -qx 'CHANGELOG.md'; then
+          git fetch --quiet --no-tags origin "$GITHUB_BASE_REF"
+          status=0
+          git diff --quiet --no-renames "FETCH_HEAD...$HEAD_SHA" -- CHANGELOG.md || status=$?
+          if ((status == 1)); then
             echo "::error file=CHANGELOG.md::This PR edits CHANGELOG.md. Put its entry in a fragment, changelog.d/<issue>-<slug>.md, instead (changelog.d/README.md); a workflow folds it in on main."
-            exit 1
           fi
+          exit "$status"
 
       - name: Each fragment is one dated section
         run: node scripts/changelog/fold.mjs --check
