@@ -1,7 +1,10 @@
 "use client";
 
+import { useSession } from "@auth/hooks/use-session";
 import { isInboxPath } from "@i18n/lib/locale-path";
 import { LocaleLink } from "@i18n/routing";
+import { GuestToasts } from "@inbox/components/GuestToasts";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { Badge, cn, Logo, SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -9,7 +12,20 @@ import type { PropsWithChildren } from "react";
 
 import { NavBar, useShellYourTurnCount } from "./NavBar";
 import { NotificationCenter } from "./NotificationCenter";
+import { TabTitle } from "./TabTitle";
 import { UserMenu } from "./UserMenu";
+
+/** While Nhịp is open: the Your-turn count in the tab title, and a toast when a guest writes (#136). */
+function OpenAppSignals() {
+	const { user } = useSession();
+	const yourTurnCount = useShellYourTurnCount();
+	return (
+		<>
+			<TabTitle count={yourTurnCount} />
+			<GuestToasts enabled={Boolean(user) && !isPlatformAdmin(user?.role)} />
+		</>
+	);
+}
 
 function AppMobileChrome() {
 	const t = useTranslations();
@@ -53,6 +69,7 @@ function AppContent({ children }: PropsWithChildren) {
 
 	return (
 		<>
+			<OpenAppSignals />
 			<NavBar />
 			<SidebarInset
 				className={cn(flush ? "min-h-0 overflow-hidden" : "lg:overflow-y-auto", "min-w-0")}

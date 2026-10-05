@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "@auth/hooks/use-session";
-import { isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
 import { useYourTurnCount } from "@inbox/lib/inbox-queries";
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
@@ -102,12 +101,8 @@ function NavItemLink({
  * page at every width. Off for the platform admin, who has no office queue.
  */
 export function useShellYourTurnCount(): number | null {
-	const pathname = useLocalePathname();
 	const { user } = useSession();
-	return useYourTurnCount({
-		enabled: Boolean(user) && !isPlatformAdmin(user?.role),
-		listMounted: isInboxPath(pathname) || isHomePath(pathname),
-	});
+	return useYourTurnCount({ enabled: Boolean(user) && !isPlatformAdmin(user?.role) });
 }
 
 export function NavBar() {

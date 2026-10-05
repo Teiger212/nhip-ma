@@ -544,6 +544,12 @@ export type InboxStore = {
 	recordAlert: (alert: NewAlert) => Promise<RecordedAlert>;
 	/** Delete alerts made before `before`; returns how many went. */
 	pruneAlerts: (before: Date) => Promise<number>;
+	/**
+	 * The thread an alert's link opens for `viewer` (ADR 0019, #136): its id when the alert is
+	 * the viewer's own and its thread is one they can open now; otherwise null, whatever the
+	 * reason, so a link says nothing about a thread to anyone else.
+	 */
+	alertThread: (alertId: string, viewer: InboxViewer) => Promise<string | null>;
 	/** The office's CRM (ADR 0003), or null when it has none; whether it holds an access token. */
 	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind; tokenSet: boolean } | null>;
 	/**

@@ -7,6 +7,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { displayName } from "../lib/display-name";
+import type { AlertLinkTarget } from "../lib/guest-alerts/alert-link";
+import {
+	clearHandedOffThread,
+	setInboxListShown,
+	useHandedOffThread,
+	useInboxSideBySide,
+} from "../lib/inbox-presence";
 import {
 	InboxApiError,
 	useApproveAndSend,
@@ -30,6 +37,12 @@ import { ThreadListState } from "./ThreadParts";
 
 const viewParser = parseAsStringLiteral(INBOX_VIEWS).withDefault("yourTurn");
 
+/**
+ * Why a link opened no thread: `?thread=` named none this operator can open ("not here", #141),
+ * or an alert's link or a toast's tap led to a guest a colleague now holds (#136).
+ */
+type LinkNotice = "notHere" | "colleague";
+
 /** What a row shows about a thread's state; when the row's differs from the open thread's, one of them is behind. */
 function turnState(thread: ConversationSummary): string {
 	return [thread.updatedAt, thread.unansweredInboundId, thread.sentAt, thread.owner?.id].join("|");
@@ -43,7 +56,7 @@ function turnState(thread: ConversationSummary): string {
  * summaries; the selected thread is loaded whole on its own and shown only once it is the
  * thread selected, never the previous one.
  */
-export function Inbox() {
+export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const t = useTranslations("inbox");
 	const disconnectedPipes = [...new Set(useDisconnectedEndpoints().map((item) => item.pipe))];
 	const conversationsQuery = useConversations();
@@ -59,11 +72,24 @@ export function Inbox() {
 	// `?thread=` opens one thread on arrival (Home's Waiting now and CRM leads link here); it
 	// is read once, then dropped from the URL, so the selection stays local like every other click.
 	const [threadParam, setThreadParam] = useQueryState("thread");
+	// `?alert=` was resolved on the server for this operator (the page): it is dropped from the
+	// URL like `?thread=`. What it opens, and a guest toast's tap, arrive here instead, so a
+	// thread's id never goes in a URL (ADR 0019).
+	const [alertParam, setAlertParam] = useQueryState("alert");
+	const handedOff = useHandedOffThread();
+	const [linkedThread, setLinkedThread] = useState<string | null>(alertLink?.threadId ?? handedOff);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const [detailOpen, setDetailOpen] = useState(threadParam !== null);
-	// The link named no thread this operator can open (an old link, another office's thread):
-	// say so, and open nothing until they choose, never another guest's thread (#141).
-	const [linkMissing, setLinkMissing] = useState(false);
+	const [detailOpen, setDetailOpen] = useState(
+		threadParam !== null || alertLink !== undefined || handedOff !== null,
+	);
+	// The link opened no thread: say so, and open nothing until they choose, never another
+	// guest's thread (#141). An alert that isn't the viewer's own, or whose thread they can no
+	// longer open, says "A colleague is answering this guest" and nothing more (#136).
+	const [notice, setNotice] = useState<LinkNotice | null>(
+		alertLink && alertLink.threadId === null ? "colleague" : null,
+	);
+	const sideBySide = useInboxSideBySide();
+	const listOnScreen = sideBySide || !detailOpen;
 	const [sendError, setSendError] = useState<string | null>(null);
 
 	const conversations = useMemo(() => {
@@ -79,33 +105,54 @@ export function Inbox() {
 	);
 	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
 
-	// A link (`?thread=`) waits for the list, then is judged against every thread the operator
-	// can open, not just the current view's: one they can't is "not here", never another
-	// guest's thread; one outside the view, search or owner filter (answered, say) opens in All.
-	// Otherwise selection follows the list: it stays put while the thread is there, otherwise
-	// advances (this is what moves to the next waiting guest after a send).
 	useEffect(() => {
-		if (threadParam !== null) {
+		if (alertParam !== null) void setAlertParam(null);
+	}, [alertParam, setAlertParam]);
+	// A guest toast tapped while the Inbox is already open (a phone, on a thread).
+	useEffect(() => {
+		if (handedOff === null) return;
+		setLinkedThread(handedOff);
+		setDetailOpen(true);
+		clearHandedOffThread();
+	}, [handedOff]);
+	// Guest toasts stay away while the list is on screen (spec #84).
+	useEffect(() => {
+		setInboxListShown(listOnScreen);
+	}, [listOnScreen]);
+	useEffect(() => () => setInboxListShown(false), []);
+
+	// A link (`?thread=`, an alert's, a toast's) waits for the list, then is judged against every
+	// thread the operator can open, not just the current view's: one they can't is a notice,
+	// never another guest's thread; one outside the view, search or owner filter (answered,
+	// say) opens in All. Otherwise selection follows the list: it stays put while the thread is
+	// there, otherwise advances (this is what moves to the next waiting guest after a send).
+	useEffect(() => {
+		const link = threadParam ?? linkedThread;
+		if (link !== null) {
 			if (!conversationsQuery.isSuccess) return;
-			if (!conversationsQuery.data.some((conversation) => conversation.id === threadParam)) {
-				setLinkMissing(true);
+			const done = () => {
+				if (threadParam !== null) void setThreadParam(null);
+				else setLinkedThread(null);
+			};
+			if (!conversationsQuery.data.some((conversation) => conversation.id === link)) {
+				setNotice(threadParam !== null ? "notHere" : "colleague");
 				setSelectedId(null);
-				void setThreadParam(null);
+				done();
 				return;
 			}
-			if (!ordered.some((conversation) => conversation.id === threadParam)) {
+			if (!ordered.some((conversation) => conversation.id === link)) {
 				void setView("all");
 				void setQuery(null);
 				void setOwnerFilter(null);
 				return;
 			}
-			setLinkMissing(false);
-			setSelectedId(threadParam);
+			setNotice(null);
+			setSelectedId(link);
 			setDetailOpen(true);
-			void setThreadParam(null);
+			done();
 			return;
 		}
-		if (conversationsQuery.isPending || linkMissing) return;
+		if (conversationsQuery.isPending || notice) return;
 		const next = nextSelection(ordered, selectedId);
 		if (next !== selectedId) setSelectedId(next);
 	}, [
@@ -116,10 +163,11 @@ export function Inbox() {
 		selectedId,
 		threadParam,
 		setThreadParam,
+		linkedThread,
 		setView,
 		setQuery,
 		setOwnerFilter,
-		linkMissing,
+		notice,
 	]);
 
 	const detailQuery = useConversation(selectedId);
@@ -183,7 +231,7 @@ export function Inbox() {
 	}
 
 	function openThread(id: string) {
-		setLinkMissing(false);
+		setNotice(null);
 		setSelectedId(id);
 		setDetailOpen(true);
 	}
@@ -236,7 +284,7 @@ export function Inbox() {
 						onQueryChange={(value) => void setQuery(value || null)}
 						view={view}
 						onViewChange={(next) => {
-							setLinkMissing(false);
+							setNotice(null);
 							void setView(next);
 						}}
 						counts={queue.counts}
@@ -264,17 +312,17 @@ export function Inbox() {
 						detailOpen ? "flex" : "md:flex hidden",
 					)}
 				>
-					{linkMissing ? (
+					{notice ? (
 						<ThreadListState
-							testId="thread-not-found"
-							title={t("threadNotFound")}
+							testId={notice === "colleague" ? "alert-colleague" : "thread-not-found"}
+							title={notice === "colleague" ? t("alerts.colleagueAnswering") : t("threadNotFound")}
 							action={
 								<Button
 									type="button"
 									variant="outline"
 									className="mt-3 min-h-11 md:hidden"
 									onClick={() => {
-										setLinkMissing(false);
+										setNotice(null);
 										setDetailOpen(false);
 									}}
 								>

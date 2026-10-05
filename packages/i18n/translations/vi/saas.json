@@ -855,7 +855,10 @@
 			"waitingUnnamed": "Một khách đang chờ",
 			"body": "{pipe} · {language}",
 			"testTitle": "Cảnh báo thử",
-			"testBody": "Thiết bị này đã bật cảnh báo."
+			"testBody": "Thiết bị này đã bật cảnh báo.",
+			"colleagueAnswering": "Một đồng nghiệp đang trả lời khách này",
+			"assignedToYou": "{name} đã được giao cho bạn",
+			"assignedToYouUnnamed": "Một khách đã được giao cho bạn"
 		},
 		"guestLanguage": {
 			"en": "tiếng Anh",

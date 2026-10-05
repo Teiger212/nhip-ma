@@ -12,9 +12,19 @@ export function guestAlertRecipients(
 	thread: { ownerId: string | null },
 	operators: AlertOperator[],
 ): AlertOperator[] {
-	const operating = operators.filter((operator) => !isPlatformAdmin(operator.platformRole));
-	if (thread.ownerId === null) {
-		return operating.filter((operator) => operator.manager);
-	}
-	return operating.filter((operator) => operator.userId === thread.ownerId);
+	return operators.filter(
+		(operator) => !isPlatformAdmin(operator.platformRole) && alertsOperator(thread, operator),
+	);
+}
+
+/**
+ * The same rule from one operator's side: whether a guest's message on this thread is theirs to
+ * hear about. The in-app toasts follow it (#136), so a manager is not toasted for an agent's
+ * guest that no alert would bring them.
+ */
+export function alertsOperator(
+	thread: { ownerId: string | null },
+	operator: { userId: string; manager: boolean },
+): boolean {
+	return thread.ownerId === null ? operator.manager : thread.ownerId === operator.userId;
 }

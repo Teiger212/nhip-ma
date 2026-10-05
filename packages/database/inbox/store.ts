@@ -1271,6 +1271,14 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
+		async alertThread(alertId, viewer) {
+			const row = await db.inboxAlert.findFirst({
+				where: { id: alertId, userId: viewer.userId, conversation: visibleTo(viewer) },
+				select: { conversationId: true },
+			});
+			return row?.conversationId ?? null;
+		},
+
 		async pruneWebhookDeliveries(before) {
 			const { count } = await db.webhookDelivery.deleteMany({
 				where: { receivedAt: { lt: before } },
