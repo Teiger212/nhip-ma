@@ -237,6 +237,15 @@ is renamed.
   language. No identifier and no text. Home counts tallies with the office's threads, so a past
   period's numbers never move when a guest is deleted.
 
+## Billing
+
+- **Seat**: one operator in an office, the unit the office pays for (ADR 0014). The
+  platform admin is never a seat.
+- **Lapsed**: an office whose paid period ended without renewal. Locked for operators;
+  guest messages keep landing and wait for it.
+- **Closing**: an office that asked to be deleted. Locked and unbilled, restorable for 30
+  days, then purged with its threads and its operators' accounts.
+
 ## Deliberately not
 
 Nhịp is not, and is not becoming, any of these; recorded so they do not creep in.

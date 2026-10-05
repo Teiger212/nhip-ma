@@ -8,6 +8,11 @@
 - **A thread returned to Unassigned alerts the other managers** (#133). One `returned` alert ("Minji is waiting") to every manager of the office except the one who returned it; never an agent or the platform admin, and no bell row.
 - **The operator a thread leaves gets a bell row naming the guest** (#133, ADR 0022 P4). Reassigned or returned by a manager other than themselves, they read "Minji was moved to another agent" (VI "Minji đã được chuyển cho nhân viên khác"; nameless "A guest was moved to another agent", VI "Một khách đã được chuyển cho nhân viên khác"), with no push, no alert in the log and no email. The row carries `{ threadId, guestName }`, so guest deletion takes it.
 - Two `NotificationType` values, `THREAD_ASSIGNED` and `THREAD_MOVED` (one migration each; an added enum value is one deploy). Neither is in the settings or emails: `createNotification` still emails only the kit's welcome. New store write `reassign`, `setOwner` that also returns the owner it replaced, read under the thread's row lock, so two managers at once each alert from the owner their own change took the thread from. The alerts run in the background after the owner change; a failure is logged as its error's kind, without thread or guest ids, and never undoes the change.
+## 2026-10-05 (only the platform admin deletes an office)
+
+### Fixed
+
+- **Only the platform admin deletes an office** (#185, ADR 0015). Better Auth let a manager holding the kit's `owner` role delete the whole office through `/organization/delete`, taking every thread, guest and member with it. An auth before-hook beside the owner and membership guards now refuses that route from anyone signed in but the platform admin: 403 `OFFICE_DELETE_PLATFORM_ADMIN_ONLY`. A request with no session is still the kit's to refuse (401). The platform admin's delete, from Admin → Organizations, is unchanged.
 
 ## 2026-10-05 (a late alert, the tab title and toasts)
 

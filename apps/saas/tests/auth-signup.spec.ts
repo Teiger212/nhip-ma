@@ -2,7 +2,7 @@ import { uniqueName } from "./support/data";
 import { ADMIN_LIST, expect, test } from "./support/fixtures";
 import { submitSignUp } from "./support/invitee";
 import { LoginPage } from "./support/login-page";
-import { deleteOffice, tryCreateOffice } from "./support/offices";
+import { tryCreateOffice } from "./support/offices";
 import { AGENT, NEW_PASSWORD } from "./support/seed";
 import { expectCannotSignIn, expectSignedOut, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
@@ -124,23 +124,16 @@ test.describe("Auth 4 — only the platform admin creates offices", () => {
 
 		await signInContext(page.context(), AGENT);
 		const agent = withOrigin(page.request);
+		// Should the refusal ever regress, the office the agent made stays in the throwaway E2E
+		// database: only the platform admin deletes an office (#185), and they are not in it.
 		const refused = await tryCreateOffice(agent, agentOffice);
-		try {
-			expect(refused.status()).toBe(403);
+		expect(refused.status()).toBe(403);
 
-			const agentOfficeRow = await admin.searchOffices(agentOffice);
-			await expect(admin.page.getByTestId("admin-no-results")).toBeVisible(ADMIN_LIST);
-			await expect(agentOfficeRow).toHaveCount(0);
+		const agentOfficeRow = await admin.searchOffices(agentOffice);
+		await expect(admin.page.getByTestId("admin-no-results")).toBeVisible(ADMIN_LIST);
+		await expect(agentOfficeRow).toHaveCount(0);
 
-			const created = await admin.createOffice("admin office");
-			await expect(await admin.searchOffices(created.name)).toBeVisible(ADMIN_LIST);
-		} finally {
-			// Should the refusal ever regress, the agent owns the office it made (not the
-			// admin): the agent deletes it.
-			if (refused.ok()) {
-				const { id } = (await refused.json()) as { id: string };
-				await deleteOffice(agent, id);
-			}
-		}
+		const created = await admin.createOffice("admin office");
+		await expect(await admin.searchOffices(created.name)).toBeVisible(ADMIN_LIST);
 	});
 });
