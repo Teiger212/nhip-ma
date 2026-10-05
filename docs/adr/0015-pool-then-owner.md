@@ -1,7 +1,9 @@
 # 0015. A thread starts in the office's pool and belongs to the agent who answers it
 
 Date: 2026-09-27. Status: accepted. Extends ADRs 0008 and 0010; reverses CONTEXT's
-"threads are shared".
+"threads are shared". "Pool, then owner" is superseded by ADR 0022 (2026-10-05): managers
+assign every new lead, and agents see only their own threads. The rest stands as ADR 0022
+lists it.
 
 ## Context
 

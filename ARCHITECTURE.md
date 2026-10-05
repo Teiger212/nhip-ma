@@ -158,16 +158,17 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
 - **Office setup** today is two steps in the admin area: create the organization, then on
   its page invite members (`InviteMemberForm`) and connect pipes. ADR 0018's single step is
   not built.
-- **Pool then owner** (ADR 0015): a thread starts in the office's pool (`ownerId` null).
-  The first agent whose approved reply is written claims it, inside `beginAnswer`'s
-  transaction and only while it is still unowned, so two agents answering at once end with
-  one owner; a reply sent from the vendor's own app claims nothing. The viewer is
-  `{ userId, officeId, role }`: an **agent** sees the pool and their own threads; a
-  **manager** (a kit `owner` or `admin` member, mapped in `resolveOffice`) sees every thread
-  and reassigns through `/api/conversations/:id/owner` (`setOwner`: to a member of the
-  office, or back to the pool). `/api/office` returns the role and `/api/office/agents` the
-  people a thread can go to. An owner whose account ends leaves their threads to the pool
-  (`onDelete: SetNull`). Spec: `tests/pool-owner.spec.ts`.
+- **Assigning leads** (ADR 0022, replacing ADR 0015's pool): a thread starts Unassigned
+  (`ownerId` null). The viewer is `{ userId, officeId, role }`: an **agent** sees only
+  their own threads (`visibleTo`, `visibleSql`); a **manager** (a kit `owner` or `admin`
+  member, mapped in `resolveOffice`) sees every thread and assigns or reassigns through
+  `/api/conversations/:id/owner` (`setOwner`: to a member of the office, or back to
+  Unassigned; the last call wins). A manager whose approved reply is written on an
+  Unassigned thread claims it, inside `beginAnswer`'s transaction and only while it is
+  still unowned; a reply sent from the vendor's own app, or the auto-reply (ADR 0021),
+  claims nothing. `/api/office` returns the role and `/api/office/agents` the people a
+  thread can go to. An owner whose account ends leaves their threads Unassigned
+  (`onDelete: SetNull`). Spec: `tests/assign.spec.ts`.
 - **Offboarding** (ADR 0013): when a membership ends, the account is deleted in the same
   request (`packages/auth/lib/offboarding.ts`), the platform admin excepted. `Answer`
   keeps `operatorName`.

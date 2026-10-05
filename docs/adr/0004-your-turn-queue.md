@@ -1,6 +1,7 @@
 # 0004. "Your turn" is the only pending state; the queue empties through outcomes
 
-Date: 2026-09-17. Status: accepted.
+Date: 2026-09-17. Status: accepted. Since ADR 0021, "the guest spoke last" reads "the guest's
+latest message has no human reply": the automatic greeting is not a reply.
 
 ## Context
 
