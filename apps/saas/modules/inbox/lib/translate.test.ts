@@ -12,7 +12,10 @@ vi.mock("@repo/auth", () => ({
 }));
 
 vi.mock("@repo/database", () => ({
-	getOrganizationMembershipsForUser: vi.fn(async () => [{ organizationId: "walk-office" }]),
+	// The office's manager, who reaches every thread, Unassigned included (ADR 0022).
+	getOrganizationMembershipsForUser: vi.fn(async () => [
+		{ organizationId: "walk-office", role: "admin" },
+	]),
 }));
 
 import { auth } from "@repo/auth";

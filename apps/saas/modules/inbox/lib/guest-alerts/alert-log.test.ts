@@ -139,7 +139,9 @@ test("officeOperators says who manages: kit owner and admin are managers, a memb
 	const store = await testInboxStore();
 	// One office each: a member of two offices opens no thread, so is never alerted.
 	await testDb.member.deleteMany({
-		where: { OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }] },
+		where: {
+			OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }],
+		},
 	});
 	await member(OFFICE, "agent-1", "member");
 	await member(OFFICE, "agent-2", "admin");
@@ -155,7 +157,9 @@ test("an Unassigned guest alerts the office's managers and no agent; once assign
 	const store = await testInboxStore();
 	// One office each: a member of two offices opens no thread, so is never alerted.
 	await testDb.member.deleteMany({
-		where: { OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }] },
+		where: {
+			OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }],
+		},
 	});
 	await member(OFFICE, "agent-1", "member");
 	await member(OFFICE, "agent-2", "member");

@@ -83,17 +83,17 @@ test("message ids are unique cuids, not COUNT(*)+1", async () => {
 	await store.close();
 });
 
-test("threads belong to one office, are shared inside it and invisible outside it", async () => {
+test("threads belong to one office, are shared by its managers and invisible outside it", async () => {
 	const store = await testInboxStore();
 	await store.upsertInbound(inbound("ours"), OFFICE);
 	await store.upsertInbound(inbound("theirs"), OTHER_OFFICE);
 
-	const agentA = { userId: "agent-1", officeId: OFFICE };
-	const agentA2 = { userId: "agent-2", officeId: OFFICE };
-	const agentB = { userId: "agent-3", officeId: OTHER_OFFICE };
+	const agentA = { userId: "agent-1", officeId: OFFICE, role: "manager" as const };
+	const agentA2 = { userId: "agent-2", officeId: OFFICE, role: "manager" as const };
+	const agentB = { userId: "agent-3", officeId: OTHER_OFFICE, role: "manager" as const };
 	const theirs = await threadId(OTHER_OFFICE, "theirs");
 
-	// Any agent in the office sees the office's threads; nobody sees another office's.
+	// Any manager of the office sees its threads (ADR 0022); nobody sees another office's.
 	expect((await store.listConversations(agentA)).map((c) => c.guestId)).toEqual(["ours"]);
 	expect((await store.listConversations(agentA2)).map((c) => c.guestId)).toEqual(["ours"]);
 	expect((await store.listConversations(agentB)).map((c) => c.guestId)).toEqual(["theirs"]);
@@ -476,7 +476,7 @@ test("approving a thread already deleted is not_found, on a first send and on a 
 	await store.close();
 });
 
-test("a delete committed under the first approval of a pool thread makes it not_found (ADR 0020)", async () => {
+test("a delete committed under the first approval of an Unassigned thread makes it not_found (ADR 0020)", async () => {
 	const store = await testInboxStore();
 	const { conv, input } = await approvable(store, "under-first");
 	expect(conv.owner).toBeNull();
@@ -498,9 +498,9 @@ test("a delete committed under the retry of a failed Answer makes it not_found (
 	await store.close();
 });
 
-test("a delete committed under the retry on an ownerless pool thread is not_found, not a deadlock (ADR 0020)", async () => {
+test("a delete committed under the retry on an Unassigned thread is not_found, not a deadlock (ADR 0020)", async () => {
 	const store = await testInboxStore();
-	// The failed first approval had no operator, so the thread is still in the pool and the
+	// The failed first approval had no operator, so the thread is still Unassigned and the
 	// retry's approval claims it: approve then writes the Answer and the conversation.
 	const { conv, input } = await approvable(store, "under-pool-retry", null);
 	await failedOnce(store, input);

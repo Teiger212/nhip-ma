@@ -8,10 +8,30 @@ import { guestAlertRecipients } from "./recipients";
  * Unassigned thread alerts the office's managers only; an owned thread alerts its owner only.
  * Recipients equal visibility: nobody is alerted about a thread they cannot open.
  */
-const agent1: AlertOperator = { userId: "agent-1", platformRole: "user", locale: "en", manager: false };
-const agent2: AlertOperator = { userId: "agent-2", platformRole: null, locale: null, manager: false };
-const manager: AlertOperator = { userId: "manager", platformRole: "user", locale: "vi", manager: true };
-const manager2: AlertOperator = { userId: "manager-2", platformRole: null, locale: null, manager: true };
+const agent1: AlertOperator = {
+	userId: "agent-1",
+	platformRole: "user",
+	locale: "en",
+	manager: false,
+};
+const agent2: AlertOperator = {
+	userId: "agent-2",
+	platformRole: null,
+	locale: null,
+	manager: false,
+};
+const manager: AlertOperator = {
+	userId: "manager",
+	platformRole: "user",
+	locale: "vi",
+	manager: true,
+};
+const manager2: AlertOperator = {
+	userId: "manager-2",
+	platformRole: null,
+	locale: null,
+	manager: true,
+};
 /** The office's creator, its kit `owner` (a manager by member role): their membership opens nothing. */
 const platformAdmin: AlertOperator = {
 	userId: "admin",
