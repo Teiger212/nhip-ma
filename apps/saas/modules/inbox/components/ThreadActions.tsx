@@ -126,6 +126,15 @@ export function DeleteGuestDialog({
 	const [note, setNote] = useState("");
 	const noteMissing = reason === "other" && !note.trim();
 
+	/** Closed, the dialog forgets its reason and note: each opening starts fresh. */
+	function setOpen(next: boolean) {
+		if (!next) {
+			setReason(null);
+			setNote("");
+		}
+		onOpenChange(next);
+	}
+
 	async function onConfirm() {
 		if (!reason || noteMissing) return;
 		try {
@@ -135,12 +144,12 @@ export function DeleteGuestDialog({
 				reason,
 				note: note.trim() || null,
 			});
-			onOpenChange(false);
+			setOpen(false);
 			toast.add({ title: t("done"), type: "success" });
 		} catch (error) {
 			const code = error instanceof InboxApiError ? error.code : null;
 			if (code === "not_found") {
-				onOpenChange(false);
+				setOpen(false);
 				toast.add({ title: t("gone") });
 				return;
 			}
@@ -152,7 +161,7 @@ export function DeleteGuestDialog({
 	}
 
 	return (
-		<AlertDialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
+		<AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
 			<AlertDialogContent data-test="delete-guest-dialog">
 				<AlertDialogHeader>
 					<AlertDialogTitle>{t("title", { name: displayName(conversation) })}</AlertDialogTitle>
