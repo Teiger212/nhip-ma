@@ -1,8 +1,14 @@
+import type { Admin } from "./support/fixtures";
 import { expect, test } from "./support/fixtures";
-import { expectInboxLoads, openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import {
+	expectInboxLoads,
+	newcomer,
+	openInboxAsNewAccount,
+	signUpByInvitationLink,
+} from "./support/invitee";
 import type { Office } from "./support/offices";
 import { acceptInvitation, deleteOffice, officesOf } from "./support/offices";
-import { AGENT, WALK_OFFICE_ID } from "./support/seed";
+import { AGENT, PLATFORM_ADMIN, WALK_OFFICE_ID } from "./support/seed";
 import { apiAs, withOrigin } from "./support/session";
 
 // scenario: docs/e2e-scenarios.md Auth 1
@@ -114,7 +120,69 @@ test.describe("Auth 6 — deleting an office needs permission first", () => {
 		await openInboxAsNewAccount(page);
 		await expectInboxLoads(page);
 	});
+
+	// #185, ADR 0015: the kit's `owner` role makes a manager, not someone who ends the office.
+	test("a manager holding the kit's owner role asking to delete the office is refused and the office stays", async ({
+		browser,
+		admin,
+	}) => {
+		test.slow();
+		// An office of the test's own: a red run really deletes it, and with it its members'
+		// accounts (ADR 0013).
+		const office = await admin.createOffice("Auth 6 owner");
+		const owners: string[] = [];
+		try {
+			const manager = await newcomer(browser, admin, office, "auth6-owner", "owner", owners);
+			try {
+				// The precondition: the manager is in the office, holding the kit's owner role, as
+				// does the platform admin who created it.
+				expect(await officesOf(manager.page)).toEqual([
+					expect.objectContaining({ id: office.id }),
+				]);
+				const before = await rolesIn(admin, office);
+				expect(before[manager.email], "the manager holds the kit's owner role").toBe("owner");
+				expect(before[PLATFORM_ADMIN.email], "the platform admin is the office's kit owner").toBe(
+					"owner",
+				);
+
+				const res = await deleteOffice(manager.api, office.id);
+
+				expect(res.status(), "refused: only the platform admin deletes an office").toBe(403);
+				await admin.expectOfficeExists(office);
+				const after = await rolesIn(admin, office);
+				expect(Object.keys(after), "the manager and the platform admin are still in it").toEqual(
+					expect.arrayContaining([manager.email, PLATFORM_ADMIN.email]),
+				);
+			} finally {
+				await manager.close();
+			}
+		} finally {
+			for (const invitationId of owners) {
+				await admin.cancelInvitation(invitationId);
+			}
+		}
+	});
+
+	test("the platform admin's delete still works: the office is gone", async ({ admin }) => {
+		const office = await admin.createOffice("Auth 6 platform admin");
+		await admin.expectOfficeExists(office);
+
+		const res = await deleteOffice(admin.api, office.id);
+
+		expect(res.status(), "the platform admin deletes the office").toBe(200);
+		await admin.expectOfficeGone(office);
+	});
 });
+
+/** Each member's kit role in the office, by email, as the platform admin reads the office. */
+async function rolesIn(admin: Admin, office: Office): Promise<Record<string, string>> {
+	const res = await admin.api.get("/api/auth/organization/get-full-organization", {
+		organizationId: office.id,
+	});
+	expect(res.ok(), "the platform admin reads the office").toBe(true);
+	const { members } = (await res.json()) as { members: { role: string; user: { email: string } }[] };
+	return Object.fromEntries(members.map((m) => [m.user.email, m.role]));
+}
 
 // scenario: docs/e2e-scenarios.md Auth 7
 test.describe("Auth 7 — only a manager replaces the logo", () => {
