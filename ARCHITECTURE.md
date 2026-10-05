@@ -62,11 +62,14 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   `packages/database/prisma/queries/push-subscriptions.ts`) with VAPID, urgency high and a
   1-hour TTL, at most 5 pushes in flight per event, deletes a device on 404 or 410, and logs a
   failure as its status only. Without the VAPID keys it logs "push not configured". It posts
-  only to `https` endpoints on Google's, Apple's, Mozilla's and Microsoft's push hosts, checked
-  on registration and again before each push. The payload is `{ alertId, tag, title, body,
+  only to `https` endpoints on Google's, Apple's, Mozilla's and Microsoft's push hosts, checked on registration and again before each push, in one normal form (the WHATWG
+  `href`, plain DNS labels, and the same host for Node's legacy parser, which `web-push`
+  connects with), which is what is stored and posted to. The payload is `{ alertId, tag, title, body,
 url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devices come and
-  go through `/api/alerts/devices` (POST, DELETE for this sign-in, `/test`), and a Better
-  Auth before-hook on `/sign-out` deletes the signing-out session's devices. `pnpm seed`
+  go through `/api/alerts/devices` (POST, DELETE for this sign-in, `/test`), and a Better Auth before-hook on `/sign-out` deletes the signing-out session's devices; a
+  session delete hook does the same for every other way a live session ends (revoking it or
+  the others, a ban, a password reset that revokes, the end of an impersonation), while an
+  expired session keeps its devices (A5). An impersonating admin cannot add a device. `pnpm seed`
   always uses the mock transport.
 - **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
   (`crmAdapterFor`: the mock and HubSpot), pure rules (`rules.ts`, `phone.ts`), and the CRM

@@ -123,9 +123,13 @@ pushed, and "Turn on alerts" stays hidden.
       `VAPID_PRIVATE_KEY` (Sensitive), `VAPID_SUBJECT` = `mailto:` an inbox you read (push
       services write there about abuse). Then redeploy.
 - [ ] **Verify on your phones** (#134, Q5; needs #135's "Turn on alerts" and "Send test
-      alert" on staging). On Android Chrome, and on an iPhone with Nhịp added to the Home
-      Screen (iOS 16.4+), each: - turn alerts on in the Inbox; - "Send test alert" in Settings → Notifications arrives; - a real guest message from your second Zalo account shows "<name> is waiting · Zalo ·
-      <language>" on the lock screen, never the text; - signing out on that phone stops them.
+      alert" on staging), on Android Chrome and on an iPhone with Nhịp added to the Home
+      Screen (iOS 16.4+):
+  - [ ] Turn alerts on in the Inbox.
+  - [ ] "Send test alert" in Settings → Notifications arrives.
+  - [ ] A real guest message from your second Zalo account shows "<name> is waiting · Zalo ·
+        <language>" on the lock screen, never the text.
+  - [ ] Signing out on that phone stops them.
 
 ### The greeting's model (ADR 0021)
 
