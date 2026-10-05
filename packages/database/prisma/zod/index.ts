@@ -190,6 +190,12 @@ export const GuestDeletionScalarFieldEnumSchema = z.enum(['id', 'officeId', 'act
 
 export type GuestDeletionScalarFieldEnum = z.infer<typeof GuestDeletionScalarFieldEnumSchema>;
 
+// File: PushSubscriptionScalarFieldEnum.schema.ts
+
+export const PushSubscriptionScalarFieldEnumSchema = z.enum(['id', 'userId', 'sessionId', 'endpoint', 'p256dh', 'auth', 'userAgent', 'createdAt', 'lastSuccessAt'])
+
+export type PushSubscriptionScalarFieldEnum = z.infer<typeof PushSubscriptionScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -793,4 +799,21 @@ export const GuestDeletionSchema = z.object({
 });
 
 export type GuestDeletionType = z.infer<typeof GuestDeletionSchema>;
+
+
+// File: PushSubscription.schema.ts
+
+export const PushSubscriptionSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  sessionId: z.string(),
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
+  userAgent: z.string().nullish(),
+  createdAt: z.date(),
+  lastSuccessAt: z.date().nullish(),
+});
+
+export type PushSubscriptionType = z.infer<typeof PushSubscriptionSchema>;
 

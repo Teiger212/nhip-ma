@@ -44,6 +44,7 @@ model User {
   ownedConversations       Conversation[]               @relation("ConversationOwner")
   inboxAlerts              InboxAlert[]
   guestDeletions           GuestDeletion[]
+  pushSubscriptions        PushSubscription[]
 
   @@unique([email])
   @@map("user")
@@ -730,4 +731,30 @@ model GuestDeletion {
   @@index([officeId, at])
   @@index([actorId])
   @@map("inbox_guest_deletion")
+}
+
+/// A device (ADR 0019): one browser's or installed app's web push subscription, on which an
+/// operator turned alerts on. It gets every alert for its user until they sign out there (the
+/// sign-out before-hook deletes the session's rows), the account ends (cascade, ADR 0013) or
+/// its push service answers 404 or 410. Not an inbox table: it belongs to a user, not an office.
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The sign-in that registered it: a plain column, no foreign key, so the row outlives an
+  /// expired session and only a sign-out (or the account's end) removes it.
+  sessionId     String
+  /// The push service's URL for this device: `https` on an allowed host only.
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  /// The browser's user agent when it subscribed, cut short: which device this is.
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  /// The last push its push service accepted.
+  lastSuccessAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@map("push_subscription")
 }
