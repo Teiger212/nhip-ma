@@ -725,7 +725,8 @@ model GuestDeletion {
   /// Who it was, kept once the account is gone (ADR 0013).
   actorName     String
   at            DateTime                @default(now())
-  reason        GuestDeletionReason
+  /// `other` for a receipt written before reasons were asked for (none in production).
+  reason        GuestDeletionReason     @default(other)
   /// The manager's note, up to 500 characters (required for `other`), with phone numbers and
   /// emails masked before it is stored, so the receipt still names no guest.
   note          String?

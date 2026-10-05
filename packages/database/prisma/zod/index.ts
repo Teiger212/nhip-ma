@@ -790,7 +790,7 @@ export const GuestDeletionSchema = z.object({
   actorId: z.string().nullish(),
   actorName: z.string(),
   at: z.date(),
-  reason: GuestDeletionReasonSchema,
+  reason: GuestDeletionReasonSchema.default("other"),
   note: z.string().nullish(),
   messages: z.number().int(),
   answers: z.number().int(),

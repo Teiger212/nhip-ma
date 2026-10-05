@@ -1,9 +1,6 @@
 -- CreateEnum
 CREATE TYPE "GuestDeletionCrmResult" AS ENUM ('deleted', 'unlinked', 'pending', 'failed');
 
--- CreateEnum
-CREATE TYPE "GuestDeletionReason" AS ENUM ('guest_request', 'duplicate_or_spam', 'test_data', 'other');
-
 -- CreateTable
 CREATE TABLE "inbox_lead_tally" (
     "id" TEXT NOT NULL,
@@ -25,8 +22,6 @@ CREATE TABLE "inbox_guest_deletion" (
     "actorId" TEXT,
     "actorName" TEXT NOT NULL,
     "at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "reason" "GuestDeletionReason" NOT NULL,
-    "note" TEXT,
     "messages" INTEGER NOT NULL,
     "answers" INTEGER NOT NULL,
     "translations" INTEGER NOT NULL,
