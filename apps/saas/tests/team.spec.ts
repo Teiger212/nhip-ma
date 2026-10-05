@@ -688,6 +688,18 @@ test.describe("Team 5 — the platform admin's membership is theirs alone", () =
 							organizationId: office.id,
 						}),
 				});
+				// The same role change with a stray `memberIdOrEmail` beside the real `memberId` (a
+				// field the kit ignores here): the refusal reads the field the kit acts on.
+				const changeRoleWithDecoy = (decoy: string | number) => ({
+					what: `change the platform admin's role to member, with a stray memberIdOrEmail ${JSON.stringify(decoy)}`,
+					ask: (api: Api) =>
+						api.post("/api/auth/organization/update-member-role", {
+							memberId,
+							memberIdOrEmail: decoy,
+							role: "member",
+							organizationId: office.id,
+						}),
+				});
 				const remove = (by: "member id" | "email") => ({
 					what: `remove the platform admin by ${by}`,
 					ask: (api: Api) =>
@@ -699,6 +711,8 @@ test.describe("Team 5 — the platform admin's membership is theirs alone", () =
 				// Role changes first, removals last, the kit owner's last of all: a removal taken in a
 				// red run leaves nothing for the asks after it to remove.
 				const asks = [
+					{ ...owner, ...changeRoleWithDecoy("someone") },
+					{ ...owner, ...changeRoleWithDecoy(1) },
 					{ ...owner, ...changeRole("admin") },
 					{ ...kitAdmin, ...changeRole("admin") },
 					{ ...owner, ...changeRole("member") },
