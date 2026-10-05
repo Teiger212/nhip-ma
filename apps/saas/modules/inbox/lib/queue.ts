@@ -155,3 +155,15 @@ export function nextSelection(
 	}
 	return ordered[0]?.id ?? null;
 }
+
+/**
+ * Home's Waiting now: the Your-turn threads in the queue's order (visible, then quiet).
+ */
+export function waitingNow(
+	conversations: ConversationSummary[],
+	_options: { manager: boolean },
+	now: number = Date.now(),
+): ConversationSummary[] {
+	const queue = buildQueueView(conversations, "yourTurn", "", now);
+	return [...queue.visible, ...queue.quiet];
+}
