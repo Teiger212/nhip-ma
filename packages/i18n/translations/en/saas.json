@@ -916,6 +916,22 @@
 			"inCrm": "In CRM: {name}",
 			"won": "Won",
 			"lost": "Lost"
+		},
+		"deletion": {
+			"actions": "Thread actions",
+			"delete": "Delete guest data",
+			"sendingReason": "A reply is still sending",
+			"title": "Delete {name}'s data?",
+			"what": "Nhịp deletes this thread's {count, plural, one {# message} other {# messages}} with their translations, the suggested reply and the extracted details.",
+			"keptZalo": "Kept elsewhere: the chat in your Zalo OA.",
+			"keptWhatsapp": "Kept elsewhere: the chat in your WhatsApp.",
+			"irreversible": "This can't be undone.",
+			"cancel": "Cancel",
+			"confirm": "Delete guest data",
+			"deleting": "Deleting…",
+			"done": "Guest data deleted",
+			"failed": "Could not delete the guest's data. Try again.",
+			"gone": "This thread was already deleted."
 		}
 	}
 }

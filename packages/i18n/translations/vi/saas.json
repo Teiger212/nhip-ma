@@ -916,6 +916,22 @@
 			"inCrm": "Trong CRM: {name}",
 			"won": "Chốt",
 			"lost": "Mất"
+		},
+		"deletion": {
+			"actions": "Thao tác với cuộc trò chuyện",
+			"delete": "Xóa dữ liệu khách",
+			"sendingReason": "Một câu trả lời vẫn đang được gửi",
+			"title": "Xóa dữ liệu của {name}?",
+			"what": "Nhịp xóa {count, plural, other {# tin nhắn}} của cuộc trò chuyện này cùng bản dịch, câu trả lời gợi ý và thông tin đã trích xuất.",
+			"keptZalo": "Vẫn giữ ở nơi khác: cuộc trò chuyện trong Zalo OA của bạn.",
+			"keptWhatsapp": "Vẫn giữ ở nơi khác: cuộc trò chuyện trong WhatsApp của bạn.",
+			"irreversible": "Không thể hoàn tác.",
+			"cancel": "Hủy",
+			"confirm": "Xóa dữ liệu khách",
+			"deleting": "Đang xóa…",
+			"done": "Đã xóa dữ liệu khách",
+			"failed": "Không xóa được dữ liệu của khách. Hãy thử lại.",
+			"gone": "Cuộc trò chuyện này đã bị xóa."
 		}
 	}
 }

@@ -220,8 +220,8 @@ go-live.
   - **Elsewhere:** what about these, and do they need naming in the A05 dossier or in a reply
     to the guest?
     - the model provider's retention (OpenRouter);
-    - Vercel's request logs, whose URL paths carry the thread id, and so the guest's phone or
-      Zalo id;
+    - Vercel's request logs, whose URL paths carry the thread id (opaque since #141: no phone
+      or Zalo id, but it names a guest who is now deleted);
     - the webhook log's vendor message ids (kept about 30 days);
     - alerts already shown on operators' devices.
   - **Access:** is an export of the guest's data required before or instead of deletion? (Not

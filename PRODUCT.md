@@ -244,8 +244,9 @@ PRs; "open" means not started unless it says otherwise.
    #68, #69–#71, the staging demo (#116), and the client's own CRM as intake answers it
    (#101 if Attio). With any real CRM, the WhatsApp `wa_id` "+" fix ships at go-live; the
    rest of #125 after. The built-in CRM (#126) comes after go-live. _Open_: billing
-   (#93; the kit's screens stay hidden), guest-data deletion (#85, decided in ADR 0020),
-   "Coming soon" controls.
+   (#93; the kit's screens stay hidden), guest-data deletion's CRM checkbox (#139; deleting
+   in Nhịp, with the lead tally and the receipt, shipped with #138; ADR 0020), "Coming soon"
+   controls.
 6. **Go-live gate**: the remaining red-team surfaces and a re-run, the restore drill, the
    dogfood checklist, Vietnam's personal data protection duties (the cross-border transfer
    impact assessment filed with A05 for hosting in Singapore, the model providers, the push

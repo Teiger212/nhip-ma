@@ -202,7 +202,8 @@ is renamed.
 - **Guest deletion**: a manager deleting one guest's data from Nhịp on request (Vietnam's
   PDPL; ADR 0020), from the thread header's ⋯ menu.
   - **What goes:** the thread and everything under it: messages, translations, the suggested
-    reply, sent replies, the extracted details and the CRM link.
+    reply, sent replies, the extracted details, the CRM link, and any bell row that named the
+    thread.
   - **The CRM lead goes too only if the manager ticks it.** The box is ticked by default when
     Nhịp created the lead, and unticked when Nhịp found it there. Ticked, Nhịp deletes what it
     made in the CRM: the deal, and the contact only if Nhịp created it and it has no other deal.
