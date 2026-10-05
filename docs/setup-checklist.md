@@ -118,7 +118,8 @@ staging device never receives prod's guests. Until they are set, alerts are logg
 pushed, and "Turn on alerts" stays hidden.
 
 - [ ] **Generate the pair** in your own terminal: `npx web-push generate-vapid-keys`. Don't
-      paste the private key in chat or a file.
+      paste the private key in chat or a file. Never reuse the pair once committed in
+      `.env.e2e` (#135): staging and prod refuse it at startup.
 - [ ] **Vercel, staging, all three together:** `VAPID_PUBLIC_KEY` (not sensitive),
       `VAPID_PRIVATE_KEY` (Sensitive), `VAPID_SUBJECT` = `mailto:` an inbox you read (push
       services write there about abuse). Then redeploy.

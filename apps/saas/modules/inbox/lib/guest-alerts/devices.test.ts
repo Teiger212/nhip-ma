@@ -57,52 +57,105 @@ function registration(name: string, overrides: Partial<NewPushSubscription> = {}
 	} satisfies NewPushSubscription;
 }
 
+/** The sign-in a registration names, as a real session row: a device needs one (#135). */
+async function signedIn(userId: string, sessionId: string) {
+	const now = new Date();
+	await testDb.session.upsert({
+		where: { id: sessionId },
+		create: {
+			id: sessionId,
+			userId,
+			token: `token-${sessionId}`,
+			expiresAt: new Date(now.getTime() + 60 * MINUTE),
+			createdAt: now,
+			updatedAt: now,
+		},
+		update: { userId },
+	});
+}
+
+/** Register a device from a live sign-in, as the API does. */
+async function register(subscription: NewPushSubscription) {
+	await signedIn(subscription.userId, subscription.sessionId);
+	return addPushSubscription(subscription, testDb);
+}
+
 test("registering an endpoint again from another sign-in moves it there, still one device", async () => {
 	const phone = registration("phone");
-	await addPushSubscription(phone, testDb);
-	await addPushSubscription({ ...phone, sessionId: "session-2" }, testDb);
+	await register(phone);
+	await register({ ...phone, sessionId: "session-2" });
 
 	const rows = await testDb.pushSubscription.findMany({ where: { endpoint: phone.endpoint } });
 	expect(rows).toHaveLength(1);
 	expect(rows[0]).toMatchObject({ userId: "agent-1", sessionId: "session-2" });
 });
 
-test("an endpoint another operator holds moves to the one registering it, and the first gets nothing on it (Q1)", async () => {
+test("the same browser registering under another operator moves to them, and the first gets nothing on it (Q1)", async () => {
+	// A shared laptop changes hands: the browser posts its one subscription again, same keys.
 	const shared = registration("shared-phone", { userId: "agent-1", sessionId: "session-a1" });
-	await addPushSubscription(shared, testDb);
-	const handedOn = { ...registration("shared-phone"), userId: "agent-2", sessionId: "session-a2" };
-	await addPushSubscription(handedOn, testDb);
+	await register(shared);
+	const handedOn = { ...shared, userId: "agent-2", sessionId: "session-a2" };
+
+	expect(await register(handedOn)).toBe("added");
 
 	const rows = await testDb.pushSubscription.findMany({ where: { endpoint: shared.endpoint } });
 	expect(rows).toHaveLength(1);
-	expect(rows[0]).toMatchObject({
-		userId: "agent-2",
-		sessionId: "session-a2",
-		p256dh: handedOn.p256dh,
-		auth: handedOn.auth,
-	});
+	expect(rows[0]).toMatchObject({ userId: "agent-2", sessionId: "session-a2" });
 	expect(await pushSubscriptionsForUser("agent-1", testDb)).toEqual([]);
 	expect((await pushSubscriptionsForUser("agent-2", testDb)).map((row) => row.endpoint)).toEqual([
 		shared.endpoint,
 	]);
 });
 
+test("another operator posting a held endpoint with other keys is refused, and its holder keeps it (#135)", async () => {
+	// Knowing someone's endpoint is not owning their browser: without its keys, nothing moves.
+	const victim = registration("victims-phone", { userId: "agent-1", sessionId: "session-v" });
+	await register(victim);
+	const hijack = { ...registration("victims-phone"), userId: "agent-2", sessionId: "session-h" };
+
+	expect(await register(hijack)).toBe("taken");
+
+	const rows = await testDb.pushSubscription.findMany({ where: { endpoint: victim.endpoint } });
+	expect(rows).toHaveLength(1);
+	expect(rows[0]).toMatchObject({
+		userId: "agent-1",
+		sessionId: "session-v",
+		p256dh: victim.p256dh,
+		auth: victim.auth,
+	});
+	expect(await pushSubscriptionsForUser("agent-2", testDb)).toEqual([]);
+});
+
+test("a device registered as its sign-in ends does not outlive it (#135)", async () => {
+	// The API checked the session, then the operator signed out before the row was written.
+	await signedIn("agent-1", "session-ending");
+	await testDb.session.delete({ where: { id: "session-ending" } });
+
+	const outcome = await addPushSubscription(
+		registration("late", { sessionId: "session-ending" }),
+		testDb,
+	);
+
+	expect(outcome).toBe("signed_out");
+	expect(await testDb.pushSubscription.count({ where: { sessionId: "session-ending" } })).toBe(0);
+	expect(await pushSubscriptionsForUser("agent-1", testDb)).toEqual([]);
+});
+
 test("two operators registering one endpoint at the same moment leave exactly one device", async () => {
 	const endpoint = registration("race").endpoint;
-	await Promise.all([
-		addPushSubscription({ ...registration("race"), endpoint, userId: "agent-1" }, testDb),
-		addPushSubscription({ ...registration("race"), endpoint, userId: "agent-2" }, testDb),
+	const outcomes = await Promise.all([
+		register({ ...registration("race"), endpoint, userId: "agent-1", sessionId: "session-r1" }),
+		register({ ...registration("race"), endpoint, userId: "agent-2", sessionId: "session-r2" }),
 	]);
 	expect(await testDb.pushSubscription.count({ where: { endpoint } })).toBe(1);
+	// Their keys differ, so whoever comes second is refused rather than taking it over.
+	expect([...outcomes].sort()).toEqual(["added", "taken"]);
 });
 
 test("an operator keeps 10 devices; the eleventh drops the oldest (Q2)", async () => {
 	expect(DEVICES_PER_USER).toBe(10);
 	for (let i = 0; i < 11; i++) {
-		await addPushSubscription(
-			registration(`device-${i}`, { at: new Date(at.getTime() + i * MINUTE) }),
-			testDb,
-		);
+		await register(registration(`device-${i}`, { at: new Date(at.getTime() + i * MINUTE) }));
 	}
 	const kept = (await pushSubscriptionsForUser("agent-1", testDb)).map((row) => row.endpoint);
 	expect(kept).toHaveLength(10);
@@ -111,13 +164,10 @@ test("an operator keeps 10 devices; the eleventh drops the oldest (Q2)", async (
 });
 
 test("signing out removes that sign-in's devices and no one else's", async () => {
-	await addPushSubscription(registration("here-1", { sessionId: "session-out" }), testDb);
-	await addPushSubscription(registration("here-2", { sessionId: "session-out" }), testDb);
-	await addPushSubscription(registration("elsewhere", { sessionId: "session-stays" }), testDb);
-	await addPushSubscription(
-		registration("colleague", { userId: "agent-2", sessionId: "session-colleague" }),
-		testDb,
-	);
+	await register(registration("here-1", { sessionId: "session-out" }));
+	await register(registration("here-2", { sessionId: "session-out" }));
+	await register(registration("elsewhere", { sessionId: "session-stays" }));
+	await register(registration("colleague", { userId: "agent-2", sessionId: "session-colleague" }));
 
 	expect(await deletePushSubscriptionsForSession("session-out", testDb)).toBe(2);
 
@@ -140,7 +190,7 @@ test("an account that ends takes its devices with it (ADR 0013)", async () => {
 			updatedAt: now,
 		},
 	});
-	await addPushSubscription(registration("leaving", { userId: "leaving" }), testDb);
+	await register(registration("leaving", { userId: "leaving" }));
 	await testDb.user.delete({ where: { id: "leaving" } });
 	expect(await testDb.pushSubscription.count({ where: { userId: "leaving" } })).toBe(0);
 });
@@ -186,7 +236,7 @@ const VAPID: Vapid = {
 
 test("a test alert with no device on this sign-in writes nothing", async () => {
 	const store = createInboxStore(testDb);
-	await addPushSubscription(registration("other-browser", { sessionId: "session-other" }), testDb);
+	await register(registration("other-browser", { sessionId: "session-other" }));
 	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
 
 	const outcome = await sendTestAlert(runtime, {
@@ -204,8 +254,8 @@ test("a test alert with no device on this sign-in writes nothing", async () => {
 test("a test alert writes one sounding `test` row and pushes to this sign-in's devices only", async () => {
 	const store = createInboxStore(testDb);
 	const here = registration("this-browser", { sessionId: "session-here" });
-	await addPushSubscription(here, testDb);
-	await addPushSubscription(registration("other-browser", { sessionId: "session-other" }), testDb);
+	await register(here);
+	await register(registration("other-browser", { sessionId: "session-other" }));
 	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
 
 	const outcome = await sendTestAlert(

@@ -705,6 +705,23 @@
 			"columns": {
 				"type": "Thông báo",
 				"inApp": "Trong ứng dụng"
+			},
+			"thisDevice": {
+				"title": "Thiết bị này",
+				"description": "Cảnh báo trên điện thoại hoặc máy tính này khi khách nhắn tin.",
+				"on": "Cảnh báo đang bật trên thiết bị này.",
+				"off": "Cảnh báo đang tắt trên thiết bị này.",
+				"turnOn": "Bật cảnh báo",
+				"sendTest": "Gửi cảnh báo thử",
+				"sent": "Đã gửi cảnh báo thử.",
+				"testFailed": "Chưa gửi được cảnh báo thử. Hãy thử lại.",
+				"turnOnFailed": "Chưa bật được cảnh báo. Hãy thử lại.",
+				"unavailable": "Máy chủ này chưa thiết lập cảnh báo.",
+				"unsupported": "Trình duyệt này không nhận được cảnh báo. Hãy dùng Chrome, hoặc mở Nhịp từ Màn hình chính của iPhone.",
+				"blocked": "Thông báo đang bị chặn. Hãy cho phép thông báo cho trang này trong cài đặt trình duyệt, rồi tải lại trang.",
+				"iphoneShare": "Trong Safari, chạm vào Chia sẻ.",
+				"iphoneAdd": "Chọn Thêm vào MH chính.",
+				"iphoneOpen": "Mở Nhịp từ Màn hình chính và bật cảnh báo."
 			}
 		},
 		"menu": {
@@ -964,6 +981,29 @@
 			"noteOptional": "Ghi chú (không bắt buộc)",
 			"noteHint": "Đừng ghi tên hay thông tin liên lạc của khách.",
 			"noteRequired": "Hãy thêm ghi chú cho lý do \"Khác\"."
+		},
+		"alertsPanel": {
+			"turnOn": "Bật cảnh báo",
+			"notNow": "Để sau",
+			"failed": "Chưa bật được cảnh báo. Hãy thử lại.",
+			"ask": {
+				"title": "Nhận cảnh báo khi khách nhắn tin.",
+				"body": "Thiết bị này báo ngay khi có khách đang chờ, kể cả khi Nhịp đã đóng."
+			},
+			"gone": {
+				"title": "Cảnh báo đã ngừng trên thiết bị này.",
+				"body": "Bật lại để biết khi khách nhắn tin."
+			},
+			"blocked": {
+				"title": "Thông báo của Nhịp đang bị chặn trên thiết bị này.",
+				"body": "Hãy cho phép thông báo cho trang này trong cài đặt trình duyệt, rồi tải lại trang."
+			},
+			"iphone": {
+				"title": "Trên iPhone, cần thêm Nhịp vào Màn hình chính để nhận cảnh báo.",
+				"share": "Trong Safari, chạm vào Chia sẻ.",
+				"add": "Chọn Thêm vào MH chính.",
+				"open": "Mở Nhịp từ Màn hình chính và bật cảnh báo."
+			}
 		}
 	}
 }
