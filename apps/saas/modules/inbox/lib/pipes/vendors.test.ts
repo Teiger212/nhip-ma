@@ -7,6 +7,7 @@ import {
 	parseZaloWebhook,
 	verifyWhatsAppSignature,
 	verifyZaloSignature,
+	ZALO_SIGNATURE_WINDOW_MS,
 } from "./vendors";
 
 const WA_SECRET = "wa-app-secret";
@@ -36,23 +37,51 @@ const ZALO_BODY = JSON.stringify({
 	sender: { id: "guest-1" },
 	message: { text: "Xin chào", msg_id: "m1" },
 });
+/** The signed body's timestamp, as the verifier's clock. */
+const ZALO_NOW = 1725600000000;
 const zaloSig = (body: string, secret = ZALO_SECRET, appId = "123456", ts = "1725600000000") =>
 	`mac=${crypto.createHash("sha256").update(`${appId}${body}${ts}${secret}`).digest("hex")}`;
 
 test("Zalo signature fails closed when the OA secret is missing", () => {
-	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY), undefined)).toBe(false);
-	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY), "")).toBe(false);
+	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY), undefined, ZALO_NOW)).toBe(false);
+	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY), "", ZALO_NOW)).toBe(false);
 });
 
 test("Zalo signature accepts sha256(appId + body + timestamp + secret) and rejects tampering", () => {
-	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY), ZALO_SECRET)).toBe(true);
+	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY), ZALO_SECRET, ZALO_NOW)).toBe(true);
 	// Bare hex without the mac= prefix is also accepted.
-	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY).slice(4), ZALO_SECRET)).toBe(true);
-	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY, "other"), ZALO_SECRET)).toBe(false);
-	expect(verifyZaloSignature(ZALO_BODY, null, ZALO_SECRET)).toBe(false);
-	expect(verifyZaloSignature("not json", zaloSig("not json"), ZALO_SECRET)).toBe(false);
+	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY).slice(4), ZALO_SECRET, ZALO_NOW)).toBe(
+		true,
+	);
+	expect(verifyZaloSignature(ZALO_BODY, zaloSig(ZALO_BODY, "other"), ZALO_SECRET, ZALO_NOW)).toBe(
+		false,
+	);
+	expect(verifyZaloSignature(ZALO_BODY, null, ZALO_SECRET, ZALO_NOW)).toBe(false);
+	expect(verifyZaloSignature("not json", zaloSig("not json"), ZALO_SECRET, ZALO_NOW)).toBe(false);
 	const noTimestamp = JSON.stringify({ app_id: "123456", event_name: "user_send_text" });
-	expect(verifyZaloSignature(noTimestamp, zaloSig(noTimestamp), ZALO_SECRET)).toBe(false);
+	expect(verifyZaloSignature(noTimestamp, zaloSig(noTimestamp), ZALO_SECRET, ZALO_NOW)).toBe(false);
+});
+
+test("Zalo signature refuses a timestamp outside the replay window", () => {
+	const sig = zaloSig(ZALO_BODY);
+	expect(
+		verifyZaloSignature(ZALO_BODY, sig, ZALO_SECRET, ZALO_NOW + ZALO_SIGNATURE_WINDOW_MS),
+	).toBe(true);
+	expect(
+		verifyZaloSignature(ZALO_BODY, sig, ZALO_SECRET, ZALO_NOW + ZALO_SIGNATURE_WINDOW_MS + 1),
+	).toBe(false);
+	expect(
+		verifyZaloSignature(ZALO_BODY, sig, ZALO_SECRET, ZALO_NOW - ZALO_SIGNATURE_WINDOW_MS - 1),
+	).toBe(false);
+	const badTimestamp = JSON.stringify({ app_id: "123456", timestamp: "soon" });
+	expect(
+		verifyZaloSignature(
+			badTimestamp,
+			zaloSig(badTimestamp, ZALO_SECRET, "123456", "soon"),
+			ZALO_SECRET,
+			ZALO_NOW,
+		),
+	).toBe(false);
 });
 
 test("Zalo parser still reads the signed body shape", () => {

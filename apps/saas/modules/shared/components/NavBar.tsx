@@ -2,8 +2,11 @@
 
 import { useSession } from "@auth/hooks/use-session";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
+import { useYourTurnCount } from "@inbox/lib/inbox-queries";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { config as paymentsConfig } from "@repo/payments/config";
 import {
+	Badge,
 	cn,
 	Logo,
 	Sidebar,
@@ -24,7 +27,8 @@ import {
 } from "@repo/ui";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { UserMenu } from "@shared/components/UserMenu";
-import { GlobeIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
+import { HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { buildSettingsSections, buildWalkNav, type WalkNavItem } from "../lib/walk-nav";
@@ -32,14 +36,12 @@ import { buildSettingsSections, buildWalkNav, type WalkNavItem } from "../lib/wa
 const NAV_ICONS = {
 	home: HomeIcon,
 	inbox: InboxIcon,
-	globe: GlobeIcon,
 	shield: ShieldCheckIcon,
 } as const;
 
 const NAV_LABEL_KEYS = {
 	home: "app.menu.home",
 	inbox: "app.menu.inbox",
-	international: "app.menu.international",
 	admin: "app.menu.admin",
 } as const;
 
@@ -55,46 +57,52 @@ function NavItemLink({
 	label,
 	onNavigate,
 	showLabel,
+	count,
+	countLabel,
 }: {
 	item: WalkNavItem;
 	label: string;
 	onNavigate?: () => void;
 	showLabel: boolean;
+	/** The Your-turn count beside Inbox; none while it is zero or unknown. */
+	count?: number | null;
+	countLabel?: string;
 }) {
 	const Icon = NAV_ICONS[item.iconName];
-
-	if (item.disabled) {
-		return (
-			<SidebarMenuButton
-				isActive={false}
-				tooltip={label}
-				disabled
-				aria-disabled
-				className="opacity-45"
-			>
-				<Icon />
-				<span className={cn(!showLabel && "sr-only")}>{label}</span>
-			</SidebarMenuButton>
-		);
-	}
 
 	return (
 		<SidebarMenuButton
 			isActive={item.isActive}
 			tooltip={label}
-			className={
-				item.isActive
-					? "shadow-[inset_2px_0_0_var(--sidebar-primary)] data-[active=true]:bg-sidebar-accent"
-					: undefined
-			}
+			variant="chip"
 			render={(props) => (
 				<LocaleLink {...props} href={item.href} onClick={onNavigate} prefetch>
 					<Icon />
 					<span className={cn(!showLabel && "sr-only")}>{label}</span>
+					{count ? (
+						<span
+							data-test="nav-your-turn-count"
+							aria-label={countLabel}
+							className={cn("ml-auto", !showLabel && "sr-only")}
+						>
+							<Badge status="warning" numeric>
+								{count}
+							</Badge>
+						</span>
+					) : null}
 				</LocaleLink>
 			)}
 		/>
 	);
+}
+
+/**
+ * The Your-turn count for the shell (sidebar and phone top bar), so it is on screen on every
+ * page at every width. Off for the platform admin, who has no office queue.
+ */
+export function useShellYourTurnCount(): number | null {
+	const { user } = useSession();
+	return useYourTurnCount({ enabled: Boolean(user) && !isPlatformAdmin(user?.role) });
 }
 
 export function NavBar() {
@@ -104,9 +112,11 @@ export function NavBar() {
 	const showLabels = isMobile || state === "expanded";
 
 	const { user } = useSession();
-	const items = buildWalkNav(pathname, { isAdmin: user?.role === "admin" });
+	const isAdmin = isPlatformAdmin(user?.role);
+	const items = buildWalkNav(pathname, { isAdmin });
+	const yourTurnCount = useShellYourTurnCount();
 	const settingsSections = buildSettingsSections(pathname, {
-		billingAttachedToUser: paymentsConfig.billingAttachedTo === "user",
+		billing: KIT_SCREENS.billing && paymentsConfig.billingAttachedTo === "user",
 	});
 
 	function closeMobileNav() {
@@ -129,11 +139,15 @@ export function NavBar() {
 								size="lg"
 								tooltip={t("app.menu.start")}
 								render={(props) => (
-									<LocaleLink {...props} href="/inbox" prefetch>
-										<Logo withLabel={false} className="text-sidebar-foreground" />
+									<LocaleLink
+										{...props}
+										href={isAdmin ? "/admin/organizations" : "/inbox"}
+										prefetch
+									>
+										<Logo withLabel={false} />
 										<span
 											className={cn(
-												"font-semibold tracking-tight text-[0.95rem]",
+												"font-semibold tracking-tight text-brand",
 												!showLabels && "sr-only",
 											)}
 										>
@@ -159,6 +173,10 @@ export function NavBar() {
 										label={t(NAV_LABEL_KEYS[item.id])}
 										onNavigate={closeMobileNav}
 										showLabel={showLabels}
+										count={item.id === "inbox" ? yourTurnCount : null}
+										countLabel={
+											yourTurnCount ? t("inbox.queueCount", { count: yourTurnCount }) : undefined
+										}
 									/>
 								</SidebarMenuItem>
 							))}

@@ -1,12 +1,16 @@
 import { passkey } from "@better-auth/passkey";
 import {
 	db,
+	deletePushSubscriptionsForSession,
+	findPlatformAdminIds,
 	getInvitationById,
 	getOrganizationMembershipsForUser,
 	getPurchasesByOrganizationId,
 	getPurchasesByUserId,
 	getUserByEmail,
 	getUserById,
+	isPlatformAdminMembership,
+	keepOldestMembership,
 } from "@repo/database";
 import { config as i18nConfig, type Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
@@ -14,9 +18,9 @@ import { sendEmail } from "@repo/mail";
 import { createWelcomeNotification } from "@repo/notifications";
 import { cancelSubscription } from "@repo/payments";
 import { getBaseUrl } from "@repo/utils";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { openAPI } from "better-auth/plugins";
 import { admin } from "better-auth/plugins/admin";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -27,6 +31,7 @@ import { parseCookie as parseCookies } from "cookie";
 import { config } from "./config";
 import { officeEndHooks } from "./lib/offboarding";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import { grantsOwner, isPlatformAdmin } from "./lib/roles";
 import { invitationOnlyPlugin } from "./plugins/invitation-only";
 
 const getLocaleFromRequest = (request?: Request) => {
@@ -58,13 +63,33 @@ function socialProvider<T extends object>(
 const google = socialProvider(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET,
-	(credentials) => ({ ...credentials, scope: ["email", "profile"] }),
+	// Sign-in only: accounts come from invitations (ADR 0010), never from a provider.
+	(credentials) => ({ ...credentials, scope: ["email", "profile"], disableImplicitSignUp: true }),
 );
 const github = socialProvider(
 	process.env.GITHUB_CLIENT_ID,
 	process.env.GITHUB_CLIENT_SECRET,
-	(credentials) => ({ ...credentials, scope: ["user:email"] }),
+	(credentials) => ({ ...credentials, scope: ["user:email"], disableImplicitSignUp: true }),
 );
+
+/** A kit answer that lists an office's members (`get-full-organization`, `list-members`). */
+function hasMembers(
+	value: unknown,
+): value is { members: { userId: string }[]; total?: unknown } & Record<string, unknown> {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"members" in value &&
+		Array.isArray(value.members) &&
+		value.members.every(
+			(member: unknown) =>
+				typeof member === "object" &&
+				member !== null &&
+				"userId" in member &&
+				typeof member.userId === "string",
+		)
+	);
+}
 
 /** Cancel the subscriptions among these purchases (the kit's rule, on every delete path). */
 async function cancelSubscriptions(purchases: Awaited<ReturnType<typeof getPurchasesByUserId>>) {
@@ -84,14 +109,20 @@ const officeEnd = officeEndHooks({
 	},
 });
 
-export const auth = betterAuth({
+/**
+ * The app's auth configuration. `auth` below is built from it; the E2E suite builds a
+ * test-only instance from the same options plus Better Auth's testUtils
+ * (apps/saas/tests/support/test-auth.ts), so its sessions are the app's own.
+ */
+export const authOptions = {
 	// Explicit baseURL wins over BETTER_AUTH_URL; startup validation checks the two agree.
 	baseURL: appUrl,
 	trustedOrigins: [appUrl, ...extraTrustedOrigins],
-	// Rate limiting is on by default in production (memory store, 100/10s, sign-in 3/10s).
-	// Nhịp runs as one long-lived process, so the memory store is correct; behind a
-	// reverse proxy set advanced.ipAddress.ipAddressHeaders and trustedProxies so limits
-	// key on the client IP rather than the proxy.
+	// Rate limiting is on in production (100/10s per IP and path; sign-in 3/10s). Counters
+	// live in the database (the rateLimit table): on Vercel each serverless instance has its
+	// own memory, so an in-memory count would not hold. The client IP comes from
+	// x-forwarded-for, which Vercel sets.
+	rateLimit: { storage: "database" },
 	database: prismaAdapter(db, {
 		provider: "postgresql",
 	}),
@@ -114,6 +145,19 @@ export const auth = betterAuth({
 							activeOrganizationId: user?.lastActiveOrganizationId ?? null,
 						},
 					};
+				},
+			},
+			// A device alerts until its sign-in ends (ADR 0019, #134). Every way Better Auth ends a
+			// live session deletes its row through here: sign-out, revoking one session or the
+			// others, a ban or the admin's revoke, a password change or reset that revokes, the
+			// end of an impersonation. Its devices go first. A session that merely expired is
+			// cleaned up through here too and keeps its devices (spec #84, A5); the account's
+			// end removes them by cascade.
+			delete: {
+				before: async (session) => {
+					if (session.expiresAt > new Date()) {
+						await deletePushSubscriptionsForSession(session.id);
+					}
 				},
 			},
 		},
@@ -183,14 +227,98 @@ export const auth = betterAuth({
 				) {
 					await officeEnd.afterLeave(left.userId);
 				}
+			} else if (
+				ctx.path === "/organization/get-full-organization" ||
+				ctx.path === "/organization/list-members"
+			) {
+				// The platform admin's membership is inert (ADR 0015): their row, email included,
+				// never reaches anyone else's browser (#174). Filtered here, so every caller of the
+				// kit's member lists (Team, the office layout, the client) gets the office's people only.
+				const returned: unknown = ctx.context.returned;
+				if (!hasMembers(returned)) {
+					return;
+				}
+				const session = await getSessionFromCtx(ctx);
+				if (!session || isPlatformAdmin(session.user.role)) {
+					return;
+				}
+				const hidden = await findPlatformAdminIds(returned.members.map((m) => m.userId));
+				if (hidden.length === 0) {
+					return;
+				}
+				const members = returned.members.filter((m) => !hidden.includes(m.userId));
+				return ctx.json({
+					...returned,
+					members,
+					...(typeof returned.total === "number"
+						? { total: returned.total - (returned.members.length - members.length) }
+						: {}),
+				});
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
+			// Signing out on a device stops its alerts (ADR 0019, #134), whatever the client does:
+			// the session's devices go before the session does. Only the session's own id
+			// decides which; recipients are always by user. (The session delete hook above covers
+			// the same and every other way a session ends; this keeps sign-out explicit.)
+			if (ctx.path === "/sign-out") {
+				const sessionId = (await getSessionFromCtx(ctx))?.session.id;
+				if (sessionId) {
+					await deletePushSubscriptionsForSession(sessionId);
+				}
+				return;
+			}
+			// A manager grants Agent or Manager, never the kit's `owner` (#82): only the platform
+			// admin makes an office's owner. Better Auth refuses `owner` to a kit `admin` (400 or
+			// 403), but grants it when the manager holds `owner`; this hook refuses both with 403,
+			// however the role is spelled (alone, in a comma list, in an array).
+			if (
+				(ctx.path.startsWith("/organization/invite-member") ||
+					ctx.path.startsWith("/organization/update-member-role")) &&
+				grantsOwner(ctx.body?.role)
+			) {
+				const session = await getSessionFromCtx(ctx);
+				if (session && !isPlatformAdmin(session.user.role)) {
+					throw new APIError("FORBIDDEN", {
+						code: "OWNER_NOT_GRANTABLE",
+						message: "Only Nhịp makes an office's owner.",
+					});
+				}
+			}
+			// The platform admin's membership is theirs alone (#174): no manager removes it or
+			// changes its role. Better Auth lets a manager holding the kit's `owner` do both, and
+			// any manager once the role is no longer `owner`.
+			// The target is read from the one field each route acts on (a stray other field must not
+			// stand in for it); one that isn't a string is left to the kit, which refuses it.
+			const memberField = ctx.path.startsWith("/organization/remove-member")
+				? "memberIdOrEmail"
+				: ctx.path.startsWith("/organization/update-member-role")
+					? "memberId"
+					: null;
+			const target: unknown = memberField ? ctx.body?.[memberField] : undefined;
+			if (typeof target === "string") {
+				const session = await getSessionFromCtx(ctx);
+				if (
+					session &&
+					!isPlatformAdmin(session.user.role) &&
+					(await isPlatformAdminMembership(
+						target,
+						ctx.body?.organizationId || session.session.activeOrganizationId,
+					))
+				) {
+					throw new APIError("FORBIDDEN", {
+						code: "PLATFORM_ADMIN_MEMBERSHIP",
+						message: "Only Nhịp changes its own membership.",
+					});
+				}
+			}
 			// One operator, one office (ADR 0010): an account already in an office cannot
 			// accept an invitation into another. The gate would refuse it as ambiguous anyway;
 			// refusing here keeps the membership table true.
 			if (ctx.path.startsWith("/organization/accept-invitation")) {
-				const userId = ctx.context.session?.session.userId;
+				// Before-hooks run ahead of the endpoint's session middleware, so
+				// `ctx.context.session` is empty here; read it from the request.
+				const userId = (await getSessionFromCtx(ctx))?.session.userId;
 				if (userId) {
 					const memberships = await getOrganizationMembershipsForUser(userId);
 					if (memberships.length > 0) {
@@ -199,12 +327,6 @@ export const auth = betterAuth({
 							message: "This account already belongs to an office.",
 						});
 					}
-				}
-			}
-			if (ctx.path.startsWith("/organization/delete")) {
-				const { organizationId } = ctx.body;
-				if (organizationId) {
-					await cancelSubscriptions(await getPurchasesByOrganizationId(organizationId));
 				}
 			}
 		}),
@@ -287,7 +409,8 @@ export const auth = betterAuth({
 		admin(),
 		passkey(),
 		magicLink({
-			disableSignUp: false,
+			// Sign-in only: a magic link to an unknown email creates nothing (ADR 0010).
+			disableSignUp: true,
 			sendMagicLink: async ({ email, url }, ctx) => {
 				const request = ctx?.request as Request;
 
@@ -303,8 +426,30 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			// Offices are created by the platform admin only (ADR 0010); the kit's
+			// `enableUsersToCreateOrganizations` flag never reached Better Auth.
+			allowUserToCreateOrganization: (user) => isPlatformAdmin(user.role),
 			organizationHooks: {
-				beforeDeleteOrganization: officeEnd.beforeDeleteOrganization,
+				// Runs after Better Auth checked the caller's membership and delete permission.
+				beforeDeleteOrganization: async (data) => {
+					await cancelSubscriptions(await getPurchasesByOrganizationId(data.organization.id));
+					await officeEnd.beforeDeleteOrganization(data);
+				},
+				// One operator, one office, even when two invitations are accepted at once.
+				afterAcceptInvitation: async ({ member, user }) => {
+					const dropped = await keepOldestMembership(user.id);
+					// A simultaneous accept may already have dropped this (newer) membership, in
+					// which case `dropped` is empty here; check that this one actually survived.
+					const kept =
+						!dropped.includes(member.id) &&
+						(await db.member.count({ where: { id: member.id } })) > 0;
+					if (!kept) {
+						throw new APIError("FORBIDDEN", {
+							code: "ONE_OFFICE_PER_OPERATOR",
+							message: "This account already belongs to an office.",
+						});
+					}
+				},
 				afterDeleteOrganization: officeEnd.afterDeleteOrganization,
 				afterRemoveMember: officeEnd.afterRemoveMember,
 			},
@@ -340,7 +485,9 @@ export const auth = betterAuth({
 			logger.error(error, { ctx });
 		},
 	},
-});
+} satisfies BetterAuthOptions;
+
+export const auth = betterAuth(authOptions);
 
 export * from "./lib/organization";
 

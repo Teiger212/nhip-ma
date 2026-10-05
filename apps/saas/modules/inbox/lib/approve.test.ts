@@ -1,7 +1,7 @@
 import { createInboxStore, Pipe } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { resetTestInbox, testDb } from "./test-store";
+import { deleteThreadUnder, resetTestInbox, testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -12,7 +12,10 @@ vi.mock("@repo/auth", () => ({
 }));
 
 vi.mock("@repo/database", () => ({
-	getOrganizationMembershipsForUser: vi.fn(async () => [{ organizationId: "walk-office" }]),
+	// The office's manager, who reaches every thread, Unassigned included (ADR 0022).
+	getOrganizationMembershipsForUser: vi.fn(async () => [
+		{ organizationId: "walk-office", role: "admin" },
+	]),
 }));
 
 import { auth } from "@repo/auth";
@@ -23,9 +26,10 @@ import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
 import { noDraftAdapter } from "./drafts";
+import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import type { Conversation } from "./types";
+import type { Conversation, ConversationSummary } from "./types";
 
 type Body = Record<string, unknown>;
 
@@ -51,6 +55,46 @@ async function arrive(body: Body): Promise<Conversation> {
 	const injected = await json(await inject(post("http://localhost/dev/inbound", body)));
 	expect(injected.res.status).toBe(200);
 	return injected.body.conversation as Conversation;
+}
+
+const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
+
+/** A live deployment with Nhịp's Zalo app configured (ADR 0017). */
+function liveZaloConfig() {
+	return mockInboxConfig({
+		sendMode: "live",
+		zalo: { appId: "app-1", appSecret: "app-secret", oaSecretKey: "oa-secret" },
+		pipeSecretsKey: SECRETS_KEY,
+	});
+}
+
+/** The walk office's Zalo OA, connected with a token good for a day (setup, not the flow). */
+async function connectZaloOa(oaId: string, { disconnected = false } = {}): Promise<void> {
+	const store = peekTestRuntime()!.store;
+	await store.claimPipe({ pipe: "zalo", externalId: oaId, officeId: "walk-office" });
+	await store.savePipeCredential("zalo", oaId, {
+		accessToken: encryptSecret("access-1", SECRETS_KEY, tokenContext("zalo", oaId, "access")),
+		refreshToken: encryptSecret("refresh-1", SECRETS_KEY, tokenContext("zalo", oaId, "refresh")),
+		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+	});
+	if (disconnected) await store.markPipeDisconnected("zalo", oaId, "refresh refused");
+}
+
+/** A guest message that arrived on the office's endpoint `pipeExternalId`. */
+async function arriveOn(pipe: "zalo" | "whatsapp", pipeExternalId: string, guestId: string) {
+	const { conversation } = await peekTestRuntime()!.store.upsertInbound(
+		{
+			pipe,
+			source: "guest",
+			guestId,
+			guestName: null,
+			text: "Hello",
+			vendorMessageId: null,
+			pipeExternalId,
+		},
+		"walk-office",
+	);
+	return conversation;
 }
 
 /**
@@ -125,7 +169,6 @@ test("inbound does not send; approve is required, and it records an Answer", asy
 		status: "sent",
 		mock: true,
 		pipe: "zalo",
-		to: "guest-1",
 	});
 	expect(after.lastAnswer?.sentAt).toBeTruthy();
 });
@@ -141,12 +184,15 @@ test("approve refuses a second send against the same guest message", async () =>
 	expect(second.res.status).toBe(409);
 	expect(second.body.error).toBe("already_answered");
 	expect(second.body.conversation).toBeUndefined();
-	const listed = await json(
-		await listConversations(new Request("http://localhost/api/conversations")),
+	const opened = await json(
+		await getConversation(
+			new Request(`http://localhost/api/conversations/${conv.id}`),
+			params(conv.id),
+		),
 	);
-	const thread = (listed.body as unknown as Conversation[]).find((item) => item.id === conv.id);
-	expect(thread?.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
-	expect(thread?.answers).toHaveLength(1);
+	const thread = opened.body as unknown as Conversation;
+	expect(thread.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
+	expect(thread.answers).toHaveLength(1);
 });
 
 test("an approval names its target and its text: stale, missing and empty are refused", async () => {
@@ -181,7 +227,7 @@ test("an approval names its target and its text: stale, missing and empty are re
 	expect(malformed.res.status).toBe(400);
 
 	// Nothing above sent anything.
-	const untouched = await peekTestRuntime()!.store.getConversation(again.id);
+	const untouched = await peekTestRuntime()!.store.getOfficeConversation(again.officeId, again.id);
 	expect(untouched?.answers).toEqual([]);
 	expect(untouched?.unansweredInboundId).toBe(again.unansweredInboundId);
 
@@ -197,6 +243,7 @@ test("a guest message arriving mid-send stays Your turn", async () => {
 	const m1 = conv.unansweredInboundId!;
 	// Approval is on record; the vendor has not answered yet. M2 lands now.
 	const begun = await runtime.store.beginAnswer({
+		officeId: conv.officeId,
 		conversationId: conv.id,
 		inboundId: m1,
 		text: "Reply to M1",
@@ -207,17 +254,18 @@ test("a guest message arriving mid-send stays Your turn", async () => {
 	const m2 = withM2.unansweredInboundId!;
 	expect(m2).not.toBe(m1);
 	// The vendor acknowledges M1's reply; the outbound is now the last message on the thread.
-	const done = await runtime.store.completeAnswer(begun.answer.id, {
+	const done = await runtime.store.completeAnswer(conv.officeId, begun.answer.id, {
 		mock: true,
 		pipe: "zalo",
-		to: "guest-mid",
 		vendorMessageId: "mock-1",
 	});
 	expect(done?.messages.at(-1)?.source).toBe("nhip");
 	// M2 is still the guest's unanswered message: the queue does not read message order.
 	expect(done?.unansweredInboundId).toBe(m2);
 	expect((await approveReply(done!, { reply: "Reply to M2" })).res.status).toBe(200);
-	expect((await runtime.store.getConversation(conv.id))?.unansweredInboundId).toBeNull();
+	expect(
+		(await runtime.store.getOfficeConversation(conv.officeId, conv.id))?.unansweredInboundId,
+	).toBeNull();
 });
 
 test("a vendor success whose record fails is never sent twice", async () => {
@@ -229,10 +277,10 @@ test("a vendor success whose record fails is never sent twice", async () => {
 		...runtime,
 		store: {
 			...runtime.store,
-			completeAnswer: async (answerId, result) => {
+			completeAnswer: async (officeId, answerId, result) => {
 				calls += 1;
 				if (calls === 1) throw new Error("disk full");
-				return completeAnswer(answerId, result);
+				return completeAnswer(officeId, answerId, result);
 			},
 		},
 	});
@@ -240,7 +288,7 @@ test("a vendor success whose record fails is never sent twice", async () => {
 	expect(first.res.status).toBe(500);
 	expect(first.body.error).toBe("record_failed");
 	// The Answer stays on file as unknown, so a retry is refused rather than resent.
-	const after = await runtime.store.getConversation(conv.id);
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.lastAnswer).toMatchObject({ status: "unknown" });
 	expect(after?.lastAnswer?.failureReason).toMatch(/disk full/);
 	expect(after?.unansweredInboundId).toBeNull();
@@ -252,16 +300,11 @@ test("a vendor success whose record fails is never sent twice", async () => {
 
 test("a definite vendor refusal may be retried; an ambiguous transport failure may not", async () => {
 	const runtime = peekTestRuntime()!;
-	setRuntimeForTests({
-		...runtime,
-		config: mockInboxConfig({
-			sendMode: "live",
-			zalo: { accessToken: "token", oaSecretKey: "secret" },
-		}),
-	});
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	await connectZaloOa("oa-1");
 
 	// Vendor says no: failed, retry allowed, and the retry can succeed.
-	const refused = await arrive({ pipe: "zalo", guestId: "guest-refused", text: "Hello" });
+	const refused = await arriveOn("zalo", "oa-1", "guest-refused");
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => Response.json({ error: -216, message: "token expired" }, { status: 401 })),
@@ -270,26 +313,36 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	expect(failed.res.status).toBe(502);
 	expect(failed.body.error).toBe("send_failed");
 	expect("detail" in failed.body).toBe(false);
-	let state = await runtime.store.getConversation(refused.id);
+	let state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(state?.unansweredInboundId).toBe(refused.unansweredInboundId);
-	vi.stubGlobal(
-		"fetch",
-		vi.fn(async () => Response.json({ error: 0, data: { message_id: "z-1" } })),
+	const zaloSend = vi.fn(async (_url: string, _init?: RequestInit) =>
+		Response.json({ error: 0, data: { message_id: "z-1" } }),
 	);
+	vi.stubGlobal("fetch", zaloSend);
 	const retried = await approveReply(refused, { reply: "Second try" });
 	expect(retried.res.status).toBe(200);
-	state = await runtime.store.getConversation(refused.id);
+	// The reply goes to the thread's guest: the recipient is read from the thread's guestId,
+	// where the thread keeps it (#141), never from a copy on the Answer.
+	const body = zaloSend.mock.calls.at(-1)?.[1]?.body;
+	const sent = JSON.parse(typeof body === "string" ? body : "{}") as {
+		recipient?: { user_id?: string };
+	};
+	expect(sent.recipient?.user_id, "Zalo is asked to deliver to the thread's guest").toBe(
+		refused.guestId,
+	);
+	state = await runtime.store.getOfficeConversation(refused.officeId, refused.id);
 	expect(state?.answers).toHaveLength(1);
 	expect(state?.lastAnswer).toMatchObject({
 		status: "sent",
 		text: "Second try",
-		vendorMessageId: "z-1",
+		// Kept keyed and hashed, never as the vendor wrote it (#141).
+		vendorMessageId: expect.stringMatching(/^[0-9a-f]{64}$/),
 		mock: false,
 	});
 
 	// The network fails: the vendor may have the message. Unknown, and not retried.
-	const lost = await arrive({ pipe: "zalo", guestId: "guest-lost", text: "Hello" });
+	const lost = await arriveOn("zalo", "oa-1", "guest-lost");
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => {
@@ -299,7 +352,7 @@ test("a definite vendor refusal may be retried; an ambiguous transport failure m
 	const unknown = await approveReply(lost);
 	expect(unknown.res.status).toBe(502);
 	expect(unknown.body.error).toBe("delivery_unknown");
-	state = await runtime.store.getConversation(lost.id);
+	state = await runtime.store.getOfficeConversation(lost.officeId, lost.id);
 	expect(state?.lastAnswer).toMatchObject({ status: "unknown" });
 	expect(state?.unansweredInboundId).toBeNull();
 	vi.stubGlobal(
@@ -326,6 +379,13 @@ test("approve of a missing thread is 404", async () => {
 	expect(missing.body.error).toBe("not_found");
 });
 
+test("approve of a thread deleted under it is 404, never a 500 (ADR 0020)", async () => {
+	const conv = await arrive({ pipe: "zalo", guestId: "guest-deleted", text: "Hello" });
+	const approved = await deleteThreadUnder(conv.officeId, conv.id, () => approveReply(conv));
+	expect(approved.res.status).toBe(404);
+	expect(approved.body.error).toBe("not_found");
+});
+
 test("list and get conversation return the invented inbound", async () => {
 	const conv = await arrive({
 		pipe: "whatsapp",
@@ -336,7 +396,9 @@ test("list and get conversation return the invented inbound", async () => {
 	const listed = await json(
 		await listConversations(new Request("http://localhost/api/conversations")),
 	);
-	const fromList = (listed.body as unknown as Conversation[]).find((item) => item.id === conv.id);
+	const fromList = (listed.body as unknown as ConversationSummary[]).find(
+		(item) => item.id === conv.id,
+	);
 	expect(fromList?.guestName).toBe("Alexei");
 
 	const opened = await json(
@@ -365,9 +427,15 @@ test("there is no send path except approve", async () => {
 	const listed = await json(
 		await listConversations(new Request("http://localhost/api/conversations")),
 	);
-	const first = (listed.body as unknown as Conversation[])[0];
+	const first = (listed.body as unknown as ConversationSummary[])[0];
 	expect(first.sentAt).toBeNull();
-	expect(first.answers).toEqual([]);
+	const opened = await json(
+		await getConversation(
+			new Request(`http://localhost/api/conversations/${first.id}`),
+			params(first.id),
+		),
+	);
+	expect((opened.body as unknown as Conversation).answers).toEqual([]);
 });
 
 test("WhatsApp approve outside 24h window is refused", async () => {
@@ -400,6 +468,18 @@ test("POST /dev/inbound is 404 in production", async () => {
 	}
 });
 
+/** A guest's thread id in the walk office, found as the store finds it: by (office, pipe, guest). */
+async function walkThreadId(pipe: string, guestId: string): Promise<string> {
+	const threads = await peekTestRuntime()!.store.listConversations({
+		userId: "walk-user",
+		officeId: "walk-office",
+		role: "manager",
+	});
+	const thread = threads.find((c) => c.pipe === pipe && c.guestId === guestId);
+	if (!thread) throw new Error(`no ${pipe} thread for ${guestId}`);
+	return thread.id;
+}
+
 test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 	// `Pipe` being importable as a value at all is the point: the app checks against the
 	// same declaration the store parses with. Driving the loop off `Pipe.options` rather
@@ -412,7 +492,10 @@ test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 		const conv = await arrive({ pipe, guestId, text: "Hello" });
 		expect(conv.pipe, pipe).toBe(pipe);
 		// End to end: the value survives the write and the strict parse on the way back out.
-		const stored = await peekTestRuntime()?.store.getConversation(`walk-office:${pipe}:${guestId}`);
+		const stored = await peekTestRuntime()?.store.getOfficeConversation(
+			"walk-office",
+			await walkThreadId(pipe, guestId),
+		);
 		expect(stored?.pipe, pipe).toBe(pipe);
 	}
 
@@ -477,9 +560,15 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 		expect(res.res.status, JSON.stringify(body)).toBe(200);
 	}
 	const runtime = peekTestRuntime();
-	const trimmed = await runtime?.store.getConversation("walk-office:zalo:guest-trim");
+	const trimmed = await runtime?.store.getOfficeConversation(
+		"walk-office",
+		await walkThreadId("zalo", "guest-trim"),
+	);
 	expect(trimmed?.messages[0]?.text).toBe("Looking to rent in Tay Ho");
-	const degraded = await runtime?.store.getConversation("walk-office:zalo:g4");
+	const degraded = await runtime?.store.getOfficeConversation(
+		"walk-office",
+		await walkThreadId("zalo", "g4"),
+	);
 	expect(degraded?.guestName).toBeNull();
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
 });
@@ -520,7 +609,7 @@ test("inbox routes refuse requests without a session", async () => {
 	const approved = await approveReply(conv, { reply: "attacker text" });
 	expect(approved.res.status).toBe(401);
 
-	const after = await peekTestRuntime()?.store.getConversation(conv.id);
+	const after = await peekTestRuntime()?.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.sentAt).toBeNull();
 	expect(after?.answers).toEqual([]);
 });
@@ -530,27 +619,29 @@ test("two concurrent approvals send exactly once", async () => {
 	const [a, b] = await Promise.all([approveReply(conv), approveReply(conv)]);
 	const statuses = [a.res.status, b.res.status].sort((x, y) => x - y);
 	expect(statuses).toEqual([200, 409]);
-	const after = await peekTestRuntime()?.store.getConversation(conv.id);
+	const after = await peekTestRuntime()?.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
 	expect(after?.answers).toHaveLength(1);
 });
 
-test("a live reply is refused when the thread arrived on a number these credentials do not own", async () => {
+test("a live reply is refused when the thread arrived on an endpoint the office has not connected", async () => {
 	const runtime = peekTestRuntime();
 	if (!runtime) throw new Error("runtime missing");
 	// The guest wrote to the office's second number; this deployment can only send from "phone-a".
-	const conv = await runtime.store.upsertInbound(
-		{
-			pipe: "whatsapp",
-			source: "guest",
-			guestId: "16315551199",
-			guestName: null,
-			text: "Hello",
-			vendorMessageId: null,
-			pipeExternalId: "phone-b",
-		},
-		"walk-office",
-	);
+	const conv = (
+		await runtime.store.upsertInbound(
+			{
+				pipe: "whatsapp",
+				source: "guest",
+				guestId: "16315551199",
+				guestName: null,
+				text: "Hello",
+				vendorMessageId: null,
+				pipeExternalId: "phone-b",
+			},
+			"walk-office",
+		)
+	).conversation;
 	setRuntimeForTests({
 		...runtime,
 		config: mockInboxConfig({
@@ -560,9 +651,9 @@ test("a live reply is refused when the thread arrived on a number these credenti
 	});
 	const refused = await approveReply(conv, { reply: "Thanks" });
 	expect(refused.res.status).toBe(409);
-	expect(refused.body.error).toBe("pipe_not_configured");
+	expect(refused.body.error).toBe("pipe_not_connected");
 	// Nothing was recorded, nothing was sent.
-	const after = await runtime.store.getConversation(conv.id);
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
 	expect(after?.answers).toEqual([]);
 	// In mock mode the same thread is fine: no vendor identity is at stake.
@@ -575,19 +666,58 @@ test("a live reply is refused when the thread arrived on a number these credenti
 	expect(sent.lastAnswer).toMatchObject({ pipeExternalId: "phone-b", status: "sent" });
 });
 
-test("approve does not echo vendor error bodies, and missing credentials are a definite failure", async () => {
-	const conv = await arrive({ pipe: "zalo", guestId: "guest-live", text: "Hello" });
-	const runtime = peekTestRuntime();
-	if (!runtime) throw new Error("runtime missing");
-	// Live mode with no token: transmit refuses before any network call.
-	setRuntimeForTests({ ...runtime, config: mockInboxConfig({ sendMode: "live" }) });
+test("a disconnected pipe refuses before anything is recorded, in a live or a mock deployment", async () => {
+	const runtime = peekTestRuntime()!;
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	await connectZaloOa("oa-1", { disconnected: true });
+	const conv = await arriveOn("zalo", "oa-1", "guest-blocked");
+	const fetchSpy = vi.fn();
+	vi.stubGlobal("fetch", fetchSpy);
+	for (const config of [liveZaloConfig(), mockInboxConfig()]) {
+		setRuntimeForTests({ ...runtime, config });
+		const refused = await approveReply(conv);
+		expect(refused.res.status).toBe(409);
+		expect(refused.body.error).toBe("pipe_disconnected");
+	}
+	expect(fetchSpy).not.toHaveBeenCalled();
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
+	expect(after?.answers).toEqual([]);
+	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
+});
+
+test("approve does not echo vendor error bodies", async () => {
+	const runtime = peekTestRuntime()!;
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	await connectZaloOa("oa-1");
+	const conv = await arriveOn("zalo", "oa-1", "guest-live");
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => Response.json({ error: -201, message: "secret vendor detail" })),
+	);
 	const failed = await approveReply(conv);
 	expect(failed.res.status).toBe(502);
 	expect(failed.body.error).toBe("send_failed");
-	expect("detail" in failed.body).toBe(false);
-	// Nothing was sent, so the operator can retry once tokens exist.
-	const after = await runtime.store.getConversation(conv.id);
-	expect(after?.sentAt).toBeNull();
+	expect(JSON.stringify(failed.body)).not.toContain("secret vendor detail");
+	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
+});
+
+test("an office cannot send as an OA it no longer holds, whatever tokens the OA has", async () => {
+	const runtime = peekTestRuntime()!;
+	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
+	// The walk office answered guests on oa-1; the OA was then released and connected to office-a.
+	const conv = await arriveOn("zalo", "oa-1", "guest-old-office");
+	await runtime.store.claimPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
+	await runtime.store.savePipeCredential("zalo", "oa-1", {
+		accessToken: encryptSecret("access-a", SECRETS_KEY, tokenContext("zalo", "oa-1", "access")),
+		refreshToken: encryptSecret("refresh-a", SECRETS_KEY, tokenContext("zalo", "oa-1", "refresh")),
+		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+	});
+	const fetchSpy = vi.fn();
+	vi.stubGlobal("fetch", fetchSpy);
+	const refused = await approveReply(conv);
+	expect(refused.res.status).toBe(409);
+	expect(refused.body.error).toBe("pipe_not_connected");
+	expect(fetchSpy).not.toHaveBeenCalled();
 });

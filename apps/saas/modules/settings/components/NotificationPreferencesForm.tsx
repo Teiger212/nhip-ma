@@ -7,7 +7,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-type TargetKey = "IN_APP" | "EMAIL";
+/** Notifications are never emailed (PRODUCT.md "Deliberately not"), so the bell is the only channel. */
+type TargetKey = "IN_APP";
 
 export function NotificationPreferencesForm() {
 	const t = useTranslations("settings.notificationsPage");
@@ -59,12 +60,11 @@ export function NotificationPreferencesForm() {
 								{t(`groups.${group.id}.title`)}
 							</h3>
 							<div className="overflow-x-auto rounded-lg border">
-								<table className="text-sm w-full min-w-[320px]">
+								<table className="text-sm min-w-80 w-full">
 									<thead>
 										<tr className="border-b bg-muted/40 text-left">
 											<th className="px-3 py-2 font-medium">{t("columns.type")}</th>
 											<th className="px-3 py-2 font-medium">{t("columns.inApp")}</th>
-											<th className="px-3 py-2 font-medium">{t("columns.email")}</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -77,14 +77,6 @@ export function NotificationPreferencesForm() {
 														disabled={updateMutation.isPending}
 														onCheckedChange={(checked) => onToggle(type, "IN_APP", checked)}
 														aria-label={`${type} in-app`}
-													/>
-												</td>
-												<td className="px-3 py-2">
-													<Switch
-														checked={isEnabled(type, "EMAIL")}
-														disabled={updateMutation.isPending}
-														onCheckedChange={(checked) => onToggle(type, "EMAIL", checked)}
-														aria-label={`${type} email`}
 													/>
 												</td>
 											</tr>

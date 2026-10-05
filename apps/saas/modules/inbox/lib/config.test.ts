@@ -55,3 +55,82 @@ test("the base URL is any absolute http(s) endpoint, trimmed", () => {
 test("the test config has no model behind it", () => {
 	expect(draftAdapterFromConfig(mockInboxConfig()).provider).toBe("none");
 });
+
+/** A production-shaped env that passes except for the URL under test. */
+const PROD = {
+	...BASE,
+	NODE_ENV: "production",
+	BETTER_AUTH_SECRET: "e2e-only-not-a-secret-0123456789abcdef-nhip",
+} as unknown as NodeJS.ProcessEnv;
+
+const urlErrors = (env: NodeJS.ProcessEnv) => {
+	const result = validateInboxEnv(env);
+	return result.ok ? [] : result.errors.filter((error) => error.includes("NEXT_PUBLIC_SAAS_URL"));
+};
+
+test("production still requires https, including on localhost without the E2E flag", () => {
+	expect(urlErrors({ ...PROD, NEXT_PUBLIC_SAAS_URL: "http://localhost:3000" })).toHaveLength(1);
+	expect(urlErrors({ ...PROD, NEXT_PUBLIC_SAAS_URL: "https://app.nhip.vn" })).toHaveLength(0);
+});
+
+test("production requires https everywhere, the E2E run included (no localhost exception)", () => {
+	for (const url of ["http://localhost:3000", "http://127.0.0.1:3000", "http://staging.nhip.vn"]) {
+		expect(urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: url }), url).toHaveLength(1);
+	}
+	expect(
+		urlErrors({ ...PROD, E2E: "1", NEXT_PUBLIC_SAAS_URL: "https://localhost:3443" }),
+	).toHaveLength(0);
+});
+
+// ADR 0003 amendment (2026-10-03): production stays on no mock CRM notices; spec #59 (#63) "unreachable in production".
+test("a production deployment refuses the mock CRM's webhook secret, whatever its value", () => {
+	const mock = { ...BASE, MOCK_CRM_WEBHOOK_SECRET: "any-value-at-all" };
+	expect(errorsOf({ ...mock, VERCEL_ENV: "production" }).join("\n")).toContain(
+		"MOCK_CRM_WEBHOOK_SECRET",
+	);
+	expect(errorsOf({ ...mock, VERCEL_ENV: "preview" })).toEqual([]);
+	expect(errorsOf(mock)).toEqual([]);
+});
+
+// #66: HubSpot's webhook is verified with the app's client secret over the URL HubSpot calls;
+// one without the other cannot verify anything, and the URL is the https one HubSpot is given.
+test("HubSpot's webhook settings are set together, its URL an https one", () => {
+	const secret = { HUBSPOT_APP_CLIENT_SECRET: "client-secret" };
+	const url = { HUBSPOT_WEBHOOK_URL: "https://nhip.example/webhooks/crm/hubspot" };
+	expect(errorsOf({ ...BASE, ...secret }).join("\n")).toContain("HUBSPOT_WEBHOOK_URL");
+	expect(errorsOf({ ...BASE, ...url }).join("\n")).toContain("HUBSPOT_APP_CLIENT_SECRET");
+	expect(
+		errorsOf({
+			...BASE,
+			...secret,
+			HUBSPOT_WEBHOOK_URL: "http://localhost:3010/webhooks/crm/hubspot",
+		}),
+	).toHaveLength(1);
+	expect(errorsOf({ ...BASE, ...secret, ...url })).toEqual([]);
+	expect(errorsOf(BASE)).toEqual([]);
+});
+
+// #134: the VAPID keys are read as a set. None set is fine (alerts are logged, not pushed); a
+// partial set is a mistake to refuse, and the subject is the address push services write to.
+test("VAPID keys are read as a set: all three, or none", () => {
+	const vapid = {
+		VAPID_PUBLIC_KEY: "BPub-vitest",
+		VAPID_PRIVATE_KEY: "priv-vitest",
+		VAPID_SUBJECT: "mailto:alerts@nhip.local",
+	};
+	const ok = validateInboxEnv({ ...BASE, ...vapid });
+	expect(ok.ok && ok.config.vapid).toEqual({
+		publicKey: "BPub-vitest",
+		privateKey: "priv-vitest",
+		subject: "mailto:alerts@nhip.local",
+	});
+	const none = validateInboxEnv(BASE);
+	expect(none.ok && none.config.vapid).toBeNull();
+	expect(errorsOf({ ...BASE, VAPID_PUBLIC_KEY: vapid.VAPID_PUBLIC_KEY }).join("\n")).toContain(
+		"VAPID_PRIVATE_KEY",
+	);
+	expect(errorsOf({ ...BASE, ...vapid, VAPID_SUBJECT: "alerts@nhip.local" }).join("\n")).toContain(
+		"VAPID_SUBJECT",
+	);
+	expect(errorsOf({ ...BASE, ...vapid, VAPID_SUBJECT: "https://nhip.vn" })).toEqual([]);
+});

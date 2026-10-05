@@ -1,69 +1,98 @@
 "use client";
 
-import { cn } from "@repo/ui";
+import { Badge, cn } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
+import { isDecided } from "../lib/crm/rules";
 import { guestInitials } from "../lib/guest-initials";
-import { yourTurn } from "../lib/queue";
-import type { Conversation, OperatorLanguage } from "../lib/types";
+import { useOfficeRole } from "../lib/inbox-queries";
+import { type ThreadStatus, threadStatus } from "../lib/queue";
+import type { ConversationSummary, OperatorLanguage } from "../lib/types";
 
 /** SaaS routing only serves the operator locales (`modules/i18n/routing.ts`). */
 export function useOperatorLanguage(): OperatorLanguage {
 	return useLocale() as OperatorLanguage;
 }
 
-export function GuestMark({ name }: { name: string }) {
+/** The guest's initials; solid blue on the selected thread, which is how selection shows. */
+export function GuestMark({ name, selected = false }: { name: string; selected?: boolean }) {
 	return (
 		<span
 			aria-hidden="true"
-			className="size-8 font-semibold tracking-tight flex shrink-0 items-center justify-center rounded-full rounded-md bg-primary bg-touch/12 text-[0.7rem] text-primary-foreground text-touch"
+			className={cn(
+				"size-8 font-semibold tracking-tight text-micro flex shrink-0 items-center justify-center rounded-md transition-colors duration-200 motion-reduce:transition-none",
+				selected ? "bg-primary text-primary-foreground" : "bg-touch/12 text-touch",
+			)}
 		>
 			{guestInitials(name)}
 		</span>
 	);
 }
 
-function CompactFlag({
-	children,
-	tone,
-}: {
-	children: ReactNode;
-	tone: "neutral" | "warning" | "success";
-}) {
-	return (
-		<span
-			className={cn(
-				"h-5 px-1.5 font-medium px-2 inline-flex items-center rounded-full rounded-md text-[11px] leading-none",
-				tone === "neutral" && "bg-muted text-muted-foreground",
-				tone === "warning" && "bg-warning/12 text-warning",
-				tone === "success" && "bg-success/12 text-success",
-			)}
-		>
-			{children}
-		</span>
-	);
-}
+/**
+ * The Badge tone of each thread status. Only the turn gets color (DESIGN.md, The Turn Is The
+ * Signal Rule); the CRM's Won and Lost are neutral: an outcome is not a turn, and Lost is not
+ * an error.
+ */
+const STATUS_BADGE = {
+	yourTurn: "warning",
+	sent: "success",
+	won: "neutral",
+	lost: "neutral",
+} as const satisfies Record<ThreadStatus, "neutral" | "success" | "warning">;
 
-/** The pipe and the turn (Your turn / Sent), on a row and on the thread header alike. */
-export function ThreadFlags({ conversation }: { conversation: Conversation }) {
+/**
+ * The pipe, who holds the thread (Unassigned, you, or another operator, ADR 0022) and the status
+ * (Your turn / Sent, or the CRM's Won / Lost while resolved, ADR 0003), on a row and on the
+ * thread header alike.
+ */
+export function ThreadFlags({
+	conversation,
+}: {
+	conversation: Pick<
+		ConversationSummary,
+		"pipe" | "owner" | "unansweredInboundId" | "crm" | "lastGuestInboundAt"
+	>;
+}) {
 	const t = useTranslations("inbox");
-	const turn = yourTurn(conversation);
+	const status = threadStatus(conversation);
+	const { userId } = useOfficeRole();
+	const owner = conversation.owner;
 	return (
 		<>
-			<CompactFlag tone="neutral">{t(`pipes.${conversation.pipe}`)}</CompactFlag>
-			<CompactFlag tone={turn ? "warning" : "success"}>
-				{turn ? t("yourTurn") : t("sent")}
-			</CompactFlag>
+			<Badge status="neutral">{t(`pipes.${conversation.pipe}`)}</Badge>
+			<Badge
+				status="neutral"
+				data-test="thread-owner"
+				data-owner={!owner ? "unassigned" : owner.id === userId ? "mine" : "other"}
+			>
+				{!owner ? t("owner.unassigned") : owner.id === userId ? t("owner.mine") : owner.name}
+			</Badge>
+			<Badge status={STATUS_BADGE[status]} data-test="thread-status" data-status={status}>
+				{isDecided(status) ? t(`crm.${status}`) : t(status)}
+			</Badge>
 		</>
 	);
 }
 
 /** A centred sentence for a column with nothing to show, with an optional action under it. */
-export function ThreadListState({ title, action }: { title: string; action?: ReactNode }) {
+export function ThreadListState({
+	title,
+	action,
+	testId,
+}: {
+	title: string;
+	action?: ReactNode;
+	/** For E2E: which state this is, independent of its wording. */
+	testId?: string;
+}) {
 	return (
-		<div className="px-4 py-10 flex flex-col items-center justify-center text-center">
-			<p className="text-sm max-w-[22ch] text-pretty text-muted-foreground">{title}</p>
+		<div
+			className="px-4 py-10 flex flex-col items-center justify-center text-center"
+			data-test={testId}
+		>
+			<p className="text-sm max-w-empty-note text-pretty text-muted-foreground">{title}</p>
 			{action}
 		</div>
 	);

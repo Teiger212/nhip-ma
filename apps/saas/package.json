@@ -15,7 +15,9 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"type-check": "next typegen && tsc --noEmit"
+		"type-check": "next typegen && tsc --noEmit",
+		"smoke": "playwright test --config playwright.smoke.config.ts",
+		"build:vercel": "bash scripts/vercel-build.sh"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "catalog:",
@@ -28,6 +30,7 @@
 		"@repo/auth": "workspace:*",
 		"@repo/database": "workspace:*",
 		"@repo/i18n": "workspace:*",
+		"@repo/mail": "workspace:*",
 		"@repo/notifications": "workspace:*",
 		"@repo/payments": "workspace:*",
 		"@repo/permissions": "workspace:*",
@@ -41,12 +44,15 @@
 		"hono": "catalog:",
 		"input-otp": "catalog:",
 		"js-cookie": "catalog:",
+		"libphonenumber-js": "^1.13.14",
 		"lucide-react": "catalog:",
 		"next": "catalog:",
 		"next-intl": "catalog:",
 		"nprogress": "catalog:",
 		"nuqs": "catalog:",
 		"permix": "catalog:",
+		"posthog-js": "^1.434.16",
+		"posthog-node": "^5.54.1",
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"react-dropzone": "catalog:",
@@ -58,6 +64,7 @@
 		"streamdown": "catalog:",
 		"ufo": "catalog:",
 		"usehooks-ts": "catalog:",
+		"web-push": "3.6.7",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
@@ -71,7 +78,9 @@
 		"@types/nprogress": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
+		"@types/web-push": "3.6.4",
 		"@vitest/coverage-v8": "catalog:",
+		"better-auth": "catalog:",
 		"dotenv": "catalog:",
 		"postcss": "catalog:",
 		"tailwindcss": "catalog:",

@@ -48,7 +48,11 @@ export function ChangeNameForm() {
 	return (
 		<SettingsItem title={t("settings.account.changeName.title")}>
 			<form onSubmit={onSubmit}>
-				<Input type="text" {...form.register("name")} />
+				<Input
+					type="text"
+					aria-label={t("settings.account.changeName.title")}
+					{...form.register("name")}
+				/>
 
 				<div className="mt-4 flex justify-end">
 					<Button

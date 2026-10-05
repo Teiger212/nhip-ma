@@ -1,7 +1,12 @@
 import { runInBackground } from "./background";
 import { detectLanguage } from "./language";
 import type { Runtime } from "./runtime";
-import { type Conversation, type Message, OperatorLanguage } from "./types";
+import {
+	type Conversation,
+	type Message,
+	OperatorLanguage,
+	type TranslationFailure,
+} from "./types";
 
 /**
  * Guest message translation (ADR 0007). Runs once per message per operator language,
@@ -15,6 +20,26 @@ function key(messageId: string, locale: OperatorLanguage): string {
 	return `${messageId}:${locale}`;
 }
 
+/** After a failed translation, the model is not asked again for this long (ADR 0007). */
+export const TRANSLATION_RETRY_AFTER_MS = 10 * 60 * 1000;
+
+/** After this many failures in a row the model is not asked again; the original stands. */
+export const TRANSLATION_MAX_ATTEMPTS = 5;
+
+/**
+ * Whether a translation that failed before may be tried again at `now`. A failed model call
+ * stores nothing, so without this every read of the thread would call the paid model again.
+ * The failures are kept in the database, so every instance waits out the same backoff.
+ */
+export function translationRetryDue(
+	failure: Pick<TranslationFailure, "attempts" | "lastFailedAt"> | undefined,
+	now: number,
+): boolean {
+	if (!failure) return true;
+	if (failure.attempts >= TRANSLATION_MAX_ATTEMPTS) return false;
+	return now - new Date(failure.lastFailedAt).getTime() >= TRANSLATION_RETRY_AFTER_MS;
+}
+
 export function needsTranslation(message: Message, locale: OperatorLanguage): boolean {
 	return (
 		message.direction === "in" &&
@@ -25,6 +50,7 @@ export function needsTranslation(message: Message, locale: OperatorLanguage): bo
 
 export function scheduleTranslation(
 	runtime: Runtime,
+	officeId: string,
 	message: Message,
 	locale: OperatorLanguage,
 ): Promise<void> | null {
@@ -37,13 +63,21 @@ export function scheduleTranslation(
 		return existing;
 	}
 	const job = runInBackground(`translate ${id}`, async () => {
-		const text = await runtime.drafts.translate({
-			text: message.text,
-			from: detectLanguage(message.text),
-			to: locale,
-		});
+		let text: string | null;
+		try {
+			text = await runtime.drafts.translate({
+				text: message.text,
+				from: detectLanguage(message.text),
+				to: locale,
+			});
+		} catch (error) {
+			await runtime.store.recordTranslationFailure(officeId, message.id, locale, new Date());
+			throw error;
+		}
 		if (text) {
-			await runtime.store.setTranslation(message.id, locale, text);
+			await runtime.store.setTranslation(officeId, message.id, locale, text);
+		} else {
+			await runtime.store.recordTranslationFailure(officeId, message.id, locale, new Date());
 		}
 	}).finally(() => {
 		inFlight.delete(id);
@@ -53,27 +87,44 @@ export function scheduleTranslation(
 }
 
 /** At ingest: the new guest message, into every operator language it is not already in. */
-export function scheduleTranslations(runtime: Runtime, message: Message): void {
+export function scheduleTranslations(runtime: Runtime, officeId: string, message: Message): void {
 	for (const locale of OperatorLanguage.options) {
-		void scheduleTranslation(runtime, message, locale);
+		void scheduleTranslation(runtime, officeId, message, locale);
 	}
 }
 
 /**
- * On read: whatever an operator's locale is missing. This is how messages written before
- * translation existed, or before this locale was used, get theirs on first request.
+ * On opening a thread: whatever the operator's locale is missing. This is how messages
+ * written before translation existed, or before this locale was used, get theirs, and how a
+ * failed translation is retried once its backoff has passed. Nothing is read from the
+ * database unless a message is actually missing its translation.
  */
 export function scheduleMissingTranslations(
 	runtime: Runtime,
-	conversations: Conversation[],
+	conversation: Pick<Conversation, "id" | "officeId" | "messages">,
 	locale: OperatorLanguage,
 ): void {
 	if (runtime.drafts.provider === "none") {
 		return;
 	}
-	for (const conversation of conversations) {
-		for (const message of conversation.messages) {
-			void scheduleTranslation(runtime, message, locale);
-		}
+	const missing = conversation.messages.filter(
+		(message) => needsTranslation(message, locale) && !inFlight.has(key(message.id, locale)),
+	);
+	if (missing.length === 0) {
+		return;
 	}
+	void runInBackground(`translations ${conversation.id} ${locale}`, async () => {
+		const failures = await runtime.store.translationFailures(
+			conversation.officeId,
+			missing.map((message) => message.id),
+			locale,
+		);
+		const byMessage = new Map(failures.map((failure) => [failure.messageId, failure]));
+		const now = Date.now();
+		for (const message of missing) {
+			if (translationRetryDue(byMessage.get(message.id), now)) {
+				void scheduleTranslation(runtime, conversation.officeId, message, locale);
+			}
+		}
+	});
 }

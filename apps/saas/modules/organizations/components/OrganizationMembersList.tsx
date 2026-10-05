@@ -8,6 +8,7 @@ import {
 } from "@organizations/lib/api";
 import type { OrganizationMemberRole } from "@repo/auth";
 import { authClient } from "@repo/auth/client";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { checkPermission } from "@repo/permissions";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { Table, TableBody, TableCell, TableRow } from "@repo/ui/components/table";
 import { toast } from "@repo/ui/components/toast";
+import { useConfirmationAlert } from "@shared/components/ConfirmationAlertProvider";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { clientDataTableFeatures } from "@shared/lib/table-features";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,14 +27,21 @@ import type { ColumnDef, ColumnFiltersState, SortingState } from "@tanstack/reac
 import { flexRender, useTable } from "@tanstack/react-table";
 import { LogOutIcon, MoreVerticalIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { OrganizationRoleSelect } from "./OrganizationRoleSelect";
 
-export function OrganizationMembersList({ organizationId }: { organizationId: string }) {
+export function OrganizationMembersList({
+	organizationId,
+	lockOwnRow = false,
+}: {
+	organizationId: string;
+	lockOwnRow?: boolean;
+}) {
 	const t = useTranslations();
 	const queryClient = useQueryClient();
 	const { user } = useSession();
+	const { confirm } = useConfirmationAlert();
 	const { data: organization } = useFullOrganizationQuery(organizationId);
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -50,11 +59,15 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 
 	const updateMemberRole = async (memberId: string, role: OrganizationMemberRole) => {
 		const updateRole = async () => {
-			await authClient.organization.updateMemberRole({
+			// The client answers a refusal with `error` rather than throwing; the toast must say so.
+			const { error } = await authClient.organization.updateMemberRole({
 				memberId,
 				role,
 				organizationId,
 			});
+			if (error) {
+				throw error;
+			}
 
 			await queryClient.invalidateQueries({
 				queryKey: fullOrganizationQueryKey(organizationId),
@@ -84,10 +97,13 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 
 	const removeMember = async (memberId: string) => {
 		const remove = async () => {
-			await authClient.organization.removeMember({
+			const { error } = await authClient.organization.removeMember({
 				memberIdOrEmail: memberId,
 				organizationId,
 			});
+			if (error) {
+				throw error;
+			}
 
 			await Promise.all([
 				queryClient.invalidateQueries({
@@ -140,48 +156,80 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 			accessorKey: "actions",
 			header: "",
 			cell: ({ row }) => {
+				const ownRow = row.original.userId === user?.id;
+				const locked = lockOwnRow && ownRow;
+				// The platform admin's own row (in the admin area: office pages send them there) reads
+				// "Platform admin", with no role or Leave: their membership is inert (ADR 0015, #174).
+				if (ownRow && isPlatformAdmin(user?.role)) {
+					return (
+						<div className="gap-2 flex flex-row justify-end">
+							<span data-test="team-member-role" className="font-medium text-sm text-foreground/60">
+								{t("organizations.settings.members.platformAdmin")}
+							</span>
+						</div>
+					);
+				}
+				const name = row.original.user?.name || row.original.user?.email || "";
 				return (
 					<div className="gap-2 flex flex-row justify-end">
 						{canManageOrganization ? (
 							<>
 								<OrganizationRoleSelect
+									dataTest="team-member-role"
 									value={row.original.role}
 									onSelect={async (value) => updateMemberRole(row.original.id, value)}
-									disabled={!canManageOrganization || row.original.role === "owner"}
+									disabled={!canManageOrganization || row.original.role === "owner" || locked}
 								/>
-								<DropdownMenu>
-									<DropdownMenuTrigger
-										render={
-											<Button size="icon" variant="ghost">
-												<MoreVerticalIcon className="size-4" />
-											</Button>
-										}
-									/>
-									<DropdownMenuContent>
-										{row.original.userId !== user?.id && (
-											<DropdownMenuItem
-												disabled={!canManageOrganization}
-												className="text-destructive"
-												onClick={async () => removeMember(row.original.id)}
-											>
-												<TrashIcon className="mr-2 size-4" />
-												{t("organizations.settings.members.removeMember")}
-											</DropdownMenuItem>
-										)}
-										{row.original.userId === user?.id && (
-											<DropdownMenuItem
-												className="text-destructive"
-												onClick={async () => removeMember(row.original.id)}
-											>
-												<LogOutIcon className="mr-2 size-4" />
-												{t("organizations.settings.members.leaveOrganization")}
-											</DropdownMenuItem>
-										)}
-									</DropdownMenuContent>
-								</DropdownMenu>
+								{locked ? null : (
+									<DropdownMenu>
+										<DropdownMenuTrigger
+											render={
+												<Button size="icon" variant="ghost">
+													<MoreVerticalIcon className="size-4" />
+												</Button>
+											}
+										/>
+										<DropdownMenuContent>
+											{row.original.userId !== user?.id && (
+												<DropdownMenuItem
+													disabled={!canManageOrganization}
+													variant="destructive"
+													onClick={() =>
+														// Removal ends the account (ADR 0013), so it asks first (#174).
+														confirm({
+															title: t("organizations.settings.members.confirmRemove.title", {
+																name,
+															}),
+															message: t("organizations.settings.members.confirmRemove.message", {
+																name,
+															}),
+															confirmLabel: t(
+																"organizations.settings.members.confirmRemove.confirm",
+															),
+															destructive: true,
+															onConfirm: async () => removeMember(row.original.id),
+														})
+													}
+												>
+													<TrashIcon className="mr-2 size-4" />
+													{t("organizations.settings.members.removeMember")}
+												</DropdownMenuItem>
+											)}
+											{row.original.userId === user?.id && (
+												<DropdownMenuItem
+													variant="destructive"
+													onClick={async () => removeMember(row.original.id)}
+												>
+													<LogOutIcon className="mr-2 size-4" />
+													{t("organizations.settings.members.leaveOrganization")}
+												</DropdownMenuItem>
+											)}
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
 							</>
 						) : (
-							<span className="font-medium text-sm text-foreground/60">
+							<span data-test="team-member-role" className="font-medium text-sm text-foreground/60">
 								{memberRoles[row.original.role as keyof typeof memberRoles]}
 							</span>
 						)}
@@ -191,9 +239,11 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 		},
 	];
 
+	const members = useMemo(() => organization?.members ?? [], [organization?.members]);
+
 	const table = useTable({
 		features: clientDataTableFeatures,
-		data: organization?.members ?? [],
+		data: members,
 		columns,
 		manualPagination: true,
 		onSortingChange: setSorting,
@@ -210,7 +260,7 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id}>
+							<TableRow key={row.id} data-test="team-member">
 								{row.getVisibleCells().map((cell) => (
 									<TableCell key={cell.id}>
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -220,8 +270,8 @@ export function OrganizationMembersList({ organizationId }: { organizationId: st
 						))
 					) : (
 						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								No results.
+							<TableCell colSpan={columns.length}>
+								<div className="h-24 flex items-center justify-center">No results.</div>
 							</TableCell>
 						</TableRow>
 					)}

@@ -370,6 +370,7 @@ export function UserList() {
 			<Card className="p-6">
 				<h2 className="mb-4 font-semibold text-2xl">{t("admin.users.title")}</h2>
 				<Input
+					data-test="admin-users-search"
 					type="search"
 					placeholder={t("admin.users.search")}
 					value={searchTerm}
@@ -402,7 +403,7 @@ export function UserList() {
 												{t("admin.users.loading")}
 											</div>
 										) : (
-											<p>No results.</p>
+											<p data-test="admin-no-results">No results.</p>
 										)}
 									</TableCell>
 								</TableRow>

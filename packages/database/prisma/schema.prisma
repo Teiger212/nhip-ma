@@ -41,6 +41,10 @@ model User {
   notifications            Notification[]
   notificationPreferences  UserNotificationPreference[]
   answers                  Answer[]
+  ownedConversations       Conversation[]               @relation("ConversationOwner")
+  inboxAlerts              InboxAlert[]
+  guestDeletions           GuestDeletion[]
+  pushSubscriptions        PushSubscription[]
 
   @@unique([email])
   @@map("user")
@@ -102,6 +106,17 @@ model Verification {
   @@map("verification")
 }
 
+/// Better Auth's rate-limit counters (rateLimit.storage "database"): shared by every
+/// serverless instance, so a limit holds across them.
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rateLimit")
+}
+
 model Passkey {
   id           String    @id @default(cuid())
   name         String?
@@ -138,7 +153,7 @@ model TwoFactor {
 }
 
 model Organization {
-  id                 String       @id @default(cuid())
+  id                 String           @id @default(cuid())
   name               String
   slug               String?
   logo               String?
@@ -150,6 +165,12 @@ model Organization {
   purchases          Purchase[]
   conversations      Conversation[]
   pipeConnections    PipeConnection[]
+  crmConnection      CrmConnection?
+  mockCrmLeads       MockCrmLead[]
+  inboxAlerts        InboxAlert[]
+  leadTallies        LeadTally[]
+  guestDeletions     GuestDeletion[]
+  inboxSetting       OfficeSetting?
 
   @@unique([slug])
   @@map("organization")
@@ -165,7 +186,6 @@ model Member {
   createdAt      DateTime
 
   @@unique([organizationId, userId])
-  @@index([organizationId])
   @@index([userId])
   @@map("member")
 }
@@ -207,7 +227,6 @@ model Purchase {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  @@index([subscriptionId])
   @@map("purchase")
 }
 
@@ -219,6 +238,7 @@ enum NotificationTarget {
 enum NotificationType {
   WELCOME
   APP_UPDATE
+  PIPE_DISCONNECTED
 }
 
 model Notification {
@@ -266,11 +286,13 @@ enum MessageDirection {
 }
 
 /// `oa_echo` is the on-disk spelling of the domain's `oa-echo` (an agent replying from
-/// the OA app); the store translates at its boundary.
+/// the OA app), and `auto_reply` of `auto-reply` (the greeting Nhịp sends on its own, ADR
+/// 0021); the store translates at its boundary.
 enum MessageSource {
   guest
   oa_echo
   nhip
+  auto_reply
 }
 
 enum DraftSource {
@@ -286,8 +308,11 @@ enum AnswerStatus {
   unknown
 }
 
-/// One thread per guest per office (ADR 0010). The id is `office:pipe:guest` because it
-/// is part of every route; the unique key is the triple.
+/// One thread per guest per office (ADR 0010): the unique key is (office, pipe, guest). The id
+/// is opaque (a cuid; threads from before #141 were re-keyed to UUIDs) and never names the
+/// guest, because it is part of every route. `guestId` is the guest's phone or Zalo id as the
+/// thread knows it; other copies (a CRM link's `leadName`, mock CRM leads, message text) are
+/// guest deletion's to clear (ADR 0020, #138).
 model Conversation {
   id                 String         @id
   pipe               Pipe
@@ -298,50 +323,96 @@ model Conversation {
   language           String?
   lastGuestInboundAt DateTime?
   sentAt             DateTime?
+  /// The operator the thread is assigned to (ADR 0022); null = Unassigned. An owner whose
+  /// account ends leaves the thread Unassigned.
+  ownerId            String?
+  owner              User?          @relation("ConversationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  /// When the auto-reply claimed this thread (ADR 0021): set once, by a conditional update
+  /// from null, so two first messages at once still make one greeting.
+  autoReplyAt        DateTime?
   updatedAt          DateTime
   messages           Message[]
   qualification      Qualification?
   draft              Draft?
   paperwork          Paperwork?
   answers            Answer[]
+  crmLink            CrmLink?
+  alerts             InboxAlert[]
 
   @@unique([officeId, pipe, guestId])
-  @@index([officeId])
+  /// What every office-owned row's foreign key points at, so a row's office is its thread's.
+  @@unique([id, officeId])
+  @@index([officeId, ownerId])
+  @@index([ownerId])
   @@map("inbox_conversation")
 }
 
 model Message {
-  id              String           @id
-  seq             Int              @unique @default(autoincrement())
-  conversationId  String
-  conversation    Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  direction       MessageDirection
-  source          MessageSource
-  text            String
-  at              DateTime
-  vendorMessageId String?
-  mock            Boolean          @default(false)
-  pipeExternalId  String?
-  translations    Translation[]
-  answer          Answer?
+  id                  String               @id
+  seq                 Int                  @unique @default(autoincrement())
+  conversationId      String
+  /// The thread's office, on every office-owned row (#95); the foreign key holds them equal.
+  officeId            String
+  conversation        Conversation         @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
+  direction           MessageDirection
+  source              MessageSource
+  text                String
+  at                  DateTime
+  /// The vendor's message id as a keyed hash (HMAC-SHA256, `inbox/vendor-id.ts`), never raw:
+  /// a WhatsApp id can carry the guest's number. Only the duplicate check compares it.
+  vendorMessageId     String?
+  mock                Boolean              @default(false)
+  pipeExternalId      String?
+  /// Who wrote an auto-reply (ADR 0021): the template or the model. Null for every other message.
+  writtenBy           DraftSource?
+  translations        Translation[]
+  translationFailures TranslationFailure[]
+  answer              Answer?
+  answeringDrafts     Draft[]
 
+  @@unique([conversationId, vendorMessageId])
+  @@unique([id, officeId])
+  @@index([officeId])
   @@index([conversationId])
+  /// A thread's latest guest message (the list's turn and preview) and the funnel's first
+  /// inbound per thread are both read by (thread, direction, time).
+  @@index([conversationId, direction, at])
   @@map("inbox_message")
 }
 
 model Translation {
   messageId String
-  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  officeId  String
+  message   Message @relation(fields: [messageId, officeId], references: [id, officeId], onDelete: Cascade)
   locale    String
   text      String
 
   @@id([messageId, locale])
+  @@index([officeId])
   @@map("inbox_translation")
+}
+
+/// A translation into one operator language that did not land (ADR 0007): the model failed
+/// or answered nothing, so no Translation was stored. Kept in the database so every instance
+/// waits out the same backoff instead of calling the model again on the next read. Cleared
+/// when the translation lands.
+model TranslationFailure {
+  messageId    String
+  officeId     String
+  message      Message  @relation(fields: [messageId, officeId], references: [id, officeId], onDelete: Cascade)
+  locale       String
+  attempts     Int
+  lastFailedAt DateTime
+
+  @@id([messageId, locale])
+  @@index([officeId])
+  @@map("inbox_translation_failure")
 }
 
 model Qualification {
   conversationId  String       @id
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId        String
+  conversation    Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   areaOfInterest  String?
   nationality     String?
   inVietnamNow    Boolean?
@@ -350,25 +421,41 @@ model Qualification {
   budgetBand      String?
   bedsOrHousehold String?
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
   @@map("inbox_qualification")
 }
 
 model Draft {
   conversationId   String       @id
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId         String
+  conversation     Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   reply            String
+  /// The guest message this reply answers; null once that message is gone. Keyed by the
+  /// message alone, not with the office like the thread: a composite key would set
+  /// `officeId` null too on delete, and Prisma cannot set only one of its columns null.
   answersMessageId String?
+  answersMessage   Message?     @relation(fields: [answersMessageId], references: [id], onDelete: SetNull)
   source           DraftSource  @default(template)
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
+  @@index([answersMessageId])
   @@map("inbox_draft")
 }
 
 model Paperwork {
   conversationId String       @id
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId       String
+  conversation   Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   mentioned      Boolean
   flag           String?
 
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
   @@map("inbox_paperwork")
 }
 
@@ -379,9 +466,10 @@ model Answer {
   id              String       @id
   seq             Int          @unique @default(autoincrement())
   conversationId  String
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  officeId        String
+  conversation    Conversation @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
   inboundId       String       @unique
-  inbound         Message      @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  inbound         Message      @relation(fields: [inboundId, officeId], references: [id, officeId], onDelete: Cascade)
   text            String
   operatorId      String?
   operator        User?        @relation(fields: [operatorId], references: [id], onDelete: SetNull)
@@ -389,15 +477,19 @@ model Answer {
   status          AnswerStatus
   mock            Boolean      @default(false)
   pipe            Pipe
-  to              String
   pipeExternalId  String?
+  /// The sent reply's vendor id as a keyed hash, like `Message.vendorMessageId`.
   vendorMessageId String?
   approvedAt      DateTime
   sentAt          DateTime?
   failedAt        DateTime?
   failureReason   String?
 
+  /// Prisma's one-to-one relation needs it; `inboundId` alone is already unique.
+  @@unique([inboundId, officeId])
   @@index([conversationId])
+  @@index([officeId])
+  @@index([operatorId])
   @@map("inbox_answer")
 }
 
@@ -406,8 +498,297 @@ model PipeConnection {
   pipe       Pipe
   externalId String
   officeId   String
-  office     Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  office     Organization    @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  credential PipeCredential?
 
   @@id([pipe, externalId])
+  @@index([officeId])
   @@map("inbox_pipe_connection")
+}
+
+/// A pipe endpoint's vendor tokens (Zalo OA today). Values are encrypted by the app before
+/// they reach this table; a refresh rewrites the row under a row lock, because Zalo's
+/// refresh token works once.
+model PipeCredential {
+  pipe                 Pipe
+  externalId           String
+  accessToken          String         @db.Text
+  refreshToken         String         @db.Text
+  accessTokenExpiresAt DateTime
+  /// Set when the tokens stopped working (a refresh failed); the platform admin reconnects.
+  disconnectedAt       DateTime?
+  disconnectedReason   String?
+  updatedAt            DateTime       @updatedAt
+  connection           PipeConnection @relation(fields: [pipe, externalId], references: [pipe, externalId], onDelete: Cascade)
+
+  @@id([pipe, externalId])
+  @@map("inbox_pipe_credential")
+}
+
+/// One incoming webhook (ADR 0017), for "the guest says they wrote, but nothing arrived":
+/// when, which pipe and endpoint, whether its signature held, what became of its messages.
+/// Never message text or who the guest is. Kept 30 days.
+model WebhookDelivery {
+  id               String   @id @default(cuid())
+  pipe             Pipe
+  receivedAt       DateTime @default(now())
+  /// refused (bad signature) | processed | failed (ingest threw; the vendor will retry)
+  outcome          String
+  /// The office endpoints (WhatsApp number ids, Zalo OA ids) its messages were addressed to.
+  endpoints        String[]
+  /// Offices its messages were filed to.
+  officeIds        String[]
+  filed            Int      @default(0)
+  /// Messages to an endpoint no office holds.
+  dropped          Int      @default(0)
+  /// Its messages' vendor ids as keyed hashes (`inbox/vendor-id.ts`), never raw.
+  vendorMessageIds String[]
+  /// The error's kind when ingest failed (no message: it can carry guest data).
+  errorKind        String?
+
+  @@index([receivedAt])
+  @@map("inbox_webhook_delivery")
+}
+
+enum CrmKind {
+  mock
+  hubspot
+}
+
+/// What the CRM says about a lead (ADR 0003). Only the CRM decides won or lost, never the chat.
+enum CrmOutcomeStatus {
+  open
+  won
+  lost
+}
+
+/// How Nhịp linked a thread to its CRM lead (ADR 0003): it created the lead, or found the
+/// guest's existing lead by phone or by the Zalo user id Nhịp stored on it.
+enum CrmLinkMethod {
+  created
+  phone
+  zaloId
+}
+
+/// The office's CRM (ADR 0003). One per office; set by the platform admin.
+model CrmConnection {
+  officeId    String       @id
+  office      Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind        CrmKind
+  /// The office's access token for a CRM that takes one, sealed by the app before it reaches
+  /// this table (ADR 0017's encryption). Write-only: never read back to a client. Another kind
+  /// replaces the row, so the token goes with it.
+  accessToken String?      @db.Text
+  /// The CRM's own id for the account the office is on, where one app serves many accounts and
+  /// its webhooks name the account, not the office (HubSpot's portal id, #66). Null until learned
+  /// from the CRM; a new access token clears it, since it may reach another account.
+  accountId   String?
+  links       CrmLink[]
+  updatedAt   DateTime     @updatedAt
+
+  @@index([kind, accountId])
+  @@map("inbox_crm_connection")
+}
+
+/// A thread's link to its CRM lead. The row is the claim on writing the lead: whoever inserts
+/// it first creates or finds the lead, so two first messages make one lead. Until the lead is
+/// written, `leadId` is null. Disconnecting the office's CRM removes its links.
+model CrmLink {
+  conversationId    String            @id
+  officeId          String
+  /// Both relations carry `officeId`: the link's thread and its CRM are the same office's.
+  conversation      Conversation      @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
+  connection        CrmConnection     @relation(fields: [officeId], references: [officeId], onDelete: Cascade)
+  leadId            String?
+  leadName          String?
+  method            CrmLinkMethod?
+  claimedAt         DateTime          @default(now())
+  linkedAt          DateTime?
+  outcome           CrmOutcomeStatus?
+  /// The CRM's own date for the outcome, for display only.
+  outcomeAt         DateTime?
+  outcomeReason     String?
+  /// When Nhịp first saw the current won or lost outcome. A guest who writes after it is back
+  /// in the queue (ADR 0003, Q3); the CRM's own date never decides that.
+  outcomeObservedAt DateTime?
+
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
+  @@map("inbox_crm_link")
+}
+
+/// The mock CRM's leads (ADR 0003): a CRM kept in Nhịp's database for development, tests,
+/// the demo and offices without one. Phones are E.164.
+model MockCrmLead {
+  id            String           @id @default(cuid())
+  officeId      String
+  office        Organization     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String?
+  zaloUserId    String?
+  pipe          Pipe
+  language      String?
+  /// The guest's qualification as Nhịp extracted it (area, rent or buy, budget, timeframe,
+  /// household). Never message text.
+  fields        Json?
+  threadUrl     String
+  outcome       CrmOutcomeStatus @default(open)
+  outcomeAt     DateTime?
+  outcomeReason String?
+  createdAt     DateTime         @default(now())
+
+  @@index([officeId, phone])
+  @@index([officeId, zaloUserId])
+  @@map("inbox_mock_crm_lead")
+}
+
+/// What an alert is about (ADR 0019): a guest's message, a thread a manager returned to Unassigned,
+/// a thread a manager gave the operator, or a test the operator sent their own device.
+enum AlertKind {
+  guest
+  returned
+  assigned
+  test
+}
+
+/// One alert to one operator (ADR 0019), whatever their devices: the burst rule's memory (an
+/// alert sounds only after 2 minutes of quiet on the thread for that operator), what an alert's
+/// link resolves, and E2E's evidence (a mock deployment writes it and pushes nothing). Its id is
+/// the only thing an alert carries: the link names no thread and nothing of the guest. Pruned
+/// without a scheduler, like webhook deliveries.
+model InboxAlert {
+  /// Opaque (a cuid), and the link's only parameter.
+  id             String        @id
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Null for a test alert, which has no thread.
+  conversationId String?
+  officeId       String
+  conversation   Conversation? @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
+  office         Organization  @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind           AlertKind
+  /// Whether it sounded; false is a silent replacement of the thread's last alert.
+  sounded        Boolean
+  /// `/<locale>/inbox?alert=<id>`, in the operator's locale.
+  link           String
+  createdAt      DateTime      @default(now())
+
+  /// The burst rule's read: this operator's latest alert on this thread.
+  @@index([userId, conversationId, createdAt])
+  @@index([conversationId, officeId])
+  @@index([officeId])
+  @@index([createdAt])
+  @@map("inbox_alert")
+}
+
+/// An office's inbox settings (ADR 0021). No row means the defaults: the auto-reply on, since
+/// the office began.
+model OfficeSetting {
+  officeId         String       @id
+  office           Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  /// Whether a new guest's first message gets the auto-reply.
+  autoReply        Boolean      @default(true)
+  /// When the auto-reply was last turned on: a thread that began before it is never greeted (S1).
+  autoReplyOnSince DateTime?
+
+  @@map("inbox_office_setting")
+}
+
+/// One deleted guest who wrote in (ADR 0020), kept so Home's numbers for past days never move:
+/// the funnel adds tallies to its cohort. Computed by the funnel's own per-lead rule when the
+/// thread is deleted. No identifier, no thread id and no text: never the guest.
+model LeadTally {
+  id             String            @id
+  officeId       String
+  office         Organization      @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  pipe           Pipe
+  /// The guest's language as the one-shot detected it; null if it never ran.
+  language       String?
+  /// The guest's first message (the funnel's cohort and leads by day).
+  firstInboundAt DateTime
+  /// The office's first reply that counted (a sent Answer, or a reply from the OA app).
+  firstReplyAt   DateTime?
+  /// The guest wrote again after that reply.
+  inConversation Boolean
+  /// The CRM's outcome for the lead as Nhịp last heard it, for Closings and Lost (#68).
+  outcome        CrmOutcomeStatus?
+
+  @@index([officeId, firstInboundAt])
+  @@map("inbox_lead_tally")
+}
+
+/// What became of the guest's CRM lead when their data was deleted (ADR 0020).
+enum GuestDeletionCrmResult {
+  deleted
+  unlinked
+  pending
+  failed
+}
+
+/// Why a manager deleted a guest's data (ADR 0020): required on every deletion.
+enum GuestDeletionReason {
+  guest_request
+  duplicate_or_spam
+  test_data
+  other
+}
+
+/// The receipt of one guest deletion (ADR 0020): that it happened, in which office, by whom,
+/// when and how many rows went. It never names the guest: no guest name or id, no thread id and
+/// no CRM id. Read on request; no screen shows it yet.
+model GuestDeletion {
+  id            String                  @id
+  officeId      String
+  office        Organization            @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  /// The manager who deleted; the record outlives the account, like `Answer.operatorId`.
+  actorId       String?
+  actor         User?                   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  /// Who it was, kept once the account is gone (ADR 0013).
+  actorName     String
+  at            DateTime                @default(now())
+  /// `other` for a receipt written before reasons were asked for (none in production).
+  reason        GuestDeletionReason     @default(other)
+  /// The manager's note, up to 500 characters (required for `other`), with phone numbers and
+  /// emails masked before it is stored, so the receipt still names no guest.
+  note          String?
+  messages      Int
+  /// Replies that went out (`sent` Answers).
+  answers       Int
+  translations  Int
+  /// Bell rows that named the thread (`notification.data.threadId`).
+  notifications Int
+  /// The office's CRM when the thread had a lead; null with no lead.
+  crmKind       CrmKind?
+  crmResult     GuestDeletionCrmResult?
+
+  @@index([officeId, at])
+  @@index([actorId])
+  @@map("inbox_guest_deletion")
+}
+
+/// A device (ADR 0019): one browser's or installed app's web push subscription, on which an
+/// operator turned alerts on. It gets every alert for its user until they sign out there (the
+/// sign-out before-hook deletes the session's rows), the account ends (cascade, ADR 0013) or
+/// its push service answers 404 or 410. Not an inbox table: it belongs to a user, not an office.
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The sign-in that registered it: a plain column, no foreign key, so the row outlives an
+  /// expired session and only a sign-out (or the account's end) removes it.
+  sessionId     String
+  /// The push service's URL for this device: `https` on an allowed host only.
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  /// The browser's user agent when it subscribed, cut short: which device this is.
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  /// The last push its push service accepted.
+  lastSuccessAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@map("push_subscription")
 }

@@ -16,16 +16,20 @@ export function SendBar({
 	canApprove,
 	sending,
 	onApprove,
+	blockedReason,
 }: {
 	status: SendStatus;
 	canApprove: boolean;
 	sending: boolean;
 	onApprove: () => void;
+	/** Why nothing can be sent on this thread right now (a disconnected pipe, ADR 0017). */
+	blockedReason?: string;
 }) {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
-	const text =
-		status.kind === "sending"
+	const text = blockedReason
+		? blockedReason
+		: status.kind === "sending"
 			? t("sending")
 			: status.kind === "error"
 				? status.message
@@ -34,11 +38,12 @@ export function SendBar({
 					: status.kind === "sent"
 						? t("alreadySent", { at: formatInboxTimestamp(status.at, locale) })
 						: t("notSent");
-	const warn = status.kind === "error" || status.kind === "unknown";
-	const quiet = status.kind === "none";
+	const warn = Boolean(blockedReason) || status.kind === "error" || status.kind === "unknown";
+	const quiet = !blockedReason && status.kind === "none";
 	return (
-		<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-card bg-muted/40">
+		<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-muted/40">
 			<output
+				data-test="send-status"
 				aria-live="polite"
 				aria-atomic="true"
 				className={cn(
@@ -57,7 +62,8 @@ export function SendBar({
 				type="button"
 				variant="primary"
 				className="min-h-11 ml-auto shrink-0"
-				disabled={!canApprove || sending}
+				disabled={!canApprove || sending || Boolean(blockedReason)}
+				data-test="approve-and-send"
 				onClick={onApprove}
 			>
 				{t("approveAndSend")}

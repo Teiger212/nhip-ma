@@ -33,7 +33,7 @@ test("the office is the operator's one membership", async () => {
 		{ organizationId: "office-a" },
 	] as never);
 	const gate = await requireInboxSession(request);
-	expect(gate.viewer).toEqual({ userId: "agent-1", officeId: "office-a" });
+	expect(gate.viewer).toEqual({ userId: "agent-1", officeId: "office-a", role: "agent" });
 	expect(getOrganizationMembershipsForUser).toHaveBeenCalledWith("agent-1");
 });
 
@@ -62,4 +62,33 @@ test("more than one membership is refused, not picked from", async () => {
 	expect(gate.denied?.status).toBe(403);
 	expect(await gate.denied?.json()).toMatchObject({ error: "ambiguous_office" });
 	expect(gate.viewer).toBeUndefined();
+});
+
+test("the platform admin is refused whatever office they are a member of (ADR 0015)", async () => {
+	vi.mocked(auth.api.getSession).mockResolvedValue({
+		session: { id: "s", activeOrganizationId: "office-a" },
+		user: { id: "platform-admin", role: "admin" },
+	} as never);
+	vi.mocked(getOrganizationMembershipsForUser).mockResolvedValue([
+		{ organizationId: "office-a" },
+	] as never);
+	const gate = await requireInboxSession(request);
+	expect(gate.denied?.status).toBe(403);
+	expect(await gate.denied?.json()).toMatchObject({ error: "platform_admin" });
+	expect(gate.viewer).toBeUndefined();
+});
+
+test("a manager is the office's kit owner or admin; a member is an agent (ADR 0015)", async () => {
+	vi.mocked(auth.api.getSession).mockResolvedValue(session(null));
+	for (const [kitRole, role] of [
+		["owner", "manager"],
+		["admin", "manager"],
+		["member", "agent"],
+	] as const) {
+		vi.mocked(getOrganizationMembershipsForUser).mockResolvedValue([
+			{ organizationId: "office-a", role: kitRole },
+		] as never);
+		const gate = await requireInboxSession(request);
+		expect(gate.viewer?.role, kitRole).toBe(role);
+	}
 });

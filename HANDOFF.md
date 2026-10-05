@@ -13,8 +13,9 @@ things are.
 
 ## Run locally
 
-Setup, the two seeded logins (`walk@nhip.local`, the agent; `admin@nhip.local`, the
-platform admin) and the test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
+Setup, the four seeded logins (`walk@nhip.local` and `walk2@nhip.local`, the agents;
+`manager@nhip.local`, the office's manager; `admin@nhip.local`, the platform admin) and the
+test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
 injects an inbound locally (404 in production). Only the exact `SEND_MODE` value `live`
 talks to a vendor, and live needs the webhook secrets set or inbound is refused.
 
@@ -71,8 +72,8 @@ saas test`. Do not commit untracked local scripts.
 - SaaS routes are locale-prefixed (`/en/...`, `/vi/...`); cookie-only locale was tried
   and rejected. The operator language switch offers `en` and `vi` only.
 - User-facing strings need translations under `inbox.*`.
-- `apps/marketing`, `apps/docs`, admin, and billing are unused kit scaffolding; leave
-  them unless asked. The kit organization is in use as the office, its switcher hidden
+- `apps/marketing`, `apps/docs` and billing are unused kit scaffolding; leave them unless
+  asked. The admin area is the platform admin's (offices, pipe connections, webhooks). The kit organization is in use as the office, its switcher hidden
   while one agency is one office.
 
 ## Before going live
@@ -86,34 +87,25 @@ company entity first.
 | ------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
 | Meta developer app + WhatsApp Business                 | inbound webhook, outbound send (`WHATSAPP_*`)                       | Yes: Business Verification before real traffic         |
 | Zalo Official Account + developer app                  | same for Zalo (`ZALO_OA_*`)                                         | Yes: OA verification requires a registered VN business |
-| Attio workspace + API key                              | CRM adapter, closings and lost (ADR 0003)                           | No                                                     |
+| The agency's own CRM access, if any (intake, #128)     | CRM adapter, closings and lost (ADR 0003)                           | No                                                     |
 | OpenRouter account (or any OpenAI-compatible endpoint) | draft adapter: translation, follow-ups (`DRAFT_*`, ADRs 0005, 0007) | No; prepaid balance is the budget                      |
 | Resend (or the mail provider in `.env.local.example`)  | magic link and verification emails                                  | No, but a verified sending domain                      |
 | Google / GitHub OAuth apps                             | only if social login stays enabled                                  | No                                                     |
 
-The office itself (ADR 0008) is created in-app, by seed or signup, not with any vendor.
+The office itself (ADR 0008) is created in the admin area (sign-up is closed, ADR 0010), not with any vendor.
 
 ### Checklist
 
-- Set `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`,
-  `WHATSAPP_PHONE_NUMBER_ID`, `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_SECRET_KEY`. Startup
-  validation refuses `SEND_MODE=live` without them.
-- Connect each pipe to its office so webhook-created threads have a tenant:
-  `pnpm --filter saas pipe:connect -- --pipe whatsapp --external-id <phone_number_id>
---office <organization id>` (and the same for the Zalo OA id). Add `--adopt-unowned`
-  once to give threads from before tenancy to that office.
-- Set `ZALO_OA_ID` to the OA the Zalo token belongs to, so replies on any other OA are
-  refused instead of sent from the wrong identity.
-- Remove `walk@nhip.local` and `admin@nhip.local` from any shared database; create the
-  real platform admin by setting `role = "admin"` on your own user, then create the
-  office and invite agents from `/admin/organizations`.
-- Auth (Better Auth 1.6): generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32`;
-  `NEXT_PUBLIC_SAAS_URL` must be the public https origin (it is the auth base URL and the
-  only trusted origin); leave `AUTH_TRUSTED_ORIGINS` and `BETTER_AUTH_URL` unset. Rate
-  limiting is on by default with a memory store, right for one process; behind a
-  reverse proxy, set `advanced.ipAddress.ipAddressHeaders` and `trustedProxies` in
-  `packages/auth/auth.ts` so limits key on the client IP. Configure only the social
-  providers the office will use; unconfigured ones are not offered.
-- Before the first production deploy, baseline the schema with `prisma migrate` (ADR 0012
-  keeps `db push` for development only) and point `DATABASE_URL` at the production
-  Postgres, which holds both the inbox and the auth tables.
+Everything to fill in or verify by hand (vendor apps, Vercel values per environment, the
+PostHog privacy setting, domain and DMARC, Vietnam's data protection filing) is in
+[docs/setup-checklist.md](docs/setup-checklist.md). In short:
+
+- Pipes are connected per office in the admin area (ADR 0017); Nhịp's own vendor apps are
+  env vars (`WHATSAPP_*`, `ZALO_APP_ID`, `ZALO_APP_SECRET`, `ZALO_OA_SECRET_KEY`), each pipe
+  whole or not at all, and `PIPE_SECRETS_KEY` encrypts stored tokens.
+- The seed's logins (`walk@nhip.local`, `admin@nhip.local`) never go near a shared
+  database; the first platform admin comes from `pnpm --filter @repo/scripts create:user`.
+- Auth: a fresh `BETTER_AUTH_SECRET`; `NEXT_PUBLIC_SAAS_URL` is the public https origin;
+  rate-limit counters live in the database (`rateLimit`), plus the Vercel Firewall rule.
+- Hosted schemas change only through `prisma migrate` (`0_init` is the baseline; see
+  ARCHITECTURE.md for how staging is migrated).

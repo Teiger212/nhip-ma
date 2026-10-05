@@ -1,0 +1,34 @@
+{
+	"call": "evidence",
+	"scenario": "A deal Nhịp created, read back: HubSpot assigned no owner",
+	"recordedAt": "2026-10-03T14:19:30.385Z",
+	"exchanges": [
+		{
+			"request": {
+				"method": "GET",
+				"path": "/crm/objects/2026-09/deals/524541248723?properties=hubspot_owner_id,dealstage,pipeline,hs_is_closed,description",
+				"body": null
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"id": "524541248723",
+					"properties": {
+						"createdate": "2026-10-03T14:19:32.636Z",
+						"dealstage": "appointmentscheduled",
+						"description": "Nhịp thread: https://nhip.test/vi/inbox?thread=nhip-test-170385-2\nPipe: Zalo\nLanguage: vi\nArea: Thảo Điền\nRent or buy: rent\nBudget: 1,000–1,500 USD\nTimeframe: next month\nHousehold: 2 bedrooms",
+						"hs_is_closed": "false",
+						"hs_lastmodifieddate": "2026-10-03T14:19:34.204Z",
+						"hs_object_id": "524541248723",
+						"hubspot_owner_id": null,
+						"pipeline": "default"
+					},
+					"createdAt": "2026-10-03T14:19:32.636Z",
+					"updatedAt": "2026-10-03T14:19:34.204Z",
+					"archived": false,
+					"url": "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/524541248723"
+				}
+			}
+		}
+	]
+}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isValidSecretsKey } from "./pipes/secrets";
 import type { SendMode } from "./types";
 
 /** The literal shipped in `.env.local.example`; never valid in a real deployment. */
@@ -26,6 +27,15 @@ function stripSlash(value: string): string {
 	return value.replace(/\/+$/, "");
 }
 
+/** Each pipe's app-level settings: all set, or none (then the pipe never sends live). */
+const PIPE_SETTINGS = {
+	whatsapp: ["WHATSAPP_APP_SECRET", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
+	zalo: ["ZALO_APP_ID", "ZALO_APP_SECRET", "ZALO_OA_SECRET_KEY"],
+} as const;
+
+/** Pipes that keep per-office tokens, which PIPE_SECRETS_KEY encrypts (set on its own is fine). */
+const PIPES_WITH_STORED_TOKENS = ["zalo"] as const;
+
 const envSchema = z
 	.object({
 		SEND_MODE: trimmed,
@@ -33,19 +43,54 @@ const envSchema = z
 		WHATSAPP_APP_SECRET: trimmed,
 		WHATSAPP_ACCESS_TOKEN: trimmed,
 		WHATSAPP_PHONE_NUMBER_ID: trimmed,
-		ZALO_OA_ACCESS_TOKEN: trimmed,
+		ZALO_APP_ID: trimmed,
+		ZALO_APP_SECRET: trimmed,
 		ZALO_OA_SECRET_KEY: trimmed,
-		ZALO_OA_ID: trimmed,
+		PIPE_SECRETS_KEY: trimmed,
+		MOCK_CRM_WEBHOOK_SECRET: trimmed,
+		HUBSPOT_APP_CLIENT_SECRET: trimmed,
+		HUBSPOT_WEBHOOK_URL: trimmed,
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
+		VAPID_PUBLIC_KEY: trimmed,
+		VAPID_PRIVATE_KEY: trimmed,
+		VAPID_SUBJECT: trimmed,
 		BETTER_AUTH_SECRET: z.string().optional(),
 		BETTER_AUTH_URL: trimmed,
 		NEXT_PUBLIC_SAAS_URL: trimmed,
 		AUTH_TRUSTED_ORIGINS: trimmed,
 		NODE_ENV: z.string().optional(),
+		VERCEL_ENV: trimmed,
 	})
 	.superRefine((env, ctx) => {
+		// The mock CRM is for development and E2E (ADR 0003): production never takes its notices.
+		if (env.VERCEL_ENV === "production" && env.MOCK_CRM_WEBHOOK_SECRET) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["MOCK_CRM_WEBHOOK_SECRET"],
+				message:
+					"MOCK_CRM_WEBHOOK_SECRET must not be set in production: the mock CRM's webhook is for development and E2E",
+			});
+		}
+		// HubSpot's webhook is verified with both (#66): the secret, over the URL HubSpot calls.
+		const hubspotWebhook = ["HUBSPOT_APP_CLIENT_SECRET", "HUBSPOT_WEBHOOK_URL"] as const;
+		if (hubspotWebhook.some((key) => env[key])) {
+			for (const key of hubspotWebhook.filter((k) => !env[k])) {
+				ctx.addIssue({
+					code: "custom",
+					path: [key],
+					message: `${key} must be set: HubSpot's webhook needs both HUBSPOT_APP_CLIENT_SECRET and HUBSPOT_WEBHOOK_URL`,
+				});
+			}
+		}
+		if (env.HUBSPOT_WEBHOOK_URL && !env.HUBSPOT_WEBHOOK_URL.startsWith("https://")) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["HUBSPOT_WEBHOOK_URL"],
+				message: "HUBSPOT_WEBHOOK_URL must be the https URL HubSpot calls (the app's targetUrl)",
+			});
+		}
 		if (env.SEND_MODE !== undefined && env.SEND_MODE !== "mock" && env.SEND_MODE !== "live") {
 			ctx.addIssue({
 				code: "custom",
@@ -53,22 +98,76 @@ const envSchema = z
 				message: `SEND_MODE must be "mock" or "live" when set, got "${env.SEND_MODE}"`,
 			});
 		}
-		if (env.SEND_MODE === "live") {
-			for (const key of [
-				"WHATSAPP_APP_SECRET",
-				"WHATSAPP_ACCESS_TOKEN",
-				"WHATSAPP_PHONE_NUMBER_ID",
-				"ZALO_OA_ACCESS_TOKEN",
-				"ZALO_OA_SECRET_KEY",
-			] as const) {
-				if (!env[key]) {
+		// A pipe is configured whole or not at all (ADR 0017): its app-level settings live here,
+		// each office's tokens on its pipe connection. A pipe left unconfigured never sends live.
+		for (const [pipe, keys] of Object.entries(PIPE_SETTINGS)) {
+			const set = keys.filter((key) => env[key]);
+			if (set.length > 0 && set.length < keys.length) {
+				for (const key of keys.filter((k) => !env[k])) {
 					ctx.addIssue({
 						code: "custom",
 						path: [key],
-						message: `${key} must be set when SEND_MODE=live`,
+						message: `${key} must be set: ${pipe} is configured only in part (${set.join(", ")} set)`,
 					});
 				}
 			}
+		}
+		// The E2E profile commits test-only pipe secrets (.env.e2e); a live deployment refuses them.
+		if (env.SEND_MODE === "live") {
+			for (const key of [
+				"ZALO_APP_SECRET",
+				"ZALO_OA_SECRET_KEY",
+				"PIPE_SECRETS_KEY",
+				"MOCK_CRM_WEBHOOK_SECRET",
+			] as const) {
+				const value = env[key];
+				const plain =
+					key === "PIPE_SECRETS_KEY" && value
+						? Buffer.from(value, "base64").toString("latin1")
+						: value;
+				if (plain?.includes("e2e-only")) {
+					ctx.addIssue({
+						code: "custom",
+						path: [key],
+						message: `${key} is the E2E profile's test value and must not be used when SEND_MODE=live`,
+					});
+				}
+			}
+		}
+		// Web push's VAPID keys are a set (#134): none means alerts are logged and never pushed.
+		const vapidKeys = ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"] as const;
+		const vapidSet = vapidKeys.filter((key) => env[key]);
+		if (vapidSet.length > 0 && vapidSet.length < vapidKeys.length) {
+			for (const key of vapidKeys.filter((k) => !env[k])) {
+				ctx.addIssue({
+					code: "custom",
+					path: [key],
+					message: `${key} must be set: web push needs VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT together (${vapidSet.join(", ")} set)`,
+				});
+			}
+		}
+		if (env.VAPID_SUBJECT && !/^(mailto:|https:\/\/)/.test(env.VAPID_SUBJECT)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["VAPID_SUBJECT"],
+				message: "VAPID_SUBJECT must be a mailto: or https: address push services can write to",
+			});
+		}
+		for (const pipe of PIPES_WITH_STORED_TOKENS) {
+			if (PIPE_SETTINGS[pipe].some((key) => env[key]) && !env.PIPE_SECRETS_KEY) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["PIPE_SECRETS_KEY"],
+					message: `PIPE_SECRETS_KEY must be set: ${pipe} stores each office's tokens encrypted with it`,
+				});
+			}
+		}
+		if (env.PIPE_SECRETS_KEY && !isValidSecretsKey(env.PIPE_SECRETS_KEY)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["PIPE_SECRETS_KEY"],
+				message: "PIPE_SECRETS_KEY must be 32 random bytes, base64-encoded",
+			});
 		}
 		// A model id is never defaulted in code, where it would go stale; a key alone is a
 		// misconfiguration, not "no model".
@@ -101,6 +200,7 @@ const envSchema = z
 				message: `NEXT_PUBLIC_SAAS_URL must be an absolute http(s) URL, got "${env.NEXT_PUBLIC_SAAS_URL}"`,
 			});
 		} else {
+			// No exceptions: the E2E run is served over HTTPS too (a local proxy, AGENTS.md).
 			if (env.NODE_ENV === "production" && !env.NEXT_PUBLIC_SAAS_URL.startsWith("https://")) {
 				ctx.addIssue({
 					code: "custom",
@@ -157,8 +257,12 @@ const envSchema = z
  * Everything the inbox reads from the environment, settled once. Route handlers and
  * send adapters read these fields; nothing downstream touches `process.env`.
  */
+
 export type InboxConfig = {
-	/** Only the exact value `live` talks to WhatsApp/Zalo. Anything else is mock. */
+	/**
+	 * The deployment-wide switch: nothing is sent live unless this is exactly `live`, and
+	 * then only on a connected pipe (ADR 0017, `transmit`).
+	 */
 	sendMode: SendMode;
 	whatsapp: {
 		verifyToken?: string;
@@ -166,12 +270,27 @@ export type InboxConfig = {
 		accessToken?: string;
 		phoneNumberId?: string;
 	};
+	/** Nhịp's Zalo app; each OA's tokens are on its pipe connection (ADR 0017). */
 	zalo: {
-		accessToken?: string;
+		appId?: string;
+		appSecret?: string;
+		/** Signs Zalo's webhooks. */
 		oaSecretKey?: string;
-		/** The OA the token belongs to; when set, sends from any other OA are refused. */
-		oaId?: string;
 	};
+	/** Encrypts vendor tokens at rest (`pipes/secrets.ts`). */
+	pipeSecretsKey?: string;
+	/**
+	 * Signs the mock CRM's outcome webhook (ADR 0003). Unset, the mock CRM cannot notify Nhịp
+	 * and its webhook answers 404: production never sets it.
+	 */
+	mockCrmWebhookSecret?: string;
+	/**
+	 * HubSpot's outcome webhook (#66): the app's client secret, which signs it, and the public
+	 * URL HubSpot calls (the app's `targetUrl`), which the signature covers. Unset, either one,
+	 * the webhook answers 404. One app serves every office on HubSpot.
+	 */
+	hubspotAppClientSecret?: string;
+	hubspotWebhookUrl?: string;
 	/**
 	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
 	 * a key there is no model: no translation is shown and every suggested reply is a
@@ -182,7 +301,15 @@ export type InboxConfig = {
 		baseUrl: string;
 		model?: string;
 	};
+	/**
+	 * Web push's VAPID key pair and subject (ADR 0019), read as a set: null until all three are
+	 * set, and then a live deployment logs alerts and pushes nothing ("push not configured").
+	 */
+	vapid: Vapid | null;
 };
+
+/** Web push's VAPID key pair and its subject (a `mailto:` or `https:` address). */
+export type Vapid = { publicKey: string; privateKey: string; subject: string };
 
 /** OpenRouter fronts every vendor behind one prepaid balance, which doubles as the budget. */
 export const DEFAULT_DRAFT_BASE_URL = "https://openrouter.ai/api/v1";
@@ -203,16 +330,33 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 			phoneNumberId: clean(env.WHATSAPP_PHONE_NUMBER_ID),
 		},
 		zalo: {
-			accessToken: clean(env.ZALO_OA_ACCESS_TOKEN),
+			appId: clean(env.ZALO_APP_ID),
+			appSecret: clean(env.ZALO_APP_SECRET),
 			oaSecretKey: clean(env.ZALO_OA_SECRET_KEY),
-			oaId: clean(env.ZALO_OA_ID),
 		},
+		pipeSecretsKey: clean(env.PIPE_SECRETS_KEY),
+		mockCrmWebhookSecret: clean(env.MOCK_CRM_WEBHOOK_SECRET),
+		hubspotAppClientSecret: clean(env.HUBSPOT_APP_CLIENT_SECRET),
+		hubspotWebhookUrl: clean(env.HUBSPOT_WEBHOOK_URL),
 		drafts: {
 			apiKey: clean(env.DRAFT_API_KEY),
 			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,
 			model: clean(env.DRAFT_MODEL),
 		},
+		vapid: vapidFromEnv(
+			clean(env.VAPID_PUBLIC_KEY),
+			clean(env.VAPID_PRIVATE_KEY),
+			clean(env.VAPID_SUBJECT),
+		),
 	};
+}
+
+function vapidFromEnv(
+	publicKey: string | undefined,
+	privateKey: string | undefined,
+	subject: string | undefined,
+): Vapid | null {
+	return publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null;
 }
 
 export type ValidateInboxEnvResult =
@@ -238,6 +382,7 @@ export function mockInboxConfig(overrides: Partial<InboxConfig> = {}): InboxConf
 		whatsapp: {},
 		zalo: {},
 		drafts: { baseUrl: DEFAULT_DRAFT_BASE_URL },
+		vapid: null,
 		...overrides,
 	};
 }

@@ -1,15 +1,20 @@
 "use client";
 
-import { Button } from "@repo/ui";
+import { Button, Skeleton } from "@repo/ui";
 import { ChevronLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { displayName } from "../lib/display-name";
+import { replyEndpoint, useDisconnectedEndpoints } from "../lib/inbox-queries";
+import { PIPE_NAMES } from "../lib/pipe-names";
 import type { SendStatus } from "../lib/send-status";
 import type { Conversation, DraftSource } from "../lib/types";
+import { CrmStatus } from "./CrmStatus";
 import { ExtractFields } from "./ExtractFields";
+import { OwnerControl } from "./OwnerControl";
 import { ReplyBox } from "./ReplyBox";
 import { SendBar } from "./SendBar";
+import { ThreadActions } from "./ThreadActions";
 import { ThreadMessage } from "./ThreadMessage";
 import { GuestMark, ThreadFlags } from "./ThreadParts";
 
@@ -25,6 +30,23 @@ export type ReplyState = {
 	status: SendStatus;
 	onApprove: () => void;
 };
+
+/** The open thread's place while it loads: a header and a few message-shaped bars. */
+export function ThreadDetailSkeleton() {
+	return (
+		<div className="flex flex-col" aria-hidden="true">
+			<div className="gap-2 px-3 py-2 flex items-center border-b bg-muted/60">
+				<Skeleton className="size-8 rounded-md" />
+				<Skeleton className="h-4 w-32" />
+			</div>
+			<div className="max-w-3xl gap-3 p-3 mx-auto flex w-full flex-col">
+				<Skeleton className="h-16 w-3/4 rounded-xl" />
+				<Skeleton className="h-10 w-1/2 rounded-xl" />
+				<Skeleton className="h-24 w-full rounded-xl" />
+			</div>
+		</div>
+	);
+}
 
 /**
  * One open thread: who it is, every message with its translation, what the one-shot
@@ -44,13 +66,18 @@ export function ThreadDetail({
 	onBack: () => void;
 }) {
 	const t = useTranslations("inbox");
+	const disconnected = useDisconnectedEndpoints();
+	const endpoint = replyEndpoint(conversation);
+	const blocked = disconnected.some(
+		(item) => item.pipe === conversation.pipe && item.externalId === endpoint,
+	);
 	return (
 		<>
-			<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-card/40 bg-muted/60">
+			<header className="gap-2 px-3 py-2 flex shrink-0 flex-wrap items-center border-b bg-muted/60">
 				<Button
 					type="button"
 					variant="ghost"
-					className="md:hidden min-h-11 min-w-11 gap-1 px-2"
+					className="md:hidden min-h-11 min-w-11"
 					onClick={onBack}
 					aria-label={t("backAria")}
 				>
@@ -60,6 +87,14 @@ export function ThreadDetail({
 				<GuestMark name={displayName(conversation)} />
 				<p className="font-semibold tracking-tight font-heading">{displayName(conversation)}</p>
 				<ThreadFlags conversation={conversation} />
+				<CrmStatus conversation={conversation} />
+				<OwnerControl conversation={conversation} />
+				{/* Keyed: a dialog left open never carries over to the next thread (deletion is irreversible). */}
+				<ThreadActions
+					key={conversation.id}
+					conversation={conversation}
+					approving={reply.sending}
+				/>
 			</header>
 			<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 				<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
@@ -69,7 +104,7 @@ export function ThreadDetail({
 					<div className="border-t" />
 					<ExtractFields conversation={conversation} />
 					{cribNotes ? (
-						<section className="gap-1.5 p-3 flex flex-col rounded-lg rounded-md border-l-2 border-l-primary bg-primary/6 bg-touch/8">
+						<section className="gap-1.5 p-3 flex flex-col rounded-xl bg-touch/8">
 							<h2 className="font-semibold tracking-tight text-sm">{t("forYou")}</h2>
 							<p className="text-xs text-muted-foreground">{t("forYouHint")}</p>
 							<p className="leading-relaxed whitespace-pre-wrap">{cribNotes}</p>
@@ -87,6 +122,9 @@ export function ThreadDetail({
 				</div>
 			</div>
 			<SendBar
+				blockedReason={
+					blocked ? t("pipeDisconnected", { pipe: PIPE_NAMES[conversation.pipe] }) : undefined
+				}
 				status={reply.status}
 				canApprove={reply.canApprove}
 				sending={reply.sending}

@@ -92,7 +92,11 @@ export function OnboardingAccountStep({ onCompleted }: { onCompleted: () => void
 						</FormControl>
 					</FormItem>
 
-					<Button type="submit" loading={form.formState.isSubmitting}>
+					<Button
+						type="submit"
+						loading={form.formState.isSubmitting}
+						data-test="onboarding-continue"
+					>
 						{t("onboarding.continue")}
 						<ArrowRightIcon className="ml-2 size-4" />
 					</Button>

@@ -37,6 +37,11 @@ export default async function OrganizationSettingsPage({
 		membershipRole,
 	});
 
+	// Team is the managers' (#82): an agent finds no page here, not a read-only one.
+	if (!permix.check("organization.manage")) {
+		return notFound();
+	}
+
 	const t = await getTranslations("organizations.settings");
 
 	return (
@@ -44,10 +49,9 @@ export default async function OrganizationSettingsPage({
 			<PageHeader title={t("members.title")} subtitle={t("members.description")} />
 
 			<SettingsList>
-				{permix.check("organization.manage") && (
-					<InviteMemberForm organizationId={organization.id} />
-				)}
-				<OrganizationMembersBlock organizationId={organization.id} />
+				<InviteMemberForm organizationId={organization.id} />
+				{/* The auth API leaves the platform admin's inert row out for managers (#174). */}
+				<OrganizationMembersBlock organizationId={organization.id} lockOwnRow />
 			</SettingsList>
 		</>
 	);

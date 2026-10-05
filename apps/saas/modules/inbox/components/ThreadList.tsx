@@ -2,9 +2,10 @@
 
 import { Button, Skeleton } from "@repo/ui";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 import type { QueueView } from "../lib/queue";
-import type { Conversation } from "../lib/types";
+import type { ConversationSummary } from "../lib/types";
 import { ThreadListState } from "./ThreadParts";
 import { ThreadRow } from "./ThreadRow";
 
@@ -39,6 +40,8 @@ export function ThreadList({
 	onOpen,
 	onRetry,
 	onViewSent,
+	emptyTitle,
+	rowAction,
 }: {
 	queue: QueueView;
 	loading: boolean;
@@ -49,24 +52,34 @@ export function ThreadList({
 	onOpen: (id: string) => void;
 	onRetry: () => void;
 	onViewSent: () => void;
+	/** What an empty inbox says to this operator (an agent's: nothing assigned yet, ADR 0022). */
+	emptyTitle?: string;
+	/** What sits at each row's end (a manager's "Assign to…" in Unassigned, ADR 0022). */
+	rowAction?: (conversation: ConversationSummary) => ReactNode;
 }) {
 	const t = useTranslations("inbox");
 
-	function rows(list: Conversation[]) {
-		return list.map((conversation) => (
-			<ThreadRow
-				key={conversation.id}
-				conversation={conversation}
-				active={conversation.id === selectedId}
-				onOpen={() => onOpen(conversation.id)}
-			/>
-		));
+	function rows(list: ConversationSummary[]) {
+		return (
+			<ul>
+				{list.map((conversation) => (
+					<ThreadRow
+						key={conversation.id}
+						conversation={conversation}
+						active={conversation.id === selectedId}
+						onOpen={() => onOpen(conversation.id)}
+						action={rowAction?.(conversation)}
+					/>
+				))}
+			</ul>
+		);
 	}
 
 	if (loading) return <ThreadListSkeleton />;
 	if (failed) {
 		return (
 			<ThreadListState
+				testId="inbox-load-error"
 				title={t("loadError")}
 				action={
 					<Button type="button" variant="outline" className="mt-3 min-h-11" onClick={onRetry}>
@@ -76,10 +89,17 @@ export function ThreadList({
 			/>
 		);
 	}
+	if (queue.allAssigned) {
+		return <ThreadListState testId="inbox-all-assigned" title={t("allAssigned")} />;
+	}
 	if (queue.visible.length === 0 && queue.quiet.length === 0) {
-		const title = total === 0 ? t("empty") : queue.caughtUp ? t("allCaughtUp") : t("noMatches");
+		const title =
+			total === 0 ? (emptyTitle ?? t("empty")) : queue.caughtUp ? t("allCaughtUp") : t("noMatches");
 		return (
 			<ThreadListState
+				testId={
+					total === 0 ? "inbox-empty" : queue.caughtUp ? "inbox-caught-up" : "inbox-no-matches"
+				}
 				title={title}
 				action={
 					queue.caughtUp && queue.counts.sent > 0 ? (

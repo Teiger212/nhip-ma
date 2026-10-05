@@ -4,6 +4,7 @@ import { useSwitchLocale } from "@i18n/lib/use-switch-locale";
 import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui";
 import { isWalkLocale, resolveWalkLocale, walkLocaleOptions } from "@shared/lib/walk-locales";
 import { useLocale } from "next-intl";
+import type { CSSProperties } from "react";
 
 export function WalkLocaleToggle({ className }: { className?: string }) {
 	const switchLocale = useSwitchLocale();
@@ -17,16 +18,14 @@ export function WalkLocaleToggle({ className }: { className?: string }) {
 		<TooltipProvider delay={0}>
 			<div
 				className={cn(
-					"gap-0 p-0.5 relative inline-flex cursor-pointer resize-none items-center rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)] hover:cursor-pointer",
+					"gap-0 p-0.5 shadow-hairline relative inline-flex cursor-pointer resize-none items-center rounded-full bg-muted hover:cursor-pointer",
 					className,
 				)}
 				data-test="walk-locale-toggle"
 			>
 				<div
-					className="left-0.5 top-0.5 h-7 w-8 ease-out shadow-xs absolute rounded-full border border-border bg-background transition-transform duration-200 motion-reduce:transition-none"
-					style={{
-						transform: `translateX(${activeIndex * 100}%)`,
-					}}
+					className="left-0.5 top-0.5 h-7 w-8 ease-out shadow-xs absolute translate-x-(--toggle-offset) rounded-full border border-border bg-background transition-transform duration-200 motion-reduce:transition-none"
+					style={{ "--toggle-offset": `${activeIndex * 100}%` } as CSSProperties}
 					aria-hidden="true"
 				/>
 				{walkLocaleOptions.map((locale) => {

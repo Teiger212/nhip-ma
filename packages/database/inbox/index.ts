@@ -10,8 +10,13 @@
  */
 export {
 	AnswerStatus,
+	CrmKind,
+	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
 	Funnel,
+	GUEST_DELETION_NOTE_MAX,
+	GuestDeletionReason,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
@@ -22,20 +27,38 @@ export {
 	Timestamp,
 } from "./schema";
 export type {
+	AlertKind,
+	AlertOperator,
 	Answer,
 	BeginAnswerResult,
 	Conversation,
+	ConversationCrm,
+	CrmOutcome,
+	ConversationSummary,
 	Draft,
+	GuestDeletionResult,
 	InboundEvent,
+	InboundResult,
 	InboxStore,
 	InboxViewer,
 	Message,
+	MockCrmLead,
+	NewAlert,
+	NewMockCrmLead,
 	OneShot,
 	Paperwork,
 	PipeConnection,
 	Qualification,
+	RecordedAlert,
 	SendMode,
 	SendResult,
+	OfficePipe,
+	PipeCredentialState,
+	StoredPipeCredential,
+	TranslationFailure,
 	Translations,
+	WebhookDelivery,
+	WebhookDeliveryRecord,
 } from "./types";
-export { conversationId, createInboxStore, nowIso } from "./store";
+export { maskContactDetails } from "./mask-note";
+export { createInboxStore, nowIso } from "./store";

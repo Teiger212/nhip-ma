@@ -6,7 +6,7 @@
  * running while the operator fixes `.env.local`. On success the settled
  * config is handed to the inbox runtime so nothing downstream re-reads env.
  *
- * Next bundles this file for both runtimes. The inbox runtime opens SQLite, which
+ * Next bundles this file for both runtimes. The inbox runtime opens Postgres (Prisma), which
  * only exists on Node, so everything is imported lazily behind the runtime check.
  */
 export async function register() {
@@ -30,4 +30,22 @@ export async function register() {
 	if (process.env.NODE_ENV === "production") {
 		throw new Error(`Invalid environment configuration:\n${result.errors.join("\n")}`);
 	}
+}
+
+/**
+ * Unhandled server errors go to error tracking, scrubbed of personal data first
+ * (`@shared/lib/error-tracking`); a no-op unless NEXT_PUBLIC_POSTHOG_KEY is set.
+ */
+export async function onRequestError(
+	error: unknown,
+	request: { path: string; method: string },
+	context: { routeType?: string; routePath?: string },
+) {
+	if (process.env.NEXT_RUNTIME !== "nodejs") return;
+	const { captureServerError } = await import("@shared/lib/error-tracking");
+	await captureServerError(error, {
+		method: request.method,
+		routeType: context.routeType,
+		routePath: context.routePath,
+	});
 }

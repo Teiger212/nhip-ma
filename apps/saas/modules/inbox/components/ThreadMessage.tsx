@@ -8,6 +8,15 @@ import type { Message } from "../lib/types";
 import { useOperatorLanguage } from "./ThreadParts";
 
 /** One message on the thread, with its translation under the original for a guest message. */
+
+/** Who a message came from, as a person reads it (the stored values are internal). */
+const SOURCE_KEYS = {
+	guest: "guest",
+	nhip: "nhip",
+	"oa-echo": "oaEcho",
+	"auto-reply": "autoReply",
+} as const;
+
 export function ThreadMessage({ message }: { message: Message }) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
@@ -16,20 +25,33 @@ export function ThreadMessage({ message }: { message: Message }) {
 	const translation = inbound ? message.translations?.[locale] : undefined;
 	return (
 		<div
+			data-test="message"
 			className={cn(
-				"px-3 py-2 text-sm rounded-md",
-				inbound
-					? "border-l-2 border-l-touch bg-card"
-					: "ml-6 border-l-2 border-l-foreground/20 bg-muted/40",
+				"px-3 py-2 text-sm rounded-xl",
+				inbound ? "shadow-hairline bg-card" : "ml-6 bg-muted/60",
 			)}
 		>
 			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
-				<span className="font-medium text-foreground/80">{message.source}</span>
-				<time className="font-mono tabular-nums" dateTime={message.at}>
+				{message.source === "auto-reply" ? (
+					<>
+						{/* The office's greeting, sent on its own (ADR 0021, DESIGN.md: inline badges). */}
+						<Badge status="neutral" size="sm" data-test="message-source">
+							{t("source.autoReply")}
+						</Badge>
+						{message.writtenBy ? (
+							<span data-test="auto-reply-writer">{t(`autoReply.${message.writtenBy}`)}</span>
+						) : null}
+					</>
+				) : (
+					<span className="font-medium text-foreground/80" data-test="message-source">
+						{t(`source.${SOURCE_KEYS[message.source]}`)}
+					</span>
+				)}
+				<time className="tabular-nums" dateTime={message.at}>
 					{formatInboxTimestamp(message.at, locale)}
 				</time>
 				{message.mock ? (
-					<Badge status="info" className="h-4 px-1.5 font-medium text-[10px] normal-case">
+					<Badge status="info" size="sm">
 						{t("mock")}
 					</Badge>
 				) : null}
@@ -37,7 +59,7 @@ export function ThreadMessage({ message }: { message: Message }) {
 			<div className="leading-relaxed whitespace-pre-wrap">{message.text}</div>
 			{translation ? (
 				<div className="mt-1.5 pt-1.5 text-xs leading-relaxed border-t border-dashed whitespace-pre-wrap text-muted-foreground">
-					<span className="mr-1.5 font-medium tracking-wide text-[10px] text-muted-foreground/80 uppercase">
+					<span className="mr-1.5 font-medium tracking-wide text-2xs text-muted-foreground uppercase">
 						{t("translation")}
 					</span>
 					{translation}

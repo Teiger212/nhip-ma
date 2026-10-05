@@ -37,7 +37,9 @@ describe("locale path helpers", () => {
 
 	it("reads NEXT_LOCALE from a cookie header", () => {
 		expect(localeFromCookieHeader("NEXT_LOCALE=vi; other=1")).toBe("vi");
-		expect(localeFromCookieHeader("other=1; NEXT_LOCALE=de")).toBe("de");
+		expect(localeFromCookieHeader("other=1; NEXT_LOCALE=vi")).toBe("vi");
+		// English and Vietnamese only (PRODUCT.md): a cookie naming another language falls back.
+		expect(localeFromCookieHeader("other=1; NEXT_LOCALE=de")).toBe("en");
 		expect(localeFromCookieHeader("NEXT_LOCALE=vn")).toBe("en");
 		expect(localeFromCookieHeader(undefined)).toBe("en");
 	});

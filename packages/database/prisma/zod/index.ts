@@ -34,6 +34,12 @@ export const VerificationScalarFieldEnumSchema = z.enum(['id', 'identifier', 'va
 
 export type VerificationScalarFieldEnum = z.infer<typeof VerificationScalarFieldEnumSchema>;
 
+// File: RateLimitScalarFieldEnum.schema.ts
+
+export const RateLimitScalarFieldEnumSchema = z.enum(['id', 'key', 'count', 'lastRequest'])
+
+export type RateLimitScalarFieldEnum = z.infer<typeof RateLimitScalarFieldEnumSchema>;
+
 // File: PasskeyScalarFieldEnum.schema.ts
 
 export const PasskeyScalarFieldEnumSchema = z.enum(['id', 'name', 'publicKey', 'userId', 'credentialID', 'counter', 'deviceType', 'backedUp', 'transports', 'aaguid', 'createdAt'])
@@ -84,43 +90,49 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: ConversationScalarFieldEnum.schema.ts
 
-export const ConversationScalarFieldEnumSchema = z.enum(['id', 'pipe', 'guestId', 'guestName', 'officeId', 'language', 'lastGuestInboundAt', 'sentAt', 'updatedAt'])
+export const ConversationScalarFieldEnumSchema = z.enum(['id', 'pipe', 'guestId', 'guestName', 'officeId', 'language', 'lastGuestInboundAt', 'sentAt', 'ownerId', 'autoReplyAt', 'updatedAt'])
 
 export type ConversationScalarFieldEnum = z.infer<typeof ConversationScalarFieldEnumSchema>;
 
 // File: MessageScalarFieldEnum.schema.ts
 
-export const MessageScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'direction', 'source', 'text', 'at', 'vendorMessageId', 'mock', 'pipeExternalId'])
+export const MessageScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'officeId', 'direction', 'source', 'text', 'at', 'vendorMessageId', 'mock', 'pipeExternalId', 'writtenBy'])
 
 export type MessageScalarFieldEnum = z.infer<typeof MessageScalarFieldEnumSchema>;
 
 // File: TranslationScalarFieldEnum.schema.ts
 
-export const TranslationScalarFieldEnumSchema = z.enum(['messageId', 'locale', 'text'])
+export const TranslationScalarFieldEnumSchema = z.enum(['messageId', 'officeId', 'locale', 'text'])
 
 export type TranslationScalarFieldEnum = z.infer<typeof TranslationScalarFieldEnumSchema>;
 
+// File: TranslationFailureScalarFieldEnum.schema.ts
+
+export const TranslationFailureScalarFieldEnumSchema = z.enum(['messageId', 'officeId', 'locale', 'attempts', 'lastFailedAt'])
+
+export type TranslationFailureScalarFieldEnum = z.infer<typeof TranslationFailureScalarFieldEnumSchema>;
+
 // File: QualificationScalarFieldEnum.schema.ts
 
-export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold'])
+export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold'])
 
 export type QualificationScalarFieldEnum = z.infer<typeof QualificationScalarFieldEnumSchema>;
 
 // File: DraftScalarFieldEnum.schema.ts
 
-export const DraftScalarFieldEnumSchema = z.enum(['conversationId', 'reply', 'answersMessageId', 'source'])
+export const DraftScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'reply', 'answersMessageId', 'source'])
 
 export type DraftScalarFieldEnum = z.infer<typeof DraftScalarFieldEnumSchema>;
 
 // File: PaperworkScalarFieldEnum.schema.ts
 
-export const PaperworkScalarFieldEnumSchema = z.enum(['conversationId', 'mentioned', 'flag'])
+export const PaperworkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'mentioned', 'flag'])
 
 export type PaperworkScalarFieldEnum = z.infer<typeof PaperworkScalarFieldEnumSchema>;
 
 // File: AnswerScalarFieldEnum.schema.ts
 
-export const AnswerScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'inboundId', 'text', 'operatorId', 'operatorName', 'status', 'mock', 'pipe', 'to', 'pipeExternalId', 'vendorMessageId', 'approvedAt', 'sentAt', 'failedAt', 'failureReason'])
+export const AnswerScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'officeId', 'inboundId', 'text', 'operatorId', 'operatorName', 'status', 'mock', 'pipe', 'pipeExternalId', 'vendorMessageId', 'approvedAt', 'sentAt', 'failedAt', 'failureReason'])
 
 export type AnswerScalarFieldEnum = z.infer<typeof AnswerScalarFieldEnumSchema>;
 
@@ -129,6 +141,66 @@ export type AnswerScalarFieldEnum = z.infer<typeof AnswerScalarFieldEnumSchema>;
 export const PipeConnectionScalarFieldEnumSchema = z.enum(['pipe', 'externalId', 'officeId'])
 
 export type PipeConnectionScalarFieldEnum = z.infer<typeof PipeConnectionScalarFieldEnumSchema>;
+
+// File: PipeCredentialScalarFieldEnum.schema.ts
+
+export const PipeCredentialScalarFieldEnumSchema = z.enum(['pipe', 'externalId', 'accessToken', 'refreshToken', 'accessTokenExpiresAt', 'disconnectedAt', 'disconnectedReason', 'updatedAt'])
+
+export type PipeCredentialScalarFieldEnum = z.infer<typeof PipeCredentialScalarFieldEnumSchema>;
+
+// File: WebhookDeliveryScalarFieldEnum.schema.ts
+
+export const WebhookDeliveryScalarFieldEnumSchema = z.enum(['id', 'pipe', 'receivedAt', 'outcome', 'endpoints', 'officeIds', 'filed', 'dropped', 'vendorMessageIds', 'errorKind'])
+
+export type WebhookDeliveryScalarFieldEnum = z.infer<typeof WebhookDeliveryScalarFieldEnumSchema>;
+
+// File: CrmConnectionScalarFieldEnum.schema.ts
+
+export const CrmConnectionScalarFieldEnumSchema = z.enum(['officeId', 'kind', 'accessToken', 'accountId', 'updatedAt'])
+
+export type CrmConnectionScalarFieldEnum = z.infer<typeof CrmConnectionScalarFieldEnumSchema>;
+
+// File: CrmLinkScalarFieldEnum.schema.ts
+
+export const CrmLinkScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'leadId', 'leadName', 'method', 'claimedAt', 'linkedAt', 'outcome', 'outcomeAt', 'outcomeReason', 'outcomeObservedAt'])
+
+export type CrmLinkScalarFieldEnum = z.infer<typeof CrmLinkScalarFieldEnumSchema>;
+
+// File: MockCrmLeadScalarFieldEnum.schema.ts
+
+export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name', 'phone', 'zaloUserId', 'pipe', 'language', 'fields', 'threadUrl', 'outcome', 'outcomeAt', 'outcomeReason', 'createdAt'])
+
+export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEnumSchema>;
+
+// File: InboxAlertScalarFieldEnum.schema.ts
+
+export const InboxAlertScalarFieldEnumSchema = z.enum(['id', 'userId', 'conversationId', 'officeId', 'kind', 'sounded', 'link', 'createdAt'])
+
+export type InboxAlertScalarFieldEnum = z.infer<typeof InboxAlertScalarFieldEnumSchema>;
+
+// File: OfficeSettingScalarFieldEnum.schema.ts
+
+export const OfficeSettingScalarFieldEnumSchema = z.enum(['officeId', 'autoReply', 'autoReplyOnSince'])
+
+export type OfficeSettingScalarFieldEnum = z.infer<typeof OfficeSettingScalarFieldEnumSchema>;
+
+// File: LeadTallyScalarFieldEnum.schema.ts
+
+export const LeadTallyScalarFieldEnumSchema = z.enum(['id', 'officeId', 'pipe', 'language', 'firstInboundAt', 'firstReplyAt', 'inConversation', 'outcome'])
+
+export type LeadTallyScalarFieldEnum = z.infer<typeof LeadTallyScalarFieldEnumSchema>;
+
+// File: GuestDeletionScalarFieldEnum.schema.ts
+
+export const GuestDeletionScalarFieldEnumSchema = z.enum(['id', 'officeId', 'actorId', 'actorName', 'at', 'reason', 'note', 'messages', 'answers', 'translations', 'notifications', 'crmKind', 'crmResult'])
+
+export type GuestDeletionScalarFieldEnum = z.infer<typeof GuestDeletionScalarFieldEnumSchema>;
+
+// File: PushSubscriptionScalarFieldEnum.schema.ts
+
+export const PushSubscriptionScalarFieldEnumSchema = z.enum(['id', 'userId', 'sessionId', 'endpoint', 'p256dh', 'auth', 'userAgent', 'createdAt', 'lastSuccessAt'])
+
+export type PushSubscriptionScalarFieldEnum = z.infer<typeof PushSubscriptionScalarFieldEnumSchema>;
 
 // File: SortOrder.schema.ts
 
@@ -141,6 +213,12 @@ export type SortOrder = z.infer<typeof SortOrderSchema>;
 export const JsonNullValueInputSchema = z.enum(['JsonNull'])
 
 export type JsonNullValueInput = z.infer<typeof JsonNullValueInputSchema>;
+
+// File: NullableJsonNullValueInput.schema.ts
+
+export const NullableJsonNullValueInputSchema = z.enum(['DbNull', 'JsonNull'])
+
+export type NullableJsonNullValueInput = z.infer<typeof NullableJsonNullValueInputSchema>;
 
 // File: QueryMode.schema.ts
 
@@ -168,7 +246,7 @@ export type PurchaseType = z.infer<typeof PurchaseTypeSchema>;
 
 // File: NotificationType.schema.ts
 
-export const NotificationTypeSchema = z.enum(['WELCOME', 'APP_UPDATE'])
+export const NotificationTypeSchema = z.enum(['WELCOME', 'APP_UPDATE', 'PIPE_DISCONNECTED'])
 
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 
@@ -192,7 +270,7 @@ export type MessageDirection = z.infer<typeof MessageDirectionSchema>;
 
 // File: MessageSource.schema.ts
 
-export const MessageSourceSchema = z.enum(['guest', 'oa_echo', 'nhip'])
+export const MessageSourceSchema = z.enum(['guest', 'oa_echo', 'nhip', 'auto_reply'])
 
 export type MessageSource = z.infer<typeof MessageSourceSchema>;
 
@@ -207,6 +285,42 @@ export type DraftSource = z.infer<typeof DraftSourceSchema>;
 export const AnswerStatusSchema = z.enum(['sending', 'sent', 'failed', 'unknown'])
 
 export type AnswerStatus = z.infer<typeof AnswerStatusSchema>;
+
+// File: CrmKind.schema.ts
+
+export const CrmKindSchema = z.enum(['mock', 'hubspot'])
+
+export type CrmKind = z.infer<typeof CrmKindSchema>;
+
+// File: CrmLinkMethod.schema.ts
+
+export const CrmLinkMethodSchema = z.enum(['created', 'phone', 'zaloId'])
+
+export type CrmLinkMethod = z.infer<typeof CrmLinkMethodSchema>;
+
+// File: CrmOutcomeStatus.schema.ts
+
+export const CrmOutcomeStatusSchema = z.enum(['open', 'won', 'lost'])
+
+export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatusSchema>;
+
+// File: AlertKind.schema.ts
+
+export const AlertKindSchema = z.enum(['guest', 'returned', 'assigned', 'test'])
+
+export type AlertKind = z.infer<typeof AlertKindSchema>;
+
+// File: GuestDeletionReason.schema.ts
+
+export const GuestDeletionReasonSchema = z.enum(['guest_request', 'duplicate_or_spam', 'test_data', 'other'])
+
+export type GuestDeletionReason = z.infer<typeof GuestDeletionReasonSchema>;
+
+// File: GuestDeletionCrmResult.schema.ts
+
+export const GuestDeletionCrmResultSchema = z.enum(['deleted', 'unlinked', 'pending', 'failed'])
+
+export type GuestDeletionCrmResult = z.infer<typeof GuestDeletionCrmResultSchema>;
 
 // File: User.schema.ts
 
@@ -284,6 +398,18 @@ export const VerificationSchema = z.object({
 });
 
 export type VerificationType = z.infer<typeof VerificationSchema>;
+
+
+// File: RateLimit.schema.ts
+
+export const RateLimitSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  count: z.number().int(),
+  lastRequest: z.bigint(),
+});
+
+export type RateLimitType = z.infer<typeof RateLimitSchema>;
 
 
 // File: Passkey.schema.ts
@@ -420,6 +546,8 @@ export const ConversationSchema = z.object({
   language: z.string().nullish(),
   lastGuestInboundAt: z.date().nullish(),
   sentAt: z.date().nullish(),
+  ownerId: z.string().nullish(),
+  autoReplyAt: z.date().nullish(),
   updatedAt: z.date(),
 });
 
@@ -432,6 +560,7 @@ export const MessageSchema = z.object({
   id: z.string(),
   seq: z.number().int(),
   conversationId: z.string(),
+  officeId: z.string(),
   direction: MessageDirectionSchema,
   source: MessageSourceSchema,
   text: z.string(),
@@ -439,6 +568,7 @@ export const MessageSchema = z.object({
   vendorMessageId: z.string().nullish(),
   mock: z.boolean(),
   pipeExternalId: z.string().nullish(),
+  writtenBy: DraftSourceSchema.nullish(),
 });
 
 export type MessageType = z.infer<typeof MessageSchema>;
@@ -448,6 +578,7 @@ export type MessageType = z.infer<typeof MessageSchema>;
 
 export const TranslationSchema = z.object({
   messageId: z.string(),
+  officeId: z.string(),
   locale: z.string(),
   text: z.string(),
 });
@@ -455,10 +586,24 @@ export const TranslationSchema = z.object({
 export type TranslationType = z.infer<typeof TranslationSchema>;
 
 
+// File: TranslationFailure.schema.ts
+
+export const TranslationFailureSchema = z.object({
+  messageId: z.string(),
+  officeId: z.string(),
+  locale: z.string(),
+  attempts: z.number().int(),
+  lastFailedAt: z.date(),
+});
+
+export type TranslationFailureType = z.infer<typeof TranslationFailureSchema>;
+
+
 // File: Qualification.schema.ts
 
 export const QualificationSchema = z.object({
   conversationId: z.string(),
+  officeId: z.string(),
   areaOfInterest: z.string().nullish(),
   nationality: z.string().nullish(),
   inVietnamNow: z.boolean().nullish(),
@@ -475,6 +620,7 @@ export type QualificationType = z.infer<typeof QualificationSchema>;
 
 export const DraftSchema = z.object({
   conversationId: z.string(),
+  officeId: z.string(),
   reply: z.string(),
   answersMessageId: z.string().nullish(),
   source: DraftSourceSchema.default("template"),
@@ -487,6 +633,7 @@ export type DraftType = z.infer<typeof DraftSchema>;
 
 export const PaperworkSchema = z.object({
   conversationId: z.string(),
+  officeId: z.string(),
   mentioned: z.boolean(),
   flag: z.string().nullish(),
 });
@@ -500,6 +647,7 @@ export const AnswerSchema = z.object({
   id: z.string(),
   seq: z.number().int(),
   conversationId: z.string(),
+  officeId: z.string(),
   inboundId: z.string(),
   text: z.string(),
   operatorId: z.string().nullish(),
@@ -507,7 +655,6 @@ export const AnswerSchema = z.object({
   status: AnswerStatusSchema,
   mock: z.boolean(),
   pipe: PipeSchema,
-  to: z.string(),
   pipeExternalId: z.string().nullish(),
   vendorMessageId: z.string().nullish(),
   approvedAt: z.date(),
@@ -528,4 +675,172 @@ export const PipeConnectionSchema = z.object({
 });
 
 export type PipeConnectionType = z.infer<typeof PipeConnectionSchema>;
+
+
+// File: PipeCredential.schema.ts
+
+export const PipeCredentialSchema = z.object({
+  pipe: PipeSchema,
+  externalId: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  accessTokenExpiresAt: z.date(),
+  disconnectedAt: z.date().nullish(),
+  disconnectedReason: z.string().nullish(),
+  updatedAt: z.date(),
+});
+
+export type PipeCredentialType = z.infer<typeof PipeCredentialSchema>;
+
+
+// File: WebhookDelivery.schema.ts
+
+export const WebhookDeliverySchema = z.object({
+  id: z.string(),
+  pipe: PipeSchema,
+  receivedAt: z.date(),
+  outcome: z.string(),
+  endpoints: z.array(z.string()),
+  officeIds: z.array(z.string()),
+  filed: z.number().int(),
+  dropped: z.number().int(),
+  vendorMessageIds: z.array(z.string()),
+  errorKind: z.string().nullish(),
+});
+
+export type WebhookDeliveryType = z.infer<typeof WebhookDeliverySchema>;
+
+
+// File: CrmConnection.schema.ts
+
+export const CrmConnectionSchema = z.object({
+  officeId: z.string(),
+  kind: CrmKindSchema,
+  accessToken: z.string().nullish(),
+  accountId: z.string().nullish(),
+  updatedAt: z.date(),
+});
+
+export type CrmConnectionType = z.infer<typeof CrmConnectionSchema>;
+
+
+// File: CrmLink.schema.ts
+
+export const CrmLinkSchema = z.object({
+  conversationId: z.string(),
+  officeId: z.string(),
+  leadId: z.string().nullish(),
+  leadName: z.string().nullish(),
+  method: CrmLinkMethodSchema.nullish(),
+  claimedAt: z.date(),
+  linkedAt: z.date().nullish(),
+  outcome: CrmOutcomeStatusSchema.nullish(),
+  outcomeAt: z.date().nullish(),
+  outcomeReason: z.string().nullish(),
+  outcomeObservedAt: z.date().nullish(),
+});
+
+export type CrmLinkType = z.infer<typeof CrmLinkSchema>;
+
+
+// File: MockCrmLead.schema.ts
+
+export const MockCrmLeadSchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  name: z.string(),
+  phone: z.string().nullish(),
+  zaloUserId: z.string().nullish(),
+  pipe: PipeSchema,
+  language: z.string().nullish(),
+  fields: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
+  threadUrl: z.string(),
+  outcome: CrmOutcomeStatusSchema.default("open"),
+  outcomeAt: z.date().nullish(),
+  outcomeReason: z.string().nullish(),
+  createdAt: z.date(),
+});
+
+export type MockCrmLeadType = z.infer<typeof MockCrmLeadSchema>;
+
+
+// File: InboxAlert.schema.ts
+
+export const InboxAlertSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  conversationId: z.string().nullish(),
+  officeId: z.string(),
+  kind: AlertKindSchema,
+  sounded: z.boolean(),
+  link: z.string(),
+  createdAt: z.date(),
+});
+
+export type InboxAlertType = z.infer<typeof InboxAlertSchema>;
+
+
+// File: OfficeSetting.schema.ts
+
+export const OfficeSettingSchema = z.object({
+  officeId: z.string(),
+  autoReply: z.boolean().default(true),
+  autoReplyOnSince: z.date().nullish(),
+});
+
+export type OfficeSettingType = z.infer<typeof OfficeSettingSchema>;
+
+
+// File: LeadTally.schema.ts
+
+export const LeadTallySchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  pipe: PipeSchema,
+  language: z.string().nullish(),
+  firstInboundAt: z.date(),
+  firstReplyAt: z.date().nullish(),
+  inConversation: z.boolean(),
+  outcome: CrmOutcomeStatusSchema.nullish(),
+});
+
+export type LeadTallyType = z.infer<typeof LeadTallySchema>;
+
+
+// File: GuestDeletion.schema.ts
+
+export const GuestDeletionSchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  actorId: z.string().nullish(),
+  actorName: z.string(),
+  at: z.date(),
+  reason: GuestDeletionReasonSchema.default("other"),
+  note: z.string().nullish(),
+  messages: z.number().int(),
+  answers: z.number().int(),
+  translations: z.number().int(),
+  notifications: z.number().int(),
+  crmKind: CrmKindSchema.nullish(),
+  crmResult: GuestDeletionCrmResultSchema.nullish(),
+});
+
+export type GuestDeletionType = z.infer<typeof GuestDeletionSchema>;
+
+
+// File: PushSubscription.schema.ts
+
+export const PushSubscriptionSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  sessionId: z.string(),
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
+  userAgent: z.string().nullish(),
+  createdAt: z.date(),
+  lastSuccessAt: z.date().nullish(),
+});
+
+export type PushSubscriptionType = z.infer<typeof PushSubscriptionSchema>;
 

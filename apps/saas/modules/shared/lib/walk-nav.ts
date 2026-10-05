@@ -2,19 +2,19 @@ import { isAdminPath, isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 
 /**
  * The sidebar, stated directly. Inbox is the agent's job and Home the numbers screen
- * (ADR 0001); International stays a placeholder, visible but disabled. Admin is the
- * kit's admin area, where Nhịp creates offices and invites agents (ADR 0010), and it is
- * only listed for a platform admin. Account settings is reached from the user row in the
- * footer, and its sections appear there while a settings page is active.
+ * (ADR 0001). No placeholders: a later feature appears only under PRODUCT.md's "Coming
+ * soon" rule, where it will live. Admin is the kit's admin area, where Nhịp creates
+ * offices and invites agents (ADR 0010), and it is only listed for a platform admin.
+ * Account settings is reached from the user row in the footer, and its sections appear
+ * there while a settings page is active.
  */
-export type WalkNavId = "home" | "inbox" | "international" | "admin";
+export type WalkNavId = "home" | "inbox" | "admin";
 
 export type WalkNavItem = {
 	id: WalkNavId;
 	href: string;
-	iconName: "home" | "inbox" | "globe" | "shield";
+	iconName: "home" | "inbox" | "shield";
 	isActive: boolean;
-	disabled: boolean;
 };
 
 export type SettingsSection = {
@@ -31,33 +31,31 @@ export function buildWalkNav(
 	pathname: string,
 	options: { isAdmin: boolean } = { isAdmin: false },
 ): WalkNavItem[] {
-	const items: WalkNavItem[] = [
+	// The platform admin works in the admin area only: no office screens (ADR 0015).
+	if (options.isAdmin) {
+		return [
+			{
+				id: "admin",
+				href: "/admin/organizations",
+				iconName: "shield",
+				isActive: isAdminPath(pathname),
+			},
+		];
+	}
+	return [
 		{
 			id: "home",
 			href: "/home",
 			iconName: "home",
 			isActive: isHomePath(pathname),
-			disabled: false,
 		},
 		{
 			id: "inbox",
 			href: "/inbox",
 			iconName: "inbox",
 			isActive: isInboxPath(pathname),
-			disabled: false,
 		},
-		{ id: "international", href: "/chatbot", iconName: "globe", isActive: false, disabled: true },
 	];
-	if (options.isAdmin) {
-		items.push({
-			id: "admin",
-			href: "/admin/organizations",
-			iconName: "shield",
-			isActive: isAdminPath(pathname),
-			disabled: false,
-		});
-	}
-	return items;
 }
 
 export function isSettingsPath(pathname: string): boolean {
@@ -67,11 +65,12 @@ export function isSettingsPath(pathname: string): boolean {
 /** Sections shown in the footer while the operator is inside Account settings. */
 export function buildSettingsSections(
 	pathname: string,
-	options: { billingAttachedToUser: boolean },
+	options: { billing: boolean } = { billing: false },
 ): SettingsSection[] | null {
 	if (!isSettingsPath(pathname)) return null;
+	// Billing only when its kit screen is on (KIT_SCREENS.billing, off until ADR 0014).
 	const ids: SettingsSection["id"][] = ["general", "security", "notifications"];
-	if (options.billingAttachedToUser) ids.push("billing");
+	if (options.billing) ids.push("billing");
 	return ids.map((id) => {
 		const href = `/settings/${id}`;
 		return { id, href, isActive: isNavSubItemActive(pathname, href) };

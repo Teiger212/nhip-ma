@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { settleBackgroundWork } from "../background";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
 import { peekTestRuntime, setRuntimeForTests } from "../runtime";
@@ -16,7 +17,8 @@ import { handleInboundWebhook } from "./webhook";
  */
 const OA_SECRET = "oa-secret-key";
 const APP_ID = "123456";
-const TS = "1725600000000";
+/** Signed now: Zalo requests outside the replay window are refused. */
+const TS = String(Date.now());
 
 function zaloRequest(guestId: string, text: string, oaId = "oa-1"): Request {
 	const body = JSON.stringify({
@@ -45,6 +47,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	// Alerts follow a guest message in the background (ADR 0019); they finish before the reset.
+	await settleBackgroundWork();
 	vi.restoreAllMocks();
 	const runtime = peekTestRuntime();
 	if (runtime) {
@@ -57,8 +61,7 @@ test("inbound on a pipe no office has connected is acknowledged and dropped", as
 	const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 	const res = await handleInboundWebhook("zalo", zaloRequest("guest-1", "Xin chào"));
 	expect(res.status).toBe(200);
-	const store = peekTestRuntime()!.store;
-	expect(await store.listConversations()).toEqual([]);
+	expect(await testDb.conversation.count()).toBe(0);
 	expect(warn).toHaveBeenCalledWith(
 		expect.stringMatching(/no office owns this pipe/),
 		expect.objectContaining({ pipe: "zalo", pipeExternalId: "oa-1" }),
@@ -70,13 +73,25 @@ test("inbound on a connected pipe is filed under that office and stays there", a
 	await store.connectPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
 	await store.connectPipe({ pipe: "zalo", externalId: "oa-2", officeId: "office-b" });
 
-	expect((await handleInboundWebhook("zalo", zaloRequest("guest-1", "Xin chào"))).status).toBe(200);
+	// "Xin chào" alone reads as English (ADR 0021): its à is shared with French.
+	expect(
+		(await handleInboundWebhook("zalo", zaloRequest("guest-1", "Xin chào, tôi muốn thuê căn hộ")))
+			.status,
+	).toBe(200);
 	expect((await handleInboundWebhook("zalo", zaloRequest("guest-2", "Hello", "oa-2"))).status).toBe(
 		200,
 	);
 
-	const a = await store.listConversations({ userId: "agent", officeId: "office-a" });
-	const b = await store.listConversations({ userId: "agent", officeId: "office-b" });
+	const a = await store.listConversations({
+		userId: "manager",
+		officeId: "office-a",
+		role: "manager",
+	});
+	const b = await store.listConversations({
+		userId: "manager",
+		officeId: "office-b",
+		role: "manager",
+	});
 	expect(a.map((c) => c.guestId)).toEqual(["guest-1"]);
 	expect(b.map((c) => c.guestId)).toEqual(["guest-2"]);
 	expect(a[0].officeId).toBe("office-a");
@@ -85,9 +100,33 @@ test("inbound on a connected pipe is filed under that office and stays there", a
 	// Each message remembers the office endpoint it arrived on (ADR 0010).
 	expect(a[0].messages[0].pipeExternalId).toBe("oa-1");
 	expect(b[0].messages[0].pipeExternalId).toBe("oa-2");
-	// Thread identity carries the office: the ids differ even for the same pipe.
-	expect(a[0].id).toBe("office-a:zalo:guest-1");
-	expect(b[0].id).toBe("office-b:zalo:guest-2");
+	// Two threads, two opaque ids: neither names its guest (#141).
+	expect(a[0].id).not.toBe(b[0].id);
+	expect(a[0].id).not.toContain("guest-1");
+	expect(b[0].id).not.toContain("guest-2");
+});
+
+// ADR 0017 and #141: the delivery log ties a delivery to the messages it filed, through the
+// vendor id as stored (its keyed hash), never the raw id that can carry who the guest is.
+test("a delivery is on the log with its message's stored vendor id, never the raw one", async () => {
+	const store = peekTestRuntime()!.store;
+	await store.connectPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
+	const request = zaloRequest("guest-log", "Xin chào");
+	const { message } = (await request.clone().json()) as { message: { msg_id: string } };
+
+	expect((await handleInboundWebhook("zalo", request)).status).toBe(200);
+
+	const [thread] = await store.listConversations({
+		userId: "manager",
+		officeId: "office-a",
+		role: "manager",
+	});
+	const stored = thread.messages[0].vendorMessageId;
+	expect(stored, "the message keeps a vendor id, for retries").toBeTruthy();
+	expect(stored).not.toBe(message.msg_id);
+	const [delivery] = await store.listWebhookDeliveries({ limit: 5, pipe: "zalo" });
+	expect(delivery.outcome).toBe("processed");
+	expect(delivery.vendorMessageIds, "the delivery names the message it filed").toEqual([stored]);
 });
 
 test("a bad signature is refused before anything is filed", async () => {
@@ -100,5 +139,5 @@ test("a bad signature is refused before anything is filed", async () => {
 		body: await request.text(),
 	});
 	expect((await handleInboundWebhook("zalo", tampered)).status).toBe(403);
-	expect(await store.listConversations()).toEqual([]);
+	expect(await testDb.conversation.count()).toBe(0);
 });

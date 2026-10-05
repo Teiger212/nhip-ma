@@ -1,7 +1,14 @@
 name: CI
 
+# A pull request that changes only documentation skips this workflow; GitHub skips it only when
+# every changed file matches. format.yml still checks Markdown formatting on every PR. Pushes to
+# main always run it all. main has no required status checks, so a skipped run blocks nothing.
 on:
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "reports/**"
   push:
     branches:
       - main
@@ -23,7 +30,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:16
+        # Staging and prod run Postgres 18 on Neon (ADR 0016); CI matches.
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -51,11 +59,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Lint is type-aware; without the generated client, Prisma types read as errors.
+      - name: Generate Prisma client
+        run: pnpm --filter @repo/database generate
+
       - name: Lint
         run: pnpm lint
-
-      - name: Format check
-        run: pnpm format:check
 
       - name: Type check
         run: pnpm type-check
@@ -63,5 +72,74 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Migrations match the schema
+        run: pnpm --filter @repo/database migrate:check
+
+      # Squawk on the migrations this PR adds, never on applied ones (#98). HEAD is the PR's merge
+      # commit, so the diff against the base's tip is what the PR adds.
+      - name: Lint new migrations
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"
+          pnpm --filter @repo/database migrate:lint --since FETCH_HEAD
+
       - name: Seed script loads
         run: pnpm --filter saas seed:check
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # A production build on :3000 behind a local HTTPS proxy on :3443, against its own database
+    # (AGENTS.md, "Test quality"); playwright.config.ts sets the app URL.
+    # These job-level values win over the workflow-level ones and over .env.e2e.
+    env:
+      E2E: "1"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/supastarter_e2e
+      BETTER_AUTH_SECRET: e2e-only-not-a-secret-0123456789abcdef-nhip
+      SEND_MODE: mock
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: supastarter_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter saas exec playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: pnpm --filter @repo/database generate
+
+      - name: E2E (Playwright, no retries)
+        run: pnpm --filter saas exec playwright test --reporter=line,html
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/saas/playwright-report/
+          retention-days: 14

@@ -12,15 +12,15 @@ SaaS listens on **port 3010**, and auth sessions and inbox threads live in the s
 
 Sign in as `walk@nhip.local` / `walkthrough` at http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send). There is no auth bypass; every route behind `(authenticated)` requires a real session.
 
-The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) returns 401 without a signed-in session. Approve claims the thread atomically before sending, so a double tap sends once.
+The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) returns 401 without a signed-in session. Approve records one Answer per guest message before anything is sent (ADR 0011), so a double tap sends once.
 
-Marketing, docs, admin, billing, and organizations are unused kit scaffolding; leave them unless asked.
+The kit organization is the office and the kit admin area is the platform admin's; marketing, docs and billing are unused kit scaffolding, left alone unless asked.
 
 ## Docs
 
-| File                                 | What it is                            |
-| ------------------------------------ | ------------------------------------- |
-| [PRODUCT.md](./PRODUCT.md)           | Locked product intention              |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | How this repo is shaped               |
-| [HANDOFF.md](./HANDOFF.md)           | Cold start for any other agent or LLM |
-| [AGENTS.md](./AGENTS.md)             | Setup, gates, conventions             |
+| File                                 | What it is                                       |
+| ------------------------------------ | ------------------------------------------------ |
+| [PRODUCT.md](./PRODUCT.md)           | Locked product intention                         |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System shape: tenancy, pipes, data, environments |
+| [HANDOFF.md](./HANDOFF.md)           | Cold start for any other agent or LLM            |
+| [AGENTS.md](./AGENTS.md)             | Setup, gates, conventions                        |

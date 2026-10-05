@@ -4,6 +4,10 @@ import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
 import {
 	WALK_ADMIN_EMAIL,
 	WALK_ADMIN_NAME,
+	WALK_AGENT2_EMAIL,
+	WALK_AGENT2_NAME,
+	WALK_MANAGER_EMAIL,
+	WALK_MANAGER_NAME,
 	WALK_USER_EMAIL,
 	WALK_USER_NAME,
 	WALK_USER_PASSWORD,
@@ -52,4 +56,14 @@ export async function seedWalkUser(): Promise<WalkUserSeedResult> {
 /** The platform admin login (ADR 0010): the account that creates offices and invites agents. */
 export async function seedWalkAdmin(): Promise<WalkUserSeedResult> {
 	return seedLogin({ email: WALK_ADMIN_EMAIL, name: WALK_ADMIN_NAME, role: "admin" });
+}
+
+/** The second agent (ADR 0015). */
+export async function seedWalkAgent2(): Promise<WalkUserSeedResult> {
+	return seedLogin({ email: WALK_AGENT2_EMAIL, name: WALK_AGENT2_NAME, role: "user" });
+}
+
+/** The walk office's manager (ADR 0015): an ordinary user; the office membership makes them a manager. */
+export async function seedWalkManager(): Promise<WalkUserSeedResult> {
+	return seedLogin({ email: WALK_MANAGER_EMAIL, name: WALK_MANAGER_NAME, role: "user" });
 }

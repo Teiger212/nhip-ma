@@ -1,0 +1,751 @@
+{
+	"schemaVersion": 2,
+	"generatedAt": "2026-10-02T15:14:26+00:00",
+	"title": "Design System: Nhịp",
+	"extensions": {
+		"colorMeta": {
+			"background": {
+				"role": "neutral",
+				"displayName": "Plain White",
+				"canonical": "oklch(100.0% 0.000 89.9)",
+				"tonalRamp": [
+					"oklch(15% 0.000 89.9)",
+					"oklch(26% 0.000 89.9)",
+					"oklch(38% 0.000 89.9)",
+					"oklch(49% 0.000 89.9)",
+					"oklch(61% 0.000 89.9)",
+					"oklch(72% 0.000 89.9)",
+					"oklch(84% 0.000 89.9)",
+					"oklch(95% 0.000 89.9)"
+				]
+			},
+			"harbor-ink": {
+				"role": "neutral",
+				"displayName": "Harbor Ink",
+				"canonical": "oklch(20.8% 0.040 265.8)",
+				"tonalRamp": [
+					"oklch(15% 0.020 265.8)",
+					"oklch(26% 0.035 265.8)",
+					"oklch(38% 0.040 265.8)",
+					"oklch(49% 0.040 265.8)",
+					"oklch(61% 0.040 265.8)",
+					"oklch(72% 0.037 265.8)",
+					"oklch(84% 0.022 265.8)",
+					"oklch(95% 0.007 265.8)"
+				]
+			},
+			"slate-note": {
+				"role": "neutral",
+				"displayName": "Slate Note",
+				"canonical": "oklch(44.6% 0.037 257.3)",
+				"tonalRamp": [
+					"oklch(15% 0.019 257.3)",
+					"oklch(26% 0.033 257.3)",
+					"oklch(38% 0.037 257.3)",
+					"oklch(49% 0.037 257.3)",
+					"oklch(61% 0.037 257.3)",
+					"oklch(72% 0.035 257.3)",
+					"oklch(84% 0.021 257.3)",
+					"oklch(95% 0.006 257.3)"
+				]
+			},
+			"morning-wash": {
+				"role": "neutral",
+				"displayName": "Morning Wash",
+				"canonical": "oklch(96.9% 0.012 264.5)",
+				"tonalRamp": [
+					"oklch(15% 0.006 264.5)",
+					"oklch(26% 0.010 264.5)",
+					"oklch(38% 0.012 264.5)",
+					"oklch(49% 0.012 264.5)",
+					"oklch(61% 0.012 264.5)",
+					"oklch(72% 0.011 264.5)",
+					"oklch(84% 0.006 264.5)",
+					"oklch(95% 0.002 264.5)"
+				]
+			},
+			"deep-navy": {
+				"role": "neutral",
+				"displayName": "Deep Navy",
+				"canonical": "oklch(37.9% 0.138 265.5)",
+				"tonalRamp": [
+					"oklch(15% 0.069 265.5)",
+					"oklch(26% 0.121 265.5)",
+					"oklch(38% 0.138 265.5)",
+					"oklch(49% 0.138 265.5)",
+					"oklch(61% 0.138 265.5)",
+					"oklch(72% 0.128 265.5)",
+					"oklch(84% 0.075 265.5)",
+					"oklch(95% 0.023 265.5)"
+				]
+			},
+			"hairline-blue": {
+				"role": "neutral",
+				"displayName": "Hairline Blue",
+				"canonical": "oklch(94.2% 0.023 264.5)",
+				"tonalRamp": [
+					"oklch(15% 0.012 264.5)",
+					"oklch(26% 0.021 264.5)",
+					"oklch(38% 0.023 264.5)",
+					"oklch(49% 0.023 264.5)",
+					"oklch(61% 0.023 264.5)",
+					"oklch(72% 0.022 264.5)",
+					"oklch(84% 0.013 264.5)",
+					"oklch(95% 0.004 264.5)"
+				]
+			},
+			"field-edge": {
+				"role": "neutral",
+				"displayName": "Field Edge",
+				"canonical": "oklch(88.4% 0.042 264.3)",
+				"tonalRamp": [
+					"oklch(15% 0.021 264.3)",
+					"oklch(26% 0.037 264.3)",
+					"oklch(38% 0.042 264.3)",
+					"oklch(49% 0.042 264.3)",
+					"oklch(61% 0.042 264.3)",
+					"oklch(72% 0.039 264.3)",
+					"oklch(84% 0.023 264.3)",
+					"oklch(95% 0.007 264.3)"
+				]
+			},
+			"desk-canvas": {
+				"role": "neutral",
+				"displayName": "Desk Canvas",
+				"canonical": "oklch(97.0% 0.009 264.5)",
+				"tonalRamp": [
+					"oklch(15% 0.004 264.5)",
+					"oklch(26% 0.008 264.5)",
+					"oklch(38% 0.009 264.5)",
+					"oklch(49% 0.009 264.5)",
+					"oklch(61% 0.009 264.5)",
+					"oklch(72% 0.008 264.5)",
+					"oklch(84% 0.005 264.5)",
+					"oklch(95% 0.001 264.5)"
+				]
+			},
+			"dispatch-blue": {
+				"role": "primary",
+				"displayName": "Dispatch Blue",
+				"canonical": "oklch(54.6% 0.215 262.9)",
+				"tonalRamp": [
+					"oklch(15% 0.108 262.9)",
+					"oklch(26% 0.190 262.9)",
+					"oklch(38% 0.215 262.9)",
+					"oklch(49% 0.215 262.9)",
+					"oklch(61% 0.215 262.9)",
+					"oklch(72% 0.200 262.9)",
+					"oklch(84% 0.118 262.9)",
+					"oklch(95% 0.036 262.9)"
+				]
+			},
+			"touch-blue": {
+				"role": "primary",
+				"displayName": "Touch Blue",
+				"canonical": "oklch(48.8% 0.217 264.4)",
+				"tonalRamp": [
+					"oklch(15% 0.109 264.4)",
+					"oklch(26% 0.192 264.4)",
+					"oklch(38% 0.217 264.4)",
+					"oklch(49% 0.217 264.4)",
+					"oklch(61% 0.217 264.4)",
+					"oklch(72% 0.202 264.4)",
+					"oklch(84% 0.119 264.4)",
+					"oklch(95% 0.036 264.4)"
+				]
+			},
+			"chart-strong": {
+				"role": "primary",
+				"displayName": "Chart Strong",
+				"canonical": "oklch(54.6% 0.215 262.9)",
+				"tonalRamp": [
+					"oklch(15% 0.108 262.9)",
+					"oklch(26% 0.190 262.9)",
+					"oklch(38% 0.215 262.9)",
+					"oklch(49% 0.215 262.9)",
+					"oklch(61% 0.215 262.9)",
+					"oklch(72% 0.200 262.9)",
+					"oklch(84% 0.118 262.9)",
+					"oklch(95% 0.036 262.9)"
+				]
+			},
+			"chart-soft": {
+				"role": "primary",
+				"displayName": "Chart Soft",
+				"canonical": "oklch(78.6% 0.087 264.2)",
+				"tonalRamp": [
+					"oklch(15% 0.044 264.2)",
+					"oklch(26% 0.077 264.2)",
+					"oklch(38% 0.087 264.2)",
+					"oklch(49% 0.087 264.2)",
+					"oklch(61% 0.087 264.2)",
+					"oklch(72% 0.081 264.2)",
+					"oklch(84% 0.048 264.2)",
+					"oklch(95% 0.015 264.2)"
+				]
+			},
+			"chart-track": {
+				"role": "neutral",
+				"displayName": "Chart Track",
+				"canonical": "oklch(96.3% 0.014 264.5)",
+				"tonalRamp": [
+					"oklch(15% 0.007 264.5)",
+					"oklch(26% 0.013 264.5)",
+					"oklch(38% 0.014 264.5)",
+					"oklch(49% 0.014 264.5)",
+					"oklch(61% 0.014 264.5)",
+					"oklch(72% 0.013 264.5)",
+					"oklch(84% 0.008 264.5)",
+					"oklch(95% 0.002 264.5)"
+				]
+			},
+			"hatch": {
+				"role": "neutral",
+				"displayName": "Hatch",
+				"canonical": "oklch(88.4% 0.042 264.3)",
+				"tonalRamp": [
+					"oklch(15% 0.021 264.3)",
+					"oklch(26% 0.037 264.3)",
+					"oklch(38% 0.042 264.3)",
+					"oklch(49% 0.042 264.3)",
+					"oklch(61% 0.042 264.3)",
+					"oklch(72% 0.039 264.3)",
+					"oklch(84% 0.023 264.3)",
+					"oklch(95% 0.007 264.3)"
+				]
+			},
+			"signal-red": {
+				"role": "error",
+				"displayName": "Signal Red",
+				"canonical": "oklch(57.7% 0.215 27.3)",
+				"tonalRamp": [
+					"oklch(15% 0.108 27.3)",
+					"oklch(26% 0.190 27.3)",
+					"oklch(38% 0.215 27.3)",
+					"oklch(49% 0.215 27.3)",
+					"oklch(61% 0.215 27.3)",
+					"oklch(72% 0.200 27.3)",
+					"oklch(84% 0.118 27.3)",
+					"oklch(95% 0.036 27.3)"
+				]
+			},
+			"sent-green": {
+				"role": "success",
+				"displayName": "Sent Green",
+				"canonical": "oklch(44.8% 0.108 151.3)",
+				"tonalRamp": [
+					"oklch(15% 0.054 151.3)",
+					"oklch(26% 0.096 151.3)",
+					"oklch(38% 0.108 151.3)",
+					"oklch(49% 0.108 151.3)",
+					"oklch(61% 0.108 151.3)",
+					"oklch(72% 0.101 151.3)",
+					"oklch(84% 0.060 151.3)",
+					"oklch(95% 0.018 151.3)"
+				]
+			},
+			"your-turn-amber": {
+				"role": "warning",
+				"displayName": "Your-Turn Amber",
+				"canonical": "oklch(47.3% 0.125 46.2)",
+				"tonalRamp": [
+					"oklch(15% 0.062 46.2)",
+					"oklch(26% 0.110 46.2)",
+					"oklch(38% 0.125 46.2)",
+					"oklch(49% 0.125 46.2)",
+					"oklch(61% 0.125 46.2)",
+					"oklch(72% 0.116 46.2)",
+					"oklch(84% 0.069 46.2)",
+					"oklch(95% 0.021 46.2)"
+				]
+			},
+			"night-canvas": {
+				"role": "neutral",
+				"displayName": "Night Canvas",
+				"canonical": "oklch(16.4% 0.027 263.1)",
+				"tonalRamp": [
+					"oklch(15% 0.014 263.1)",
+					"oklch(26% 0.024 263.1)",
+					"oklch(38% 0.027 263.1)",
+					"oklch(49% 0.027 263.1)",
+					"oklch(61% 0.027 263.1)",
+					"oklch(72% 0.025 263.1)",
+					"oklch(84% 0.015 263.1)",
+					"oklch(95% 0.005 263.1)"
+				]
+			},
+			"night-desk": {
+				"role": "neutral",
+				"displayName": "Night Desk",
+				"canonical": "oklch(18.3% 0.031 263.4)",
+				"tonalRamp": [
+					"oklch(15% 0.015 263.4)",
+					"oklch(26% 0.027 263.4)",
+					"oklch(38% 0.031 263.4)",
+					"oklch(49% 0.031 263.4)",
+					"oklch(61% 0.031 263.4)",
+					"oklch(72% 0.029 263.4)",
+					"oklch(84% 0.017 263.4)",
+					"oklch(95% 0.005 263.4)"
+				]
+			},
+			"night-card": {
+				"role": "neutral",
+				"displayName": "Night Card",
+				"canonical": "oklch(22.0% 0.042 264.8)",
+				"tonalRamp": [
+					"oklch(15% 0.021 264.8)",
+					"oklch(26% 0.037 264.8)",
+					"oklch(38% 0.042 264.8)",
+					"oklch(49% 0.042 264.8)",
+					"oklch(61% 0.042 264.8)",
+					"oklch(72% 0.039 264.8)",
+					"oklch(84% 0.023 264.8)",
+					"oklch(95% 0.007 264.8)"
+				]
+			},
+			"night-wash": {
+				"role": "neutral",
+				"displayName": "Night Wash",
+				"canonical": "oklch(27.5% 0.050 263.9)",
+				"tonalRamp": [
+					"oklch(15% 0.025 263.9)",
+					"oklch(26% 0.044 263.9)",
+					"oklch(38% 0.050 263.9)",
+					"oklch(49% 0.050 263.9)",
+					"oklch(61% 0.050 263.9)",
+					"oklch(72% 0.046 263.9)",
+					"oklch(84% 0.027 263.9)",
+					"oklch(95% 0.008 263.9)"
+				]
+			},
+			"night-hairline": {
+				"role": "neutral",
+				"displayName": "Night Hairline",
+				"canonical": "oklch(32.4% 0.059 264.9)",
+				"tonalRamp": [
+					"oklch(15% 0.029 264.9)",
+					"oklch(26% 0.052 264.9)",
+					"oklch(38% 0.059 264.9)",
+					"oklch(49% 0.059 264.9)",
+					"oklch(61% 0.059 264.9)",
+					"oklch(72% 0.054 264.9)",
+					"oklch(84% 0.032 264.9)",
+					"oklch(95% 0.010 264.9)"
+				]
+			},
+			"night-field-edge": {
+				"role": "neutral",
+				"displayName": "Night Field Edge",
+				"canonical": "oklch(39.4% 0.068 265.1)",
+				"tonalRamp": [
+					"oklch(15% 0.034 265.1)",
+					"oklch(26% 0.060 265.1)",
+					"oklch(38% 0.068 265.1)",
+					"oklch(49% 0.068 265.1)",
+					"oklch(61% 0.068 265.1)",
+					"oklch(72% 0.064 265.1)",
+					"oklch(84% 0.038 265.1)",
+					"oklch(95% 0.011 265.1)"
+				]
+			},
+			"night-ink": {
+				"role": "neutral",
+				"displayName": "Night Ink",
+				"canonical": "oklch(92.9% 0.013 255.5)",
+				"tonalRamp": [
+					"oklch(15% 0.006 255.5)",
+					"oklch(26% 0.011 255.5)",
+					"oklch(38% 0.013 255.5)",
+					"oklch(49% 0.013 255.5)",
+					"oklch(61% 0.013 255.5)",
+					"oklch(72% 0.012 255.5)",
+					"oklch(84% 0.007 255.5)",
+					"oklch(95% 0.002 255.5)"
+				]
+			},
+			"night-note": {
+				"role": "neutral",
+				"displayName": "Night Note",
+				"canonical": "oklch(71.1% 0.035 256.8)",
+				"tonalRamp": [
+					"oklch(15% 0.018 256.8)",
+					"oklch(26% 0.031 256.8)",
+					"oklch(38% 0.035 256.8)",
+					"oklch(49% 0.035 256.8)",
+					"oklch(61% 0.035 256.8)",
+					"oklch(72% 0.033 256.8)",
+					"oklch(84% 0.019 256.8)",
+					"oklch(95% 0.006 256.8)"
+				]
+			},
+			"night-blue": {
+				"role": "primary",
+				"displayName": "Night Blue",
+				"canonical": "oklch(62.3% 0.188 259.8)",
+				"tonalRamp": [
+					"oklch(15% 0.094 259.8)",
+					"oklch(26% 0.166 259.8)",
+					"oklch(38% 0.188 259.8)",
+					"oklch(49% 0.188 259.8)",
+					"oklch(61% 0.188 259.8)",
+					"oklch(72% 0.175 259.8)",
+					"oklch(84% 0.103 259.8)",
+					"oklch(95% 0.031 259.8)"
+				]
+			},
+			"night-touch": {
+				"role": "primary",
+				"displayName": "Night Touch",
+				"canonical": "oklch(71.4% 0.143 254.6)",
+				"tonalRamp": [
+					"oklch(15% 0.072 254.6)",
+					"oklch(26% 0.126 254.6)",
+					"oklch(38% 0.143 254.6)",
+					"oklch(49% 0.143 254.6)",
+					"oklch(61% 0.143 254.6)",
+					"oklch(72% 0.133 254.6)",
+					"oklch(84% 0.079 254.6)",
+					"oklch(95% 0.024 254.6)"
+				]
+			},
+			"night-chart-soft": {
+				"role": "primary",
+				"displayName": "Night Chart Soft",
+				"canonical": "oklch(43.4% 0.105 261.6)",
+				"tonalRamp": [
+					"oklch(15% 0.052 261.6)",
+					"oklch(26% 0.092 261.6)",
+					"oklch(38% 0.105 261.6)",
+					"oklch(49% 0.105 261.6)",
+					"oklch(61% 0.105 261.6)",
+					"oklch(72% 0.097 261.6)",
+					"oklch(84% 0.057 261.6)",
+					"oklch(95% 0.017 261.6)"
+				]
+			},
+			"night-chart-track": {
+				"role": "neutral",
+				"displayName": "Night Chart Track",
+				"canonical": "oklch(25.5% 0.048 264.5)",
+				"tonalRamp": [
+					"oklch(15% 0.024 264.5)",
+					"oklch(26% 0.042 264.5)",
+					"oklch(38% 0.048 264.5)",
+					"oklch(49% 0.048 264.5)",
+					"oklch(61% 0.048 264.5)",
+					"oklch(72% 0.045 264.5)",
+					"oklch(84% 0.026 264.5)",
+					"oklch(95% 0.008 264.5)"
+				]
+			},
+			"night-hatch": {
+				"role": "neutral",
+				"displayName": "Night Hatch",
+				"canonical": "oklch(35.3% 0.066 265.0)",
+				"tonalRamp": [
+					"oklch(15% 0.033 265.0)",
+					"oklch(26% 0.059 265.0)",
+					"oklch(38% 0.066 265.0)",
+					"oklch(49% 0.066 265.0)",
+					"oklch(61% 0.066 265.0)",
+					"oklch(72% 0.062 265.0)",
+					"oklch(84% 0.036 265.0)",
+					"oklch(95% 0.011 265.0)"
+				]
+			}
+		},
+		"typographyMeta": {
+			"headline": {
+				"displayName": "Headline",
+				"purpose": "Auth and onboarding titles; 1.25rem on a phone, 1.5rem from md."
+			},
+			"page-title": {
+				"displayName": "Page Title",
+				"purpose": "PageHeader on Home, Settings and Admin; 1.25rem on a phone, 1.5rem from md."
+			},
+			"title": {
+				"displayName": "Title",
+				"purpose": "Card titles (CardTitle, semibold) and section headers."
+			},
+			"thread-name": {
+				"displayName": "Thread Name",
+				"purpose": "The guest's name on a row and in the thread header."
+			},
+			"figure": {
+				"displayName": "Figure",
+				"purpose": "Home's headline numbers from md (text-figure); digits only, units in the sans."
+			},
+			"figure-small": {
+				"displayName": "Figure Small",
+				"purpose": "Home figures on a phone (text-figure-sm)."
+			},
+			"body": {
+				"displayName": "Body",
+				"purpose": "Message text, pre-wrap."
+			},
+			"body-small": {
+				"displayName": "Body Small",
+				"purpose": "Row previews, meta, hints."
+			},
+			"label": {
+				"displayName": "Label",
+				"purpose": "Badges and avatar initials (text-micro)."
+			},
+			"micro-caps": {
+				"displayName": "Micro Caps",
+				"purpose": "Translation label (text-2xs, uppercase); the inline mock badge (Badge size=\"sm\") at the same size in sentence case."
+			},
+			"clock": {
+				"displayName": "Clock",
+				"purpose": "Every relative or absolute time, in the sans with tabular figures (0.75rem in a message meta line)."
+			},
+			"count": {
+				"displayName": "Count",
+				"purpose": "Badge numeric: the nav Your-turn count, Waiting now count."
+			}
+		},
+		"shadows": [
+			{
+				"name": "hairline",
+				"value": "inset 0 0 0 1px var(--border)",
+				"purpose": "A 1px border drawn inside, for a white element on a tinted surface: active nav chip, active view tab, inbound message, window chip, hatched box."
+			},
+			{
+				"name": "xs",
+				"value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+				"purpose": "Inputs only (kit default)."
+			},
+			{
+				"name": "overlay-md",
+				"value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+				"purpose": "Kit shadow-md: tooltips, popovers, select lists. Floating layers lift; surfaces never do. A 1px border separates them in dark mode."
+			},
+			{
+				"name": "overlay-lg",
+				"value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+				"purpose": "Kit shadow-lg: menus (tinted black/3), dialogs, alert dialogs, sheets, toasts (tinted black/5)."
+			},
+			{
+				"name": "overlay-xl",
+				"value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+				"purpose": "Kit shadow-xl (tinted black/3): submenus."
+			}
+		],
+		"motion": [
+			{
+				"name": "state",
+				"value": "200ms ease-out",
+				"purpose": "Button color, fill and press-scale transitions; off under prefers-reduced-motion."
+			},
+			{
+				"name": "press",
+				"value": "scale(0.98)",
+				"purpose": "Button :active."
+			},
+			{
+				"name": "disclosure",
+				"value": "0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+				"purpose": "Accordion open/close."
+			}
+		],
+		"breakpoints": [
+			{
+				"name": "md",
+				"value": "768px",
+				"purpose": "Inbox list and thread become two panels on the canvas; view tabs drop from 44px to 32px; Response time splits median and buckets."
+			},
+			{
+				"name": "lg",
+				"value": "1024px",
+				"purpose": "The phone shell ends (MOBILE_BREAKPOINT): the sidebar docks instead of a sheet behind the 56px top bar, nav links drop the 44px height, the inbox's left gutter tightens, the funnel becomes one row of five, Leads by day sits beside Waiting now."
+			}
+		],
+		"patterns": [
+			{
+				"name": "hatched",
+				"value": "repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 7px)",
+				"purpose": "A number Nhịp does not have yet (closings and lost before a CRM is connected)."
+			}
+		]
+	},
+	"components": [
+		{
+			"name": "Primary Button",
+			"kind": "button",
+			"refersTo": "button-primary",
+			"description": "The one action color: Send, Approve, Connect.",
+			"html": "<button class=\"ds-btn-primary\">Gửi · Send</button>",
+			"css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 9999px; border: none; cursor: pointer; transition: color .2s ease-out, background-color .2s ease-out, border-color .2s ease-out, transform .2s ease-out; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; background: var(--primary); color: var(--primary-foreground); } .ds-btn-primary:hover { background: color-mix(in srgb, var(--primary) 82%, var(--background)); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); } .ds-btn-primary:active { transform: scale(.98); }"
+		},
+		{
+			"name": "Secondary Button",
+			"kind": "button",
+			"refersTo": "button-secondary",
+			"description": "The kit's default variant: a quiet wash for everyday actions.",
+			"html": "<button class=\"ds-btn-secondary\">Save draft</button>",
+			"css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 9999px; border: none; cursor: pointer; transition: color .2s ease-out, background-color .2s ease-out, border-color .2s ease-out, transform .2s ease-out; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; background: var(--secondary); color: var(--secondary-foreground); } .ds-btn-secondary:hover { background: color-mix(in srgb, var(--secondary) 90%, black); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); } .ds-btn-secondary:active { transform: scale(.98); }"
+		},
+		{
+			"name": "Outline Button",
+			"kind": "button",
+			"refersTo": "button-outline",
+			"description": "Secondary action in empty and error states (Retry, View sent); 44px tap target.",
+			"html": "<button class=\"ds-btn-outline\">Retry</button>",
+			"css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 9999px; border: none; cursor: pointer; transition: color .2s ease-out, background-color .2s ease-out, border-color .2s ease-out, transform .2s ease-out; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; min-height: 44px; background: transparent; color: var(--foreground); border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent); } .ds-btn-outline:hover { background: color-mix(in srgb, var(--foreground) 10%, transparent); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring); }"
+		},
+		{
+			"name": "Text Field",
+			"kind": "input",
+			"refersTo": "input",
+			"description": "36px field with a Field Edge stroke; 16px text so phones don't zoom.",
+			"html": "<input class=\"ds-input\" placeholder=\"Tìm khách · Search guests\" />",
+			"css": ".ds-input { height: 36px; width: 260px; padding: 4px 12px; border: 1px solid var(--input); border-radius: calc(var(--radius) * 1.4); background: var(--card); color: var(--foreground); font-family: var(--font-sans); font-size: 1rem; box-shadow: 0 1px 2px rgb(0 0 0 / .05); transition: border-color .15s; } .ds-input::placeholder { color: color-mix(in srgb, var(--foreground) 60%, transparent); } .ds-input:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 1px var(--ring); }"
+		},
+		{
+			"name": "Badges",
+			"kind": "chip",
+			"refersTo": "flag-your-turn",
+			"description": "One squared Badge for every status: pipe and owner neutral, then the turn (amber while the guest waits, green once answered); numeric (mono) for counts.",
+			"html": "<span class=\"ds-flags\"><span class=\"ds-flag ds-flag-pipe\">Zalo</span><span class=\"ds-flag ds-flag-pipe\">Lan</span><span class=\"ds-flag ds-flag-turn\">Your turn</span><span class=\"ds-flag ds-flag-sent\">Sent</span><span class=\"ds-flag ds-flag-turn ds-flag-num\">12</span></span>",
+			"css": ".ds-flags { display: inline-flex; gap: 4px; } .ds-flag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: calc(var(--radius) * .8); font-family: var(--font-sans); font-size: .6875rem; font-weight: 500; line-height: 1; } .ds-flag-pipe { background: var(--muted); color: var(--muted-foreground); } .ds-flag-turn { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); } .ds-flag-sent { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); } .ds-flag-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }"
+		},
+		{
+			"name": "Panel",
+			"kind": "card",
+			"refersTo": "panel",
+			"description": "Content on the canvas: 13.2px corners, hairline border, no shadow.",
+			"html": "<div class=\"ds-canvas\"><div class=\"ds-panel\"><h3 class=\"ds-panel-title\">Waiting now</h3><p class=\"ds-panel-desc\">3 guests, oldest first</p></div></div>",
+			"css": ".ds-canvas { padding: 12px; background: var(--canvas); } .ds-panel { width: 300px; padding: 16px 20px; border: 1px solid var(--border); border-radius: calc(var(--radius) * 2.2); background: var(--card); color: var(--card-foreground); } .ds-panel-title { margin: 0 0 6px; font-family: var(--font-heading); font-size: 1rem; font-weight: 600; letter-spacing: -.025em; } .ds-panel-desc { margin: 0; font-family: var(--font-sans); font-size: .875rem; color: var(--muted-foreground); }"
+		},
+		{
+			"name": "Sidebar Item",
+			"kind": "nav",
+			"refersTo": "nav-item-active",
+			"description": "Borderless nav on the canvas; active is a white hairline chip with the icon in blue; Inbox carries the amber count.",
+			"html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M3 10l9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z\"/></svg>Home</a><a class=\"ds-nav-item is-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/></svg>Inbox<span class=\"ds-count\">3</span></a></nav>",
+			"css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 200px; padding: 8px; background: var(--canvas); } .ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: calc(var(--radius) * .8); color: color-mix(in srgb, var(--sidebar-foreground) 75%, transparent); font-family: var(--font-sans); font-size: .875rem; text-decoration: none; transition: background .15s; } .ds-nav-item:hover { background: var(--sidebar-accent); } .ds-nav-item.is-active { background: var(--card); box-shadow: inset 0 0 0 1px var(--border); color: var(--foreground); font-weight: 500; } .ds-nav-item.is-active svg { color: var(--primary); } .ds-nav-item:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; } .ds-count { margin-left: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: calc(var(--radius) * .8); background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: .6875rem; font-weight: 500; }"
+		},
+		{
+			"name": "Thread Row",
+			"kind": "custom",
+			"refersTo": "thread-row",
+			"description": "Signature: guest mark, name, tabular clock, two-line preview, flags; the active row is an accent fill with a solid guest mark.",
+			"html": "<div class=\"ds-list\"><button class=\"ds-row is-active\"><span class=\"ds-mark\">MJ</span><span class=\"ds-row-body\"><span class=\"ds-row-top\"><span class=\"ds-row-name\">Minji Park</span><time class=\"ds-row-time\">09:42</time></span><span class=\"ds-row-preview\">Căn 2PN ở Thảo Điền còn trống không ạ? Tôi muốn xem tuần này.</span><span class=\"ds-flag ds-flag-pipe\">Zalo</span> <span class=\"ds-flag ds-flag-turn\">Your turn</span></span></button><button class=\"ds-row\"><span class=\"ds-mark\">YT</span><span class=\"ds-row-body\"><span class=\"ds-row-top\"><span class=\"ds-row-name\">Yuki Tanaka</span><time class=\"ds-row-time\">08:15</time></span><span class=\"ds-row-preview\">Thanks, see you Saturday.</span><span class=\"ds-flag ds-flag-pipe\">WhatsApp</span> <span class=\"ds-flag ds-flag-sent\">Sent</span></span></button></div>",
+			"css": ".ds-list { width: 22rem; padding: 4px 0; border: 1px solid var(--border); border-radius: calc(var(--radius) * 2.2); background: var(--card); } .ds-row { display: flex; align-items: flex-start; gap: 10px; width: calc(100% - .75rem); margin: 2px 6px; padding: 10px 12px; border: none; border-radius: calc(var(--radius) * 1.4); background: transparent; color: var(--foreground); text-align: left; cursor: pointer; font-family: var(--font-sans); transition: background .2s ease-out; } .ds-row:hover { background: color-mix(in srgb, var(--muted) 70%, transparent); } .ds-row.is-active { background: var(--accent); } .ds-row.is-active .ds-mark { background: var(--primary); color: var(--primary-foreground); } .ds-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; } .ds-mark { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: calc(var(--radius) * .8); background: color-mix(in srgb, var(--touch) 12%, transparent); color: var(--touch); font-size: .6875rem; font-weight: 600; transition: background .2s ease-out, color .2s ease-out; } .ds-row-body { min-width: 0; flex: 1; } .ds-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } .ds-row-name { font-family: var(--font-heading); font-size: .875rem; font-weight: 600; letter-spacing: -.025em; } .ds-row-time { font-family: var(--font-sans); font-size: .6875rem; font-variant-numeric: tabular-nums; color: var(--muted-foreground); } .ds-row-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 2px 0 6px; font-size: .75rem; line-height: 1.375; color: var(--muted-foreground); } .ds-flag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: calc(var(--radius) * .8); font-size: .6875rem; font-weight: 500; line-height: 1; } .ds-flag-pipe { background: var(--muted); color: var(--muted-foreground); } .ds-flag-turn { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); } .ds-flag-sent { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }"
+		},
+		{
+			"name": "Messages",
+			"kind": "custom",
+			"refersTo": "message-inbound",
+			"description": "Inbound on card with a hairline; outbound indented on a muted wash; no stripes.",
+			"html": "<div class=\"ds-thread\"><div class=\"ds-msg ds-msg-in\"><div class=\"ds-msg-meta\"><b>Zalo</b><time>09:42</time></div>Căn 2PN ở Thảo Điền còn trống không ạ?</div><div class=\"ds-msg ds-msg-out\"><div class=\"ds-msg-meta\"><b>Nhịp</b><time>09:44</time></div>Dạ còn ạ. Chị muốn xem thứ Bảy được không?</div></div>",
+			"css": ".ds-thread { display: flex; flex-direction: column; gap: 8px; width: 360px; padding: 12px; background: var(--card); font-family: var(--font-sans); } .ds-msg { padding: 8px 12px; border-radius: calc(var(--radius) * 1.4); font-size: .875rem; line-height: 1.625; color: var(--foreground); white-space: pre-wrap; } .ds-msg-in { background: var(--card); box-shadow: inset 0 0 0 1px var(--border); } .ds-msg-out { margin-left: 24px; background: color-mix(in srgb, var(--muted) 60%, transparent); } .ds-msg-meta { display: flex; gap: 8px; margin-bottom: 4px; font-size: .75rem; color: var(--muted-foreground); } .ds-msg-meta b { font-weight: 500; color: color-mix(in srgb, var(--foreground) 80%, transparent); } .ds-msg-meta time { font-variant-numeric: tabular-nums; }"
+		},
+		{
+			"name": "Funnel Cell",
+			"kind": "custom",
+			"refersTo": "figure-missing",
+			"description": "A light mono figure on a strong share bar, and the hatched cell for a number Nhịp does not have yet.",
+			"html": "<ol class=\"ds-funnel\"><li class=\"ds-cell\"><p class=\"ds-stage\"><span>2</span>Engaged</p><p class=\"ds-figure\">18</p><svg class=\"ds-bar\"><rect width=\"100%\" height=\"100%\" class=\"ds-track\"/><rect width=\"62%\" height=\"100%\" rx=\"2\" class=\"ds-fill\"/></svg><p class=\"ds-hint\">62% of leads</p></li><li class=\"ds-cell\"><p class=\"ds-stage\"><span>4</span>Closings</p><div class=\"ds-hatched\"><span class=\"ds-chip\">Connect your CRM</span></div><p class=\"ds-hint\">From your CRM once it is connected.</p></li></ol>",
+			"css": ".ds-funnel { display: grid; grid-template-columns: 1fr 1fr; width: 420px; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: calc(var(--radius) * 2.2); background: var(--card); overflow: hidden; font-family: var(--font-sans); } .ds-cell { display: flex; flex-direction: column; gap: 12px; padding: 20px; } .ds-cell + .ds-cell { border-left: 1px solid var(--border); } .ds-stage { display: flex; gap: 8px; margin: 0; font-size: .75rem; font-weight: 500; color: var(--muted-foreground); } .ds-stage span { font-family: var(--font-mono); font-weight: 400; color: var(--muted-foreground); } .ds-figure { margin: 4px 0 0; font-family: var(--font-mono); font-weight: 300; font-size: 2.5rem; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--foreground); } .ds-bar { display: block; width: 100%; height: 4px; border-radius: 9999px; overflow: hidden; } .ds-track { fill: var(--chart-track); } .ds-fill { fill: var(--chart-strong); } .ds-hint { margin: 0; font-size: .75rem; color: var(--muted-foreground); } .ds-hatched { display: flex; align-items: center; height: 40px; margin-top: 4px; padding: 0 12px; border-radius: var(--radius); box-shadow: inset 0 0 0 1px var(--border); background-image: repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 7px); } .ds-chip { padding: 2px 8px; border-radius: calc(var(--radius) * .8); background: var(--card); color: var(--foreground); font-size: .75rem; font-weight: 500; }"
+		}
+	],
+	"narrative": {
+		"northStar": "The Dispatch Desk",
+		"overview": "Nhịp is the desk where every new lead lands and someone answers it before it goes cold. The screen has one job: show which guest is waiting, whose turn it is, and put the reply one tap away. Everything else stays quiet. The app sits on a pale blue canvas (deep night blue in dark mode); content sits on white panels with hairline blue edges, and one saturated blue marks every action and the thread you're looking at. The only other color is the turn itself: amber for _your turn_, green for _sent_. Red is kept for things that broke.\n\nThe desk is dense but calm. Agents work it on a phone and at a desk about equally, so the thread list and the thread are the same product in both places: one full-bleed column on a phone, two panels side by side from `md` up. Below `lg` (1024px) the app runs its phone shell: a 56px top bar with the sidebar as a sheet behind it. Density comes from tight rows and small, exact type, not from shrinking touch targets. Every control someone taps mid-conversation is at least 44px tall. Home is the numbers screen: light mono figures, one blue at two strengths, and an honest hatch where a number doesn't exist yet.\n\nThe system comes from a supastarter kit, refit for triage. Pills are for acting, gently squared corners are for content, and depth comes from tone. Only floating layers (menus, dialogs, toasts) cast a shadow. Headings are in Be Vietnam Pro and body text in Noto Sans. Both carry the Vietnamese subset, so diacritics set cleanly at every size.",
+		"keyCharacteristics": [
+			"One action blue; the turn (amber / green) is the only other signal on a row.",
+			"Canvas and panels: a pale canvas carries borderless navigation; content lives on white, hairline-edged panels.",
+			"Flat surfaces: tonal fills and 1px inset hairlines instead of shadows. Floating layers are the one exception.",
+			"Pill buttons, squared content (rows, badges, messages, fields).",
+			"Selection is a fill, never a side stripe: an accent row with a solid guest mark, a white chip in the nav.",
+			"Digit-only content in IBM Plex Mono with tabular figures (counts, Home's light figures); timestamps in the sans, tabular.",
+			"Light and dark themes are both first-class; every token has a night twin."
+		],
+		"rules": [
+			{
+				"name": "The One Blue Rule",
+				"body": "Blue is the only action color. No second accent, no gradient, no brand purple. If a new control needs emphasis, it's primary blue or it's neutral.",
+				"section": "colors"
+			},
+			{
+				"name": "The Turn Is The Signal Rule",
+				"body": "On a thread, only the turn gets color: amber while the guest waits, green once we've answered. Pipe, owner and other metadata stay neutral grey-blue so the turn is readable from across the room.",
+				"section": "colors"
+			},
+			{
+				"name": "The Red Means Broken Rule",
+				"body": "Signal Red is for errors and destructive actions only. A waiting guest is amber, never red. Urgency is not an error.",
+				"section": "colors"
+			},
+			{
+				"name": "The Two Strengths Rule",
+				"body": "A chart is one blue at two strengths on a track: strong for the one value to read first, soft for the rest. No second hue, no legend colors.",
+				"section": "colors"
+			},
+			{
+				"name": "The Tabular Clock Rule",
+				"body": "Times are Noto Sans with `tabular-nums`. A time mixes digits with words and separators (`5 phút`, `09:42`, a date), so it takes the sans; tabular figures keep a column of times from jittering.",
+				"section": "typography"
+			},
+			{
+				"name": "The Digits In Mono Rule",
+				"body": "Plex Mono carries digit-only content: Home's figures, numeric badges, funnel stage numbers, view-tab counts, bucket counts and shares. Words and units beside them stay in Noto Sans. Anything written as a phrase (a timestamp, a wait time, the p90 line) stays in the sans with tabular figures.",
+				"section": "typography"
+			},
+			{
+				"name": "The Theme Sizes Rule",
+				"body": "Sizes below 0.75rem and the figure sizes use theme tokens (`text-micro`, `text-2xs`, `text-figure`, `text-figure-sm`), never arbitrary values. `cn()` knows these tokens, so they survive a text color merged after them.",
+				"section": "typography"
+			},
+			{
+				"name": "The Canvas And Panel Rule",
+				"body": "The canvas carries navigation, page headers and status banners; panels carry content. A new block of content is a panel on the canvas, not a section drawn on the canvas, and the sidebar never gets its own edge.",
+				"section": "layout"
+			},
+			{
+				"name": "The Flat Desk Rule",
+				"body": "Surfaces are flat at rest and flat on hover. State shows as a tonal fill, a solid guest mark, or a white chip on the canvas, never as lift. The single exception: floating layers lift; surfaces never do. Menus, popovers, selects, tooltips, dialogs, sheets and toasts keep the kit's soft drop shadow, with the hairline border as their separator in dark mode.",
+				"section": "elevation"
+			},
+			{
+				"name": "The No Stripe Rule",
+				"body": "Nothing is marked by a colored side border. Selection, direction and notes read from fill and tint; the 2px rail is retired.",
+				"section": "elevation"
+			},
+			{
+				"name": "The Pill Acts Rule",
+				"body": "If it's fully round, it does something. Status and metadata are never pills; they're small squared badges. (Share bars are round-ended lines, not controls, and the view tabs are a pill toggle because they act.)",
+				"section": "shapes"
+			}
+		],
+		"dos": [
+			"**Do** use Dispatch Blue (#2563eb) for every primary action and for nothing decorative.",
+			"**Do** show the turn with the badge pair: Your-Turn Amber (#92400e) at 12% for waiting, Sent Green (#166534) at 12% for answered.",
+			"**Do** put content on a panel (13.2px, 1px Hairline Blue, no shadow) on the Desk Canvas (#f2f5fb).",
+			"**Do** mark selection with a fill: Hairline Blue plus a solid guest mark on rows, a white Hairline chip in the nav.",
+			"**Do** keep tappable controls in the inbox and the phone shell at least 44px tall (`min-h-11`), even when the visual button is smaller.",
+			"**Do** set digit-only content (figures, counts) in IBM Plex Mono with `tabular-nums`, and timestamps, words and units in Noto Sans (timestamps with `tabular-nums`).",
+			"**Do** draw charts in one blue at two strengths: Chart Strong for the value to read first, Chart Soft for the rest, on Chart Track.",
+			"**Do** hatch a number Nhịp does not have yet and say why in a neutral chip.",
+			"**Do** use theme tokens for one-off values (`text-micro`, `text-2xs`, `text-figure`, `w-row-inset`, `--container-inbox-list`); `@shadcn/lint` rejects raw colors, arbitrary values and inline styles in the app.",
+			"**Do** give every color a night twin in both `:root` and `.dark` when you add one."
+		],
+		"donts": [
+			"**Don't** reintroduce the 2px left rail or any colored side stripe, on rows, messages, notes or navigation.",
+			"**Don't** add a second accent color, a gradient, or brand illustration inside the inbox.",
+			"**Don't** add a second hue to a chart.",
+			"**Don't** show a zero for a number Nhịp doesn't have; a zero reads as a fact.",
+			"**Don't** use Signal Red (#dc2626) for waiting or overdue leads; red means an error or a destructive action.",
+			"**Don't** add drop shadows or elevation on hover; state is a tonal fill. Only floating layers keep the kit's shadow.",
+			"**Don't** give the sidebar its own border or surface; it is the canvas.",
+			"**Don't** set words, units or timestamps in mono; mono is for digit-only content.",
+			"**Don't** make status or metadata into pills, or build a second status component; status is a squared `Badge`.",
+			"**Don't** use grey borders; borders are Hairline Blue (#e4ecfc) / Night Hairline (#253352).",
+			"**Don't** write arbitrary Tailwind values (`text-[11px]`, `w-[calc(...)]`) in app code; name the value as a theme token in `apps/saas/app/globals.css`.",
+			"**Don't** restyle a `@repo/ui` component with `className` beyond layout; `shadcn/no-restyle` enforces it. Use a variant or size, or add one when the design calls for it.",
+			"**Don't** stack contradictory utilities (`rounded-full rounded-md`, `bg-primary bg-touch/12`); a plain `className` without `cn()` resolves them by stylesheet order, not by position."
+		]
+	}
+}

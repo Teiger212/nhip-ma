@@ -1,0 +1,180 @@
+name: Release
+
+# Publishing a GitHub Release moves `production` to the release's commit (ADR 0016, #112), once
+# `scripts/release/check-release.sh` confirms it is on main, ahead of production, deployed on
+# staging and smoked there. Vercel then builds production from it (migrations first).
+#
+# Only this workflow may move `production`: the branch's ruleset (24113338) blocks every push
+# except by the repository's deploy key, whose private half is the `release` environment's
+# secret `PRODUCTION_DEPLOY_KEY` (docs/setup-checklist.md). Because that key bypasses the
+# ruleset's fast-forward rule too, the gate's ancestry check is what keeps the move a
+# fast-forward; the push below never forces.
+#
+# The gate runs from `main`, never from the release's commit: a tag can point at any commit,
+# and a commit off main could carry a gate that always says yes. The release's commit is only
+# data here, and the key exists only inside the push step. GitHub still runs this workflow file
+# from the tagged commit, so a tag on an edited copy could skip the gate. That's why the
+# `release` environment requires Eyal's approval before the job gets the key.
+#
+# Only one run waits behind the running one: a third release cancels the second while it
+# waits. Release one at a time.
+on:
+  release:
+    types: [published]
+
+# One release at a time; a second waits instead of racing the first.
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: read
+  actions: read
+  statuses: read
+
+# A named `bash` runs with `-eo pipefail`; the default shell does not, and `gate | tee` would
+# then pass even when the gate refuses.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: release
+    steps:
+      - name: Checkout main (the gate's code), without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The tag, not `release.target_commitish`, which can be a branch name.
+      - name: Resolve the release's commit
+        id: commit
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git fetch --quiet --force origin production "refs/tags/$TAG:refs/tags/$TAG"
+          echo "sha=$(git rev-parse "refs/tags/$TAG^{commit}")" >> "$GITHUB_OUTPUT"
+
+      - name: Check the release gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/release/check-release.sh "${{ steps.commit.outputs.sha }}" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # GitHub's SSH host keys come from its API over HTTPS, so the push trusts no first sight.
+      - name: Fast-forward production with the deploy key
+        env:
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          key="$RUNNER_TEMP/deploy_key"
+          hosts="$RUNNER_TEMP/known_hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > "$key")
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$hosts"
+          GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$hosts -o StrictHostKeyChecking=yes" \
+            git push "git@github.com:$GITHUB_REPOSITORY.git" "$SHA:refs/heads/production"
+
+      # Vercel builds production from the moved branch, then holds the deployment off the
+      # production domain until its Deployment Checks pass (#113): the production smoke run
+      # (`production-smoke.yml`) and Vercel's own Lint and TypeCheck. GitHub's deployment
+      # `success` is not enough: on staging Vercel posts it the moment the build is ready, so a
+      # held production deployment most likely shows `success` before its checks run (inferred;
+      # production had not deployed when this was written). On every poll the step reads both
+      # the deployment and the production smoke status on the commit, and fails at once on a
+      # failed build or a failed smoke check, whatever the deployment's state. It passes when
+      # the production domain (`vars.PRODUCTION_URL`) serves this very deployment, compared by
+      # the `data-dpl-id` that Skew Protection puts on every page's <html>. A failed build or
+      # check leaves the previous production deployment serving. The environment name is
+      # matched case-insensitively.
+      - name: Link the production deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          short=${SHA:0:7}
+          domain=${PRODUCTION_URL%/}
+          fail() {
+            echo "::error::$1"
+            echo "$1" >>"$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+          # The deployment id a URL serves, as its login page names it (empty if unreachable).
+          serves() {
+            curl -fsSL --max-time 20 "$1/en/login" | grep -o 'data-dpl-id="dpl_[A-Za-z0-9]*"' | head -n 1 | cut -d'"' -f2 || true
+          }
+          url="" dpl="" smoke=""
+          deadline=$((SECONDS + 30 * 60))
+          # production has already moved by now, so an API blip only means another poll.
+          while ((SECONDS < deadline)); do
+            if [[ -z $url ]]; then
+              id=$(gh api "repos/{owner}/{repo}/deployments?sha=$SHA&per_page=100" \
+                --jq '[.[] | select(.environment | ascii_downcase == "production")][0].id // empty' || true)
+              if [[ -n $id ]]; then
+                status=$(gh api "repos/{owner}/{repo}/deployments/$id/statuses?per_page=1" --jq '.[0] // empty' || true)
+                state=$(jq -r '.state // empty' <<<"$status")
+                built=$(jq -r '.environment_url // .target_url // empty' <<<"$status")
+                case $state in
+                  success)
+                    # Only the deployment's own URL names the new deployment; the domain
+                    # would name whichever deployment it serves.
+                    if [[ -n $domain && ${built%/} == "$domain" ]]; then
+                      built=$(jq -r '.target_url // empty' <<<"$status")
+                      [[ ${built%/} != "$domain" ]] || built=""
+                    fi
+                    if [[ -n $built ]]; then
+                      url=$built
+                      echo "Vercel built production from $short: $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                    fi
+                    ;;
+                  failure | error)
+                    fail "Vercel's production build of $short failed: $built"
+                    ;;
+                  inactive)
+                    fail "Vercel's production deployment of $short is inactive (replaced or rolled back): $built"
+                    ;;
+                esac
+              fi
+            fi
+            # The latest status of production-smoke.yml's check, by its exact name, whatever
+            # the deployment's state: a held deployment must not hide a failed check.
+            smoke=$(gh api "repos/{owner}/{repo}/commits/$SHA/status" \
+              --jq '[.statuses[] | select(.context == "Production smoke | production-smoke (nhip - production)")][0].state // empty' || true)
+            case $smoke in
+              failure | error)
+                fail "The production smoke check failed on $short, so Vercel keeps ${url:-the deployment} off the production domain. If the repository variable PRODUCTION_SMOKE_FORCE_FAIL is set, delete it and re-run the Production smoke job; otherwise fix it in a new release. Force Promote is for emergencies only."
+                ;;
+              success)
+                if [[ -z $domain ]]; then
+                  echo "::warning::vars.PRODUCTION_URL is not set, so the domain serving $short is unconfirmed (docs/setup-checklist.md)."
+                  echo "Production smoke passed on $short (${url:-deployment URL not read}); the domain was not checked." >>"$GITHUB_STEP_SUMMARY"
+                  exit 0
+                fi
+                if [[ -n $url ]]; then
+                  [[ -n $dpl ]] || dpl=$(serves "$url")
+                  if [[ -n $dpl && $(serves "$domain") == "$dpl" ]]; then
+                    echo "Production serves $short at $domain ($dpl, $url)" | tee -a "$GITHUB_STEP_SUMMARY"
+                    exit 0
+                  fi
+                fi
+                ;;
+            esac
+            sleep 20
+          done
+          if [[ -z $url && -z $smoke ]]; then
+            fail "No finished production deployment of $short after 30 minutes."
+          elif [[ -z $smoke ]]; then
+            fail "No Production smoke status appeared on $short after 30 minutes ($url). Check Actions for a Production smoke run from Vercel's dispatch."
+          elif [[ $smoke != success ]]; then
+            fail "The production smoke check on $short is still $smoke after 30 minutes, so Vercel holds ${url:-the deployment} off the domain. Open the Production smoke run; re-run it if it was cancelled."
+          elif [[ -z $url ]]; then
+            fail "The production smoke check passed on $short, but GitHub never showed its deployment as successful, so $domain was not compared. See the deployment in Vercel."
+          fi
+          fail "$domain doesn't serve $short (${dpl:-deployment id unread}) after 30 minutes. Another Deployment Check may hold $url (see the deployment in Vercel), or production was rolled back and the release needs promoting."

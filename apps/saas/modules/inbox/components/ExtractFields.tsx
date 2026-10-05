@@ -32,7 +32,7 @@ function useExtractRowText() {
 function ExtractRowList({ rows }: { rows: ExtractRow[] }) {
 	const text = useExtractRowText();
 	return (
-		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
+		<dl className="gap-x-3 gap-y-1.5 text-sm min-w-0 grid-cols-fields grid">
 			{rows.map((row) => {
 				const { label, value } = text(row);
 				return (
@@ -53,7 +53,7 @@ export function ExtractFields({ conversation }: { conversation: Conversation }) 
 	const t = useTranslations("inbox");
 	const arranged = useMemo(() => arrangeExtractRows(conversation.oneShot), [conversation.oneShot]);
 	return (
-		<section className="gap-2 p-3 flex flex-col rounded-lg rounded-md bg-muted bg-muted/50">
+		<section className="gap-2 p-3 flex flex-col rounded-md bg-muted/50">
 			<ExtractRowList rows={arranged.visible} />
 			{arranged.collapsed.length > 0 ? (
 				<details>

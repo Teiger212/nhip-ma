@@ -1,7 +1,13 @@
+import { getBaseUrl } from "@shared/lib/base-url";
+
 import { runInBackground } from "./background";
+import { createCrmSync } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
-import { pipeAdapter, SendError, transmit } from "./pipes";
+import { greetingTemplate } from "./greeting";
+import { scheduleGuestAlert } from "./guest-alerts";
+import type { AlertTransport } from "./guest-alerts/transport";
+import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
 import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
@@ -18,7 +24,7 @@ export async function applyOneShot(
 	if (!conversation) {
 		return null;
 	}
-	const inbound = await store.guestInboundText(conversation.id);
+	const inbound = await store.guestInboundText(conversation.officeId, conversation.id);
 	if (!inbound) {
 		return conversation;
 	}
@@ -26,7 +32,7 @@ export async function applyOneShot(
 	if (conversation.sentAt) {
 		shot.draft.reply = followUpTemplate(shot.language);
 	}
-	return store.setOneShot(conversation.id, shot);
+	return store.setOneShot(conversation.officeId, conversation.id, shot);
 }
 
 /**
@@ -54,11 +60,11 @@ export async function generateModelDraft(
 	if (!reply) {
 		return null;
 	}
-	const current = await runtime.store.getConversation(conversation.id);
+	const current = await runtime.store.getOfficeConversation(conversation.officeId, conversation.id);
 	if (!current || current.unansweredInboundId !== inboundId) {
 		return null;
 	}
-	return runtime.store.setDraft(conversation.id, {
+	return runtime.store.setDraft(conversation.officeId, conversation.id, {
 		reply,
 		answersMessageId: inboundId,
 		source: "model",
@@ -66,19 +72,163 @@ export async function generateModelDraft(
 }
 
 /**
- * Everything that follows a guest message: the one-shot now, then translation and, for a
- * guest who wrote back after a send, the model draft in the background. The first reply
- * keeps the template until the model draft is shown to be better on the invented threads
- * (ADR 0005).
+ * The address that opens a thread in Nhịp, written on its CRM lead (spec #59, Q12). Offices
+ * are Vietnamese, so the link opens the Vietnamese inbox; the operator can switch from there.
+ */
+export function threadUrl(conversationId: string): string {
+	return `${getBaseUrl()}/vi/inbox?thread=${encodeURIComponent(conversationId)}`;
+}
+
+/** The CRM sync (spec #59) over the runtime's store, with thread links and its key for CRM tokens. */
+export function crmSyncFor(runtime: Runtime) {
+	return createCrmSync({
+		store: runtime.store,
+		threadUrl,
+		secretsKey: runtime.config.pipeSecretsKey,
+	});
+}
+
+/** The id a mock auto-reply reports, so a test can send its echo (ADR 0021, First greeting 7). */
+export function autoReplyMockId(conversationId: string): string {
+	return `mock-auto-reply-${conversationId}`;
+}
+
+/** Whether the office has spoken on the thread: any message of its own, or an Answer begun. */
+function officeHasSpoken(conversation: Conversation): boolean {
+	return (
+		conversation.answers.length > 0 ||
+		conversation.messages.some((message) => message.direction === "out")
+	);
+}
+
+/**
+ * When the auto-reply is filed: now, but never before the guest's message it greets. That
+ * message carries the vendor's clock, which can run ahead of ours, and the thread is read in
+ * time order.
+ */
+function afterGuestMessage(conversation: Conversation): Date {
+	const latest = conversation.messages.findLast((message) => message.direction === "in");
+	const after = latest ? Date.parse(latest.at) + 1 : 0;
+	return new Date(Math.max(Date.now(), after));
+}
+
+/** What a failed auto-reply send is logged as: a category, never the thread or its text (PDPL). */
+function sendFailureKind(error: unknown): string {
+	if (error instanceof SendError) return error.kind;
+	return "network";
+}
+
+/**
+ * The auto-reply (ADR 0021): one greeting for a new guest's first message, sent without an
+ * approval. The claim comes first and is never given back, so whatever happens after it the
+ * thread is greeted at most once: a disconnected endpoint, a closed window or a failed send
+ * leaves it ungreeted, and the thread waits for a human as it does today. One attempt, no
+ * retry. It is not an Answer (G5): the thread stays Your turn and nothing in the funnel moves.
+ * This is the template path; the model writes it from #168.
+ */
+export async function sendAutoReply(runtime: Runtime, conversation: Conversation): Promise<void> {
+	const { store, config } = runtime;
+	const shot = conversation.oneShot;
+	if (!shot) return;
+	const office = await store.officeAutoReply(conversation.officeId);
+	if (!office?.on) return;
+	if (!(await store.claimAutoReply(conversation.officeId, conversation.id))) return;
+
+	// From the endpoint the guest wrote to, as an Answer goes (ADR 0017): never from a
+	// disconnected one, and in a live deployment never from one the office has not connected.
+	const endpoint = latestGuestEndpoint(conversation);
+	if (endpoint) {
+		const connection = await connectionFor(conversation.pipe, endpoint, conversation.officeId, {
+			config,
+			store,
+		});
+		if (connection.state === "disconnected") return;
+		if (config.sendMode === "live" && connection.state === "not_connected") return;
+	} else if (config.sendMode === "live") {
+		return;
+	}
+	if (!pipeAdapter(conversation.pipe).sendWindow(conversation).open) return;
+
+	const text = greetingTemplate(shot.language, shot.qualification, office.name);
+	let result: SendResult;
+	try {
+		result = await transmit({
+			conversation,
+			text,
+			from: endpoint,
+			config,
+			store,
+			mockVendorMessageId: autoReplyMockId(conversation.id),
+		});
+	} catch (error) {
+		console.warn("inbox: auto-reply send failed", { kind: sendFailureKind(error) });
+		return;
+	}
+	try {
+		await store.recordAutoReply(conversation.officeId, conversation.id, {
+			text,
+			writtenBy: "template",
+			result,
+			pipeExternalId: endpoint,
+			at: afterGuestMessage(conversation),
+		});
+	} catch {
+		// Sent but not on file. Its echo, if the vendor sends one, then reads as a reply from
+		// the office's app: the race Answers already have (ADR 0021, recorded, not fixed).
+		console.warn("inbox: auto-reply record failed");
+	}
+}
+
+/**
+ * Everything that follows a guest message: the one-shot now, then the alert (a new message
+ * only), the auto-reply for a new guest's first message (ADR 0021), translation and, for a
+ * guest who wrote back after a send, the model draft in the background. A thread with no
+ * lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
+ * queue never wait on the CRM. The reply box's first reply keeps the template until the model
+ * draft is shown to be better on the invented threads (ADR 0005).
  */
 export async function afterGuestInbound(
 	runtime: Runtime,
 	conversation: Conversation,
+	{
+		inserted,
+		alerts,
+		autoReply = true,
+	}: { inserted: boolean; alerts?: AlertTransport; autoReply?: boolean },
 ): Promise<Conversation> {
 	const updated = (await applyOneShot(runtime.store, conversation)) ?? conversation;
+	// Only a new message alerts: a vendor's retry of one already stored alerts no one (ADR 0019).
+	// After the one-shot, so the alert can name the guest's language.
+	if (inserted) {
+		scheduleGuestAlert(runtime, updated, alerts);
+	}
+	// A new message on a thread the office has not spoken on and nobody has claimed. The job's
+	// claim is what makes it one greeting; this only spares a job for every later message.
+	// Its label names no thread: a failed job's log keeps no guest data (PDPL).
+	if (
+		inserted &&
+		autoReply &&
+		updated.oneShot &&
+		updated.autoReplyAt === null &&
+		!officeHasSpoken(updated)
+	) {
+		void runInBackground("auto-reply", async () => {
+			await sendAutoReply(runtime, updated);
+		});
+	}
+	if (!updated.crm) {
+		void runInBackground(`crm lead ${updated.id}`, async () => {
+			try {
+				await crmSyncFor(runtime).newGuest(updated);
+			} catch {
+				// A CRM's error can carry guest data; the log keeps only what failed (PDPL).
+				throw new Error("CRM lead write failed");
+			}
+		});
+	}
 	const inbound = updated.messages.find((message) => message.id === updated.unansweredInboundId);
 	if (inbound) {
-		scheduleTranslations(runtime, inbound);
+		scheduleTranslations(runtime, updated.officeId, inbound);
 		if (updated.sentAt && updated.oneShot && runtime.drafts.provider !== "none") {
 			void runInBackground(`follow-up draft ${updated.id}`, async () => {
 				await generateModelDraft(runtime, updated);
@@ -93,36 +243,55 @@ export async function afterGuestInbound(
  * (ADR 0008). An event from a pipe no office has connected is dropped, not filed under
  * nobody: tenancy fails closed, and the log says which pipe to connect.
  */
-export async function ingestEvents(runtime: Runtime, events: InboundEvent[]): Promise<void> {
+/** What became of a webhook's messages: where each was filed, and which found no office. */
+export type IngestSummary = {
+	filed: { endpoint: string; officeId: string; vendorMessageId: string | null }[];
+	dropped: { endpoint: string | null; vendorMessageId: string | null }[];
+};
+
+export async function ingestEvents(
+	runtime: Runtime,
+	events: InboundEvent[],
+): Promise<IngestSummary> {
+	const summary: IngestSummary = { filed: [], dropped: [] };
 	for (const event of events) {
-		const officeId = event.pipeExternalId
-			? await runtime.store.officeForPipe(event.pipe, event.pipeExternalId)
-			: null;
-		if (!officeId) {
+		const endpoint = event.pipeExternalId ?? null;
+		const officeId = endpoint ? await runtime.store.officeForPipe(event.pipe, endpoint) : null;
+		if (!endpoint || !officeId) {
 			console.warn("inbox: inbound dropped, no office owns this pipe", {
 				pipe: event.pipe,
-				pipeExternalId: event.pipeExternalId ?? null,
+				pipeExternalId: endpoint,
 			});
+			summary.dropped.push({ endpoint, vendorMessageId: event.vendorMessageId });
 			continue;
 		}
-		const conv = await runtime.store.upsertInbound(event, officeId);
+		const { conversation, inserted } = await runtime.store.upsertInbound(event, officeId);
+		summary.filed.push({ endpoint, officeId, vendorMessageId: event.vendorMessageId });
 		if (event.source === "guest") {
-			await afterGuestInbound(runtime, conv);
+			await afterGuestInbound(runtime, conversation, { inserted });
 		}
 	}
+	return summary;
 }
 
-export async function injectDevInbound(input: {
-	pipe: Pipe;
-	guestId: string;
-	text: string;
-	officeId: string;
-	guestName?: string | null;
-	vendorMessageId?: string | null;
-	at?: number | string | Date;
-}): Promise<Conversation> {
+export async function injectDevInbound(
+	input: {
+		pipe: Pipe;
+		guestId: string;
+		text: string;
+		officeId: string;
+		guestName?: string | null;
+		vendorMessageId?: string | null;
+		at?: number | string | Date;
+	},
+	/**
+	 * The seed passes the mock transport (a seed run never pushes, #134, Q3) and no auto-reply:
+	 * the walk's demo threads keep the states they are written in (ADR 0021).
+	 */
+	{ alerts, autoReply = true }: { alerts?: AlertTransport; autoReply?: boolean } = {},
+): Promise<Conversation> {
 	const runtime = getRuntime();
-	const conv = await runtime.store.upsertInbound(
+	const { conversation, inserted } = await runtime.store.upsertInbound(
 		{
 			pipe: input.pipe,
 			guestId: input.guestId,
@@ -134,7 +303,7 @@ export async function injectDevInbound(input: {
 		},
 		input.officeId,
 	);
-	return afterGuestInbound(runtime, conv);
+	return afterGuestInbound(runtime, conversation, { inserted, alerts, autoReply });
 }
 
 export type InboxResult =
@@ -209,7 +378,7 @@ export type ApproveInput = {
 export async function approveAndSend(
 	id: string,
 	input: ApproveInput,
-	viewer?: InboxViewer,
+	viewer: InboxViewer,
 ): Promise<InboxResult> {
 	const { store, config } = getRuntime();
 	const conv = await store.getConversation(id, viewer);
@@ -259,26 +428,46 @@ export async function approveAndSend(
 		};
 	}
 
-	// The reply goes out on the number the guest wrote to (ADR 0010). With process-wide
-	// credentials, a thread that arrived on any other number cannot be answered from here.
+	// The reply goes out from the office's endpoint the guest wrote to (ADR 0010, ADR 0017).
+	// A disconnected one refuses in any deployment; in a live one, an endpoint that is not
+	// connected refuses too, rather than recording a mock send the guest never receives.
 	const endpoint = latestGuestEndpoint(conv);
-	if (config.sendMode === "live" && endpoint && !adapter.ownsEndpoint(endpoint, config)) {
+	if (endpoint) {
+		const connection = await connectionFor(conv.pipe, endpoint, conv.officeId, { config, store });
+		if (connection.state === "disconnected") {
+			return {
+				ok: false,
+				status: 409,
+				error: "pipe_disconnected",
+				message:
+					"This connection is disconnected, so replies on it cannot be sent. Nhịp has been notified.",
+			};
+		}
+		if (config.sendMode === "live" && connection.state === "not_connected") {
+			return {
+				ok: false,
+				status: 409,
+				error: "pipe_not_connected",
+				message: "This thread arrived on a number or OA the office has not connected.",
+			};
+		}
+	} else if (config.sendMode === "live") {
 		return {
 			ok: false,
 			status: 409,
-			error: "pipe_not_configured",
-			message:
-				"This thread arrived on a number or OA this deployment is not configured to send from.",
+			error: "pipe_not_connected",
+			message: "This thread has no number or OA to answer from.",
 		};
 	}
 
 	// The Answer is written before the vendor call. Its unique inbound is the guard against
 	// a concurrent approval; its status is what decides whether a retry is ever allowed.
 	const begun = await store.beginAnswer({
+		officeId: conv.officeId,
 		conversationId: conv.id,
 		inboundId,
 		text,
-		operatorId: viewer?.userId ?? null,
+		operatorId: viewer.userId,
 	});
 	if (!begun.ok) {
 		switch (begun.reason) {
@@ -293,23 +482,26 @@ export async function approveAndSend(
 				};
 			case "unknown":
 				return DELIVERY_UNKNOWN;
+			case "not_found":
+				// The thread was deleted since it was read (ADR 0020).
+				return { ok: false, status: 404, error: "not_found" };
 		}
 	}
 	const answerId = begun.answer.id;
 
 	let result: SendResult;
 	try {
-		result = await transmit({ conversation: conv, text, config });
+		result = await transmit({ conversation: conv, text, from: endpoint, config, store });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "send failed";
 		if (err instanceof SendError) {
 			// The vendor refused, or nothing was sent: a definite failure the operator may retry.
-			await store.failAnswer(answerId, message);
+			await store.failAnswer(conv.officeId, answerId, message);
 			return { ok: false, status: 502, error: "send_failed", message, detail: err.detail };
 		}
 		// A network failure or timeout: the vendor may or may not have the message. Never
 		// retried automatically, and never approved again until a person has checked.
-		await store.markAnswerUnknown(answerId, message);
+		await store.markAnswerUnknown(conv.officeId, answerId, message);
 		return {
 			ok: false,
 			status: 502,
@@ -319,7 +511,7 @@ export async function approveAndSend(
 	}
 
 	try {
-		const updated = await store.completeAnswer(answerId, result);
+		const updated = await store.completeAnswer(conv.officeId, answerId, result);
 		if (!updated) {
 			return { ok: false, status: 404, error: "not_found" };
 		}
@@ -328,7 +520,9 @@ export async function approveAndSend(
 		// The vendor accepted but the record failed. The Answer stays on file as unknown, so
 		// the reply is not sent a second time; someone reconciles it against the vendor.
 		const message = err instanceof Error ? err.message : "record failed";
-		await store.markAnswerUnknown(answerId, `recorded_failed: ${message}`).catch(() => undefined);
+		await store
+			.markAnswerUnknown(conv.officeId, answerId, `recorded_failed: ${message}`)
+			.catch(() => undefined);
 		return {
 			ok: false,
 			status: 500,
@@ -344,7 +538,7 @@ export async function approveAndSend(
  * Without a model, or when the model's draft fails the post-check, the template is put
  * back so the box is never empty.
  */
-export async function regenerateDraft(id: string, viewer?: InboxViewer): Promise<InboxResult> {
+export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<InboxResult> {
 	const runtime = getRuntime();
 	const conv = await runtime.store.getConversation(id, viewer);
 	if (!conv) {
@@ -364,7 +558,7 @@ export async function regenerateDraft(id: string, viewer?: InboxViewer): Promise
 	const reply = conv.sentAt
 		? followUpTemplate(shot.language)
 		: draftReply(shot.language, shot.qualification);
-	const updated = await runtime.store.setDraft(conv.id, {
+	const updated = await runtime.store.setDraft(conv.officeId, conv.id, {
 		reply,
 		answersMessageId: conv.unansweredInboundId,
 		source: "template",

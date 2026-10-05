@@ -1,0 +1,25 @@
+import { crmSyncFor } from "../inbox";
+import { getRuntime } from "../runtime";
+import type { CrmKind } from "../types";
+import { crmWebhookFor } from "./adapters";
+
+/**
+ * A CRM's outcome webhook (ADR 0003, spec #59), the same for every kind: verified through the
+ * kind's reader, then handed to the CRM sync module, which finds the offices on each account the
+ * notice names (#66). 404 where this deployment has no such webhook, 401 for anything
+ * unverified, 200 once handled (an account no office is on, or a lead of another office, is
+ * taken and ignored, so the CRM does not retry it).
+ */
+export async function handleCrmWebhook(kind: CrmKind, request: Request): Promise<Response> {
+	const runtime = getRuntime();
+	const read = crmWebhookFor(kind, runtime.config);
+	if (!read) return Response.json({ error: "not_found" }, { status: 404 });
+	const now = new Date();
+	const notices = read(
+		{ method: request.method, rawBody: await request.text(), headers: request.headers },
+		now,
+	);
+	if (!notices) return Response.json({ error: "bad_signature" }, { status: 401 });
+	await crmSyncFor(runtime).noticesReceived(kind, notices, now);
+	return Response.json({ ok: true });
+}

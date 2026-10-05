@@ -1,0 +1,562 @@
+import { createHash, randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+
+import type { APIRequestContext, Page } from "@playwright/test";
+
+import { expect, test as base } from "./support/fixtures";
+import type { Joined } from "./support/invitee";
+import { joinOffice } from "./support/invitee";
+import { deleteOffice } from "./support/offices";
+import { connectZaloOa, releaseZaloOa } from "./support/pipes";
+import type { Api } from "./support/session";
+import { deliverZalo, signedZaloText } from "./support/zalo";
+
+/**
+ * The Inbox's and Home's copy, from packages/i18n/translations/en/saas.json: the auto-reply's
+ * meta line (inbox.source.autoReply, inbox.autoReply.template, inbox.mock), the office's own
+ * app reply (inbox.source.oaEcho), and Home's funnel.
+ */
+const saas = JSON.parse(
+	fs.readFileSync(
+		path.resolve(__dirname, "../../../packages/i18n/translations/en/saas.json"),
+		"utf8",
+	),
+) as {
+	inbox: {
+		mock: string;
+		searchAria: string;
+		source: { autoReply: string; oaEcho: string };
+		autoReply: { template: string };
+	};
+	home: {
+		waitingNow: string;
+		funnel: { title: string; leadsIn: string; engaged: string };
+	};
+};
+
+/** The office every greeting here signs as (ADR 0021, R7: the label names the office). */
+const OFFICE_NAME = "Saigon Prime Test";
+
+/** The English label: the greeting's last line (ADR 0021, R7). */
+const EN_LABEL = `Auto-reply from ${OFFICE_NAME}: a colleague will continue with you right here.`;
+
+/**
+ * The greeting goes out in the background "within seconds" of the guest's first message; a
+ * production build under parallel load gets a margin on that.
+ */
+const WITHIN_SECONDS = { timeout: 20_000 };
+
+/* ---------------------------------------------------------------- the office and its guests */
+
+/** A guest writing on Zalo to one of the office's OAs; a nameless Zalo guest goes by their id. */
+type Guest = {
+	id: string;
+	/** Every text the guest sent, in order. */
+	texts: string[];
+	/** The guest writes; resolves with the text. */
+	write: (text?: string) => Promise<string>;
+	/** Zalo delivers the office's own message to this guest (an `oa_send_text` echo). */
+	echoFromOffice: (text: string, msgId?: string) => Promise<void>;
+	/** The same guest's message, signed but not yet delivered (to deliver at one moment). */
+	signed: (text: string) => ReturnType<typeof signedZaloText>;
+};
+
+/**
+ * An office of the test's own named exactly "Saigon Prime Test" (a slug of its own, so parallel
+ * tests never collide; deleted afterwards), with a manager (the kit's `admin`) who joined through
+ * the invitation link and reads every thread, and Zalo OAs of its own (released afterwards).
+ */
+type GreetingOffice = {
+	id: string;
+	manager: Joined;
+	/** A new OA of the office: connected, or already disconnected. */
+	newOa: (state?: "disconnected") => string;
+	/** A guest who has not written yet, on this OA (the office's first OA unless given one). */
+	newGuest: (oaId?: string) => Guest;
+};
+
+const test = base.extend<{ office: GreetingOffice }>({
+	office: async ({ admin, browser, request }, use) => {
+		const created = await admin.api.post("/api/auth/organization/create", {
+			name: OFFICE_NAME,
+			slug: `e2e-greeting-${randomUUID()}`,
+		});
+		expect(created.status(), `the platform admin creates "${OFFICE_NAME}"`).toBe(200);
+		const { id } = (await created.json()) as { id: string };
+		const oaIds: string[] = [];
+		let manager: Joined | undefined;
+		try {
+			const newOa = (state?: "disconnected") => {
+				const oaId = uniqueId("oa");
+				connectZaloOa(id, oaId, state);
+				oaIds.push(oaId);
+				return oaId;
+			};
+			const firstOa = newOa();
+			manager = await joinOffice(admin, browser, id, "admin", "greeting-manager");
+			await use({
+				id,
+				manager,
+				newOa,
+				newGuest: (oaId = firstOa) => guestOf(request, oaId),
+			});
+		} finally {
+			await manager?.close();
+			for (const oaId of oaIds) {
+				releaseZaloOa(oaId);
+			}
+			await deleteOffice(admin.api, id);
+		}
+	},
+});
+
+/** A vendor id (OA, guest) no other test, repeat or earlier run uses. */
+function uniqueId(kind: string): string {
+	return `e2e-greeting-${kind}-${randomUUID()}`;
+}
+
+function guestOf(request: APIRequestContext, oaId: string): Guest {
+	const id = uniqueId("guest");
+	const guest: Guest = {
+		id,
+		texts: [],
+		signed: (text) => signedZaloText({ guestId: id, oaId, text }),
+		write: async (text = `Hello from ${id}`) => {
+			await deliverZalo(request, guest.signed(text));
+			guest.texts.push(text);
+			return text;
+		},
+		echoFromOffice: (text, msgId = randomUUID()) =>
+			deliverZalo(request, signedZaloEcho({ oaId, guestId: id, text, msgId })),
+	};
+	return guest;
+}
+
+/** The office's own message to a guest, echoed by Zalo as it signs it (`oa_send_text`). */
+function signedZaloEcho(message: { oaId: string; guestId: string; text: string; msgId: string }) {
+	const appId = process.env.ZALO_APP_ID;
+	const secret = process.env.ZALO_OA_SECRET_KEY;
+	if (!appId || !secret)
+		throw new Error("ZALO_APP_ID and ZALO_OA_SECRET_KEY come from the E2E env");
+	const timestamp = String(Date.now());
+	const body = JSON.stringify({
+		app_id: appId,
+		event_name: "oa_send_text",
+		timestamp,
+		sender: { id: message.oaId },
+		recipient: { id: message.guestId },
+		message: { text: message.text, msg_id: message.msgId },
+	});
+	const mac = createHash("sha256")
+		.update(appId + body + timestamp + secret)
+		.digest("hex");
+	return {
+		body,
+		headers: { "content-type": "application/json", "X-ZEvent-Signature": `mac=${mac}` },
+	};
+}
+
+/* ---------------------------------------------------------------- the thread, as the manager reads it */
+
+type ListedThread = {
+	id: string;
+	guestId: string;
+	owner: unknown;
+	unansweredInboundId: string | null;
+};
+type Message = { direction: "in" | "out"; text: string };
+
+function threadAddress(threadId: string) {
+	return `/api/conversations/${encodeURIComponent(threadId)}`;
+}
+
+/** The guest's thread as the manager's conversations API lists it, once it is there. */
+async function threadOf(manager: Api, guest: Guest): Promise<ListedThread> {
+	let thread: ListedThread | undefined;
+	await expect(async () => {
+		const res = await manager.get("/api/conversations");
+		expect(res.status(), "the manager lists the office's threads").toBe(200);
+		thread = ((await res.json()) as ListedThread[]).find((t) => t.guestId === guest.id);
+		expect(thread, `the manager lists ${guest.id}`).toBeDefined();
+	}).toPass({ timeout: 10_000 });
+	return thread!;
+}
+
+/** Every message of the thread, in order, as the manager opens it. */
+async function messagesOf(manager: Api, threadId: string): Promise<Message[]> {
+	const res = await manager.get(threadAddress(threadId));
+	expect(res.status(), "the manager opens the thread").toBe(200);
+	return ((await res.json()) as { messages: Message[] }).messages;
+}
+
+/** The office's messages in the thread (no human replies in these flows: the greeting, or an echo). */
+async function officeMessages(manager: Api, threadId: string): Promise<Message[]> {
+	return (await messagesOf(manager, threadId)).filter((m) => m.direction === "out");
+}
+
+/** The office greets the guest within seconds: the thread's one office message, once it is there. */
+async function greetingOf(manager: Api, guest: Guest): Promise<Message> {
+	const { id } = await threadOf(manager, guest);
+	await expect
+		.poll(async () => (await officeMessages(manager, id)).length, {
+			message: `the office greets ${guest.id} within seconds of their first message`,
+			...WITHIN_SECONDS,
+		})
+		.toBeGreaterThan(0);
+	return (await officeMessages(manager, id))[0];
+}
+
+function lastLine(text: string): string {
+	return text.trim().split("\n").at(-1)!.trim();
+}
+
+/* ---------------------------------------------------------------- the Inbox */
+
+function threadList(page: Page) {
+	return page.getByRole("complementary");
+}
+
+function openThread(page: Page) {
+	return page.getByRole("article");
+}
+
+function rowOf(page: Page, guest: Guest) {
+	return threadList(page).getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
+}
+
+/** A view button of the Inbox (Your turn / Sent / All), with its count when given. */
+function view(page: Page, name: "Your turn" | "Sent" | "All", count?: number) {
+	return page.getByRole("button", {
+		name: count === undefined ? new RegExp(`^${name} \\d+$`) : `${name} ${count}`,
+		exact: count !== undefined,
+	});
+}
+
+/** The amber number beside Inbox in the sidebar. */
+function navCount(page: Page) {
+	return page.getByRole("link", { name: /^Inbox\b/ }).getByTestId("nav-your-turn-count");
+}
+
+/** The Inbox, with its threads loaded. */
+async function openInbox(page: Page) {
+	await page.goto("/en/inbox");
+	await expect(
+		threadList(page).getByRole("button").first().or(page.getByTestId("inbox-empty")),
+	).toBeVisible();
+}
+
+/** The manager opens the guest's thread from the Inbox (under All), their first message showing. */
+async function openThreadOf(page: Page, guest: Guest) {
+	await openInbox(page);
+	await view(page, "All").click();
+	await expect(view(page, "All")).toHaveAttribute("aria-pressed", "true");
+	await page.getByRole("textbox", { name: saas.inbox.searchAria }).fill(guest.id);
+	await expect(rowOf(page, guest), `the manager has ${guest.id}'s thread`).toBeVisible();
+	await rowOf(page, guest).click();
+	await expect(openThread(page).getByText(guest.texts[0], { exact: true })).toBeVisible();
+}
+
+/** Messages in the open thread whose meta line says where they came from (exactly this). */
+function sourced(page: Page, source: string) {
+	return openThread(page)
+		.getByTestId("message-source")
+		.filter({ hasText: new RegExp(`^${source}$`) });
+}
+
+/** Home's funnel, read afresh, by stage (as the manager reads it). */
+async function funnelOnHome(page: Page): Promise<Record<string, number>> {
+	await page.goto("/en/home");
+	const main = page.getByRole("main");
+	await expect(main.getByRole("heading", { name: saas.home.waitingNow })).toBeVisible();
+	const funnelList = main.getByRole("list", { name: saas.home.funnel.title });
+	await expect(funnelList).toBeVisible();
+	const said = await funnelList.ariaSnapshot();
+	const funnel: Record<string, number> = {};
+	for (const match of said.matchAll(/paragraph: \d+ (.+)\n\s*- paragraph: "(\d+)"/g)) {
+		funnel[match[1]] = Number(match[2]);
+	}
+	return funnel;
+}
+
+// ---------------------------------------------------------------------------------------
+
+test.describe.configure({ timeout: 120_000 });
+
+// scenario: docs/e2e-scenarios.md First greeting 1
+test.describe("First greeting 1 — a new guest is greeted at once, and it's still their turn", () => {
+	test("a guest writing in English to rent in Tay Ho gets one office message within seconds: it acknowledges renting in Tây Hồ, asks about budget then move-in, has no digit, ends with the office's auto-reply label and is marked Auto-reply · Template · Demo send; the thread is still Your turn with no owner, the nav counts it and Sent is 0", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
+
+		const greeting = await greetingOf(manager.api, guest);
+		const { id: threadId } = await threadOf(manager.api, guest);
+		expect(await messagesOf(manager.api, threadId), "the thread holds two messages").toHaveLength(
+			2,
+		);
+
+		// What it says.
+		const { text } = greeting;
+		expect(text, "it thanks the guest").toMatch(/thank/i);
+		expect(text, "it acknowledges renting").toMatch(/\brent/i);
+		expect(text, "it acknowledges Tây Hồ").toContain("Tây Hồ");
+		const budget = text.indexOf("What budget do you have in mind?");
+		const moveIn = text.indexOf("When would you like to move in?");
+		expect(budget, "it asks about budget").toBeGreaterThanOrEqual(0);
+		expect(moveIn, "it asks about move-in").toBeGreaterThan(budget);
+		expect(text.match(/[?？]/g) ?? [], "two questions at most").toHaveLength(2);
+		expect(text, "no digit of any script").not.toMatch(/\p{Nd}/u);
+		expect(lastLine(text), "its last line is the office's label").toBe(EN_LABEL);
+
+		// The queue doesn't move.
+		const listed = await threadOf(manager.api, guest);
+		expect(listed.unansweredInboundId, "still the guest's turn").not.toBeNull();
+		expect(listed.owner, "no owner").toBeNull();
+
+		const { page } = manager;
+		await openInbox(page);
+		await expect(view(page, "Your turn", 1), "Your turn counts it").toBeVisible();
+		await expect(view(page, "Sent", 0), "nothing is Sent").toBeVisible();
+		await expect(navCount(page), "the nav counts it").toHaveText("1");
+		await expect(rowOf(page, guest).getByTestId("thread-owner")).toHaveAttribute(
+			"data-owner",
+			"unassigned",
+		);
+
+		// In the thread: the office's message, marked Auto-reply, Template and the mock badge.
+		await openThreadOf(page, guest);
+		await expect(sourced(page, saas.inbox.source.autoReply)).toHaveCount(1);
+		await expect(
+			openThread(page).getByText(saas.inbox.autoReply.template, { exact: true }),
+		).toHaveCount(1);
+		await expect(openThread(page).getByText(saas.inbox.mock, { exact: true })).toHaveCount(1);
+		await expect(openThread(page).getByText(EN_LABEL)).toBeVisible();
+	});
+});
+
+// scenario: docs/e2e-scenarios.md First greeting 2
+test.describe("First greeting 2 — only the first message is greeted", () => {
+	test("the guest writes again after the greeting: no second auto-reply (judged once a later guest has been greeted)", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
+		await greetingOf(manager.api, guest);
+
+		await guest.write("Also, is parking included?");
+		const { id: threadId } = await threadOf(manager.api, guest);
+		await expect
+			.poll(async () => (await messagesOf(manager.api, threadId)).length)
+			.toBeGreaterThanOrEqual(3);
+
+		// A later guest's greeting has arrived, so one for the second message would have too.
+		const later = office.newGuest();
+		await later.write();
+		await greetingOf(manager.api, later);
+
+		const messages = await messagesOf(manager.api, threadId);
+		expect(
+			messages.filter((m) => m.direction === "in"),
+			"both guest messages",
+		).toHaveLength(2);
+		expect(
+			messages.filter((m) => m.direction === "out"),
+			"exactly one auto-reply",
+		).toHaveLength(1);
+		await openThreadOf(manager.page, guest);
+		await expect(sourced(manager.page, saas.inbox.source.autoReply)).toHaveCount(1);
+	});
+
+	test("a new guest's first two messages delivered at the same moment get one auto-reply", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		const [first, second] = ["Hello, I'm looking for an apartment", "to rent in Tay Ho"];
+		await Promise.all([
+			deliverZalo(manager.page.request, guest.signed(first)),
+			deliverZalo(manager.page.request, guest.signed(second)),
+		]);
+		guest.texts.push(first, second);
+
+		await greetingOf(manager.api, guest);
+		const later = office.newGuest();
+		await later.write();
+		await greetingOf(manager.api, later);
+
+		const { id: threadId } = await threadOf(manager.api, guest);
+		const messages = await messagesOf(manager.api, threadId);
+		expect(
+			messages.filter((m) => m.direction === "in").map((m) => m.text),
+			"both of the guest's messages arrived",
+		).toEqual(expect.arrayContaining([first, second]));
+		expect(
+			messages.filter((m) => m.direction === "out"),
+			"exactly one auto-reply",
+		).toHaveLength(1);
+	});
+
+	test("a thread whose first message is the office's own app message (an oa_send_text echo) gets no auto-reply when the guest then writes", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		const fromApp = `Hello from the office's Zalo app, ${guest.id}`;
+		await guest.echoFromOffice(fromApp);
+
+		// The thread begins with the office's message.
+		const { id: threadId } = await threadOf(manager.api, guest);
+		expect(
+			await messagesOf(manager.api, threadId),
+			"the thread starts with the office's message",
+		).toEqual([expect.objectContaining({ direction: "out", text: fromApp })]);
+
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
+		// A later guest's greeting has arrived, so one for this guest would have too.
+		const later = office.newGuest();
+		await later.write();
+		await greetingOf(manager.api, later);
+
+		const messages = await messagesOf(manager.api, threadId);
+		expect(
+			messages.filter((m) => m.direction === "in"),
+			"the guest's message arrived",
+		).toHaveLength(1);
+		expect(
+			messages.filter((m) => m.direction === "out").map((m) => m.text),
+			"no auto-reply: the office's own message is its only one",
+		).toEqual([fromApp]);
+		await openThreadOf(manager.page, guest);
+		await expect(sourced(manager.page, saas.inbox.source.autoReply)).toHaveCount(0);
+	});
+});
+
+/** A letter only Vietnamese uses (ADR 0021, R4): ă â đ ơ ư, a hook above or a dot below, ẽ ĩ ũ ỹ, a tone on ă â ê ô ơ ư. */
+const VIETNAMESE_ONLY = /[ăâđơưảẻỉỏủỷạẹịọụỵẽĩũỹắằẳẵặấầẩẫậếềểễệốồổỗộớờởỡợứừửữự]/iu;
+const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+const HANGUL = /\p{Script=Hangul}/u;
+const CYRILLIC = /\p{Script=Cyrillic}/u;
+
+// scenario: docs/e2e-scenarios.md First greeting 4
+test.describe("First greeting 4 — the guest's language picks the greeting", () => {
+	test("Vietnamese, Japanese, Korean and Russian guests are greeted in their language, label included; French and Spanish guests get the English greeting", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const cases = [
+			{
+				language: "Vietnamese",
+				text: "Chào anh, tôi muốn thuê căn hộ ở Tây Hồ",
+				script: VIETNAMESE_ONLY,
+			},
+			{ language: "Japanese", text: "こんにちは、タイホーでアパートを借りたいです", script: KANA },
+			{
+				language: "Korean",
+				text: "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요",
+				script: HANGUL,
+			},
+			{
+				language: "Russian",
+				text: "Здравствуйте, мы хотим снять квартиру в Тайхо",
+				script: CYRILLIC,
+			},
+			{ language: "French", text: "Bonjour, je cherche un appartement à louer", script: null },
+			{ language: "Spanish", text: "Hola, busco un apartamento, está disponible?", script: null },
+		] as const;
+		const guests = cases.map((c) => ({ ...c, guest: office.newGuest() }));
+		for (const { guest, text } of guests) {
+			await guest.write(text);
+		}
+
+		for (const { language, guest, script } of guests) {
+			await test.step(`${language}`, async () => {
+				const { text } = await greetingOf(manager.api, guest);
+				const label = lastLine(text);
+				if (script) {
+					expect.soft(text, `the ${language} greeting is in ${language}`).toMatch(script);
+					expect.soft(label, `the ${language} label is in ${language}`).toMatch(script);
+					expect.soft(label, `the ${language} label names the office`).toContain(OFFICE_NAME);
+					expect.soft(label, `the ${language} label is not the English one`).not.toBe(EN_LABEL);
+				} else {
+					expect.soft(label, `the ${language} guest is greeted in English`).toBe(EN_LABEL);
+					expect
+						.soft(text, `the ${language} greeting has no Vietnamese-only letter`)
+						.not.toMatch(VIETNAMESE_ONLY);
+				}
+			});
+		}
+	});
+});
+
+// scenario: docs/e2e-scenarios.md First greeting 6
+test.describe("First greeting 6 — no greeting on a disconnected pipe", () => {
+	test("with one of the office's Zalo OAs disconnected, a new guest's first message on it arrives and is Your turn, with no auto-reply (judged once a guest on the office's connected OA has been greeted)", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const downOa = office.newOa("disconnected");
+		const guest = office.newGuest(downOa);
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
+
+		// The message arrives, and it is the guest's turn.
+		const thread = await threadOf(manager.api, guest);
+		expect(thread.unansweredInboundId, "the guest's message waits on a reply").not.toBeNull();
+
+		// A guest on the office's connected OA is greeted, so this one would have been by now.
+		const later = office.newGuest();
+		await later.write();
+		await greetingOf(manager.api, later);
+
+		expect(
+			await officeMessages(manager.api, thread.id),
+			"no auto-reply on the disconnected OA",
+		).toEqual([]);
+		expect(
+			(await threadOf(manager.api, guest)).unansweredInboundId,
+			"still Your turn",
+		).not.toBeNull();
+		await openThreadOf(manager.page, guest);
+		await expect(sourced(manager.page, saas.inbox.source.autoReply)).toHaveCount(0);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md First greeting 7
+test.describe("First greeting 7 — the greeting's echo is not a reply", () => {
+	test("Zalo echoes the auto-reply back with its message id: the thread still holds one auto-reply and no app reply, stays Your turn, and Home's Engaged stays 0", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
+		const greeting = await greetingOf(manager.api, guest);
+		const { id: threadId } = await threadOf(manager.api, guest);
+
+		// In a mock deployment the auto-reply's vendor message id is mock-auto-reply-<thread id>.
+		await guest.echoFromOffice(greeting.text, `mock-auto-reply-${threadId}`);
+
+		expect(
+			await officeMessages(manager.api, threadId),
+			"still one office message: the greeting",
+		).toHaveLength(1);
+		expect(
+			(await threadOf(manager.api, guest)).unansweredInboundId,
+			"still Your turn",
+		).not.toBeNull();
+
+		const { page } = manager;
+		await openThreadOf(page, guest);
+		await expect(sourced(page, saas.inbox.source.autoReply), "one auto-reply").toHaveCount(1);
+		await expect(sourced(page, saas.inbox.source.oaEcho), "no app reply").toHaveCount(0);
+		await openInbox(page);
+		await expect(view(page, "Your turn", 1)).toBeVisible();
+		await expect(view(page, "Sent", 0)).toBeVisible();
+
+		const funnel = await funnelOnHome(page);
+		expect(funnel[saas.home.funnel.leadsIn], "one lead in").toBe(1);
+		expect(funnel[saas.home.funnel.engaged], "Engaged stays 0").toBe(0);
+	});
+});

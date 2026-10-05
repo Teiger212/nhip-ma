@@ -1,7 +1,17 @@
 import type { ClassValue } from "clsx";
 import { clsx } from "clsx";
 import * as React from "react";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/** The theme's own sizes and shadows (apps/saas/app/globals.css), so a text color after them doesn't drop them. */
+const twMerge = extendTailwindMerge({
+	extend: {
+		theme: {
+			text: ["2xs", "micro", "brand", "figure", "figure-sm"],
+			shadow: ["hairline"],
+		},
+	},
+});
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));

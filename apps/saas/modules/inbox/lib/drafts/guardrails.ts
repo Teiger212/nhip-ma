@@ -19,7 +19,9 @@ export function checkFollowUp(draft: string | null | undefined): string | null {
 	if (!draft) {
 		return null;
 	}
-	const text = draft.trim();
+	// Composed (NFC) first, as the guest's phone shows it: a decomposed "sở hữu" is the same
+	// word and must not slip past the list (ADR 0021, R2).
+	const text = draft.normalize("NFC").trim();
 	if (!text || text.length > MAX_FOLLOW_UP_CHARS) {
 		return null;
 	}

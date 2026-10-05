@@ -91,11 +91,14 @@ const DropdownMenuContent = ({
 const DropdownMenuItem = ({
 	className,
 	inset,
+	variant = "default",
 	onSelect,
 	nativeButton,
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
 	inset?: boolean;
+	/** `destructive`: an item that removes or ends something (Signal Red, DESIGN.md). */
+	variant?: "default" | "destructive";
 	/** Alias for `onClick` (Radix `DropdownMenuItem` used `onSelect`). */
 	onSelect?: React.MouseEventHandler<HTMLElement>;
 }) => {
@@ -106,6 +109,7 @@ const DropdownMenuItem = ({
 			className={cn(
 				"px-3 py-2 text-sm relative flex cursor-default items-center rounded-md outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground aria-disabled:pointer-events-none aria-disabled:opacity-50",
 				inset ? "pl-8" : "",
+				variant === "destructive" ? "text-destructive focus:text-destructive" : "",
 				className,
 			)}
 			{...rest}

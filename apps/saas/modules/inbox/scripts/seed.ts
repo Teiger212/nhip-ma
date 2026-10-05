@@ -1,28 +1,38 @@
-import { backfillAnswerOperatorNames } from "@repo/database";
+import { backfillAnswerOperatorNames, getUserByEmail } from "@repo/database";
 
 import { settleBackgroundWork } from "../lib/background";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
 import {
 	WALK_ADMIN_EMAIL,
+	WALK_AGENT2_EMAIL,
+	WALK_MANAGER_EMAIL,
 	WALK_OFFICE_ID,
 	WALK_USER_EMAIL,
 	WALK_USER_PASSWORD,
 } from "../lib/walk-user";
 import { seedWalkOffice } from "./seed-walk-office";
-import { seedWalkAdmin, seedWalkUser } from "./seed-walk-user";
+import { seedWalkAdmin, seedWalkAgent2, seedWalkManager, seedWalkUser } from "./seed-walk-user";
 
 async function main(): Promise<void> {
 	const { store } = getRuntime();
 
 	const walkUser = await seedWalkUser();
 	const walkAdmin = await seedWalkAdmin();
+	const walkAgent2 = await seedWalkAgent2();
+	const walkManager = await seedWalkManager();
 	const walkOffice = await seedWalkOffice();
 	console.info(
 		`Agent login ${walkUser === "exists" ? "already exists" : "created"}: ${WALK_USER_EMAIL} / ${WALK_USER_PASSWORD}`,
 	);
 	console.info(
-		`Admin login ${walkAdmin === "exists" ? "already exists" : "created"}: ${WALK_ADMIN_EMAIL} / ${WALK_USER_PASSWORD} (platform admin, owner of the walk office)`,
+		`Second agent login ${walkAgent2 === "exists" ? "already exists" : "created"}: ${WALK_AGENT2_EMAIL} / ${WALK_USER_PASSWORD}`,
+	);
+	console.info(
+		`Manager login ${walkManager === "exists" ? "already exists" : "created"}: ${WALK_MANAGER_EMAIL} / ${WALK_USER_PASSWORD} (sees every thread, reassigns)`,
+	);
+	console.info(
+		`Admin login ${walkAdmin === "exists" ? "already exists" : "created"}: ${WALK_ADMIN_EMAIL} / ${WALK_USER_PASSWORD} (platform admin; its office membership opens nothing)`,
 	);
 	console.info(
 		`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}\n`,
@@ -30,11 +40,14 @@ async function main(): Promise<void> {
 	const named = await backfillAnswerOperatorNames();
 	if (named > 0) console.info(`Answers given their sender's name (ADR 0013): ${named}\n`);
 
-	const owned = await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID });
+	const reset = process.argv.includes("--reset");
+	const owned = reset
+		? []
+		: await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID, role: "manager" });
 	const existing = DEMO_THREADS.filter((thread) =>
 		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
 	).length;
-	const conversations = await seedInbox(WALK_OFFICE_ID);
+	const conversations = await seedInbox(WALK_OFFICE_ID, { reset });
 	for (const conv of conversations) {
 		const q = conv.oneShot?.qualification;
 		const paper = conv.oneShot?.paperwork?.mentioned ? "paperwork flagged" : "no paperwork";
@@ -42,13 +55,24 @@ async function main(): Promise<void> {
 			`${conv.id}  ${conv.guestName}  ${q?.rentOrBuy ?? "—"}  ${q?.timeframe ?? "—"}  ${q?.areaOfInterest ?? "—"}  ${paper}`,
 		);
 	}
+	// Every state of assignment (ADR 0022): Minji is agent 1's, Yuki agent 2's, the rest Unassigned
+	// (the manager's alone). Rewritten on every seed, so the demo always starts the same.
+	const agent1 = await getUserByEmail(WALK_USER_EMAIL);
+	const agent2 = await getUserByEmail(WALK_AGENT2_EMAIL);
+	const owners: Record<string, string | null> = {
+		"demo-ko-stay": agent1?.id ?? null,
+		"demo-jp-buy": agent2?.id ?? null,
+	};
+	for (const conv of conversations) {
+		await store.setOwner(conv.id, owners[conv.guestId] ?? null, WALK_OFFICE_ID);
+	}
 	const created = conversations.length - existing;
 	console.info(
 		`\n${conversations.length} demo threads in ${WALK_OFFICE_ID}` +
 			(existing ? ` (wrote ${created}, skipped ${existing} existing)` : " (fresh write)"),
 	);
 	console.info(
-		"Re-run skips threads that already exist. Delete the office's threads in the database for a fresh set.",
+		"Re-run skips threads that already exist. `pnpm seed --reset` rewrites them as of now (the fresh pair goes Quiet after 48 hours).",
 	);
 	console.info("Open http://localhost:3010 — sign in, then Inbox. Nothing here is a real guest.");
 	// Translations (ADR 0007) run in the background after each inbound; let them land

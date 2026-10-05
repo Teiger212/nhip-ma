@@ -3,39 +3,53 @@ import crypto from "node:crypto";
 import { expect, test } from "vitest";
 
 import { mockInboxConfig } from "../config";
-import type { Conversation } from "../types";
+import type { Conversation, Store } from "../types";
 import { pipeAdapter, transmit } from "./index";
 
 const conversation = { pipe: "whatsapp", guestId: "16315551181" } as Conversation;
+
+/** Only these are read on these paths; nothing is connected. */
+const store = {
+	pipeCredentialState: async () => null,
+	officeForPipe: async () => null,
+} as unknown as Store;
 
 test("transmit stays mock unless the send mode is exactly live, even with credentials", async () => {
 	const result = await transmit({
 		conversation,
 		text: "hello",
+		from: "phone",
+		store,
 		config: mockInboxConfig({ whatsapp: { accessToken: "token", phoneNumberId: "phone" } }),
 	});
 	expect(result.mock).toBe(true);
 	expect(result.pipe).toBe("whatsapp");
-	expect(result.to).toBe("16315551181");
 });
 
-test("live mode delegates to the pipe adapter, which refuses without credentials", async () => {
+test("a live deployment refuses a thread with no endpoint or an unconnected one, never mocks it", async () => {
+	const live = mockInboxConfig({ sendMode: "live" });
 	await expect(
-		transmit({ conversation, text: "hello", config: mockInboxConfig({ sendMode: "live" }) }),
-	).rejects.toThrow(/WHATSAPP_ACCESS_TOKEN/);
+		transmit({ conversation, text: "hello", from: null, store, config: live }),
+	).rejects.toThrow(/connected number or OA/);
+	await expect(
+		transmit({ conversation, text: "hello", from: "phone-b", store, config: live }),
+	).rejects.toThrow(/connected number or OA/);
 	await expect(
 		transmit({
 			conversation: { pipe: "zalo", guestId: "z1" } as Conversation,
 			text: "hello",
-			config: mockInboxConfig({ sendMode: "live" }),
+			from: "oa-1",
+			store,
+			config: live,
 		}),
-	).rejects.toThrow(/ZALO_OA_ACCESS_TOKEN/);
+	).rejects.toThrow(/connected number or OA/);
 });
 
 test("each adapter verifies its own header with its own secret and fails closed", () => {
-	const body = JSON.stringify({ app_id: "1", timestamp: "2", entry: [] });
+	const ts = String(Date.now());
+	const body = JSON.stringify({ app_id: "1", timestamp: ts, entry: [] });
 	const waSig = `sha256=${crypto.createHmac("sha256", "wa").update(body).digest("hex")}`;
-	const zaloSig = `mac=${crypto.createHash("sha256").update(`1${body}2oa`).digest("hex")}`;
+	const zaloSig = `mac=${crypto.createHash("sha256").update(`1${body}${ts}oa`).digest("hex")}`;
 	const config = mockInboxConfig({ whatsapp: { appSecret: "wa" }, zalo: { oaSecretKey: "oa" } });
 
 	expect(

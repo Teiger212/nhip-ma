@@ -1,5 +1,182 @@
 # Changelog
 
+## 2026-10-05 (a late alert, the tab title and toasts)
+
+### Added
+
+- **An alert's link is resolved on the server** (#136, ADR 0019, spec #84). `/<locale>/inbox?alert=<id>` opens the thread only when the alert is the viewer's own and its thread is one they can open now (a manager's own alert still opens a thread they gave an agent). Anything else (a colleague's alert, a thread since given to someone else, an unknown or pruned id, a test alert) says "A colleague is answering this guest" (VI "Một đồng nghiệp đang trả lời khách này") and opens nothing of a thread, with no reason given; the queue stays usable beside it. The thread goes to the Inbox as a prop and `?alert=` leaves the URL, so a thread's id never appears there. `?thread=` and its "not here" notice are unchanged. New store read `alertThread(alertId, viewer)`.
+- **The tab title carries the Your-turn count** (#136). While guests wait, every page's tab reads "(n) Inbox" (VI "(n) Hộp thư"), n being the nav's count; with none, the page's own title.
+- **A toast when a guest writes, or a thread is given to you, away from the Inbox list** (#136). On Home, Settings, or a phone with a thread open, a guest writing on one of the operator's own threads (an agent's assigned threads; a manager's Unassigned ones and their own, the alert recipients' rule) raises a toast in the kit's Base UI Toaster: "Minji is waiting", "Zalo · Korean", the push's words. A thread a manager gives the operator raises "Minji was assigned to you" (VI "Minji đã được giao cho bạn"; nameless "A guest was assigned to you", VI "Một khách đã được giao cho bạn"), for the new owner only (Eyal, 2026-10-05): the previous owner's toast goes, the manager who assigns gets none, and a thread returned to Unassigned toasts no one. One per guest, replaced in place and keeping its place; at most three (a fourth replaces the oldest); none for what was already there when the page loaded. A toast stays until it is tapped, which opens the thread (handed to the Inbox in memory, not in the URL), closed, or has nothing left to say (the guest answered, the thread given away); opening the Inbox list closes them. The kit's toast close and action buttons now sit above a toast-wide link.
+
+### Changed
+
+- **The nav count reads the list's poll on every page** (#136). The toasts need the guests' names, so the shell polls `/api/conversations` everywhere and `/api/conversations/your-turn` goes; the database is asked once per poll, as before.
+
+## 2026-10-05 (managers hand out leads from Unassigned)
+
+### Added
+
+- **A manager's Inbox opens on Unassigned** (#163, ADR 0022, spec #160). A new first view, "Unassigned" (VI "Chưa giao"; `?view=unassigned`), lists every thread with no owner, whatever its turn, oldest guest message first, with its count, and no Quiet fold. It is a manager's default view; agents don't have it, and an agent's `?view=unassigned` opens Your turn. The Inbox waits for the operator's role before it lists, so a manager never sees Your turn first. The owner filter sits this view out, and no longer offers "Unassigned", which the view covers: it narrows to one operator, and an old `?owner=unassigned` filters nothing. Empty while the office has threads, it reads "Every lead is assigned." (VI "Mọi khách đã được giao.", `data-test="inbox-all-assigned"`). A manager's reply on a lead there makes it theirs, as before, and the view moves on to the next lead.
+- **"Assign to…" on each Unassigned row** (#163, DESIGN.md Thread Row). It's a small ghost pill at the row's end: a 44px tap target on the badges' last line below `md`, and the 24px pill on the name's line from `md`, so a row's badges keep one line on a desk. It opens the kit's dropdown of the office's operators (`GET /api/office/agents`). Choosing one assigns at once through the owner route, and the row leaves the view. The pill sits beside the row's button, not inside it, so it never opens the thread. The thread list is now a list (`ul`/`li`).
+
+### Changed
+
+- **Home's Waiting now lists Unassigned leads first for a manager** (#163, ADR 0022): the Unassigned Your-turn threads, then the rest, each group in the queue's order (quiet last), at most five. An agent's is unchanged.
+- **The new Vietnamese wording waits on a native read** (#78): the view's "Chưa giao" (#162's label, reused) and "Mọi khách đã được giao."
+
+## 2026-10-05 (Team asks before removing someone, and protects the platform admin)
+
+### Fixed
+
+- **Removing someone from Team asks first** (#174, ADR 0013). "Remove from office" opens the kit's alert dialog: "Remove {name} from the office?", "Removing {name} ends their account. Their guests return to Unassigned.", with Cancel and a red Remove (VI "Xóa {name} khỏi văn phòng?", "Xóa {name} sẽ xóa tài khoản của họ. Khách của họ trở về Chưa giao.", Hủy, Xóa; for review in #78). Remove still removes in that one step.
+- **No manager touches the platform admin's membership** (#174). Better Auth let a manager holding the kit's `owner` remove the platform admin's inert `owner` membership or change its role, and any manager change it once it was no longer `owner`. An auth before-hook beside the owner guard now refuses `remove-member` (by member id or email) and `update-member-role` on the platform admin's membership from anyone but the platform admin: 403 `PLATFORM_ADMIN_MEMBERSHIP`. It reads the target from the field each route acts on, so a stray `memberIdOrEmail` beside `update-member-role`'s `memberId` doesn't get past it.
+- **The platform admin's row never reaches a manager's browser** (#174). An auth after-hook drops the platform admin from `get-full-organization` and `list-members` (with its `total`) for every caller but the platform admin, so their email is in no answer Team, the office layout or the client gets. Team no longer hides the row itself. In the admin area the platform admin's own row reads "Platform admin" (VI "Quản trị viên nền tảng") rather than "Manager", with no role select or Leave (the membership is inert, ADR 0015).
+- **A thread can't be given to the platform admin** (#174, ADR 0022). `setOwner` refuses them, so `POST /api/conversations/:id/owner` answers 400 for their user id, as for anyone not in the office; such a thread would have been seen and alerted by no one.
+
+## 2026-10-05 (a new guest is greeted at once)
+
+### Added
+
+- **A new guest's first message gets the template auto-reply** (#165, ADR 0021, spec #159). Within seconds, with no approval, Nhịp answers a new guest's first message once, as the office: it thanks them, acknowledges what the extraction found (renting or buying and the area by value; a budget, timing or household by kind only), asks for at most two missing details in R3's order (rent or buy, area, budget, timeframe, household), and ends with the always-on label, "Auto-reply from <office>: a colleague will continue with you right here." (the office's name, last line, pending the lawyer). Its own text has no digit, price, link or time. EN, VI, JA, KO and RU; the four non-English texts wait on Eyal's review and a native read (#78). It goes only to a thread the office hasn't spoken on: a thread begun from the office's own app, a guest's second message, or an office that switched it off (`inbox_office_setting.autoReply`; no row means on, the switch itself is #167) gets none. The thread is claimed once by a conditional update (`inbox_conversation.autoReplyAt`), so two first messages at once make one greeting. It is sent like an Answer, from the endpoint the guest wrote to (never a disconnected one; mock in a mock deployment, where its id is `mock-auto-reply-<thread id>`), tried once, and a failure is logged by category only. It is filed as an outbound message with source `auto_reply`, `writtenBy` `template`, and the vendor's id hashed, so Zalo's echo of it is a duplicate, not a reply from the app. It is not an Answer: the thread stays Your turn and unassigned, and Home's Engaged, In conversation and response time don't count it. In the thread it shows as the office's message with a neutral "Auto-reply" badge and "Template" (VI "Trả lời tự động", "Mẫu"). The seed's demo threads are not greeted (`injectDevInbound`'s `autoReply: false`); a dev-injected guest is. The model writing it is #168, and the reply box after it is #166. Four migrations, each 1 deploy: the enum value `MessageSource.auto_reply`, the nullable `inbox_message.writtenBy`, the nullable `inbox_conversation.autoReplyAt`, and the new table `inbox_office_setting`.
+
+### Fixed
+
+- **A model draft is composed (NFC) before the post-check reads it** (#165, from #164): a decomposed "sở hữu" no longer slips past the paperwork list.
+
+## 2026-10-05 (Unassigned is the managers'; agents see only their own threads)
+
+### Changed
+
+- **A new lead waits in Unassigned, for managers only; an agent sees only the threads assigned to them** (#162, ADR 0022, spec #160; supersedes ADR 0015's pool). An agent no longer lists, counts, searches or opens an Unassigned thread or a colleague's: opening one by link or through the API is a 404. A manager still sees every thread of the office and gives each lead to an operator from the thread header's "Assign to…" (VI "Giao cho…"), the Owner control renamed, whose no-owner option and the owner filter's now read "Unassigned" (VI "Chưa giao"; the filter's URL value is `?owner=unassigned`); the owner badge reads "Unassigned" (`data-owner="unassigned"`), which only managers ever see. The last assignment wins. A manager who approves a reply on an Unassigned lead becomes its owner, as before. An agent with nothing assigned reads "Nothing assigned to you yet." (VI "Chưa có khách nào được giao cho bạn."). Every "Pool" label and key goes.
+- **An Unassigned guest alerts the office's managers only** (#162, amends ADR 0019 "Who"; replaces #132's pool rule). An owned thread's guest still alerts its owner only; the platform admin is never alerted. `officeOperators` returns each operator's `manager` flag (kit `owner` or `admin`). This ships with the visibility change, so nobody is alerted about a thread they can't open.
+- **Deploy note:** no data migration. At release every pool thread becomes Unassigned and leaves the agents' Inboxes; the first client's managers must assign them.
+
+## 2026-10-05 (devices, and the live push to them)
+
+### Added
+
+- **Alerts reach the operators' devices by web push** (#134, ADR 0019, spec #84). A device is a browser's push subscription, kept in the new `push_subscription` table (migration `20261005082256_push_subscription`, a new table, 1 deploy) with the sign-in that registered it and cascading with the user (ADR 0013). `POST /api/alerts/devices` `{ endpoint, keys: { p256dh, auth } }` adds one (201), only for an `https` endpoint on Google's, Apple's, Mozilla's or Microsoft's push service (else 400); an endpoint another operator held moves to whoever registers it, and an operator keeps 10 devices, dropping the oldest. `DELETE /api/alerts/devices` removes this sign-in's (204); `POST /api/alerts/devices/test` writes a `test` alert and pushes it to this sign-in's devices (202), or answers 409 with none. All three answer 401 signed out. Signing out deletes that sign-in's devices (a Better Auth before-hook), and so does every other way a live session ends: revoking it or the user's other sessions, a ban, a password change or reset that revokes, the end of an impersonation (a session delete hook). A session that merely expired keeps its devices. An admin impersonating an operator cannot add a device or send a test alert (403). An endpoint is stored and pushed in the one normal form it was checked in, and a host Node's legacy URL parser would read differently is refused. With `SEND_MODE=live` each alert is pushed to every device of its operator through `web-push` 3.6.7, VAPID-signed, urgency high, a 1-hour TTL, at most 5 pushes at a time per event; a 404 or 410 deletes the device, and a failure is logged as its status only, never the endpoint or the alert. The VAPID keys (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) are a set: without them a live deployment logs "push not configured" and pushes nothing; a partial set is refused at startup. `pnpm seed` never pushes, whatever `SEND_MODE` says. There is no UI yet (#135).
+
+## 2026-10-05 (French and Spanish stop reading as Vietnamese)
+
+### Fixed
+
+- **Vietnamese is read only from letters Vietnamese alone uses** (#164, ADR 0021). A guest's message reads as Vietnamese from ă, â, đ, ơ, ư, a hook above or a dot below, ẽ ĩ ũ ỹ, or any tone on ă â ê ô ơ ư; the acute, the grave, ã, õ and a bare ê or ô no longer count, so "está disponible", "não" and "à louer" read as English: they get the English first-reply template, a Vietnamese operator's translation is from English, and an English operator gets none (before, it was labelled as from Vietnamese). French "château" still reads as Vietnamese, through its â: a known, accepted limit. Any toned ă, â, ê, ô, ơ, ư (ắ, ấ, ế, ố, ớ, ứ…) now counts, so "Tiếng Việt" reads as Vietnamese where it read as English. The common-word list is unchanged, but its words now match whole by any letter, so "thuê nhà" still reads as Vietnamese: "thuê" and "nhà" end in an accented letter and never matched as words, only through the letters now dropped. Text with neither, such as "Xin chào" alone, reads as English until detection moves to a model or classifier. Text that sends a tone or horn as its own combining mark (decomposed, NFD, as some keyboards do) is composed first, so it reads and extracts like the same text composed: "Cảm ơn" decomposed read as English, and a decomposed "Tây Hồ" was no area.
+
+## 2026-10-05 (managers invite their own agents from Team)
+
+### Added
+
+- **Team: a manager invites the office's agents** (#82, ADR 0015). A manager's user menu has "Team" (VI "Nhóm"), the kit's members page at `/<locale>/<office slug>/settings/members`: invite by email as Agent or Manager, see pending invitations, change an agent's role, remove someone. The roles read Agent and Manager (VI Nhân viên, Quản lý), in the admin area too, and `owner` is never offered. The page hides the platform admin's inert owner row and the manager's own Leave (ADR 0013 would delete the account) and role. An agent gets a 404 there and has no Team item; the API refuses an agent's invite, role change and removal (Better Auth), and an auth hook refuses `owner` in an invite or role change from anyone but the platform admin, including a manager who holds the kit's `owner`, whom Better Auth lets grant it. `/api/office` also returns the office's slug.
+
+## 2026-10-05 (a manager deletes a guest's data)
+
+### Added
+
+- **A manager deletes a guest's data, and Home keeps the numbers** (#138, ADR 0020, spec #85). The thread header's ⋯ "Thread actions" menu has "Delete guest data", for managers only. One dialog says what goes (the thread's messages with their translations, the suggested reply, the extracted details), that the chat stays in the office's Zalo OA or WhatsApp, and that it can't be undone; its confirm is the only red. Confirming hard-deletes the thread and everything under it in one transaction, together with any bell row that names it (`notification.data.threadId`), and writes two records that name no guest: an anonymous **lead tally** (pipe, language, first contact, first reply, in conversation, CRM outcome) and a **receipt** (office, manager, time, row counts, CRM result). Home's funnel adds the office's tallies to its cohort, by the same per-lead rule, so leads in, engaged, in conversation, response time, the bands and leads by day don't move. Refused while a reply is sending (the item is disabled with "A reply is still sending"; the API answers 409). `POST /api/conversations/:id/deletion` takes `{ deleteInCrm }`, required; agents get 403, the platform admin 403, another office's thread 404. A thread's CRM lead is only unlinked for now (receipt `unlinked`); deleting the lead in the CRM is #139. New tables `inbox_lead_tally` and `inbox_guest_deletion` (migration `20261005061004_guest_deletion`, new tables, 1 deploy). Receipts are read on request; no screen shows them.
+- **A deletion says why.** The dialog asks for a reason ("The guest asked to be deleted", "Duplicate or spam", "Test data", "Other") and an optional note of up to 500 characters, required for Other, with the hint "Don't include the guest's name or contact details". The server masks phone numbers and emails in the note (`[phone]`, `[email]`) before the receipt stores it with the reason. The API answers 400 without a reason, or for Other without a note. Migration `20261005082102_guest_deletion_reason` (a new column with a constant default, 1 deploy): `reason` defaults to `other` for a receipt written before, and `note` is nullable.
+
+### Fixed
+
+- **Recording a sent reply, and re-running a thread's extraction, lock the thread first**, the order guest deletion locks in, so neither can deadlock with a deletion (#138). A guest who writes while their thread is being deleted is filed as a new guest, instead of failing the webhook.
+
+## 2026-10-05 (a guest's new message alerts the operators, logged)
+
+### Added
+
+- **A guest's new message is an alert, decided and logged** (#132, ADR 0019). A pool guest alerts every agent and manager of the office; a guest on an owned thread alerts its owner only; the platform admin, the kit `owner` of the offices they created, is never alerted. Each operator gets one row in the new alert log (`inbox_alert`, migration `20261004213801_inbox_alert`, a new table): its kind, whether it sounded, and its link `/<locale>/inbox?alert=<the row's own id>` in the operator's language (Vietnamese when none is set), which names no thread and no guest. An alert sounds only after 2 minutes of quiet on that thread for that operator, decided under an advisory lock so a burst sounds once. Its text is "Minji is waiting · Zalo · Korean" (EN/VI), "A guest is waiting" without a name, never the message. No push is sent yet: a mock deployment and, until #134, a live one write the log only. The log is pruned after 30 days without a scheduler, like webhook deliveries. A vendor's retry of a message already stored alerts no one: `upsertInbound` returns `{ conversation, inserted }`, and only an inserted guest message is alerted.
+
+## 2026-10-05 (approve on a deleted thread)
+
+### Fixed
+
+- **Approving a reply on a thread deleted under it answers 404** (#137, ADR 0020, the first step of guest-data deletion). Approve now locks the thread (`FOR KEY SHARE`) before it reads or writes an Answer, on a first send and on the retry of a failed one, which is the order the coming deletion locks in. A thread deleted before the approval, or while it waited, is `not_found` and the route answers 404. Before, a first send failed its foreign key with a 500, a retry on an owned thread approved a reply on a thread already gone, and a retry on a pool thread could deadlock (`40P01`). The new lock doesn't make approvals queue behind each other: two agents on one pool thread end with one owner, and the other is told the reply is being sent.
+
+## 2026-10-04 (no notification emails)
+
+### Changed
+
+- **No notification emails, except the welcome** (#148). `createNotification` emails only the kit's welcome (an allow-list in code); every other type is a bell row only, whatever the person's email preferences say, and the notification settings no longer show email switches. Transactional emails are unchanged: the invitation, the sign-in link, verification, email change and password reset.
+- **A broken pipe is a bell row** (ADR 0017, amended). When a Zalo OA disconnects, every platform admin gets a bell row naming the pipe and the office, in their language, linking to the office in the admin area; it is no longer emailed. New notification type `PIPE_DISCONNECTED` (migration `20261004192216_pipe_disconnected_notification`, an additive enum value).
+- **`pnpm lint` passes `--disable-nested-config`**, so a checkout with agent worktrees under `.claude/worktrees/` lints instead of failing on their configs, and `pnpm format` no longer formats those worktrees' files.
+
+## 2026-10-04 (safer migrations and connections before go-live)
+
+### Changed
+
+- **New migrations are linted in CI** (#98). Squawk checks the migrations a PR adds against the expand/contract rules: a required column without a default, `SET NOT NULL` in one deploy, or a foreign key on existing rows without `NOT VALID` fails the PR (`migrate:lint`, rules in `packages/database/.squawk.toml`).
+- **A migration blocked on a lock fails the build within 5s** instead of queueing every request behind it: hosted builds and `migrate:deploy` set `lock_timeout` on the migration connection (`scripts/migrate-deploy.sh`).
+- **The app's connections give up after 10s** instead of hanging on a cold or unreachable database, and release idle connections before a Fluid compute instance suspends (`attachDatabasePool`). The app's role `nhip_app` (`packages/database/sql/app-role.sql`) carries the server timeouts; Eyal creates it on staging and production.
+- **Rolling back after a migration:** AGENTS.md says when Vercel's instant rollback is unsafe, and that production's restore window is 6 hours.
+
+## 2026-10-04 (a thread's id names no guest)
+
+### Changed
+
+- **A thread's id is opaque, never the guest's phone or Zalo id** (#141, ADR 0010 amended). Thread ids were `office:pipe:guest`, so a WhatsApp guest's number rode in every `/api/conversations/<id>` route, every `?thread=` link, the thread link on the CRM lead, request logs and background-job labels. New threads take a `cuid()`; migration `20261004181201_opaque_thread_id` re-keys existing threads to random UUIDs (every child row follows through the foreign keys' `ON UPDATE CASCADE`) and points the mock CRM's thread links at the new ids. HubSpot deals made before keep stale links. Inbound still finds its thread by (office, pipe, guest). `conversationId()` is gone.
+- **A stale or unknown `?thread=` link says the conversation isn't here** and opens no thread; it used to open the first guest in the queue, another guest's thread. A link to a thread the operator answered (Sent) opens that thread, in All, instead of the first guest waiting.
+- **The guest's id is stored once, on the thread.** `Answer.to` (a copy of `guestId`, never read) is dropped by migration `20261004182359_drop_answer_to`. Vendor message ids (`Message`, `Answer`, the webhook log), which can encode the guest's WhatsApp number, are stored as an HMAC-SHA256 under a key derived from `BETTER_AUTH_SECRET`, and the duplicate check compares the same hash; the raw ids already stored are cleared by the migration, since SQL has no key to hash them with. The webhook log now holds no guest identity, as it said, and Admin → Webhooks no longer lists vendor message ids. Rotating `BETTER_AUTH_SECRET` re-keys the hash, so a vendor retry across a rotation is filed again.
+- **`pnpm seed --reset`** finds the demo threads by (office, pipe, guest) to rewrite them, not by a computed id.
+
+## 2026-10-04 (the database holds the office line)
+
+### Changed
+
+- **Every office-owned row carries its office, and the database holds it** (#95). Messages, Answers, translations and their failures, qualifications, drafts and paperwork have an `officeId`, backfilled from their thread by migration `20261004074733_office_on_every_row`. Composite foreign keys keep each row's office equal to its thread's (or its message's), so a row filed under the wrong office is refused by Postgres; a CRM link's office must be its thread's too. A draft's `answersMessageId` is now a foreign key and clears when its message goes.
+- **The store fails closed.** Every inbox store method names the office it acts for and filters by it in the query: an id of another office's thread, message or Answer reads and writes nothing. `getConversation`, `listConversations`, `approveAndSend` and `regenerateDraft` require the viewer; background work (drafts, translation, the CRM) reads through `getOfficeConversation`.
+- **Indexes:** `Conversation.ownerId`, `Answer.operatorId` and `PipeConnection.officeId` are indexed; `Conversation(officeId)`, `Member(organizationId)` and `Purchase(subscriptionId)` lose indexes their unique keys already cover.
+- **A CRM token is replaced only on the kind it was sealed for**, so two admins saving at once never leave a HubSpot token on a mock connection.
+- **`pnpm --filter @repo/database migrate:baseline`** gives a database built by `db push` a migration history (AGENTS.md, "Migrations").
+
+## 2026-10-04 (a HubSpot deal won or lost reaches the inbox)
+
+### Added
+
+- **A HubSpot deal won or lost reaches the inbox** (#66, spec #59). HubSpot tells Nhịp when a deal's stage changes, at `/webhooks/crm/hubspot`, and the deal's thread shows "Won" or "Lost" within seconds, exactly as with the mock CRM. Each request is checked against HubSpot's v3 signature (the app's client secret over the method, `HUBSPOT_WEBHOOK_URL`, the raw body and the timestamp) and refused (401) when it fails or is more than 5 minutes off. One HubSpot app serves every office: each event names its portal, and only the office on that portal is touched. Nhịp learns an office's portal from HubSpot right after its token is saved (in the background; the save never waits), and again when a webhook names a portal no office is known on; a new token forgets the old portal. Other events, and portals no office is on, are taken (200) and ignored. Deployments set `HUBSPOT_APP_CLIENT_SECRET` and `HUBSPOT_WEBHOOK_URL` together; without them the route answers 404. The demo app subscribes to deal stage changes (`webhooks-hsmeta.json`, its `targetUrl` set at rehearsal or deploy).
+
+## 2026-10-03 (the admin connects an office to HubSpot)
+
+### Added
+
+- **The platform admin connects an office to HubSpot** (#65, spec #59). The CRM row of the office's Connections card offers HubSpot next to None and Mock CRM. Choosing it saves nothing until the office's HubSpot access token is entered and saved; Save with an empty field asks for the token. The token is write-only: it is sealed with `PIPE_SECRETS_KEY` (ADR 0017's AES-256-GCM, bound to the office) before it is stored on the office's CRM connection, opened only by the CRM sync for the adapter, and never shown again; the card and `GET /api/crm/connection` say only that a token is set (`tokenSet`). Saving a new token replaces it and keeps the office's thread links; switching to another CRM or None drops the token with the links. `PUT` with HubSpot and no token answers 400, and 503 where the deployment has no `PIPE_SECRETS_KEY`. Nothing calls HubSpot on save. A new guest on a HubSpot office now becomes a HubSpot contact with a deal: a contact with the guest's phone or Zalo id is reused, and linked to its open deal when it has one; new deals start unassigned and carry the pipe, language, extracted fields and a link to the thread, never message text.
+
+## 2026-10-03 (won or lost leaves the queue)
+
+### Added
+
+- **Won or lost leaves the queue, and comes back** (#63, spec #59). When the office's CRM tells Nhịp a lead was won or lost, its thread leaves Your turn and the nav count and shows a neutral "Won" or "Lost" where the turn was, under Sent and All. When the guest writes after Nhịp first heard that outcome, the thread is back in Your turn. The CRM's own close date never decides it. For now the mock CRM's signed webhook (`MOCK_CRM_WEBHOOK_SECRET`, development and E2E only) carries the notice; HubSpot's comes with #66.
+
+## 2026-10-03 (the admin sets an office's CRM)
+
+### Added
+
+- **The platform admin sets an office's CRM** (#62, spec #59). The office's Connections card has a CRM row next to Zalo and WhatsApp: None or Mock CRM, saved at once. Choosing Mock turns lead creation on for the office; None (or another kind) drops its thread links, and with them any Won or Lost: those threads count as unanswered again if the guest spoke last. Only the platform admin can change it (`/api/crm/connection`: 401 signed out, 403 otherwise).
+
+## 2026-10-03 (a new guest becomes a CRM lead)
+
+### Added
+
+- **A new guest becomes a lead in the office's CRM** (#61, spec #59). When a guest writes on a thread with no CRM lead (their first message, or the next one on a thread from before the office's CRM), Nhịp finds their lead in the office's CRM (by phone on WhatsApp, by the Zalo id it stored on Zalo) or creates one, in the background: name, phone or Zalo id, pipe, language, the extracted fields and a link to the thread, never message text. A burst of first messages makes one lead; a guest matching two leads is linked to neither. The thread header shows "In CRM: <name>". Offices are on the mock CRM until the admin's CRM setting (#62) and HubSpot (#65) land.
+
+## 2026-10-03 (one queue rule)
+
+### Changed
+
+- **The nav's Your-turn count uses the queue rule.** It counts the thread summaries with the same rule as the inbox's list, instead of a second count in SQL, so a later change to what is in the queue (the CRM's resolved threads, spec #59) is made in the queue rules alone. No visible change.
+
+## 2026-09-27 (send safety)
+
+### Fixed
+
+- **A failed reply is retried once.** Two approvals racing the retry of a `failed` Answer could both transmit; the retry is now guarded on `failed` and the loser gets `409 in_progress`.
+- **A vendor retry is stored once.** A unique index on (thread, vendor message id), and one retry of the inbound write on a unique violation, so the same webhook landing twice, or a new guest's first two messages landing together, make one row and one thread.
+- **Zalo replays are refused.** A signed Zalo timestamp more than 15 minutes from now fails verification.
+- **One office per operator holds (ADR 0010).** The accept-invitation guard read a session that is empty in a before-hook and never fired; it reads the request's session now.
+
+### Changed
+
+- **Home counts replies sent from the vendor's app.** Engaged, in conversation and response time use the office's first reply, whether approved in Nhịp or sent from the WhatsApp or Zalo app. A live deployment leaves mock sends out.
+
 ## 2026-09-24 (operators end with their office)
 
 ### Changed
@@ -30,7 +207,7 @@
 #### Office tenancy and the Home screen (ADRs 0001, 0002, 0008)
 
 - **The office is the tenant.** `Conversation.ownerUserId` becomes `officeId`, the kit organization's id. The store lists and reads strictly by office, and the "unowned is visible to everyone" fallback is gone. Files from before tenancy migrate on open (the column is dropped) and their threads wait unowned until `adoptUnownedThreads` runs; the seed does that for the walk office.
-- **Session gate resolves the office.** `requireInboxSession` returns `{ userId, officeId }`: the session's active organization, else the first membership, else `403 no_office`. `POST /dev/inbound` needs a session and files under that office.
+- **Session gate resolves the office.** `requireInboxSession` returns `{ userId, officeId }`: the session's active organization, else the first membership, else `403 no_office`. (Since superseded: the gate requires exactly one membership, refusing none with `no_office` and more than one with `ambiguous_office`, and refuses the platform admin; `apps/saas/modules/inbox/lib/office.ts`.) `POST /dev/inbound` needs a session and files under that office.
 - **Pipe-to-office mapping.** `PipeConnection` (pipe + vendor id of the number or OA → office) replaces `INBOX_OWNER_USER_ID`. Webhook events carry `pipeExternalId` (WhatsApp `phone_number_id`, Zalo OA id) and are filed under the office that owns it; inbound on an unconnected pipe is dropped with a log line. `pnpm --filter saas pipe:connect` sets a mapping.
 - **Walk office.** `pnpm seed` creates organization `walk-office` with the walk user as owner and active organization, and files the invented threads under it.
 - **Home.** `/home` is enabled in the sidebar: the five funnel stages as cards, closings and lost showing "Connect your CRM", the rest and response time marked as coming next. No number on the screen looks like a fact yet.

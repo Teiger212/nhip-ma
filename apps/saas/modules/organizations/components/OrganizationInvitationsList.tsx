@@ -137,6 +137,7 @@ export function OrganizationInvitationsList({ organizationId }: { organizationId
 				return (
 					<div className="gap-2 flex flex-row justify-end">
 						<OrganizationRoleSelect
+							dataTest="team-invitation-role"
 							value={row.original.role}
 							disabled
 							onSelect={() => {
@@ -182,7 +183,7 @@ export function OrganizationInvitationsList({ organizationId }: { organizationId
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id}>
+							<TableRow key={row.id} data-test="team-invitation">
 								{row.getVisibleCells().map((cell) => (
 									<TableCell key={cell.id}>
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}

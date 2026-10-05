@@ -4,37 +4,33 @@ import { cn, Input } from "@repo/ui";
 import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { INBOX_VIEWS, type InboxView, type QueueCounts } from "../lib/queue";
+import type { InboxView, QueueCounts } from "../lib/queue";
 
 /**
- * The two rows above the columns: search, then the view tabs with their counts and the
- * "Your turn" sentence. Both are the list's controls, so on a phone they hide with it
- * while a thread is open.
+ * The two rows at the top of the thread list: search, then the view tabs with their counts
+ * and the "Your turn" sentence. They live inside the list, so they hide with it.
  */
 export function InboxToolbar({
 	query,
 	onQueryChange,
+	views,
 	view,
 	onViewChange,
 	counts,
-	hiddenOnPhone,
 }: {
 	query: string;
 	onQueryChange: (query: string) => void;
-	view: InboxView;
+	/** The operator's views, in order (a manager's start with Unassigned, ADR 0022). */
+	views: readonly InboxView[];
+	/** The view shown; none while the Inbox doesn't yet know which one it opens on. */
+	view: InboxView | null;
 	onViewChange: (view: InboxView) => void;
 	counts: QueueCounts;
-	hiddenOnPhone: boolean;
 }) {
 	const t = useTranslations("inbox");
 	return (
 		<>
-			<div
-				className={cn(
-					"px-3 py-3 flex shrink-0 items-center border-b",
-					hiddenOnPhone && "md:flex hidden",
-				)}
-			>
+			<div className="px-3 py-3 flex shrink-0 items-center border-b">
 				<div className="relative w-full">
 					<SearchIcon
 						aria-hidden="true"
@@ -46,18 +42,13 @@ export function InboxToolbar({
 						onChange={(event) => onQueryChange(event.target.value)}
 						placeholder={t("searchPlaceholder")}
 						aria-label={t("searchAria")}
-						className="h-12 min-h-12 px-4 py-3 pl-12 text-base rounded-full rounded-md border-transparent bg-muted shadow-none"
+						variant="search"
 					/>
 				</div>
 			</div>
-			<div
-				className={cn(
-					"px-3 py-2 gap-2 flex shrink-0 flex-wrap items-center justify-between border-b",
-					hiddenOnPhone && "md:flex hidden",
-				)}
-			>
-				<div className="gap-0 p-0.5 inline-flex rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
-					{INBOX_VIEWS.map((option) => {
+			<div className="px-3 py-2 gap-2 flex shrink-0 flex-wrap items-center justify-between border-b">
+				<div className="gap-0 p-0.5 shadow-hairline inline-flex rounded-full bg-muted">
+					{views.map((option) => {
 						const active = option === view;
 						return (
 							<button
@@ -66,15 +57,15 @@ export function InboxToolbar({
 								aria-pressed={active}
 								onClick={() => onViewChange(option)}
 								className={cn(
-									"h-8 px-3 text-xs font-semibold gap-1.5 inline-flex cursor-pointer items-center rounded-full transition-colors",
+									"h-11 md:h-8 px-3 text-xs font-semibold gap-1.5 inline-flex cursor-pointer items-center rounded-full transition-colors",
 									"focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
 									active
-										? "shadow-xs border border-border bg-background text-foreground"
+										? "shadow-hairline bg-card text-foreground"
 										: "text-muted-foreground hover:text-foreground",
 								)}
 							>
 								{t(`views.${option}`)}
-								<span className="font-mono text-[10px] tabular-nums opacity-70">
+								<span className="font-mono text-2xs text-muted-foreground tabular-nums">
 									{counts[option]}
 								</span>
 							</button>

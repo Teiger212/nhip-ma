@@ -3,7 +3,9 @@
 import { useSession } from "@auth/hooks/use-session";
 import { config } from "@config";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
+import { useOfficeRole } from "@inbox/lib/inbox-queries";
 import { authClient } from "@repo/auth/client";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import {
 	cn,
 	ColorModeToggle,
@@ -24,6 +26,7 @@ import {
 	LogOutIcon,
 	MoreVerticalIcon,
 	SettingsIcon,
+	UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -37,6 +40,12 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const pathname = useLocalePathname();
 	const settingsActive = pathname.startsWith("/settings/");
 	const marketingUrl = config.marketingUrl;
+	// Team is the manager's: the office's members page (#82). The platform admin has no office.
+	const office = useOfficeRole({ enabled: !!user && !isPlatformAdmin(user.role) });
+	const teamHref =
+		office.role === "manager" && office.officeSlug
+			? `/${office.officeSlug}/settings/members`
+			: null;
 
 	const onLogout = async () => {
 		await authClient.signOut({
@@ -74,13 +83,13 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						className={cn(
 							rowClassName,
 							"gap-2 px-2 py-1.5 min-w-0 flex-1 hover:bg-sidebar-accent",
-							settingsActive && "bg-sidebar-accent shadow-[inset_2px_0_0_var(--sidebar-primary)]",
+							settingsActive && "shadow-hairline bg-card hover:bg-card",
 						)}
 					>
 						<UserAvatar name={name ?? ""} avatarUrl={image} />
 						<span className="leading-tight min-w-0 text-left">
 							<span className="font-medium text-sm block truncate">{name}</span>
-							<span className="text-xs block truncate opacity-70">{email}</span>
+							<span className="text-xs block truncate text-muted-foreground">{email}</span>
 						</span>
 					</LocaleLink>
 					<DropdownMenuTrigger
@@ -107,7 +116,11 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 						<button
 							{...props}
 							type="button"
-							className={cn(props.className, rowClassName, "gap-2 hover:bg-sidebar-accent")}
+							className={cn(
+								props.className,
+								rowClassName,
+								"min-h-11 min-w-11 gap-2 justify-center hover:bg-sidebar-accent",
+							)}
 							aria-label="User menu"
 						>
 							<UserAvatar name={name ?? ""} avatarUrl={image} />
@@ -119,22 +132,20 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 			<DropdownMenuContent
 				side={dropdownSide}
 				align={dropdownAlign}
-				className="w-56 min-w-[var(--anchor-width)]"
+				className="w-56 min-w-(--anchor-width)"
 			>
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>
 						{name}
-						<span className="font-normal text-xs block opacity-70">{email}</span>
+						<span className="font-normal text-xs block text-muted-foreground">{email}</span>
 					</DropdownMenuLabel>
 				</DropdownMenuGroup>
 
 				<DropdownMenuSeparator />
 
 				{/* Color mode selection */}
-				<DropdownMenuItem
-					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
-					closeOnClick={false}
-				>
+				{/* A row holding its own control, not a menu item: the toggle takes the focus. */}
+				<div className="gap-4 px-2 py-1.5 text-sm flex items-center justify-between">
 					<span className="whitespace-nowrap">{t("app.userMenu.colorMode")}</span>
 					<ColorModeToggle
 						modes={["system", "light", "dark"]}
@@ -144,7 +155,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 							dark: t("common.colorMode.dark"),
 						}}
 					/>
-				</DropdownMenuItem>
+				</div>
 
 				<DropdownMenuSeparator />
 
@@ -164,16 +175,29 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 					/>
 				) : null}
 
-				<DropdownMenuItem
-					className="gap-4 flex cursor-default resize-none items-center justify-between hover:cursor-default hover:bg-transparent focus:bg-transparent"
-					closeOnClick={false}
-				>
+				{teamHref ? (
+					<DropdownMenuItem
+						nativeButton={false}
+						render={(props) => (
+							<LocaleLink
+								{...props}
+								href={teamHref}
+								className={cn(props.className, "flex items-center")}
+							>
+								<UsersIcon className="mr-2 size-4" />
+								{t("app.userMenu.team")}
+							</LocaleLink>
+						)}
+					/>
+				) : null}
+
+				<div className="gap-4 px-2 py-1.5 text-sm flex items-center justify-between">
 					<span className="flex items-center">
 						<LanguagesIcon className="mr-2 size-4" />
 						<span className="whitespace-nowrap">{t("app.userMenu.language")}</span>
 					</span>
 					<WalkLocaleToggle />
-				</DropdownMenuItem>
+				</div>
 
 				{config.docsUrl && (
 					<DropdownMenuItem

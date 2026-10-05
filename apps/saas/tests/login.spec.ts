@@ -1,75 +1,60 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures";
+import { LoginPage } from "./support/login-page";
 
-test.describe("login page", () => {
-	test("should load and show all relevant login form components", async ({ page }) => {
-		await page.goto("/en/login");
+// rule: docs/adr/0010-office-assignment.md (sign-up closed); PRODUCT.md (English and Vietnamese only)
+test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI", () => {
+	// rule: docs/adr/0010-office-assignment.md "Public sign-up is closed: an account exists
+	// because it was invited into an office." Also AGENTS.md: password login for the seed logins,
+	// and ADR 0013: a login can reset its password.
+	test("ADR 0010 — offers signing in, never creating an account", async ({ page }) => {
+		const login = new LoginPage(page);
+		await login.goto("en");
 
-		// Main heading and subtitle
-		await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
-		await expect(page.getByText("Please enter your credentials to sign in.")).toBeVisible();
-
-		// Login mode switch (Magic link / Password)
-		await expect(page.getByRole("tab", { name: "Magic link" })).toBeVisible();
-		await expect(page.getByRole("tab", { name: "Password" })).toBeVisible();
-
-		// Email field
-		await expect(page.getByRole("textbox", { name: /email/i })).toBeVisible();
-
-		// Switch to password mode so password-specific UI is visible
-		await page.getByRole("tab", { name: "Password" }).click();
-
-		// Password field and forgot password link
-		const passwordInput = page.locator('input[autocomplete="current-password"]');
-		await expect(passwordInput).toBeVisible();
+		await expect(login.email).toBeVisible();
+		await login.switchMode("password");
+		await expect(login.password).toBeVisible();
+		await expect(login.submit).toHaveText("Sign in");
 		await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
 
-		// Submit button (password mode)
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-
-		// "Or continue with" divider
-		await expect(page.getByText("Or continue with")).toBeVisible();
-
-		// Passkey button
-		await expect(page.getByRole("button", { name: "Login with passkey" })).toBeVisible();
-
-		// Sign up link
-		await expect(page.getByRole("link", { name: /Create an account/ })).toBeVisible();
-		await expect(page.getByText("Don't have an account yet?")).toBeVisible();
+		// Public sign-up is closed: nothing on the page leads to creating an account.
+		await expect(
+			page.getByRole("link", { name: /create an account|sign up|register/i }),
+		).toHaveCount(0);
+		await expect(page.getByText(/don't have an account/i)).toHaveCount(0);
 	});
 
-	test("should switch between magic link and password auth modes", async ({ page }) => {
-		await page.goto("/en/login");
+	// rule: AGENTS.md password login; docs/e2e-scenarios.md Auth 3 names the magic link as a way
+	// to sign in (for an existing account only).
+	test("password and magic link are both ways to sign in", async ({ page }) => {
+		const login = new LoginPage(page);
+		await login.goto("en");
 
-		const passwordInput = page.locator('input[autocomplete="current-password"]');
+		await login.switchMode("password");
+		await expect(login.submit).toHaveText("Sign in");
+		await expect(login.password).toBeVisible();
 
-		// Ensure password mode: click Password tab then assert
-		await page.getByRole("tab", { name: "Password" }).click();
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-		await expect(passwordInput).toBeVisible();
+		await login.switchMode("magic-link");
+		await expect(login.submit).toHaveText("Send magic link");
+		await expect(login.password).toBeHidden();
 
-		// Switch to magic link mode
-		await page.getByRole("tab", { name: "Magic link" }).click();
-		await expect(page.getByRole("button", { name: "Send magic link" })).toBeVisible();
-		await expect(passwordInput).toBeHidden();
-
-		// Switch back to password mode
-		await page.getByRole("tab", { name: "Password" }).click();
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-		await expect(passwordInput).toBeVisible();
+		await login.switchMode("password");
+		await expect(login.submit).toHaveText("Sign in");
+		await expect(login.password).toBeVisible();
 	});
 
+	// rule: PRODUCT.md "English and Vietnamese only."
 	test("language switcher offers only English and Vietnamese", async ({ page }) => {
 		await page.goto("/en/login");
 
 		await page.getByRole("button", { name: "Language" }).click();
 
+		const vietnamese = page.getByRole("menuitemradio", { name: "Tiếng Việt" });
 		await expect(page.getByRole("menuitemradio", { name: "English" })).toBeVisible();
-		await expect(page.getByRole("menuitemradio", { name: "Tiếng Việt" })).toBeVisible();
-		await expect(page.getByRole("menuitemradio", { name: "Deutsch" })).toHaveCount(0);
-		await expect(page.getByRole("menuitemradio", { name: "Español" })).toHaveCount(0);
-		await expect(page.getByRole("menuitemradio", { name: "Français" })).toHaveCount(0);
+		await expect(vietnamese).toBeVisible();
+		// Both named options are there; nothing else is (no Deutsch, Español, Français…).
+		await expect(page.getByRole("menuitemradio")).toHaveCount(2);
 
-		await page.getByRole("menuitemradio", { name: "Tiếng Việt" }).click();
+		await vietnamese.click();
 		await expect(page).toHaveURL(/\/vi\/login/);
 	});
 });

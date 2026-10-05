@@ -1,7 +1,11 @@
 import type {
 	Funnel,
 	AnswerStatus,
+	CrmKind,
+	CrmLinkMethod,
+	CrmOutcomeStatus,
 	DraftSource,
+	GuestDeletionReason,
 	GuestLanguage,
 	MessageDirection,
 	MessageSource,
@@ -67,6 +71,7 @@ export type Message = {
 	source: MessageSource;
 	text: string;
 	at: string;
+	/** The vendor's id as stored: its keyed hash (`vendor-id.ts`), never the raw id (#141). */
 	vendorMessageId: string | null;
 	mock?: boolean;
 	/**
@@ -74,6 +79,8 @@ export type Message = {
 	 * wrote to, or what the reply went out on. `null` for dev injections and old files.
 	 */
 	pipeExternalId: string | null;
+	/** Who wrote an auto-reply (ADR 0021): the template or the model. Null for any other message. */
+	writtenBy: DraftSource | null;
 	/** Empty for office messages: they are never translated back (ADR 0007). */
 	translations: Translations;
 };
@@ -81,7 +88,6 @@ export type Message = {
 export type SendResult = {
 	mock: boolean;
 	pipe: Pipe;
-	to: string;
 	text?: string;
 	vendorMessageId: string | null;
 };
@@ -107,9 +113,9 @@ export type Answer = {
 	status: AnswerStatus;
 	mock: boolean;
 	pipe: Pipe;
-	to: string;
 	/** The office endpoint the reply went out on: the one the guest wrote to. */
 	pipeExternalId: string | null;
+	/** The vendor's id for the sent reply as stored: its keyed hash, never the raw id (#141). */
 	vendorMessageId: string | null;
 	approvedAt: string;
 	sentAt: string | null;
@@ -125,9 +131,21 @@ export type BeginAnswerResult =
 			 * `already_answered`: a sent Answer exists. `in_progress`: another approval is
 			 * between approve and the vendor's reply. `unknown`: a previous send's outcome is
 			 * unknown and must be reconciled by a person before anything is sent again.
+			 * `not_found`: the office has no such thread, or it was deleted before or under
+			 * this approval (ADR 0020).
 			 */
-			reason: "already_answered" | "in_progress" | "unknown";
+			reason: "already_answered" | "in_progress" | "unknown" | "not_found";
 	  };
+
+/**
+ * A guest deletion's outcome (ADR 0020). `crm` is what became of the thread's CRM lead: null
+ * with no lead; `unlinked` when the cascade removed Nhịp's link and the CRM was not asked.
+ * `not_found`: the office has no such thread (another office's, or already deleted).
+ * `reply_sending`: an Answer is between approve and the vendor's reply.
+ */
+export type GuestDeletionResult =
+	| { ok: true; crm: "unlinked" | null }
+	| { ok: false; reason: "not_found" | "reply_sending" };
 
 export type Conversation = {
 	id: string;
@@ -153,7 +171,88 @@ export type Conversation = {
 	answers: Answer[];
 	/** The most recent Answer, whatever its status. */
 	lastAnswer: Answer | null;
+	/** The operator who owns the thread (ADR 0022), or null while it is Unassigned. */
+	owner: { id: string; name: string } | null;
+	/** The thread's lead in the office's CRM (ADR 0003); null until Nhịp has linked one. */
+	crm: ConversationCrm | null;
+	/** When the auto-reply claimed the thread (ADR 0021); null while it has not. */
+	autoReplyAt: string | null;
 	updatedAt: string;
+};
+
+/**
+ * A thread as the list sees it: everything the queue (ADR 0004), search, the row, Home's
+ * Waiting now and the nav count read, and nothing they do not. The open thread loads whole
+ * (`Conversation`); the list polls these, so its size grows with threads, never messages.
+ * The fields shared with `Conversation` mean the same; `unansweredInboundId` is derived by
+ * the same rule.
+ */
+export type ConversationSummary = Pick<
+	Conversation,
+	| "id"
+	| "pipe"
+	| "guestId"
+	| "guestName"
+	| "officeId"
+	| "owner"
+	| "lastGuestInboundAt"
+	| "sentAt"
+	| "unansweredInboundId"
+	| "updatedAt"
+	| "crm"
+> & {
+	/** The guest's language as the one-shot detected it; null until it has run. */
+	guestLanguage: GuestLanguage | null;
+	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
+	lastInboundText: string;
+};
+
+/** The thread's linked lead (ADR 0003). */
+export type ConversationCrm = {
+	leadId: string;
+	leadName: string;
+	method: CrmLinkMethod;
+} & CrmOutcome;
+
+/**
+ * What Nhịp last heard from the CRM about a thread's lead (ADR 0003). `outcomeObservedAt` is
+ * when Nhịp first saw the current won or lost outcome; the CRM's own `outcomeAt` is for display.
+ */
+export type CrmOutcome = {
+	outcome: CrmOutcomeStatus | null;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
+	outcomeObservedAt: string | null;
+};
+
+/** What Nhịp writes into the mock CRM for a guest (ADR 0003, Q12): never message text. */
+export type NewMockCrmLead = {
+	officeId: string;
+	name: string;
+	/** E.164, or null. */
+	phone: string | null;
+	zaloUserId: string | null;
+	pipe: Pipe;
+	language: string | null;
+	fields: Qualification | null;
+	threadUrl: string;
+};
+
+export type MockCrmLead = NewMockCrmLead & {
+	id: string;
+	outcome: CrmOutcomeStatus;
+	outcomeAt: string | null;
+	outcomeReason: string | null;
+	createdAt: string;
+};
+
+/** A guest message's failed translations into one operator language (ADR 0007). */
+export type TranslationFailure = {
+	messageId: string;
+	locale: OperatorLanguage;
+	/** Failed attempts since the last success. */
+	attempts: number;
+	lastFailedAt: string;
 };
 
 export type InboundEvent = {
@@ -178,22 +277,193 @@ export type PipeConnection = {
 	officeId: string;
 };
 
-/** Who is reading: an operator and the office they act for. Threads are visible only inside it. */
-export type InboxViewer = { userId: string; officeId: string };
+/**
+ * A pipe endpoint's vendor tokens as the store keeps them: opaque strings (the app encrypts
+ * them before they get here) and when the access token stops working.
+ */
+export type StoredPipeCredential = {
+	accessToken: string;
+	refreshToken: string;
+	accessTokenExpiresAt: Date;
+};
+
+/** A stored credential with its state: `disconnectedAt` is set once its tokens stopped working. */
+export type PipeCredentialState = StoredPipeCredential & {
+	disconnectedAt: Date | null;
+	disconnectedReason: string | null;
+};
+
+/** One of an office's pipe endpoints, with whether it holds tokens and whether they work. */
+export type OfficePipe = {
+	pipe: Pipe;
+	externalId: string;
+	credential: "none" | "connected" | "disconnected";
+	disconnectedReason: string | null;
+};
+
+/** An office's auto-reply switch (ADR 0021), with the name its label signs with. */
+export type OfficeAutoReply = {
+	/** `organization.name`: the auto-reply is signed as the office (G2). */
+	name: string;
+	on: boolean;
+	/** When it was last turned on; a thread that began before it is never greeted (S1). */
+	onSince: string | null;
+};
+
+/**
+ * Who is reading: an operator, the office they act for, and their role there (ADR 0015). An
+ * agent sees only the threads assigned to them; a manager sees every thread of the office,
+ * Unassigned included (ADR 0022). No role reads as an agent.
+ */
+export type InboxViewer = { userId: string; officeId: string; role?: "agent" | "manager" };
+
+/**
+ * One incoming webhook as the delivery log keeps it (no message text, no guest id). The store
+ * keeps `vendorMessageIds` as keyed hashes: a raw WhatsApp id can carry the guest's number.
+ */
+export type WebhookDeliveryRecord = {
+	pipe: Pipe;
+	outcome: "refused" | "processed" | "failed";
+	endpoints: string[];
+	officeIds: string[];
+	filed: number;
+	dropped: number;
+	vendorMessageIds: string[];
+	errorKind: string | null;
+};
+
+export type WebhookDelivery = WebhookDeliveryRecord & { id: string; receivedAt: string };
+
+/** What `upsertInbound` filed: the thread, and whether the message was new (ADR 0019). */
+export type InboundResult = { conversation: Conversation; inserted: boolean };
+
+export type AlertKind = "guest" | "returned" | "assigned" | "test";
+
+/** An office member as the alert rules see them (ADR 0019). */
+export type AlertOperator = {
+	userId: string;
+	/** `user.role`: the platform admin is never alerted. */
+	platformRole: string | null;
+	/** The office's kit `owner` or `admin` (ADR 0015): alerted for Unassigned guests (ADR 0022). */
+	manager: boolean;
+	/** `user.locale`; null means Vietnamese. */
+	locale: string | null;
+};
+
+export type NewAlert = {
+	officeId: string;
+	/** Null for a test alert. */
+	conversationId: string | null;
+	userId: string;
+	kind: AlertKind;
+	now: Date;
+	link: (alertId: string) => string;
+	sounds: (previousAt: Date | null, now: Date) => boolean;
+};
+
+export type RecordedAlert = { id: string; link: string; sounded: boolean };
 
 export type InboxStore = {
-	listConversations: (viewer?: InboxViewer) => Promise<Conversation[]>;
-	getConversation: (id: string, viewer?: InboxViewer) => Promise<Conversation | null>;
-	/** Files the message under `officeId`; a thread that already has an office keeps it. */
-	upsertInbound: (event: InboundEvent, officeId: string) => Promise<Conversation>;
+	/**
+	 * Every thread the viewer can open, with everything under it. Scripts and tests read
+	 * this; the inbox's list reads `listConversationSummaries`, which stays small however
+	 * long the threads get.
+	 */
+	listConversations: (viewer: InboxViewer) => Promise<Conversation[]>;
+	/** The threads this viewer can open (ADR 0015), most recently active first, as summaries. */
+	listConversationSummaries: (viewer: InboxViewer) => Promise<ConversationSummary[]>;
+	/** The thread, if this viewer can open it (ADR 0015); null otherwise, decided in the query. */
+	getConversation: (id: string, viewer: InboxViewer) => Promise<Conversation | null>;
+	/**
+	 * The office's thread for its own background work (drafts, translation, the CRM), which has
+	 * no viewer: scoped to the office, without the agent's own-threads rule.
+	 */
+	getOfficeConversation: (officeId: string, id: string) => Promise<Conversation | null>;
+	/**
+	 * Files the message under `officeId`; a thread that already has an office keeps it.
+	 * `inserted` is false when the message was already stored (a vendor's retry, matched by its
+	 * vendor message id): nothing that follows a new message runs for it (ADR 0019).
+	 */
+	upsertInbound: (event: InboundEvent, officeId: string) => Promise<InboundResult>;
 	connectPipe: (connection: PipeConnection) => Promise<void>;
 	officeForPipe: (pipe: Pipe, externalId: string) => Promise<string | null>;
 	listPipeConnections: () => Promise<PipeConnection[]>;
-	setOneShot: (id: string, oneShot: OneShot) => Promise<Conversation | null>;
+	/** Store an endpoint's tokens (after the vendor's authorization), clearing any disconnect. The connection must exist. */
+	savePipeCredential: (
+		pipe: Pipe,
+		externalId: string,
+		credential: StoredPipeCredential,
+	) => Promise<void>;
+	/**
+	 * Give an endpoint to an office, unless another office holds it (ADR 0017: one endpoint,
+	 * one office at a time). Returns the holder's id when refused.
+	 */
+	claimPipe: (connection: PipeConnection) => Promise<{ ok: true } | { ok: false; heldBy: string }>;
+	/** End an office's hold on an endpoint; its tokens go with it. Threads stay. */
+	releasePipe: (pipe: Pipe, externalId: string) => Promise<void>;
+	/** The office's endpoints and the state of their tokens. */
+	officePipes: (officeId: string) => Promise<OfficePipe[]>;
+	/** The endpoint's token state, or null when it holds no tokens. */
+	pipeCredentialState: (pipe: Pipe, externalId: string) => Promise<PipeCredentialState | null>;
+	/** The tokens stopped working; kept for the record until the platform admin reconnects. */
+	/** Returns whether this call recorded it (false when already disconnected or no tokens). */
+	markPipeDisconnected: (pipe: Pipe, externalId: string, reason: string) => Promise<boolean>;
+	/**
+	 * Run `work` holding a row lock on the endpoint's credential, so two instances never
+	 * refresh at once (a Zalo refresh token works once). `save` writes new tokens, or the
+	 * disconnect, inside the same transaction. `current` is null when the endpoint has no credential.
+	 */
+	withPipeCredentialLock: <T>(
+		pipe: Pipe,
+		externalId: string,
+		work: (
+			current: PipeCredentialState | null,
+			save: (next: Partial<PipeCredentialState>) => Promise<void>,
+		) => Promise<T>,
+	) => Promise<T>;
+	/** Delete these threads of the office with everything under them. Returns how many went. */
+	deleteConversations: (officeId: string, ids: string[]) => Promise<number>;
+	/**
+	 * Delete a guest's data (ADR 0020): the thread and everything under it, and the bell rows
+	 * that name it, in one transaction that also writes the anonymous lead tally (if the guest
+	 * wrote in) and the receipt. Locks the thread, then its Answers, as approve does; refused
+	 * while a reply is sending. `countMock` is the deployment's, as Home reads the funnel with
+	 * it; `actorId` is the manager who deletes, `reason` and `note` why. The note is stored with
+	 * its phone numbers and emails masked; an empty one is none.
+	 */
+	deleteGuest: (
+		officeId: string,
+		conversationId: string,
+		options: {
+			countMock: boolean;
+			actorId: string;
+			reason: GuestDeletionReason;
+			note: string | null;
+		},
+	) => Promise<GuestDeletionResult>;
+	setOneShot: (officeId: string, id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
-	setDraft: (id: string, draft: Draft) => Promise<Conversation | null>;
-	/** Store one guest message's rendering in one operator language. */
-	setTranslation: (messageId: string, locale: OperatorLanguage, text: string) => Promise<void>;
+	setDraft: (officeId: string, id: string, draft: Draft) => Promise<Conversation | null>;
+	/** Store one guest message's rendering in one operator language; clears its failures. */
+	setTranslation: (
+		officeId: string,
+		messageId: string,
+		locale: OperatorLanguage,
+		text: string,
+	) => Promise<void>;
+	/** A translation attempt failed: count it and stamp when, so retries can back off. */
+	recordTranslationFailure: (
+		officeId: string,
+		messageId: string,
+		locale: OperatorLanguage,
+		at: Date,
+	) => Promise<void>;
+	/** The recorded failures of these messages into `locale`; messages without one are absent. */
+	translationFailures: (
+		officeId: string,
+		messageIds: string[],
+		locale: OperatorLanguage,
+	) => Promise<TranslationFailure[]>;
 	/**
 	 * The operator approved `text` as the answer to `inboundId`: write the Answer in status
 	 * `sending` before anything talks to a vendor. Atomic: a second approval of the same
@@ -201,23 +471,162 @@ export type InboxStore = {
 	 * for the retry.
 	 */
 	beginAnswer: (input: {
+		officeId: string;
 		conversationId: string;
 		inboundId: string;
 		text: string;
 		operatorId: string | null;
 	}) => Promise<BeginAnswerResult>;
 	/** The vendor acknowledged: `sent`, the outbound message on the thread, `sentAt` on it. */
-	completeAnswer: (answerId: string, result: SendResult) => Promise<Conversation | null>;
+	completeAnswer: (
+		officeId: string,
+		answerId: string,
+		result: SendResult,
+	) => Promise<Conversation | null>;
 	/** The vendor definitely refused: `failed`. The operator may approve again. */
-	failAnswer: (answerId: string, reason: string) => Promise<void>;
+	failAnswer: (officeId: string, answerId: string, reason: string) => Promise<void>;
+	/** The office's name and its auto-reply switch (ADR 0021): no setting row means on. */
+	officeAutoReply: (officeId: string) => Promise<OfficeAutoReply | null>;
+	/**
+	 * Claim the thread's one auto-reply (ADR 0021): true for exactly one caller, and only while
+	 * the thread has no office message, no Answer and no claim. A claim is never given back.
+	 */
+	claimAutoReply: (officeId: string, id: string) => Promise<boolean>;
+	/**
+	 * File a sent auto-reply as the office's message. It is not an Answer: `sentAt`, the owner
+	 * and Your turn are untouched. Null when the thread is gone.
+	 */
+	recordAutoReply: (
+		officeId: string,
+		id: string,
+		reply: {
+			text: string;
+			writtenBy: DraftSource;
+			result: SendResult;
+			pipeExternalId: string | null;
+			/** When it went out, placed after the message it greets (ADR 0021). */
+			at: Date;
+		},
+	) => Promise<Conversation | null>;
 	/** The vendor did not answer, or the acknowledgement could not be recorded: `unknown`. */
-	markAnswerUnknown: (answerId: string, reason: string) => Promise<void>;
-	guestInboundText: (id: string) => Promise<string>;
+	markAnswerUnknown: (officeId: string, answerId: string, reason: string) => Promise<void>;
+	guestInboundText: (officeId: string, id: string) => Promise<string>;
 	/**
 	 * The office funnel (ADR 0002) for leads whose first message landed on or after
 	 * `since`, counted in SQL inside the office; no thread leaves the store for a count.
+	 * A lead is reached by the office's first reply: a sent Answer, or a reply an agent sent
+	 * from the vendor's own app (`oa-echo`). `countMock` decides whether mock sends count:
+	 * yes in a mock deployment (the demo), never in a live one. `timeZone` (an IANA zone,
+	 * e.g. `Asia/Ho_Chi_Minh`) is the office's: `byDay` buckets leads by local calendar day
+	 * in it. An unknown zone throws a RangeError.
 	 */
-	funnel: (viewer: InboxViewer, window: { since: Date }) => Promise<Funnel>;
+	funnel: (
+		viewer: InboxViewer,
+		window: { since: Date; countMock: boolean; timeZone: string },
+	) => Promise<Funnel>;
+	/**
+	 * Give a thread to an operator, or back to Unassigned (null); the last call wins. The new
+	 * owner must be a member of the thread's office, and not the platform admin (ADR 0022);
+	 * returns false when the thread or such a member is not found.
+	 */
+	setOwner: (conversationId: string, ownerId: string | null, officeId: string) => Promise<boolean>;
+	recordWebhookDelivery: (delivery: WebhookDeliveryRecord) => Promise<void>;
+	/** The latest deliveries, newest first. */
+	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
+	/** Delete deliveries received before `before`; returns how many went. */
+	pruneWebhookDeliveries: (before: Date) => Promise<number>;
+	/** The office's members as alerts see them: platform role, locale and manager (ADR 0019, 0022). */
+	officeOperators: (officeId: string) => Promise<AlertOperator[]>;
+	/**
+	 * Log one alert to one operator (ADR 0019). Whether it sounds is decided by `sounds` from
+	 * this operator's previous alert on the thread, read and written in one transaction under an
+	 * advisory lock on (operator, thread). `link` builds the row's link from its own id.
+	 */
+	recordAlert: (alert: NewAlert) => Promise<RecordedAlert>;
+	/** Delete alerts made before `before`; returns how many went. */
+	pruneAlerts: (before: Date) => Promise<number>;
+	/**
+	 * The thread an alert's link opens for `viewer` (ADR 0019, #136): its id when the alert is
+	 * the viewer's own and its thread is one they can open now; otherwise null, whatever the
+	 * reason, so a link says nothing about a thread to anyone else.
+	 */
+	alertThread: (alertId: string, viewer: InboxViewer) => Promise<string | null>;
+	/** The office's CRM (ADR 0003), or null when it has none; whether it holds an access token. */
+	getCrmConnection: (officeId: string) => Promise<{ kind: CrmKind; tokenSet: boolean } | null>;
+	/**
+	 * The office's CRM access token as stored: sealed by the app (never plaintext here), or null.
+	 * Only the CRM sync reads it, to open it for the adapter; nothing reads it for a client.
+	 */
+	getCrmAccessToken: (officeId: string) => Promise<string | null>;
+	/** Whether the office exists. */
+	officeExists: (officeId: string) => Promise<boolean>;
+	/**
+	 * Replace the office's CRM connection, or remove it with null, with its access token (sealed
+	 * by the app) when the kind takes one. Replacing or removing it removes the office's thread
+	 * links (cascade) and its old token with it.
+	 */
+	setCrmConnection: (
+		officeId: string,
+		kind: CrmKind | null,
+		accessToken?: string | null,
+	) => Promise<void>;
+	/**
+	 * Replace the access token (sealed for `kind`) on the office's CRM connection, keeping its
+	 * links. The CRM account it knew is forgotten: a new token may reach another account (ADR
+	 * 0008). False, and nothing written, when the connection is no longer of `kind` (#95).
+	 */
+	replaceCrmAccessToken: (officeId: string, kind: CrmKind, accessToken: string) => Promise<boolean>;
+	/** The offices on this CRM whose connection is on the CRM's account `accountId` (#66). */
+	crmOfficesOnAccount: (kind: CrmKind, accountId: string) => Promise<string[]>;
+	/** Up to `limit` offices on this CRM whose account is not known yet, most recently saved first. */
+	crmOfficesWithoutAccount: (kind: CrmKind, limit: number) => Promise<string[]>;
+	/**
+	 * Record the CRM account the office's connection is on, learned with the connection as it was
+	 * (`kind` and sealed `accessToken`); false, and nothing written, when it has changed since.
+	 */
+	setCrmAccountId: (
+		officeId: string,
+		learnedWith: { kind: CrmKind; accessToken: string | null },
+		accountId: string,
+	) => Promise<boolean>;
+	/**
+	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
+	 * thread is already claimed or linked. The database decides, so two first messages make one lead.
+	 */
+	claimCrmLink: (officeId: string, conversationId: string) => Promise<boolean>;
+	/** Give up a claim that linked nothing, so a later guest message tries again. */
+	releaseCrmLink: (officeId: string, conversationId: string) => Promise<void>;
+	/** Record the lead a claimed thread is linked to. */
+	completeCrmLink: (
+		officeId: string,
+		conversationId: string,
+		link: { leadId: string; leadName: string; method: CrmLinkMethod },
+	) => Promise<void>;
+	/** Write a lead into the mock CRM (ADR 0003). */
+	createMockCrmLead: (lead: NewMockCrmLead) => Promise<MockCrmLead>;
+	/** The office's mock CRM leads with this E.164 phone or Zalo user id; every lead with neither. */
+	findMockCrmLeads: (
+		officeId: string,
+		where?: { phone?: string; zaloUserId?: string; ids?: string[] },
+	) => Promise<MockCrmLead[]>;
+	/** The mock CRM marks a lead open, won or lost (the CRM's own record, as an office would). */
+	setMockCrmLeadOutcome: (
+		officeId: string,
+		leadId: string,
+		outcome: { status: CrmOutcomeStatus; at: Date | null; reason: string | null },
+	) => Promise<void>;
+	/** The office's threads linked to these leads, with what Nhịp last heard about each. */
+	crmLinksForLeads: (
+		officeId: string,
+		leadIds: string[],
+	) => Promise<Array<{ conversationId: string; leadId: string } & CrmOutcome>>;
+	/** Cache a lead's outcome on a thread, only while the thread is still linked to that lead. */
+	saveCrmOutcome: (
+		officeId: string,
+		conversationId: string,
+		leadId: string,
+		outcome: CrmOutcome,
+	) => Promise<void>;
 	/** Release the database connection. Scripts call it; the app never does. */
 	close: () => Promise<void>;
 };

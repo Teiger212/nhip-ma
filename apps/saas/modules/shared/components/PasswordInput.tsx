@@ -61,20 +61,23 @@ export function PasswordInput({
 	value,
 	onChange,
 	className,
-	inputClassName,
 	autoComplete,
 	name = "password",
 	showGenerateButton = false,
 	showPasswordCriteria = false,
+	...fieldProps
 }: {
 	value?: string;
 	onChange: (value: string) => void;
 	className?: string;
-	inputClassName?: string;
 	autoComplete?: string;
 	name?: string;
 	showGenerateButton?: boolean;
 	showPasswordCriteria?: boolean;
+	/** From `FormControl`: the id its label points at, and the field's error wiring. */
+	id?: string;
+	"aria-describedby"?: string;
+	"aria-invalid"?: boolean;
 }) {
 	const t = useTranslations();
 	const [showPassword, setShowPassword] = React.useState(false);
@@ -85,19 +88,19 @@ export function PasswordInput({
 		setShowPassword(true);
 	};
 
-	const rightPadding = showGenerateButton ? "pr-20" : "pr-10";
 	const password = value || "";
 
 	return (
-		<div className={cn("", className)}>
+		<div className={className}>
 			<div className="relative">
 				<Input
 					type={showPassword ? "text" : "password"}
-					className={cn(rightPadding, inputClassName)}
+					className={showGenerateButton ? "pr-20" : "pr-10"}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					autoComplete={autoComplete}
 					name={name}
+					{...fieldProps}
 				/>
 				<div className="inset-y-0 right-0 pr-2 absolute flex items-center">
 					{showGenerateButton && (
@@ -105,7 +108,8 @@ export function PasswordInput({
 							type="button"
 							onClick={generateRandomPassword}
 							className="p-2 flex cursor-pointer items-center justify-center text-primary transition-colors hover:text-primary/80"
-							title="Generate random password"
+							aria-label={t("common.generatePassword")}
+							title={t("common.generatePassword")}
 						>
 							<RefreshCw className="size-4" />
 						</button>
@@ -114,7 +118,8 @@ export function PasswordInput({
 						type="button"
 						onClick={() => setShowPassword(!showPassword)}
 						className="p-2 flex cursor-pointer items-center justify-center text-primary transition-colors hover:text-primary/80"
-						title={showPassword ? "Hide password" : "Show password"}
+						aria-label={showPassword ? t("common.hidePassword") : t("common.showPassword")}
+						title={showPassword ? t("common.hidePassword") : t("common.showPassword")}
 					>
 						{showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
 					</button>
@@ -130,14 +135,9 @@ export function PasswordInput({
 								{isMet ? (
 									<CircleCheckIcon className="size-3.5 shrink-0 text-success" />
 								) : (
-									<CircleXIcon className="size-3.5 shrink-0 text-foreground/40" />
+									<CircleXIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								)}
-								<span
-									className={cn(
-										"text-xs",
-										isMet ? "font-normal text-success" : "font-light text-foreground/40",
-									)}
-								>
+								<span className={cn("text-xs", isMet ? "text-success" : "text-muted-foreground")}>
 									{t(`common.passwordCriteria.${criterion.labelKey}`)}
 								</span>
 							</div>

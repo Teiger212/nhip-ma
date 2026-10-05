@@ -80,15 +80,15 @@ export function ActiveSessionsBlock() {
 				) : (
 					sessions?.map((session) => (
 						<div key={session.id} className="gap-4 flex justify-between">
-							<div className="gap-2 flex">
+							<div className="gap-2 min-w-0 flex">
 								<ComputerIcon className="size-6 shrink-0 text-primary/50" />
-								<div>
-									<strong className="text-sm block">
+								<div className="min-w-0">
+									<strong className="text-sm block break-all">
 										{session.id === currentSession?.id
 											? t("settings.account.security.activeSessions.currentSession")
 											: session.ipAddress}
 									</strong>
-									<small className="text-xs leading-tight block text-foreground/60">
+									<small className="text-xs leading-tight block break-words text-muted-foreground">
 										{session.userAgent}
 									</small>
 								</div>
@@ -97,6 +97,7 @@ export function ActiveSessionsBlock() {
 								variant="secondary"
 								size="icon"
 								className="shrink-0"
+								aria-label={t("settings.account.security.activeSessions.revoke")}
 								onClick={() => revokeSession(session.token)}
 							>
 								<XIcon className="size-4" />

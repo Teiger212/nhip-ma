@@ -5,12 +5,18 @@ packages:
 
 minimumReleaseAge: 1440
 
+overrides:
+  # One pg: @prisma/adapter-pg uses the app's pool only if it is an instance of its own pg (#98).
+  "@prisma/adapter-pg>pg": "catalog:"
+
 allowBuilds:
   "@parcel/watcher": true
   "@prisma/client": true
   "@prisma/engines": true
   "@swc/core": true
   better-sqlite3: true
+  # core-js (via posthog-js): its install script only prints a funding message.
+  core-js: false
   esbuild: true
   prisma: true
   prisma-zod-generator: true
@@ -24,7 +30,7 @@ catalog:
   "@aws-sdk/s3-request-presigner": 3.1111.0
   "@base-ui/react": ^1.7.0
   "@tanstack/react-table": ^9.1.2
-  oxlint: ^1.78.0
+  oxlint: ^1.86.0
   oxfmt: ^0.63.0
   "@hookform/resolvers": ^5.9.0
   "@mdx-js/mdx": ^3.1.1

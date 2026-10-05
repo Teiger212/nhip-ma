@@ -1,6 +1,8 @@
 # 0005. The suggested reply is AI-drafted from the conversation, behind the same guardrails
 
-Date: 2026-09-17. Status: accepted. Supersedes the "heuristic drafts only" shortcut.
+Date: 2026-09-17. Status: accepted. Supersedes the "heuristic drafts only" shortcut. "Never
+auto-send" has one exception: a new guest's first message gets the automatic greeting
+(ADR 0021).
 
 ## Context
 

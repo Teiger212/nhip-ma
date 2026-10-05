@@ -24,13 +24,20 @@ Use for persistent schema changes. Prisma/PostgreSQL is the active runtime, whil
    pnpm --filter @repo/database generate
    ```
    Review generated diffs, but correct their source/config and regenerate instead of editing generated files.
-6. Create/apply a development migration for a durable change:
+6. Apply the change to your dev database with `pnpm --filter @repo/database push` (dev only;
+   ADR 0016). Never run `prisma migrate dev` here: every dev database is built with `push`,
+   so it stops at "We need to reset". The package's `migrate` script runs `migrate:new` instead.
+7. Write the migration that hosted environments (staging, prod) will run:
    ```bash
-   pnpm --filter @repo/database migrate
+   pnpm --filter @repo/database migrate:new <short_name>
    ```
-   This runs `prisma migrate dev` and creates `packages/database/prisma/migrations` when the first migration is added. Review and commit the generated migration. Use `pnpm --filter @repo/database push` only for explicitly disposable local prototyping; it creates no migration history.
-7. Implement the same exported operation and observable semantics in both `packages/database/prisma/queries` and `packages/database/drizzle/queries`: tenant filters, selected/returned shape, ordering, limits, null behavior, update counts, and conflict behavior must agree. Export new modules through both `queries/index.ts` files.
-8. There are no Drizzle migration scripts in `packages/database/package.json`; do not invent `db:generate` or `db:migrate`.
+   It replays `packages/database/prisma/migrations` into a throwaway database, diffs it against
+   `schema.prisma`, and writes `prisma/migrations/<timestamp>_<short_name>/migration.sql`.
+   Review the SQL (renames show up as drop + add; data-preserving changes need hand edits) and
+   commit it with the schema change. `pnpm --filter @repo/database migrate:check` must then pass;
+   CI runs it. A migration must stay backward-compatible with the previous release (ADR 0016).
+8. Queries live in `packages/database/prisma/queries` (and the inbox store in
+   `packages/database/inbox`); export new modules through `queries/index.ts`.
 9. Run database/API tests, then `pnpm format`, `pnpm lint`, and `pnpm type-check`.
 
 ## Canonical reference

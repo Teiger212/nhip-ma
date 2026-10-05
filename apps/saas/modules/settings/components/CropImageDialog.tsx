@@ -230,7 +230,7 @@ export function CropImageDialog({
 				</DialogHeader>
 				<div
 					ref={cropperContainerRef}
-					className="min-w-0 p-2 [&_.cropper-image-clip]:inset-0 [&_.cropper-shade-clip]:inset-0 [&_cropper-canvas]:min-w-0 relative aspect-square w-full overflow-hidden [&_.cropper-image-clip]:pointer-events-none [&_.cropper-image-clip]:absolute [&_.cropper-image-clip]:overflow-hidden [&_.cropper-shade-clip]:pointer-events-none [&_.cropper-shade-clip]:absolute [&_.cropper-shade-clip]:overflow-hidden [&_.cropper-shade-clip]:[clip-path:inset(0)] [&_cropper-canvas]:relative [&_cropper-canvas]:block [&_cropper-canvas]:aspect-square [&_cropper-canvas]:h-full [&_cropper-canvas]:max-h-full [&_cropper-canvas]:w-full [&_cropper-canvas]:max-w-full [&_cropper-canvas]:overflow-hidden"
+					className="min-w-0 p-2 [&_.cropper-image-clip]:inset-0 [&_.cropper-shade-clip]:inset-0 [&_cropper-canvas]:min-w-0 relative aspect-square w-full overflow-hidden [&_.cropper-image-clip]:pointer-events-none [&_.cropper-image-clip]:absolute [&_.cropper-image-clip]:overflow-hidden [&_.cropper-shade-clip]:pointer-events-none [&_.cropper-shade-clip]:absolute [&_.cropper-shade-clip]:overflow-hidden [&_cropper-canvas]:relative [&_cropper-canvas]:block [&_cropper-canvas]:aspect-square [&_cropper-canvas]:h-full [&_cropper-canvas]:max-h-full [&_cropper-canvas]:w-full [&_cropper-canvas]:max-w-full [&_cropper-canvas]:overflow-hidden"
 				>
 					{imageSrc && (
 						<img

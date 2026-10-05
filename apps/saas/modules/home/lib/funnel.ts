@@ -1,6 +1,7 @@
 import "server-only";
 import { getSession } from "@auth/lib/server";
-import { resolveOffice } from "@inbox/lib/office";
+import { OFFICE_TIME_ZONE, windowStart } from "@home/lib/window";
+import { type OfficeDenial, resolveOffice } from "@inbox/lib/office";
 import { getRuntime } from "@inbox/lib/runtime";
 import type { Funnel } from "@repo/database/inbox";
 
@@ -9,7 +10,7 @@ export const FUNNEL_WINDOW_DAYS = 30;
 
 export type HomeFunnel =
 	| { funnel: Funnel; denied?: undefined }
-	| { funnel?: undefined; denied: "no_office" | "ambiguous_office" };
+	| { funnel?: undefined; denied: OfficeDenial };
 
 /**
  * The office funnel for the signed-in operator, resolved the way the API gate resolves it
@@ -21,14 +22,15 @@ export async function loadHomeFunnel(): Promise<HomeFunnel> {
 	if (!session) {
 		return { denied: "no_office" };
 	}
-	const office = await resolveOffice(session.user.id);
+	const office = await resolveOffice(session.user);
 	if (office.denied) {
 		return { denied: office.denied };
 	}
-	const since = new Date(Date.now() - FUNNEL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-	const funnel = await getRuntime().store.funnel(
+	const since = windowStart(new Date(), FUNNEL_WINDOW_DAYS, OFFICE_TIME_ZONE);
+	const runtime = getRuntime();
+	const funnel = await runtime.store.funnel(
 		{ userId: session.user.id, officeId: office.officeId },
-		{ since },
+		{ since, countMock: runtime.config.sendMode !== "live", timeZone: OFFICE_TIME_ZONE },
 	);
 	return { funnel };
 }

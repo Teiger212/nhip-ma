@@ -1,0 +1,3 @@
+# CHANGELOG entries are only ever added on top, so a conflict always keeps both sides.
+# Local merges only: GitHub ignores merge drivers (AGENTS.md, "Ticket workflow").
+CHANGELOG.md merge=union

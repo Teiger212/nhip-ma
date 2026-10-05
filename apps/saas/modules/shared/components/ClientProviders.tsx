@@ -3,6 +3,8 @@
 import { ProgressProvider } from "@bprogress/next/app";
 import type { PropsWithChildren } from "react";
 
+import { ErrorTracking } from "./ErrorTracking";
+
 export function ClientProviders({ children }: PropsWithChildren) {
 	return (
 		<ProgressProvider
@@ -12,6 +14,7 @@ export function ClientProviders({ children }: PropsWithChildren) {
 			shallowRouting
 			delay={250}
 		>
+			<ErrorTracking />
 			{children}
 		</ProgressProvider>
 	);

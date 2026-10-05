@@ -1,108 +1,393 @@
 # Architecture
 
-How this repo is shaped for Nhịp. Inbox triage is the current surface. Shared UI comes from `packages/ui` and existing tokens; there is no brand or design-system lock.
+How Nhịp is built today, on `main`. The product is [PRODUCT.md](./PRODUCT.md), the words
+are [CONTEXT.md](./CONTEXT.md), and the reasons are the ADRs in [docs/adr](./docs/adr).
+Setup, commands, aliases and gates are in [AGENTS.md](./AGENTS.md). Where something here is
+planned rather than built, it says so and names the ADR or PRODUCT line.
 
-## What the product uses
+## The system in one picture
 
-The working product lives in `apps/saas` on port **3010**. Locale-prefixed inbox routes are required:
+```text
+ guest (phone)
+   │  WhatsApp / Zalo
+   ▼
+ vendor ──webhook──▶ /webhooks/{whatsapp,zalo}   verify signature (fail closed, 403)
+                        │                         parse through the pipe adapter
+                        ▼
+                     endpoint → office?  ── no ──▶ dropped (logged)
+                        │ yes
+                        ▼
+                     inbox store (Postgres) ◀──── one-shot: language, extract, template
+                        │                    ◀──── model adapter, in after(): translation
+                        │                          into en + vi, follow-up draft
+                        │                    ◀──── auto-reply, in after(): a new guest's first
+                        │                          message, claimed once, sent (ADR 0021)
+                        ▼
+                     Inbox (operator) ── polls /api/conversations (summaries) and the
+                        │                  open thread's /api/conversations/:id, every 10 s
+                        │
+                        │  Approve and send (one guest message, exact text)
+                        ▼
+                     Answer written (sending) ─▶ pipe adapter ─▶ vendor ─▶ guest
+                        │                          (mock unless live + connected)
+                        ▼
+                     Home: funnel counted from Answers in SQL, per office
+```
 
-- `/en/inbox`
-- `/vi/inbox`
-- `/` → `/en/inbox`
-- `/inbox` → `/{locale}/inbox`
-
-Do not build or ship `apps/marketing`, `apps/docs`, `apps/mail-preview`, or admin. They stay in the tree as out-of-scope kit scaffolding.
+- **Drafts and translation** go through one model adapter (`modules/inbox/lib/drafts/`,
+  ADRs 0005, 0007): `openai-compatible` when `DRAFT_API_KEY` is set (plain `fetch` to
+  `/chat/completions`, `DRAFT_MODEL` required, `DRAFT_BASE_URL` defaults to OpenRouter),
+  otherwise `none`: no translation, template drafts. Guest text is framed as data in the
+  prompt, and `drafts/guardrails.ts` drops a draft that touches paperwork or ownership.
+- **Translation** runs at ingest and when a thread is opened (the detail route, for the
+  operator's language), never from the list poll. A failed call is recorded per message and
+  language (`inbox_translation_failure`) and retried no sooner than 10 minutes later, at most
+  5 times (`translationRetryDue` in `translate.ts`), so an outage costs no repeated model calls.
+- **Inbox reads** come in three shapes (`modules/inbox/lib/inbox-queries.ts`): the list is
+  `ConversationSummary` rows from one SQL query (`listConversationSummaries`: who, pipe,
+  owner, turn, the last guest message as preview), the open thread is the whole
+  `Conversation` from `/api/conversations/:id`, and the Your-turn count is the queue rule's
+  `yourTurnCount` over those same summaries, on the server for pages without the list and on
+  the client where the list is loaded. The store derives each thread's turn fact
+  (`unansweredInboundId`); which threads count is decided only in the queue rules, so the
+  count has no SQL copy. All three share one
+  visibility rule and one Your-turn rule, and live under one TanStack Query key, so a send or
+  reassignment refreshes them together.
+- **The auto-reply** (ADR 0021, `sendAutoReply` in `inbox.ts`): after the one-shot,
+  `afterGuestInbound` schedules it in the background for a new guest message on a thread the
+  office hasn't spoken on. The job reads the office's switch (`inbox_office_setting`, no row
+  means on), then claims the thread with one conditional update (`autoReplyAt` null → now, and
+  still no office message), so two first messages at once make one greeting. It sends through
+  `connectionFor` and `transmit` like an Answer (never from a disconnected endpoint; a mock
+  send reports `mock-auto-reply-<thread id>`), once, and files an outbound with source
+  `auto_reply`, `writtenBy`, and the hashed vendor id, so the vendor's echo is a duplicate. It
+  is not an Answer: no `sentAt`, no owner, and the queue and funnel SQL read only Answers and
+  `oa_echo`, so the thread stays Your turn. The text is `greetingTemplate` (`greeting.ts`) in
+  the guest's language, ending with the label; the model writes it from #168. The seed passes
+  `autoReply: false`.
+- **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
+  platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.
+- **Alerts** (ADR 0019, spec #84), `modules/inbox/lib/guest-alerts/`: a new guest message
+  (`afterGuestInbound`, inserted messages only) schedules `alertGuestMessage` in the
+  background. It picks the recipients (`recipients.ts`), writes one `inbox_alert` row each
+  under the burst rule's advisory lock, then hands the event's deliveries to the **transport
+  seam** (`transport.ts`), chosen by `SEND_MODE`: mock sends nothing; live
+  (`push.ts`, `web-push`) posts each recipient's devices (`push_subscription`, queries in
+  `packages/database/prisma/queries/push-subscriptions.ts`) with VAPID, urgency high and a
+  1-hour TTL, at most 5 pushes in flight per event, deletes a device on 404 or 410, and logs a
+  failure as its status only. Without the VAPID keys it logs "push not configured". It posts
+  only to `https` endpoints on Google's, Apple's, Mozilla's and Microsoft's push hosts, checked on registration and again before each push, in one normal form (the WHATWG
+  `href`, plain DNS labels, and the same host for Node's legacy parser, which `web-push`
+  connects with), which is what is stored and posted to. The payload is `{ alertId, tag, title, body,
+url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devices come and
+  go through `/api/alerts/devices` (POST, DELETE for this sign-in, `/test`), and a Better Auth before-hook on `/sign-out` deletes the signing-out session's devices; a
+  session delete hook does the same for every other way a live session ends (revoking it or
+  the others, a ban, a password reset that revokes, the end of an impersonation), while an
+  expired session keeps its devices (A5). An impersonating admin cannot add a device. `pnpm seed`
+  always uses the mock transport.
+- **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
+  (`crmAdapterFor`: the mock and HubSpot), pure rules (`rules.ts`, `phone.ts`), and the CRM
+  sync module (`sync.ts`), which owns a thread's link to its lead and persists through the
+  store. After a guest's message on a thread with no lead, `afterGuestInbound` runs the sync's
+  `newGuest` in the background; the thread's `inbox_crm_link` row is the claim, so concurrent
+  first messages make one lead. The platform admin sets the office's CRM in its Connections
+  card (`OfficeCrm`, `/api/crm/connection`). A kind that takes an access token (HubSpot) is
+  saved only with one: `connectOffice` seals it with `PIPE_SECRETS_KEY` (ADR 0017's
+  `encryptSecret`) onto `inbox_crm_connection.accessToken`, and only the sync opens it, to hand it
+  to `crmAdapterFor`; the API answers `tokenSet`, never the token. The HubSpot adapter
+  (`hubspot.ts`, #65) finds the guest's contact by phone (read back as E.164) or by the
+  `zalo_user_id` property it creates on first need, links to the contact's open deal, and
+  otherwise creates the contact if there is none, then an unassigned deal associated with it;
+  `hubspot.test.ts` replays its calls against recorded HubSpot exchanges. Outcomes arrive by
+  the CRM's webhook
+  (`/webhooks/crm/mock`, signed with `MOCK_CRM_WEBHOOK_SECRET`; `/webhooks/crm/hubspot`, #66,
+  signed v3 with `HUBSPOT_APP_CLIENT_SECRET` over `HUBSPOT_WEBHOOK_URL`; each absent where unset).
+  The kind's reader (`crmWebhookFor`) returns the CRM accounts its notice names and their changed
+  leads; the sync's `noticesReceived` finds the offices on each account (the mock's account is
+  the office; HubSpot's is the portal id the adapter's `accountId` reports, kept on
+  `inbox_crm_connection.accountId` after the token is saved, or asked lazily) and only theirs
+  are touched (ADR 0008). There the sync's
+  `outcomesChanged` asks the adapter for the changed leads' outcomes and caches them on the link,
+  observed when Nhịp first heard them (`observeOutcome`). The thread summary carries the link, so
+  the queue rule (`isResolved`, `inQueue`) and the nav count read it on the client. Home still
+  shows "connect your CRM" where closings and lost will be (#68); it becomes a neutral "No CRM"
+  chip (PRODUCT.md, 2026-10-04).
+- **Home** (ADR 0002): `modules/home/lib/funnel.ts` resolves the office and calls
+  `store.funnel(viewer, { since, timeZone })`, one SQL query over Answers. The window is 30
+  local days in the office's time zone (`modules/home/lib/window.ts`, Asia/Ho_Chi_Minh
+  until offices carry their own); leads by day and the response-time buckets are counted
+  from the same rows. Stages, response time and the cohort are defined in CONTEXT.md,
+  "Funnel". **Waiting now** on Home reads the inbox's own list query, so it lists what the
+  operator can open, in the queue's order. The sidebar's Your-turn count, the tab title's
+  "(n) Inbox" and the guest toasts read that same list on every page of the app shell (#136):
+  the toasts need the guests' names, so one poll serves all three.
 
 ## Apps and packages
 
+`apps/saas` is the only app that ships. It is a supastarter kit app: Next.js App Router,
+Better Auth, Prisma, oRPC. Port 3010 in dev.
+
 ```text
-apps/saas          Authenticated product. The only app that ships.
-packages/ui        Shared chrome (sidebar, menus, buttons, theme)
-packages/i18n      Locale catalog and `inbox.*` copy
-packages/database  Prisma schema: auth (kit) and inbox (ADR 0012), one Postgres
+apps/saas             The product. Deployed to Vercel (root apps/saas).
+packages/auth         Better Auth config, invitation-only plugin, offboarding, roles
+packages/database     Prisma schema + client; inbox/ is the inbox store (ADR 0012)
+packages/api          Kit oRPC procedures (admin lists, organizations, users, ...)
+packages/i18n         en + vi catalogs; Nhịp copy is inbox.* in translations/{en,vi}
+packages/ui           Shared components (Base UI wrapped), theme
+packages/mail         Invitation and auth emails, and the kit's welcome (no other email)
 ```
 
-Treat the other `apps/*` and `packages/*` directories as unused unless a change is explicitly asked for.
+The kit apps `apps/marketing`, `apps/docs` and `apps/mail-preview` are unused. `apps/saas`
+still carries kit modules Nhịp does not build on (payments, onboarding) and depends on
+`packages/payments`, `notifications`, `storage` (office logos) and `permissions` through the
+kit. Kit screens Nhịp keeps but does not show yet are switched off in one place,
+`modules/shared/lib/kit-screens.ts` (off means a 404 and no link): Billing with the plan
+picker and checkout return (ADR 0014, an office pays per seat, not built), the start page
+and the AI chat demo. An office's own URL redirects to the Inbox; its kit start page, with
+sample revenue and churn, stays in the tree unrouted.
 
-SaaS app aliases (`apps/saas/tsconfig.json`), including `@inbox/*` → `./modules/inbox/*`, `@i18n/*`, `@shared/*` and `@auth/*`, are listed in [AGENTS.md](./AGENTS.md).
+Nhịp's own code in `apps/saas`:
+
+| Path                                              | What                                                   |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `modules/inbox/components/`                       | Inbox: list, thread, reply box, send bar               |
+| `modules/inbox/lib/inbox.ts`                      | Ingest, approve and send, regenerate draft             |
+| `modules/inbox/lib/{extract,draft,crib}.ts`       | One-shot: extract, template reply, operator note       |
+| `modules/inbox/lib/queue.ts`                      | Your turn, quiet, order, counts (ADR 0004)             |
+| `modules/inbox/lib/drafts/`                       | Model adapter, prompts, guardrails                     |
+| `modules/inbox/lib/pipes/`                        | Pipe adapters, webhook path, Zalo connect and tokens   |
+| `modules/inbox/lib/{config,runtime}.ts`           | Validated env, runtime singleton (store + config)      |
+| `modules/inbox/lib/{require-session,office}.ts`   | 401/403 gate, office from membership                   |
+| `modules/home/`                                   | Home: funnel, leads by day, waiting now, response time |
+| `modules/admin/component/organizations/`          | Admin area: offices, Connections, members, invites     |
+| `modules/shared/lib/{error-tracking,scrub}.ts`    | Error tracking, scrubbed of personal data              |
+| `modules/shared/lib/{walk-nav,platform-admin}.ts` | Sidebar rows, where the platform admin lands           |
+| `app/api/conversations/**`                        | List, detail, approve, draft, owner, Your-turn count   |
+| `app/api/office/**`                               | The operator's role; the office's agents (reassign)    |
+| `app/api/pipes/**`                                | Connections, status, disconnect, Zalo connect/callback |
+| `app/webhooks/{whatsapp,zalo}/route.ts`           | Inbound                                                |
+| `app/dev/inbound/route.ts`                        | Local fake inbound; 404 in production                  |
+
+The inbox and pipe routes are plain route handlers outside oRPC and outside the
+`(authenticated)` layout, so each checks the session itself. Path aliases (`@inbox/*`,
+`@home/*`, `@shared/*`, ...) are listed in [AGENTS.md](./AGENTS.md).
+
+## Tenancy and roles
+
+- **Office = kit organization** (ADR 0008). Every thread, pipe connection and member
+  belongs to one; deleting it cascades to its threads and pipes (ADR 0012).
+- **One operator, one office** (ADR 0010). `resolveOffice` reads the membership table on
+  every request: none is `403 no_office`, more than one `403 ambiguous_office`. The
+  session's active organization is never consulted. Accepting a second office's
+  invitation is refused in an auth hook (`ONE_OFFICE_PER_OPERATOR`).
+- **Platform admin** is `user.role` containing `admin` (`packages/auth/lib/roles.ts`). The
+  kit makes an office's creator its owner; that membership is inert (ADR 0015 amendment):
+  `resolveOffice` refuses the platform admin first (`403 platform_admin`), and the Inbox
+  and Home pages redirect them to `/admin/organizations`. Their sidebar has the admin area
+  only.
+- **Where people land**: operators on `/{locale}/inbox`; the platform admin on
+  `/{locale}/admin/organizations`.
+- **Office setup** today is two steps in the admin area: create the organization, then on
+  its page invite members (`InviteMemberForm`) and connect pipes. ADR 0018's single step is
+  not built.
+- **Team** (#82): a manager's user menu links to the kit's members page,
+  `/{locale}/{office slug}/settings/members` (`/api/office` returns the slug). The page is
+  managers only (`organization.manage`; anyone else gets a 404) and hides the platform admin's
+  row and the manager's own Leave and role. The role select offers Agent (`member`) and
+  Manager (`admin`) everywhere, the admin area included; an auth before-hook refuses `owner`
+  (alone, in a comma list or an array) in `invite-member` and `update-member-role` to anyone
+  but the platform admin. Better Auth alone refuses `owner` from a kit `admin` but grants it
+  from a manager who holds `owner`; it refuses an agent's invite, role change and removal itself.
+- **Assigning leads** (ADR 0022, replacing ADR 0015's pool): a thread starts Unassigned
+  (`ownerId` null). The viewer is `{ userId, officeId, role }`: an **agent** sees only
+  their own threads (`visibleTo`, `visibleSql`); a **manager** (a kit `owner` or `admin`
+  member, mapped in `resolveOffice`) sees every thread and assigns or reassigns through
+  `/api/conversations/:id/owner` (`setOwner`: to a member of the office, or back to
+  Unassigned; the last call wins). A manager whose approved reply is written on an
+  Unassigned thread claims it, inside `beginAnswer`'s transaction and only while it is
+  still unowned; a reply sent from the vendor's own app, or the auto-reply (ADR 0021),
+  claims nothing. `/api/office` returns the role (and the office's slug, for Team) and `/api/office/agents` the people a
+  thread can go to. An owner whose account ends leaves their threads Unassigned
+  (`onDelete: SetNull`). Spec: `tests/assign.spec.ts`.
+- **Offboarding** (ADR 0013): when a membership ends, the account is deleted in the same
+  request (`packages/auth/lib/offboarding.ts`), the platform admin excepted. `Answer`
+  keeps `operatorName`.
+
+## Auth
+
+Better Auth 1.6 in `packages/auth/auth.ts`, Prisma adapter, same database.
+
+- **Invitation only**: `enableSignup: false`, the kit's invitation-only plugin, and
+  `allowUserToCreateOrganization` only for the platform admin. An invitee who signs up
+  from the link is signed in with a verified email. Magic link, social sign-in, passkeys
+  and 2FA stay enabled for existing accounts.
+- **Base URL** is `NEXT_PUBLIC_SAAS_URL`; it is the trusted origin. Startup validation
+  (`modules/inbox/lib/config.ts`, run from `instrumentation.ts`) refuses a bad config in
+  production.
+- **Rate limits**: Better Auth's, with `storage: "database"` (the `rateLimit` table, shared
+  across serverless instances), keyed on `x-forwarded-for`; plus a Vercel Firewall rule of
+  300 requests/min per IP on `/api/` and `/webhooks/` (project setting, see AGENTS.md).
+- **testUtils** exist only in the E2E suite's own auth instance
+  (`apps/saas/tests/support/test-auth.ts`), built from the exported `authOptions`; the app
+  never loads it.
+
+## Pipes
+
+One **pipe adapter** per pipe (`modules/inbox/lib/pipes/index.ts`) owns verify, parse, send
+window and send. `pipes/webhook.ts` is the single inbound path for both webhook routes.
+
+- **Inbound**: WhatsApp verifies `X-Hub-Signature-256` with `WHATSAPP_APP_SECRET`; Zalo
+  verifies `X-ZEvent-Signature` with `ZALO_OA_SECRET_KEY`. A missing secret is 403. Each
+  event's endpoint (the WhatsApp phone number id or Zalo OA id) is looked up in
+  `PipeConnection`; the office holding it gets the thread, and an event on an endpoint no
+  office holds is dropped. Each message records its endpoint (`Message.pipeExternalId`),
+  and a reply goes out from the endpoint the guest last wrote to.
+- **Pipe connections** (ADR 0017): the platform admin manages them per office in Admin →
+  Organizations → an office → Connections. **Zalo** connects by OAuth with PKCE
+  (`/api/pipes/zalo/connect` → Zalo consent → `/api/pipes/zalo/callback`); an OA held by
+  another office is refused. Each OA's tokens sit in `PipeCredential`, encrypted
+  AES-256-GCM with `PIPE_SECRETS_KEY` (env only). A refresh runs under `SELECT … FOR
+UPDATE` and writes the new pair in the same transaction. **WhatsApp** is not yet
+  per-connection: one number per deployment from env (`WHATSAPP_ACCESS_TOKEN`,
+  `WHATSAPP_PHONE_NUMBER_ID`), mapped to an office with `pnpm --filter saas pipe:connect`.
+- **Live vs mock**: `SEND_MODE` is the deployment switch; only exactly `live` reaches a
+  vendor. In a live deployment a send goes out only from a connected endpoint the thread's
+  office holds; anything else is refused, never mocked (`409 pipe_not_connected`). Mock
+  deployments mock every send.
+- **Disconnected**: a failed Zalo refresh marks the credential disconnected and gives every
+  platform admin a bell row naming the pipe and the office (no email, ADR 0017 amended).
+  Guests' messages still arrive; replies from that OA are refused (`409 pipe_disconnected`)
+  and the inbox shows why (`/api/pipes/status`); other endpoints are unaffected. Connections shows "Needs reconnect". **Disconnecting** releases the
+  endpoint: no more sends, no more filing; its threads stay.
+- **Approve and send** (ADRs 0006, 0011): the request names the inbound and the exact text.
+  The `Answer` row is written in `sending` before the vendor call (unique on `inboundId`);
+  a vendor refusal is `failed` and may be approved again, anything uncertain is `unknown`
+  and refused (`409 delivery_unknown`) until a person reconciles it. Other refusals:
+  `409 stale_target`, `400 inbound_required`, `400 empty_reply`.
+- **Webhook delivery log** (ADR 0017): `pipes/webhook.ts` records every incoming webhook
+  (`recordWebhookDelivery`: pipe, outcome `processed`, `refused` or `failed`, the endpoints
+  and offices it touched, how many messages were filed or dropped, the vendor's message
+  ids), never a message's text or the guest's id. The platform admin reads it in
+  Admin → Webhooks. Deliveries are kept 30 days, pruned without a scheduler by about one
+  delivery in a hundred. Spec: `tests/webhooks.spec.ts`.
+
+## Data
+
+One Postgres (`DATABASE_URL`), one Prisma schema (`packages/database/prisma/schema.prisma`)
+holding the kit's tables and the inbox's `inbox_*` tables: conversation, message,
+translation, translation_failure, qualification, draft, paperwork, answer, pipe_connection,
+pipe_credential, webhook_delivery.
+
+- **The store is the only writer** of `inbox_*`: `createInboxStore(db)` in
+  `packages/database/inbox/store.ts`, zod vocabularies in `schema.ts`, domain types in
+  `types.ts`. Routes call its methods, never Prisma directly.
+- **Thread identity** is (office, pipe, guest), the unique key inbound finds a thread by; the
+  id is opaque (a `cuid()`; older threads were re-keyed to UUIDs) and never names the guest
+  (ADR 0010, amended by #141). The thread keeps the guest's phone or Zalo id in `guestId`; no
+  Answer copies it, and vendor message ids are stored as keyed hashes
+  (`packages/database/inbox/vendor-id.ts`). A CRM link's `leadName`, the mock CRM's leads and
+  message text can still hold it; guest deletion clears those (ADR 0020, #138).
+- **The office line is held by the database** (#95). Every office-owned row carries
+  `officeId`, and composite foreign keys to `(id, officeId)` keep it equal to its thread's
+  (or its message's); every store method names its office and filters by it in the query.
+  `Answer.operatorId` is set-null so a send's record outlives its sender (ADR 0013).
+- **Schema changes**: dev uses `prisma db push`. Hosted environments use `prisma migrate`
+  from the `0_init` baseline in `prisma/migrations/`. After editing the schema, run
+  `pnpm --filter @repo/database migrate:new <name>`, which replays the migrations into a
+  throwaway database and writes the diff. `migrate:check` fails when the schema has changes
+  no migration covers; CI runs it. `migrate:deploy` applies them. Hosted environments
+  migrate on build: `apps/saas/scripts/vercel-build.sh` runs `prisma migrate deploy` against
+  the direct (non-pooled) URL before building, with a 5s lock timeout
+  (`packages/database/scripts/migrate-deploy.sh`), and a failed migration fails the build, so
+  the previous deployment keeps serving. CI lints the migrations a PR adds with Squawk (#98). Migrations are additive and stay compatible with the
+  release before (ADR 0016), so applying one ahead of its code is safe; AGENTS.md
+  ("Migrations") has the expand/contract rule and its one recorded exception (#95), and
+  `migrate:baseline` for giving a pushed dev database a migration history.
+- **Connections** (#98): `packages/database/prisma/client.ts` builds the app's `pg` pool
+  (10s connect timeout, attached to Vercel's Fluid compute with `attachDatabasePool`) and hands
+  it to Prisma's adapter. Hosted, the app connects through Neon's pooler as `nhip_app`, whose
+  role carries the server timeouts; migrations run as the owner (AGENTS.md, "Neon").
+- **Tests** use `supastarter_test` (Vitest) and `supastarter_e2e` (Playwright) on the same
+  server as dev.
+
+## Environments and delivery
+
+ADR 0016 and its amendment. One Vercel project `nhip`, one Neon project, both in Singapore.
+
+```text
+ dev       your machine   native Postgres, seed data, SEND_MODE=mock, /dev/inbound
+ staging   main           Vercel Preview on main → https://nhip-staging.vercel.app
+                          Neon branch "staging", SEND_MODE=live, test identities
+ prod      production     Vercel Production, Neon branch "production"
+```
+
+- **CI** (`.github/workflows/ci.yml`) on every PR and push to `main`: lint, format check,
+  type check, Vitest, `migrate:check`, `seed:check`, the migration lint (PRs); then an E2E job that builds
+  production and runs Playwright over HTTPS through a local proxy
+  (`tests/support/https-proxy.mjs`), against a Postgres service with `SEND_MODE=mock` and
+  no retries.
+- **Staging** deploys when `main` builds on Vercel. The project's Ignored Build Step builds
+  only `main` and `production`; there are no per-PR previews. Staging env vars are scoped
+  to Preview on `main`. The Neon `staging` branch is never seeded.
+- **Staging smoke** (`.github/workflows/staging-smoke.yml`): on each successful Preview
+  deployment, `pnpm --filter saas smoke` (`playwright.smoke.config.ts`, `tests/smoke/`)
+  checks read-only that pages load, signed-out APIs refuse and webhooks fail closed.
+- **Production smoke** (`.github/workflows/production-smoke.yml`, #113): the same suite as a
+  Vercel Deployment Check. When a production deployment is built, Vercel's
+  `vercel.deployment.ready` dispatch runs the suite against that deployment's own URL. Vercel
+  gives the deployment the production domain only once this check passes, along with Vercel's
+  Lint and TypeCheck.
+- **Prod** builds from the `production` branch. Ruleset 24113338 ("production: releases
+  only") blocks updates, non-fast-forward pushes and deletion; its one bypass is deploy keys.
+  The release workflow (`.github/workflows/release.yml`, #112) is the only holder of a deploy
+  key: on a published GitHub Release that Eyal approves, it fast-forwards `production` to a
+  commit staging deployed and smoked. Vercel's build runs prod migrations first
+  (`build:vercel`). The key itself is one of Eyal's setup steps
+  (`docs/setup-checklist.md`). The production
+  Neon branch is empty (no tables, no migration history); the first release migrates it
+  from `0_init`. There are no Production-scope env vars yet (#99). No release has shipped.
+
+## Observability and personal data
+
+Errors go to the platform's logs, and to **PostHog Cloud** when `NEXT_PUBLIC_POSTHOG_KEY` is
+set (it is not in dev, E2E or CI, so they send nothing).
+
+- **Server** (`modules/shared/lib/error-tracking.ts`): unhandled request errors only, under
+  one anonymous id, no geo lookup, each event sent at once (serverless).
+- **Browser** (`modules/shared/components/ErrorTracking.tsx`): uncaught errors only, rebuilt
+  from an allowlist. No session replay (it would record guests' messages), no autocapture,
+  pageviews, feature flags or person profiles, nothing stored on the device; the SDK is
+  bundled, not loaded from PostHog's CDN.
+- **Scrubbing** (`modules/shared/lib/scrub.ts`): message text, names and phone numbers are
+  removed before anything leaves the app (PRODUCT.md, milestone 1).
+
+Hosting is in Singapore and the model providers are abroad, so guests' data leaves Vietnam;
+the personal data protection duties (the cross-border transfer impact assessment filed with
+A05) are on PRODUCT.md's go-live gate. What Eyal sets by hand for PostHog is in
+[docs/setup-checklist.md](./docs/setup-checklist.md).
 
 ## Locale routing
 
-SaaS uses next-intl with `localePrefix: "always"` in `apps/saas/modules/i18n/routing.ts`. `apps/saas/proxy.ts` runs `createMiddleware` and excludes `api`, `webhooks`, `dev`, `image-proxy`, and `_next`.
+- Operator locales are `en` and `vi` only (`packages/i18n/config.ts`,
+  `modules/shared/lib/walk-locales.ts`). Guest languages (EN, VI, JA, KO, RU) are separate.
+- next-intl with `localePrefix: "always"` (`modules/i18n/routing.ts`). Pages live under
+  `app/[locale]/…`; `/de/inbox` is not routable.
+- `apps/saas/proxy.ts` runs next-intl's middleware and skips `api`, `webhooks`, `dev`,
+  `image-proxy`, `_next`, `_vercel` and any path with a dot.
+- `/` is a static `next.config.ts` redirect to `/en/inbox` (before the proxy, so English by
+  design); `/inbox` goes to `/{locale}/inbox`; `/{locale}` goes to `/{locale}/inbox`.
+- The `NEXT_LOCALE` cookie remembers the choice for unprefixed paths; cookie-only locale
+  without a path prefix was tried and rejected. The EN/VI toggle switches the path prefix.
 
-Pages live under `apps/saas/app/[locale]/…`. The inbox page is
+## Testing
 
-`apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx`
+AGENTS.md, "What gets a test" and "Test quality", is the rule; in short:
 
-`NextIntlClientProvider` is keyed by `locale` in `apps/saas/app/[locale]/layout.tsx`. The walk language toggle (`WalkLocaleToggle`) offers **EN** / **VI** only and navigates `/en/inbox` ↔ `/vi/inbox`. Cookie `NEXT_LOCALE` remembers the preference for unprefixed paths such as `/inbox`, but cookie-only locale without a path prefix is rejected. Bare `/` is a static `next.config.ts` redirect to `/en/inbox`; it runs before the proxy, so it is English by design.
-
-`packages/i18n` still lists `de`, `es`, and `fr` for the rest of the tree. SaaS routing (`routing.ts`) is limited to the operator locales `en` and `vi` (`vi`, not `vn`), so `/de/inbox` is not routable and the settings language form offers only EN / VI. Inbox copy is `inbox.*` in `packages/i18n/translations/{en,vi}/saas.json`. Guest-facing draft language can be EN, VI, JA, KO, or RU; operator chrome is EN + VI.
-
-## Auth and inbox data
-
-One database, two owners:
-
-| Store           | Where                                                                                                        | What                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| Auth / sessions | Postgres via `DATABASE_URL` (local compose is PostgreSQL 16 on 5432; example database name is `supastarter`) | Better Auth users and sessions                   |
-| Inbox threads   | The same Postgres, `inbox_*` tables via `@repo/database/inbox`                                               | Conversations, messages, extract, draft, Answers |
-
-The inbox models live in `schema.prisma` next to the kit's (ADR 0012). `Conversation.officeId` and `PipeConnection.officeId` reference `Organization` with cascade delete, `Answer.operatorId` references `User` with set-null and `Answer.operatorName` keeps the sender's name. Schema changes go through `prisma db push` in development; production baselines with `prisma migrate` before the first deploy. The store (`createInboxStore(db)`) is the only writer of these tables; routes call its methods and never touch Prisma directly. Tests run against `supastarter_test` (`packages/database/inbox/testing.ts`). Inbox types live in `packages/database/inbox/types.ts`: `Pipe`, `Conversation`, `Message`, `Qualification` (`rentOrBuy` split from move-in `timeframe`), `Draft` + crib, `Paperwork`, `OneShot`, `SendResult`, `InboxViewer`; the funnel vocabulary (`Funnel`, `ResponseTime`) is zod in `schema.ts` and `store.funnel(viewer, { since })` counts it in SQL inside the office (ADR 0002 over ADR 0011). Threads are not stored on User / Org / Plan / Subscription.
-
-The office is the tenant (ADR 0008) and the kit organization; Nhịp assigns it, and an operator belongs to exactly one (ADR 0010). `Conversation.officeId` is the organization id and a thread's identity is (office, pipe, guest), so the same guest at two offices is two threads; the store lists and reads strictly by office, so a thread is visible only inside its office and shared by every agent in it. `requireInboxSession` reads the operator's memberships on every request: none is 403 `no_office`, more than one is 403 `ambiguous_office`; the session's active organization is never consulted. When a membership ends (office deleted, member removed, member left) the account is deleted, the platform admin's excepted (`packages/auth/lib/offboarding.ts`, ADR 0013). Webhook-created threads take the office that owns the pipe the message arrived on (`PipeConnection`: pipe + vendor id of the number or OA → office, set with `pnpm --filter saas pipe:connect`); inbound on an unconnected pipe is dropped, and each message records the endpoint it travelled through (`Message.pipeExternalId`). A reply goes out on the number the guest last wrote to; with process-wide credentials, a thread on any other number is refused with 409 `pipe_not_configured`. `POST /dev/inbound` files under the signed-in operator's office. Every thread has an office from birth; there is no unowned state (ADR 0012).
-
-Sign-up is invitation only (`enableSignup: false`, the kit's invitation-only plugin), operators cannot create organizations, and accepting a second office's invitation is refused in an auth hook. The seed creates the walk office (`walk-office`, fixed id) with `admin@nhip.local` (role `admin`) as owner and `walk@nhip.local` as member. `hideOrganization` keeps the switcher hidden; `requireOrganization` stays false because the inbox resolves the office itself.
-
-## Inbox modules
-
-| Path                                                       | Role                                |
-| ---------------------------------------------------------- | ----------------------------------- |
-| `apps/saas/modules/inbox/components/`                      | Inbox shell, list, thread, reply    |
-| `apps/saas/modules/inbox/lib/extract.ts`                   | One-shot extract from inbound       |
-| `apps/saas/modules/inbox/lib/draft.ts`                     | Template replies (first, follow-up) |
-| `apps/saas/modules/inbox/lib/queue.ts`                     | Your turn, quiet, view order        |
-| `apps/saas/modules/inbox/lib/drafts/`                      | Draft adapter: Anthropic or none    |
-| `apps/saas/modules/inbox/lib/translate.ts`                 | Guest message translation (async)   |
-| `apps/saas/modules/inbox/lib/runtime.ts`                   | Store + config + draft adapter      |
-| `apps/saas/app/api/conversations`                          | List / detail (session required)    |
-| `apps/saas/app/api/conversations/[id]/approve`             | Approve and send (session required) |
-| `apps/saas/app/api/conversations/[id]/draft`               | Regenerate suggestion (never sends) |
-| `apps/saas/modules/inbox/lib/require-session.ts`           | 401 / 403 gate for route handlers   |
-| `apps/saas/modules/inbox/lib/office.ts`                    | Resolves the office from membership |
-| `apps/saas/modules/home/lib/funnel.ts`                     | Home's read: office + store.funnel  |
-| `apps/saas/modules/home/components/Home.tsx`               | Home: funnel, response time, CRM    |
-| `apps/saas/modules/shared/components/WalkLocaleToggle.tsx` | EN / VI path switch                 |
-| `apps/saas/modules/shared/components/UserMenu.tsx`         | Color mode + language               |
-
-Nav: **Inbox** is the agent's job; **Home** (`/home`) is the numbers screen (ADR 0001), currently the funnel's shape with "connect your CRM" where closings and lost will be (ADR 0002); **International** stays a disabled placeholder; Account settings stays as existing chrome. `/` still lands on the inbox.
-
-## Send
-
-`SEND_MODE` defaults to `mock` (`.env.local.example`), and local development stays mock. Only the exact value `live` talks to WhatsApp or Zalo (`resolveSendMode` in `runtime.ts`).
-
-Webhook routes are `/webhooks/zalo` and `/webhooks/whatsapp`. `POST /dev/inbound` is local simulation only, not in the UI, and returns 404 when `NODE_ENV=production`.
-
-Approve and send is a human action. Never auto-send. The guest still sees the agency number.
-
-Reply-only (ADR 0006) and the Answer (ADR 0011): every send answers exactly one guest message, and the `Answer` row is that send's record from the moment the operator approves it. `POST /api/conversations/[id]/approve` takes the inbound id and the exact text; a stale target is `409 stale_target`, an empty reply `400 empty_reply`. `approveAndSend` writes the Answer in status `sending` before any vendor call (the unique index on `Answer.inboundId` refuses a concurrent approval), then calls the vendor: a `SendError` (vendor refused, or missing credentials) marks it `failed` and the operator may approve again on the same row; any other error marks it `unknown`, as does a vendor success whose record failed, and an unknown Answer is refused with `409 delivery_unknown` until a person reconciles it. The store derives `Conversation.unansweredInboundId` from the Answers, not from message order: the guest's latest message is Your turn (ADR 0004) unless an Answer in flight, sent or unknown exists for it or the agent replied from the OA app after it, so a guest message arriving mid-send stays in the queue. `sentAt` means only "last office send", not terminal. Vendor error bodies are logged server-side, not returned to the caller.
-
-## Drafting and translation
-
-The draft adapter (`modules/inbox/lib/drafts/`, ADR 0005) is the one, vendor-neutral seam to a model: `openai-compatible` when `DRAFT_API_KEY` is set (`DRAFT_MODEL` required, `DRAFT_BASE_URL` defaults to OpenRouter, so any vendor or a local Ollama is a config change), otherwise `none`. It is a plain `fetch` to `/chat/completions` with a zod-checked response, no vendor SDK. The first reply is always the template. When a guest writes back after a send, the follow-up template goes into the reply box at once and a model draft from the whole conversation replaces it in the background; `POST /api/conversations/[id]/draft` asks for a fresh one. Guest text is framed as data in the prompt, and `drafts/guardrails.ts` drops any draft that touches paperwork or ownership so the template stands.
-
-Every guest message is translated into `en` and `vi` at ingest (ADR 0007), through the same adapter, in the background (`background.ts` tracks jobs; tests call `settleBackgroundWork()`). Translations are stored per message per operator language (`Translation` table) and shown under the original; `GET /api/conversations?locale=` backfills whatever that locale is missing. The client polls every 10 seconds, which is how new inbounds, translations, and model drafts arrive.
-
-Inbound webhooks fail closed. WhatsApp verifies `X-Hub-Signature-256` with `WHATSAPP_APP_SECRET`; Zalo verifies `X-ZEvent-Signature` (`sha256(appId + body + timestamp + OA secret)`) with `ZALO_OA_SECRET_KEY`. With either secret unset the route returns 403.
-
-## Theme
-
-`@repo/ui` `ThemeProvider` / `useTheme` wrap `@teispace/next-themes`. Layouts inject `getThemeScript()` in `<head>` and pass `noScript` so the FOUC script is not a client-rendered `<script>` (React 19). Color mode is system / light / dark.
-
-## Hard boundaries
-
-- No marketing, admin, billing, or org product work.
-- No auto-send.
-- No real guests. Invented threads only.
-- Never message real guests, agents, or Hạnh.
-- Never put customer data on a public Share link.
-- Do not invent a new product shape or rebuild old cockpits unless asked.
+- **E2E first**: what a person does is a scenario in
+  [docs/e2e-scenarios.md](./docs/e2e-scenarios.md) and a Playwright spec in
+  `apps/saas/tests`. Specs are written by the `test-author` agent
+  (`.claude/agents/test-author.md`) from the scenario, without reading app source. Seeded
+  sessions are minted once per run; the app's rate limit stays on.
+- **Vitest** for what has no user in it: the store, the queue and funnel rules, parsers,
+  Zalo token refresh, config validation.
+- Every test names the scenario or rule it proves and was seen failing first.

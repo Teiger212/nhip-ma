@@ -31,6 +31,7 @@ CRM adapter (ADR 0003).
   from Answers (ADR 0011) over a fixed 30-day window by first contact; the definitions
   are in CONTEXT.md under Funnel.
 - Closings and lost depend on the CRM adapter; until an office connects one, those two
-  widgets show "connect your CRM" rather than a zero that looks like a fact.
+  widgets show "connect your CRM" rather than a zero that looks like a fact. (2026-10-04:
+  the chip reads "No CRM" instead, since managers can't connect one; PRODUCT.md.)
 - "Engaged" and "in conversation" need one definition each in CONTEXT.md so the chart
   and the code agree.

@@ -6,18 +6,6 @@ export const config = {
 			label: "English",
 			currency: "USD",
 		},
-		de: {
-			label: "Deutsch",
-			currency: "USD",
-		},
-		es: {
-			label: "Español",
-			currency: "USD",
-		},
-		fr: {
-			label: "Français",
-			currency: "USD",
-		},
 		vi: {
 			label: "Tiếng Việt",
 			currency: "VND",
