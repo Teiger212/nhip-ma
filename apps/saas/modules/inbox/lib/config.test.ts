@@ -5,7 +5,12 @@ import { parse } from "dotenv";
 import { expect, test } from "vitest";
 import { generateVAPIDKeys } from "web-push";
 
-import { DEFAULT_DRAFT_BASE_URL, mockInboxConfig, validateInboxEnv } from "./config";
+import {
+	DEFAULT_DRAFT_BASE_URL,
+	inboxConfigFromEnv,
+	mockInboxConfig,
+	validateInboxEnv,
+} from "./config";
 import { draftAdapterFromConfig } from "./drafts";
 import { RETIRED_E2E_VAPID_PUBLIC_KEY } from "./retired-vapid-key";
 
@@ -149,18 +154,23 @@ test("production, staging and live deployments refuse the retired E2E VAPID key"
 		VAPID_PRIVATE_KEY: "whatever-was-paired-with-it",
 		VAPID_SUBJECT: "mailto:alerts@nhip.vn",
 	};
-	for (const where of [
+	for (const where of <NodeJS.ProcessEnv[]>[
 		{ VERCEL_ENV: "production" },
 		{ VERCEL_ENV: "preview" },
 		{ SEND_MODE: "live" },
+		// A self-hosted production build, whatever its send mode.
+		{ NODE_ENV: "production", NEXT_PUBLIC_SAAS_URL: "https://nhip.example" },
 	]) {
 		const errors = errorsOf({ ...BASE, ...retired, ...where }).join("\n");
 		expect(errors, JSON.stringify(where)).toContain("VAPID_PUBLIC_KEY");
 		// The refusal names the key, never its value.
 		expect(errors).not.toContain(RETIRED_E2E_VAPID_PUBLIC_KEY);
 	}
-	// A developer's machine or an E2E run (mock, not on Vercel) still starts with it.
-	expect(errorsOf({ ...BASE, ...retired })).toEqual([]);
+	// A developer's machine starts with it, but it counts as no keys: nothing is pushed with it,
+	// and the page is handed no key to subscribe with.
+	const dev = validateInboxEnv({ ...BASE, ...retired });
+	expect(dev.ok && dev.config.vapid).toBeNull();
+	expect(inboxConfigFromEnv({ ...BASE, ...retired, SEND_MODE: "live" }).vapid).toBeNull();
 	// And production starts with a pair of its own.
 	const fresh = generateVAPIDKeys();
 	expect(

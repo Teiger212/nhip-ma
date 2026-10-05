@@ -72,11 +72,12 @@ self.addEventListener("notificationclick", (event) => {
 				await self.clients.openWindow(url);
 				return;
 			}
-			const focused = (await open.focus()) || open;
 			try {
+				const focused = (await open.focus()) || open;
 				await focused.navigate(url);
 			} catch {
-				// A window this worker doesn't control can't be navigated; open the alert beside it.
+				// A window this worker doesn't control can't be navigated (or focused); open the
+				// alert beside it.
 				await self.clients.openWindow(url);
 			}
 		})(),

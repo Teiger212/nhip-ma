@@ -148,10 +148,14 @@ const envSchema = z
 			}
 		}
 		// The E2E pair once committed to the public repo (#135) is anyone's: production, staging
-		// (Vercel's Preview) and any live deployment refuse it. The message never echoes the key.
+		// (Vercel's Preview), any production build and any live deployment refuse it; elsewhere it
+		// counts as no keys (`vapidFromEnv`). The message never echoes the key.
 		if (
 			env.VAPID_PUBLIC_KEY === RETIRED_E2E_VAPID_PUBLIC_KEY &&
-			(env.VERCEL_ENV === "production" || env.VERCEL_ENV === "preview" || env.SEND_MODE === "live")
+			(env.NODE_ENV === "production" ||
+				env.VERCEL_ENV === "production" ||
+				env.VERCEL_ENV === "preview" ||
+				env.SEND_MODE === "live")
 		) {
 			ctx.addIssue({
 				code: "custom",
@@ -370,6 +374,8 @@ function vapidFromEnv(
 	privateKey: string | undefined,
 	subject: string | undefined,
 ): Vapid | null {
+	// The retired E2E pair is anyone's (#135): wherever it was not refused, it still pushes nothing.
+	if (publicKey === RETIRED_E2E_VAPID_PUBLIC_KEY) return null;
 	return publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null;
 }
 

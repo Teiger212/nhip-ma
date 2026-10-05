@@ -22,8 +22,12 @@ export async function GET(request: Request): Promise<Response> {
 	const gate = await requireInboxSession(request);
 	if (gate.denied) return gate.denied;
 	const devices = await pushSubscriptionsForSession(gate.viewer.userId, gate.session.id);
+	// An impersonating admin can't add a device (POST answers 403), so nothing offers to.
+	const publicKey = gate.session.impersonated
+		? null
+		: (getRuntime().config.vapid?.publicKey ?? null);
 	return NextResponse.json(
-		{ publicKey: getRuntime().config.vapid?.publicKey ?? null, on: devices.length > 0 },
+		{ publicKey, on: devices.length > 0 },
 		{ headers: { "Cache-Control": "no-store" } },
 	);
 }
