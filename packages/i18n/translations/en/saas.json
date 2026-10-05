@@ -712,6 +712,23 @@
 			"columns": {
 				"type": "Notification",
 				"inApp": "In-app"
+			},
+			"thisDevice": {
+				"title": "This device",
+				"description": "Alerts on this phone or computer when a guest writes.",
+				"on": "Alerts are on for this device.",
+				"off": "Alerts are off for this device.",
+				"turnOn": "Turn on alerts",
+				"sendTest": "Send test alert",
+				"sent": "Test alert sent.",
+				"testFailed": "The test alert didn't send. Try again.",
+				"turnOnFailed": "Alerts couldn't be turned on. Try again.",
+				"unavailable": "Alerts aren't set up on this server yet.",
+				"unsupported": "This browser can't get alerts. Try Chrome, or Nhịp from an iPhone's Home Screen.",
+				"blocked": "Notifications are blocked. Allow them for this site in your browser's settings, then reload the page.",
+				"iphoneShare": "In Safari, tap Share.",
+				"iphoneAdd": "Choose Add to Home Screen.",
+				"iphoneOpen": "Open Nhịp from your Home Screen and turn alerts on."
 			}
 		},
 		"menu": {
@@ -971,6 +988,29 @@
 			"noteOptional": "Note (optional)",
 			"noteHint": "Don't include the guest's name or contact details.",
 			"noteRequired": "Add a note for \"Other\"."
+		},
+		"alertsPanel": {
+			"turnOn": "Turn on alerts",
+			"notNow": "Not now",
+			"failed": "Alerts couldn't be turned on. Try again.",
+			"ask": {
+				"title": "Get an alert when a guest writes.",
+				"body": "This device tells you the moment a guest is waiting, even with Nhịp closed."
+			},
+			"gone": {
+				"title": "Alerts stopped on this device.",
+				"body": "Turn them on again to know when a guest writes."
+			},
+			"blocked": {
+				"title": "Notifications are blocked for Nhịp on this device.",
+				"body": "Allow notifications for this site in your browser's settings, then reload the page."
+			},
+			"iphone": {
+				"title": "On iPhone, alerts need Nhịp on your Home Screen.",
+				"share": "In Safari, tap Share.",
+				"add": "Choose Add to Home Screen.",
+				"open": "Open Nhịp from your Home Screen and turn alerts on."
+			}
 		}
 	}
 }

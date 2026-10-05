@@ -55,6 +55,8 @@ is renamed.
 
 - **Inbox**: the agent's screen, and where every operator lands. A **queue**, not a
   mailbox: the default view is what waits on the operator, oldest waiting guest first.
+  Nhịp installs as an app that opens on it, and it asks, never on its own, to turn alerts on
+  for the device (ADR 0019).
 - **Admin area**: the platform admin's screens, and the only ones they see: offices, each
   office's pipe connections and status, and its members. Where the platform admin lands.
 
@@ -106,7 +108,8 @@ is renamed.
 - **Device**: a browser or installed app on which an operator turned alerts on. Every device
   gets every alert until the operator signs out on it, the account ends, or its push service
   says it is gone. An operator keeps at most 10; a phone that changes hands moves to whoever
-  turns alerts on there next.
+  turns alerts on there next, from that same browser (knowing a device's address is not
+  enough to take it).
 
 ## Funnel
 

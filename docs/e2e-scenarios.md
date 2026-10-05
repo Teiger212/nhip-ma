@@ -414,7 +414,7 @@ id is stored once, on the thread, and travels in no address.
 ## Alerts (ADR 0019, spec #84)
 
 A phone's lock screen is out of reach of a test, so E2E reads the **alert log**. E2E runs with
-`SEND_MODE=mock` and a throwaway VAPID pair (`.env.e2e`): Nhịp decides every alert exactly as
+`SEND_MODE=mock` and a VAPID pair made fresh for each run (`playwright.config.ts`, CI; never committed, #135): Nhịp decides every alert exactly as
 it would live, writes one `inbox_alert` row per operator per alert (who, which thread, kind
 `guest`, `returned`, `assigned` or `test`, whether it sounded, and its link
 `/<locale>/inbox?alert=<the row's own id>`), and sends no push. Reading that log
@@ -528,6 +528,25 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      panel shows the Add to Home Screen steps instead of the pill.
    - **On:** permission "granted" and a device added for this session: no panel.
    - Nothing on it is red.
+
+   Spec: `apps/saas/tests/alerts-device.spec.ts` (Alerts 9; each test is one invited agent of an
+   office of the test's own, on `/en/inbox`. The panel is `data-test="alerts-panel"`, whatever it
+   says. The permission stub sets `Notification.permission`, `requestPermission`, the Permissions
+   API's and the push manager's permission state alike, and counts every `requestPermission` (and
+   a `pushManager.subscribe` while not granted) as a prompt: zero on load and on reload, and at
+   least one once "Turn on alerts" is tapped, which proves the count. The pill is one button,
+   Dispatch Blue #2563eb, fully rounded. "Nothing red" is no painted colour (text, background,
+   visible border, outline, SVG fill and stroke, each read back through a canvas so `oklch` counts)
+   within reach of #dc2626, #f87171 or the theme's `--destructive`, judged on the asking, alerts
+   stopped, blocked and iPhone panels. Not now: gone, gone after a reload, still gone with the
+   page's clock 6 days on, back 7 days and a minute on (`page.clock`); "another browser" is the
+   same agent signed in through the login page in a new context. iPhone: the iPhone 15 Safari user
+   agent on Chromium at a desktop size, once with no Notification API (as Safari has it outside
+   the Home Screen) and once with permission "default". On: with "granted" and no device the panel
+   says "Alerts stopped on this device." with the pill and Not now; after the device is added and
+   the page reloaded, no panel, none of its titles and no pill. An absence after a load is judged
+   once the Inbox's empty list has shown).
+
 10. **Signing out removes the device** (#134). An agent signs in with a login of the test's
     own (signing out ends the session it uses), adds a device as above, and adds a second one
     from a second signed-in context. They sign out through the user menu in the first:
@@ -543,6 +562,14 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     writes one `test` alert for that operator and says it was sent. The same through the API:
     `POST /api/alerts/devices/test` → 202; signed out, 401; with no device on this session,
     409 and the row offers to turn alerts on instead.
+    Spec: `apps/saas/tests/alerts-device.spec.ts` (Alerts 11; one invited agent of an office of the
+    test's own, on `/en/settings/notifications`, permission "granted" by the same stub as Alerts 9.
+    "One `test` alert" is counted in the office's log for that agent: the anonymous 401, then the
+    signed-in 202, after which there is one, then the button, after which there are two. "No device on
+    this session" is the same agent signed in again in a second browser while their first browser
+    has a device: that session's request answers 409, its row says "Alerts are off for this
+    device." with "Turn on alerts" and no "Send test alert", the log still has no test alert, and
+    the first browser's 202 then makes exactly one).
 12. **While Nhịp is open, the tab and a toast say so** (#136). An agent is on Settings, and a
     guest on a thread assigned to them writes.
     - Within the poll, the tab title reads "(n) Inbox", where n is the nav's Your-turn count,
