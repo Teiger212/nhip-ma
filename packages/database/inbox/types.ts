@@ -530,6 +530,16 @@ export type InboxStore = {
 	 * returns false when the thread or such a member is not found.
 	 */
 	setOwner: (conversationId: string, ownerId: string | null, officeId: string) => Promise<boolean>;
+	/**
+	 * `setOwner`, also saying whom the thread was taken from: the owner it had, read under the
+	 * row's lock, so concurrent changes each see the owner they replaced (#133). Null where
+	 * `setOwner` returns false.
+	 */
+	reassign: (
+		conversationId: string,
+		ownerId: string | null,
+		officeId: string,
+	) => Promise<{ previousOwnerId: string | null } | null>;
 	recordWebhookDelivery: (delivery: WebhookDeliveryRecord) => Promise<void>;
 	/** The latest deliveries, newest first. */
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;

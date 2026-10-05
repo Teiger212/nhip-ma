@@ -387,14 +387,14 @@ test("bell rows naming the thread go with it and are counted; others stay (ADR 0
 	const store = await testInboxStore();
 	const thread = await write(store, "moved", Date.now() - MINUTE);
 	const other = await write(store, "stays", Date.now() - MINUTE);
-	// The reassignment bell row's shape: `data.threadId` is the thread's opaque id.
+	// The reassignment bell row (#133): `data.threadId` is the thread's opaque id.
 	await testDb.notification.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
 	await testDb.notification.createMany({
 		data: [
 			{
 				userId: "agent-1",
-				type: "APP_UPDATE",
-				data: { threadId: thread.id, guest: "Moved Guest" },
+				type: "THREAD_MOVED",
+				data: { threadId: thread.id, guestName: "Moved Guest" },
 			},
 			{ userId: "agent-2", type: "APP_UPDATE", data: { threadId: thread.id } },
 			{ userId: "agent-1", type: "APP_UPDATE", data: { threadId: other.id } },

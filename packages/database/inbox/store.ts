@@ -513,6 +513,36 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		return (await db.conversation.count({ where: { id, officeId } })) > 0;
 	}
 
+	async function reassign(
+		conversationId: string,
+		ownerId: string | null,
+		officeId: string,
+	): Promise<{ previousOwnerId: string | null } | null> {
+		if (ownerId) {
+			// An operator of the office, never the platform admin: their membership is inert, so
+			// their thread would be seen and alerted by no one (ADR 0022, #174).
+			const member = await db.member.findUnique({
+				where: { organizationId_userId: { organizationId: officeId, userId: ownerId } },
+				select: { user: { select: { role: true } } },
+			});
+			if (!member || isPlatformAdmin(member.user.role)) return null;
+		}
+		// The owner it had is read under the row's lock, so two managers at once (or a manager's
+		// reply claiming it) each see the owner their own change replaced (#133).
+		return db.$transaction(async (tx) => {
+			const rows = await tx.$queryRaw<Array<{ ownerId: string | null }>>`
+				SELECT "ownerId" FROM "inbox_conversation"
+				WHERE "id" = ${conversationId} AND "officeId" = ${officeId}
+				FOR UPDATE`;
+			if (rows.length === 0) return null;
+			await tx.conversation.updateMany({
+				where: { id: conversationId, officeId },
+				data: { ownerId },
+			});
+			return { previousOwnerId: rows[0].ownerId };
+		});
+	}
+
 	return {
 		async listConversations(viewer) {
 			const records = await db.conversation.findMany({
@@ -1171,21 +1201,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async setOwner(conversationId, ownerId, officeId) {
-			if (ownerId) {
-				// An operator of the office, never the platform admin: their membership is inert, so
-				// their thread would be seen and alerted by no one (ADR 0022, #174).
-				const member = await db.member.findUnique({
-					where: { organizationId_userId: { organizationId: officeId, userId: ownerId } },
-					select: { user: { select: { role: true } } },
-				});
-				if (!member || isPlatformAdmin(member.user.role)) return false;
-			}
-			const { count } = await db.conversation.updateMany({
-				where: { id: conversationId, officeId },
-				data: { ownerId },
-			});
-			return count === 1;
+			return (await reassign(conversationId, ownerId, officeId)) !== null;
 		},
+
+		reassign,
 
 		async recordWebhookDelivery(delivery) {
 			// Kept to match a delivery to its messages, never to say who the guest is (#141).

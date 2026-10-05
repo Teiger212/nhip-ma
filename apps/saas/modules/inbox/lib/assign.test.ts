@@ -112,6 +112,24 @@ test("two managers assigning: the last setOwner wins, and the first-chosen agent
 	expect(await reach(agent("agent-1"), conv.id)).toEqual(NONE);
 });
 
+test("two managers reassigning at once each learn the owner their own change replaced (#133)", async () => {
+	const conv = await guestWrites("g-at-once");
+	await store.setOwner(conv.id, "agent-1", OFFICE);
+	const [toTwo, toManager] = await Promise.all([
+		store.reassign(conv.id, "agent-2", OFFICE),
+		store.reassign(conv.id, "walk-user", OFFICE),
+	]);
+	// One ran first and took the thread from agent 1; the other took it from whoever that gave it
+	// to. Read before the lock, both would say agent 1, and agent 1 would hear of it twice.
+	const replaced = [toTwo?.previousOwnerId, toManager?.previousOwnerId];
+	const last = (await store.getConversation(conv.id, manager))?.owner?.id;
+	expect(replaced).toEqual(
+		expect.arrayContaining(last === "agent-2" ? ["agent-1", "walk-user"] : ["agent-1", "agent-2"]),
+	);
+	expect(await store.reassign(conv.id, "not-a-member", OFFICE)).toBeNull();
+	expect(await store.reassign("no-such-thread", null, OFFICE)).toBeNull();
+});
+
 test("returned to Unassigned, a thread leaves its agent", async () => {
 	const conv = await guestWrites("g-returned");
 	await store.setOwner(conv.id, "agent-1", OFFICE);

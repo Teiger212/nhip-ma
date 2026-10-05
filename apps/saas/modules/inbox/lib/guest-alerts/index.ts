@@ -20,7 +20,7 @@ import { type AlertDelivery, type AlertTransport, alertTransport } from "./trans
 export const ALERT_RETENTION_DAYS = 30;
 
 /** Some recipients' alerts failed; says how many and the first error's kind, nothing more. */
-class RecipientsFailed extends Error {
+export class RecipientsFailed extends Error {
 	constructor(kinds: string[]) {
 		super(`failed for ${kinds.length} recipient(s) (${kinds[0]})`);
 		this.name = "RecipientsFailed";
