@@ -11,8 +11,8 @@ import { GuestMark, ThreadFlags } from "./ThreadParts";
 
 /**
  * One thread in the list: guest, when they last wrote, a preview, the pipe and the turn. An
- * `action` (a manager's "Assign to…" on Unassigned rows, ADR 0022) sits at the row's end, on the
- * badges' line, beside the row's button rather than in it: a click on it never opens the thread.
+ * `action` (a manager's "Assign to…" on Unassigned rows, ADR 0022) sits at the row's end, beside
+ * the row's button rather than in it: a click on it never opens the thread.
  */
 export function ThreadRow({
 	conversation,
@@ -43,7 +43,9 @@ export function ThreadRow({
 			>
 				<GuestMark name={name} selected={active} />
 				<span className="min-w-0 flex-1">
-					<span className="gap-2 flex w-full items-baseline justify-between">
+					<span
+						className={cn("gap-2 flex w-full items-baseline justify-between", action && "md:pr-24")}
+					>
 						<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
 						{when ? (
 							<time
@@ -59,13 +61,18 @@ export function ThreadRow({
 							{preview}
 						</span>
 					) : null}
-					<span className={cn("mt-1.5 gap-1 flex flex-wrap items-center", action && "pr-20")}>
+					<span
+						className={cn("mt-1.5 gap-1 flex flex-wrap items-center", action && "pr-20 md:pr-0")}
+					>
 						<ThreadFlags conversation={conversation} />
 					</span>
 				</span>
 			</button>
-			{/* Its 44px target centred on the badges' last line. */}
-			{action ? <div className="right-1.5 bottom-0 absolute">{action}</div> : null}
+			{/* A phone: its 44px target centred on the badges' last line. From `md`: the 24px pill
+			    on the name's line, so the badges keep the row's whole width. */}
+			{action ? (
+				<div className="right-1.5 bottom-0 md:top-2.5 md:bottom-auto absolute">{action}</div>
+			) : null}
 		</li>
 	);
 }
