@@ -1,7 +1,9 @@
 # 0019. A guest's message alerts the operators who can open the thread, by web push
 
 Date: 2026-10-04. Status: accepted. Extends ADRs 0004 and 0015; supersedes ADR 0015's "No
-notification to the new owner until alerts (milestone 4)".
+notification to the new owner until alerts (milestone 4)". "Who" is amended by ADR 0022:
+read "pool" as Unassigned, whose guest alerts the office's managers only, and read "a
+reassignment" as any assignment.
 
 ## Context
 

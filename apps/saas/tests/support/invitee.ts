@@ -59,7 +59,9 @@ export async function openInboxAsNewAccount(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(page).toHaveURL(/\/en\/onboarding/);
 	await page.getByTestId("onboarding-continue").click();
-	await expect(page).toHaveURL(/\/en\/inbox/);
+	// Saving the first-run step and loading the inbox can outlast the default 5 s when many
+	// workers share the machine (seen in --repeat-each runs).
+	await expect(page).toHaveURL(/\/en\/inbox/, { timeout: 15_000 });
 }
 
 /**

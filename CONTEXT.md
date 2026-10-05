@@ -6,9 +6,10 @@ is renamed.
 
 ## Product
 
-- **Nhịp**: a speed-to-lead product for high-end apartments in Vietnam. Turns an inbound
-  lead on WhatsApp or Zalo into a human-approved reply in the guest's language, at any
-  hour, from the agency's own number.
+- **Nhịp**: a speed-to-lead product for high-end apartments in Vietnam. Greets a new lead on
+  WhatsApp or Zalo within seconds with one labelled auto-reply (ADR 0021). It then turns each
+  of the guest's messages into a human-approved reply in the guest's language, at any hour,
+  from the agency's own number.
 - **Language bridge**: the durable value. Agents who work in Vietnamese and some English
   serve multinational guests (JA, KO, RU, EN today) without a translator in the loop.
   Two-way: every guest message is translated into the operator's language (ADR 0007),
@@ -23,11 +24,12 @@ is renamed.
   expat on a foreign number: a WhatsApp number is always read with its country code; full
   international input comes after go-live (#125).
 - **Agent**: the person who answers guests. The **user** of the queue. Works mostly in
-  Vietnamese, some English, on a phone and at a desk about equally. Sees the office's pool and the threads they own
-  (ADR 0015).
+  Vietnamese, some English, on a phone and at a desk about equally. Sees only the threads a
+  manager assigned to them (ADR 0022).
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
-  office, reassigns owners, invites the office's agents (ADR 0015), and deletes a guest's data
+  office, assigns every new lead and reassigns owners (ADR 0022), turns the office's
+  auto-reply off or on (ADR 0021), invites the office's agents (ADR 0015), and deletes a guest's data
   on request (ADR 0020). An office may have
   several. (In the kit: a member with the role `owner` or `admin`; an agent is `member`.)
   _Avoid_: admin, office admin (admin means the platform admin only).
@@ -39,7 +41,7 @@ is renamed.
   the membership ends, the account ends, except the platform admin's (ADR 0013).
 - **Office**: the tenant (ADR 0008). Owns its pipes, its CRM connection if any, its agents, and
   its threads.
-  A thread starts in the office's pool and belongs to its owner once answered (ADR 0015).
+  A thread starts Unassigned and belongs to the operator a manager assigns it to (ADR 0022).
   One agency, one office is the MVP; multi-office agencies later. Every office lives in
   one shared Nhịp, yet each feels standalone: its own address (a subdomain), its own name,
   and no sign that other offices exist.
@@ -58,21 +60,28 @@ is renamed.
 
 ## Queue
 
-- **Your turn**: the guest spoke last (there is an unanswered inbound). The only pending
-  state. A fact, not a judgment.
+- **Your turn**: the guest's latest message has no human reply yet (there is an unanswered
+  inbound). The auto-reply is not a reply (ADR 0021). The only pending state. A fact, not a
+  judgment.
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
-- **Sent**: the office spoke last.
-- **Pool**: the office's threads no agent owns yet. Every agent in the office sees them,
-  so a new guest is answered by whoever is available (ADR 0015). An agent's Inbox is the
-  pool and their own threads, labelled "Pool" and "Yours"; a colleague's threads do not
-  exist for them (not listed, counted, searched or opened). Home stays office-level.
-- **Owner**: the operator who approved a thread's first reply in Nhịp: the thread is **claimed**
-  at that approval, even if the send then fails. From then on it is in that operator's queue
-  only (and every manager's). A reply sent from the WhatsApp or Zalo app itself claims
-  nothing. When the owner's account ends (ADR 0013), the thread returns to the pool.
-- **Reassign**: a manager gives a thread to another operator of the office, or back to the
-  pool. Only managers reassign; agents never hand threads on.
+- **Sent**: the guest's latest message has a human reply.
+- **Unassigned**: the office's threads no operator owns yet: every new lead, until a manager
+  assigns it (ADR 0022). Only managers see them: the Inbox's Unassigned view comes first,
+  and a manager's Waiting now lists them first. An agent's Inbox is only their own threads;
+  Unassigned and colleagues' threads don't exist for them (not listed, counted, searched or
+  opened). Home stays office-level. _Avoid_: pool.
+- **Owner**: the operator a manager assigned the thread to (ADR 0022). From then on it is in
+  that operator's queue only (and every manager's). A manager who approves a reply on an
+  Unassigned thread **claims** it at that approval and can reassign it at any time (ADR 0022).
+  A reply sent from the WhatsApp
+  or Zalo app itself, or the auto-reply, claims nothing. When the owner's account ends (ADR
+  0013), the thread returns to Unassigned.
+- **Assign**: a manager gives an Unassigned thread to an operator of the office ("Assign
+  to…"). **Reassign**: gives an owned thread to another operator, or back to Unassigned. Any
+  manager, at any time; the last assignment wins. Agents never hand threads on (ADR 0022).
+  The operator who loses the thread gets a bell row naming the guest ("Minji Kim was moved to
+  another agent"), with no push.
 - **Resolved**: the CRM reports won or lost. Leaves the queue (and the nav count) until the guest
   writes again after Nhịp first saw that outcome, not the CRM's own close date; visible under
   Sent / All with a neutral Won or Lost in place of the turn (ADR 0003).
@@ -85,15 +94,15 @@ is renamed.
 
 - **Lead**: a guest who wrote in. One per conversation. A deleted guest's lead still counts,
   through its lead tally (ADR 0020).
-- **Engaged**: a lead who received at least one office reply: an approved send, or a reply
-  an agent sent from the WhatsApp or Zalo app itself. Mock sends count only in a mock
-  deployment.
+- **Engaged**: a lead who received at least one human reply: an approved send, or a reply
+  an agent sent from the WhatsApp or Zalo app itself. The auto-reply doesn't count (ADR
+  0021). Mock sends count only in a mock deployment.
 - **In conversation**: a lead with more than one exchange (a guest message after the
-  office's first reply).
+  office's first human reply).
 - **Closing**: a lead that became a signed lease or a completed sale. Known only through
   the CRM adapter, never inferred from chat.
 - **Lost**: a lead the office marked lost in its CRM, with reason where known.
-- **Response time**: first inbound to the office's first reply (the first `sent` Answer's
+- **Response time**: first inbound to the office's first human reply; never the auto-reply (the first `sent` Answer's
   `sentAt`, or the first reply from the vendor's app, whichever came first). Supporting metric: median and 90th percentile over the answered leads.
 - **Window**: Home counts the leads whose first message landed in the last 30 days, and
   engaged and in conversation inside that cohort, so the funnel never widens. The 30 days
@@ -103,8 +112,25 @@ is renamed.
 
 - **Approve and send**: the single send action: a human approving one suggested reply for
   one inbound message. Never automatic.
-- **Reply-only**: every send answers exactly one guest message; one send per inbound; no
-  unprompted sends (nudges deferred, ADR 0006).
+- **Reply-only**: every approved send answers exactly one guest message; one send per
+  inbound. Nothing else is sent, except the auto-reply (nudges deferred, ADR 0006).
+- **Auto-reply**: the one message Nhịp sends on its own (ADR 0021).
+  - **When:** an answer to a new guest's first message, sent within seconds without an
+    approval. At most one per thread. On by default; a manager can turn it off for the office.
+  - **What:** it thanks the guest, acknowledges what they gave, and asks for at most two
+    missing details. It never gives prices, availability, listings, legal matters, promises
+    or times.
+  - **Who writes it:** the model, within a post-check. The fixed template stands in when the
+    model is off, slow (about 10 s) or over the office's monthly cap, or when its text fails
+    the post-check. A language that can't be greeted gets the English template.
+  - **Only new threads:** turning it on later never greets a thread that began while it was
+    off.
+  - **The label:** an always-on line naming the office ("Auto-reply from Saigon Prime: a
+    colleague will continue with you right here"). It is proposed as the last line, pending
+    the lawyer.
+  - **What it isn't:** not an Answer. It claims nothing, leaves the thread Your turn, and
+    counts nowhere in the funnel.
+  - **In the thread:** an "Auto-reply" badge, with "Model" or "Template".
 - **Answer**: the record of one send, the office's reply to exactly one guest message,
   on file from the moment the operator approves it and through `sending`, `sent`,
   `failed` or `unknown` (ADR 0011). One per inbound. Keeps the sender's name after the
@@ -119,10 +145,13 @@ is renamed.
 ## Drafting
 
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
-  (Qualification), first-reply template, operator note. Regex and templates.
-- **Suggested reply**: the text in the reply box. For a first reply, the template. For a
-  follow-up, an AI draft from the whole conversation (ADR 0005). Always editable, never
-  sent without Approve and send.
+  (Qualification), first-reply template, operator note. Regex and templates. The
+  auto-reply's fallback template is built from it too (ADR 0021).
+- **Suggested reply**: the text in the reply box. For a first reply in an office with the
+  auto-reply off, the template. Once the auto-reply is sent, and for every follow-up, an AI
+  draft from the whole conversation, written knowing the greeting went out, so it never
+  greets twice; with no model, the follow-up template (ADR 0005, ADR 0021). Always editable,
+  never sent without Approve and send.
 - **Draft adapter**: one interface, one implementation per model provider, with the
   template drafter as fallback.
 - **Operator note**: the agent-language summary of facts and flags. Not shown to the
@@ -132,9 +161,10 @@ is renamed.
 - **Operator language**: EN or VI, from the operator's locale setting. The target for
   translations and the language of the operator note.
 - **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class. Any
-  other language reads as EN, except Latin-script text with accents Vietnamese shares (French,
-  Spanish, Portuguese), which reads as VI. Either way the first reply and the translation use
-  the wrong language.
+  other language reads as EN. VI is read only from letters Vietnamese alone uses (ă, â, đ, ơ,
+  ư, a hook above or a dot below, ẽ ĩ ũ ỹ, any tone on ă â ê ô ơ ư) or its common words, so
+  French, Spanish and Portuguese read as EN (ADR 0021). An unsupported language is greeted in
+  English, and its translation is from English.
 
 ## Integrations
 
@@ -172,7 +202,8 @@ is renamed.
 - **Guest deletion**: a manager deleting one guest's data from Nhịp on request (Vietnam's
   PDPL; ADR 0020), from the thread header's ⋯ menu.
   - **What goes:** the thread and everything under it: messages, translations, the suggested
-    reply, sent replies, the extracted details and the CRM link.
+    reply, sent replies, the extracted details, the CRM link, and any bell row that named the
+    thread.
   - **The CRM lead goes too only if the manager ticks it.** The box is ticked by default when
     Nhịp created the lead, and unticked when Nhịp found it there. Ticked, Nhịp deletes what it
     made in the CRM: the deal, and the contact only if Nhịp created it and it has no other deal.
@@ -192,8 +223,9 @@ is renamed.
 
 Nhịp is not, and is not becoming, any of these; recorded so they do not creep in.
 
-- **Not a guest-facing bot.** Guests talk to the agency; every message they receive was
-  approved by a human.
+- **Not a guest-facing bot.** Guests talk to the agency. Nhịp sends one message on its own:
+  the labelled auto-reply to a new guest's first message (ADR 0021). Every other message
+  they receive was approved by a human, and Nhịp never converses.
 - **Not legal advice.** Paperwork is flagged to the agent, never explained to the guest.
 - **Not the record of deals.** The inbox links to a CRM through an adapter and never holds
   deals itself. The CRM is the office's own, or the built-in CRM Nhịp hosts beside the inbox

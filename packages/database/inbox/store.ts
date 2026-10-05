@@ -22,6 +22,7 @@ import type {
 	ConversationCrm,
 	ConversationSummary,
 	Draft,
+	GuestDeletionResult,
 	InboundEvent,
 	InboxStore,
 	InboxViewer,
@@ -428,6 +429,67 @@ function leadsByDay(
 	return [...days].map(([day, leads]) => ({ day, leads }));
 }
 
+/** One lead's numbers as Home counts them (ADR 0002, ADR 0011). */
+type LeadRow = { firstInboundAt: Date; firstSentAt: Date | null; wroteBack: boolean };
+
+/**
+ * The per-lead rule (ADR 0002, ADR 0020), one row per lead: its first guest message
+ * (`firstInboundAt`), the office's first reply that reached them (`firstSentAt`: the first
+ * `sent` Answer, mock sends only under `countMock`, or the first reply from the vendor's own
+ * app) and whether they wrote again after it (`wroteBack`). Home's funnel reads it for its
+ * cohort (`since`); guest deletion for one thread, with no `since`, to keep its lead tally.
+ * Every CTE starts from the office's threads, so no other office's rows are read.
+ */
+function leadRows({
+	officeId,
+	since,
+	conversationId,
+	countMock,
+}: {
+	officeId: string;
+	since?: Date;
+	conversationId?: string;
+	countMock: boolean;
+}): Prisma.Sql {
+	const thread = conversationId ? Prisma.sql`AND "id" = ${conversationId}` : Prisma.empty;
+	const cohort = since ? Prisma.sql`HAVING MIN("m"."at") >= ${since}` : Prisma.empty;
+	return Prisma.sql`
+		WITH "office" AS (
+			SELECT "id" FROM "inbox_conversation" WHERE "officeId" = ${officeId} ${thread}
+		),
+		"first" AS (
+			SELECT "m"."conversationId", MIN("m"."at") AS "firstInboundAt"
+			FROM "inbox_message" "m"
+			JOIN "office" ON "office"."id" = "m"."conversationId"
+			WHERE "m"."direction" = 'in'
+			GROUP BY "m"."conversationId"
+			${cohort}
+		),
+		"reached" AS (
+			SELECT "conversationId", MIN("at") AS "firstSentAt" FROM (
+				SELECT "a"."conversationId", "a"."sentAt" AS "at" FROM "inbox_answer" "a"
+				JOIN "first" ON "first"."conversationId" = "a"."conversationId"
+				WHERE "a"."status" = 'sent' AND (${countMock} OR NOT "a"."mock")
+				UNION ALL
+				SELECT "m"."conversationId", "m"."at" FROM "inbox_message" "m"
+				JOIN "first" ON "first"."conversationId" = "m"."conversationId"
+				WHERE "m"."direction" = 'out' AND "m"."source" = 'oa_echo'
+			) "replies" GROUP BY "conversationId"
+		)
+		SELECT "first"."firstInboundAt" AS "firstInboundAt",
+		       "reached"."firstSentAt" AS "firstSentAt",
+		       EXISTS (
+		         SELECT 1 FROM "inbox_message" "later"
+		         WHERE "later"."conversationId" = "c"."id"
+		           AND "later"."direction" = 'in'
+		           AND "later"."at" > "reached"."firstSentAt"
+		       ) AS "wroteBack"
+		FROM "inbox_conversation" "c"
+		JOIN "first" ON "first"."conversationId" = "c"."id"
+		LEFT JOIN "reached" ON "reached"."conversationId" = "c"."id"
+		WHERE "c"."officeId" = ${officeId}`;
+}
+
 export function createInboxStore(db: PrismaClient): InboxStore {
 	/** The office's thread, or null: an id never reaches another office's (#95). */
 	async function load(officeId: string, id: string, client: Db = db): Promise<Conversation | null> {
@@ -562,7 +624,9 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			try {
 				written = await write();
 			} catch (error) {
-				if (!isUniqueViolation(error)) throw error;
+				// A guest deleted between the lookup and the write (ADR 0020, P2025): run again and
+				// the guest is a new guest, with a fresh thread.
+				if (!isUniqueViolation(error) && prismaCode(error) !== "P2025") throw error;
 				written = await write();
 			}
 			return {
@@ -576,6 +640,83 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count;
 		},
 
+		async deleteGuest(officeId, conversationId, { countMock, actorId }) {
+			// Short on purpose: an approval waiting on this lock gives up after Prisma's 5 s
+			// transaction timeout (#137). No CRM call in here; the guest-deletion module makes
+			// it after the commit (ADR 0020).
+			return db.$transaction(async (tx): Promise<GuestDeletionResult> => {
+				// 1. The conversation, then 2. its Answers: approve's order (#137), so the two
+				// never deadlock. The office scope is in the lock: another office's id is not found.
+				const thread = await tx.$queryRaw<Array<{ pipe: Pipe; language: string | null }>>`
+					SELECT "pipe"::text AS "pipe", "language" FROM "inbox_conversation"
+					WHERE "id" = ${conversationId} AND "officeId" = ${officeId}
+					FOR UPDATE`;
+				if (thread.length === 0) return { ok: false, reason: "not_found" };
+				const answers = await tx.$queryRaw<Array<{ status: AnswerStatus }>>`
+					SELECT "status"::text AS "status" FROM "inbox_answer"
+					WHERE "conversationId" = ${conversationId} AND "officeId" = ${officeId}
+					FOR UPDATE`;
+				if (answers.some((answer) => answer.status === "sending")) {
+					return { ok: false, reason: "reply_sending" };
+				}
+
+				// 3. What goes, counted, and the CRM link (its ids stay in this function).
+				const [messages, translations, link, connection, actor, lead] = await Promise.all([
+					tx.message.count({ where: { conversationId, officeId } }),
+					tx.translation.count({ where: { officeId, message: { conversationId } } }),
+					tx.crmLink.findUnique({
+						where: { conversationId, officeId },
+						select: { leadId: true, outcome: true },
+					}),
+					tx.crmConnection.findUnique({ where: { officeId }, select: { kind: true } }),
+					tx.user.findUnique({ where: { id: actorId }, select: { name: true, email: true } }),
+					tx.$queryRaw<LeadRow[]>(leadRows({ officeId, conversationId, countMock })),
+				]);
+				const linked = Boolean(link?.leadId);
+
+				// 4. The lead tally, by the funnel's own rule, if the guest ever wrote in.
+				const [numbers] = lead;
+				if (numbers) {
+					await tx.leadTally.create({
+						data: {
+							id: cuid(),
+							officeId,
+							pipe: thread[0].pipe,
+							language: thread[0].language,
+							firstInboundAt: numbers.firstInboundAt,
+							firstReplyAt: numbers.firstSentAt,
+							inConversation: numbers.wroteBack,
+							outcome: link?.outcome ?? null,
+						},
+					});
+				}
+
+				// The kit's bell rows that name the thread (`data.threadId`): they name the guest too.
+				const notifications = await tx.$executeRaw`
+					DELETE FROM "notification" WHERE "data"->>'threadId' = ${conversationId}`;
+
+				// 5. The receipt: that it happened, never who the guest was.
+				await tx.guestDeletion.create({
+					data: {
+						id: cuid(),
+						officeId,
+						actorId: actor ? actorId : null,
+						actorName: actor ? operatorNameOf(actor) : actorId,
+						messages,
+						answers: answers.filter((answer) => answer.status === "sent").length,
+						translations,
+						notifications,
+						crmKind: linked ? (connection?.kind ?? null) : null,
+						crmResult: linked ? "unlinked" : null,
+					},
+				});
+
+				// 6. The thread; the cascade takes everything under it, the CRM link included.
+				await tx.conversation.delete({ where: { id_officeId: { id: conversationId, officeId } } });
+				return { ok: true, crm: linked ? "unlinked" : null };
+			});
+		},
+
 		async setOneShot(officeId, id, shot: OneShot) {
 			if (!(await exists(officeId, id))) {
 				return null;
@@ -583,27 +724,35 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			const q = shot.qualification;
 			const paperwork = { mentioned: shot.paperwork.mentioned, flag: shot.paperwork.flag };
 			const threadKey = { conversationId_officeId: { conversationId: id, officeId } };
-			await db.$transaction([
-				db.qualification.upsert({
-					where: threadKey,
-					create: { conversationId: id, officeId, ...q },
-					update: { ...q },
-				}),
-				db.draft.upsert({
-					where: threadKey,
-					create: { conversationId: id, officeId, ...shot.draft },
-					update: { ...shot.draft },
-				}),
-				db.paperwork.upsert({
-					where: threadKey,
-					create: { conversationId: id, officeId, ...paperwork },
-					update: paperwork,
-				}),
-				db.conversation.update({
-					where: { id_officeId: { id, officeId } },
-					data: { language: shot.language, updatedAt: new Date() },
-				}),
-			]);
+			// The conversation first, then the rows under it: guest deletion's lock order (ADR
+			// 0020), so a one-shot landing on a thread being deleted waits instead of deadlocking.
+			try {
+				await db.$transaction([
+					db.conversation.update({
+						where: { id_officeId: { id, officeId } },
+						data: { language: shot.language, updatedAt: new Date() },
+					}),
+					db.qualification.upsert({
+						where: threadKey,
+						create: { conversationId: id, officeId, ...q },
+						update: { ...q },
+					}),
+					db.draft.upsert({
+						where: threadKey,
+						create: { conversationId: id, officeId, ...shot.draft },
+						update: { ...shot.draft },
+					}),
+					db.paperwork.upsert({
+						where: threadKey,
+						create: { conversationId: id, officeId, ...paperwork },
+						update: paperwork,
+					}),
+				]);
+			} catch (error) {
+				// Deleted since `exists` (P2025): there is no thread to write the one-shot on.
+				if (prismaCode(error) === "P2025") return null;
+				throw error;
+			}
 			return load(officeId, id);
 		},
 
@@ -772,7 +921,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 			const at = new Date();
 			const vendorMessageId = storedVendorMessageId(result.vendorMessageId);
+			// The conversation first, then its Answer: guest deletion's lock order (ADR 0020). A
+			// deletion that locked the thread first sees this Answer still `sending` and refuses.
 			await db.$transaction([
+				db.conversation.update({
+					where: { id_officeId: { id: answer.conversationId, officeId } },
+					data: { sentAt: at, updatedAt: at },
+				}),
 				db.answer.update({
 					where: { id: answerId, officeId },
 					data: { status: "sent", sentAt: at, mock: result.mock, vendorMessageId },
@@ -790,10 +945,6 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						mock: result.mock,
 						pipeExternalId: answer.pipeExternalId,
 					},
-				}),
-				db.conversation.update({
-					where: { id_officeId: { id: answer.conversationId, officeId } },
-					data: { sentAt: at, updatedAt: at },
 				}),
 			]);
 			return load(officeId, answer.conversationId);
@@ -1067,45 +1218,15 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			const since = new Date(nowIso(window.since));
 			const until = new Date();
 			// One row per cohort lead, never per message; the percentiles, the response-time
-			// bands and the local days are the only things left for JavaScript. Every CTE starts
-			// from the office's threads (then the cohort's), so no other office's rows are read.
-			const leads = await db.$queryRaw<
-				Array<{ firstInboundAt: Date; firstSentAt: Date | null; wroteBack: boolean }>
-			>`
-				WITH "office" AS (
-					SELECT "id" FROM "inbox_conversation" WHERE "officeId" = ${viewer.officeId}
-				),
-				"first" AS (
-					SELECT "m"."conversationId", MIN("m"."at") AS "firstInboundAt"
-					FROM "inbox_message" "m"
-					JOIN "office" ON "office"."id" = "m"."conversationId"
-					WHERE "m"."direction" = 'in'
-					GROUP BY "m"."conversationId"
-					HAVING MIN("m"."at") >= ${since}
-				),
-				"reached" AS (
-					SELECT "conversationId", MIN("at") AS "firstSentAt" FROM (
-						SELECT "a"."conversationId", "a"."sentAt" AS "at" FROM "inbox_answer" "a"
-						JOIN "first" ON "first"."conversationId" = "a"."conversationId"
-						WHERE "a"."status" = 'sent' AND (${window.countMock} OR NOT "a"."mock")
-						UNION ALL
-						SELECT "m"."conversationId", "m"."at" FROM "inbox_message" "m"
-						JOIN "first" ON "first"."conversationId" = "m"."conversationId"
-						WHERE "m"."direction" = 'out' AND "m"."source" = 'oa_echo'
-					) "replies" GROUP BY "conversationId"
-				)
-				SELECT "first"."firstInboundAt" AS "firstInboundAt",
-				       "reached"."firstSentAt" AS "firstSentAt",
-				       EXISTS (
-				         SELECT 1 FROM "inbox_message" "later"
-				         WHERE "later"."conversationId" = "c"."id"
-				           AND "later"."direction" = 'in'
-				           AND "later"."at" > "reached"."firstSentAt"
-				       ) AS "wroteBack"
-				FROM "inbox_conversation" "c"
-				JOIN "first" ON "first"."conversationId" = "c"."id"
-				LEFT JOIN "reached" ON "reached"."conversationId" = "c"."id"
-				WHERE "c"."officeId" = ${viewer.officeId}
+			// bands and the local days are the only things left for JavaScript.
+			// Leads still in Nhịp, then the anonymous tallies of deleted ones (ADR 0020): the same
+			// three numbers per lead, so nothing below can tell them apart.
+			const leads = await db.$queryRaw<LeadRow[]>`
+				(${leadRows({ officeId: viewer.officeId, since, countMock: window.countMock })})
+				UNION ALL
+				SELECT "firstInboundAt", "firstReplyAt" AS "firstSentAt", "inConversation" AS "wroteBack"
+				FROM "inbox_lead_tally"
+				WHERE "officeId" = ${viewer.officeId} AND "firstInboundAt" >= ${since}
 			`;
 			const durations = leads
 				.flatMap((lead) =>

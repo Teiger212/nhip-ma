@@ -206,6 +206,36 @@ export function useSetOwner() {
 	});
 }
 
+/**
+ * A manager deletes a guest's data (ADR 0020). The thread leaves the list and its open view at
+ * once, so the Inbox selects the next thread; then the list, every thread and the your-turn
+ * count (the nav) refresh from the server.
+ */
+export function useDeleteGuest() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, deleteInCrm }: { id: string; deleteInCrm: boolean }) =>
+			api<{ crm: "deleted" | "unlinked" | "failed" | null }>(
+				`/api/conversations/${encodeURIComponent(id)}/deletion`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ deleteInCrm }),
+				},
+			),
+		onSettled: async (_result, error, { id }) => {
+			// Gone either way: deleted now, or already (`not_found`).
+			if (!error || (error instanceof InboxApiError && error.code === "not_found")) {
+				queryClient.setQueryData<ConversationSummary[]>(listQueryKey, (list) =>
+					list?.filter((item) => item.id !== id),
+				);
+				queryClient.removeQueries({ queryKey: detailQueryKey(id) });
+			}
+			await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+		},
+	});
+}
+
 function useConversationMutation(path: string) {
 	const queryClient = useQueryClient();
 	return useMutation({

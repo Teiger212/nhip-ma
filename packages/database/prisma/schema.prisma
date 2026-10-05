@@ -43,6 +43,7 @@ model User {
   answers                  Answer[]
   ownedConversations       Conversation[]               @relation("ConversationOwner")
   inboxAlerts              InboxAlert[]
+  guestDeletions           GuestDeletion[]
 
   @@unique([email])
   @@map("user")
@@ -166,6 +167,8 @@ model Organization {
   crmConnection      CrmConnection?
   mockCrmLeads       MockCrmLead[]
   inboxAlerts        InboxAlert[]
+  leadTallies        LeadTally[]
+  guestDeletions     GuestDeletion[]
 
   @@unique([slug])
   @@map("organization")
@@ -668,4 +671,63 @@ model InboxAlert {
   @@index([officeId])
   @@index([createdAt])
   @@map("inbox_alert")
+}
+
+/// One deleted guest who wrote in (ADR 0020), kept so Home's numbers for past days never move:
+/// the funnel adds tallies to its cohort. Computed by the funnel's own per-lead rule when the
+/// thread is deleted. No identifier, no thread id and no text: never the guest.
+model LeadTally {
+  id             String            @id
+  officeId       String
+  office         Organization      @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  pipe           Pipe
+  /// The guest's language as the one-shot detected it; null if it never ran.
+  language       String?
+  /// The guest's first message (the funnel's cohort and leads by day).
+  firstInboundAt DateTime
+  /// The office's first reply that counted (a sent Answer, or a reply from the OA app).
+  firstReplyAt   DateTime?
+  /// The guest wrote again after that reply.
+  inConversation Boolean
+  /// The CRM's outcome for the lead as Nhịp last heard it, for Closings and Lost (#68).
+  outcome        CrmOutcomeStatus?
+
+  @@index([officeId, firstInboundAt])
+  @@map("inbox_lead_tally")
+}
+
+/// What became of the guest's CRM lead when their data was deleted (ADR 0020).
+enum GuestDeletionCrmResult {
+  deleted
+  unlinked
+  pending
+  failed
+}
+
+/// The receipt of one guest deletion (ADR 0020): that it happened, in which office, by whom,
+/// when and how many rows went. It never names the guest: no guest name or id, no thread id and
+/// no CRM id. Read on request; no screen shows it yet.
+model GuestDeletion {
+  id            String                  @id
+  officeId      String
+  office        Organization            @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  /// The manager who deleted; the record outlives the account, like `Answer.operatorId`.
+  actorId       String?
+  actor         User?                   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  /// Who it was, kept once the account is gone (ADR 0013).
+  actorName     String
+  at            DateTime                @default(now())
+  messages      Int
+  /// Replies that went out (`sent` Answers).
+  answers       Int
+  translations  Int
+  /// Bell rows that named the thread (`notification.data.threadId`).
+  notifications Int
+  /// The office's CRM when the thread had a lead; null with no lead.
+  crmKind       CrmKind?
+  crmResult     GuestDeletionCrmResult?
+
+  @@index([officeId, at])
+  @@index([actorId])
+  @@map("inbox_guest_deletion")
 }

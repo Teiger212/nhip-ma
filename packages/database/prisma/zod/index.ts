@@ -178,6 +178,18 @@ export const InboxAlertScalarFieldEnumSchema = z.enum(['id', 'userId', 'conversa
 
 export type InboxAlertScalarFieldEnum = z.infer<typeof InboxAlertScalarFieldEnumSchema>;
 
+// File: LeadTallyScalarFieldEnum.schema.ts
+
+export const LeadTallyScalarFieldEnumSchema = z.enum(['id', 'officeId', 'pipe', 'language', 'firstInboundAt', 'firstReplyAt', 'inConversation', 'outcome'])
+
+export type LeadTallyScalarFieldEnum = z.infer<typeof LeadTallyScalarFieldEnumSchema>;
+
+// File: GuestDeletionScalarFieldEnum.schema.ts
+
+export const GuestDeletionScalarFieldEnumSchema = z.enum(['id', 'officeId', 'actorId', 'actorName', 'at', 'messages', 'answers', 'translations', 'notifications', 'crmKind', 'crmResult'])
+
+export type GuestDeletionScalarFieldEnum = z.infer<typeof GuestDeletionScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -285,6 +297,12 @@ export type CrmOutcomeStatus = z.infer<typeof CrmOutcomeStatusSchema>;
 export const AlertKindSchema = z.enum(['guest', 'returned', 'assigned', 'test'])
 
 export type AlertKind = z.infer<typeof AlertKindSchema>;
+
+// File: GuestDeletionCrmResult.schema.ts
+
+export const GuestDeletionCrmResultSchema = z.enum(['deleted', 'unlinked', 'pending', 'failed'])
+
+export type GuestDeletionCrmResult = z.infer<typeof GuestDeletionCrmResultSchema>;
 
 // File: User.schema.ts
 
@@ -740,4 +758,39 @@ export const InboxAlertSchema = z.object({
 });
 
 export type InboxAlertType = z.infer<typeof InboxAlertSchema>;
+
+
+// File: LeadTally.schema.ts
+
+export const LeadTallySchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  pipe: PipeSchema,
+  language: z.string().nullish(),
+  firstInboundAt: z.date(),
+  firstReplyAt: z.date().nullish(),
+  inConversation: z.boolean(),
+  outcome: CrmOutcomeStatusSchema.nullish(),
+});
+
+export type LeadTallyType = z.infer<typeof LeadTallySchema>;
+
+
+// File: GuestDeletion.schema.ts
+
+export const GuestDeletionSchema = z.object({
+  id: z.string(),
+  officeId: z.string(),
+  actorId: z.string().nullish(),
+  actorName: z.string(),
+  at: z.date(),
+  messages: z.number().int(),
+  answers: z.number().int(),
+  translations: z.number().int(),
+  notifications: z.number().int(),
+  crmKind: CrmKindSchema.nullish(),
+  crmResult: GuestDeletionCrmResultSchema.nullish(),
+});
+
+export type GuestDeletionType = z.infer<typeof GuestDeletionSchema>;
 
