@@ -4,6 +4,8 @@ import path from "node:path";
 
 import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
 
+import { assignerAs } from "./support/assign";
+import { ownerCopy } from "./support/copy";
 import { mockCrmLeads } from "./support/crm";
 import { guestDeletionRecords, holdReplySending } from "./support/deletion";
 import type { Admin } from "./support/fixtures";
@@ -27,6 +29,7 @@ const saas = JSON.parse(
 ) as {
 	inbox: {
 		searchAria: string;
+		yourTurn: string;
 		deletion: {
 			actions: string;
 			delete: string;
@@ -102,6 +105,11 @@ type DeletionOffice = {
 	manager: Operator;
 	/** A new guest writes to the office for the first time. */
 	newGuest: () => Promise<Guest>;
+	/**
+	 * The manager gives the guest's thread to the agent, through the owner API (ADR 0022): a new
+	 * guest waits in Unassigned, which the agent doesn't see, until then.
+	 */
+	assignToAgent: (guest: Guest) => Promise<void>;
 };
 
 const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice> }>({
@@ -117,6 +125,7 @@ const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice>
 			contexts.push(agent);
 			const manager = await newOperatorOf(admin, browser, office.id, "the manager", "admin");
 			contexts.push(manager);
+			const assigner = assignerAs(manager.api);
 			return {
 				id: office.id,
 				agent,
@@ -126,6 +135,7 @@ const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice>
 					await guest.write();
 					return guest;
 				},
+				assignToAgent: (guest) => assigner.assignGuestTo(guest.id, agent.id),
 			};
 		});
 		for (const context of contexts) {
@@ -211,7 +221,7 @@ async function threadSeenBy(
 	return thread!;
 }
 
-/** The agent answers the guest's waiting message in Nhịp (setup: it claims a pool thread). */
+/** The agent answers the guest's waiting message in Nhịp (setup; the guest must be assigned to them). */
 async function answer(agent: Operator, guest: Guest): Promise<string> {
 	const thread = await threadSeenBy(agent, guest, { waiting: true });
 	const reply = `Reply to ${guest.id}, ${randomUUID().slice(0, 8)}`;
@@ -527,6 +537,17 @@ async function leadsByDay(page: Page): Promise<string[]> {
 	return days;
 }
 
+/** Home's Leads in, read afresh from its funnel. */
+async function leadsIn(page: Page): Promise<number> {
+	await page.goto("/en/home");
+	const funnelList = page.getByRole("main").getByRole("list", { name: homeCopy.funnel.title });
+	await expect(funnelList).toBeVisible();
+	const said = await funnelList.ariaSnapshot();
+	const match = /paragraph: \d+ (.+)\n\s*- paragraph: "(\d+)"/.exec(said);
+	expect(match?.[1], "the funnel starts with Leads in").toBe(homeCopy.funnel.leadsIn);
+	return Number(match![2]);
+}
+
 /** Home's Waiting now entry for the guest (a link to their thread). */
 function waitingNowEntry(page: Page, guest: Guest) {
 	return page.getByRole("main").getByRole("link").filter({ hasText: guest.id });
@@ -544,13 +565,16 @@ test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
 		const office = await newOffice("Deletion 1");
 		const { agent, manager } = office;
 
-		// A guest writes; the agent replies to the first message; the guest writes twice more:
-		// three messages from the guest and one reply. Another guest waits in the pool.
+		// A guest writes, and the manager gives them to the agent, who replies to the first message;
+		// the guest writes twice more: three messages from the guest and one reply. Another guest,
+		// also the agent's, waits on a reply.
 		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
 		await answer(agent, guest);
 		await guest.write();
 		await guest.write();
 		const bystander = await office.newGuest();
+		await office.assignToAgent(bystander);
 		const { id: threadId } = await threadSeenBy(manager, guest);
 		await threadSeenBy(manager, bystander);
 
@@ -628,6 +652,10 @@ test.describe("Guest deletion 2 — Home's numbers don't move when a guest is de
 		const wroteBack = await office.newGuest();
 		const answered = await office.newGuest();
 		const waiting = await office.newGuest();
+		// The manager gives all three to the agent, so the agent's Waiting now can list them.
+		for (const guest of [wroteBack, answered, waiting]) {
+			await office.assignToAgent(guest);
+		}
 		await answer(agent, wroteBack);
 		await answer(agent, answered);
 		await wroteBack.write(`Is it still available? ${randomUUID().slice(0, 8)}`);
@@ -691,30 +719,24 @@ test.describe("Guest deletion 2 — Home's numbers don't move when a guest is de
 
 // scenario: docs/e2e-scenarios.md Guest deletion 3
 test.describe("Guest deletion 3 — an agent can't delete", () => {
-	test("the deletion API refuses the agent (403) on their own thread and on a pool thread, deleteInCrm true or false, before reading the body; their header offers no Delete guest data, the manager's does; nothing changes", async ({
+	test("the deletion API refuses the agent (403) on their own thread, deleteInCrm true or false, before reading the body; their header offers no Delete guest data, the manager's does; nothing changes", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice("Deletion 3");
 		const { agent, manager } = office;
 		const theirs = await office.newGuest();
+		await office.assignToAgent(theirs);
 		const reply = await answer(agent, theirs);
-		const inPool = await office.newGuest();
 		const { id: theirsId } = await threadSeenBy(agent, theirs);
-		const { id: poolId } = await threadSeenBy(agent, inPool);
 
 		// Through the API: refused, whatever the body, and before it is read.
-		for (const [what, threadId] of [
-			["their own thread", theirsId],
-			["a pool thread", poolId],
-		] as const) {
-			for (const body of [{ deleteInCrm: true }, { deleteInCrm: false }, undefined]) {
-				const res = await agent.api.post(deletionAddress(threadId), body);
-				const said = body === undefined ? "no body" : JSON.stringify(body);
-				expect(res.status(), `the agent deleting ${what} (${said}) is refused`).toBe(403);
-				expect(await res.json(), `the refusal says forbidden (${said})`).toEqual({
-					error: "forbidden",
-				});
-			}
+		for (const body of [{ deleteInCrm: true }, { deleteInCrm: false }, undefined]) {
+			const res = await agent.api.post(deletionAddress(theirsId), body);
+			const said = body === undefined ? "no body" : JSON.stringify(body);
+			expect(res.status(), `the agent deleting their own thread (${said}) is refused`).toBe(403);
+			expect(await res.json(), `the refusal says forbidden (${said})`).toEqual({
+				error: "forbidden",
+			});
 		}
 
 		// The manager's header on the agent's thread has the control: the positive control.
@@ -722,34 +744,27 @@ test.describe("Guest deletion 3 — an agent can't delete", () => {
 		await openThreadActionsMenu(manager.page);
 		await manager.page.keyboard.press("Escape");
 
-		// The agent's header offers nothing of the kind, on their thread or a pool thread.
-		for (const guest of [theirs, inPool]) {
-			await openThreadOf(agent, guest);
-			await expect(
-				threadActions(agent.page),
-				`the agent's header on ${guest.id} has no Thread actions`,
-			).toHaveCount(0);
-			await expect(
-				agent.page.getByRole("menuitem", { name: deletionCopy.delete }),
-				"no Delete guest data",
-			).toHaveCount(0);
-			await expect(
-				agent.page.getByRole("button", { name: deletionCopy.delete }),
-				"no Delete guest data",
-			).toHaveCount(0);
-		}
+		// The agent's header offers nothing of the kind.
+		await openThreadOf(agent, theirs);
+		await expect(
+			threadActions(agent.page),
+			`the agent's header on ${theirs.id} has no Thread actions`,
+		).toHaveCount(0);
+		await expect(
+			agent.page.getByRole("menuitem", { name: deletionCopy.delete }),
+			"no Delete guest data",
+		).toHaveCount(0);
+		await expect(
+			agent.page.getByRole("button", { name: deletionCopy.delete }),
+			"no Delete guest data",
+		).toHaveCount(0);
 
-		// Nothing changed, for the agent and the manager: both threads open, with their messages.
+		// Nothing changed, for the agent and the manager: the thread opens, with the guest's
+		// message and the agent's reply.
 		for (const operator of [agent, manager]) {
-			for (const [guest, threadId] of [
-				[inPool, poolId],
-				[theirs, theirsId],
-			] as const) {
-				const opened = await operator.api.get(threadAddress(threadId));
-				expect(opened.status(), `${operator.label} still opens ${guest.id}`).toBe(200);
-				await openThreadOf(operator, guest);
-			}
-			// The last thread opened is the agent's, with its reply.
+			const opened = await operator.api.get(threadAddress(theirsId));
+			expect(opened.status(), `${operator.label} still opens ${theirs.id}`).toBe(200);
+			await openThreadOf(operator, theirs);
 			await expect(
 				openThread(operator.page).getByText(reply, { exact: true }),
 				`${operator.label} still sees the agent's reply`,
@@ -845,6 +860,8 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 		const { agent, manager } = office;
 		const guest = await office.newGuest();
 		const bystander = await office.newGuest();
+		// The reply held sending is the agent's, so the thread is theirs (ADR 0022).
+		await office.assignToAgent(guest);
 		const { id: threadId } = await threadSeenBy(manager, guest);
 		await threadSeenBy(manager, bystander);
 		const release = holdReplySending(office.id, threadId, agent.id);
@@ -879,6 +896,85 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 	});
 });
 
+// scenario: docs/e2e-scenarios.md Guest deletion 9 (with no CRM; the mock CRM's new lead is #139's)
+test.describe("Guest deletion 9 — a guest who writes again is a new guest", () => {
+	test("after the manager deletes the agent's guest, the same Zalo user writing again has a fresh thread: Unassigned and Your turn for the manager, with only the new message of theirs, unseen by the agent, and Home counts one more lead", async ({
+		newOffice,
+	}) => {
+		const office = await newOffice("Deletion 9");
+		const { agent, manager } = office;
+
+		// The guest was the agent's and answered, so a fresh thread is told from the old one.
+		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
+		const reply = await answer(agent, guest);
+		const { id: oldId } = await threadSeenBy(manager, guest);
+		const leadsBefore = await leadsIn(manager.page);
+		expect(leadsBefore, "Home counts the guest as a lead").toBe(1);
+
+		const res = await manager.api.post(deletionAddress(oldId), { deleteInCrm: false });
+		expect(res.status(), "the manager deletes the guest's data").toBe(200);
+		await expectGoneThroughApi(manager, guest, oldId);
+
+		// The same Zalo user writes again, a new message.
+		const [first] = guest.texts;
+		const again = await guest.write(`Back again, ${randomUUID().slice(0, 8)}`);
+		const { id: newId } = await threadSeenBy(manager, guest, { waiting: true });
+
+		// The manager: Your turn, Unassigned, the new message only (an auto-reply may be there).
+		const { page } = manager;
+		await openInbox(page);
+		await search(page, guest.id);
+		const row = rowOf(page, guest);
+		await showView(page, "All");
+		await expect(row, "the manager lists the guest").toBeVisible();
+		await expect(row.getByTestId("thread-status"), "the guest is Your turn").toHaveText(
+			saas.inbox.yourTurn,
+		);
+		const flag = row.getByTestId("thread-owner");
+		await expect(flag, "the fresh thread is Unassigned").toHaveAttribute(
+			"data-owner",
+			"unassigned",
+		);
+		await expect(flag).toHaveText(ownerCopy("en").unassigned);
+		await row.click();
+		const thread = openThread(page);
+		await expect(
+			thread.getByText(again, { exact: true }),
+			"the new message is there",
+		).toBeVisible();
+		await expect(
+			thread.getByText(first, { exact: true }),
+			"the deleted message is not",
+		).toHaveCount(0);
+		await expect(thread.getByText(reply, { exact: true }), "nor the agent's old reply").toHaveCount(
+			0,
+		);
+
+		// The agent: not listed, and the thread's address is a 404.
+		const listed = await agent.api.get("/api/conversations");
+		expect(listed.status()).toBe(200);
+		expect(
+			((await listed.json()) as ListedThread[]).map((t) => t.guestId),
+			"the agent does not list the fresh thread",
+		).not.toContain(guest.id);
+		expect(
+			(await agent.api.get(threadAddress(newId))).status(),
+			"the agent opening the fresh thread finds nothing",
+		).toBe(404);
+		await openInbox(agent.page);
+		await showView(agent.page, "All");
+		await search(agent.page, guest.id);
+		await expect(view(agent.page, "All", 0), "the agent's search finds nothing").toBeVisible();
+		await expect(rowOf(agent.page, guest)).toHaveCount(0);
+
+		// Home: one more lead.
+		expect(await leadsIn(manager.page), "Home counts the returning guest as a new lead").toBe(
+			leadsBefore + 1,
+		);
+	});
+});
+
 // scenario: docs/e2e-scenarios.md Guest deletion 10 (the deletions with no CRM; the CRM box's are #139's)
 test.describe("Guest deletion 10 — the record names no guest", () => {
 	test("two deletions in an office with no CRM leave one receipt each, with the manager, a time, the message and reply counts and no CRM result; no receipt or lead tally holds the guest's name, Zalo id, thread id or text", async ({
@@ -891,6 +987,7 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 		// One guest wrote twice and was answered (3 messages, 1 reply); one wrote once (1, 0).
 		const answered = await office.newGuest();
 		await answered.write();
+		await office.assignToAgent(answered);
 		await answer(agent, answered);
 		const unanswered = await office.newGuest();
 		const { id: answeredId } = await threadSeenBy(manager, answered);

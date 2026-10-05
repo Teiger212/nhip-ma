@@ -71,12 +71,23 @@ export function pipeCopy(locale: Locale): PipeCopy {
 	};
 }
 
-/** The ownership copy (ADR 0015): the Pool / Yours flags and a new agent's empty pool. */
+/**
+ * The ownership copy (ADR 0022): the Unassigned / Yours flags, the managers' "Assign to…" control
+ * and owner filter, and an agent's Inbox with nothing assigned.
+ */
 export type OwnerCopy = {
-	pool: string;
+	/** A thread with no owner. */
+	unassigned: string;
+	/** The viewer's own thread. */
 	mine: string;
-	/** What an agent's Inbox says while the pool is empty and nothing is theirs. */
-	emptyPool: string;
+	/** The name of the thread header's owner control (managers only). */
+	assignTo: string;
+	/** The label of the managers' owner filter. */
+	filter: string;
+	/** The owner filter's every-thread option. */
+	allThreads: string;
+	/** What an agent's Inbox says while nothing is assigned to them. */
+	emptyAssigned: string;
 };
 
 export function ownerCopy(locale: Locale): OwnerCopy {
@@ -85,11 +96,18 @@ export function ownerCopy(locale: Locale): OwnerCopy {
 		`../../../../packages/i18n/translations/${locale}/saas.json`,
 	);
 	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
-		inbox: { owner: { pool: string; mine: string }; emptyPool: string };
+		inbox: {
+			owner: { unassigned: string; mine: string; assignTo: string; filter: string; all: string };
+			emptyAssigned: string;
+		};
 	};
+	const { owner } = saas.inbox;
 	return {
-		pool: saas.inbox.owner.pool,
-		mine: saas.inbox.owner.mine,
-		emptyPool: saas.inbox.emptyPool,
+		unassigned: owner.unassigned,
+		mine: owner.mine,
+		assignTo: owner.assignTo,
+		filter: owner.filter,
+		allThreads: owner.all,
+		emptyAssigned: saas.inbox.emptyAssigned,
 	};
 }

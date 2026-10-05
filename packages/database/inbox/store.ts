@@ -1140,6 +1140,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				where: { organizationId: officeId },
 				orderBy: { createdAt: "asc" },
 				select: {
+					role: true,
 					user: {
 						select: { id: true, role: true, locale: true, _count: { select: { members: true } } },
 					},
@@ -1149,10 +1150,12 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			// alert never names a guest someone cannot open (ADR 0019).
 			return members
 				.filter(({ user }) => user._count.members === 1)
-				.map(({ user }) => ({
+				.map(({ role, user }) => ({
 					userId: user.id,
 					platformRole: user.role,
 					locale: user.locale,
+					// A manager is the office's kit owner or admin (ADR 0015), as `resolveOffice` reads it.
+					manager: role === "owner" || role === "admin",
 				}));
 		},
 

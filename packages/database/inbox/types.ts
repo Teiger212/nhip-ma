@@ -330,6 +330,8 @@ export type AlertOperator = {
 	userId: string;
 	/** `user.role`: the platform admin is never alerted. */
 	platformRole: string | null;
+	/** The office's kit `owner` or `admin` (ADR 0015): alerted for Unassigned guests (ADR 0022). */
+	manager: boolean;
 	/** `user.locale`; null means Vietnamese. */
 	locale: string | null;
 };
@@ -489,7 +491,7 @@ export type InboxStore = {
 	listWebhookDeliveries: (options: { limit: number; pipe?: Pipe }) => Promise<WebhookDelivery[]>;
 	/** Delete deliveries received before `before`; returns how many went. */
 	pruneWebhookDeliveries: (before: Date) => Promise<number>;
-	/** The office's members as alerts see them: platform role and locale (ADR 0019). */
+	/** The office's members as alerts see them: platform role, locale and manager (ADR 0019, 0022). */
 	officeOperators: (officeId: string) => Promise<AlertOperator[]>;
 	/**
 	 * Log one alert to one operator (ADR 0019). Whether it sounds is decided by `sounds` from

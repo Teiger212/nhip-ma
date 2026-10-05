@@ -1,16 +1,16 @@
 import { randomUUID } from "node:crypto";
 
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 
 import type { AlertRow } from "./support/alerts";
 import { alertState } from "./support/alerts";
-import type { Admin } from "./support/fixtures";
+import { assignerAs } from "./support/assign";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import type { Joined } from "./support/invitee";
+import { joinOffice } from "./support/invitee";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { PLATFORM_ADMIN } from "./support/seed";
 import type { Api } from "./support/session";
-import { clientIpHeaders, withOrigin } from "./support/session";
 import { deliverZalo, sendZaloText, signedZaloText } from "./support/zalo";
 
 /**
@@ -21,7 +21,7 @@ const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
 
 /** An operator of the test's office, signed in in a browser of their own, on their Inbox. */
 type Operator = {
-	/** How the test speaks of them ("agent 1"). */
+	/** How the test speaks of them ("agent 1", "manager 2"). */
 	label: string;
 	/** Their account's id, as their own session tells it. */
 	id: string;
@@ -41,41 +41,60 @@ type Guest = {
 
 /**
  * An office of the test's own (the platform admin creates it, so the admin is its kit `owner`),
- * with a Zalo OA of its own and two agents and a manager who joined it through their invitation
- * links. Recipients are exact: no other spec writes to it.
+ * with a Zalo OA of its own, two agents and one or two managers (the kit's `admin`) who joined it
+ * through their invitation links. Recipients are exact: no other spec writes to it.
  */
 type AlertOffice = {
 	id: string;
 	agent1: Operator;
 	agent2: Operator;
+	/** Manager 1, who assigns. */
 	manager: Operator;
+	managers: Operator[];
 	/** The platform admin's account id. */
 	platformAdminId: string;
 	/** A guest who has not written yet. */
 	newGuest: () => Guest;
+	/** The manager gives the guest's thread to the agent, through the owner API (setup). */
+	assign: (guest: Guest, agent: Operator) => Promise<void>;
 };
 
-const test = base.extend<{ newOffice: () => Promise<AlertOffice> }>({
+const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promise<AlertOffice> }>({
 	newOffice: async ({ admin, browser, request }, use) => {
 		const oaIds: string[] = [];
-		const contexts: { close: () => Promise<void> }[] = [];
-		await use(async () => {
+		const contexts: Joined[] = [];
+		await use(async ({ managers = 1 } = {}) => {
 			const office = await admin.createOffice("Alerts");
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
 			connectZaloOa(office.id, oaId);
-			const join = async (label: string, role: "member" | "admin") => {
-				const operator = await newOperatorOf(admin, browser, office.id, label, role);
-				contexts.push(operator);
-				return operator;
+			const join = async (label: string, role: "member" | "admin"): Promise<Operator> => {
+				const joined = await joinOffice(
+					admin,
+					browser,
+					office.id,
+					role,
+					role === "admin" ? "alerts-manager" : "alerts-agent",
+				);
+				contexts.push(joined);
+				return { label, id: joined.userId, page: joined.page, api: joined.api };
 			};
+			const agent1 = await join("agent 1", "member");
+			const agent2 = await join("agent 2", "member");
+			const joinedManagers = [await join("manager 1", "admin")];
+			if (managers === 2) {
+				joinedManagers.push(await join("manager 2", "admin"));
+			}
+			const assigner = assignerAs(joinedManagers[0].api);
 			return {
 				id: office.id,
-				agent1: await join("agent 1", "member"),
-				agent2: await join("agent 2", "member"),
-				manager: await join("manager", "admin"),
+				agent1,
+				agent2,
+				manager: joinedManagers[0],
+				managers: joinedManagers,
 				platformAdminId: await ownId(admin.api),
 				newGuest: () => newGuestOf(request, oaId),
+				assign: (guest, agent) => assigner.assignGuestTo(guest.id, agent.id),
 			};
 		});
 		for (const context of contexts) {
@@ -108,27 +127,6 @@ function newGuestOf(request: APIRequestContext, oaId: string): Guest {
 	};
 }
 
-/**
- * A newly joined operator of `officeId`, signed up through the invitation link, on their Inbox:
- * an agent (the kit's `member`) or a manager (the kit's `admin`).
- */
-async function newOperatorOf(
-	admin: Admin,
-	browser: Browser,
-	officeId: string,
-	label: string,
-	role: "member" | "admin",
-): Promise<Operator & { close: () => Promise<void> }> {
-	const email = admin.newEmail(role === "admin" ? "alerts-manager" : "alerts-agent");
-	const invitationId = await admin.invite(email, officeId, role);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	const api = withOrigin(context.request);
-	return { label, id: await ownId(api), page, api, close: () => context.close() };
-}
-
 /** The kit's session, as the signed-in person's own browser reads it. */
 type SessionUser = { id: string; locale?: string | null };
 
@@ -153,7 +151,7 @@ async function setLocale(operator: Operator, locale: "en") {
 
 /* ---------------------------------------------------------------- the thread */
 
-type ListedThread = { id: string; guestId: string; unansweredInboundId: string | null };
+type ListedThread = { id: string; guestId: string };
 
 /** The guest's thread as this operator's conversations API lists it, once it is there. */
 async function threadSeenBy(operator: Operator, guest: Guest): Promise<ListedThread> {
@@ -167,52 +165,43 @@ async function threadSeenBy(operator: Operator, guest: Guest): Promise<ListedThr
 	return thread!;
 }
 
-/** The operator answers the guest's waiting message in Nhịp, which claims a pool thread. */
-async function answer(operator: Operator, guest: Guest) {
-	const thread = await threadSeenBy(operator, guest);
-	expect(thread.unansweredInboundId, "the guest is waiting on a reply").toBeTruthy();
-	const res = await operator.api.post(
-		`/api/conversations/${encodeURIComponent(thread.id)}/approve`,
-		{
-			inboundId: thread.unansweredInboundId,
-			reply: `Reply to ${guest.id}`,
-		},
-	);
-	expect(res.status(), `${operator.label} answers ${guest.id}`).toBe(200);
-}
-
 /* ---------------------------------------------------------------- the operators' phones */
 
 /** Whose phone an alert went to, as the test speaks of them. */
 function whose(office: AlertOffice, userId: string): string {
 	if (userId === office.platformAdminId) return "platform admin";
-	const operator = [office.agent1, office.agent2, office.manager].find((o) => o.id === userId);
+	const operator = [office.agent1, office.agent2, ...office.managers].find((o) => o.id === userId);
 	return operator?.label ?? `someone else (${userId})`;
 }
 
-/** The office's alerts on one thread. */
+/** The office's alerts on one thread, of every kind. */
 function alertsOn(office: AlertOffice, threadId: string): AlertRow[] {
 	return alertState.alerts(office.id).filter((row) => row.conversationId === threadId);
 }
 
-/** How many alerts each person has on the thread. */
+/** The office's alerts for a guest's message on one thread (not an assignment's, #133). */
+function guestAlertsOn(office: AlertOffice, threadId: string): AlertRow[] {
+	return alertsOn(office, threadId).filter((row) => row.kind === "guest");
+}
+
+/** How many guest alerts each person has on the thread. */
 function countsOn(office: AlertOffice, threadId: string): Record<string, number> {
 	const counts: Record<string, number> = {};
-	for (const row of alertsOn(office, threadId)) {
+	for (const row of guestAlertsOn(office, threadId)) {
 		const who = whose(office, row.userId);
 		counts[who] = (counts[who] ?? 0) + 1;
 	}
 	return counts;
 }
 
-/** Each of agent 1, agent 2 and the manager has this many alerts on the thread, nobody else any. */
-function everyOperator(count: number): Record<string, number> {
-	return { "agent 1": count, "agent 2": count, manager: count };
+/** Each of the office's managers has this many guest alerts on the thread, nobody else any. */
+function everyManager(office: AlertOffice, count: number): Record<string, number> {
+	return Object.fromEntries(office.managers.map((m) => [m.label, count]));
 }
 
 /**
- * A later guest writes and their alerts reach the three operators: whatever the earlier
- * messages were going to write has had its time. Absences are judged after this.
+ * A later guest writes and their alerts reach the managers: whatever the earlier messages were
+ * going to write has had its time. Absences are judged after this.
  */
 async function laterGuestArrives(office: AlertOffice) {
 	const later = office.newGuest();
@@ -221,53 +210,53 @@ async function laterGuestArrives(office: AlertOffice) {
 	await expect
 		.poll(() => countsOn(office, threadId), {
 			...ON_THE_PHONES,
-			message: "a later pool guest alerts the three operators",
+			message: "a later Unassigned guest alerts the managers",
 		})
-		.toEqual(everyOperator(1));
+		.toEqual(everyManager(office, 1));
 }
 
 // ---------------------------------------------------------------------------------------
 
-// scenario: docs/e2e-scenarios.md Alerts 1, 2, 5, 6, 7 (ADR 0019, #132)
+// scenario: docs/e2e-scenarios.md Alerts 1, 2, 5, 6, 7 (ADR 0019, ADR 0022, #132)
 test.describe("Alerts — who a guest's message alerts, decided and logged", () => {
 	test.describe.configure({ timeout: 180_000 });
 
 	// scenario: docs/e2e-scenarios.md Alerts 1
-	test("a pool guest alerts every agent and manager, each in their own language, and no one else", async ({
+	test("a new guest alerts the managers only, each in their own language, and no agent or anyone else", async ({
 		newOffice,
 	}) => {
-		const office = await newOffice();
-		// Agent 1 is in English; agent 2 and the manager never chose a language.
-		await setLocale(office.agent1, "en");
-		for (const operator of [office.agent2, office.manager]) {
-			expect(
-				(await sessionUser(operator.api)).locale ?? null,
-				`${operator.label} has no language set`,
-			).toBeNull();
-		}
+		test.setTimeout(240_000);
+		const office = await newOffice({ managers: 2 });
+		const [first, second] = office.managers;
+		// Manager 1 is in English; manager 2 never chose a language.
+		await setLocale(first, "en");
+		expect(
+			(await sessionUser(second.api)).locale ?? null,
+			`${second.label} has no language set`,
+		).toBeNull();
 
 		const guest = office.newGuest();
 		await guest.write();
-		const { id: threadId } = await threadSeenBy(office.agent1, guest);
+		const { id: threadId } = await threadSeenBy(first, guest);
 
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
-				message: "the pool guest alerts agent 1, agent 2 and the manager, once each",
+				message: "the new guest alerts manager 1 and manager 2, once each, and no agent",
 			})
-			.toEqual(everyOperator(1));
+			.toEqual(everyManager(office, 1));
 		await laterGuestArrives(office);
 
 		const alerts = alertsOn(office, threadId);
 		expect(
 			alerts.map((row) => whose(office, row.userId)).sort(),
-			"one alert each for agent 1, agent 2 and the manager, and none for anyone else",
-		).toEqual(["agent 1", "agent 2", "manager"]);
+			"one alert each for the two managers, and none for either agent or anyone else",
+		).toEqual(["manager 1", "manager 2"]);
 		for (const row of alerts) {
 			const who = whose(office, row.userId);
 			expect(row.kind, `${who}'s alert is a guest's message`).toBe("guest");
 			expect(row.sounded, `${who}'s alert sounds`).toBe(true);
-			const locale = who === "agent 1" ? "en" : "vi";
+			const locale = who === first.label ? "en" : "vi";
 			expect(row.link, `${who}'s alert opens the Inbox in their language`).toMatch(
 				new RegExp(`^/${locale}/inbox\\?alert=`),
 			);
@@ -282,61 +271,60 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 		const office = await newOffice();
 		const guest = office.newGuest();
 		await guest.write();
-		const { id: threadId } = await threadSeenBy(office.agent1, guest);
+		const { id: threadId } = await threadSeenBy(office.manager, guest);
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
-				message: "the pool guest's first message alerts the three operators",
+				message: "the new guest's first message alerts the manager only",
 			})
-			.toEqual(everyOperator(1));
+			.toEqual(everyManager(office, 1));
 
-		await answer(office.agent1, guest);
+		await office.assign(guest, office.agent1);
 		await guest.write(`Is it still available? ${guest.id}`);
 
-		// One new alert, agent 1's (within two minutes of the first, so it may not sound).
+		// One new guest alert, agent 1's.
+		const after = { "agent 1": 1, ...everyManager(office, 1) };
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
 				message: "the guest writing again on agent 1's thread alerts agent 1",
 			})
-			.toEqual({ "agent 1": 2, "agent 2": 1, manager: 1 });
+			.toEqual(after);
 		await laterGuestArrives(office);
 		expect(
 			countsOn(office, threadId),
 			"agent 2 and the manager got nothing for the owned thread's message",
-		).toEqual({ "agent 1": 2, "agent 2": 1, manager: 1 });
-		expect(
-			alertsOn(office, threadId).every((row) => row.kind === "guest"),
-			"every alert on the thread is a guest's message",
-		).toBe(true);
+		).toEqual(after);
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 5
-	test("a vendor retry alerts no one: the same signed Zalo message twice is one message and one alert each", async ({
+	test("a vendor retry alerts no one: the same signed Zalo message twice is one message and one alert per manager", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice();
 		const guest = office.newGuest();
 		const text = `Only once, ${guest.id}`;
 		await guest.writeDeliveredTwice(text);
-		const { id: threadId } = await threadSeenBy(office.agent1, guest);
+		const { id: threadId } = await threadSeenBy(office.manager, guest);
 
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
-				message: "the guest's message alerts the three operators",
+				message: "the guest's message alerts the manager",
 			})
-			.toEqual(everyOperator(1));
+			.toEqual(everyManager(office, 1));
 		await laterGuestArrives(office);
-		expect(countsOn(office, threadId), "one alert per operator, not two").toEqual(everyOperator(1));
+		expect(countsOn(office, threadId), "one alert per manager, not two").toEqual(
+			everyManager(office, 1),
+		);
 
-		// Agent 1 opens the thread: the message is in it once.
-		const { page } = office.agent1;
+		// The manager opens the thread: the message is in it once.
+		const { page } = office.manager;
 		await page.goto("/en/inbox");
 		const row = page
 			.getByRole("complementary")
 			.getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
-		await expect(row, "agent 1 has the guest's thread").toBeVisible();
+		await expect(row, "the manager has the guest's thread").toBeVisible();
 		await row.click();
 		await expect(
 			page.getByRole("article").getByText(text, { exact: true }),
@@ -345,14 +333,14 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 6
-	test("a burst makes one sounding alert per operator; the rest are silent replacements", async ({
+	test("a burst makes one sounding alert per manager; the rest are silent replacements", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice();
 		const guest = office.newGuest();
 		const started = Date.now();
 		await guest.write(`One, ${guest.id}`);
-		const { id: threadId } = await threadSeenBy(office.agent1, guest);
+		const { id: threadId } = await threadSeenBy(office.manager, guest);
 		await guest.write(`Two, ${guest.id}`);
 		await guest.write(`Three, ${guest.id}`);
 		// Two at the same moment.
@@ -362,18 +350,18 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
-				message: "each of the five messages alerts the three operators",
+				message: "each of the five messages alerts the manager, and no agent",
 			})
-			.toEqual(everyOperator(5));
+			.toEqual(everyManager(office, 5));
 		await laterGuestArrives(office);
 
 		const sounding: Record<string, number> = {};
-		for (const row of alertsOn(office, threadId)) {
+		for (const row of guestAlertsOn(office, threadId)) {
 			const who = whose(office, row.userId);
 			sounding[who] = (sounding[who] ?? 0) + (row.sounded ? 1 : 0);
 		}
-		expect(sounding, "exactly one sounding alert each on the thread").toEqual(everyOperator(1));
-		expect(countsOn(office, threadId), "nothing more arrived").toEqual(everyOperator(5));
+		expect(sounding, "exactly one sounding alert on the thread").toEqual(everyManager(office, 1));
+		expect(countsOn(office, threadId), "nothing more arrived").toEqual(everyManager(office, 5));
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 7
@@ -384,22 +372,22 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 
 		const guest = office.newGuest();
 		await guest.write();
-		const { id: threadId } = await threadSeenBy(office.agent1, guest);
+		const { id: threadId } = await threadSeenBy(office.manager, guest);
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
-				message: "the pool guest alerts the agents and the manager",
+				message: "the new guest alerts the manager",
 			})
-			.toEqual(everyOperator(1));
+			.toEqual(everyManager(office, 1));
 
-		await answer(office.agent1, guest);
+		await office.assign(guest, office.agent1);
 		await guest.write(`One more thing, ${guest.id}`);
 		await expect
 			.poll(() => countsOn(office, threadId), {
 				...ON_THE_PHONES,
 				message: "the guest writing again on agent 1's thread alerts agent 1",
 			})
-			.toEqual({ "agent 1": 2, "agent 2": 1, manager: 1 });
+			.toEqual({ "agent 1": 1, ...everyManager(office, 1) });
 		await laterGuestArrives(office);
 
 		expect(
