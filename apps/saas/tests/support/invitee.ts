@@ -3,6 +3,7 @@ import type { Browser, Page } from "@playwright/test";
 
 import { userIdOf } from "./assign";
 import type { Admin } from "./fixtures";
+import type { Office } from "./offices";
 import { NEW_PASSWORD } from "./seed";
 import type { Api } from "./session";
 import { clientIpHeaders, withOrigin } from "./session";
@@ -76,6 +77,44 @@ export async function expectInboxLoads(page: Page) {
 	await expect(page.getByRole("button", { name: /Your turn/ })).toBeVisible();
 	await expect(page.getByTestId("inbox-empty")).toBeVisible();
 	await expect(page.getByTestId("inbox-load-error")).toHaveCount(0);
+}
+
+/** The kit's roles: an agent is its `member`, a manager its `admin` or `owner` (CONTEXT.md). */
+export type KitRole = "member" | "admin" | "owner";
+
+/**
+ * A newcomer invited into an office by the platform admin, signed up through the invitation
+ * link in a browser context of their own (its own client IP: sign-ups are rate limited). An
+ * `owner` invitation is pushed to `ownerInvitations` for the caller to cancel: the fixture's
+ * invite knows agents and managers only.
+ */
+export async function newcomer(
+	browser: Browser,
+	admin: Admin,
+	office: Office,
+	tag: string,
+	role: KitRole,
+	ownerInvitations: string[],
+) {
+	const email = admin.newEmail(tag);
+	let invitationId: string;
+	if (role === "owner") {
+		// The fixture's invite knows agents and managers only; an owner is set up here.
+		const res = await admin.api.post("/api/auth/organization/invite-member", {
+			email,
+			role,
+			organizationId: office.id,
+		});
+		expect(res.ok(), `the platform admin invites an owner: ${await res.text()}`).toBe(true);
+		invitationId = ((await res.json()) as { id: string }).id;
+		ownerInvitations.push(invitationId);
+	} else {
+		invitationId = await admin.invite(email, office.id, role);
+	}
+	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(tag) });
+	const page = await context.newPage();
+	await signUpByInvitationLink(page, invitationId, email);
+	return { email, page, api: withOrigin(page.request), close: () => context.close() };
 }
 
 /** An operator who joined an office through the invitation link, in a browser of their own. */
