@@ -210,11 +210,15 @@ function mapMockCrmLead(row: Prisma.MockCrmLeadGetPayload<object>): MockCrmLead 
 }
 
 function toDbSource(source: MessageSource): DbMessageSource {
-	return source === "oa-echo" ? "oa_echo" : source;
+	if (source === "oa-echo") return "oa_echo";
+	if (source === "auto-reply") return "auto_reply";
+	return source;
 }
 
 function fromDbSource(source: DbMessageSource): MessageSource {
-	return source === "oa_echo" ? "oa-echo" : source;
+	if (source === "oa_echo") return "oa-echo";
+	if (source === "auto_reply") return "auto-reply";
+	return source;
 }
 
 function mapMessage(row: MessageRecord): Message {
@@ -232,6 +236,7 @@ function mapMessage(row: MessageRecord): Message {
 		vendorMessageId: row.vendorMessageId,
 		mock: row.mock ? true : undefined,
 		pipeExternalId: row.pipeExternalId,
+		writtenBy: row.writtenBy,
 		translations,
 	};
 }
@@ -316,6 +321,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		officeId: record.officeId,
 		owner: record.owner ? { id: record.owner.id, name: operatorNameOf(record.owner) } : null,
 		crm: mapCrmLink(record.crmLink),
+		autoReplyAt: isoOrNull(record.autoReplyAt),
 		messages,
 		lastGuestInboundAt: isoOrNull(record.lastGuestInboundAt),
 		sentAt: isoOrNull(record.sentAt),
@@ -954,6 +960,64 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				}),
 			]);
 			return load(officeId, answer.conversationId);
+		},
+
+		async officeAutoReply(officeId) {
+			const office = await db.organization.findUnique({
+				where: { id: officeId },
+				select: {
+					name: true,
+					inboxSetting: { select: { autoReply: true, autoReplyOnSince: true } },
+				},
+			});
+			if (!office) return null;
+			return {
+				name: office.name,
+				on: office.inboxSetting?.autoReply ?? true,
+				onSince: isoOrNull(office.inboxSetting?.autoReplyOnSince ?? null),
+			};
+		},
+
+		async claimAutoReply(officeId, id) {
+			// One conditional update: Postgres re-reads the row under its lock, so of two first
+			// messages at once only one sees `autoReplyAt` still null (ADR 0021).
+			const { count } = await db.conversation.updateMany({
+				where: {
+					id,
+					officeId,
+					autoReplyAt: null,
+					messages: { none: { direction: "out" } },
+					answers: { none: {} },
+				},
+				data: { autoReplyAt: new Date() },
+			});
+			return count === 1;
+		},
+
+		async recordAutoReply(officeId, id, reply) {
+			try {
+				await db.message.create({
+					data: {
+						id: cuid(),
+						conversationId: id,
+						officeId,
+						direction: "out",
+						source: "auto_reply",
+						text: reply.text,
+						at: reply.at,
+						// Hashed like an Answer's, so the vendor's echo of it is a duplicate (ADR 0021).
+						vendorMessageId: storedVendorMessageId(reply.result.vendorMessageId),
+						mock: reply.result.mock,
+						pipeExternalId: reply.pipeExternalId,
+						writtenBy: reply.writtenBy,
+					},
+				});
+			} catch (error) {
+				// The guest was deleted since the claim (ADR 0020): there is no thread to file it on.
+				if (isForeignKeyViolation(error)) return null;
+				throw error;
+			}
+			return load(officeId, id);
 		},
 
 		async failAnswer(officeId, answerId, reason) {

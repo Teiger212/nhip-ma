@@ -89,7 +89,7 @@ export async function seedInbox(
 					officeId,
 					at: now - thread.hoursAgo * 60 * 60 * 1000,
 				},
-				{ alerts: mockAlertTransport },
+				{ alerts: mockAlertTransport, autoReply: false },
 			),
 		);
 	}

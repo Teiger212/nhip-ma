@@ -90,13 +90,13 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: ConversationScalarFieldEnum.schema.ts
 
-export const ConversationScalarFieldEnumSchema = z.enum(['id', 'pipe', 'guestId', 'guestName', 'officeId', 'language', 'lastGuestInboundAt', 'sentAt', 'ownerId', 'updatedAt'])
+export const ConversationScalarFieldEnumSchema = z.enum(['id', 'pipe', 'guestId', 'guestName', 'officeId', 'language', 'lastGuestInboundAt', 'sentAt', 'ownerId', 'autoReplyAt', 'updatedAt'])
 
 export type ConversationScalarFieldEnum = z.infer<typeof ConversationScalarFieldEnumSchema>;
 
 // File: MessageScalarFieldEnum.schema.ts
 
-export const MessageScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'officeId', 'direction', 'source', 'text', 'at', 'vendorMessageId', 'mock', 'pipeExternalId'])
+export const MessageScalarFieldEnumSchema = z.enum(['id', 'seq', 'conversationId', 'officeId', 'direction', 'source', 'text', 'at', 'vendorMessageId', 'mock', 'pipeExternalId', 'writtenBy'])
 
 export type MessageScalarFieldEnum = z.infer<typeof MessageScalarFieldEnumSchema>;
 
@@ -177,6 +177,12 @@ export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEn
 export const InboxAlertScalarFieldEnumSchema = z.enum(['id', 'userId', 'conversationId', 'officeId', 'kind', 'sounded', 'link', 'createdAt'])
 
 export type InboxAlertScalarFieldEnum = z.infer<typeof InboxAlertScalarFieldEnumSchema>;
+
+// File: OfficeSettingScalarFieldEnum.schema.ts
+
+export const OfficeSettingScalarFieldEnumSchema = z.enum(['officeId', 'autoReply', 'autoReplyOnSince'])
+
+export type OfficeSettingScalarFieldEnum = z.infer<typeof OfficeSettingScalarFieldEnumSchema>;
 
 // File: LeadTallyScalarFieldEnum.schema.ts
 
@@ -264,7 +270,7 @@ export type MessageDirection = z.infer<typeof MessageDirectionSchema>;
 
 // File: MessageSource.schema.ts
 
-export const MessageSourceSchema = z.enum(['guest', 'oa_echo', 'nhip'])
+export const MessageSourceSchema = z.enum(['guest', 'oa_echo', 'nhip', 'auto_reply'])
 
 export type MessageSource = z.infer<typeof MessageSourceSchema>;
 
@@ -541,6 +547,7 @@ export const ConversationSchema = z.object({
   lastGuestInboundAt: z.date().nullish(),
   sentAt: z.date().nullish(),
   ownerId: z.string().nullish(),
+  autoReplyAt: z.date().nullish(),
   updatedAt: z.date(),
 });
 
@@ -561,6 +568,7 @@ export const MessageSchema = z.object({
   vendorMessageId: z.string().nullish(),
   mock: z.boolean(),
   pipeExternalId: z.string().nullish(),
+  writtenBy: DraftSourceSchema.nullish(),
 });
 
 export type MessageType = z.infer<typeof MessageSchema>;
@@ -770,6 +778,17 @@ export const InboxAlertSchema = z.object({
 });
 
 export type InboxAlertType = z.infer<typeof InboxAlertSchema>;
+
+
+// File: OfficeSetting.schema.ts
+
+export const OfficeSettingSchema = z.object({
+  officeId: z.string(),
+  autoReply: z.boolean().default(true),
+  autoReplyOnSince: z.date().nullish(),
+});
+
+export type OfficeSettingType = z.infer<typeof OfficeSettingSchema>;
 
 
 // File: LeadTally.schema.ts

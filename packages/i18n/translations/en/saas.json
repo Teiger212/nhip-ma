@@ -914,7 +914,12 @@
 		"source": {
 			"guest": "Guest",
 			"nhip": "Sent from Nhịp",
-			"oaEcho": "Sent from the office's app"
+			"oaEcho": "Sent from the office's app",
+			"autoReply": "Auto-reply"
+		},
+		"autoReply": {
+			"model": "Model",
+			"template": "Template"
 		},
 		"crm": {
 			"inCrm": "In CRM: {name}",

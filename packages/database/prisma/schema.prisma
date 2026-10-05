@@ -170,6 +170,7 @@ model Organization {
   inboxAlerts        InboxAlert[]
   leadTallies        LeadTally[]
   guestDeletions     GuestDeletion[]
+  inboxSetting       OfficeSetting?
 
   @@unique([slug])
   @@map("organization")
@@ -285,11 +286,13 @@ enum MessageDirection {
 }
 
 /// `oa_echo` is the on-disk spelling of the domain's `oa-echo` (an agent replying from
-/// the OA app); the store translates at its boundary.
+/// the OA app), and `auto_reply` of `auto-reply` (the greeting Nhịp sends on its own, ADR
+/// 0021); the store translates at its boundary.
 enum MessageSource {
   guest
   oa_echo
   nhip
+  auto_reply
 }
 
 enum DraftSource {
@@ -324,6 +327,9 @@ model Conversation {
   /// account ends leaves the thread Unassigned.
   ownerId            String?
   owner              User?          @relation("ConversationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  /// When the auto-reply claimed this thread (ADR 0021): set once, by a conditional update
+  /// from null, so two first messages at once still make one greeting.
+  autoReplyAt        DateTime?
   updatedAt          DateTime
   messages           Message[]
   qualification      Qualification?
@@ -357,6 +363,8 @@ model Message {
   vendorMessageId     String?
   mock                Boolean              @default(false)
   pipeExternalId      String?
+  /// Who wrote an auto-reply (ADR 0021): the template or the model. Null for every other message.
+  writtenBy           DraftSource?
   translations        Translation[]
   translationFailures TranslationFailure[]
   answer              Answer?
@@ -672,6 +680,19 @@ model InboxAlert {
   @@index([officeId])
   @@index([createdAt])
   @@map("inbox_alert")
+}
+
+/// An office's inbox settings (ADR 0021). No row means the defaults: the auto-reply on, since
+/// the office began.
+model OfficeSetting {
+  officeId         String       @id
+  office           Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  /// Whether a new guest's first message gets the auto-reply.
+  autoReply        Boolean      @default(true)
+  /// When the auto-reply was last turned on: a thread that began before it is never greeted (S1).
+  autoReplyOnSince DateTime?
+
+  @@map("inbox_office_setting")
 }
 
 /// One deleted guest who wrote in (ADR 0020), kept so Home's numbers for past days never move:

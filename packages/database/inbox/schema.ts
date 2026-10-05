@@ -28,15 +28,19 @@ export type RentOrBuy = z.infer<typeof RentOrBuy>;
 export const MessageDirection = z.enum(["in", "out"]);
 export type MessageDirection = z.infer<typeof MessageDirection>;
 
-/** How the domain spells a message's origin. */
-export const MessageSource = z.enum(["guest", "oa-echo", "nhip"]);
+/**
+ * How the domain spells a message's origin. `auto-reply` is the one message Nhịp sends on its
+ * own (ADR 0021): the office's, but not an Answer.
+ */
+export const MessageSource = z.enum(["guest", "oa-echo", "nhip", "auto-reply"]);
 export type MessageSource = z.infer<typeof MessageSource>;
 
 /**
  * How the database spells it. The OA echo is `oa_echo` on disk and `oa-echo` in the
- * domain; `toDbSource`/`fromDbSource` in `store.ts` are the only places that translate.
+ * domain, the auto-reply `auto_reply` and `auto-reply`; `toDbSource`/`fromDbSource` in
+ * `store.ts` are the only places that translate.
  */
-export const DbMessageSource = z.enum(["guest", "oa_echo", "nhip"]);
+export const DbMessageSource = z.enum(["guest", "oa_echo", "nhip", "auto_reply"]);
 export type DbMessageSource = z.infer<typeof DbMessageSource>;
 
 /**

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-05 (a new guest is greeted at once)
+
+### Added
+
+- **A new guest's first message gets the template auto-reply** (#165, ADR 0021, spec #159). Within seconds, with no approval, Nhịp answers a new guest's first message once, as the office: it thanks them, acknowledges what the extraction found (renting or buying and the area by value; a budget, timing or household by kind only), asks for at most two missing details in R3's order (rent or buy, area, budget, timeframe, household), and ends with the always-on label, "Auto-reply from <office>: a colleague will continue with you right here." (the office's name, last line, pending the lawyer). Its own text has no digit, price, link or time. EN, VI, JA, KO and RU; the four non-English texts wait on Eyal's review and a native read (#78). It goes only to a thread the office hasn't spoken on: a thread begun from the office's own app, a guest's second message, or an office that switched it off (`inbox_office_setting.autoReply`; no row means on, the switch itself is #167) gets none. The thread is claimed once by a conditional update (`inbox_conversation.autoReplyAt`), so two first messages at once make one greeting. It is sent like an Answer, from the endpoint the guest wrote to (never a disconnected one; mock in a mock deployment, where its id is `mock-auto-reply-<thread id>`), tried once, and a failure is logged by category only. It is filed as an outbound message with source `auto_reply`, `writtenBy` `template`, and the vendor's id hashed, so Zalo's echo of it is a duplicate, not a reply from the app. It is not an Answer: the thread stays Your turn and unassigned, and Home's Engaged, In conversation and response time don't count it. In the thread it shows as the office's message with a neutral "Auto-reply" badge and "Template" (VI "Trả lời tự động", "Mẫu"). The seed's demo threads are not greeted (`injectDevInbound`'s `autoReply: false`); a dev-injected guest is. The model writing it is #168, and the reply box after it is #166. Four migrations, each 1 deploy: the enum value `MessageSource.auto_reply`, the nullable `inbox_message.writtenBy`, the nullable `inbox_conversation.autoReplyAt`, and the new table `inbox_office_setting`.
+
+### Fixed
+
+- **A model draft is composed (NFC) before the post-check reads it** (#165, from #164): a decomposed "sở hữu" no longer slips past the paperwork list.
+
 ## 2026-10-05 (Unassigned is the managers'; agents see only their own threads)
 
 ### Changed

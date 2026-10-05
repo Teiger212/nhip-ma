@@ -596,8 +596,12 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		);
 
 		await openThreadOf(page, guest);
+		// The header only: the office's auto-reply below it names the office (ADR 0021), and this
+		// office's name has CRM in it.
+		const header = openThread(page).locator("header");
+		await expect(header, "the thread header is showing").toBeVisible();
 		await expect(
-			openThread(page).getByText(/\bCRM\b/),
+			header.getByText(/\bCRM\b/),
 			"the thread header says nothing about a CRM",
 		).toHaveCount(0);
 		await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(0);

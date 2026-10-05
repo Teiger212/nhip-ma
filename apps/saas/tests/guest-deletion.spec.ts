@@ -232,8 +232,29 @@ async function threadSeenBy(
 	return thread!;
 }
 
-/** The agent answers the guest's waiting message in Nhịp (setup; the guest must be assigned to them). */
+/**
+ * The office has greeted the guest: a new guest's first message gets the auto-reply (ADR 0021),
+ * so the thread holds an office message before anyone answers.
+ */
+async function greeted(operator: Operator, guest: Guest): Promise<void> {
+	const { id } = await threadSeenBy(operator, guest);
+	await expect(async () => {
+		const res = await operator.api.get(threadAddress(id));
+		expect(res.status()).toBe(200);
+		const { messages } = (await res.json()) as { messages: { direction: string }[] };
+		expect(
+			messages.some((message) => message.direction === "out"),
+			`the office greets ${guest.id}`,
+		).toBe(true);
+	}).toPass({ timeout: 20_000 });
+}
+
+/**
+ * The agent answers the guest's waiting message in Nhịp (setup; the guest must be assigned to
+ * them), once the office's auto-reply has gone out, so every thread holds it before the reply.
+ */
 async function answer(agent: Operator, guest: Guest): Promise<string> {
+	await greeted(agent, guest);
 	const thread = await threadSeenBy(agent, guest, { waiting: true });
 	const reply = `Reply to ${guest.id}, ${randomUUID().slice(0, 8)}`;
 	const res = await agent.api.post(`${threadAddress(thread.id)}/approve`, {
@@ -626,15 +647,15 @@ test.describe.configure({ timeout: 180_000 });
 
 // scenario: docs/e2e-scenarios.md Guest deletion 1
 test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
-	test("the manager's Thread actions → Delete guest data opens a dialog naming the guest, what goes (4 messages) and what is kept, with no CRM box and only its confirm red; the confirm waits for a reason, and for Other a note, under the note's hint; confirming deletes the thread for the manager and the agent, the nav count drops, and the API answers 404", async ({
+	test("the manager's Thread actions → Delete guest data opens a dialog naming the guest, what goes (5 messages) and what is kept, with no CRM box and only its confirm red; the confirm waits for a reason, and for Other a note, under the note's hint; confirming deletes the thread for the manager and the agent, the nav count drops, and the API answers 404", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice("Deletion 1");
 		const { agent, manager } = office;
 
-		// A guest writes, and the manager gives them to the agent, who replies to the first message;
-		// the guest writes twice more: three messages from the guest and one reply. Another guest,
-		// also the agent's, waits on a reply.
+		// A guest writes and is greeted (ADR 0021), and the manager gives them to the agent, who
+		// replies to the first message; the guest writes twice more: three messages from the guest,
+		// the greeting and one reply. Another guest, also the agent's, waits on a reply.
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
 		await answer(agent, guest);
@@ -667,8 +688,8 @@ test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
 		});
 		await expect(dialog, `the dialog asks "${deletionCopy.title(guest.id)}"`).toBeVisible();
 		await expect(
-			dialog.getByText(deletionCopy.what(4), { exact: true }),
-			"it says the thread's 4 messages go, with their translations, suggested reply and details",
+			dialog.getByText(deletionCopy.what(5), { exact: true }),
+			"it says the thread's 5 messages go, with their translations, suggested reply and details",
 		).toBeVisible();
 		await expect(
 			dialog.getByText(deletionCopy.keptZalo, { exact: true }),
@@ -1121,12 +1142,14 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 		const office = await newOffice("Deletion 10");
 		const { agent, manager } = office;
 
-		// One guest wrote twice and was answered (3 messages, 1 reply); one wrote once (1, 0).
+		// One guest wrote twice, was greeted and answered (4 messages, 1 reply); one wrote once and
+		// was greeted (2, 0). The greeting is a message, not a reply (ADR 0021).
 		const answered = await office.newGuest();
 		await answered.write();
 		await office.assignToAgent(answered);
 		await answer(agent, answered);
 		const unanswered = await office.newGuest();
+		await greeted(manager, unanswered);
 		const { id: answeredId } = await threadSeenBy(manager, answered);
 		const { id: unansweredId } = await threadSeenBy(manager, unanswered);
 
@@ -1173,8 +1196,8 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 		const { receipts, tallies } = guestDeletionRecords(office.id);
 		expect(receipts, "one receipt per deletion").toHaveLength(2);
 		const expected = [
-			{ messages: 1, answers: 0, reason: "duplicate_or_spam", note: null },
-			{ messages: 3, answers: 1, reason: "guest_request" },
+			{ messages: 2, answers: 0, reason: "duplicate_or_spam", note: null },
+			{ messages: 4, answers: 1, reason: "guest_request" },
 		];
 		receipts.forEach((receipt, i) => {
 			expect(

@@ -914,7 +914,12 @@
 		"source": {
 			"guest": "Khách",
 			"nhip": "Gửi từ Nhịp",
-			"oaEcho": "Gửi từ ứng dụng của văn phòng"
+			"oaEcho": "Gửi từ ứng dụng của văn phòng",
+			"autoReply": "Trả lời tự động"
+		},
+		"autoReply": {
+			"model": "Mô hình",
+			"template": "Mẫu"
 		},
 		"crm": {
 			"inCrm": "Trong CRM: {name}",

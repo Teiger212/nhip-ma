@@ -130,6 +130,8 @@ export async function transmit(
 		text: string;
 		/** The office's endpoint the guest wrote to; null for threads with none (demo data). */
 		from: string | null;
+		/** The id a mock send reports; random unless the caller needs to know it (the auto-reply). */
+		mockVendorMessageId?: string;
 	} & PipeContext,
 ): Promise<SendResult> {
 	const pipe = input.conversation.pipe;
@@ -139,7 +141,7 @@ export async function transmit(
 			mock: true,
 			pipe,
 			text: input.text,
-			vendorMessageId: `mock-${crypto.randomUUID()}`,
+			vendorMessageId: input.mockVendorMessageId ?? `mock-${crypto.randomUUID()}`,
 		};
 	}
 	// Live: only from a connected endpoint the thread's office holds. No endpoint (a thread

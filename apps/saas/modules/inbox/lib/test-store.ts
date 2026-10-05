@@ -5,6 +5,7 @@ import {
 	testDatabaseUrl,
 } from "@repo/database/inbox/testing";
 
+import { settleBackgroundWork } from "./background";
 import { WALK_OFFICE_ID } from "./walk-user";
 
 const TEST_DATABASE_URL = testDatabaseUrl();
@@ -29,6 +30,9 @@ export const TEST_OPERATORS = ["agent-1", "agent-2", "walk-user"];
 
 /** Empty the inbox and make sure the fixture offices and operators exist. */
 export async function resetTestInbox(): Promise<void> {
+	// A previous test's background work (an alert, the auto-reply, a translation) may still hold
+	// row locks; TRUNCATE needs an exclusive one, so the two would deadlock (40P01).
+	await settleBackgroundWork();
 	await resetInboxTables(testDb, { offices: TEST_OFFICES, operators: TEST_OPERATORS });
 }
 

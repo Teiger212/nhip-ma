@@ -4,6 +4,7 @@ import { runInBackground } from "./background";
 import { createCrmSync } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
+import { greetingTemplate } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
 import type { AlertTransport } from "./guest-alerts/transport";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
@@ -87,23 +88,133 @@ export function crmSyncFor(runtime: Runtime) {
 	});
 }
 
+/** The id a mock auto-reply reports, so a test can send its echo (ADR 0021, First greeting 7). */
+export function autoReplyMockId(conversationId: string): string {
+	return `mock-auto-reply-${conversationId}`;
+}
+
+/** Whether the office has spoken on the thread: any message of its own, or an Answer begun. */
+function officeHasSpoken(conversation: Conversation): boolean {
+	return (
+		conversation.answers.length > 0 ||
+		conversation.messages.some((message) => message.direction === "out")
+	);
+}
+
+/**
+ * When the auto-reply is filed: now, but never before the guest's message it greets. That
+ * message carries the vendor's clock, which can run ahead of ours, and the thread is read in
+ * time order.
+ */
+function afterGuestMessage(conversation: Conversation): Date {
+	const latest = conversation.messages.findLast((message) => message.direction === "in");
+	const after = latest ? Date.parse(latest.at) + 1 : 0;
+	return new Date(Math.max(Date.now(), after));
+}
+
+/** What a failed auto-reply send is logged as: a category, never the thread or its text (PDPL). */
+function sendFailureKind(error: unknown): string {
+	if (error instanceof SendError) return error.kind;
+	return "network";
+}
+
+/**
+ * The auto-reply (ADR 0021): one greeting for a new guest's first message, sent without an
+ * approval. The claim comes first and is never given back, so whatever happens after it the
+ * thread is greeted at most once: a disconnected endpoint, a closed window or a failed send
+ * leaves it ungreeted, and the thread waits for a human as it does today. One attempt, no
+ * retry. It is not an Answer (G5): the thread stays Your turn and nothing in the funnel moves.
+ * This is the template path; the model writes it from #168.
+ */
+export async function sendAutoReply(runtime: Runtime, conversation: Conversation): Promise<void> {
+	const { store, config } = runtime;
+	const shot = conversation.oneShot;
+	if (!shot) return;
+	const office = await store.officeAutoReply(conversation.officeId);
+	if (!office?.on) return;
+	if (!(await store.claimAutoReply(conversation.officeId, conversation.id))) return;
+
+	// From the endpoint the guest wrote to, as an Answer goes (ADR 0017): never from a
+	// disconnected one, and in a live deployment never from one the office has not connected.
+	const endpoint = latestGuestEndpoint(conversation);
+	if (endpoint) {
+		const connection = await connectionFor(conversation.pipe, endpoint, conversation.officeId, {
+			config,
+			store,
+		});
+		if (connection.state === "disconnected") return;
+		if (config.sendMode === "live" && connection.state === "not_connected") return;
+	} else if (config.sendMode === "live") {
+		return;
+	}
+	if (!pipeAdapter(conversation.pipe).sendWindow(conversation).open) return;
+
+	const text = greetingTemplate(shot.language, shot.qualification, office.name);
+	let result: SendResult;
+	try {
+		result = await transmit({
+			conversation,
+			text,
+			from: endpoint,
+			config,
+			store,
+			mockVendorMessageId: autoReplyMockId(conversation.id),
+		});
+	} catch (error) {
+		console.warn("inbox: auto-reply send failed", { kind: sendFailureKind(error) });
+		return;
+	}
+	try {
+		await store.recordAutoReply(conversation.officeId, conversation.id, {
+			text,
+			writtenBy: "template",
+			result,
+			pipeExternalId: endpoint,
+			at: afterGuestMessage(conversation),
+		});
+	} catch {
+		// Sent but not on file. Its echo, if the vendor sends one, then reads as a reply from
+		// the office's app: the race Answers already have (ADR 0021, recorded, not fixed).
+		console.warn("inbox: auto-reply record failed");
+	}
+}
+
 /**
  * Everything that follows a guest message: the one-shot now, then the alert (a new message
- * only), translation and, for a guest who wrote back after a send, the model draft in the
- * background. A thread with no lead yet gets one in the office's CRM, in the background too
- * (spec #59): the guest and the queue never wait on the CRM. The first reply keeps the
- * template until the model draft is shown to be better on the invented threads (ADR 0005).
+ * only), the auto-reply for a new guest's first message (ADR 0021), translation and, for a
+ * guest who wrote back after a send, the model draft in the background. A thread with no
+ * lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
+ * queue never wait on the CRM. The reply box's first reply keeps the template until the model
+ * draft is shown to be better on the invented threads (ADR 0005).
  */
 export async function afterGuestInbound(
 	runtime: Runtime,
 	conversation: Conversation,
-	{ inserted, alerts }: { inserted: boolean; alerts?: AlertTransport },
+	{
+		inserted,
+		alerts,
+		autoReply = true,
+	}: { inserted: boolean; alerts?: AlertTransport; autoReply?: boolean },
 ): Promise<Conversation> {
 	const updated = (await applyOneShot(runtime.store, conversation)) ?? conversation;
 	// Only a new message alerts: a vendor's retry of one already stored alerts no one (ADR 0019).
 	// After the one-shot, so the alert can name the guest's language.
 	if (inserted) {
 		scheduleGuestAlert(runtime, updated, alerts);
+	}
+	// A new message on a thread the office has not spoken on and nobody has claimed. The job's
+	// claim is what makes it one greeting; this only spares a job for every later message.
+	// Its label names no thread: a failed job's log keeps no guest data (PDPL).
+	if (
+		inserted &&
+		autoReply &&
+		updated.oneShot &&
+		updated.autoReplyAt === null &&
+		!officeHasSpoken(updated)
+	) {
+		void runInBackground("auto-reply", async () => {
+			await sendAutoReply(runtime, updated);
+		});
 	}
 	if (!updated.crm) {
 		void runInBackground(`crm lead ${updated.id}`, async () => {
@@ -173,8 +284,11 @@ export async function injectDevInbound(
 		vendorMessageId?: string | null;
 		at?: number | string | Date;
 	},
-	/** The seed passes the mock transport: a seed run never pushes (#134, Q3). */
-	{ alerts }: { alerts?: AlertTransport } = {},
+	/**
+	 * The seed passes the mock transport (a seed run never pushes, #134, Q3) and no auto-reply:
+	 * the walk's demo threads keep the states they are written in (ADR 0021).
+	 */
+	{ alerts, autoReply = true }: { alerts?: AlertTransport; autoReply?: boolean } = {},
 ): Promise<Conversation> {
 	const runtime = getRuntime();
 	const { conversation, inserted } = await runtime.store.upsertInbound(
@@ -189,7 +303,7 @@ export async function injectDevInbound(
 		},
 		input.officeId,
 	);
-	return afterGuestInbound(runtime, conversation, { inserted, alerts });
+	return afterGuestInbound(runtime, conversation, { inserted, alerts, autoReply });
 }
 
 export type InboxResult =
