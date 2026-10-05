@@ -853,7 +853,9 @@
 		"alerts": {
 			"waiting": "{name} is waiting",
 			"waitingUnnamed": "A guest is waiting",
-			"body": "{pipe} · {language}"
+			"body": "{pipe} · {language}",
+			"testTitle": "Test alert",
+			"testBody": "Alerts are on for this device."
 		},
 		"guestLanguage": {
 			"en": "English",

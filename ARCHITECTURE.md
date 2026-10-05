@@ -53,6 +53,24 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   reassignment refreshes them together.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
   platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.
+- **Alerts** (ADR 0019, spec #84), `modules/inbox/lib/guest-alerts/`: a new guest message
+  (`afterGuestInbound`, inserted messages only) schedules `alertGuestMessage` in the
+  background. It picks the recipients (`recipients.ts`), writes one `inbox_alert` row each
+  under the burst rule's advisory lock, then hands the event's deliveries to the **transport
+  seam** (`transport.ts`), chosen by `SEND_MODE`: mock sends nothing; live
+  (`push.ts`, `web-push`) posts each recipient's devices (`push_subscription`, queries in
+  `packages/database/prisma/queries/push-subscriptions.ts`) with VAPID, urgency high and a
+  1-hour TTL, at most 5 pushes in flight per event, deletes a device on 404 or 410, and logs a
+  failure as its status only. Without the VAPID keys it logs "push not configured". It posts
+  only to `https` endpoints on Google's, Apple's, Mozilla's and Microsoft's push hosts, checked on registration and again before each push, in one normal form (the WHATWG
+  `href`, plain DNS labels, and the same host for Node's legacy parser, which `web-push`
+  connects with), which is what is stored and posted to. The payload is `{ alertId, tag, title, body,
+url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devices come and
+  go through `/api/alerts/devices` (POST, DELETE for this sign-in, `/test`), and a Better Auth before-hook on `/sign-out` deletes the signing-out session's devices; a
+  session delete hook does the same for every other way a live session ends (revoking it or
+  the others, a ban, a password reset that revokes, the end of an impersonation), while an
+  expired session keeps its devices (A5). An impersonating admin cannot add a device. `pnpm seed`
+  always uses the mock transport.
 - **CRM seam** (ADR 0003, spec #59), `modules/inbox/lib/crm/`: one `CrmAdapter` per CRM kind
   (`crmAdapterFor`: the mock and HubSpot), pure rules (`rules.ts`, `phone.ts`), and the CRM
   sync module (`sync.ts`), which owns a thread's link to its lead and persists through the

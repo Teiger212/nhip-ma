@@ -14,7 +14,7 @@ import {
 } from "./content";
 import { guestAlertRecipients } from "./recipients";
 import { alertTag } from "./tag";
-import { type AlertTransport, alertTransport } from "./transport";
+import { type AlertDelivery, type AlertTransport, alertTransport } from "./transport";
 
 /** How long the alert log keeps a row: well past any link an operator still opens. */
 export const ALERT_RETENTION_DAYS = 30;
@@ -32,7 +32,7 @@ class RecipientsFailed extends Error {
  * so `next-intl/server`'s request config is not there. The core translator renders the same
  * catalogs.
  */
-async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
+export async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
 	const messages = await getMessagesForLocale(locale, "saas");
 	// The catalog is loaded untyped here, so next-intl cannot check keys; alert-log.test.ts
 	// renders through this translator.
@@ -42,10 +42,10 @@ async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
 /**
  * A guest's new message alerts the operators who can open the thread (ADR 0019, 0022): an
  * Unassigned thread's managers, or the owner. Each gets one row in the log, decided by the burst rule under the
- * store's lock, in their own language, and the transport sends it (nothing in a mock
- * deployment). Recipients are written one after another, so one message's alerts never
- * compete with each other for connections; one operator's failure never costs the others
- * theirs.
+ * store's lock, in their own language. Rows are written one after another, so one message's
+ * alerts never compete with each other for connections; one operator's failure never costs
+ * the others theirs. Then the transport sends them all at once (nothing in a mock
+ * deployment), so a slow push service delays no one (#134, Q4).
  */
 export async function alertGuestMessage(
 	runtime: Runtime,
@@ -62,6 +62,7 @@ export async function alertGuestMessage(
 	const translators = new Map<AlertLocale, AlertTranslate>();
 	// Error kinds only: an error's text can carry guest data (PDPL).
 	const failures: string[] = [];
+	const deliveries: AlertDelivery[] = [];
 	for (const recipient of recipients) {
 		try {
 			const locale = alertLocale(recipient.locale);
@@ -87,17 +88,18 @@ export async function alertGuestMessage(
 				link: (id) => alertLink(locale, id),
 				sounds: alertSounds,
 			});
-			await transport.send(recipient.userId, {
-				alertId: alert.id,
-				tag,
-				title,
-				body,
-				url: alert.link,
-				sound: alert.sounded,
+			deliveries.push({
+				userId: recipient.userId,
+				payload: { alertId: alert.id, tag, title, body, url: alert.link, sound: alert.sounded },
 			});
 		} catch (error) {
 			failures.push(error instanceof Error ? error.name : "unknown");
 		}
+	}
+	try {
+		await transport.send(deliveries);
+	} catch (error) {
+		failures.push(error instanceof Error ? error.name : "unknown");
 	}
 	if (failures.length > 0) {
 		throw new RecipientsFailed(failures);
@@ -113,10 +115,14 @@ export async function alertGuestMessage(
  * is known), in the background: the webhook never waits on them. A failure is logged as what
  * failed, without the thread's id or the error's text, which can carry guest data (PDPL).
  */
-export function scheduleGuestAlert(runtime: Runtime, conversation: Conversation): void {
+export function scheduleGuestAlert(
+	runtime: Runtime,
+	conversation: Conversation,
+	transport: AlertTransport = alertTransport(runtime.config),
+): void {
 	void runInBackground("guest alert", async () => {
 		try {
-			await alertGuestMessage(runtime, conversation);
+			await alertGuestMessage(runtime, conversation, { transport });
 		} catch (error) {
 			if (error instanceof RecipientsFailed) throw error;
 			throw new Error(`guest alert failed (${error instanceof Error ? error.name : "unknown"})`);

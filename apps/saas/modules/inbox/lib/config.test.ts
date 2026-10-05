@@ -109,3 +109,28 @@ test("HubSpot's webhook settings are set together, its URL an https one", () => 
 	expect(errorsOf({ ...BASE, ...secret, ...url })).toEqual([]);
 	expect(errorsOf(BASE)).toEqual([]);
 });
+
+// #134: the VAPID keys are read as a set. None set is fine (alerts are logged, not pushed); a
+// partial set is a mistake to refuse, and the subject is the address push services write to.
+test("VAPID keys are read as a set: all three, or none", () => {
+	const vapid = {
+		VAPID_PUBLIC_KEY: "BPub-vitest",
+		VAPID_PRIVATE_KEY: "priv-vitest",
+		VAPID_SUBJECT: "mailto:alerts@nhip.local",
+	};
+	const ok = validateInboxEnv({ ...BASE, ...vapid });
+	expect(ok.ok && ok.config.vapid).toEqual({
+		publicKey: "BPub-vitest",
+		privateKey: "priv-vitest",
+		subject: "mailto:alerts@nhip.local",
+	});
+	const none = validateInboxEnv(BASE);
+	expect(none.ok && none.config.vapid).toBeNull();
+	expect(errorsOf({ ...BASE, VAPID_PUBLIC_KEY: vapid.VAPID_PUBLIC_KEY }).join("\n")).toContain(
+		"VAPID_PRIVATE_KEY",
+	);
+	expect(errorsOf({ ...BASE, ...vapid, VAPID_SUBJECT: "alerts@nhip.local" }).join("\n")).toContain(
+		"VAPID_SUBJECT",
+	);
+	expect(errorsOf({ ...BASE, ...vapid, VAPID_SUBJECT: "https://nhip.vn" })).toEqual([]);
+});
