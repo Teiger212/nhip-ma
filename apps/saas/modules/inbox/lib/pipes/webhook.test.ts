@@ -73,7 +73,11 @@ test("inbound on a connected pipe is filed under that office and stays there", a
 	await store.connectPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
 	await store.connectPipe({ pipe: "zalo", externalId: "oa-2", officeId: "office-b" });
 
-	expect((await handleInboundWebhook("zalo", zaloRequest("guest-1", "Xin chào"))).status).toBe(200);
+	// "Xin chào" alone reads as English (ADR 0021): its à is shared with French.
+	expect(
+		(await handleInboundWebhook("zalo", zaloRequest("guest-1", "Xin chào, tôi muốn thuê căn hộ")))
+			.status,
+	).toBe(200);
 	expect((await handleInboundWebhook("zalo", zaloRequest("guest-2", "Hello", "oa-2"))).status).toBe(
 		200,
 	);
