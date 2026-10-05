@@ -199,8 +199,13 @@ async function zaloWebhook(
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		// A row carries its owner flag; the view buttons above the list are buttons too.
-		threadList(page).getByTestId("thread-owner").first().or(page.getByTestId("inbox-empty")),
+		// A row (it carries its owner flag), or the list saying it is empty, caught up or unmatched.
+		// The view buttons above the list are buttons too, so a button proves nothing.
+		threadList(page)
+			.locator(
+				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"]',
+			)
+			.first(),
 	).toBeVisible();
 }
 
