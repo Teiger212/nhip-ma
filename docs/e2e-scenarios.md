@@ -453,12 +453,32 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      agent". It doesn't say to whom (ADR 0022, P4).
    - A manager who gives a thread to themselves gets no alert and no bell row.
    - No email: Vitest on the kit producer, since E2E can't read mail.
+
+   Spec: `apps/saas/tests/alerts-in-app.spec.ts` (Alerts 3; the guest is a WhatsApp guest named
+   "Minji"; both agents set to English through the kit's user update and given names of their
+   own, so the row's "Assign to…" menu names agent 1 and agent 2's name can be looked for in
+   agent 1's bell. The first assignment is the manager's row "Assign to…" in Unassigned; the
+   reassignment and the manager taking a thread (Yuki) go through the owner API. The log is
+   judged per thread as an exact count of each person's alerts of each kind (the manager's
+   `guest` alert from before included), once a later guest's alerts have reached the managers;
+   the manager's own assignment is judged once a later assignment's alert has reached agent 1.
+   The bell is read on Settings loaded afresh, where no guest's thread is listed, so "no guest's
+   name" is no "Minji" on the page with the bell open; "opens the thread" is the row taking
+   agent 1 to the Inbox with Minji's message in the open thread; "not to whom" is agent 2's name
+   nowhere on agent 1's page).
+
 4. **A thread returned to Unassigned alerts the other managers** (#133). Manager 1 returns
    agent 1's thread to Unassigned. The log holds one `returned` alert, for manager 2. There is
    none for manager 1, who returned it (whoever acts is never alerted for it), none for either
    agent, and none for the platform admin. Agent 1, who lost the thread, gets only the bell
    row naming the guest, with no push. This follows from recipients equalling visibility
    (ADR 0022, S2).
+   Spec: `apps/saas/tests/alerts-in-app.spec.ts` (Alerts 4; two managers; the guest is a
+   WhatsApp guest named "Minji", given to agent 1 and returned by manager 1 through the owner
+   API; the thread's alerts are exactly each manager's `guest` alert from before, agent 1's
+   `assigned` alert and manager 2's `returned` alert, judged once a later guest's alerts have
+   reached the managers, and the platform admin has none in the office; agent 1, with no
+   language set, reads the bell in Vietnamese: "Minji đã được chuyển cho nhân viên khác").
 5. **A vendor retry alerts no one** (#132). The same signed Zalo message is delivered
    twice: the thread holds that message once, and the log holds one alert per recipient, not two.
    Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 5; one signed body, same `msg_id`, posted twice).
