@@ -200,7 +200,7 @@ async function zaloWebhook(
 /**
  * The name the guest goes by: the one the operator sees, which is the pipe's name for the guest
  * or, without one, their id. Zalo's webhook carries no name, so a Zalo guest goes by their Zalo
- * id (as the Inbox lists them, Pool 1), in the CRM status and in the lead alike.
+ * id (as the Inbox lists them, Assign 1), in the CRM status and in the lead alike.
  */
 function nameOf(guest: Guest): string {
 	return guest.id;
@@ -529,7 +529,7 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		await openThreadOf(manager, guest);
 		await expect(
 			manager.getByTestId("owner-filter"),
-			"they are the office's manager (only a manager filters by owner, Pool 9)",
+			"they are the office's manager (only a manager filters by owner, Assign 9)",
 		).toBeVisible();
 		await expect(
 			openThread(manager).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),

@@ -323,8 +323,8 @@ model Conversation {
   language           String?
   lastGuestInboundAt DateTime?
   sentAt             DateTime?
-  /// The agent who answered first (ADR 0015); null = in the office's pool. An owner whose
-  /// account ends leaves the thread to the pool.
+  /// The operator the thread is assigned to (ADR 0022); null = Unassigned. An owner whose
+  /// account ends leaves the thread Unassigned.
   ownerId            String?
   owner              User?          @relation("ConversationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   /// When the auto-reply claimed this thread (ADR 0021): set once, by a conditional update
@@ -643,7 +643,7 @@ model MockCrmLead {
   @@map("inbox_mock_crm_lead")
 }
 
-/// What an alert is about (ADR 0019): a guest's message, a thread a manager returned to the pool,
+/// What an alert is about (ADR 0019): a guest's message, a thread a manager returned to Unassigned,
 /// a thread a manager gave the operator, or a test the operator sent their own device.
 enum AlertKind {
   guest

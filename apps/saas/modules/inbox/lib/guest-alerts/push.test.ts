@@ -305,12 +305,13 @@ test("a delivery for one sign-in reaches that sign-in's devices only (the test a
 test("an operator removed from the office keeps no alerts from it, even with a device left", async () => {
 	const store = createInboxStore(testDb);
 	await testDb.member.deleteMany({ where: { organizationId: "office-a" } });
+	// A manager, whom an Unassigned guest alerts (ADR 0022).
 	await testDb.member.create({
 		data: {
 			id: "m-office-a-agent-1",
 			organizationId: "office-a",
 			userId: "agent-1",
-			role: "member",
+			role: "admin",
 			createdAt: new Date(),
 		},
 	});

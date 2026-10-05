@@ -40,8 +40,8 @@ export async function inboxTranslator(locale: AlertLocale): Promise<AlertTransla
 }
 
 /**
- * A guest's new message alerts the operators who can open the thread (ADR 0019): the pool's
- * operators, or the owner. Each gets one row in the log, decided by the burst rule under the
+ * A guest's new message alerts the operators who can open the thread (ADR 0019, 0022): an
+ * Unassigned thread's managers, or the owner. Each gets one row in the log, decided by the burst rule under the
  * store's lock, in their own language. Rows are written one after another, so one message's
  * alerts never compete with each other for connections; one operator's failure never costs
  * the others theirs. Then the transport sends them all at once (nothing in a mock

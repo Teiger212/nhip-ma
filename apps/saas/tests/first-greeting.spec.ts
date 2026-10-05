@@ -323,7 +323,7 @@ test.describe("First greeting 1 — a new guest is greeted at once, and it's sti
 		await expect(navCount(page), "the nav counts it").toHaveText("1");
 		await expect(rowOf(page, guest).getByTestId("thread-owner")).toHaveAttribute(
 			"data-owner",
-			"pool",
+			"unassigned",
 		);
 
 		// In the thread: the office's message, marked Auto-reply, Template and the mock badge.

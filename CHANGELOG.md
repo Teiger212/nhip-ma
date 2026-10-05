@@ -10,6 +10,14 @@
 
 - **A model draft is composed (NFC) before the post-check reads it** (#165, from #164): a decomposed "sở hữu" no longer slips past the paperwork list.
 
+## 2026-10-05 (Unassigned is the managers'; agents see only their own threads)
+
+### Changed
+
+- **A new lead waits in Unassigned, for managers only; an agent sees only the threads assigned to them** (#162, ADR 0022, spec #160; supersedes ADR 0015's pool). An agent no longer lists, counts, searches or opens an Unassigned thread or a colleague's: opening one by link or through the API is a 404. A manager still sees every thread of the office and gives each lead to an operator from the thread header's "Assign to…" (VI "Giao cho…"), the Owner control renamed, whose no-owner option and the owner filter's now read "Unassigned" (VI "Chưa giao"; the filter's URL value is `?owner=unassigned`); the owner badge reads "Unassigned" (`data-owner="unassigned"`), which only managers ever see. The last assignment wins. A manager who approves a reply on an Unassigned lead becomes its owner, as before. An agent with nothing assigned reads "Nothing assigned to you yet." (VI "Chưa có khách nào được giao cho bạn."). Every "Pool" label and key goes.
+- **An Unassigned guest alerts the office's managers only** (#162, amends ADR 0019 "Who"; replaces #132's pool rule). An owned thread's guest still alerts its owner only; the platform admin is never alerted. `officeOperators` returns each operator's `manager` flag (kit `owner` or `admin`). This ships with the visibility change, so nobody is alerted about a thread they can't open.
+- **Deploy note:** no data migration. At release every pool thread becomes Unassigned and leaves the agents' Inboxes; the first client's managers must assign them.
+
 ## 2026-10-05 (devices, and the live push to them)
 
 ### Added

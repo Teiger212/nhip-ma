@@ -6,11 +6,12 @@ import { useTranslations } from "next-intl";
 import { useOfficeAgents, useOfficeRole, useSetOwner } from "../lib/inbox-queries";
 import type { Conversation } from "../lib/types";
 
-const POOL = "__pool__";
+const UNASSIGNED = "__unassigned__";
 
 /**
- * A manager gives the thread to an agent of the office, or back to the pool (ADR 0015).
- * Agents see nothing here: who holds a thread is shown on its flags.
+ * "Assign to…": a manager gives the thread to an operator of the office, or back to Unassigned
+ * (ADR 0022). It acts at once, and the last assignment wins. Agents see nothing here: who holds
+ * a thread is shown on its flags.
  */
 export function OwnerControl({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox.owner");
@@ -20,21 +21,21 @@ export function OwnerControl({ conversation }: { conversation: Conversation }) {
 	if (role !== "manager") return null;
 	return (
 		<label className="gap-2 text-xs ml-auto flex items-center text-muted-foreground">
-			{t("label")}
+			{t("assignTo")}
 			<select
 				data-test="thread-owner-select"
 				className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
-				value={conversation.owner?.id ?? POOL}
+				value={conversation.owner?.id ?? UNASSIGNED}
 				disabled={setOwner.isPending || !agents.data}
 				onChange={(event) => {
-					const ownerId = event.target.value === POOL ? null : event.target.value;
+					const ownerId = event.target.value === UNASSIGNED ? null : event.target.value;
 					setOwner.mutate(
 						{ id: conversation.id, ownerId },
 						{ onError: () => toast.add({ title: t("failed"), type: "error" }) },
 					);
 				}}
 			>
-				<option value={POOL}>{t("pool")}</option>
+				<option value={UNASSIGNED}>{t("unassigned")}</option>
 				{agents.data?.map((agent) => (
 					<option key={agent.id} value={agent.id}>
 						{agent.name}

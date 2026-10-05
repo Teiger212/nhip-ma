@@ -62,11 +62,14 @@ const CONVERSATION_INCLUDE = {
 	crmLink: true,
 } satisfies Prisma.ConversationInclude;
 
-/** What a viewer may read (ADR 0015): the office, and for an agent only its pool and their own. */
+/**
+ * What a viewer may read (ADR 0022): a manager, the whole office; an agent, only the threads
+ * assigned to them. Unassigned and colleagues' threads don't exist for an agent.
+ */
 function visibleTo(viewer: InboxViewer): Prisma.ConversationWhereInput {
 	return viewer.role === "manager"
 		? { officeId: viewer.officeId }
-		: { officeId: viewer.officeId, OR: [{ ownerId: null }, { ownerId: viewer.userId }] };
+		: { officeId: viewer.officeId, ownerId: viewer.userId };
 }
 
 type ConversationRecord = Prisma.ConversationGetPayload<{ include: typeof CONVERSATION_INCLUDE }>;
@@ -77,12 +80,11 @@ type Db = PrismaClient | Prisma.TransactionClient;
 /** An Answer that counts as the office's reply: in flight, delivered, or possibly delivered. */
 const ANSWERING_STATUSES: readonly AnswerStatus[] = ["sending", "sent", "unknown"];
 
-/** `visibleTo` for the raw reads of thread `c`: the office, and for an agent its pool and their own. */
+/** `visibleTo` for the raw reads of thread `c`: the office, and for an agent only their own. */
 function visibleSql(viewer: InboxViewer): Prisma.Sql {
 	return viewer.role === "manager"
 		? Prisma.sql`"c"."officeId" = ${viewer.officeId}`
-		: Prisma.sql`"c"."officeId" = ${viewer.officeId}
-			AND ("c"."ownerId" IS NULL OR "c"."ownerId" = ${viewer.userId})`;
+		: Prisma.sql`"c"."officeId" = ${viewer.officeId} AND "c"."ownerId" = ${viewer.userId}`;
 }
 
 /**
@@ -896,8 +898,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							approvedAt: now,
 						},
 					});
-					// Pool, then owner (ADR 0015): the first approval claims an unowned thread, in the
-					// same transaction, so two agents racing for it end with one owner.
+					// A reply approved on an Unassigned thread claims it (ADR 0022, P1): only a manager can
+					// reach one, and in the same transaction, so two managers racing end with one owner.
 					if (input.operatorId) {
 						await tx.conversation.updateMany({
 							where: { id: input.conversationId, officeId: input.officeId, ownerId: null },
@@ -1208,6 +1210,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				where: { organizationId: officeId },
 				orderBy: { createdAt: "asc" },
 				select: {
+					role: true,
 					user: {
 						select: { id: true, role: true, locale: true, _count: { select: { members: true } } },
 					},
@@ -1217,10 +1220,12 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			// alert never names a guest someone cannot open (ADR 0019).
 			return members
 				.filter(({ user }) => user._count.members === 1)
-				.map(({ user }) => ({
+				.map(({ role, user }) => ({
 					userId: user.id,
 					platformRole: user.role,
 					locale: user.locale,
+					// A manager is the office's kit owner or admin (ADR 0015), as `resolveOffice` reads it.
+					manager: role === "owner" || role === "admin",
 				}));
 		},
 

@@ -135,6 +135,64 @@ test("an operator in two offices opens no thread (ADR 0010), so no office alerts
 	await store.close();
 });
 
+test("officeOperators says who manages: kit owner and admin are managers, a member is not (ADR 0022)", async () => {
+	const store = await testInboxStore();
+	// One office each: a member of two offices opens no thread, so is never alerted.
+	await testDb.member.deleteMany({
+		where: {
+			OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }],
+		},
+	});
+	await member(OFFICE, "agent-1", "member");
+	await member(OFFICE, "agent-2", "admin");
+	await member(OFFICE, "walk-user", "owner");
+	const managers = Object.fromEntries(
+		(await store.officeOperators(OFFICE)).map((operator) => [operator.userId, operator.manager]),
+	);
+	expect(managers).toEqual({ "agent-1": false, "agent-2": true, "walk-user": true });
+	await store.close();
+});
+
+test("an Unassigned guest alerts the office's managers and no agent; once assigned, only the owner (ADR 0022)", async () => {
+	const store = await testInboxStore();
+	// One office each: a member of two offices opens no thread, so is never alerted.
+	await testDb.member.deleteMany({
+		where: {
+			OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }],
+		},
+	});
+	await member(OFFICE, "agent-1", "member");
+	await member(OFFICE, "agent-2", "member");
+	await member(OFFICE, "walk-user", "admin");
+	const { conversation } = await store.upsertInbound(
+		{
+			pipe: "zalo",
+			source: "guest",
+			guestId: "unassigned-alerts",
+			guestName: null,
+			text: "Hi",
+			vendorMessageId: null,
+		},
+		OFFICE,
+	);
+	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
+	const alerted = async () =>
+		(
+			await testDb.inboxAlert.findMany({
+				where: { conversationId: conversation.id },
+				orderBy: { createdAt: "asc" },
+				select: { userId: true },
+			})
+		).map((row) => row.userId);
+	await alertGuestMessage(runtime, conversation);
+	expect(await alerted()).toEqual(["walk-user"]);
+	await store.setOwner(conversation.id, "agent-2", OFFICE);
+	await testDb.inboxAlert.deleteMany({ where: { conversationId: conversation.id } });
+	await alertGuestMessage(runtime, (await store.getOfficeConversation(OFFICE, conversation.id))!);
+	expect(await alerted()).toEqual(["agent-2"]);
+	await store.close();
+});
+
 test("a thread's alerts go with the thread (guest deletion, ADR 0020)", async () => {
 	const store = await testInboxStore();
 	const conversationId = await thread(store, "deleted");
@@ -147,8 +205,9 @@ test("a thread's alerts go with the thread (guest deletion, ADR 0020)", async ()
 test("one operator's failed alert never costs the others theirs", async () => {
 	const store = await testInboxStore();
 	await testDb.member.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
-	await member(OFFICE, "agent-1", "member");
-	await member(OFFICE, "agent-2", "member");
+	// Managers, so an Unassigned guest alerts both (ADR 0022).
+	await member(OFFICE, "agent-1", "admin");
+	await member(OFFICE, "agent-2", "admin");
 	const { conversation } = await store.upsertInbound(
 		{
 			pipe: "zalo",
@@ -184,8 +243,9 @@ test("one operator's failed alert never costs the others theirs", async () => {
 test("each operator's alert is in their language, and the payload names no thread and no guest", async () => {
 	const store = await testInboxStore();
 	await testDb.member.deleteMany({ where: { organizationId: OFFICE } });
-	await member(OFFICE, "agent-1", "member");
-	await member(OFFICE, "agent-2", "member");
+	// Managers, so an Unassigned guest alerts both (ADR 0022).
+	await member(OFFICE, "agent-1", "admin");
+	await member(OFFICE, "agent-2", "owner");
 	await testDb.user.update({ where: { id: "agent-1" }, data: { locale: "en" } });
 	await testDb.user.update({ where: { id: "agent-2" }, data: { locale: null } });
 	const guestId = "zalo-guest-4471";

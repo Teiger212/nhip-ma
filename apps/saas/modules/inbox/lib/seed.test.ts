@@ -79,9 +79,9 @@ test("seed finds an existing thread by guest and does not write it twice", async
 	const thao = seeded.find((conversation) => conversation.guestId === "demo-vi-tayho");
 	expect(thao?.id).toBe(earlier.id);
 	expect(thao?.messages.map((message) => message.text)).toEqual(["old message"]);
-	expect(await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID })).toHaveLength(
-		4,
-	);
+	expect(
+		await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID, role: "manager" }),
+	).toHaveLength(4);
 });
 
 test("seed writes invented threads once", async () => {
