@@ -84,6 +84,8 @@ export async function seedInbox(
 				text: thread.text,
 				officeId,
 				at: now - thread.hoursAgo * 60 * 60 * 1000,
+				// The demo threads keep the states they are written in (ADR 0021).
+				autoReply: false,
 			}),
 		);
 	}

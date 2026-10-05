@@ -35,7 +35,8 @@ import type { Conversation, ConversationSummary } from "./types";
  * The done line of ADR 0009, walked end to end against a fake draft adapter: a guest who
  * writes back after an approved send returns to Your turn with their message translated
  * under the original and an AI-suggested follow-up in the reply box; the agent approves it
- * and it sends; a third approve with no new inbound is 409. No auto-send path exists.
+ * and it sends; a third approve with no new inbound is 409. Nothing is sent on its own but the
+ * first message's auto-reply (ADR 0021).
  */
 
 const WALK_SESSION = {
@@ -163,7 +164,8 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(second.status).toBe(200);
 	conv = second.body.conversation as Conversation;
 	const secondInbound = conv.unansweredInboundId;
-	expect(secondInbound).toBe(conv.messages[2].id);
+	// The guest's first message, its auto-reply (ADR 0021), the approved reply, then this one.
+	expect(secondInbound).toBe(conv.messages[3].id);
 	expect(secondInbound).not.toBe(firstInbound);
 	expect(conv.sentAt).toBeTruthy();
 	expect(conv.oneShot?.draft).toEqual({
@@ -174,7 +176,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 
 	await settleBackgroundWork();
 	conv = await get(conv.id);
-	expect(conv.messages[2].translations).toEqual({
+	expect(conv.messages[3].translations).toEqual({
 		en: "[en] 금요일에 볼 수 있을까요?",
 		vi: "[vi] 금요일에 볼 수 있을까요?",
 	});
@@ -239,7 +241,9 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	);
 	expect(nothing.status).toBe(409);
 
-	// No auto-send path: every office message is one Answer, and nothing was sent without one.
+	// Nothing else was sent on its own: past the one auto-reply, every office message is an Answer.
+	expect(conv.messages.filter((message) => message.source === "auto-reply")).toHaveLength(1);
+	expect(conv.messages.filter((message) => message.direction === "out")).toHaveLength(3);
 	expect(conv.answers).toHaveLength(2);
 	expect(followUps).toHaveLength(1);
 });

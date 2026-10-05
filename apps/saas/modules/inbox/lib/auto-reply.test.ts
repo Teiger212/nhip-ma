@@ -108,6 +108,12 @@ describe("a new guest's first message gets one auto-reply (G1)", () => {
 		expect(greeting).toMatchObject({ direction: "out", writtenBy: "template", mock: true });
 		expect(greeting.text.split("\n").at(-1)).toBe(greetingLabel("en", OFFICE));
 		expect(greeting.text).toContain("renting in Tây Hồ");
+		// After the message it greets, even when the vendor's clock runs ahead of ours.
+		await arrive(guest("g1b", "Hello", { at: Date.now() + 60_000 }));
+		expect((await thread("g1b")).messages.map((message) => message.source)).toEqual([
+			"guest",
+			"auto-reply",
+		]);
 		expect(conversation.messages).toHaveLength(2);
 	});
 
@@ -224,5 +230,27 @@ describe("one send attempt (ADR 0021, Consequences)", () => {
 		expect(logged).toContain("auto-reply send failed");
 		expect(logged).not.toContain(conversation.id);
 		expect(logged).not.toContain("private details");
+	});
+});
+
+describe("the claim (ADR 0021: at most one greeting per thread, held by the database)", () => {
+	test("of five claims at once, exactly one wins", async () => {
+		const { conversation } = await runtime.store.upsertInbound(guest("c1", "Hello"), OFFICE);
+		const claims = await Promise.all(
+			Array.from({ length: 5 }, () => runtime.store.claimAutoReply(OFFICE, conversation.id)),
+		);
+		expect(claims.filter(Boolean)).toHaveLength(1);
+	});
+
+	test("a thread the office has replied on can't be claimed", async () => {
+		const { conversation } = await runtime.store.upsertInbound(guest("c2", "Hello"), OFFICE);
+		await runtime.store.upsertInbound(oaEcho("c2", "oa-reply"), OFFICE);
+		expect(await runtime.store.claimAutoReply(OFFICE, conversation.id)).toBe(false);
+	});
+
+	test("another office can't claim the thread", async () => {
+		const { conversation } = await runtime.store.upsertInbound(guest("c3", "Hello"), OFFICE);
+		expect(await runtime.store.claimAutoReply("office-b", conversation.id)).toBe(false);
+		expect(await runtime.store.claimAutoReply(OFFICE, conversation.id)).toBe(true);
 	});
 });

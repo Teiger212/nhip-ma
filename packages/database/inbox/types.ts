@@ -174,6 +174,8 @@ export type Conversation = {
 	owner: { id: string; name: string } | null;
 	/** The thread's lead in the office's CRM (ADR 0003); null until Nhịp has linked one. */
 	crm: ConversationCrm | null;
+	/** When the auto-reply claimed the thread (ADR 0021); null while it has not. */
+	autoReplyAt: string | null;
 	updatedAt: string;
 };
 
@@ -303,6 +305,15 @@ export type OfficePipe = {
  * agent sees the office's pool and their own threads; a manager sees every thread of the
  * office. No role reads as an agent.
  */
+/** An office's auto-reply switch (ADR 0021), with the name its label signs with. */
+export type OfficeAutoReply = {
+	/** `organization.name`: the auto-reply is signed as the office (G2). */
+	name: string;
+	on: boolean;
+	/** When it was last turned on; a thread that began before it is never greeted (S1). */
+	onSince: string | null;
+};
+
 export type InboxViewer = { userId: string; officeId: string; role?: "agent" | "manager" };
 
 /**
@@ -465,6 +476,29 @@ export type InboxStore = {
 	) => Promise<Conversation | null>;
 	/** The vendor definitely refused: `failed`. The operator may approve again. */
 	failAnswer: (officeId: string, answerId: string, reason: string) => Promise<void>;
+	/** The office's name and its auto-reply switch (ADR 0021): no setting row means on. */
+	officeAutoReply: (officeId: string) => Promise<OfficeAutoReply | null>;
+	/**
+	 * Claim the thread's one auto-reply (ADR 0021): true for exactly one caller, and only while
+	 * the thread has no office message, no Answer and no claim. A claim is never given back.
+	 */
+	claimAutoReply: (officeId: string, id: string) => Promise<boolean>;
+	/**
+	 * File a sent auto-reply as the office's message. It is not an Answer: `sentAt`, the owner
+	 * and Your turn are untouched. Null when the thread is gone.
+	 */
+	recordAutoReply: (
+		officeId: string,
+		id: string,
+		reply: {
+			text: string;
+			writtenBy: DraftSource;
+			result: SendResult;
+			pipeExternalId: string | null;
+			/** When it went out, placed after the message it greets (ADR 0021). */
+			at: Date;
+		},
+	) => Promise<Conversation | null>;
 	/** The vendor did not answer, or the acknowledgement could not be recorded: `unknown`. */
 	markAnswerUnknown: (officeId: string, answerId: string, reason: string) => Promise<void>;
 	guestInboundText: (officeId: string, id: string) => Promise<string>;

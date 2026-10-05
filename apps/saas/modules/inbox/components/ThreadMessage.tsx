@@ -25,15 +25,28 @@ export function ThreadMessage({ message }: { message: Message }) {
 	const translation = inbound ? message.translations?.[locale] : undefined;
 	return (
 		<div
+			data-test="message"
 			className={cn(
 				"px-3 py-2 text-sm rounded-xl",
 				inbound ? "shadow-hairline bg-card" : "ml-6 bg-muted/60",
 			)}
 		>
 			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
-				<span className="font-medium text-foreground/80" data-test="message-source">
-					{t(`source.${SOURCE_KEYS[message.source]}`)}
-				</span>
+				{message.source === "auto-reply" ? (
+					<>
+						{/* The office's greeting, sent on its own (ADR 0021, DESIGN.md: inline badges). */}
+						<Badge status="neutral" size="sm" data-test="message-source">
+							{t("source.autoReply")}
+						</Badge>
+						{message.writtenBy ? (
+							<span data-test="auto-reply-writer">{t(`autoReply.${message.writtenBy}`)}</span>
+						) : null}
+					</>
+				) : (
+					<span className="font-medium text-foreground/80" data-test="message-source">
+						{t(`source.${SOURCE_KEYS[message.source]}`)}
+					</span>
+				)}
 				<time className="tabular-nums" dateTime={message.at}>
 					{formatInboxTimestamp(message.at, locale)}
 				</time>
