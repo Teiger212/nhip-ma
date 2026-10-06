@@ -213,8 +213,15 @@ async function openInbox(page: Page) {
 	).toBeVisible();
 }
 
-/** A view button (Unassigned, a manager's only / Your turn / Sent / All) with its count. */
-function view(page: Page, name: "Unassigned" | "Your turn" | "Sent" | "All", count?: number) {
+/**
+ * A view button (Unassigned, a manager's only / Your turn, which a manager's names Waiting
+ * (#210) / Sent / All) with its count.
+ */
+function view(
+	page: Page,
+	name: "Unassigned" | "Your turn" | "Waiting" | "Sent" | "All",
+	count?: number,
+) {
 	return page.getByRole("button", {
 		name: count === undefined ? new RegExp(`^${name} \\d+$`) : `${name} ${count}`,
 		exact: count !== undefined,
@@ -228,7 +235,7 @@ async function showAll(page: Page) {
 }
 
 /** The view buttons, left to right: each read as its view's name. */
-const VIEW_TAB = /^(Unassigned|Your turn|Sent|All) \d+$/;
+const VIEW_TAB = /^(Unassigned|Your turn|Waiting|Sent|All) \d+$/;
 
 /** Any of this file's guests, by the Zalo id they are listed by. */
 const ANY_GUEST = /^e2e-assign-guest-/;
@@ -887,8 +894,8 @@ test.describe("Assign 10 — Unassigned comes first, oldest first", () => {
 		);
 		await expect(
 			page.getByRole("button", { name: VIEW_TAB }),
-			"Unassigned comes before Your turn, Sent and All",
-		).toHaveText([/^Unassigned\s*3$/, /^Your turn\s*\d+$/, /^Sent\s*\d+$/, /^All\s*\d+$/]);
+			"Unassigned comes before Waiting, Sent and All",
+		).toHaveText([/^Unassigned\s*3$/, /^Waiting\s*\d+$/, /^Sent\s*\d+$/, /^All\s*\d+$/]);
 		await expect(guestRows(page), "oldest first").toHaveText(guests.map(naming));
 
 		// Assign to… never selects its row: with the newest guest open, the oldest's pill opens

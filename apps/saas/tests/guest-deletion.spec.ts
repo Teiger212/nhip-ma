@@ -292,12 +292,17 @@ function rowOf(page: Page, guest: Guest) {
 	return threadList(page).getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
 }
 
-type ViewName = "Unassigned" | "Your turn" | "Sent" | "All";
+type ViewName = "Unassigned" | "Your turn" | "Waiting" | "Sent" | "All";
 const VIEWS: readonly ViewName[] = ["Your turn", "Sent", "All"];
 
-/** The views the person's Inbox shows: a manager's start with Unassigned (ADR 0022). */
+/**
+ * The views the person's Inbox shows: a manager's start with Unassigned, and their Your turn is
+ * named Waiting (ADR 0022, #210).
+ */
 async function viewsOf(page: Page): Promise<readonly ViewName[]> {
-	return (await view(page, "Unassigned").count()) > 0 ? ["Unassigned", ...VIEWS] : VIEWS;
+	return (await view(page, "Unassigned").count()) > 0
+		? ["Unassigned", "Waiting", "Sent", "All"]
+		: VIEWS;
 }
 
 /** A view button of the Inbox with its count (any count when none is given). */

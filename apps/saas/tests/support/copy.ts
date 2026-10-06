@@ -102,8 +102,8 @@ export const COUNT_LINE_EN = {
 	/** A manager's Unassigned view (its owner filter is disabled, on All threads). */
 	unassigned: (unassigned: number, waiting: number) =>
 		`${unassigned} unassigned · ${waitingIn(waiting)}`,
-	/** A manager's Your turn view. */
-	yourTurn: (waiting: number, on?: string) => waitingIn(waiting, on),
+	/** A manager's Waiting view (their Your turn, named Waiting since #210). */
+	waiting: (waiting: number, on?: string) => waitingIn(waiting, on),
 	/** A manager's Sent view. */
 	sent: (sent: number, waiting: number, on?: string) => `${sent} sent · ${waitingIn(waiting, on)}`,
 	/** A manager's All view. */

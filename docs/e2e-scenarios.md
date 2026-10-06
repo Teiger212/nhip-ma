@@ -366,19 +366,76 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     guest, so the manager's expected order (both Unassigned oldest first, then agent 1's) is
     neither oldest-first nor newest-first overall; nameless Zalo guests are listed by their id).
 
+## Inbox view tabs (#210; DESIGN.md "View Tabs", ADR 0022)
+
+The Inbox's views are a row of tabs above the thread list, each a label and its count: an agent's
+Your turn, Sent and All; a manager's Unassigned, Waiting, Sent and All. The list is the 22rem
+panel from `md` (DESIGN.md "Inbox.") and the whole width below it. The panel clips what spills
+out of it, so a tab cut off at its edge is as wrong as a row that wraps.
+
+1. **The view tabs fit on one line.** Whatever the counts (two or three digits) and the language
+   (English or Vietnamese), the tabs sit on one line:
+   - every tab at the same height, each label and count on one line;
+   - each tab as wide as its label and count, nothing cut inside it;
+   - the whole row inside the list panel, with no sideways scroll;
+   - each count in full ("123", never "99+").
+
+   This holds for an agent's three tabs and a manager's four. It holds on a desktop (1280 wide), at
+   the 22rem panel (768 wide) and on a phone (390 wide). The worst case is a manager in Vietnamese
+   at the 22rem panel.
+   Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 1; an office of the test's own with one
+   invited agent and one invited manager. Guests write through signed Zalo webhooks; the manager
+   gives some to the agent through the owner API, and the agent answers some through the approve
+   API. Two-digit counts: manager 12, 25, 14, 39; agent 13, 14, 27. Three-digit counts, on every
+   tab: manager 101, 203, 103, 306; agent 102, 103, 205. The 306 guests take a few seconds.
+   "On one line" is every tab at the same top and height, with no text in a tab on two lines.
+   "Nothing cut" is no tab, nor anything in it, holding more than it shows. "Inside the panel"
+   is every word of every tab, and the first and last tab, between the panel's inner edges.
+   "No sideways scroll" is nothing between the tabs and the panel being wider inside than it
+   shows. The manager's Waiting tab is judged here by its count only: its label is 2's).
+
+2. **A manager's "Your turn" reads "Waiting"** (ADR 0022 amendment, Q15, docs PR #213). A manager's view of
+   every guest the office owes a reply is labelled "Waiting N" (VI "Đang chờ N", pending the #78
+   review). It is never "Your turn". It holds the same threads: the Unassigned guests and the
+   agents' guests still waiting, not the answered ones. Its count is the same office-wide number
+   as the nav badge, the tab title ("(N) Inbox", VI "(N) Hộp thư") and the list's count line. An
+   agent in the same office still sees "Your turn N" (VI "Đến lượt bạn N"), and no "Waiting".
+   Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN and VI; an office of the test's
+   own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
+   The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
+   title, and the count line is #208's manager line on Unassigned, "2 unassigned · 3 waiting in the
+   office" (VI "2 khách chưa giao · 3 khách đang chờ văn phòng"). Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1, Sent 1, All 2,
+   their nav reads 1, and Your turn lists only their guest).
+
+## Hidden kit screens (#210)
+
+A kit screen Nhịp doesn't use yet is hidden (`kit-screens.ts`), not deleted: opening its address
+gives the not-found page. The account's Billing page is hidden already.
+
+1. **The office's Billing page is hidden** (ADR 0022 amendment, Q16, docs PR #213; until #198
+   builds ADR 0014's billing). The walk office's manager opening `/<locale>/walk/settings/billing` gets what
+   the account's hidden Billing page (`/<locale>/settings/billing`) gives: the same status (404)
+   and the same not-found page ("404", "Page not found", "Go to dashboard"; VI "Không tìm thấy
+   trang", "Về bảng điều khiển"). No plan or Billing heading shows. An agent of the office gets
+   the same.
+   Spec: `apps/saas/tests/office-billing-hidden.spec.ts` (Hidden kit screens 1; the manager in EN
+   and VI, the agent in EN. The account's page is read first, as the reference, and must itself
+   be the 404 not-found page. The comparison is of the not-found content, not the page's
+   surroundings: the account's settings carry their own menu).
+
 ## Inbox polish (#208)
 
 What the UI walk found in a manager's Inbox, as decided by Eyal on #208. A guest with a long name
 is a WhatsApp guest whose profile name is 40 characters.
 
-1. **The view tabs stay put.** A manager at a desk switches Unassigned → Your turn → Sent → All
+1. **The view tabs stay put.** A manager at a desk switches Unassigned → Waiting → Sent → All
    → back to Unassigned. The view tabs and the search field stay where they were: neither moves
    up or down. (Before #208, the "Showing" filter appeared above the search field in every view
    but Unassigned, and the tabs jumped 44px.)
    Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 1; an office of the test's own with
    an invited manager and three Unassigned guests, so no banner another spec raises in an office
    moves the list while it is measured; at 1280×720; "where they were" is the top edge of the
-   Your turn tab and of the search field, the same to the pixel in every view as on Unassigned).
+   Waiting tab and of the search field, the same to the pixel in every view as on Unassigned).
 2. **A manager's "Assign to…" shows when it's wanted.** On a manager's Unassigned rows, from
    `md` (768px) up:
    - A row that is not selected, not hovered and has no keyboard focus hides its "Assign to…".
@@ -404,12 +461,12 @@ is a WhatsApp guest whose profile name is 40 characters.
 
 3. **The count line under the tabs says what each view holds.** For a manager, per view:
    - Unassigned: "{u} unassigned · {w} waiting in the office"
-   - Your turn: "{w} waiting in the office"
+   - Waiting: "{w} waiting in the office"
    - Sent: "{s} sent · {w} waiting in the office"
    - All: "{a} threads · {w} waiting in the office" ("1 thread" for one)
 
-   u is the Unassigned threads, w the office's Your turn threads, s the Sent threads and a all
-   threads. That w counts the Unassigned guests waiting too, as the manager's Your turn tab does,
+   u is the Unassigned threads, w the office's Waiting threads, s the Sent threads and a all
+   threads. That w counts the Unassigned guests waiting too, as the manager's Waiting tab does,
    is the test author's reading of #208, pending Eyal's confirmation: if w means only the guests
    waiting on agents, every manager line in the spec changes. With
    the "Showing" filter on an operator, the counts are that operator's threads and "waiting in the
@@ -419,7 +476,7 @@ is a WhatsApp guest whose profile name is 40 characters.
    an invited manager and two invited agents, each with a name of their own. Two guests wait
    Unassigned; agent A holds three guests and has answered one through the Inbox; agent B holds
    one, waiting. The office reads u 2, w 5, s 1, a 6, checked first on the view tabs; agent A
-   reads 2 waiting, 1 sent, 3 threads, judged on Your turn, Sent and All; agent B is "1 thread · 1
+   reads 2 waiting, 1 sent, 3 threads, judged on Waiting, Sent and All; agent B is "1 thread · 1
    waiting on <B>". The agents' lines are "2 guests are waiting on you" and "1 guest is waiting on
    you" in each of their views. The wording is #208's, written out in `tests/support/copy.ts`,
    not read from the app's strings).

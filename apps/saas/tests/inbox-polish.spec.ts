@@ -78,7 +78,8 @@ const test = base.extend<{ newOffice: () => Promise<OwnOffice> }>({
 
 /* ---------------------------------------------------------------- what a person sees */
 
-type ViewName = "Unassigned" | "Your turn" | "Sent" | "All";
+/** A manager's Your turn is named Waiting (#210); an agent's stays Your turn. */
+type ViewName = "Unassigned" | "Waiting" | "Your turn" | "Sent" | "All";
 
 /** The thread list (not the open thread). */
 function threadList(page: Page): Locator {
@@ -267,7 +268,7 @@ async function approveReply(page: Page, guest: Guest) {
 /**
  * An office whose numbers all differ (Inbox polish 3): two Unassigned guests waiting; agent A
  * holds three guests and has answered one; agent B holds one guest, waiting. So the office has
- * 2 unassigned, 5 waiting (the Unassigned two among them, as the manager's Your turn counts
+ * 2 unassigned, 5 waiting (the Unassigned two among them, as the manager's Waiting counts
  * them), 1 sent and 6 threads; agent A 2 waiting, 1 sent, 3 threads; agent B 1 of each but sent.
  */
 async function countedOffice(newOffice: () => Promise<OwnOffice>) {
@@ -295,7 +296,7 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md Inbox polish 1
 test.describe("Inbox polish 1 — the view tabs stay put between a manager's views", () => {
-	test("at a desk, Unassigned → Your turn → Sent → All → Unassigned leaves the view tabs and the search field at the same height in every view", async ({
+	test("at a desk, Unassigned → Waiting → Sent → All → Unassigned leaves the view tabs and the search field at the same height in every view", async ({
 		newOffice,
 	}) => {
 		// An office of the test's own, so nothing another spec does to an office (a pipe's banner
@@ -309,7 +310,7 @@ test.describe("Inbox polish 1 — the view tabs stay put between a manager's vie
 			"true",
 		);
 		await expectListLoaded(page);
-		const tabs = view(page, "Your turn");
+		const tabs = view(page, "Waiting");
 		const tabsAt = (await boxOf(tabs, "the view tabs")).y;
 		const searchAt = (await boxOf(searchBox(page), "the search field")).y;
 		// The list starts under the count line, so the line's foot staying put keeps the list still.
@@ -319,7 +320,7 @@ test.describe("Inbox polish 1 — the view tabs stay put between a manager's vie
 		};
 		const listAt = await listTop();
 
-		for (const name of ["Your turn", "Sent", "All", "Unassigned"] as const) {
+		for (const name of ["Waiting", "Sent", "All", "Unassigned"] as const) {
 			await openView(page, name);
 			expect.soft(await listTop(), `${name}: the list has not moved`).toBe(listAt);
 			expect
@@ -496,7 +497,7 @@ test.describe("Inbox polish 2 — a manager's Unassigned row shows Assign to… 
 
 // scenario: docs/e2e-scenarios.md Inbox polish 3
 test.describe("Inbox polish 3 — the count line under the tabs says what each view holds", () => {
-	test("the manager's line reads '2 unassigned · 5 waiting in the office' on Unassigned, '5 waiting in the office' on Your turn, '1 sent · 5 …' on Sent and '6 threads · 5 …' on All; showing one operator, it counts theirs and says 'waiting on <name>', '1 thread' for one", async ({
+	test("the manager's line reads '2 unassigned · 5 waiting in the office' on Unassigned, '5 waiting in the office' on Waiting, '1 sent · 5 …' on Sent and '6 threads · 5 …' on All; showing one operator, it counts theirs and says 'waiting on <name>', '1 thread' for one", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
@@ -506,7 +507,7 @@ test.describe("Inbox polish 3 — the count line under the tabs says what each v
 		// The office's numbers, as the view tabs count them (the setup, not the point).
 		for (const [name, count] of [
 			["Unassigned", 2],
-			["Your turn", 5],
+			["Waiting", 5],
 			["Sent", 1],
 			["All", 6],
 		] as const) {
@@ -519,8 +520,8 @@ test.describe("Inbox polish 3 — the count line under the tabs says what each v
 		);
 		await expectListLoaded(page);
 		await expect.soft(countLine(page), "Unassigned").toHaveText(COUNT_LINE_EN.unassigned(2, 5));
-		await openView(page, "Your turn");
-		await expect.soft(countLine(page), "Your turn").toHaveText(COUNT_LINE_EN.yourTurn(5));
+		await openView(page, "Waiting");
+		await expect.soft(countLine(page), "Waiting").toHaveText(COUNT_LINE_EN.waiting(5));
 		await openView(page, "Sent");
 		await expect.soft(countLine(page), "Sent").toHaveText(COUNT_LINE_EN.sent(1, 5));
 		await openView(page, "All");
@@ -528,7 +529,7 @@ test.describe("Inbox polish 3 — the count line under the tabs says what each v
 
 		// Showing agent A: their threads only, waiting on them.
 		for (const [name, line] of [
-			["Your turn", COUNT_LINE_EN.yourTurn(2, agentA.name)],
+			["Waiting", COUNT_LINE_EN.waiting(2, agentA.name)],
 			["Sent", COUNT_LINE_EN.sent(1, 2, agentA.name)],
 			["All", COUNT_LINE_EN.all(3, 2, agentA.name)],
 		] as const) {
