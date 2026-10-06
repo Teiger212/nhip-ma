@@ -1,0 +1,101 @@
+import type { Browser, Page } from "@playwright/test";
+
+import { expect, test } from "./support/fixtures";
+import type { Login } from "./support/seed";
+import { AGENT, MANAGER } from "./support/seed";
+import { signInContext } from "./support/session-state";
+
+type Locale = "en" | "vi";
+
+/** The walk office's slug (seed): its settings live under `/<locale>/walk/settings/…`. */
+const WALK_SLUG = "walk";
+
+/** The not-found page, as each language says it (spelled out: it is what this spec proves). */
+const NOT_FOUND = {
+	en: { heading: "404", message: "Page not found", back: "Go to dashboard" },
+	vi: { heading: "404", message: "Không tìm thấy trang", back: "Về bảng điều khiển" },
+} as const;
+
+/** The account's Billing page: hidden already (kit-screens), the reference for a hidden screen. */
+const accountBilling = (locale: Locale) => `/${locale}/settings/billing`;
+
+/** The office's Billing page, hidden until ADR 0014's billing is built (#198). */
+const officeBilling = (locale: Locale) => `/${locale}/${WALK_SLUG}/settings/billing`;
+
+/** Opens a page as a person would, by its address; answers the status the page came with. */
+async function open(page: Page, url: string): Promise<number> {
+	const res = await page.goto(url);
+	expect(res, `${url} answers`).not.toBeNull();
+	return res!.status();
+}
+
+/** The not-found page, and nothing of Billing on it. */
+async function expectNotFound(page: Page, locale: Locale, what: string) {
+	const copy = NOT_FOUND[locale];
+	await expect(
+		page.getByRole("heading", { name: copy.heading, exact: true }),
+		`${what}: the not-found page`,
+	).toBeVisible();
+	await expect(
+		page.getByText(copy.message, { exact: true }),
+		`${what}: it says the page isn't found`,
+	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: copy.back, exact: true }),
+		`${what}: with its way back`,
+	).toBeVisible();
+	await expect(page.getByText("Choose plan"), `${what}: no plan to choose`).toHaveCount(0);
+	await expect(
+		page.getByText(/^(Pro|Lifetime|Enterprise)$/),
+		`${what}: no plans listed`,
+	).toHaveCount(0);
+	if (locale === "en") {
+		await expect(
+			page.getByRole("heading", { name: "Billing" }),
+			`${what}: no Billing page`,
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("heading", { name: "Your plan" }),
+			`${what}: no plan shown`,
+		).toHaveCount(0);
+	}
+}
+
+/** `who`, signed in by their minted session (setup), in a browser of their own. */
+async function signedIn(browser: Browser, who: Login) {
+	const context = await browser.newContext();
+	await signInContext(context, who);
+	return { context, page: await context.newPage() };
+}
+
+// scenario: docs/e2e-scenarios.md Hidden kit screens 1
+test.describe("Hidden kit screens 1 — the office's Billing page is hidden, as the account's is", () => {
+	const cases: { who: Login; role: string; locale: Locale }[] = [
+		{ who: MANAGER, role: "manager", locale: "en" },
+		{ who: MANAGER, role: "manager", locale: "vi" },
+		{ who: AGENT, role: "agent", locale: "en" },
+	];
+
+	for (const { who, role, locale } of cases) {
+		test(`${locale.toUpperCase()}: the walk office's ${role}, opening the office's Billing address, gets the same status and the same not-found page as the account's hidden Billing page`, async ({
+			browser,
+		}) => {
+			const { context, page } = await signedIn(browser, who);
+			try {
+				// The reference: the account's Billing page, hidden in kit-screens.
+				const reference = await open(page, accountBilling(locale));
+				expect(reference, "the account's hidden Billing page answers not found").toBe(404);
+				await expectNotFound(page, locale, "the account's Billing page");
+
+				// The office's Billing page gives the same.
+				const status = await open(page, officeBilling(locale));
+				expect(status, "the office's Billing page answers as the account's hidden one does").toBe(
+					reference,
+				);
+				await expectNotFound(page, locale, "the office's Billing page");
+			} finally {
+				await context.close();
+			}
+		});
+	}
+});
