@@ -65,7 +65,8 @@ is renamed.
 - **Your turn**: the guest's latest message has no human reply yet (there is an unanswered
   inbound). The auto-reply is not a reply (ADR 0021). The only pending state. A fact, not a
   judgment. A manager's turn chip reads "Your turn" only on threads they own; on an Unassigned
-  thread or a colleague's it reads **"Waiting"** (ADR 0022, 2026-10-06).
+  thread or a colleague's it reads **"Waiting"** (ADR 0022, 2026-10-06). A manager's view of
+  every Your-turn thread in the office is named **"Waiting"**; an agent's is "Your turn".
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
 - **Sent**: the guest's latest message has a human reply.
