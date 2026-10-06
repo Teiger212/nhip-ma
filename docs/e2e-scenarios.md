@@ -48,6 +48,27 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 4. **A failed CRM write heals** (#64). With the mock CRM failing, a new guest's message still
    arrives and is in Your turn at once; the manager sees "Not in CRM yet". When the CRM
    recovers, the lead appears and the thread says "In CRM".
+
+   4a. **A missing lead says so, and heals when the thread is opened** (#211, before go-live;
+   healing with nobody opening the thread is CRM 4's, #64). An office on the mock CRM, the CRM
+   down when a new guest first writes on Zalo: the message still arrives and the thread is in
+   Your turn. The manager assigns it to the agent, who opens it: its header says "Not in CRM
+   yet", neutral like the pipe badge beside it, never red; the manager sees the same on that
+   thread. No lead is in the CRM. Once the CRM works again and Nhịp's wait before trying again
+   has passed, opening the thread writes the lead: within a poll the header says "In CRM: <the
+   guest's name>", and the CRM holds exactly one lead for the guest. An office with no CRM shows
+   no CRM status on a new guest's thread, neither "Not in CRM yet" nor "In CRM", to the agent
+   or the manager.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 4a; offices of the test's own, as in CRM 1; the CRM
+   is down from before the guest's first message (`takeMockCrmDown`) and back with
+   `bringMockCrmBack`; the wait is made over with `passCrmRetryWait`, which retries nothing by
+   itself; "Not in CRM yet" is seen before the CRM comes back, so the heal is the opening's;
+   "neutral" is the tone of the thread header's pipe badge; "no lead" is judged once the header
+   says "Not in CRM yet", "exactly one lead" once a later guest's lead has arrived; "no CRM
+   status" once the guest's second message shows in the open thread. Not judged: that Nhịp
+   waits before trying again (no sign settles that a retry did not happen), so a build that
+   retries on every poll passes).
+
 5. **The reconcile catches a missed outcome** (#67). A lead marked lost with no notice to Nhịp
    is resolved after the reconcile runs.
 6. **Home counts deals from the CRM** (#68). Home shows Closings and Lost "as of" the last check,

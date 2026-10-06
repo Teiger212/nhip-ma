@@ -978,6 +978,7 @@
 		},
 		"crm": {
 			"inCrm": "Trong CRM: {name}",
+			"notInCrmYet": "Chưa có trong CRM",
 			"won": "Chốt",
 			"lost": "Mất"
 		},
