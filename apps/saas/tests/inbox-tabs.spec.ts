@@ -39,12 +39,13 @@ const LABEL = {
 const INBOX = { en: "Inbox", vi: "Hộp thư" } as const;
 
 /**
- * The line above the list saying how many guests wait ("3 guests are waiting on you"): only its
- * number and noun are the point here, so the rest may be reworded.
+ * The line under the tabs saying how many guests wait ("3 guests are waiting on you", or a
+ * manager's "2 unassigned · 3 waiting in the office" since #208): only the waiting number and
+ * its noun are the point here, so the rest may be reworded.
  */
 const COUNT_LINE = {
-	en: (n: number) => new RegExp(`^${n} guests?\\b`),
-	vi: (n: number) => new RegExp(`^${n} khách\\b`),
+	en: (n: number) => new RegExp(`(^|\\s)${n} (guests?|waiting)\\b`),
+	vi: (n: number) => new RegExp(`(^|\\s)${n} khách( |$)`),
 } as const;
 
 /** Every label a view tab has had, in either language: a tab is one of these and its count. */
@@ -402,7 +403,18 @@ async function expectTabsFit(office: SeededOffice, mix: Mix) {
 				const where = `${role}, ${locale.toUpperCase()}, ${viewport.name}`;
 				await test.step(where, async () => {
 					await openInboxAt(page, locale, viewport.size, expectedTabs(role, locale, mix));
-					const problems = await fitProblems(page);
+					// The tabs settle on their fit a render after they are measured: give them that.
+					let problems: string[] = [];
+					await expect
+						.poll(
+							async () => {
+								problems = await fitProblems(page);
+								return problems.length;
+							},
+							{ timeout: 5_000 },
+						)
+						.toBe(0)
+						.catch(() => undefined);
 					if (problems.length > 0) misfits[where] = problems;
 				});
 			}

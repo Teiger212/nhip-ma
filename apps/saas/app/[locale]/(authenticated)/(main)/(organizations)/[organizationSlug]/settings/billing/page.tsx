@@ -24,7 +24,7 @@ export default async function BillingSettingsPage({
 }: {
 	params: Promise<{ organizationSlug: string }>;
 }) {
-	// Hidden, as the account's Billing is, before anything is read (#210).
+	// Hidden, as the account's Billing is, before the page reads anything (#210).
 	if (!KIT_SCREENS.officeBilling) notFound();
 	const { organizationSlug } = await params;
 	const organization = await getActiveOrganization(organizationSlug);

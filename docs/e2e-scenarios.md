@@ -382,7 +382,7 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN and VI; an office of the test's
    own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
    The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
-   title and the count line, judged by its number and noun ("3 guests", VI "3 khách"). Waiting
+   title and the count line, judged by the waiting number and its noun ("3 guests" or, after #208, "3 waiting"; VI "3 khách"). Waiting
    lists exactly the three guests owed a reply. The agent's tabs read Your turn 1, Sent 1, All 2,
    their nav reads 1, and Your turn lists only their guest).
 

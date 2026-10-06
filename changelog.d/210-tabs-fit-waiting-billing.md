@@ -16,4 +16,4 @@
 - **The Inbox's view tabs stay on one line** (#210). Two- and three-digit counts and the
   Vietnamese labels no longer wrap a tab onto two lines, and the row never scrolls sideways.
   Each tab grows to fit its label and full count; when the row runs short, the tabs' side
-  padding steps down first, from 12px to 8px, then 4px.
+  padding steps down first, from 12px to 8px, then to 4px with a tighter gap before the count.

@@ -435,7 +435,7 @@ Confident, compact pills that press in slightly.
 
 ### View Tabs
 
-A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note. The tabs sit on one line and never scroll: each is as wide as its label and full count (never "99+"), and when the row runs short their 12px side padding steps down to 8px, then 4px, before anything wraps, as a manager's four Vietnamese tabs with three-digit counts do at the list's 22rem. A manager's Your turn tab reads Waiting (it holds the office's waiting guests, ADR 0022); an agent's stays Your turn.
+A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note. The tabs sit on one line and never scroll: each is as wide as its label and full count (never "99+"), and when the row runs short their side padding steps down from 12px to 8px, then to 4px with the label–count gap from 6px to 4px, before anything wraps, as a manager's four Vietnamese tabs with three-digit counts do at the list's 22rem. A manager's Your turn tab reads Waiting (it holds the office's waiting guests, ADR 0022); an agent's stays Your turn.
 
 ### Navigation
 
