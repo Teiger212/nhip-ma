@@ -3,7 +3,9 @@
 Date: 2026-10-04. Status: accepted. Extends ADRs 0004 and 0015; supersedes ADR 0015's "No
 notification to the new owner until alerts (milestone 4)". "Who" is amended by ADR 0022:
 read "pool" as Unassigned, whose guest alerts the office's managers only, and read "a
-reassignment" as any assignment.
+reassignment" as any assignment. The tab title is amended below (2026-10-06): "(n) <Page> –
+Nhịp". ADR 0023 (2026-10-06, built after go-live) gives Nhịp the scheduler this ADR lacked; the
+alert stays in `after()` until its fan-out moves onto a job.
 
 ## Context
 
@@ -84,3 +86,13 @@ thread's id carries the guest's WhatsApp phone, so it must not travel in an aler
   only them. Accepted until #131.
 - Native apps (#124) later change only the transport; the recipients, content and burst rule
   stay.
+
+## Amendment (2026-10-06, #212): the tab title names the page
+
+Decided in the grill of 2026-10-06 (Q3). It replaces #136's "(n) Inbox" on every page.
+
+- **The tab title is "(n) <Page> – Nhịp"**, for example "(6) Home – Nhịp" or "(6) Inbox –
+  Nhịp": the count, then the page the operator is on, on every page.
+- Pages are already titled "<Page> – Nhịp"; the count goes in front of that title.
+- n is the nav's Your-turn count, as before. With nobody waiting the tab keeps the page's own
+  title, as #136 built it.

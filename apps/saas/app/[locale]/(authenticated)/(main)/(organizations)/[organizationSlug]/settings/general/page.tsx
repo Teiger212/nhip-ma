@@ -1,3 +1,4 @@
+import { AutoReplySetting } from "@inbox/components/AutoReplySetting";
 import { ChangeOrganizationNameForm } from "@organizations/components/ChangeOrganizationNameForm";
 import { DeleteOrganizationForm } from "@organizations/components/DeleteOrganizationForm";
 import { OrganizationLogoForm } from "@organizations/components/OrganizationLogoForm";
@@ -35,6 +36,9 @@ export default async function OrganizationSettingsPage({
 			<SettingsList>
 				<OrganizationLogoForm />
 				<ChangeOrganizationNameForm />
+				{/* The auto-reply switch is the managers' (ADR 0021 G6, #167); the guard above already
+				    turned everyone else away. */}
+				<AutoReplySetting />
 				{canManageDeletion && <DeleteOrganizationForm />}
 			</SettingsList>
 		</>
