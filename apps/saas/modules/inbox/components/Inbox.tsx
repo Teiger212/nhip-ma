@@ -319,6 +319,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								void setView(next);
 							}}
 							counts={queue.counts}
+							manager={manager}
 						/>
 						<div
 							className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"

@@ -5,6 +5,7 @@ import { listPurchases } from "@payments/lib/server";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { getTranslations } from "next-intl/server";
@@ -23,6 +24,8 @@ export default async function BillingSettingsPage({
 }: {
 	params: Promise<{ organizationSlug: string }>;
 }) {
+	// Hidden, as the account's Billing is, before anything is read (#210).
+	if (!KIT_SCREENS.officeBilling) notFound();
 	const { organizationSlug } = await params;
 	const organization = await getActiveOrganization(organizationSlug);
 

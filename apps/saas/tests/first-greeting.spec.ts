@@ -225,8 +225,11 @@ function rowOf(page: Page, guest: Guest) {
 	return threadList(page).getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
 }
 
-/** A view button of the Inbox (Your turn / Sent / All), with its count when given. */
-function view(page: Page, name: "Your turn" | "Sent" | "All", count?: number) {
+/**
+ * A view button of the Inbox (Your turn, which a manager's names Waiting (#210) / Sent / All),
+ * with its count when given.
+ */
+function view(page: Page, name: "Your turn" | "Waiting" | "Sent" | "All", count?: number) {
 	return page.getByRole("button", {
 		name: count === undefined ? new RegExp(`^${name} \\d+$`) : `${name} ${count}`,
 		exact: count !== undefined,
@@ -318,7 +321,7 @@ test.describe("First greeting 1 — a new guest is greeted at once, and it's sti
 
 		const { page } = manager;
 		await openInbox(page);
-		await expect(view(page, "Your turn", 1), "Your turn counts it").toBeVisible();
+		await expect(view(page, "Waiting", 1), "the manager's Waiting counts it").toBeVisible();
 		await expect(view(page, "Sent", 0), "nothing is Sent").toBeVisible();
 		await expect(navCount(page), "the nav counts it").toHaveText("1");
 		await expect(rowOf(page, guest).getByTestId("thread-owner")).toHaveAttribute(
@@ -552,7 +555,7 @@ test.describe("First greeting 7 — the greeting's echo is not a reply", () => {
 		await expect(sourced(page, saas.inbox.source.autoReply), "one auto-reply").toHaveCount(1);
 		await expect(sourced(page, saas.inbox.source.oaEcho), "no app reply").toHaveCount(0);
 		await openInbox(page);
-		await expect(view(page, "Your turn", 1)).toBeVisible();
+		await expect(view(page, "Waiting", 1)).toBeVisible();
 		await expect(view(page, "Sent", 0)).toBeVisible();
 
 		const funnel = await funnelOnHome(page);

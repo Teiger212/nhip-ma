@@ -4,6 +4,9 @@
  *
  * - billing: Account settings → Billing, the plan picker and the checkout return. The kit
  *   prices per user; Nhịp's office pays per seat (ADR 0014), not built. Turn on with it.
+ * - officeBilling: an office's Settings → Billing (`/<office>/settings/billing`), the kit's
+ *   plans for the office. Hidden with the account's until ADR 0014's billing is built (#198;
+ *   ADR 0022, 2026-10-06, #210).
  * - start: the kit's start page with sample stats. PRODUCT.md: no claimed metrics.
  * - chatbot: the kit's AI chat demo. Not in PRODUCT.md.
  *
@@ -12,6 +15,7 @@
  */
 export const KIT_SCREENS = {
 	billing: false,
+	officeBilling: false,
 	start: false,
 	chatbot: false,
 } as const;

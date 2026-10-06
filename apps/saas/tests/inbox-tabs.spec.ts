@@ -105,27 +105,25 @@ type SeededOffice = {
 	};
 };
 
-const test = base.extend<{ seededOffice: (mix: Mix) => Promise<SeededOffice> }>(
-	{
-		seededOffice: async ({ admin, browser, request }, use) => {
-			const opened: Joined[] = [];
-			const oaIds: string[] = [];
-			await use(async (mix) => {
-				const oaId = uniqueId("oa");
-				oaIds.push(oaId);
-				const seeded = await seedOffice(admin, browser, request, oaId, mix);
-				opened.push(seeded.agent, seeded.manager);
-				return seeded;
-			});
-			for (const joined of opened) {
-				await joined.close();
-			}
-			for (const oaId of oaIds) {
-				await releaseZaloOa(oaId);
-			}
-		},
+const test = base.extend<{ seededOffice: (mix: Mix) => Promise<SeededOffice> }>({
+	seededOffice: async ({ admin, browser, request }, use) => {
+		const opened: Joined[] = [];
+		const oaIds: string[] = [];
+		await use(async (mix) => {
+			const oaId = uniqueId("oa");
+			oaIds.push(oaId);
+			const seeded = await seedOffice(admin, browser, request, oaId, mix);
+			opened.push(seeded.agent, seeded.manager);
+			return seeded;
+		});
+		for (const joined of opened) {
+			await joined.close();
+		}
+		for (const oaId of oaIds) {
+			await releaseZaloOa(oaId);
+		}
 	},
-);
+});
 
 /** A vendor id (OA, guest) no other test, repeat or earlier run uses. */
 function uniqueId(kind: string): string {
@@ -133,11 +131,7 @@ function uniqueId(kind: string): string {
 }
 
 /** Runs `work` over `items`, `size` at a time. */
-async function inBatches<T>(
-	items: T[],
-	size: number,
-	work: (item: T) => Promise<void>,
-) {
+async function inBatches<T>(items: T[], size: number, work: (item: T) => Promise<void>) {
 	for (let i = 0; i < items.length; i += size) {
 		await Promise.all(items.slice(i, i + size).map(work));
 	}
@@ -158,33 +152,16 @@ async function seedOffice(
 ): Promise<SeededOffice> {
 	const office = await admin.createOffice("Tabs");
 	await connectZaloOa(office.id, oaId);
-	const agent = await joinOffice(
-		admin,
-		browser,
-		office.id,
-		"member",
-		"tabs-agent",
-	);
-	const manager = await joinOffice(
-		admin,
-		browser,
-		office.id,
-		"admin",
-		"tabs-manager",
-	);
+	const agent = await joinOffice(admin, browser, office.id, "member", "tabs-agent");
+	const manager = await joinOffice(admin, browser, office.id, "admin", "tabs-manager");
 
-	const make = (n: number) =>
-		Array.from({ length: n }, () => ({ id: uniqueId("guest") }));
+	const make = (n: number) => Array.from({ length: n }, () => ({ id: uniqueId("guest") }));
 	const guests = {
 		unassigned: make(mix.unassigned),
 		waitingOnAgent: make(mix.waitingOnAgent),
 		answeredByAgent: make(mix.answeredByAgent),
 	};
-	const everyone = [
-		...guests.unassigned,
-		...guests.waitingOnAgent,
-		...guests.answeredByAgent,
-	];
+	const everyone = [...guests.unassigned, ...guests.waitingOnAgent, ...guests.answeredByAgent];
 
 	// Each guest writes once, as Zalo delivers it.
 	await inBatches(everyone, 20, (guest) =>
@@ -200,12 +177,8 @@ async function seedOffice(
 	await expect(async () => {
 		const res = await manager.api.get("/api/conversations");
 		expect(res.status(), "the manager lists the office's threads").toBe(200);
-		listed = new Map(
-			((await res.json()) as Listed[]).map((t) => [t.guestId, t]),
-		);
-		expect(listed.size, "the manager lists every guest who wrote").toBe(
-			everyone.length,
-		);
+		listed = new Map(((await res.json()) as Listed[]).map((t) => [t.guestId, t]));
+		expect(listed.size, "the manager lists every guest who wrote").toBe(everyone.length);
 	}).toPass({ timeout: 60_000 });
 	const thread = (guest: Guest) => {
 		const t = listed.get(guest.id);
@@ -214,22 +187,12 @@ async function seedOffice(
 	};
 
 	// The manager gives the agent theirs (ADR 0022), through the owner API.
-	await inBatches(
-		[...guests.waitingOnAgent, ...guests.answeredByAgent],
-		20,
-		async (guest) => {
-			const res = await manager.api.post(
-				`/api/conversations/${thread(guest).id}/owner`,
-				{
-					ownerId: agent.userId,
-				},
-			);
-			expect(
-				res.status(),
-				`the manager assigns ${guest.id}: ${await res.text()}`,
-			).toBe(200);
-		},
-	);
+	await inBatches([...guests.waitingOnAgent, ...guests.answeredByAgent], 20, async (guest) => {
+		const res = await manager.api.post(`/api/conversations/${thread(guest).id}/owner`, {
+			ownerId: agent.userId,
+		});
+		expect(res.status(), `the manager assigns ${guest.id}: ${await res.text()}`).toBe(200);
+	});
 
 	// The agent answers some of theirs, as the reply box's approve does.
 	await inBatches(guests.answeredByAgent, 20, async (guest) => {
@@ -238,10 +201,7 @@ async function seedOffice(
 			inboundId: unansweredInboundId,
 			reply: `Reply to ${guest.id}`,
 		});
-		expect(
-			res.status(),
-			`the agent answers ${guest.id}: ${await res.text()}`,
-		).toBe(200);
+		expect(res.status(), `the agent answers ${guest.id}: ${await res.text()}`).toBe(200);
 	});
 
 	return { agent, manager, guests };
@@ -332,17 +292,12 @@ async function fitProblems(page: Page): Promise<string[]> {
 		if (!panel) return ["no list panel holds the tabs"];
 		const panelBox = panel.getBoundingClientRect();
 		const panelStyle = getComputedStyle(panel);
-		const innerLeft =
-			panelBox.left + panel.clientLeft + parseFloat(panelStyle.paddingLeft);
+		const innerLeft = panelBox.left + panel.clientLeft + parseFloat(panelStyle.paddingLeft);
 		const innerRight =
-			panelBox.left +
-			panel.clientLeft +
-			panel.clientWidth -
-			parseFloat(panelStyle.paddingRight);
+			panelBox.left + panel.clientLeft + panel.clientWidth - parseFloat(panelStyle.paddingRight);
 
 		const boxes = tabs.map((t) => t.getBoundingClientRect());
-		const nameOf = (t: Element) =>
-			(t.textContent ?? "").replace(/\s+/g, " ").trim();
+		const nameOf = (t: Element) => (t.textContent ?? "").replace(/\s+/g, " ").trim();
 
 		// One line: every tab at the same height on the page, and as tall as the others.
 		for (const [i, box] of boxes.entries()) {
@@ -377,9 +332,7 @@ async function fitProblems(page: Page): Promise<string[]> {
 				range.selectNodeContents(node);
 				const lines = [...range.getClientRects()].filter((r) => r.width > 0);
 				if (lines.length > 1) {
-					problems.push(
-						`"${text}" in "${name}" wraps onto ${lines.length} lines`,
-					);
+					problems.push(`"${text}" in "${name}" wraps onto ${lines.length} lines`);
 				}
 				const r = range.getBoundingClientRect();
 				if (r.left < innerLeft - slack || r.right > innerRight + slack) {
@@ -387,10 +340,7 @@ async function fitProblems(page: Page): Promise<string[]> {
 						`"${text}" in "${name}" is cut by the panel (${px(r.left)}–${px(r.right)}, panel ${px(innerLeft)}–${px(innerRight)})`,
 					);
 				}
-				if (
-					r.left < boxes[i].left - slack ||
-					r.right > boxes[i].right + slack
-				) {
+				if (r.left < boxes[i].left - slack || r.right > boxes[i].right + slack) {
 					problems.push(`"${text}" spills out of its tab "${name}"`);
 				}
 			}
@@ -434,12 +384,9 @@ async function openInboxAt(
 ) {
 	await page.setViewportSize(size);
 	await page.goto(`/${locale}/inbox`);
-	await expect(viewTabs(page), "the tabs show their full counts").toHaveText(
-		tabs,
-		{
-			timeout: 15_000,
-		},
-	);
+	await expect(viewTabs(page), "the tabs show their full counts").toHaveText(tabs, {
+		timeout: 15_000,
+	});
 }
 
 /**
@@ -454,12 +401,7 @@ async function expectTabsFit(office: SeededOffice, mix: Mix) {
 			for (const viewport of VIEWPORTS) {
 				const where = `${role}, ${locale.toUpperCase()}, ${viewport.name}`;
 				await test.step(where, async () => {
-					await openInboxAt(
-						page,
-						locale,
-						viewport.size,
-						expectedTabs(role, locale, mix),
-					);
+					await openInboxAt(page, locale, viewport.size, expectedTabs(role, locale, mix));
 					const problems = await fitProblems(page);
 					if (problems.length > 0) misfits[where] = problems;
 				});
@@ -523,21 +465,17 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 				}),
 				`the manager has no "${label.yourTurn}" tab`,
 			).toHaveCount(0);
-			await expect(viewTabs(page), "Unassigned, Waiting, Sent, All").toHaveText(
-				[
-					tabText(label.unassigned, 2),
-					tabText(label.waiting, 3),
-					tabText(label.sent, 1),
-					tabText(label.all, 4),
-				],
-			);
+			await expect(viewTabs(page), "Unassigned, Waiting, Sent, All").toHaveText([
+				tabText(label.unassigned, 2),
+				tabText(label.waiting, 3),
+				tabText(label.sent, 1),
+				tabText(label.all, 4),
+			]);
 
 			// The same office-wide number: the nav, the tab title and the count line.
-			await expect(navCount(page), "the nav counts the same three").toHaveText(
-				"3",
-			);
+			await expect(navCount(page), "the nav counts the same three").toHaveText("3");
 			await expect(page, "the tab title counts the same three").toHaveTitle(
-				new RegExp(`^\\(3\\) ${INBOX[locale]}\\b`),
+				new RegExp(`^\\(3\\) ${INBOX[locale]}( |$)`),
 			);
 			await expect(
 				listPanel(page).getByText(COUNT_LINE[locale](3)),
@@ -547,24 +485,12 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 			// The same threads: every guest owed a reply, the Unassigned and the agent's, and not the
 			// one answered.
 			await tab(page, label.waiting, 3).click();
-			await expect(tab(page, label.waiting, 3)).toHaveAttribute(
-				"aria-pressed",
-				"true",
-			);
+			await expect(tab(page, label.waiting, 3)).toHaveAttribute("aria-pressed", "true");
 			for (const guest of [...guests.unassigned, ...guests.waitingOnAgent]) {
-				await expect(
-					rowOf(page, guest),
-					`Waiting lists ${guest.id}`,
-				).toBeVisible();
+				await expect(rowOf(page, guest), `Waiting lists ${guest.id}`).toBeVisible();
 			}
-			await expect(
-				guestRows(page),
-				"Waiting lists only those three",
-			).toHaveCount(3);
-			await expect(
-				rowOf(page, guests.answeredByAgent[0]),
-				"not the answered guest",
-			).toHaveCount(0);
+			await expect(guestRows(page), "Waiting lists only those three").toHaveCount(3);
+			await expect(rowOf(page, guests.answeredByAgent[0]), "not the answered guest").toHaveCount(0);
 
 			// The agent of the same office: still Your turn, their own guest.
 			const agent = office.agent.page;
@@ -587,16 +513,10 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 				tabText(label.sent, 1),
 				tabText(label.all, 2),
 			]);
-			await expect(
-				navCount(agent),
-				"the agent's nav counts their one",
-			).toHaveText("1");
+			await expect(navCount(agent), "the agent's nav counts their one").toHaveText("1");
 			await tab(agent, label.yourTurn, 1).click();
 			await expect(rowOf(agent, guests.waitingOnAgent[0])).toBeVisible();
-			await expect(
-				guestRows(agent),
-				"Your turn lists only their own",
-			).toHaveCount(1);
+			await expect(guestRows(agent), "Your turn lists only their own").toHaveCount(1);
 		});
 	}
 });
