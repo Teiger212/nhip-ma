@@ -272,7 +272,9 @@ describe("the switch (ADR 0021 G6, S1, #167)", () => {
 		await runtime.store.setOfficeAutoReply(OFFICE, true);
 		const on = await setting();
 		expect(on?.autoReply).toBe(true);
+		// Now, in UTC: neither before the call nor after it (a time-zone slip is hours off).
 		expect(on?.autoReplyOnSince?.getTime()).toBeGreaterThanOrEqual(before);
+		expect(on?.autoReplyOnSince?.getTime()).toBeLessThanOrEqual(Date.now());
 		expect(await runtime.store.officeAutoReply(OFFICE)).toMatchObject({
 			on: true,
 			onSince: on?.autoReplyOnSince?.toISOString(),

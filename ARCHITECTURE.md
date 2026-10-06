@@ -59,8 +59,9 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   means on) and skips a thread whose first message is older than the switch's last turn on
   (`autoReplyOnSince`, S1; message times are the vendor's clock). A manager sets the switch on
   the office's General settings page (`PUT /api/office/auto-reply`, #167), which stamps
-  `autoReplyOnSince` only on a turn from off to on. The job then claims the thread with one conditional update (`autoReplyAt` null → now, and
-  still no office message), so two first messages at once make one greeting. It sends through
+  `autoReplyOnSince` only on a turn from off to on, in one statement. The job then claims the
+  thread with one conditional update (`autoReplyAt` null → now, and still no office message),
+  so two first messages at once make one greeting. It sends through
   `connectionFor` and `transmit` like an Answer (never from a disconnected endpoint; a mock
   send reports `mock-auto-reply-<thread id>`), once, and files an outbound with source
   `auto_reply`, `writtenBy`, and the hashed vendor id, so the vendor's echo is a duplicate. It

@@ -25,18 +25,22 @@ export function AutoReplySetting() {
 
 	return (
 		<SettingsItem title={t("title")} description={t("hint")}>
-			<label className="gap-3 text-sm flex items-center">
-				<Switch
-					data-test="auto-reply-switch"
-					aria-label={t("title")}
-					checked={on ?? false}
-					disabled={on === undefined || setAutoReply.isPending}
-					onCheckedChange={onCheckedChange}
-				/>
-				<span className="text-muted-foreground">
-					{on === undefined ? "…" : t(on ? "on" : "off")}
-				</span>
-			</label>
+			{current.isError ? (
+				<p className="text-sm text-muted-foreground">{t("loadError")}</p>
+			) : (
+				<label className="gap-3 text-sm flex items-center">
+					<Switch
+						data-test="auto-reply-switch"
+						aria-label={t("title")}
+						checked={on ?? false}
+						disabled={on === undefined || setAutoReply.isPending}
+						onCheckedChange={onCheckedChange}
+					/>
+					<span className="text-muted-foreground">
+						{on === undefined ? "…" : t(on ? "on" : "off")}
+					</span>
+				</label>
+			)}
 		</SettingsItem>
 	);
 }

@@ -378,20 +378,21 @@
 		},
 		"settings": {
 			"autoReply": {
-				"error": "Couldn't change the auto-reply. Try again.",
-				"hint": "Within seconds, signed by the office. Every other reply still waits for your team's approval.",
+				"error": "Couldn't save the auto-reply setting. Try again.",
+				"hint": "Sent within seconds, signed by the office, to guests who first write while it's on. Every other reply still waits for your team's approval.",
+				"loadError": "Couldn't load the auto-reply setting. Reload the page to try again.",
 				"off": "Off",
 				"on": "On",
 				"title": "Auto-reply to a new guest's first message",
 				"turnedOff": "Auto-reply is off",
-				"turnedOn": "Auto-reply is on"
+				"turnedOn": "Auto-reply is on for new guests"
 			},
 			"changeName": {
 				"notifications": {
 					"error": "Could not update organization name",
 					"success": "Organization name was updated successfully"
 				},
-				"title": "Organization name"
+				"title": "Office name"
 			},
 			"deleteOrganization": {
 				"confirmation": "Are you sure you want to delete your organization?",
@@ -499,8 +500,8 @@
 				"organizationNameUpdated": "Your organization name has been updated.",
 				"organizationNotDeleted": "We were unable to delete your organization. Please try again later."
 			},
-			"subtitle": "Manage the settings of the organization.",
-			"title": "Organization",
+			"subtitle": "Manage your office's settings.",
+			"title": "Office",
 			"dangerZone": {
 				"title": "Danger zone"
 			}

@@ -378,13 +378,14 @@
 		},
 		"settings": {
 			"autoReply": {
-				"error": "Không đổi được trả lời tự động. Vui lòng thử lại.",
-				"hint": "Gửi trong vài giây, dưới tên văn phòng. Mọi tin trả lời khác vẫn chờ nhóm của bạn duyệt.",
+				"error": "Không lưu được cài đặt trả lời tự động. Vui lòng thử lại.",
+				"hint": "Gửi trong vài giây, dưới tên văn phòng, cho khách nhắn lần đầu khi đang bật. Các tin trả lời khác vẫn chờ nhóm của bạn duyệt.",
+				"loadError": "Không tải được cài đặt trả lời tự động. Hãy tải lại trang để thử lại.",
 				"off": "Tắt",
 				"on": "Bật",
-				"title": "Trả lời tự động tin nhắn đầu tiên của khách mới",
+				"title": "Trả lời tự động cho tin nhắn đầu tiên của khách mới",
 				"turnedOff": "Đã tắt trả lời tự động",
-				"turnedOn": "Đã bật trả lời tự động"
+				"turnedOn": "Đã bật trả lời tự động cho khách mới"
 			},
 			"changeName": {
 				"notifications": {
