@@ -931,11 +931,12 @@
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
 		"managerCount": {
-			"waitingOffice": "{count} khách đang chờ trong văn phòng",
+			"line": "{view} · {waiting}",
+			"waitingOffice": "{count} khách đang chờ văn phòng",
 			"waitingOn": "{count} khách đang chờ {name}",
-			"unassigned": "{count} chưa giao",
+			"unassigned": "{count} khách chưa giao",
 			"sent": "{count} đã gửi",
-			"all": "{count} cuộc trò chuyện"
+			"all": "{count} cuộc hội thoại"
 		},
 		"allCaughtUp": "Đã xử lý hết.",
 		"allAssigned": "Mọi khách đã được giao.",

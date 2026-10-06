@@ -435,7 +435,7 @@ Confident, compact pills that press in slightly.
 
 ### View Tabs
 
-A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note. Under them, a Body Small count line in Slate Note: an agent's says how many guests wait on them; a manager's names the view's own count, then how many wait in the office ("4 unassigned · 6 waiting in the office"), or on the operator the owner filter shows.
+A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note. After them (beside them where the row has room, otherwise under them), a Body Small count line in Slate Note: an agent's says how many guests wait on them; a manager's names the view's own count, then how many wait in the office ("4 unassigned · 6 waiting in the office"), or on the operator the owner filter shows. A manager's Your turn line is only the waiting count, which is that view's own.
 
 ### Navigation
 
@@ -443,7 +443,7 @@ A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills
 - **Variant:** `SidebarMenuButton variant="chip"` carries the whole treatment, so the app passes no restyle classes.
 - **Active:** a white chip with the Hairline shadow, ink text, the icon in Dispatch Blue. The settings entry in the user menu uses the same chip.
 - **Hover:** Hairline Blue accent fill.
-- **Coming soon:** a later feature named in PRODUCT.md's "Later, shown as Coming soon" list sits where it will live as a disabled item (the kit's 50% opacity, no link), with a neutral `Badge` reading "Coming soon" at its right edge. International sits under Inbox.
+- **Coming soon:** a later feature named in PRODUCT.md's "Later, shown as Coming soon" list sits where it will live as a disabled item (the kit's 50% opacity, no link), with a neutral `Badge` reading "Coming soon" at its right edge. International sits under Inbox. In the collapsed sidebar it is the dimmed icon alone: a disabled item takes no pointer, so it has no tooltip.
 - **Count:** while any thread is Your turn, the Inbox link carries a numeric warning `Badge` at its right edge (`ml-auto`), inside the link itself.
 - **Phone (below `lg`):** the sidebar is a sheet behind the 56px top bar; links are 44px tall; the same active treatment applies.
 
@@ -459,7 +459,7 @@ The unit of the desk: who, when, what they said, whose turn.
 - **Rest:** transparent, 8.4px radius. **Hover:** 70% Morning Wash.
 - **Active (`aria-current`):** a Hairline Blue fill, and the guest mark turns solid Dispatch Blue with white initials (200ms). No press-scale, no stripe.
 - **Quiet threads** fold under a `<details>` disclosure at the list's foot (44px summary, Body Small, Slate Note).
-- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule). Below `md`, where nothing hovers, it's always there: a 44px tap target on the badges' last line. From `md` it's the 24px pill on the name's line, as the view tabs shrink from `md`, so the badges keep the row's whole width; it shows only on the row's hover, on focus within the row, on the selected row and while its menu is open, and then it takes the timestamp's place. The name is never under it: at rest the name has the line's whole width, and while the pill shows it ends before the pill. The pill's label never truncates. It never selects the row, and it acts at once, as the header's owner menu does.
+- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule). Below `md` it's always there: a 44px tap target on the badges' last line. From `md` it's the 24px pill on the name's line, as the view tabs shrink from `md`, so the badges keep the row's whole width; it shows only on the row's hover, on focus within the row, on the selected row and while its menu is open, and then it takes the timestamp's place. On a touch screen from `md`, where nothing hovers, it shows on every row, still in the timestamp's place. The name is never under it: at rest the name has the line's whole width, and while the pill shows it ends before the pill. The pill's label never truncates. It never selects the row, and it acts at once, as the header's owner menu does.
 
 ### Message
 

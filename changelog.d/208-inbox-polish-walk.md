@@ -15,7 +15,7 @@
 - **"Assign to…" shows on the row you're on** (#208, ADR 0022). From `md` up, the pill on a
   manager's Unassigned rows shows on hover, on keyboard focus within the row and on the
   selected row, in the timestamp's place, so names keep the row's width. On a phone it stays
-  visible, a 44px target.
+  visible, a 44px target, and on a touch screen at any width it shows on every row.
 
 ### Fixed
 

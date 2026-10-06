@@ -120,7 +120,7 @@ function NavItemComingSoon({
 }) {
 	const Icon = NAV_ICONS[item.iconName];
 	return (
-		<SidebarMenuButton variant="chip" disabled aria-disabled data-test={`nav-${item.id}`}>
+		<SidebarMenuButton variant="chip" disabled data-test={`nav-${item.id}`}>
 			<Icon />
 			<span className={cn(!showLabel && "sr-only")}>{label}</span>
 			<span className={cn("ml-auto", !showLabel && "sr-only")}>

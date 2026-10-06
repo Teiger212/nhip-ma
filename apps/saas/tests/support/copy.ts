@@ -99,7 +99,7 @@ export type OwnerCopy = {
  * `on` is the operator the manager's owner filter shows, or none for "All threads".
  */
 export const COUNT_LINE_EN = {
-	/** A manager's Unassigned view (it has no owner filter). */
+	/** A manager's Unassigned view (its owner filter is disabled, on All threads). */
 	unassigned: (unassigned: number, waiting: number) =>
 		`${unassigned} unassigned · ${waitingIn(waiting)}`,
 	/** A manager's Your turn view. */

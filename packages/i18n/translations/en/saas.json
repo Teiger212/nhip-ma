@@ -931,6 +931,7 @@
 		},
 		"queueCount": "{count, plural, =0 {No guest is waiting on you} one {# guest is waiting on you} other {# guests are waiting on you}}",
 		"managerCount": {
+			"line": "{view} · {waiting}",
 			"waitingOffice": "{count} waiting in the office",
 			"waitingOn": "{count} waiting on {name}",
 			"unassigned": "{count} unassigned",

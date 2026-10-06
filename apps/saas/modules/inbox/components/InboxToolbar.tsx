@@ -23,7 +23,10 @@ function managerCountLine(
 		? t("managerCount.waitingOn", { count: counts.yourTurn, name: ownerName })
 		: t("managerCount.waitingOffice", { count: counts.yourTurn });
 	if (view === "unassigned" || view === "sent" || view === "all") {
-		return `${t(`managerCount.${view}`, { count: counts[view] })} · ${waiting}`;
+		return t("managerCount.line", {
+			view: t(`managerCount.${view}`, { count: counts[view] }),
+			waiting,
+		});
 	}
 	return waiting;
 }

@@ -31,26 +31,27 @@ export function ThreadRow({
 	const when = conversation.lastGuestInboundAt;
 	// From `md` an action shows only on the row's hover, on focus within it, on the selected row
 	// and while its menu is open; it then takes the time's place, and the name ends before it so
-	// it is never under the pill (#208). Below `md` nothing hovers: it is always there.
+	// it is never under the pill (#208). Where nothing hovers (below `md`, or a touch screen) it
+	// is always there.
 	const shown = !action
 		? null
 		: active
 			? { line: "md:pr-24", time: "md:hidden", action: "" }
 			: {
-					line: "md:group-hover:pr-24 md:group-focus-within:pr-24 md:group-has-data-popup-open:pr-24",
-					time: "md:group-hover:hidden md:group-focus-within:hidden md:group-has-data-popup-open:hidden",
+					line: "md:group-hover/row:pr-24 md:group-focus-within/row:pr-24 md:group-has-data-popup-open/row:pr-24 md:pointer-coarse:pr-24",
+					time: "md:group-hover/row:hidden md:group-focus-within/row:hidden md:group-has-data-popup-open/row:hidden md:pointer-coarse:hidden",
 					action:
-						"md:invisible md:group-hover:visible md:group-focus-within:visible md:has-data-popup-open:visible",
+						"md:invisible md:group-hover/row:visible md:group-focus-within/row:visible md:has-data-popup-open:visible md:pointer-coarse:visible",
 				};
 	return (
 		// The row stays lit while the pointer is on its action, which sits over it.
-		<li className="group relative">
+		<li className="group/row relative">
 			<button
 				type="button"
 				aria-current={active ? "true" : undefined}
 				className={cn(
 					"gap-2.5 px-3 py-2.5 text-sm min-w-0 my-0.5 mx-1.5 w-row-inset ease-out flex cursor-pointer items-start overflow-hidden rounded-xl text-left transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none",
-					active ? "bg-accent" : "group-hover:bg-muted/70",
+					active ? "bg-accent" : "group-hover/row:bg-muted/70",
 				)}
 				onClick={onOpen}
 			>

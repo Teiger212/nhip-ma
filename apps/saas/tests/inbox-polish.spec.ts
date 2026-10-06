@@ -312,9 +312,16 @@ test.describe("Inbox polish 1 — the view tabs stay put between a manager's vie
 		const tabs = view(page, "Your turn");
 		const tabsAt = (await boxOf(tabs, "the view tabs")).y;
 		const searchAt = (await boxOf(searchBox(page), "the search field")).y;
+		// The list starts under the count line, so the line's foot staying put keeps the list still.
+		const listTop = async () => {
+			const box = await boxOf(countLine(page), "the count line");
+			return box.y + box.height;
+		};
+		const listAt = await listTop();
 
 		for (const name of ["Your turn", "Sent", "All", "Unassigned"] as const) {
 			await openView(page, name);
+			expect.soft(await listTop(), `${name}: the list has not moved`).toBe(listAt);
 			expect
 				.soft((await boxOf(tabs, "the view tabs")).y, `${name}: the view tabs have not moved`)
 				.toBe(tabsAt);
