@@ -71,7 +71,7 @@ type GreetingOffice = {
 	id: string;
 	manager: Joined;
 	/** A new OA of the office: connected, or already disconnected. */
-	newOa: (state?: "disconnected") => string;
+	newOa: (state?: "disconnected") => Promise<string>;
 	/** A guest who has not written yet, on this OA (the office's first OA unless given one). */
 	newGuest: (oaId?: string) => Guest;
 };
@@ -87,13 +87,13 @@ const test = base.extend<{ office: GreetingOffice }>({
 		const oaIds: string[] = [];
 		let manager: Joined | undefined;
 		try {
-			const newOa = (state?: "disconnected") => {
+			const newOa = async (state?: "disconnected") => {
 				const oaId = uniqueId("oa");
-				connectZaloOa(id, oaId, state);
+				await connectZaloOa(id, oaId, state);
 				oaIds.push(oaId);
 				return oaId;
 			};
-			const firstOa = newOa();
+			const firstOa = await newOa();
 			manager = await joinOffice(admin, browser, id, "admin", "greeting-manager");
 			await use({
 				id,
@@ -104,7 +104,7 @@ const test = base.extend<{ office: GreetingOffice }>({
 		} finally {
 			await manager?.close();
 			for (const oaId of oaIds) {
-				releaseZaloOa(oaId);
+				await releaseZaloOa(oaId);
 			}
 			await deleteOffice(admin.api, id);
 		}
@@ -498,7 +498,7 @@ test.describe("First greeting 6 — no greeting on a disconnected pipe", () => {
 		office,
 	}) => {
 		const { manager } = office;
-		const downOa = office.newOa("disconnected");
+		const downOa = await office.newOa("disconnected");
 		const guest = office.newGuest(downOa);
 		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
 

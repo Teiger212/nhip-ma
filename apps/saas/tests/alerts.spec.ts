@@ -23,8 +23,8 @@ import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
 import { deliverZalo, sendZaloText, signedZaloText } from "./support/zalo";
 
 /**
- * Alerts are decided after the webhook has answered (ADR 0019: in the background), and reading
- * the log runs tsx (a second or two), so every look at it polls.
+ * Alerts are decided after the webhook has answered (ADR 0019: in the background), so every
+ * look at the log polls.
  */
 const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
 
@@ -76,7 +76,7 @@ const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promis
 			const office = await admin.createOffice("Alerts");
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
-			connectZaloOa(office.id, oaId);
+			await connectZaloOa(office.id, oaId);
 			const join = async (label: string, role: "member" | "admin"): Promise<Operator> => {
 				const joined = await joinOffice(
 					admin,
@@ -110,7 +110,7 @@ const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promis
 			await context.close();
 		}
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });
@@ -205,19 +205,19 @@ function whose(office: AlertOffice, userId: string): string {
 }
 
 /** The office's alerts on one thread, of every kind. */
-function alertsOn(office: AlertOffice, threadId: string): AlertRow[] {
-	return alertState.alerts(office.id).filter((row) => row.conversationId === threadId);
+async function alertsOn(office: AlertOffice, threadId: string): Promise<AlertRow[]> {
+	return (await alertState.alerts(office.id)).filter((row) => row.conversationId === threadId);
 }
 
 /** The office's alerts for a guest's message on one thread (not an assignment's, #133). */
-function guestAlertsOn(office: AlertOffice, threadId: string): AlertRow[] {
-	return alertsOn(office, threadId).filter((row) => row.kind === "guest");
+async function guestAlertsOn(office: AlertOffice, threadId: string): Promise<AlertRow[]> {
+	return (await alertsOn(office, threadId)).filter((row) => row.kind === "guest");
 }
 
 /** How many guest alerts each person has on the thread. */
-function countsOn(office: AlertOffice, threadId: string): Record<string, number> {
+async function countsOn(office: AlertOffice, threadId: string): Promise<Record<string, number>> {
 	const counts: Record<string, number> = {};
-	for (const row of guestAlertsOn(office, threadId)) {
+	for (const row of await guestAlertsOn(office, threadId)) {
 		const who = whose(office, row.userId);
 		counts[who] = (counts[who] ?? 0) + 1;
 	}
@@ -277,7 +277,7 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 			.toEqual(everyManager(office, 1));
 		await laterGuestArrives(office);
 
-		const alerts = alertsOn(office, threadId);
+		const alerts = await alertsOn(office, threadId);
 		expect(
 			alerts.map((row) => whose(office, row.userId)).sort(),
 			"one alert each for the two managers, and none for either agent or anyone else",
@@ -322,7 +322,7 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 			.toEqual(after);
 		await laterGuestArrives(office);
 		expect(
-			countsOn(office, threadId),
+			await countsOn(office, threadId),
 			"agent 2 and the manager got nothing for the owned thread's message",
 		).toEqual(after);
 	});
@@ -344,7 +344,7 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 			})
 			.toEqual(everyManager(office, 1));
 		await laterGuestArrives(office);
-		expect(countsOn(office, threadId), "one alert per manager, not two").toEqual(
+		expect(await countsOn(office, threadId), "one alert per manager, not two").toEqual(
 			everyManager(office, 1),
 		);
 
@@ -386,12 +386,14 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 		await laterGuestArrives(office);
 
 		const sounding: Record<string, number> = {};
-		for (const row of guestAlertsOn(office, threadId)) {
+		for (const row of await guestAlertsOn(office, threadId)) {
 			const who = whose(office, row.userId);
 			sounding[who] = (sounding[who] ?? 0) + (row.sounded ? 1 : 0);
 		}
 		expect(sounding, "exactly one sounding alert on the thread").toEqual(everyManager(office, 1));
-		expect(countsOn(office, threadId), "nothing more arrived").toEqual(everyManager(office, 5));
+		expect(await countsOn(office, threadId), "nothing more arrived").toEqual(
+			everyManager(office, 5),
+		);
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 7
@@ -421,7 +423,7 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 		await laterGuestArrives(office);
 
 		expect(
-			alertState.alerts(office.id).filter((row) => row.userId === office.platformAdminId),
+			(await alertState.alerts(office.id)).filter((row) => row.userId === office.platformAdminId),
 			"the platform admin has no alert in the office",
 		).toEqual([]);
 	});
@@ -494,12 +496,12 @@ test.describe("Alerts 10 — signing out removes the device", () => {
 
 			// One device from each browser.
 			await addDevice(first, "the first browser");
-			const afterFirst = alertState.devices(agent.id);
+			const afterFirst = await alertState.devices(agent.id);
 			expect(afterFirst, "the agent has the first browser's device").toHaveLength(1);
 			const firstDevice = afterFirst[0]!.id;
 
 			await addDevice(second, "the second browser");
-			const afterSecond = alertState.devices(agent.id);
+			const afterSecond = await alertState.devices(agent.id);
 			expect(
 				afterSecond.map((d) => d.id),
 				"the agent has both browsers' devices, the first browser's first",
@@ -515,7 +517,7 @@ test.describe("Alerts 10 — signing out removes the device", () => {
 			expect(await ownId(secondApi), "the second browser is still signed in").toBe(agent.id);
 
 			await expect
-				.poll(() => alertState.devices(agent.id).map((d) => d.id), {
+				.poll(async () => (await alertState.devices(agent.id)).map((d) => d.id), {
 					timeout: 15_000,
 					intervals: [1_000],
 					message: "only the second browser's device is left",

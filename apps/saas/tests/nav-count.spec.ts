@@ -33,11 +33,11 @@ const test = base.extend<{ ownOffice: OwnOffice }>({
 	ownOffice: async ({ admin, request }, use) => {
 		const office = await admin.createOffice("Nav count");
 		const oaId = uniqueId("oa");
-		connectZaloOa(office.id, oaId);
+		await connectZaloOa(office.id, oaId);
 		try {
 			await use({ id: office.id, guestWrites: () => guestWrites(request, oaId) });
 		} finally {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });

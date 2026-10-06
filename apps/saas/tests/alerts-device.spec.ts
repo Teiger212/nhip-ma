@@ -55,7 +55,7 @@ const PANEL_TITLES = [COPY.ask, COPY.stopped, COPY.blocked, COPY.iphone];
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** A test alert is decided and logged like any alert; reading the log runs tsx, so it polls. */
+/** A test alert is decided and logged like any alert, so a look at the log polls. */
 const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
 
 /**
@@ -500,9 +500,8 @@ test.describe("Alerts 9 — the alerts panel asks, and only when asked to", () =
 /* ---------------------------------------------------------------- Send test alert */
 
 /** The operator's test alerts in the office's log. */
-function testAlertsOf(operator: Operator): string[] {
-	return alertState
-		.alerts(operator.officeId)
+async function testAlertsOf(operator: Operator): Promise<string[]> {
+	return (await alertState.alerts(operator.officeId))
 		.filter((row) => row.userId === operator.id && row.kind === "test")
 		.map((row) => row.id);
 }
@@ -522,7 +521,7 @@ test.describe("Alerts 11 — Send test alert", () => {
 		const { page } = operator;
 		await page.addInitScript(permissionStub, "granted" as Permission);
 		await addDevice(operator.api, "the agent's browser");
-		expect(testAlertsOf(operator), "no test alert yet").toEqual([]);
+		expect(await testAlertsOf(operator), "no test alert yet").toEqual([]);
 
 		// Signed out, the API refuses.
 		const anonymous = await apiAs();
@@ -537,7 +536,7 @@ test.describe("Alerts 11 — Send test alert", () => {
 		const accepted = await sendTestAlert(operator.api);
 		expect(accepted.status(), `POST /api/alerts/devices/test (${await accepted.text()})`).toBe(202);
 		await expect
-			.poll(() => testAlertsOf(operator).length, {
+			.poll(async () => (await testAlertsOf(operator)).length, {
 				...ON_THE_PHONES,
 				message: "the API's test alert, for the agent, and nothing signed out",
 			})
@@ -559,7 +558,7 @@ test.describe("Alerts 11 — Send test alert", () => {
 			"it says the alert was sent",
 		).toBeVisible();
 		await expect
-			.poll(() => testAlertsOf(operator).length, {
+			.poll(async () => (await testAlertsOf(operator)).length, {
 				...ON_THE_PHONES,
 				message: "Send test alert writes one more test alert for the agent",
 			})
@@ -601,13 +600,13 @@ test.describe("Alerts 11 — Send test alert", () => {
 			"and no Send test alert",
 		).toHaveCount(0);
 
-		expect(testAlertsOf(operator), "the refused request wrote no test alert").toEqual([]);
+		expect(await testAlertsOf(operator), "the refused request wrote no test alert").toEqual([]);
 
 		// The first browser's device takes a test alert: the log has that one, none from the 409.
 		const accepted = await sendTestAlert(operator.api);
 		expect(accepted.status(), "the first browser's session has a device").toBe(202);
 		await expect
-			.poll(() => testAlertsOf(operator).length, {
+			.poll(async () => (await testAlertsOf(operator)).length, {
 				...ON_THE_PHONES,
 				message: "the first browser's test alert, and nothing for the refused one",
 			})

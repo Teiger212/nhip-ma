@@ -29,7 +29,7 @@ const test = base.extend<{ newOa: () => string }>({
 			return oaId;
 		});
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });
@@ -254,9 +254,9 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		await signInContext(context, AGENT);
 		const agent = withOrigin(page.request);
 
-		connectZaloOa(WALK_OFFICE_ID, brokenOa);
-		connectZaloOa(WALK_OFFICE_ID, workingOa);
-		connectWhatsAppNumber(WALK_OFFICE_ID);
+		await connectZaloOa(WALK_OFFICE_ID, brokenOa);
+		await connectZaloOa(WALK_OFFICE_ID, workingOa);
+		await connectWhatsAppNumber(WALK_OFFICE_ID);
 		// The guests' threads exist while everything is connected; then one OA breaks.
 		await guestWritesOnZalo(request, brokenOa, guestId, first);
 		await guestWritesOnZalo(request, workingOa, otherGuestId, `Hello from ${otherGuestId}`);
@@ -271,7 +271,7 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		} finally {
 			await manager.dispose();
 		}
-		connectZaloOa(WALK_OFFICE_ID, brokenOa, "disconnected");
+		await connectZaloOa(WALK_OFFICE_ID, brokenOa, "disconnected");
 
 		await page.goto("/en/inbox");
 		await expect(page.getByTestId("pipe-disconnected-banner")).toHaveText(copy.banner(ZALO));
@@ -361,7 +361,7 @@ test.describe("Pipes 4 — disconnecting", () => {
 		const before = `Hello from ${guestId}, before`;
 		const after = `Hello from ${guestId}, after`;
 
-		connectZaloOa(office.id, oaId);
+		await connectZaloOa(office.id, oaId);
 		let manager: Joined | undefined;
 		try {
 			manager = await joinOffice(admin, browser, office.id, "admin", "pipes-manager");

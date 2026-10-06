@@ -63,12 +63,12 @@ const test = base.extend<{
 		await use(async () => {
 			if (!oaId) {
 				oaId = uniqueId("oa");
-				connectZaloOa(WALK_OFFICE_ID, oaId);
+				await connectZaloOa(WALK_OFFICE_ID, oaId);
 			}
 			return firstWordOf(request, oaId);
 		});
 		if (oaId) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 	signedIn: async ({ browser }, use) => {
@@ -83,7 +83,7 @@ const test = base.extend<{
 			const office = await admin.createOffice("Assign");
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
-			connectZaloOa(office.id, oaId);
+			await connectZaloOa(office.id, oaId);
 			const join = async (label: string, role: "member" | "admin"): Promise<Member> => {
 				const joined = await joinOffice(
 					admin,
@@ -114,7 +114,7 @@ const test = base.extend<{
 			await context.close();
 		}
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });

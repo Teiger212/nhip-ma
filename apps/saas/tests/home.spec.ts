@@ -36,7 +36,7 @@ const test = base.extend<{ ownOffice: OwnOffice }>({
 	ownOffice: async ({ admin, request }, use) => {
 		const office = await admin.createOffice("Home");
 		const phoneNumberId = newWhatsAppNumber("home");
-		connectWhatsAppNumber(office.id, phoneNumberId);
+		await connectWhatsAppNumber(office.id, phoneNumberId);
 		await use({
 			id: office.id,
 			guestWrites: async (at) => {
