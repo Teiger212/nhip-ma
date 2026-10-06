@@ -135,6 +135,18 @@ function afterGuestMessage(conversation: Conversation): Date {
 	return new Date(Math.max(Date.now(), after));
 }
 
+/**
+ * Whether the thread began before the auto-reply was last turned on (S1): such a thread is never
+ * greeted, even if it was never claimed while the switch was off. A thread begins with its first
+ * message, by the vendor's clock, so a thread begun within seconds of the switch can fall on
+ * either side.
+ */
+function beganBefore(conversation: Conversation, onSince: string | null): boolean {
+	if (!onSince) return false;
+	const first = conversation.messages[0];
+	return first !== undefined && Date.parse(first.at) < Date.parse(onSince);
+}
+
 /** What a failed auto-reply send is logged as: a category, never the thread or its text (PDPL). */
 function sendFailureKind(error: unknown): string {
 	if (error instanceof SendError) return error.kind;
@@ -155,6 +167,7 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 	if (!shot) return;
 	const office = await store.officeAutoReply(conversation.officeId);
 	if (!office?.on) return;
+	if (beganBefore(conversation, office.onSince)) return;
 	if (!(await store.claimAutoReply(conversation.officeId, conversation.id))) return;
 
 	// From the endpoint the guest wrote to, as an Answer goes (ADR 0017): never from a
