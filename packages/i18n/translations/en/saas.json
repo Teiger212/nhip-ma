@@ -179,6 +179,7 @@
 			"home": "Home",
 			"language": "Language",
 			"logout": "Log out",
+			"officeSettings": "Office settings",
 			"team": "Team"
 		},
 		"notifications": {
@@ -376,6 +377,15 @@
 			}
 		},
 		"settings": {
+			"autoReply": {
+				"error": "Couldn't change the auto-reply. Try again.",
+				"hint": "Within seconds, signed by the office. Every other reply still waits for your team's approval.",
+				"off": "Off",
+				"on": "On",
+				"title": "Auto-reply to a new guest's first message",
+				"turnedOff": "Auto-reply is off",
+				"turnedOn": "Auto-reply is on"
+			},
 			"changeName": {
 				"notifications": {
 					"error": "Could not update organization name",

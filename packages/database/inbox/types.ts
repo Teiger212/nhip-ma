@@ -488,6 +488,12 @@ export type InboxStore = {
 	/** The office's name and its auto-reply switch (ADR 0021): no setting row means on. */
 	officeAutoReply: (officeId: string) => Promise<OfficeAutoReply | null>;
 	/**
+	 * A manager turns the office's auto-reply on or off (ADR 0021 G6, #167). Only a turn from off
+	 * to on stamps `autoReplyOnSince` (S1): turning on what is already on moves nothing, so it
+	 * never skips a thread that began while it was on.
+	 */
+	setOfficeAutoReply: (officeId: string, on: boolean) => Promise<void>;
+	/**
 	 * Claim the thread's one auto-reply (ADR 0021): true for exactly one caller, and only while
 	 * the thread has no office message, no Answer and no claim. A claim is never given back.
 	 */

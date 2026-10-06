@@ -179,6 +179,7 @@
 			"home": "Trang chủ",
 			"language": "Ngôn ngữ",
 			"logout": "Đăng xuất",
+			"officeSettings": "Cài đặt văn phòng",
 			"team": "Nhóm"
 		},
 		"notifications": {
@@ -376,6 +377,15 @@
 			}
 		},
 		"settings": {
+			"autoReply": {
+				"error": "Không đổi được trả lời tự động. Vui lòng thử lại.",
+				"hint": "Gửi trong vài giây, dưới tên văn phòng. Mọi tin trả lời khác vẫn chờ nhóm của bạn duyệt.",
+				"off": "Tắt",
+				"on": "Bật",
+				"title": "Trả lời tự động tin nhắn đầu tiên của khách mới",
+				"turnedOff": "Đã tắt trả lời tự động",
+				"turnedOn": "Đã bật trả lời tự động"
+			},
 			"changeName": {
 				"notifications": {
 					"error": "Không cập nhật được tên văn phòng",

@@ -1008,6 +1008,22 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			};
 		},
 
+		async setOfficeAutoReply(officeId, on) {
+			await db.$transaction(async (tx) => {
+				const current = await tx.officeSetting.findUnique({
+					where: { officeId },
+					select: { autoReply: true },
+				});
+				// No row is on since the office began: only a row that says off can be turned on.
+				const turnedOn = on && current?.autoReply === false;
+				await tx.officeSetting.upsert({
+					where: { officeId },
+					create: { officeId, autoReply: on },
+					update: { autoReply: on, ...(turnedOn ? { autoReplyOnSince: new Date() } : {}) },
+				});
+			});
+		},
+
 		async claimAutoReply(officeId, id) {
 			// One conditional update: Postgres re-reads the row under its lock, so of two first
 			// messages at once only one sees `autoReplyAt` still null (ADR 0021).

@@ -56,7 +56,10 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
 - **The auto-reply** (ADR 0021, `sendAutoReply` in `inbox.ts`): after the one-shot,
   `afterGuestInbound` schedules it in the background for a new guest message on a thread the
   office hasn't spoken on. The job reads the office's switch (`inbox_office_setting`, no row
-  means on), then claims the thread with one conditional update (`autoReplyAt` null → now, and
+  means on) and skips a thread whose first message is older than the switch's last turn on
+  (`autoReplyOnSince`, S1; message times are the vendor's clock). A manager sets the switch on
+  the office's General settings page (`PUT /api/office/auto-reply`, #167), which stamps
+  `autoReplyOnSince` only on a turn from off to on. The job then claims the thread with one conditional update (`autoReplyAt` null → now, and
   still no office message), so two first messages at once make one greeting. It sends through
   `connectionFor` and `transmit` like an Answer (never from a disconnected endpoint; a mock
   send reports `mock-auto-reply-<thread id>`), once, and files an outbound with source
