@@ -23,7 +23,7 @@ const test = base.extend<{ newOa: () => string }>({
 			return oaId;
 		});
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });
@@ -131,7 +131,7 @@ function deliveryTo(page: Page, oaId: string) {
 async function sendTheDeliveries(admin: Admin, request: APIRequestContext, newOa: () => string) {
 	const office = await admin.createOffice("Delivery log");
 	const heldOa = newOa();
-	connectZaloOa(office.id, heldOa);
+	await connectZaloOa(office.id, heldOa);
 
 	const filed = zaloMessage(heldOa);
 	const dropped = zaloMessage(uniqueId("no-office-oa"));

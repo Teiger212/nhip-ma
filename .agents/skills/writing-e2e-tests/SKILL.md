@@ -54,6 +54,14 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   invitation through the kit's API and opens their Inbox. Their password is `NEW_PASSWORD`, for a
   spec that signs them in elsewhere. Sign up through the invitation page (`invitee.ts`) only
   where signing up or joining is what the spec proves (the Auth specs, Team).
+- The support helpers that touch the database directly (`pipes.ts`, `alerts.ts`, `crm.ts`,
+  `deletion.ts`, and `joinOffice`'s account) are async: `await` every call, setup and cleanup
+  included. They go through one long-lived tsx process per worker (`state-client.ts`,
+  `state-process.ts`, #203), and each read (`alertState`, `mockCrmLeads`,
+  `guestDeletionRecords`) is a fresh query. A new one is a command in `state-process.ts`,
+  never a `pnpm exec tsx` spawn per call (about 2 s each on CI). A read is fast now, so an
+  absence check waits for something that settles first (a later guest's alert or lead), never
+  on the read being slow.
 - Locate flow elements with `getByTestId` (`data-test`, set in the config). Use roles and
   labels only where the text or accessibility is what the test proves.
 - While writing a spec: `E2E_BASE_URL=http://localhost:3010 pnpm --filter saas exec playwright
@@ -77,8 +85,8 @@ test <file>` against your running dev server (no build).
   sign-ins per 10 s per IP) never sees two tests as one person. A spec proving the limit
   itself repeats requests inside one test.
 - A pipe connection (ADR 0017) cannot be made through Zalo's consent screen in a test. Set one
-  up with `connectZaloOa(officeId, oaId, "disconnected"?)` and remove it with
-  `releaseZaloOa(oaId)` (`support/pipes.ts`); use a unique OA id per test. A guest message on
+  up with `await connectZaloOa(officeId, oaId, "disconnected"?)` and remove it with
+  `await releaseZaloOa(oaId)` (`support/pipes.ts`); use a unique OA id per test. A guest message on
   that OA arrives as Zalo sends it: `POST /webhooks/zalo` with a JSON body `{ app_id,
 event_name: "user_send_text", timestamp (ms, string), sender: { id: guest }, recipient: { id:
 oaId }, message: { text, msg_id } }` and header `X-ZEvent-Signature: mac=<sha256 hex of
@@ -87,7 +95,7 @@ app_id + raw body + timestamp + ZALO_OA_SECRET_KEY>` (the E2E env's value).
   webhook, with a unique guest id (e.g. from `test.info().testId`) so parallel specs never
   share a thread. `/dev/inbound` is off in the E2E production build.
   - Zalo: see above.
-  - WhatsApp: connect the E2E number to the office first (`connectWhatsAppNumber(officeId)` in
+  - WhatsApp: connect the E2E number to the office first (`await connectWhatsAppNumber(officeId)` in
     `support/pipes.ts`, the number is the E2E env's `WHATSAPP_PHONE_NUMBER_ID`), then `POST
 /webhooks/whatsapp` with `{ entry: [{ changes: [{ value: { metadata: { phone_number_id },
 contacts: [{ wa_id: guest, profile: { name } }], messages: [{ from: guest, id, timestamp

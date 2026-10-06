@@ -104,11 +104,11 @@ const test = base.extend<{
 		await use(async (label, { crm, agent = true, manager = false }) => {
 			const office = await admin.createOffice(label);
 			if (crm === "mock") {
-				connectMockCrm(office.id);
+				await connectMockCrm(office.id);
 			}
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
-			connectZaloOa(office.id, oaId);
+			await connectZaloOa(office.id, oaId);
 			const join = async (role: "member" | "admin") => {
 				const newcomer = await joinOffice(
 					admin,
@@ -159,7 +159,7 @@ const test = base.extend<{
 			await context.close();
 		}
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });
@@ -300,8 +300,8 @@ async function toneOf(badge: Locator) {
 
 /* ---------------------------------------------------------------- in the CRM itself */
 
-function leadsOf(officeId: string, guest: Guest): MockCrmLead[] {
-	return mockCrmLeads(officeId).filter((lead) => lead.zaloUserId === guest.id);
+async function leadsOf(officeId: string, guest: Guest): Promise<MockCrmLead[]> {
+	return (await mockCrmLeads(officeId)).filter((lead) => lead.zaloUserId === guest.id);
 }
 
 /**
@@ -310,14 +310,14 @@ function leadsOf(officeId: string, guest: Guest): MockCrmLead[] {
  */
 async function expectLeadAppears(officeId: string, guest: Guest, message: string) {
 	await expect
-		.poll(() => leadsOf(officeId, guest).length, { message, timeout: 30_000 })
+		.poll(async () => (await leadsOf(officeId, guest)).length, { message, timeout: 30_000 })
 		.toBeGreaterThan(0);
 }
 
 /** The guest's lead in the office's CRM, once it is there. */
 async function leadOf(officeId: string, guest: Guest): Promise<MockCrmLead> {
 	await expectLeadAppears(officeId, guest, `${guest.id} becomes a lead in the CRM`);
-	return leadsOf(officeId, guest)[0];
+	return (await leadsOf(officeId, guest))[0];
 }
 
 /** The office marks the guest's lead in its CRM; the CRM holds it so, and has told Nhịp. */
@@ -330,7 +330,7 @@ async function markLead(
 ): Promise<number> {
 	const status = await markInMockCrm(request, officeId, lead.id, outcome);
 	expect(
-		leadsOf(officeId, guest)[0]?.outcome,
+		(await leadsOf(officeId, guest))[0]?.outcome,
 		`the CRM holds ${guest.id}'s lead as ${outcome}`,
 	).toBe(outcome);
 	return status;
@@ -542,7 +542,7 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		// In the CRM: exactly one lead for the guest, theirs, linked to the thread, with no
 		// message text in it.
 		const threadId = await threadIdOf(api, guest);
-		const [lead, ...more] = leadsOf(office.id, guest);
+		const [lead, ...more] = await leadsOf(office.id, guest);
 		expect(lead, "the CRM holds a lead for the guest").toBeDefined();
 		expect(more, "and only one").toHaveLength(0);
 		expect(lead.name, "the lead carries the guest's name").toBe(nameOf(guest));
@@ -567,14 +567,14 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		await guest.write(`Is it still available? ${randomUUID().slice(0, 8)}`);
 		const later = await office.newGuest();
 		await expectLeadAppears(office.id, later, "a later guest's lead arrives in the CRM");
-		const leads = leadsOf(office.id, guest);
+		const leads = await leadsOf(office.id, guest);
 		expect(leads, "the guest writing again makes no second lead").toHaveLength(1);
 		expect(leads[0].id, "it is the same lead").toBe(lead.id);
 		for (const text of guest.texts) {
 			expect(JSON.stringify(leads[0]), "no message text in the lead").not.toContain(text);
 		}
 		expect(
-			mockCrmLeads(office.id).map((l) => l.zaloUserId),
+			(await mockCrmLeads(office.id)).map((l) => l.zaloUserId),
 			"the office's CRM holds one lead per guest",
 		).toEqual([guest.id, later.id]);
 	});
@@ -608,7 +608,7 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 			"the thread header says nothing about a CRM",
 		).toHaveCount(0);
 		await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(0);
-		expect(mockCrmLeads(office.id), "no lead is made for an office with no CRM").toEqual([]);
+		expect(await mockCrmLeads(office.id), "no lead is made for an office with no CRM").toEqual([]);
 	});
 });
 
@@ -634,7 +634,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
 		await expectInCrmOnThread(office.agent.page, guest);
-		const leads = leadsOf(office.id, guest);
+		const leads = await leadsOf(office.id, guest);
 		expect(leads, "the office's CRM holds one lead for the guest").toHaveLength(1);
 		expect(leads[0].name, "the lead carries the guest's name").toBe(nameOf(guest));
 	});
@@ -775,8 +775,17 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 			rowOf(page, guest).getByTestId("thread-status"),
 			"the guest who wrote again is Your turn",
 		).toHaveText(crmCopy.yourTurn);
+		// A second office on the mock CRM, only as a clock: once its guest, who writes after this
+		// one, is a lead, the background work for this guest's message has had its chance.
+		const clock = await newOffice("CRM 3 lost clock", { crm: "mock", agent: false });
+		const clockGuest = await clock.newGuest();
+		await expectLeadAppears(
+			clock.id,
+			clockGuest,
+			"lead writing ran: a later guest of another office became a lead",
+		);
 		expect(
-			leadsOf(office.id, guest)[0].outcome,
+			(await leadsOf(office.id, guest))[0].outcome,
 			"the CRM still holds the lead as lost: Nhịp does not reopen it",
 		).toBe("lost");
 

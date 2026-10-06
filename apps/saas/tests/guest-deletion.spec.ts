@@ -131,7 +131,7 @@ const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice>
 			const office = await admin.createOffice(label);
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
-			connectZaloOa(office.id, oaId);
+			await connectZaloOa(office.id, oaId);
 			const agent = await newOperatorOf(admin, browser, office.id, "the agent", "member");
 			contexts.push(agent);
 			const manager = await newOperatorOf(admin, browser, office.id, "the manager", "admin");
@@ -153,7 +153,7 @@ const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice>
 			await context.close();
 		}
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });
@@ -756,7 +756,7 @@ test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
 		await confirmDeletion(manager.page, dialog);
 
 		// The receipt keeps the reason and the note (it holds no contact details, so as written).
-		const { receipts } = guestDeletionRecords(office.id);
+		const { receipts } = await guestDeletionRecords(office.id);
 		expect(receipts, "one deletion on record").toHaveLength(1);
 		expect(receipts[0], "the receipt says why: Other, with the note").toMatchObject({
 			reason: "other",
@@ -998,8 +998,8 @@ test.describe("Guest deletion 7 — no CRM, no checkbox", () => {
 		expect(res.status(), "the deletion is taken").toBe(200);
 		expect(await res.json(), "no CRM lead, so no CRM result").toEqual({ crm: null });
 		await expectGoneThroughApi(manager, guest, threadId);
-		expect(mockCrmLeads(office.id), "no lead anywhere for the office").toEqual([]);
-		const { receipts } = guestDeletionRecords(office.id);
+		expect(await mockCrmLeads(office.id), "no lead anywhere for the office").toEqual([]);
+		const { receipts } = await guestDeletionRecords(office.id);
 		expect(receipts, "one deletion on record").toHaveLength(1);
 		expect(
 			receipts[0],
@@ -1026,7 +1026,7 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 		await office.assignToAgent(guest);
 		const { id: threadId } = await threadSeenBy(manager, guest);
 		await threadSeenBy(manager, bystander);
-		const release = holdReplySending(office.id, threadId, agent.id);
+		const release = await holdReplySending(office.id, threadId, agent.id);
 
 		// The manager's menu item is disabled, saying why.
 		await openThreadOf(manager, guest);
@@ -1054,7 +1054,7 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 		await openThreadOf(manager, guest);
 
 		// The vendor answers: the reply is sent. Now the manager deletes the guest's data.
-		release();
+		await release();
 		await deleteAsManager(manager, guest);
 		await expectGoneThroughApi(manager, guest, threadId);
 		await expectGoneFromInbox(manager, guest, bystander);
@@ -1181,7 +1181,7 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 			"the refused deletions left the thread",
 		).toBe(200);
 		expect(
-			guestDeletionRecords(office.id).receipts,
+			(await guestDeletionRecords(office.id)).receipts,
 			"the refused deletions left no receipt",
 		).toEqual([]);
 
@@ -1203,7 +1203,7 @@ test.describe("Guest deletion 10 — the record names no guest", () => {
 		await expectGoneThroughApi(manager, unanswered, unansweredId);
 		await expectGoneThroughApi(manager, answered, answeredId);
 
-		const { receipts, tallies } = guestDeletionRecords(office.id);
+		const { receipts, tallies } = await guestDeletionRecords(office.id);
 		expect(receipts, "one receipt per deletion").toHaveLength(2);
 		const expected = [
 			{ messages: 2, answers: 0, reason: "duplicate_or_spam", note: null },

@@ -16,8 +16,8 @@ import { newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
 import { sendZaloText } from "./support/zalo";
 
 /**
- * Alerts are decided after the webhook has answered (ADR 0019: in the background), and reading
- * the log runs tsx, so every look at it polls.
+ * Alerts are decided after the webhook has answered (ADR 0019: in the background), so every
+ * look at the log polls.
  */
 const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
 
@@ -92,9 +92,9 @@ const test = base.extend<{
 			const office = await admin.createOffice("Alerts in app");
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
-			connectZaloOa(office.id, oaId);
+			await connectZaloOa(office.id, oaId);
 			const phoneNumberId = newWhatsAppNumber("alerts-in-app");
-			connectWhatsAppNumber(office.id, phoneNumberId);
+			await connectWhatsAppNumber(office.id, phoneNumberId);
 			const join = async (label: string, role: "member" | "admin"): Promise<Operator> => {
 				const joined = await joinOffice(
 					admin,
@@ -131,7 +131,7 @@ const test = base.extend<{
 			await context.close();
 		}
 		for (const oaId of oaIds) {
-			releaseZaloOa(oaId);
+			await releaseZaloOa(oaId);
 		}
 	},
 });
@@ -281,17 +281,17 @@ async function alertOf(
 	kind: AlertRow["kind"],
 	count = 1,
 ): Promise<AlertRow> {
-	const mine = () =>
-		alertState
-			.alerts(officeId)
-			.filter((r) => r.userId === operator.id && r.conversationId === threadId && r.kind === kind);
+	const mine = async () =>
+		(await alertState.alerts(officeId)).filter(
+			(r) => r.userId === operator.id && r.conversationId === threadId && r.kind === kind,
+		);
 	await expect
-		.poll(() => mine().length, {
+		.poll(async () => (await mine()).length, {
 			...ON_THE_PHONES,
 			message: `${operator.label} has ${count} ${kind} alert(s) on the thread`,
 		})
 		.toBeGreaterThanOrEqual(count);
-	return mine().at(-1)!;
+	return (await mine()).at(-1)!;
 }
 
 /* ---------------------------------------------------------------- assignments (#133) */
@@ -390,9 +390,9 @@ function whose(office: InAppOffice, userId: string): string {
 }
 
 /** Every alert on the thread, counted as "<who>: <kind>". */
-function tally(office: InAppOffice, threadId: string): Record<string, number> {
+async function tally(office: InAppOffice, threadId: string): Promise<Record<string, number>> {
 	const counts: Record<string, number> = {};
-	for (const row of alertState.alerts(office.id)) {
+	for (const row of await alertState.alerts(office.id)) {
 		if (row.conversationId !== threadId) continue;
 		const key = `${whose(office, row.userId)}: ${row.kind}`;
 		counts[key] = (counts[key] ?? 0) + 1;
@@ -401,16 +401,15 @@ function tally(office: InAppOffice, threadId: string): Record<string, number> {
 }
 
 /** How many alerts of this kind the operator has on the thread. */
-function countOf(
+async function countOf(
 	office: InAppOffice,
 	threadId: string,
 	operator: Operator,
 	kind: AlertRow["kind"],
-): number {
-	return alertState
-		.alerts(office.id)
-		.filter((r) => r.conversationId === threadId && r.userId === operator.id && r.kind === kind)
-		.length;
+): Promise<number> {
+	return (await alertState.alerts(office.id)).filter(
+		(r) => r.conversationId === threadId && r.userId === operator.id && r.kind === kind,
+	).length;
 }
 
 /**
@@ -483,7 +482,7 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 			.toBe(1);
 		await laterGuestArrives(office);
 		expect(
-			tally(office, threadId),
+			await tally(office, threadId),
 			"on Minji's thread: the manager's guest alert from before, and one assigned alert, agent 1's",
 		).toEqual({ "manager: guest": 1, "agent 1: assigned": 1 });
 
@@ -512,7 +511,7 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 			.toBe(1);
 		await laterGuestArrives(office);
 		expect(
-			tally(office, threadId),
+			await tally(office, threadId),
 			"one new assigned alert, agent 2's; agent 1, who lost Minji, gets no alert",
 		).toEqual({ "manager: guest": 1, "agent 1: assigned": 1, "agent 2: assigned": 1 });
 
@@ -567,7 +566,7 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 			})
 			.toBe(1);
 		expect(
-			tally(office, threadId),
+			await tally(office, threadId),
 			"on Yuki's thread, only the manager's guest alert from before: none for taking it",
 		).toEqual({ "manager: guest": 1 });
 
@@ -624,7 +623,7 @@ test.describe("Alerts 4 — a thread returned to Unassigned alerts the other man
 			.toBe(1);
 		await laterGuestArrives(office);
 		expect(
-			tally(office, threadId),
+			await tally(office, threadId),
 			"one returned alert, manager 2's: none for manager 1, either agent or the platform admin",
 		).toEqual({
 			"manager 1: guest": 1,
@@ -633,7 +632,7 @@ test.describe("Alerts 4 — a thread returned to Unassigned alerts the other man
 			"manager 2: returned": 1,
 		});
 		expect(
-			alertState.alerts(office.id).filter((row) => row.userId === office.platformAdminId),
+			(await alertState.alerts(office.id)).filter((row) => row.userId === office.platformAdminId),
 			"the platform admin has no alert in the office",
 		).toEqual([]);
 

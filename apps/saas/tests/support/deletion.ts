@@ -1,5 +1,4 @@
-import { execFileSync } from "node:child_process";
-import path from "node:path";
+import { askState } from "./state-client";
 
 /** A deletion receipt (ADR 0020): that a deletion happened, never who the guest was. */
 export type GuestDeletionReceipt = {
@@ -39,16 +38,13 @@ export type LeadTally = {
 
 /**
  * The office's deletion receipts and lead tallies, oldest first: the platform admin reading
- * them on request. Nothing in the app shows them yet.
+ * them on request. Nothing in the app shows them yet. Each call reads them afresh.
  */
-export function guestDeletionRecords(officeId: string): {
+export function guestDeletionRecords(officeId: string): Promise<{
 	receipts: GuestDeletionReceipt[];
 	tallies: LeadTally[];
-} {
-	return JSON.parse(run(["records", officeId], "pipe")) as {
-		receipts: GuestDeletionReceipt[];
-		tallies: LeadTally[];
-	};
+}> {
+	return askState("deletion.records", officeId);
 }
 
 /**
@@ -57,26 +53,18 @@ export function guestDeletionRecords(officeId: string): {
  * approved it (the agent's user id; omitted, nobody). Returns the release step: the vendor
  * answers and the reply is sent.
  */
-export function holdReplySending(
+export async function holdReplySending(
 	officeId: string,
 	conversationId: string,
 	operatorId?: string,
-): () => void {
-	const answerId = run(["hold", officeId, conversationId, operatorId ?? ""], "pipe").trim();
-	return () => {
-		run(["release", officeId, answerId], "inherit");
-	};
-}
-
-function run(args: string[], stdout: "inherit" | "pipe"): string {
-	const out = execFileSync(
-		"pnpm",
-		["exec", "tsx", "--tsconfig", "tsconfig.json", "tests/support/deletion-state.ts", ...args],
-		{
-			cwd: path.resolve(__dirname, "../.."),
-			stdio: ["ignore", stdout, "inherit"],
-			encoding: "utf8",
-		},
+): Promise<() => Promise<void>> {
+	const answerId = await askState<string>(
+		"deletion.hold",
+		officeId,
+		conversationId,
+		operatorId ?? "",
 	);
-	return out ?? "";
+	return async () => {
+		await askState("deletion.release", officeId, answerId);
+	};
 }

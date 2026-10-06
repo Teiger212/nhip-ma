@@ -418,8 +418,8 @@ A phone's lock screen is out of reach of a test, so E2E reads the **alert log**.
 it would live, writes one `inbox_alert` row per operator per alert (who, which thread, kind
 `guest`, `returned`, `assigned` or `test`, whether it sounded, and its link
 `/<locale>/inbox?alert=<the row's own id>`), and sends no push. Reading that log
-(`alertState.alerts(officeId)`, through `tests/support/alert-state.ts` run by tsx, like
-`crm-state.ts`) is looking at the operators' phones; `alertState.devices(userId)` lists an
+(`alertState.alerts(officeId)`, through `tests/support/alert-state.ts` in the worker's state
+process, like `crm-state.ts`) is looking at the operators' phones; `alertState.devices(userId)` lists an
 operator's devices. No test writes the log or a device row.
 
 - **Recipients are exact:** guests write through signed Zalo webhooks to an office of the

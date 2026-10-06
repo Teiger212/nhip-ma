@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { createHmac, randomInt, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,6 +10,7 @@ import { connectMockCrm, mockCrmLeads } from "./support/crm";
 import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
+import { connectWhatsAppNumber } from "./support/pipes";
 import { AGENT } from "./support/seed";
 import { apiAs } from "./support/session";
 
@@ -59,10 +59,11 @@ const test = base.extend<{
 		await use(async (label, { crm }) => {
 			const office = await admin.createOffice(label);
 			if (crm === "mock") {
-				connectMockCrm(office.id);
+				await connectMockCrm(office.id);
 			}
+			// A number of the test's own, so the walk office keeps the E2E env's.
 			const number = `e2e-links-${randomUUID()}`;
-			holdWhatsAppNumber(office.id, number);
+			await connectWhatsAppNumber(office.id, number);
 			const agent = await joinOffice(admin, browser, office.id, "member", "thread-links");
 			contexts.push(agent);
 			const manager = await joinOffice(admin, browser, office.id, "admin", "thread-links-manager");
@@ -84,27 +85,6 @@ const test = base.extend<{
 		}
 	},
 });
-
-/**
- * Setup (tests/support/pipe-state.ts, as `connectWhatsAppNumber` runs it): the office holds this
- * WhatsApp number. A number of the test's own, so the walk office keeps the E2E env's.
- */
-function holdWhatsAppNumber(officeId: string, phoneNumberId: string) {
-	execFileSync(
-		"pnpm",
-		[
-			"exec",
-			"tsx",
-			"--tsconfig",
-			"tsconfig.json",
-			"tests/support/pipe-state.ts",
-			"connect-whatsapp",
-			officeId,
-			phoneNumberId,
-		],
-		{ cwd: path.resolve(__dirname, ".."), stdio: "inherit" },
-	);
-}
 
 /** A guest with a Vietnamese mobile number no other test, repeat or run uses, and a name of their own. */
 function newWhatsAppGuest(): Guest {
@@ -221,11 +201,14 @@ function expectNoPhone(address: string, guest: Guest, where: string) {
 
 /** The guest's lead in the office's mock CRM, once it is written. */
 async function leadOf(officeId: string, guest: Guest): Promise<MockCrmLead> {
-	const find = () => mockCrmLeads(officeId).find((lead) => lead.name === guest.name);
+	const find = async () => (await mockCrmLeads(officeId)).find((lead) => lead.name === guest.name);
 	await expect
-		.poll(() => find() !== undefined, { message: `${guest.name} becomes a lead`, ...LEAD_WRITTEN })
+		.poll(async () => (await find()) !== undefined, {
+			message: `${guest.name} becomes a lead`,
+			...LEAD_WRITTEN,
+		})
 		.toBe(true);
-	return find()!;
+	return (await find())!;
 }
 
 /**
