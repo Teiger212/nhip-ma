@@ -74,10 +74,14 @@ RETURNING …`. (The grill wrote `id = (SELECT …)`; `IN` is what lets one clai
 ### What wakes the jobs (Q11)
 
 - **An `after()` kick right after enqueue**: the fast path.
-- **Vercel Cron every 5 minutes on production**, calling a drain route guarded by `CRON_SECRET`.
+- **Vercel Cron every 10 minutes on production**, calling a drain route guarded by `CRON_SECRET`.
   - It is the safety net for retries, delays and the hourly check.
-  - It runs every 5 minutes, not every minute, so Neon's compute can scale to zero (Eyal's
-    reason, Q11).
+  - **Why 10 minutes (Q13, Eyal, 2026-10-06):** Neon scales a compute to zero after 5 minutes
+    with no queries. A 5-minute drain would query it just as it was about to sleep, so it would
+    never sleep. Every 10 minutes, the drain alone keeps the compute awake about half the time.
+    That's about $10 a month at Launch's smallest 0.25 CU, against about $19 always on.
+  - **The cost:** a job waiting on a retry or a delay can wait up to 10 minutes. Revisit once
+    real usage shows up.
 - **A GitHub Actions scheduled workflow every 15 minutes** calls staging's drain route, because
   Vercel Cron only calls production.
 
@@ -102,8 +106,8 @@ RETURNING …`. (The grill wrote `id = (SELECT …)`; `IN` is what lets one clai
 - **Kafka or a separate queue service.** Ruled out (Eyal, 2026-10-05, #177).
 - **`LISTEN`/`NOTIFY` as the wake-up.** Neon's pooler doesn't support it.
 - **`pg_cron` on Neon.** It runs only while the compute is awake.
-- **Vercel Cron every minute.** Pro allows it, but every 5 minutes leaves Neon's compute room to
-  scale to zero.
+- **Vercel Cron every minute, or every 5 minutes.** Pro allows both, but either would keep Neon's
+  compute from ever reaching its 5-minute scale-to-zero (Q13).
 
 ## Consequences
 
