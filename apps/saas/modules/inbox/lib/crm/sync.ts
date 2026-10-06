@@ -22,6 +22,14 @@ import type { CrmAdapter, CrmNotice } from "./types";
 export type LeadRetry = "linked" | "ambiguous" | "busy" | "waiting" | "gone" | "none";
 
 /**
+ * When a write that started at `startedAt` failed: now, so a slow CRM doesn't shorten the wait
+ * that follows, and never before it started.
+ */
+function failedAt(startedAt: Date): Date {
+	return new Date(Math.max(startedAt.getTime(), Date.now()));
+}
+
+/**
  * How many offices on a CRM, their account not known yet, one notice from an unknown account
  * asks the CRM about: the CRM waits on the answer, and may give up after a few seconds.
  */
@@ -161,19 +169,20 @@ export function createCrmSync(deps: {
 
 		/**
 		 * Someone opened a thread with no lead (#211): write it once more, if the office has a CRM
-		 * and the thread's stored wait since its last failed write is over at `now`. The thread is
+		 * and the thread's stored wait since its last failed write is over at `now`. The wait is
+		 * checked first, one small read, since every poll of an open thread asks. Then the thread is
 		 * read afresh, so one deleted meanwhile (ADR 0020) is `gone` and never written. Throws what
 		 * the CRM refused, after recording it.
 		 */
 		async retryLead(officeId: string, conversationId: string, now: Date): Promise<LeadRetry> {
+			if (!crmRetryDue(await store.crmWriteFailure(officeId, conversationId), now.getTime())) {
+				return "waiting";
+			}
 			const conversation = await store.getOfficeConversation(officeId, conversationId);
 			if (!conversation) return "gone";
 			if (conversation.crm) return "none";
 			const connection = (await connectionOf(officeId))?.connection;
 			if (!connection) return "none";
-			if (!crmRetryDue(await store.crmWriteFailure(officeId, conversationId), now.getTime())) {
-				return "waiting";
-			}
 			return writeLead(conversation, connection, now, { onlyIfDue: true });
 		},
 
@@ -260,7 +269,7 @@ export function createCrmSync(deps: {
 			// A failed write never blocks the thread: the guest's next message tries again, and so
 			// does opening the thread once its wait is over.
 			try {
-				await store.recordCrmWriteFailure(officeId, id, now);
+				await store.recordCrmWriteFailure(officeId, id, failedAt(now));
 			} finally {
 				await store.releaseCrmLink(officeId, id);
 			}
@@ -268,7 +277,7 @@ export function createCrmSync(deps: {
 		}
 		if (linked) return "linked";
 		try {
-			await store.recordCrmWriteFailure(officeId, id, now);
+			await store.recordCrmWriteFailure(officeId, id, failedAt(now));
 		} finally {
 			await store.releaseCrmLink(officeId, id);
 		}

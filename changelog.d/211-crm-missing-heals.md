@@ -16,6 +16,8 @@
 
 - **A failed CRM lead write is logged by kind only** (#211): timeout, auth, rejected or other,
   with no thread, guest or CRM id. The old log line named the thread.
+- **A HubSpot call gives up after 15 seconds** (#211), so a hung call never holds a thread's lead
+  write. It counts as a timeout, retried when the thread is next opened.
 
 ### Fixed
 

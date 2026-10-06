@@ -19,6 +19,9 @@ import {
  */
 
 const API = "https://api.hubapi.com";
+
+/** How long one HubSpot call may take, its answer read included, before it counts as failed. */
+const REQUEST_TIMEOUT_MS = 15_000;
 /** HubSpot's date-versioned API; `2026-09` is supported until about March 2028. */
 const VERSION = "2026-09";
 const CONTACTS = `/crm/objects/${VERSION}/contacts`;
@@ -135,6 +138,9 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 				method,
 				headers: { authorization: `Bearer ${deps.token}`, "content-type": "application/json" },
 				body: body === undefined ? undefined : JSON.stringify(body),
+				// A hung call would hold the thread's claim on writing its lead (#211); one that
+				// gives up is a `timeout`, retried when the thread is next opened.
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			const wait = response.status === 429 && attempt === 0 ? retryDelay(response) : null;
 			if (wait !== null) {

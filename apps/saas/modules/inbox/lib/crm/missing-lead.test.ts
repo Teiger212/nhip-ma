@@ -154,6 +154,19 @@ test("a deleted guest's thread is never retried", async () => {
 	expect(await store.findMockCrmLeads(OFFICE)).toEqual([]);
 });
 
+// ADR 0020: a write that fails after its thread was deleted keeps no failure, and no claim.
+test("a failure recorded for a thread deleted mid-write keeps nothing, and the thread can't be claimed", async () => {
+	store = await testInboxStore();
+	await store.setCrmConnection(OFFICE, "mock");
+	const conversation = await guestWrites("zalo-heal-10", "Mai");
+	await store.deleteConversations(OFFICE, [conversation.id]);
+
+	await store.recordCrmWriteFailure(OFFICE, conversation.id, new Date());
+
+	expect(await store.crmWriteFailure(OFFICE, conversation.id)).toBeNull();
+	expect(await store.claimCrmLink(OFFICE, conversation.id, new Date())).toBe(false);
+});
+
 test("a lead write that died half-way holds the thread only until it is stale, then opening it heals", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
