@@ -178,6 +178,13 @@ are not here (the onboarding grill).
    (`POST /api/conversations/:id/owner`) to give a thread of the office to the platform admin
    (their user id, read from the platform admin's view of the office): it answers 400, and the
    thread's owner is unchanged.
+8. **Office settings are a manager's** (#212). As an agent of the walk office, opening the
+   office's settings by address (`/en/walk/settings/general`) shows the not-found page (404), as
+   Team does, with nothing of the office's settings on it. The walk office's manager opening the
+   same address gets the page.
+   Spec: `apps/saas/tests/office-settings.spec.ts` (Team 8; the seeded agent and manager; "nothing
+   of the settings" is no text field on the agent's page; "the page" is an answer under 400 with
+   a heading and no not-found page, its wording left to #214's rework).
 
 Spec: `apps/saas/tests/team.spec.ts` (Team 1–7; the agent's and the managers' API refusals run
 in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
@@ -344,6 +351,21 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     filed before the next writes: an Unassigned guest, then agent 1's, then a newer Unassigned
     guest, so the manager's expected order (both Unassigned oldest first, then agent 1's) is
     neither oldest-first nor newest-first overall; nameless Zalo guests are listed by their id).
+12. **A manager sees "Your turn" only on their own threads** (#212; ADR 0022, amended
+    2026-10-06). Four guests wait (each wrote last, and no one has answered): one Unassigned,
+    one on agent 1, one on a second manager, and one on the manager.
+    - The manager sees "Your turn" on their own thread, and "Waiting" on the Unassigned thread,
+      agent 1's and the second manager's: on the thread's row and on its header alike.
+    - Agent 1 still sees "Your turn" on their thread: every thread an agent sees is their own.
+      The second manager sees "Your turn" on theirs.
+    - Only the turn changes: Sent, Won and Lost read as before.
+
+    Spec: `apps/saas/tests/manager-chip.spec.ts` (Assign 12; an office of the test's own with one
+    invited agent and two invited managers, nameless Zalo guests given out by the manager through
+    the owner API; each row is found under All by searching the guest's id, and its header is the
+    thread opened from that row. The chip is `data-test="thread-status"`: "Your turn" with
+    `data-status="yourTurn"`, "Waiting" with `data-status="waiting"`, matched exactly, in English
+    only (the Vietnamese "Đang chờ" waits on #78). Sent, Won and Lost are not checked here).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
@@ -572,8 +594,10 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     the first browser's 202 then makes exactly one).
 12. **While Nhịp is open, the tab and a toast say so** (#136). An agent is on Settings, and a
     guest on a thread assigned to them writes.
-    - Within the poll, the tab title reads "(n) Inbox", where n is the nav's Your-turn count,
-      and one toast says "Minji is waiting".
+    - Within the poll, the tab title reads "(n) <Page> – Nhịp": the count in front of the page's
+      own title, on every page ("(2) Home – Nhịp", "(2) Inbox – Nhịp"; ADR 0019, amended
+      2026-10-06, #212), where n is the nav's Your-turn count, and one toast says "Minji is
+      waiting".
     - The same guest writing again replaces the toast; it doesn't add a second one.
     - Four of their guests show at most three toasts. Tapping one opens that thread.
     - On the Inbox list, the tab title changes and no toast shows.
@@ -597,9 +621,10 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     assignment toast; returning Minji to Unassigned is judged by agent 2 having no toast and agent
     1 exactly one, once agent 1, given a nameless Zalo guest after the return, shows "A guest was
     assigned to you".
-    The title is "(n) Inbox" ("(n) Hộp thư" in Vietnamese) beside the nav's number on the Inbox,
-    Home and Settings, and after Settings → Inbox through the nav; with nobody waiting it is the
-    page's own title, read before any guest. A toast is `data-test="guest-toast"`, a link named
+    The title is "(n) " in front of the page's own title beside the nav's number on the Inbox,
+    Home and Settings, in English and Vietnamese, and after Settings → Inbox through the nav; each
+    page's own title, read before any guest, is "<Page> – Nhịp" (an en dash), and with nobody
+    waiting the title is that again. A toast is `data-test="guest-toast"`, a link named
     "<guest> is waiting", in the window's top-right quarter. Each absence is judged once a later
     toast has shown: one Minji toast after she wrote twice, none for agent 2's guest or a new
     Unassigned guest, and at most three, the fourth replacing the first. Toasts that outlive
@@ -608,6 +633,17 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     raises the title and no toast. The manager is on Home, with a guest of agent 1's (no toast),
     a new Unassigned guest and a guest they hold (a toast each); their title follows their nav
     number. Closing a toast and a guest's answer clearing it are not tested).
+
+13. **Settings → Notifications says what it is for** (#212). An operator opens Settings →
+    Notifications. Under the "Notifications" heading, the page's one intro line reads "Choose
+    what reaches you in Nhịp." (VI, under "Thông báo": "Chọn những gì đến với bạn trong Nhịp.",
+    to be reviewed in #78). The kit's "Choose how you receive notifications. Disabled options are
+    stored; everything is enabled by default." (VI "Chọn cách bạn nhận thông báo. …") is nowhere
+    on the page.
+    Spec: `apps/saas/tests/notifications-intro.spec.ts` (Alerts 13; the seeded agent on
+    `/en/settings/notifications` and `/vi/settings/notifications`; "under the heading" is the
+    line being the paragraph that follows the heading in the page's main area; "one intro line"
+    is judged only as the kit's sentence being gone).
 
 ## First greeting (ADR 0021, spec #159)
 
