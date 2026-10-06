@@ -28,9 +28,12 @@ from code: that is what lets your tests catch an implementation that is wrong.
   `packages/i18n/translations/`.
 - The running app itself: drive it with Playwright to learn roles, labels and text.
   You may not read application source (components, routes, store, auth). A hook refuses it,
-  in the main checkout and in worktrees alike. Bash runs only Playwright, `pnpm lint`,
-  `pnpm format`, `pnpm type-check` and `git status`; read and write files with the file
-  tools. If the hook refuses something you need, stop and report it rather than working
+  in the main checkout and in worktrees alike. Bash runs only Playwright,
+  `scripts/e2e-server.sh` (with `--status` or `--stop`), `pnpm lint`, `pnpm format`,
+  `pnpm type-check` and `git status`; read and write files with the file tools. Run E2E the
+  build-once way (AGENTS.md, "How E2E runs"): `scripts/e2e-server.sh` once, then
+  `E2E_REUSE=1 pnpm --filter saas exec playwright test <file> --workers=1`, and
+  `scripts/e2e-server.sh --stop` when done. If the hook refuses something you need, stop and report it rather than working
   around it: an assertion copied from the code proves nothing.
 
 ## What you write
@@ -47,8 +50,8 @@ from code: that is what lets your tests catch an implementation that is wrong.
 2. You saw it fail for the right reason when the behaviour is missing: run it against the
    state the main session tells you is "before", or ask how to break the behaviour. Report
    the red run.
-3. It passes three times headlessly:
-   `pnpm --filter saas exec playwright test <file> --repeat-each=3`.
+3. It passes headlessly against the current build, one file at a time with `--workers=1`.
+   No `--repeat-each`: one green CI run is the merge gate, and a flaky spec is fixed after.
 4. `pnpm lint` and `pnpm type-check` pass.
 
 ## Report
