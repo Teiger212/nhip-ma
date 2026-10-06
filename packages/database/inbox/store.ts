@@ -1008,6 +1008,24 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			};
 		},
 
+		async setOfficeAutoReply(officeId, on) {
+			// One statement, so two managers flipping it at once can't lose the stamp: the update
+			// reads the row it replaces under its lock. Only a row that says off can be turned on;
+			// no row is on since the office began. The column is UTC without a zone, as Prisma
+			// writes it.
+			await db.$executeRaw`
+				INSERT INTO "inbox_office_setting" ("officeId", "autoReply")
+				VALUES (${officeId}, ${on})
+				ON CONFLICT ("officeId") DO UPDATE SET
+					"autoReplyOnSince" = CASE
+						WHEN NOT "inbox_office_setting"."autoReply" AND EXCLUDED."autoReply"
+							THEN (now() AT TIME ZONE 'UTC')
+						ELSE "inbox_office_setting"."autoReplyOnSince"
+					END,
+					"autoReply" = EXCLUDED."autoReply"
+			`;
+		},
+
 		async claimAutoReply(officeId, id) {
 			// One conditional update: Postgres re-reads the row under its lock, so of two first
 			// messages at once only one sees `autoReplyAt` still null (ADR 0021).

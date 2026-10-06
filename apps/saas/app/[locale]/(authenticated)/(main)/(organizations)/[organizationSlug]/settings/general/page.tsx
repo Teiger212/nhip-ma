@@ -1,4 +1,5 @@
 import { getActiveOrganization, getSession } from "@auth/lib/server";
+import { AutoReplySetting } from "@inbox/components/AutoReplySetting";
 import { ChangeOrganizationNameForm } from "@organizations/components/ChangeOrganizationNameForm";
 import { DeleteOrganizationForm } from "@organizations/components/DeleteOrganizationForm";
 import { OrganizationLogoForm } from "@organizations/components/OrganizationLogoForm";
@@ -39,6 +40,8 @@ export default async function OrganizationSettingsPage({
 	});
 
 	const canManageDeletion = permix.check("organization.delete");
+	// The auto-reply switch is the managers' (ADR 0021 G6, #167), as Team is: agents see no row.
+	const canManageOffice = permix.check("organization.manage");
 
 	const t = await getTranslations("organizations.settings");
 
@@ -49,6 +52,7 @@ export default async function OrganizationSettingsPage({
 			<SettingsList>
 				<OrganizationLogoForm />
 				<ChangeOrganizationNameForm />
+				{canManageOffice && <AutoReplySetting />}
 				{canManageDeletion && <DeleteOrganizationForm />}
 			</SettingsList>
 		</>

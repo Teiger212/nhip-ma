@@ -10,6 +10,7 @@ import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
+import { appOrigin } from "./support/session";
 import { deliverZalo, signedZaloText } from "./support/zalo";
 
 /**
@@ -25,6 +26,7 @@ const saas = JSON.parse(
 ) as {
 	inbox: {
 		mock: string;
+		reply: string;
 		searchAria: string;
 		source: { autoReply: string; oaEcho: string };
 		autoReply: { template: string };
@@ -69,6 +71,8 @@ type Guest = {
  */
 type GreetingOffice = {
 	id: string;
+	/** The office's address slug: its settings are at `/{locale}/{slug}/settings/general`. */
+	slug: string;
 	manager: Joined;
 	/** A new OA of the office: connected, or already disconnected. */
 	newOa: (state?: "disconnected") => Promise<string>;
@@ -78,9 +82,10 @@ type GreetingOffice = {
 
 const test = base.extend<{ office: GreetingOffice }>({
 	office: async ({ admin, browser, request }, use) => {
+		const slug = `e2e-greeting-${randomUUID()}`;
 		const created = await admin.api.post("/api/auth/organization/create", {
 			name: OFFICE_NAME,
-			slug: `e2e-greeting-${randomUUID()}`,
+			slug,
 		});
 		expect(created.status(), `the platform admin creates "${OFFICE_NAME}"`).toBe(200);
 		const { id } = (await created.json()) as { id: string };
@@ -97,6 +102,7 @@ const test = base.extend<{ office: GreetingOffice }>({
 			manager = await joinOffice(admin, browser, id, "admin", "greeting-manager");
 			await use({
 				id,
+				slug,
 				manager,
 				newOa,
 				newGuest: (oaId = firstOa) => guestOf(request, oaId),
@@ -242,7 +248,8 @@ function navCount(page: Page) {
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		threadList(page).getByRole("button").first().or(page.getByTestId("inbox-empty")),
+		// An empty Inbox shows both its view buttons and the empty text: either one will do.
+		threadList(page).getByRole("button").or(page.getByTestId("inbox-empty")).first(),
 	).toBeVisible();
 }
 
@@ -488,6 +495,203 @@ test.describe("First greeting 4 — the guest's language picks the greeting", ()
 						.not.toMatch(VIETNAMESE_ONLY);
 				}
 			});
+		}
+	});
+});
+
+/* ---------------------------------------------------------------- the auto-reply switch (First greeting 5) */
+
+/** The user menu's way to the office's settings (decided 2026-10-06, #167), beside "Team". */
+const OFFICE_SETTINGS = "Office settings";
+
+/** The switch's label on the office's settings, General tab (#167). */
+const AUTO_REPLY_SWITCH = "Auto-reply to a new guest's first message";
+
+/** Today's first-reply template, as the reply box holds it for a thread with no auto-reply. */
+const FIRST_REPLY_TEMPLATE = /^Thanks for writing\b/;
+
+/** The office's settings, General tab, where a manager finds the switch. */
+function settingsAddress(office: GreetingOffice) {
+	return `/en/${office.slug}/settings/general`;
+}
+
+function autoReplySwitch(page: Page) {
+	return page.getByRole("switch", { name: AUTO_REPLY_SWITCH });
+}
+
+function replyBox(page: Page) {
+	return page.getByRole("textbox", { name: saas.inbox.reply });
+}
+
+function officeSettingsItem(page: Page) {
+	return page.getByRole("menuitem", { name: OFFICE_SETTINGS, exact: true });
+}
+
+/** The user menu (the ⋯ beside the person's name in the sidebar), open, its items listed. */
+async function openUserMenu(page: Page) {
+	await page.getByRole("button", { name: "User menu" }).click();
+	await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+}
+
+/**
+ * The manager flips the switch on the office's settings page: it saves at once, with no Save
+ * button, and a reload shows the saved state.
+ */
+async function switchAutoReply(page: Page, on: boolean) {
+	const toggle = autoReplySwitch(page);
+	await expect(
+		toggle,
+		`the switch is ${on ? "off" : "on"} before the manager flips it`,
+	).toBeChecked({ checked: !on });
+	const saved = page.waitForResponse(
+		(r) => r.url().endsWith("/api/office/auto-reply") && r.request().method() === "PUT",
+		{ timeout: 10_000 },
+	);
+	await toggle.click();
+	expect((await saved).status(), "flipping the switch saves it at once").toBe(200);
+	await expect(toggle).toBeChecked({ checked: on });
+	await page.reload();
+	await expect(autoReplySwitch(page), `a reload shows it ${on ? "on" : "off"}`).toBeChecked({
+		checked: on,
+	});
+}
+
+/** `PUT /api/office/auto-reply` as whoever `request` is signed in as, with the app's Origin. */
+function putAutoReply(request: APIRequestContext, on: boolean) {
+	return request.put("/api/office/auto-reply", {
+		data: { on },
+		headers: { origin: appOrigin() },
+	});
+}
+
+// scenario: docs/e2e-scenarios.md First greeting 5
+test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
+	test("the manager switches the auto-reply off from Office settings: a new guest gets no auto-reply and the reply box holds the first-reply template; switched back on, the next new guest is greeted, and the guest who wrote while it was off writes again and is still not greeted (S1)", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const { page } = manager;
+
+		await test.step("the manager reaches the switch from the user menu: on by default", async () => {
+			await openInbox(page);
+			await openUserMenu(page);
+			await expect(officeSettingsItem(page), "the user menu offers Office settings").toBeVisible();
+			await officeSettingsItem(page).click();
+			await expect(page).toHaveURL(new RegExp(`/en/${office.slug}/settings/general$`));
+			await expect(autoReplySwitch(page), "the auto-reply is on by default").toBeChecked();
+		});
+
+		await test.step("switched off", () => switchAutoReply(page, false));
+
+		const offGuest = office.newGuest();
+		await test.step("a new guest writes while it is off: the reply box holds the first-reply template", async () => {
+			await offGuest.write("Hi, we're looking to rent an apartment in Tay Ho");
+			await threadOf(manager.api, offGuest);
+			await openThreadOf(page, offGuest);
+			await expect(replyBox(page), "the reply box holds today's first reply").toHaveValue(
+				FIRST_REPLY_TEMPLATE,
+			);
+		});
+
+		await test.step("switched back on", async () => {
+			await page.goto(settingsAddress(office));
+			await switchAutoReply(page, true);
+		});
+
+		const { id: offThreadId } = await threadOf(manager.api, offGuest);
+		await test.step("the guest whose thread began while it was off writes again (S1)", async () => {
+			await offGuest.write("Also, is parking included?");
+			await expect
+				.poll(
+					async () =>
+						(await messagesOf(manager.api, offThreadId)).filter((m) => m.direction === "in").length,
+					{ message: "both of the off guest's messages arrived" },
+				)
+				.toBe(2);
+		});
+
+		await test.step("the next new guest is greeted", async () => {
+			const next = office.newGuest();
+			await next.write("Hi, we're looking to rent an apartment in Tay Ho");
+			const greeting = await greetingOf(manager.api, next);
+			expect(lastLine(greeting.text), "the office's auto-reply").toBe(EN_LABEL);
+		});
+
+		// The next guest's greeting has arrived, so one for either of the off guest's messages
+		// would have too.
+		await test.step("the guest who wrote while it was off has no auto-reply", async () => {
+			expect(
+				await officeMessages(manager.api, offThreadId),
+				"no auto-reply: not while it was off, nor after it came back on (S1)",
+			).toEqual([]);
+			await openThreadOf(page, offGuest);
+			await expect(sourced(page, saas.inbox.source.autoReply)).toHaveCount(0);
+		});
+	});
+
+	test("an agent has no Office settings in the user menu and no switch on the office's settings page, where the manager has both", async ({
+		office,
+		admin,
+		browser,
+	}) => {
+		const agent = await joinOffice(admin, browser, office.id, "member", "greeting-agent");
+		try {
+			// The agent first: each absence judged once the menu, or the page, has shown.
+			await openUserMenu(agent.page);
+			await expect(officeSettingsItem(agent.page), "no Office settings for an agent").toHaveCount(
+				0,
+			);
+			await agent.page.goto(settingsAddress(office));
+			await expect(agent.page.getByRole("heading").first()).toBeVisible();
+			await expect(autoReplySwitch(agent.page), "no switch for an agent").toHaveCount(0);
+			await expect(agent.page.getByTestId("auto-reply-switch")).toHaveCount(0);
+
+			// The manager of the same office, on the same page: both are there.
+			const { page } = office.manager;
+			await openInbox(page);
+			await openUserMenu(page);
+			await expect(officeSettingsItem(page), "the manager's user menu offers it").toBeVisible();
+			await page.goto(settingsAddress(office));
+			await expect(autoReplySwitch(page), "the manager has the switch").toBeVisible();
+			await expect(page.getByTestId("auto-reply-switch")).toBeVisible();
+		} finally {
+			await agent.close();
+		}
+	});
+
+	test("PUT /api/office/auto-reply refuses a signed-out caller (401) and an agent (403), and a new guest is still greeted; the manager's turns it off (200 { on: false }), as the settings page then shows, and an agent can't turn it back on", async ({
+		office,
+		admin,
+		browser,
+		request,
+	}) => {
+		const { manager } = office;
+		const agent = await joinOffice(admin, browser, office.id, "member", "greeting-agent");
+		try {
+			const signedOut = await putAutoReply(request, false);
+			expect.soft(signedOut.status(), "signed out, the API refuses").toBe(401);
+			const byAgent = await putAutoReply(agent.page.request, false);
+			expect.soft(byAgent.status(), "an agent is refused").toBe(403);
+
+			// Refused, so nothing changed: a new guest is still greeted.
+			const guest = office.newGuest();
+			await guest.write();
+			await greetingOf(manager.api, guest);
+
+			const byManager = await putAutoReply(manager.page.request, false);
+			expect(byManager.status(), "the manager turns it off").toBe(200);
+			expect(await byManager.json()).toMatchObject({ on: false });
+			await manager.page.goto(settingsAddress(office));
+			await expect(autoReplySwitch(manager.page), "the settings page shows it off").toBeChecked({
+				checked: false,
+			});
+
+			const agentOn = await putAutoReply(agent.page.request, true);
+			expect(agentOn.status(), "an agent can't turn it back on").toBe(403);
+			await manager.page.reload();
+			await expect(autoReplySwitch(manager.page), "still off").toBeChecked({ checked: false });
+		} finally {
+			await agent.close();
 		}
 	});
 });

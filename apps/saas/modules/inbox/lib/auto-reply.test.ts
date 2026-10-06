@@ -146,6 +146,20 @@ describe("a new guest's first message gets one auto-reply (G1)", () => {
 		expect(autoReplies(await thread("g5"))).toHaveLength(0);
 	});
 
+	test("turned back on, it greets a new guest, never one whose thread began while it was off (S1)", async () => {
+		await testDb.officeSetting.create({ data: { officeId: OFFICE, autoReply: false } });
+		// A minute before it comes back on (this file's guests otherwise write a few ms ahead).
+		await arrive(guest("s1-before", "Hello", { at: Date.now() - 60_000 }));
+		await testDb.officeSetting.update({
+			where: { officeId: OFFICE },
+			data: { autoReply: true, autoReplyOnSince: new Date() },
+		});
+		await arrive(guest("s1-before", "Are you there?"));
+		await arrive(guest("s1-after", "Hello"));
+		expect(autoReplies(await thread("s1-before"))).toHaveLength(0);
+		expect(autoReplies(await thread("s1-after"))).toHaveLength(1);
+	});
+
 	test("a disconnected OA greets no one, and the guest is still Your turn", async () => {
 		await connectZaloOa({ disconnected: true });
 		await arrive(guest("g6", "Hello"));
@@ -243,6 +257,38 @@ describe("one send attempt (ADR 0021, Consequences)", () => {
 		expect(autoReplies(conversation)).toHaveLength(0);
 		expect(fetch).not.toHaveBeenCalled();
 		expect(conversation.unansweredInboundId).toBe(conversation.messages[0].id);
+	});
+});
+
+describe("the switch (ADR 0021 G6, S1, #167)", () => {
+	async function setting() {
+		return testDb.officeSetting.findUnique({ where: { officeId: OFFICE } });
+	}
+
+	test("turning it off, then on, stamps when it came back on", async () => {
+		await runtime.store.setOfficeAutoReply(OFFICE, false);
+		expect(await setting()).toMatchObject({ autoReply: false, autoReplyOnSince: null });
+		const before = Date.now();
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		const on = await setting();
+		expect(on?.autoReply).toBe(true);
+		// Now, in UTC: neither before the call nor after it (a time-zone slip is hours off).
+		expect(on?.autoReplyOnSince?.getTime()).toBeGreaterThanOrEqual(before);
+		expect(on?.autoReplyOnSince?.getTime()).toBeLessThanOrEqual(Date.now());
+		expect(await runtime.store.officeAutoReply(OFFICE)).toMatchObject({
+			on: true,
+			onSince: on?.autoReplyOnSince?.toISOString(),
+		});
+	});
+
+	test("turning on what is already on moves nothing, so no thread begun meanwhile is skipped", async () => {
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		expect(await setting()).toMatchObject({ autoReply: true, autoReplyOnSince: null });
+		await runtime.store.setOfficeAutoReply(OFFICE, false);
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		const stamped = (await setting())?.autoReplyOnSince;
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		expect((await setting())?.autoReplyOnSince).toEqual(stamped);
 	});
 });
 

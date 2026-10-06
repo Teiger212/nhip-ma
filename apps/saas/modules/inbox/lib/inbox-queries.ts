@@ -186,6 +186,30 @@ export function useOfficeAgents(enabled: boolean) {
 	});
 }
 
+const autoReplyQueryKey = ["inbox", "auto-reply"] as const;
+
+/** The office's auto-reply switch (ADR 0021 G6, #167), as its managers see it. */
+export function useOfficeAutoReply() {
+	return useQuery({
+		queryKey: autoReplyQueryKey,
+		queryFn: () => api<{ on: boolean }>("/api/office/auto-reply"),
+	});
+}
+
+/** A manager turns the office's auto-reply on or off; the switch then reads it back. */
+export function useSetOfficeAutoReply() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (on: boolean) =>
+			api<{ on: boolean }>("/api/office/auto-reply", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ on }),
+			}),
+		onSettled: () => queryClient.invalidateQueries({ queryKey: autoReplyQueryKey }),
+	});
+}
+
 /** A manager gives a thread to an operator, or back to Unassigned (null). */
 export function useSetOwner() {
 	const queryClient = useQueryClient();
