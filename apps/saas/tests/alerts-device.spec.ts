@@ -6,8 +6,8 @@ import type { BrowserContext, Locator, Page } from "@playwright/test";
 import { alertState } from "./support/alerts";
 import { userIdOf } from "./support/assign";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
 import { LoginPage } from "./support/login-page";
+import { joinOffice } from "./support/operators";
 import { NEW_PASSWORD } from "./support/seed";
 import type { Api } from "./support/session";
 import { apiAs, clientIpHeaders, withOrigin } from "./support/session";
@@ -146,7 +146,7 @@ async function addDevice(api: Api, who: string) {
 /** One browser of the operator's: a session of its own. */
 type Browsing = { context: BrowserContext; page: Page; api: Api };
 
-/** An agent of an office of the test's own, signed up through their invitation link. */
+/** An agent of an office of the test's own, who accepted their invitation (support/operators.ts). */
 type Operator = Browsing & {
 	officeId: string;
 	id: string;
@@ -167,14 +167,15 @@ const test = base.extend<{ newOperator: () => Promise<Operator> }>({
 		const contexts: BrowserContext[] = [];
 		await use(async () => {
 			const office = await admin.createOffice("Alerts device");
-			const email = admin.newEmail("alerts-device");
-			const invitationId = await admin.invite(email, office.id, "member");
-			const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
+			const { email, page, api } = await joinOffice(
+				admin,
+				browser,
+				office.id,
+				"member",
+				"alerts-device",
+			);
+			const context = page.context();
 			contexts.push(context);
-			const page = await context.newPage();
-			await signUpByInvitationLink(page, invitationId, email);
-			await openInboxAsNewAccount(page);
-			const api = withOrigin(context.request);
 			return {
 				officeId: office.id,
 				id: await userIdOf(api),

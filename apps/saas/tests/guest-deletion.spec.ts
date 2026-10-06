@@ -11,11 +11,11 @@ import type { GuestDeletionReceipt } from "./support/deletion";
 import { guestDeletionRecords, holdReplySending } from "./support/deletion";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
+import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { MANAGER, PLATFORM_ADMIN } from "./support/seed";
 import type { Api } from "./support/session";
-import { apiAs, clientIpHeaders, withOrigin } from "./support/session";
+import { apiAs, withOrigin } from "./support/session";
 import { sendZaloText } from "./support/zalo";
 
 /**
@@ -107,7 +107,7 @@ type Operator = {
 /**
  * An office of the test's own with no CRM (the platform admin creates it, so the admin is its kit
  * `owner`; it is deleted afterwards), a Zalo OA of its own (released afterwards), and an agent and a
- * manager (the kit's `admin`) who joined it through their invitation links. No other spec writes
+ * manager (the kit's `admin`) who accepted their invitations into it. No other spec writes
  * to it, so its counts are this test's.
  */
 type DeletionOffice = {
@@ -185,17 +185,17 @@ async function newOperatorOf(
 	label: string,
 	role: "member" | "admin",
 ): Promise<Operator & { close: () => Promise<void> }> {
-	const email = admin.newEmail(role === "admin" ? "deletion-manager" : "deletion-agent");
-	const invitationId = await admin.invite(email, officeId, role);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	const api = withOrigin(context.request);
+	const { page, api, close } = await joinOffice(
+		admin,
+		browser,
+		officeId,
+		role,
+		role === "admin" ? "deletion-manager" : "deletion-agent",
+	);
 	const session = await api.get("/api/auth/get-session");
 	expect(session.status(), `${label}'s session is readable`).toBe(200);
 	const { user } = (await session.json()) as { user: { id: string; name: string } };
-	return { label, id: user.id, name: user.name, page, api, close: () => context.close() };
+	return { label, id: user.id, name: user.name, page, api, close };
 }
 
 /* ---------------------------------------------------------------- through the API */

@@ -3,7 +3,7 @@ import type { Browser, Locator, Page } from "@playwright/test";
 import { assignerAs } from "./support/assign";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { joinOffice } from "./support/invitee";
+import { joinOffice } from "./support/operators";
 import { connectWhatsAppNumber } from "./support/pipes";
 import type { WhatsAppGuest } from "./support/whatsapp";
 import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
@@ -57,7 +57,7 @@ const test = base.extend<{ ownOffice: OwnOffice }>({
 });
 
 /**
- * The office's only agent, newly joined through the invitation link, on their Inbox. A new guest
+ * The office's only agent, who just accepted their invitation, on their Inbox. A new guest
  * waits in Unassigned until a manager gives them out (ADR 0022): the office's manager, joined the
  * same way, gives the agent these guests.
  */

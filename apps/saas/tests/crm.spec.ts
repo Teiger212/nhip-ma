@@ -9,8 +9,8 @@ import type { MockCrmLead } from "./support/crm";
 import { connectMockCrm, markInMockCrm, mockCrmLeads } from "./support/crm";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import type { Joined } from "./support/invitee";
-import { joinOffice } from "./support/invitee";
+import type { Joined } from "./support/operators";
+import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
 import { appOrigin } from "./support/session";
@@ -87,8 +87,8 @@ type TestOffice = {
 /**
  * `newOffice` makes an office of the test's own (the platform admin creates it; it is deleted
  * afterwards), on the mock CRM or on none, with a Zalo OA of its own (released afterwards, even
- * when the test failed) and, when asked, an agent and a manager who joined it through the
- * invitation link. A new guest waits in Unassigned until the manager assigns them (ADR 0022), so
+ * when the test failed) and, when asked, an agent and a manager who accepted their
+ * invitations into it. A new guest waits in Unassigned until the manager assigns them (ADR 0022), so
  * an office whose agent opens or counts a guest asks for a manager too. No other spec writes to
  * it, so its leads are this test's leads only.
  */

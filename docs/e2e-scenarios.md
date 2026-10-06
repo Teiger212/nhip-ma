@@ -553,7 +553,7 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     `alertState.devices` lists only the second. `DELETE /api/alerts/devices` answers 401 signed
     out.
     Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 10; an office of the test's own with one
-    invited agent, signed up through the invitation link in the first browser and signed in
+    invited agent, who accepted the invitation in the first browser and signed in
     through the login page in the second; "only the second" is the second device's id alone,
     so removing nothing and removing every device both fail; the signed-in second browser's
     same `DELETE` answering 204 is the positive control).

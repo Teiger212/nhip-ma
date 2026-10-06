@@ -13,10 +13,9 @@ import { alertState } from "./support/alerts";
 import { assignerAs } from "./support/assign";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import type { Joined } from "./support/invitee";
-import { joinOffice } from "./support/invitee";
-import { openInboxAsNewAccount, signUpByInvitationLink } from "./support/invitee";
 import { LoginPage } from "./support/login-page";
+import type { Joined } from "./support/operators";
+import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { NEW_PASSWORD, PLATFORM_ADMIN } from "./support/seed";
 import type { Api } from "./support/session";
@@ -51,8 +50,8 @@ type Guest = {
 
 /**
  * An office of the test's own (the platform admin creates it, so the admin is its kit `owner`),
- * with a Zalo OA of its own, two agents and one or two managers (the kit's `admin`) who joined it
- * through their invitation links. Recipients are exact: no other spec writes to it.
+ * with a Zalo OA of its own, two agents and one or two managers (the kit's `admin`) who accepted
+ * their invitations into it. Recipients are exact: no other spec writes to it.
  */
 type AlertOffice = {
 	id: string;
@@ -138,8 +137,8 @@ function newGuestOf(request: APIRequestContext, oaId: string): Guest {
 }
 
 /**
- * A newly joined operator of `officeId`, signed up through the invitation link, on their Inbox:
- * an agent (the kit's `member`) or a manager (the kit's `admin`).
+ * A newly joined operator of `officeId`, on their Inbox: an agent (the kit's `member`) or a
+ * manager (the kit's `admin`).
  */
 async function newOperatorOf(
 	admin: Admin,
@@ -148,14 +147,14 @@ async function newOperatorOf(
 	label: string,
 	role: "member" | "admin",
 ): Promise<Operator & { email: string; close: () => Promise<void> }> {
-	const email = admin.newEmail(role === "admin" ? "alerts-manager" : "alerts-agent");
-	const invitationId = await admin.invite(email, officeId, role);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	const page = await context.newPage();
-	await signUpByInvitationLink(page, invitationId, email);
-	await openInboxAsNewAccount(page);
-	const api = withOrigin(context.request);
-	return { label, email, id: await ownId(api), page, api, close: () => context.close() };
+	const joined = await joinOffice(
+		admin,
+		browser,
+		officeId,
+		role,
+		role === "admin" ? "alerts-manager" : "alerts-agent",
+	);
+	return { label, ...joined, id: await ownId(joined.api) };
 }
 
 /** The kit's session, as the signed-in person's own browser reads it. */

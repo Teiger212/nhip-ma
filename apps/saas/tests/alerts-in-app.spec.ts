@@ -8,8 +8,8 @@ import { alertState } from "./support/alerts";
 import { assignerAs, userIdOf } from "./support/assign";
 import { ownerCopy } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
-import type { Joined } from "./support/invitee";
-import { joinOffice } from "./support/invitee";
+import type { Joined } from "./support/operators";
+import { joinOffice } from "./support/operators";
 import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
 import { newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
@@ -61,7 +61,7 @@ type Guest = {
 /**
  * An office of the test's own (the platform admin creates it, so the admin is its kit `owner`),
  * with a Zalo OA and a WhatsApp number of its own, two agents and one or two managers (the kit's
- * `admin`) who joined it through their invitation links. No other spec writes to it.
+ * `admin`) who accepted their invitations into it. No other spec writes to it.
  */
 type InAppOffice = {
 	id: string;

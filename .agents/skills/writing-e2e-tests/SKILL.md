@@ -45,8 +45,15 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   app URL follows it.
 - Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (`test`, `expect`, the
   `admin` fixture: create offices, invite, clean up), `session-state.ts` (`signInContext`), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
-  `offices.ts`, `data.ts` (`uniqueEmail`), `seed.ts` (seed logins), `copy.ts` (UI copy per
-  locale). Import from there; don't redefine sign-in or invitation helpers in a spec.
+  `offices.ts`, `operators.ts` (`joinOffice`), `data.ts` (`uniqueEmail`), `seed.ts` (seed
+  logins), `copy.ts` (UI copy per locale). Import from there; don't redefine sign-in or
+  invitation helpers in a spec.
+- An agent or manager of an office of the test's own is setup: `joinOffice(admin, browser,
+  officeId, "member" | "admin", tag)` (`support/operators.ts`, #186). It invites them through the
+  API, gives them a signed-up account and a minted session without the sign-up page, accepts the
+  invitation through the kit's API and opens their Inbox. Their password is `NEW_PASSWORD`, for a
+  spec that signs them in elsewhere. Sign up through the invitation page (`invitee.ts`) only
+  where signing up or joining is what the spec proves (the Auth specs, Team).
 - Locate flow elements with `getByTestId` (`data-test`, set in the config). Use roles and
   labels only where the text or accessibility is what the test proves.
 - While writing a spec: `E2E_BASE_URL=http://localhost:3010 pnpm --filter saas exec playwright

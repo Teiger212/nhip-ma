@@ -5,9 +5,9 @@ import path from "node:path";
 import type { APIRequestContext, Page } from "@playwright/test";
 
 import { expect, test as base } from "./support/fixtures";
-import type { Joined } from "./support/invitee";
-import { joinOffice } from "./support/invitee";
 import { deleteOffice } from "./support/offices";
+import type { Joined } from "./support/operators";
+import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
 import { deliverZalo, signedZaloText } from "./support/zalo";
@@ -64,8 +64,8 @@ type Guest = {
 
 /**
  * An office of the test's own named exactly "Saigon Prime Test" (a slug of its own, so parallel
- * tests never collide; deleted afterwards), with a manager (the kit's `admin`) who joined through
- * the invitation link and reads every thread, and Zalo OAs of its own (released afterwards).
+ * tests never collide; deleted afterwards), with a manager (the kit's `admin`) who accepted their
+ * invitation and reads every thread, and Zalo OAs of its own (released afterwards).
  */
 type GreetingOffice = {
 	id: string;

@@ -1,11 +1,9 @@
 import { expect } from "@playwright/test";
 import type { Browser, Page } from "@playwright/test";
 
-import { userIdOf } from "./assign";
 import type { Admin } from "./fixtures";
 import type { Office } from "./offices";
 import { NEW_PASSWORD } from "./seed";
-import type { Api } from "./session";
 import { clientIpHeaders, withOrigin } from "./session";
 
 /** The link the invitation email carries (the unprefixed path; the app adds the locale). */
@@ -115,34 +113,4 @@ export async function newcomer(
 	const page = await context.newPage();
 	await signUpByInvitationLink(page, invitationId, email);
 	return { email, page, api: withOrigin(page.request), close: () => context.close() };
-}
-
-/** An operator who joined an office through the invitation link, in a browser of their own. */
-export type Joined = { page: Page; api: Api; userId: string; close: () => Promise<void> };
-
-/**
- * A new operator of `officeId`, invited by the platform admin and signed up through the
- * invitation link, on their Inbox: an agent (the kit's `member`) or a manager (the kit's
- * `admin`, CONTEXT.md "Manager"). `tag` marks their email.
- */
-export async function joinOffice(
-	admin: Admin,
-	browser: Browser,
-	officeId: string,
-	role: "member" | "admin",
-	tag: string,
-): Promise<Joined> {
-	const email = admin.newEmail(tag);
-	const invitationId = await admin.invite(email, officeId, role);
-	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
-	try {
-		const page = await context.newPage();
-		await signUpByInvitationLink(page, invitationId, email);
-		await openInboxAsNewAccount(page);
-		const api = withOrigin(context.request);
-		return { page, api, userId: await userIdOf(api), close: () => context.close() };
-	} catch (error) {
-		await context.close();
-		throw error;
-	}
 }
