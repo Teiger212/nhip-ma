@@ -10,7 +10,7 @@
  * The chain and its env come from importing playwright.config.ts in its default mode, so
  * they can never drift from what a fresh run does.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
@@ -18,6 +18,7 @@ import path from "node:path";
 import {
 	answers,
 	appFingerprint,
+	currentBuildId,
 	envFingerprint,
 	healthUrls,
 	readServerState,
@@ -35,6 +36,8 @@ interface WebServer {
 	env?: Record<string, string>;
 	timeout?: number;
 }
+
+type Group = E2eServerState["groups"][number];
 
 const say = (line: string) => process.stdout.write(`${line}\n`);
 
@@ -55,10 +58,30 @@ function signalGroup(pgid: number, signal: NodeJS.Signals): void {
 	}
 }
 
+/** The process's start time (ps lstart; an exec keeps it), or undefined once it is gone. */
+function startTime(pid: number): string | undefined {
+	const ps = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+	return ps.status === 0 ? ps.stdout.trim() || undefined : undefined;
+}
+
+/**
+ * Whether a recorded group is still ours (a stale state file can outlive a reboot): it exists,
+ * and its leader is the process we started, or gone (a pgid is never reused while its group
+ * lives).
+ */
+function ours(group: Group): boolean {
+	if (!groupAlive(group.pgid)) {
+		return false;
+	}
+	const started = startTime(group.pgid);
+	return started === undefined || started === group.started;
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Stops each process group: SIGTERM, then SIGKILL after 10 s. */
-async function stopGroups(pgids: number[]): Promise<void> {
+/** Stops each process group still ours: SIGTERM, then SIGKILL after 10 s. */
+async function stopGroups(groups: Group[]): Promise<void> {
+	const pgids = groups.filter(ours).map((group) => group.pgid);
 	for (const pgid of pgids) {
 		signalGroup(pgid, "SIGTERM");
 	}
@@ -87,9 +110,8 @@ async function stop(): Promise<void> {
 		say("No E2E server to stop.");
 		return;
 	}
-	await stopGroups(state.pgids);
-	fs.rmSync(statePath, { force: true });
-	const alive = state.pgids.filter(groupAlive);
+	await stopGroups(state.groups);
+	const alive = state.groups.filter(ours).map((group) => group.pgid);
 	const taken = [];
 	for (const port of [state.port, state.httpsPort]) {
 		if (!(await portFree(port))) {
@@ -97,10 +119,12 @@ async function stop(): Promise<void> {
 		}
 	}
 	if (alive.length > 0 || taken.length > 0) {
+		// The state file stays, so --stop can try again.
 		throw new Error(
-			`Stopped the E2E server, but process groups ${alive.join(", ") || "none"} remain and ports ${taken.join(", ") || "none"} are still taken`,
+			`Could not stop the E2E server: process groups ${alive.join(", ") || "none"} remain and ports ${taken.join(", ") || "none"} are still taken`,
 		);
 	}
+	fs.rmSync(statePath, { force: true });
 	say(`Stopped the E2E server on :${state.port} and :${state.httpsPort}.`);
 }
 
@@ -132,7 +156,6 @@ async function waitFor(server: WebServer, exited: () => number | null, log: stri
  */
 async function loadDefaultConfig(): Promise<WebServer[]> {
 	delete process.env.E2E_REUSE;
-	delete process.env.E2E_REUSE_CHECKED;
 	delete process.env.E2E_BASE_URL;
 	const imported = (await import("../../playwright.config")) as {
 		default: { default?: { webServer?: unknown }; webServer?: unknown };
@@ -162,16 +185,17 @@ async function start(): Promise<void> {
 	const state: E2eServerState = {
 		port,
 		httpsPort,
-		pgids: [],
+		groups: [],
 		vapid: { publicKey: vapidPublicKey, privateKey: vapidPrivateKey },
 		fingerprint,
 		envHash: envFingerprint(),
+		buildId: "",
 		startedAt: new Date().toISOString(),
 	};
 	fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
 	// Ctrl-C mid-build: the chain runs in its own process groups, so stop them too.
 	const interrupted = () => {
-		void stopGroups(state.pgids).then(() => {
+		void stopGroups(state.groups).then(() => {
 			fs.rmSync(statePath, { force: true });
 			process.exit(130);
 		});
@@ -194,7 +218,7 @@ async function start(): Promise<void> {
 				throw new Error(`Could not start \`${server.command}\``);
 			}
 			child.unref();
-			state.pgids.push(child.pid);
+			state.groups.push({ pgid: child.pid, started: startTime(child.pid) ?? "" });
 			// Written before the wait, so --stop finds a chain that failed half way.
 			writeServerState(state);
 			say(`Starting \`${server.command}\` (log: ${path.relative(process.cwd(), log)})`);
@@ -203,8 +227,14 @@ async function start(): Promise<void> {
 		if (appFingerprint() !== fingerprint) {
 			throw new Error(`The app source changed during the build: ${RERUN}`);
 		}
+		const buildId = currentBuildId();
+		if (!buildId) {
+			throw new Error("The build left no apps/saas/.next/BUILD_ID");
+		}
+		state.buildId = buildId;
+		writeServerState(state);
 	} catch (error) {
-		await stopGroups(state.pgids);
+		await stopGroups(state.groups);
 		fs.rmSync(statePath, { force: true });
 		throw error;
 	}
@@ -225,16 +255,20 @@ async function status(): Promise<boolean> {
 	const up = healthUrls(state).every(answers);
 	const fresh = appFingerprint() === state.fingerprint;
 	const sameEnv = envFingerprint() === state.envHash;
+	const sameBuild = currentBuildId() === state.buildId;
 	say(`E2E server: https://localhost:${state.httpsPort} -> :${state.port}`);
 	say(`  started:        ${state.startedAt}`);
 	say(
-		`  process groups: ${state.pgids.map((g) => `${g}${groupAlive(g) ? "" : " (gone)"}`).join(", ")}`,
+		`  process groups: ${state.groups.map((g) => `${g.pgid}${ours(g) ? "" : " (gone)"}`).join(", ")}`,
 	);
 	say(`  answering:      ${up ? "yes" : "no"}`);
 	say(`  app source:     ${fresh ? "matches the build" : `changed since the build: ${RERUN}`}`);
 	say(`  env:            ${sameEnv ? "matches the build" : `changed since the build: ${RERUN}`}`);
+	say(
+		`  .next:          ${sameBuild ? "the server's build" : `rebuilt under the server: ${RERUN}`}`,
+	);
 	say(`  VAPID public:   ${state.vapid.publicKey}`);
-	return up && fresh && sameEnv;
+	return up && fresh && sameEnv && sameBuild;
 }
 
 async function main(): Promise<void> {

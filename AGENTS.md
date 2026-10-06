@@ -141,7 +141,8 @@ sounds once, and signing out stops the alerts.
   with the default mode's env and no build. It refuses ("app code changed since the build:
   rerun scripts/e2e-server.sh") once the app source differs from the build's (`apps/saas`
   outside `tests/`, `packages/`, `tooling/`, `.env.e2e`, the lockfile; committed or not), so
-  rebuild after an app change; a change under `tests/` alone needs none. The database is
+  rebuild after an app change; a change under `tests/` alone needs none. It also refuses when
+  the server is down, the env changed, or another build in the worktree replaced `.next`. The database is
   seeded once per build, as in one CI run. `--status` says whether it is up and current;
   `--stop` stops it when you're done. CI and the default mode still build fresh every run.
 - After every staging deploy, `.github/workflows/staging-smoke.yml` runs the read-only
