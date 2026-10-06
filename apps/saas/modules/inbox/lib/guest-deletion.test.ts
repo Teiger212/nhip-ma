@@ -257,7 +257,7 @@ test("a thread's CRM lead is unlinked with it, and the receipt says so without t
 	const store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
 	const thread = await write(store, "linked", Date.now() - MINUTE, { guestName: "Linh Tran" });
-	expect(await store.claimCrmLink(OFFICE, thread.id)).toBe(true);
+	expect(await store.claimCrmLink(OFFICE, thread.id, new Date(0))).toBe(true);
 	await store.completeCrmLink(OFFICE, thread.id, {
 		leadId: "lead-linked-1",
 		leadName: "Linh Tran",
@@ -311,7 +311,7 @@ test("after a deletion no row of Nhịp's carries the thread, and the records na
 	const now = Date.now();
 	const thread = await write(store, guestId, now - DAY, { guestName });
 	await store.setTranslation(OFFICE, await lastInboundId(store, thread), "en", "Hello");
-	await store.claimCrmLink(OFFICE, thread.id);
+	await store.claimCrmLink(OFFICE, thread.id, new Date(0));
 	await store.completeCrmLink(OFFICE, thread.id, {
 		leadId: "lead-8812734",
 		leadName: guestName,

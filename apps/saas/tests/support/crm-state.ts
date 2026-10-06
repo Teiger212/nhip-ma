@@ -33,3 +33,29 @@ export async function markMockCrmLead(
 export function mockCrmLeadsOf(officeId: string) {
 	return createInboxStore(db).findMockCrmLeads(officeId);
 }
+
+/**
+ * The mock CRM goes down for the office, or comes back (#211): while it is down, every call Nhịp
+ * makes to it fails, as a real CRM's does when it can't be reached.
+ */
+export async function setMockCrmDown(officeId: string, state: string): Promise<void> {
+	if (state !== "down" && state !== "up") {
+		throw new Error(`availability <officeId> <down|up>, not ${state}`);
+	}
+	if (state === "down") {
+		await db.mockCrmOutage.upsert({ where: { officeId }, create: { officeId }, update: {} });
+	} else {
+		await db.mockCrmOutage.deleteMany({ where: { officeId } });
+	}
+}
+
+/**
+ * Time passes for the office's failed CRM writes (#211): each one's wait before it may be tried
+ * again is over, as if it had failed a day ago.
+ */
+export async function passCrmRetryWait(officeId: string): Promise<void> {
+	await db.crmWriteFailure.updateMany({
+		where: { officeId },
+		data: { lastFailedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+	});
+}

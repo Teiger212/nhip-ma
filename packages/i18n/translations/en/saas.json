@@ -958,6 +958,7 @@
 		},
 		"crm": {
 			"inCrm": "In CRM: {name}",
+			"notInCrmYet": "Not in CRM yet",
 			"won": "Won",
 			"lost": "Lost"
 		},

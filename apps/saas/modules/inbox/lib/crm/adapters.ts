@@ -5,7 +5,7 @@ import { hubspotCrmAdapter } from "./hubspot";
 import { readHubSpotWebhook } from "./hubspot-webhook";
 import { mockCrmAdapter } from "./mock";
 import { readMockCrmWebhook } from "./mock-webhook";
-import type { CrmAdapter, CrmNotice, CrmWebhookRequest } from "./types";
+import { type CrmAdapter, CrmError, type CrmNotice, type CrmWebhookRequest } from "./types";
 
 /**
  * The office's CRM as an adapter is opened with: its kind and, for a kind that takes one, the
@@ -43,7 +43,7 @@ export function crmAdapterFor(
 		case "mock":
 			return mockCrmAdapter(deps.store, deps.officeId);
 		case "hubspot":
-			if (!connection.token) throw new Error("The office's CRM has no access token");
+			if (!connection.token) throw new CrmError("The office's CRM has no access token", "auth");
 			return hubspotCrmAdapter({ token: connection.token });
 	}
 }

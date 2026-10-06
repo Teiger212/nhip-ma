@@ -10,8 +10,16 @@ import {
 	crmKindTakesToken,
 } from "./adapters";
 import { guestIdentity } from "./phone";
+import { CRM_CLAIM_STALE_MS, crmRetryDue } from "./retry";
 import { decideLead, observeOutcome } from "./rules";
 import type { CrmAdapter, CrmNotice } from "./types";
+
+/**
+ * What opening a thread with no lead did (#211): linked it; found the guest ambiguous; found
+ * another write holding the thread; found its wait not over; found the thread deleted; or had
+ * nothing to do (no CRM, or already linked).
+ */
+export type LeadRetry = "linked" | "ambiguous" | "busy" | "waiting" | "gone" | "none";
 
 /**
  * How many offices on a CRM, their account not known yet, one notice from an unknown account
@@ -143,21 +151,30 @@ export function createCrmSync(deps: {
 		 * A guest wrote on a thread with no lead yet (Q11 to Q13): find the guest's lead in the
 		 * office's CRM, or create it, and link the thread. Only the first caller to claim the
 		 * thread goes on, so two first messages make one lead. Nothing when the office has no CRM.
+		 * A write that links nothing is recorded, so opening the thread waits before retrying it.
 		 */
 		async newGuest(conversation: Conversation): Promise<void> {
 			const connection = (await connectionOf(conversation.officeId))?.connection;
 			if (!connection) return;
-			if (!(await store.claimCrmLink(conversation.officeId, conversation.id))) return;
-			try {
-				await linkLead(
-					conversation,
-					adapterFor(connection, { store, officeId: conversation.officeId }),
-				);
-			} catch (error) {
-				// A failed write never blocks the thread: the guest's next message tries again.
-				await store.releaseCrmLink(conversation.officeId, conversation.id);
-				throw error;
+			await writeLead(conversation, connection, new Date(), { onlyIfDue: false });
+		},
+
+		/**
+		 * Someone opened a thread with no lead (#211): write it once more, if the office has a CRM
+		 * and the thread's stored wait since its last failed write is over at `now`. The thread is
+		 * read afresh, so one deleted meanwhile (ADR 0020) is `gone` and never written. Throws what
+		 * the CRM refused, after recording it.
+		 */
+		async retryLead(officeId: string, conversationId: string, now: Date): Promise<LeadRetry> {
+			const conversation = await store.getOfficeConversation(officeId, conversationId);
+			if (!conversation) return "gone";
+			if (conversation.crm) return "none";
+			const connection = (await connectionOf(officeId))?.connection;
+			if (!connection) return "none";
+			if (!crmRetryDue(await store.crmWriteFailure(officeId, conversationId), now.getTime())) {
+				return "waiting";
 			}
+			return writeLead(conversation, connection, now, { onlyIfDue: true });
 		},
 
 		/**
@@ -217,14 +234,53 @@ export function createCrmSync(deps: {
 
 	return sync;
 
-	async function linkLead(conversation: Conversation, crm: CrmAdapter): Promise<void> {
+	/**
+	 * Claim the thread and link its lead. Linking nothing, because the CRM failed or the guest
+	 * matched two leads, is recorded before the claim is let go, so whoever claims next sees it.
+	 * With `onlyIfDue`, the stored wait is checked again under the claim: another instance may
+	 * have failed and let go since it was first read.
+	 */
+	async function writeLead(
+		conversation: Conversation,
+		connection: CrmAdapterConnection,
+		now: Date,
+		{ onlyIfDue }: { onlyIfDue: boolean },
+	): Promise<"linked" | "ambiguous" | "busy" | "waiting"> {
+		const { officeId, id } = conversation;
+		const staleBefore = new Date(now.getTime() - CRM_CLAIM_STALE_MS);
+		if (!(await store.claimCrmLink(officeId, id, staleBefore))) return "busy";
+		let linked: boolean;
+		try {
+			if (onlyIfDue && !crmRetryDue(await store.crmWriteFailure(officeId, id), now.getTime())) {
+				await store.releaseCrmLink(officeId, id);
+				return "waiting";
+			}
+			linked = await linkLead(conversation, adapterFor(connection, { store, officeId }));
+		} catch (error) {
+			// A failed write never blocks the thread: the guest's next message tries again, and so
+			// does opening the thread once its wait is over.
+			try {
+				await store.recordCrmWriteFailure(officeId, id, now);
+			} finally {
+				await store.releaseCrmLink(officeId, id);
+			}
+			throw error;
+		}
+		if (linked) return "linked";
+		try {
+			await store.recordCrmWriteFailure(officeId, id, now);
+		} finally {
+			await store.releaseCrmLink(officeId, id);
+		}
+		return "ambiguous";
+	}
+
+	/** Find or create the guest's lead and link the thread; false when the guest is ambiguous. */
+	async function linkLead(conversation: Conversation, crm: CrmAdapter): Promise<boolean> {
 		const identity = guestIdentity(conversation);
 		const matches = identity.phone || identity.zaloUserId ? await crm.findLeads(identity) : [];
 		const decision = decideLead(matches, identity);
-		if (decision.action === "ambiguous") {
-			await store.releaseCrmLink(conversation.officeId, conversation.id);
-			return;
-		}
+		if (decision.action === "ambiguous") return false;
 		const lead =
 			decision.action === "reuse"
 				? decision.lead
@@ -241,5 +297,6 @@ export function createCrmSync(deps: {
 			leadName: lead.name,
 			method: decision.method,
 		});
+		return true;
 	}
 }

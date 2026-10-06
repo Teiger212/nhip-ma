@@ -2,7 +2,15 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 
 import { toE164 } from "./phone";
-import type { CrmAdapter, CrmLead, GuestIdentity, LeadOutcome, NewGuestLead } from "./types";
+import {
+	type CrmAdapter,
+	CrmError,
+	type CrmFailureKind,
+	type CrmLead,
+	type GuestIdentity,
+	type LeadOutcome,
+	type NewGuestLead,
+} from "./types";
 
 /**
  * The HubSpot CRM (ADR 0003, #65). A Nhịp lead is a HubSpot deal; the guest is the deal's
@@ -87,7 +95,7 @@ const Refusal = z.object({
  * A non-2xx answer (spec #59 story 43): which operation failed, the status and HubSpot's
  * category. Never HubSpot's message, which can echo property values, nor the token.
  */
-class HubSpotError extends Error {
+class HubSpotError extends CrmError {
 	constructor(
 		readonly operation: string,
 		readonly status: number,
@@ -95,9 +103,20 @@ class HubSpotError extends Error {
 		/** Properties HubSpot says do not exist, from a refused write. */
 		readonly missingProperties: string[],
 	) {
-		super(`HubSpot ${operation} answered ${status}${category ? ` ${category}` : ""}`);
+		super(
+			`HubSpot ${operation} answered ${status}${category ? ` ${category}` : ""}`,
+			failureKindOf(status),
+		);
 		this.name = "HubSpotError";
 	}
+}
+
+/** A refusal's kind (#211): the token, a timeout, the data refused, or HubSpot itself failing. */
+function failureKindOf(status: number): CrmFailureKind {
+	if (status === 401 || status === 403) return "auth";
+	if (status === 408) return "timeout";
+	if (status >= 400 && status < 500 && status !== 429) return "rejected";
+	return "other";
 }
 
 export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch }): CrmAdapter {

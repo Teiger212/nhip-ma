@@ -1,6 +1,7 @@
 import { getBaseUrl } from "@shared/lib/base-url";
 
 import { runInBackground } from "./background";
+import { crmFailureKind } from "./crm/retry";
 import { createCrmSync } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
@@ -85,6 +86,42 @@ export function crmSyncFor(runtime: Runtime) {
 		store: runtime.store,
 		threadUrl,
 		secretsKey: runtime.config.pipeSecretsKey,
+	});
+}
+
+/**
+ * A failed CRM lead write, logged by its kind only (#211): never the thread's, the guest's or
+ * the CRM's ids, nor the CRM's message, which can echo guest data (PDPL).
+ */
+function logCrmWriteFailure(error: unknown): void {
+	console.warn("crm: lead write failed", { kind: crmFailureKind(error) });
+}
+
+/** Threads whose lead retry runs in this instance now, so a burst of reads starts one (#211). */
+const leadRetries = new Set<string>();
+
+/**
+ * On opening a thread (#211): a thread of an office with a CRM and no lead yet tries its lead
+ * write again, in the background, once the wait stored since its last failure is over. A thread
+ * already linked, or in an office with no CRM, costs nothing. The thread returned now is what
+ * exists now; a lead written by this retry shows on the next poll.
+ */
+export function scheduleMissingLeadRetry(
+	runtime: Runtime,
+	conversation: Pick<Conversation, "id" | "officeId" | "crm" | "officeHasCrm">,
+): void {
+	if (!conversation.officeHasCrm || conversation.crm) return;
+	const { id, officeId } = conversation;
+	if (leadRetries.has(id)) return;
+	leadRetries.add(id);
+	void runInBackground("crm lead retry", async () => {
+		try {
+			await crmSyncFor(runtime).retryLead(officeId, id, new Date());
+		} catch (error) {
+			logCrmWriteFailure(error);
+		}
+	}).finally(() => {
+		leadRetries.delete(id);
 	});
 }
 
@@ -217,12 +254,11 @@ export async function afterGuestInbound(
 		});
 	}
 	if (!updated.crm) {
-		void runInBackground(`crm lead ${updated.id}`, async () => {
+		void runInBackground("crm lead", async () => {
 			try {
 				await crmSyncFor(runtime).newGuest(updated);
-			} catch {
-				// A CRM's error can carry guest data; the log keeps only what failed (PDPL).
-				throw new Error("CRM lead write failed");
+			} catch (error) {
+				logCrmWriteFailure(error);
 			}
 		});
 	}

@@ -14,7 +14,13 @@ import readline from "node:readline";
 
 import { signedUp } from "./accounts";
 import { officeAlerts, operatorDevices } from "./alert-state";
-import { connectOfficeToMockCrm, markMockCrmLead, mockCrmLeadsOf } from "./crm-state";
+import {
+	connectOfficeToMockCrm,
+	markMockCrmLead,
+	mockCrmLeadsOf,
+	passCrmRetryWait,
+	setMockCrmDown,
+} from "./crm-state";
 import { deletionRecords, holdReply, releaseReply } from "./deletion-state";
 import { connectWhatsApp, connectZalo, releaseZalo } from "./pipe-state";
 
@@ -25,9 +31,11 @@ const COMMANDS: Record<string, (...args: string[]) => Promise<unknown>> = {
 	account: signedUp,
 	"alerts.alerts": officeAlerts,
 	"alerts.devices": operatorDevices,
+	"crm.availability": setMockCrmDown,
 	"crm.connect": connectOfficeToMockCrm,
 	"crm.leads": mockCrmLeadsOf,
 	"crm.outcome": markMockCrmLead,
+	"crm.retry-wait-passes": passCrmRetryWait,
 	"deletion.hold": holdReply,
 	"deletion.records": deletionRecords,
 	"deletion.release": releaseReply,
