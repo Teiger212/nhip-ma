@@ -133,9 +133,13 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 		en: "[en] 안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
 		vi: "[vi] 안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
 	});
-	// The first reply keeps the template (ADR 0005); the model is not asked.
-	expect(followUps).toEqual([]);
-	expect(conv.oneShot?.draft.source).toBe("template");
+	// The auto-reply went out, so the box takes the follow-up path (ADR 0021, P2): the model
+	// drafts for the first message from the conversation, greeting included.
+	expect(conv.messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
+	expect(followUps).toEqual([
+		'Follow-up 1: about "안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요."',
+	]);
+	expect(conv.oneShot?.draft).toMatchObject({ answersMessageId: firstInbound, source: "model" });
 
 	// 2. The manager approves the first reply, naming the message it answers.
 	const sentFirst = await json(
@@ -189,7 +193,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 		source: "model",
 	});
 	// The model saw the whole conversation, office message included.
-	expect(followUps).toHaveLength(1);
+	expect(followUps).toHaveLength(2);
 
 	// The list puts the thread back in Your turn: the guest spoke last.
 	const listed = await json(
@@ -248,10 +252,12 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.messages.filter((message) => message.source === "auto-reply")).toHaveLength(1);
 	expect(conv.messages.filter((message) => message.direction === "out")).toHaveLength(3);
 	expect(conv.answers).toHaveLength(2);
-	expect(followUps).toHaveLength(1);
+	expect(followUps).toHaveLength(2);
 });
 
 test("regenerate asks the model even for a first reply and keeps the operator in charge", async () => {
+	// With the auto-reply off, the first message keeps the first-reply template (ADR 0021, G6).
+	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
 	const injected = await json(
 		await inject(
 			post("http://localhost/dev/inbound", {
