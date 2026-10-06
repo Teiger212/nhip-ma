@@ -1,34 +1,29 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 /**
- * While guests wait, the tab reads "(n) Inbox" on every page, n being the nav's Your-turn count
- * (ADR 0019 "How", spec #84), so an operator on another tab sees it; with none, the page's own
- * title. Next writes each page's title on navigation, after this has run, so a watch on the
- * document head puts the count back, and keeps the page's title to restore.
+ * While guests wait, the tab reads "(n) <Page> – Nhịp" on every page: the count in front of the
+ * page's own title, n being the nav's Your-turn count (ADR 0019 and its 2026-10-06 amendment,
+ * #136, #212), so an operator on another tab sees it; with none, the page's own title. Next writes
+ * each page's title on navigation, after this has run, so a watch on the document head puts the
+ * count back in front, and takes it off again when the count changes or goes.
  */
 export function TabTitle({ count }: { count: number | null }) {
-	const t = useTranslations("app.menu");
-	const title = count ? `(${count}) ${t("inbox")}` : null;
-
 	useEffect(() => {
-		if (!title) return;
-		let pageTitle = document.title;
+		if (!count) return;
+		const prefix = `(${count}) `;
 		const apply = () => {
-			if (document.title === title) return;
-			pageTitle = document.title;
-			document.title = title;
+			if (!document.title.startsWith(prefix)) document.title = prefix + document.title;
 		};
 		apply();
 		const observer = new MutationObserver(apply);
 		observer.observe(document.head, { childList: true, subtree: true, characterData: true });
 		return () => {
 			observer.disconnect();
-			if (document.title === title) document.title = pageTitle;
+			if (document.title.startsWith(prefix)) document.title = document.title.slice(prefix.length);
 		};
-	}, [title]);
+	}, [count]);
 
 	return null;
 }

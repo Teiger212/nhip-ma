@@ -710,7 +710,7 @@
 		},
 		"notificationsPage": {
 			"title": "Notifications",
-			"description": "Choose how you receive notifications. Disabled options are stored; everything is enabled by default.",
+			"description": "Choose what reaches you in Nhịp.",
 			"groups": {
 				"general": {
 					"title": "General"
@@ -865,6 +865,7 @@
 		"threadNotFound": "This conversation isn't here. The link may be out of date, or the thread was moved or deleted.",
 		"sent": "Sent",
 		"yourTurn": "Your turn",
+		"waiting": "Waiting",
 		"quiet": "Quiet ({count})",
 		"quietHint": "The guest last wrote more than 48 hours ago. Still your turn.",
 		"onlyQuiet": "Nothing new. The quiet threads below are still your turn.",

@@ -1,4 +1,4 @@
-import { getActiveOrganization } from "@auth/lib/server";
+import { requireOfficeManager } from "@organizations/lib/require-office-manager";
 import { ActivePlan } from "@payments/components/ActivePlan";
 import { ChangePlan } from "@payments/components/ChangePlan";
 import { listPurchases } from "@payments/lib/server";
@@ -9,7 +9,6 @@ import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
 
 export async function generateMetadata() {
 	const t = await getTranslations("settings.billing");
@@ -27,11 +26,8 @@ export default async function BillingSettingsPage({
 	// Hidden, as the account's Billing is, before the page reads anything (#210).
 	if (!KIT_SCREENS.officeBilling) notFound();
 	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
+	// Managers only (#212), before the purchases are read.
+	const { organization } = await requireOfficeManager(organizationSlug);
 
 	const purchases = await listPurchases(organization.id);
 

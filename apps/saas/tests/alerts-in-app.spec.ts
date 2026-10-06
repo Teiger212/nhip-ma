@@ -33,11 +33,19 @@ const COLLEAGUE_IS_ANSWERING = {
 	vi: "Một đồng nghiệp đang trả lời khách này",
 } as const;
 
-/** The tab title while n guests wait on the operator (Alerts 12, #136). */
-const TAB_TITLE = {
-	en: (n: number) => `(${n}) Inbox`,
-	vi: (n: number) => `(${n}) Hộp thư`,
-} as const;
+/**
+ * The tab title while n guests wait on the operator: the count in front of the page's own title
+ * (Alerts 12, #136; ADR 0019 amended 2026-10-06, #212).
+ */
+function tabTitle(n: number, own: string): string {
+	return `(${n}) ${own}`;
+}
+
+/** How a page's own title reads (ADR 0019): "<Page> – Nhịp", with an en dash (U+2013). */
+const OWN_TITLE = /^\S.* – Nhịp$/;
+
+/** Each page's own title, as the operator's browser tab shows it while nobody waits on them. */
+type OwnTitles = { settings: string; home: string; inbox: string };
 
 /** An operator of the test's office, signed in in a browser of their own. */
 type Operator = { label: string; id: string; page: Page; api: Api };
@@ -231,12 +239,52 @@ async function openHome(page: Page) {
 	await expect(page.getByRole("heading", { name: "Waiting now" })).toBeVisible();
 }
 
-/** The nav says n guests wait, and the tab says so too. */
-async function expectWaiting(page: Page, n: number, where: string, options = WITHIN_A_POLL) {
-	await expect(navCount(page), `${where}: the nav counts ${n}`).toHaveText(String(n), options);
+/** What each page shows once loaded, per language. */
+const LOADED = {
+	en: { settings: "Account settings", home: "Waiting now" },
+	vi: { settings: "Cài đặt tài khoản", home: "Đang chờ" },
+} as const;
+
+/**
+ * Each page's own title (Settings, Home, the Inbox), read while nothing waits on the operator:
+ * no count in the nav, so none in the tab either. Each reads "<Page> – Nhịp".
+ */
+async function ownTitles(page: Page, locale: Locale): Promise<OwnTitles> {
+	const read = async (path: string, loaded: Locator, which: string) => {
+		await page.goto(`/${locale}/${path}`);
+		await expect(loaded).toBeVisible();
+		await expect(page.getByTestId("nav-your-turn-count"), "nothing waits yet").toHaveCount(0);
+		const title = await page.title();
+		expect.soft(title, `(${locale}) ${which}'s own title is "<Page> – Nhịp"`).toMatch(OWN_TITLE);
+		return title;
+	};
+	const heading = (name: string) => page.getByRole("heading", { name, exact: true });
+	return {
+		settings: await read("settings/general", heading(LOADED[locale].settings), "Settings"),
+		home: await read("home", heading(LOADED[locale].home), "Home"),
+		inbox: await read(
+			"inbox",
+			page.getByRole("complementary").getByRole("textbox").first(),
+			"the Inbox",
+		),
+	};
+}
+
+/** The nav says n guests wait, and the tab says so too, in front of the page's own title. */
+async function expectWaiting(
+	page: Page,
+	n: number,
+	own: string,
+	where: string,
+	options = WITHIN_A_POLL,
+) {
+	await expect(page.getByTestId("nav-your-turn-count"), `${where}: the nav counts ${n}`).toHaveText(
+		String(n),
+		options,
+	);
 	await expect
-		.soft(page, `${where}: the tab title reads ${TAB_TITLE.en(n)}`)
-		.toHaveTitle(TAB_TITLE.en(n), ON_LOAD);
+		.soft(page, `${where}: the tab title reads ${tabTitle(n, own)}`)
+		.toHaveTitle(tabTitle(n, own), ON_LOAD);
 }
 
 /** The operator answers the guest from the Inbox: the reply goes out (a mock send in E2E). */
@@ -794,7 +842,7 @@ test.describe("Alerts 8 — an alert for a thread now someone else's shows a neu
 // scenario: docs/e2e-scenarios.md Alerts 12 (#136; ADR 0019, ADR 0022)
 test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", () => {
 	// scenario: docs/e2e-scenarios.md Alerts 12, the tab title
-	test("the tab title reads (n) Inbox on every page while n guests wait on the agent, as the nav counts them, in English and Vietnamese and after moving to the Inbox through the nav; with none waiting it is the page's own title", async ({
+	test("the tab title puts the count in front of the page's own title, (n) <Page> – Nhịp, on Settings, Home and the Inbox while n guests wait on the agent, as the nav counts them, in English and Vietnamese and after moving to the Inbox through the nav; with none waiting it is the page's own title", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(300_000);
@@ -802,15 +850,10 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		const { agent1: agent } = office;
 		const { page } = agent;
 
-		// Nothing waits on the agent yet: each page has its own title.
-		await openSettings(page);
-		await expect(navCount(page), "nothing waits on the agent").toHaveCount(0);
-		const settingsTitle = await page.title();
-		expect(settingsTitle, "Settings' own title has no count").not.toMatch(/^\(\d+\)/);
-		await page.goto("/en/inbox");
-		await expect(page.getByRole("button", { name: /^Your turn/ })).toBeVisible();
-		const inboxTitle = await page.title();
-		expect(inboxTitle, "the Inbox's own title has no count").not.toMatch(/^\(\d+\)/);
+		// Nothing waits on the agent yet: each page has its own title, "<Page> – Nhịp". Read in
+		// Vietnamese, then in English, ending on the English Inbox list.
+		const vi = await ownTitles(page, "vi");
+		const en = await ownTitles(page, "en");
 
 		// Two guests are given to the agent while they are on the Inbox list.
 		const first = office.zaloGuest();
@@ -819,37 +862,38 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await second.write();
 		await office.assign(first, agent);
 		await office.assign(second, agent);
-		await expectWaiting(page, 2, "the Inbox list, within its poll");
+		await expectWaiting(page, 2, en.inbox, "the Inbox list, within its poll");
 
-		// On Settings and Home alike, loaded afresh.
+		// On Settings and Home alike, loaded afresh: the count in front of that page's own title.
 		await openSettings(page);
-		await expectWaiting(page, 2, "Settings", ON_LOAD);
+		await expectWaiting(page, 2, en.settings, "Settings", ON_LOAD);
 		await openHome(page);
-		await expectWaiting(page, 2, "Home", ON_LOAD);
+		await expectWaiting(page, 2, en.home, "Home", ON_LOAD);
+
+		// And in Vietnamese.
 		await page.goto("/vi/settings/general");
-		await expect(page.getByTestId("nav-your-turn-count"), "the Vietnamese nav counts 2").toHaveText(
-			"2",
-		);
-		await expect.soft(page, "Vietnamese Settings").toHaveTitle(TAB_TITLE.vi(2), ON_LOAD);
+		await expectWaiting(page, 2, vi.settings, "Vietnamese Settings", ON_LOAD);
+		await page.goto("/vi/home");
+		await expectWaiting(page, 2, vi.home, "Vietnamese Home", ON_LOAD);
+		await page.goto("/vi/inbox");
+		await expectWaiting(page, 2, vi.inbox, "the Vietnamese Inbox", ON_LOAD);
 
 		// Settings → Inbox through the nav, without loading a page.
 		await openSettings(page);
-		await expectWaiting(page, 2, "Settings", ON_LOAD);
+		await expectWaiting(page, 2, en.settings, "Settings", ON_LOAD);
 		await page.getByRole("link", { name: /^Inbox\b/ }).click();
 		await expect(page).toHaveURL(/\/en\/inbox/);
 		await expect(rowOf(page, first)).toBeVisible();
-		await expectWaiting(page, 2, "the Inbox, reached through the nav", ON_LOAD);
+		await expectWaiting(page, 2, en.inbox, "the Inbox, reached through the nav", ON_LOAD);
 
 		// Answering lowers it, and with none waiting the title is the page's own again.
 		await approveReply(page, first);
-		await expectWaiting(page, 1, "the Inbox, one answered", ON_LOAD);
+		await expectWaiting(page, 1, en.inbox, "the Inbox, one answered", ON_LOAD);
 		await approveReply(page, second);
 		await expect(navCount(page), "nothing waits").toHaveCount(0);
-		await expect.soft(page, "the Inbox's own title, none waiting").toHaveTitle(inboxTitle, ON_LOAD);
+		await expect.soft(page, "the Inbox's own title, none waiting").toHaveTitle(en.inbox, ON_LOAD);
 		await openSettings(page);
-		await expect
-			.soft(page, "Settings' own title, none waiting")
-			.toHaveTitle(settingsTitle, ON_LOAD);
+		await expect.soft(page, "Settings' own title, none waiting").toHaveTitle(en.settings, ON_LOAD);
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 12, an agent's toasts
@@ -860,6 +904,8 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		const office = await newOffice();
 		const { agent1: agent, agent2 } = office;
 		const { page } = agent;
+		// The pages' own titles, read before any guest is the agent's.
+		const own = await ownTitles(page, "en");
 
 		// Four guests are the agent's, and one is agent 2's, all waiting before the agent's page
 		// loads.
@@ -877,7 +923,7 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await office.assign(yuki, agent2);
 
 		await openSettings(page);
-		await expectWaiting(page, 4, "Settings", ON_LOAD);
+		await expectWaiting(page, 4, own.settings, "Settings", ON_LOAD);
 		await expect(toasts(page), "no toast at load").toHaveCount(0);
 		await expect(page.getByText(/^Zalo(?: · .+)?$/), "no toast's pipe line yet").toHaveCount(0);
 
@@ -907,7 +953,13 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await expect(toastOf(page, yuki), "no toast for a colleague's guest").toHaveCount(0);
 		await expect(toastOf(page, kenji), "no toast for a new Unassigned guest").toHaveCount(0);
 		await expect(toasts(page), "two toasts").toHaveCount(2);
-		await expectWaiting(page, 4, "Settings, neither raising the agent's count", ON_LOAD);
+		await expectWaiting(
+			page,
+			4,
+			own.settings,
+			"Settings, neither raising the agent's count",
+			ON_LOAD,
+		);
 
 		// A third, then a fourth: at most three, the oldest giving way.
 		await alexei.write();
@@ -933,9 +985,9 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 
 		// On the Inbox list a guest writing moves the title and raises no toast.
 		await approveReply(page, alexei);
-		await expectWaiting(page, 3, "the Inbox, Alexei answered", ON_LOAD);
+		await expectWaiting(page, 3, own.inbox, "the Inbox, Alexei answered", ON_LOAD);
 		await alexei.write();
-		await expectWaiting(page, 4, "the Inbox, Alexei writing again");
+		await expectWaiting(page, 4, own.inbox, "the Inbox, Alexei writing again");
 		await expect(toasts(page), "on the Inbox list, still no toast").toHaveCount(0);
 	});
 
@@ -947,6 +999,8 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		const office = await newOffice();
 		const { agent1, manager } = office;
 		const { page } = manager;
+		// The pages' own titles, read before any guest writes.
+		const own = await ownTitles(page, "en");
 
 		// Agent 1 holds one guest, the manager another, before the manager's page loads.
 		const agents = office.zaloGuest();
@@ -961,7 +1015,7 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		const n = Number(await navCount(page).textContent());
 		await expect
 			.soft(page, "Home's tab title follows the nav")
-			.toHaveTitle(TAB_TITLE.en(n), ON_LOAD);
+			.toHaveTitle(tabTitle(n, own.home), ON_LOAD);
 		await expect(toasts(page), "no toast at load").toHaveCount(0);
 
 		// Agent 1's guest writes, then a new guest: only the new guest raises a toast.
@@ -987,7 +1041,7 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		const now = Number(await navCount(page).textContent());
 		await expect
 			.soft(page, "the tab title follows the nav")
-			.toHaveTitle(TAB_TITLE.en(now), ON_LOAD);
+			.toHaveTitle(tabTitle(now, own.home), ON_LOAD);
 
 		// Tapping Yuki's opens the Inbox on Yuki's thread, with no thread id in the address.
 		const heldThread = await office.threadOf(held);

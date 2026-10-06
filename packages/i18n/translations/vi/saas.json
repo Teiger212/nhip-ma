@@ -710,7 +710,7 @@
 		},
 		"notificationsPage": {
 			"title": "Thông báo",
-			"description": "Chọn cách bạn nhận thông báo. Các tùy chọn đã tắt sẽ được lưu lại; mặc định tất cả đều bật.",
+			"description": "Chọn những gì đến với bạn trong Nhịp.",
 			"groups": {
 				"general": {
 					"title": "Chung"
@@ -865,6 +865,7 @@
 		"threadNotFound": "Không có cuộc hội thoại này. Có thể liên kết đã cũ, hoặc cuộc hội thoại đã được chuyển hay đã bị xóa.",
 		"sent": "Đã gửi",
 		"yourTurn": "Đến lượt bạn",
+		"waiting": "Đang chờ",
 		"quiet": "Đã lắng ({count})",
 		"quietHint": "Khách nhắn lần cuối hơn 48 giờ trước. Vẫn đến lượt bạn.",
 		"onlyQuiet": "Không có gì mới. Các cuộc đã lắng bên dưới vẫn đến lượt bạn.",

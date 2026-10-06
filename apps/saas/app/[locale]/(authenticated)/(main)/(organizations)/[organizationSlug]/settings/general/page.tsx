@@ -1,13 +1,12 @@
-import { getActiveOrganization, getSession } from "@auth/lib/server";
 import { AutoReplySetting } from "@inbox/components/AutoReplySetting";
 import { ChangeOrganizationNameForm } from "@organizations/components/ChangeOrganizationNameForm";
 import { DeleteOrganizationForm } from "@organizations/components/DeleteOrganizationForm";
 import { OrganizationLogoForm } from "@organizations/components/OrganizationLogoForm";
+import { requireOfficeManager } from "@organizations/lib/require-office-manager";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
-import { permix, setupPermissions } from "@shared/lib/permix";
+import { permix } from "@shared/lib/permix";
 import { getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
 
 export async function generateMetadata() {
 	const t = await getTranslations("organizations.settings");
@@ -22,26 +21,11 @@ export default async function OrganizationSettingsPage({
 }: {
 	params: Promise<{ organizationSlug: string }>;
 }) {
-	const session = await getSession();
 	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
-	const membershipRole = organization.members.find(
-		(member) => member.userId === session?.user.id,
-	)?.role;
-
-	setupPermissions({
-		user: session?.user,
-		membershipRole,
-	});
+	// Managers only (#212), before the page reads anything.
+	await requireOfficeManager(organizationSlug);
 
 	const canManageDeletion = permix.check("organization.delete");
-	// The auto-reply switch is the managers' (ADR 0021 G6, #167), as Team is: agents see no row.
-	const canManageOffice = permix.check("organization.manage");
 
 	const t = await getTranslations("organizations.settings");
 
@@ -52,7 +36,9 @@ export default async function OrganizationSettingsPage({
 			<SettingsList>
 				<OrganizationLogoForm />
 				<ChangeOrganizationNameForm />
-				{canManageOffice && <AutoReplySetting />}
+				{/* The auto-reply switch is the managers' (ADR 0021 G6, #167); the guard above already
+				    turned everyone else away. */}
+				<AutoReplySetting />
 				{canManageDeletion && <DeleteOrganizationForm />}
 			</SettingsList>
 		</>

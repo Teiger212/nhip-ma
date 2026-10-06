@@ -30,7 +30,7 @@ const saas = JSON.parse(
 ) as {
 	inbox: {
 		searchAria: string;
-		yourTurn: string;
+		waiting: string;
 		deletion: {
 			actions: string;
 			delete: string;
@@ -1068,7 +1068,7 @@ test.describe("Guest deletion 8 — not while a reply is sending", () => {
 
 // scenario: docs/e2e-scenarios.md Guest deletion 9 (with no CRM; the mock CRM's new lead is #139's)
 test.describe("Guest deletion 9 — a guest who writes again is a new guest", () => {
-	test("after the manager deletes the agent's guest, the same Zalo user writing again has a fresh thread: Unassigned and Your turn for the manager, with only the new message of theirs, unseen by the agent, and Home counts one more lead", async ({
+	test("after the manager deletes the agent's guest, the same Zalo user writing again has a fresh thread: Unassigned and Waiting for the manager, with only the new message of theirs, unseen by the agent, and Home counts one more lead", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice("Deletion 9");
@@ -1094,15 +1094,16 @@ test.describe("Guest deletion 9 — a guest who writes again is a new guest", ()
 		const again = await guest.write(`Back again, ${randomUUID().slice(0, 8)}`);
 		const { id: newId } = await threadSeenBy(manager, guest, { waiting: true });
 
-		// The manager: Your turn, Unassigned, the new message only (an auto-reply may be there).
+		// The manager: Waiting (a waiting guest who isn't theirs, ADR 0022), Unassigned, the new
+		// message only (an auto-reply may be there).
 		const { page } = manager;
 		await openInbox(page);
 		await search(page, guest.id);
 		const row = rowOf(page, guest);
 		await showView(page, "All");
 		await expect(row, "the manager lists the guest").toBeVisible();
-		await expect(row.getByTestId("thread-status"), "the guest is Your turn").toHaveText(
-			saas.inbox.yourTurn,
+		await expect(row.getByTestId("thread-status"), "the guest is Waiting").toHaveText(
+			saas.inbox.waiting,
 		);
 		const flag = row.getByTestId("thread-owner");
 		await expect(flag, "the fresh thread is Unassigned").toHaveAttribute(

@@ -139,8 +139,9 @@ url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devi
   from the same rows. Stages, response time and the cohort are defined in CONTEXT.md,
   "Funnel". **Waiting now** on Home reads the inbox's own list query, so it lists what the
   operator can open, in the queue's order. The sidebar's Your-turn count, the tab title's
-  "(n) Inbox" and the guest toasts read that same list on every page of the app shell (#136):
-  the toasts need the guests' names, so one poll serves all three.
+  "(n)" (put in front of the page's own title, "(n) Home – Nhịp", #212) and the guest toasts
+  read that same list on every page of the app shell (#136): the toasts need the guests'
+  names, so one poll serves all three.
 
 ## Apps and packages
 
@@ -210,9 +211,15 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
 - **Office setup** today is two steps in the admin area: create the organization, then on
   its page invite members (`InviteMemberForm`) and connect pipes. ADR 0018's single step is
   not built.
+- **Office settings are managers only** (#212): each page under
+  `/{locale}/{office slug}/settings/` (General, Team, Billing) first calls
+  `requireOfficeManager(slug)` (`modules/organizations/lib/require-office-manager.ts`), which
+  answers the not-found page (404) to anyone without `organization.manage` before the page reads
+  anything of its own. It is not in a layout, whose check wouldn't re-run between its child
+  pages, nor in `proxy.ts`; server actions and API routes keep their own checks.
 - **Team** (#82): a manager's user menu links to the kit's members page,
   `/{locale}/{office slug}/settings/members` (`/api/office` returns the slug). The page is
-  managers only (`organization.manage`; anyone else gets a 404) and hides the platform admin's
+  managers only (`requireOfficeManager`; anyone else gets a 404) and hides the platform admin's
   row and the manager's own Leave and role. The role select offers Agent (`member`) and
   Manager (`admin`) everywhere, the admin area included; an auth before-hook refuses `owner`
   (alone, in a comma list or an array) in `invite-member` and `update-member-role` to anyone

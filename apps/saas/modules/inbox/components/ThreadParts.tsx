@@ -37,15 +37,18 @@ export function GuestMark({ name, selected = false }: { name: string; selected?:
  */
 const STATUS_BADGE = {
 	yourTurn: "warning",
+	waiting: "warning",
 	sent: "success",
 	won: "neutral",
 	lost: "neutral",
-} as const satisfies Record<ThreadStatus, "neutral" | "success" | "warning">;
+} as const satisfies Record<ThreadStatus | "waiting", "neutral" | "success" | "warning">;
 
 /**
  * The pipe, who holds the thread (Unassigned, you, or another operator, ADR 0022) and the status
  * (Your turn / Sent, or the CRM's Won / Lost while resolved, ADR 0003), on a row and on the
- * thread header alike.
+ * thread header alike. A manager's chip reads "Your turn" only on a thread they own; on an
+ * Unassigned thread or a colleague's it reads "Waiting", in the same amber (ADR 0022, 2026-10-06).
+ * Only the chip changes: views and counts still go by the thread's status.
  */
 export function ThreadFlags({
 	conversation,
@@ -57,8 +60,10 @@ export function ThreadFlags({
 }) {
 	const t = useTranslations("inbox");
 	const status = threadStatus(conversation);
-	const { userId } = useOfficeRole();
+	const { userId, role } = useOfficeRole();
 	const owner = conversation.owner;
+	const chip =
+		status === "yourTurn" && role === "manager" && owner?.id !== userId ? "waiting" : status;
 	return (
 		<>
 			<Badge status="neutral">{t(`pipes.${conversation.pipe}`)}</Badge>
@@ -69,8 +74,8 @@ export function ThreadFlags({
 			>
 				{!owner ? t("owner.unassigned") : owner.id === userId ? t("owner.mine") : owner.name}
 			</Badge>
-			<Badge status={STATUS_BADGE[status]} data-test="thread-status" data-status={status}>
-				{isDecided(status) ? t(`crm.${status}`) : t(status)}
+			<Badge status={STATUS_BADGE[chip]} data-test="thread-status" data-status={chip}>
+				{isDecided(status) ? t(`crm.${status}`) : t(chip)}
 			</Badge>
 		</>
 	);
