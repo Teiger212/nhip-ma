@@ -6,7 +6,14 @@ import type { APIRequestContext, APIResponse, Locator, Page } from "@playwright/
 
 import { assignerAs } from "./support/assign";
 import type { MockCrmLead } from "./support/crm";
-import { connectMockCrm, markInMockCrm, mockCrmLeads } from "./support/crm";
+import {
+	bringMockCrmBack,
+	connectMockCrm,
+	markInMockCrm,
+	mockCrmLeads,
+	passCrmRetryWait,
+	takeMockCrmDown,
+} from "./support/crm";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
@@ -23,7 +30,11 @@ import { appOrigin } from "./support/session";
 const crmCopy = (() => {
 	const file = path.resolve(__dirname, "../../../packages/i18n/translations/en/saas.json");
 	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
-		inbox: { yourTurn: string; sent: string; crm: { inCrm: string; won: string; lost: string } };
+		inbox: {
+			yourTurn: string;
+			sent: string;
+			crm: { inCrm: string; notInCrmYet: string; won: string; lost: string };
+		};
 		admin: {
 			connections: {
 				crm: {
@@ -43,6 +54,7 @@ const crmCopy = (() => {
 	};
 	return {
 		inCrm: (name: string) => saas.inbox.crm.inCrm.replaceAll("{name}", name),
+		notInCrmYet: saas.inbox.crm.notInCrmYet,
 		won: saas.inbox.crm.won,
 		lost: saas.inbox.crm.lost,
 		yourTurn: saas.inbox.yourTurn,
@@ -356,6 +368,46 @@ async function expectInCrmOnThread(page: Page, guest: Guest) {
 			"the thread header says the guest is in the CRM",
 		).toBeVisible({ timeout: 3_000 });
 	}, "the thread header says In CRM: <the guest's name>").toPass({ timeout: 45_000 });
+}
+
+/** The open thread's header. */
+function threadHeader(page: Page) {
+	return openThread(page).locator("header");
+}
+
+/** The CRM status in the open thread's header: "In CRM: <name>" or "Not in CRM yet". */
+function crmStatus(page: Page) {
+	return openThread(page).getByTestId("crm-status");
+}
+
+/**
+ * The open thread's header says the guest is not in the CRM yet (#211), within a poll, and says
+ * it neutrally: the tone of the pipe badge in the same header (DESIGN.md, Badges), never red.
+ */
+async function expectNotInCrmYet(page: Page, who: string) {
+	const status = crmStatus(page);
+	await expect(status, `${who}'s thread header says Not in CRM yet`).toHaveText(
+		crmCopy.notInCrmYet,
+		WITHIN_A_POLL,
+	);
+	const pipe = threadHeader(page).getByText("Zalo", { exact: true });
+	await expect(pipe, "the header's pipe badge, neutral").toBeVisible();
+	expect(await toneOf(status), "Not in CRM yet is neutral, like the pipe badge, never red").toEqual(
+		await toneOf(pipe),
+	);
+}
+
+/** The open thread says nothing about a CRM: no status, neither Not in CRM yet nor In CRM. */
+async function expectNoCrmStatus(page: Page, who: string, guest: Guest) {
+	await expect(crmStatus(page), `${who} sees no CRM status`).toHaveCount(0);
+	await expect(
+		openThread(page).getByText(crmCopy.notInCrmYet, { exact: true }),
+		`${who} sees no Not in CRM yet`,
+	).toHaveCount(0);
+	await expect(
+		openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+		`${who} sees no In CRM`,
+	).toHaveCount(0);
 }
 
 /* ---------------------------------------------------------------- the office's CRM setting */
@@ -869,6 +921,108 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 			headers: { "content-type": "application/json" },
 		});
 		expect(unsigned.status(), "an unsigned notice is refused").toBe(401);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md CRM 4a
+test.describe("CRM 4a — a missing lead says so, and heals when the thread is opened", () => {
+	test("with the CRM down when a new guest writes: the message still arrives in Your turn, the agent and the manager both see a neutral Not in CRM yet in the thread header, and no lead is in the CRM", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 4a down", { crm: "mock", manager: true });
+		const { page } = office.agent;
+		await takeMockCrmDown(office.id);
+
+		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
+
+		// The message still arrives: the guest waits on the agent, in Your turn.
+		await page.goto("/en/inbox");
+		await expectQueue(page, { yourTurn: 1, sent: 0, all: 1 }, WITHIN_A_POLL);
+		await expect(
+			rowOf(page, guest).getByTestId("thread-status"),
+			"the guest is Your turn",
+		).toHaveText(crmCopy.yourTurn);
+
+		// The agent opens the thread: its header says the guest is not in the CRM yet.
+		await openThreadOf(page, guest);
+		await expectNotInCrmYet(page, "the agent");
+
+		// The manager sees the same on that thread.
+		const manager = office.manager.page;
+		await openThreadOf(manager, guest, { all: true });
+		await expect(
+			manager.getByTestId("owner-filter"),
+			"they are the office's manager (only a manager filters by owner, Assign 9)",
+		).toBeVisible();
+		await expectNotInCrmYet(manager, "the manager");
+
+		expect(await leadsOf(office.id, guest), "no lead is in the CRM").toEqual([]);
+	});
+
+	test("once the CRM works again and the wait before trying again has passed, opening the thread makes it In CRM with the guest's name, and the CRM holds exactly one lead for the guest", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await newOffice("CRM 4a heals", { crm: "mock", manager: true });
+		const { page } = office.agent;
+		await takeMockCrmDown(office.id);
+
+		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
+
+		// First the lead is missing, and the thread says so.
+		await openThreadOf(page, guest);
+		await expect(
+			crmStatus(page),
+			"with the CRM down, the thread header says Not in CRM yet",
+		).toHaveText(crmCopy.notInCrmYet, WITHIN_A_POLL);
+		// The agent leaves the thread for the list.
+		await page.goto("/en/inbox");
+		await expect(rowOf(page, guest), "the agent is back on the thread list").toBeVisible();
+
+		// The CRM works again, and Nhịp's wait before trying again is over.
+		await bringMockCrmBack(office.id);
+		await passCrmRetryWait(office.id);
+
+		// The agent opens the thread: within a poll, its header says the guest is in the CRM.
+		await openThreadOf(page, guest);
+		await expect(
+			crmStatus(page),
+			"opening the thread writes the lead: the header says In CRM: <the guest's name>",
+		).toHaveText(crmCopy.inCrm(nameOf(guest)), WITHIN_A_POLL);
+
+		// Exactly one lead for the guest, judged once a later guest's lead has arrived.
+		const later = await office.newGuest();
+		await expectLeadAppears(office.id, later, "a later guest's lead arrives in the CRM");
+		const leads = await leadsOf(office.id, guest);
+		expect(leads, "the CRM holds exactly one lead for the guest").toHaveLength(1);
+		expect(leads[0].name, "the lead carries the guest's name").toBe(nameOf(guest));
+	});
+
+	test("an office with no CRM: a new guest's thread shows no CRM status, neither Not in CRM yet nor In CRM, to the agent or the manager", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 4a none", { crm: "none", manager: true });
+		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
+
+		for (const [who, operator, all] of [
+			["the agent", office.agent, false],
+			["the manager", office.manager, true],
+		] as const) {
+			const { page } = operator;
+			await openThreadOf(page, guest, { all });
+			// Judged once the open thread has asked again: the guest writes, and it shows.
+			const again = await guest.write(`Still available? ${randomUUID().slice(0, 8)}`);
+			await expect(
+				openThread(page).getByText(again, { exact: true }),
+				`${who}'s open thread shows the guest's new message`,
+			).toBeVisible(WITHIN_A_POLL);
+			await expectNoCrmStatus(page, who, guest);
+		}
 	});
 });
 

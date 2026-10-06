@@ -3,15 +3,32 @@ import { describe, expect, it } from "vitest";
 import { buildSettingsSections, buildWalkNav, isNavSubItemActive } from "./walk-nav";
 
 describe("buildWalkNav", () => {
-	it("is Home then Inbox, with no placeholder (PRODUCT.md, the Coming soon rule)", () => {
+	it("is Home, Inbox, then International, coming soon (PRODUCT.md, the Coming soon rule)", () => {
 		const items = buildWalkNav("/inbox");
-		expect(items.map((item) => item.id)).toEqual(["home", "inbox"]);
+		expect(items.map((item) => item.id)).toEqual(["home", "inbox", "international"]);
 		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(true);
 		expect(items.find((item) => item.id === "home")?.isActive).toBe(false);
 	});
 
+	it("International is disabled, marked Coming soon, links nowhere and is never active", () => {
+		for (const pathname of ["/inbox", "/home", "/international", "/settings/general"]) {
+			expect(buildWalkNav(pathname).find((item) => item.id === "international")).toEqual({
+				id: "international",
+				href: null,
+				iconName: "globe",
+				isActive: false,
+				comingSoon: true,
+			});
+		}
+		expect(buildWalkNav("/inbox").filter((item) => item.comingSoon)).toHaveLength(1);
+	});
+
 	it("the platform admin sees the admin area only; operators never see it", () => {
-		expect(buildWalkNav("/admin/organizations").map((item) => item.id)).toEqual(["home", "inbox"]);
+		expect(buildWalkNav("/admin/organizations").map((item) => item.id)).toEqual([
+			"home",
+			"inbox",
+			"international",
+		]);
 		const admin = buildWalkNav("/admin/organizations", { isAdmin: true });
 		expect(admin).toEqual([
 			{

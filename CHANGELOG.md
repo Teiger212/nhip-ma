@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-10-06 (a missing CRM lead says so, and heals when its thread is opened)
+
+### Added
+
+- **"Not in CRM yet" on a thread whose CRM lead was never written** (#211, ADR 0003). When the
+  office has a CRM and a thread's lead write failed, the thread header shows a neutral "Not in CRM
+  yet" chip, never red, to agents and managers. An office with no CRM shows nothing, as before.
+- **Opening such a thread retries the lead write once, in the background** (#211). The wait
+  since the last failure is stored on the thread, so every server instance honours it and the
+  Inbox's 10-second polling never asks the CRM on every refresh. Retries wait 1, 5, 15, then 60
+  minutes, and then stay an hour apart. On success the chip turns into "In CRM: {name}". A
+  thread deleted under ADR 0020 takes its failure with it and is never retried. Retries with
+  nobody opening the thread wait for background jobs (#64, ADR 0023).
+
+### Changed
+
+- **A failed CRM lead write is logged by kind only** (#211): timeout, auth, rejected or other,
+  with no thread, guest or CRM id. The old log line named the thread.
+- **A HubSpot call gives up after 15 seconds** (#211), so a hung call never holds a thread's lead
+  write. It counts as a timeout, retried when the thread is next opened.
+
+### Fixed
+
+- **A lead write that died half-way no longer blocks its thread for good** (#211). Its claim is
+  taken over once it is 15 minutes old, longer than any server function runs, so the guest's
+  next message or opening the thread writes the lead.
+
+## 2026-10-06 (after the auto-reply, the reply box takes the follow-up path)
+
+### Fixed
+
+- **After the auto-reply, the reply box no longer greets the guest again** (#166, ADR 0021 R11 and P2, spec #159). Once the greeting is on file, the greeting job re-runs the reply box's path on the thread as reloaded. The guest's first message, still unanswered, gets the follow-up template ("Thanks for your message. A colleague will get back to you here shortly.") in place of the first-reply template's "Thanks for writing …". Where a model is configured, the model's follow-up then replaces it, drafted from the whole conversation with the greeting in it. Every later guest message takes the same path, and so does "new suggestion" without a model. One predicate decides it in `inbox.ts`: a human reply was sent, or an auto-reply message is on the thread. A greeting that was claimed but never sent (a disconnected OA, a failed send) leaves the first-reply template, as before. A guest message whose thread was read just before the greeting was filed checks the stored thread again, so the first-reply template can't overwrite the greeting job's follow-up. With a model configured, every greeted first message now costs a model call, where before the first one came only after a human reply.
+- **The funnel ignores the auto-reply, pinned by tests** (#166, R10). Vitest against the test database walks a greeted lead through the funnel. After the greeting it reads Leads in 1, Engaged 0, In conversation 0 and no response time, and the guest writing back before a human reply changes none of that. A human reply makes it Engaged, timed from the guest's first message rather than the greeting. A later guest message puts it In conversation. No SQL changed. E2E covers the funnel on Home and the reply box after the greeting.
+
+## 2026-10-06 (Inbox polish from the UI walk)
+
+### Added
+
+- **A manager's count line says what the view holds** (#208, ADR 0022). Under the view tabs a
+  manager reads, for example, "4 unassigned · 6 waiting in the office", worded per view, or
+  "waiting on <name>" while the owner filter shows one operator. Agents keep "N guests are
+  waiting on you".
+- **International, coming soon** (#208). The sidebar lists International under Inbox again, as
+  a disabled item marked "Coming soon": handling foreigners' documents in Vietnam. It links
+  nowhere, and PRODUCT.md lists it under "Later, shown as Coming soon".
+
+### Changed
+
+- **"Assign to…" shows on the row you're on** (#208, ADR 0022). From `md` up, the pill on a
+  manager's Unassigned rows shows on hover, on keyboard focus within the row and on the
+  selected row, in the timestamp's place, so names keep the row's width. On a phone it stays
+  visible, a 44px target, and on a touch screen at any width it shows on every row.
+
+### Fixed
+
+- **The view tabs stay put** (#208). A manager's owner filter now holds its place in every
+  view, disabled in Unassigned, so the tabs and the list no longer jump 44px when switching to
+  or from Unassigned.
+
 ## 2026-10-06 (a manager turns the office's auto-reply off)
 
 ### Added

@@ -219,7 +219,9 @@ is renamed.
 - **CRM link**: the stored association between a thread and its CRM lead. Nhịp makes it when a
   guest writes on a thread that has none: it finds the guest's CRM lead (by phone on WhatsApp,
   by the Zalo user id Nhịp stored on Zalo) or creates one. A guest who matches two CRM leads is
-  linked to neither. The thread header shows the CRM lead, read-only.
+  linked to neither. The thread header shows the CRM lead, read-only. A thread of an office with
+  a CRM that has no link yet (the write failed, or the guest matched two leads) reads **"Not in
+  CRM yet"**, and opening it retries the write once a stored wait has passed (#211).
 
 ## Background work
 

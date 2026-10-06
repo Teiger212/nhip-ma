@@ -24,6 +24,28 @@ export async function connectMockCrm(officeId: string): Promise<void> {
 }
 
 /**
+ * The office's mock CRM goes down (#211): until `bringMockCrmBack`, every call Nhịp makes to it
+ * fails, as a real CRM's does when it can't be reached. Its leads are kept.
+ */
+export async function takeMockCrmDown(officeId: string): Promise<void> {
+	await askState("crm.availability", officeId, "down");
+}
+
+/** The office's mock CRM works again (#211). */
+export async function bringMockCrmBack(officeId: string): Promise<void> {
+	await askState("crm.availability", officeId, "up");
+}
+
+/**
+ * Time passes for the office's failed CRM writes (#211): Nhịp waits a while after a failed lead
+ * write before it tries again, and this makes that wait over for every thread of the office, as
+ * if the write had failed a day ago. Nothing is retried by this alone.
+ */
+export async function passCrmRetryWait(officeId: string): Promise<void> {
+	await askState("crm.retry-wait-passes", officeId);
+}
+
+/**
  * The office marks a lead in the mock CRM, and the CRM tells Nhịp, as HubSpot would: a webhook
  * naming the changed lead, signed with the deployment's MOCK_CRM_WEBHOOK_SECRET (.env.e2e).
  * Answers the webhook's HTTP status. Nothing here writes Nhịp's own link to the lead.

@@ -175,6 +175,11 @@ export type Conversation = {
 	owner: { id: string; name: string } | null;
 	/** The thread's lead in the office's CRM (ADR 0003); null until Nhịp has linked one. */
 	crm: ConversationCrm | null;
+	/**
+	 * Whether the thread's office has a CRM (ADR 0003). With one and no `crm`, the thread reads
+	 * "Not in CRM yet" (#211).
+	 */
+	officeHasCrm: boolean;
 	/** When the auto-reply claimed the thread (ADR 0021); null while it has not. */
 	autoReplyAt: string | null;
 	updatedAt: string;
@@ -608,16 +613,33 @@ export type InboxStore = {
 	/**
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the
 	 * thread is already claimed or linked. The database decides, so two first messages make one lead.
+	 * A claim that linked nothing and was made before `staleBefore` is a write that died half-way
+	 * (#211): it is taken over, by one caller only.
 	 */
-	claimCrmLink: (officeId: string, conversationId: string) => Promise<boolean>;
+	claimCrmLink: (officeId: string, conversationId: string, staleBefore: Date) => Promise<boolean>;
 	/** Give up a claim that linked nothing, so a later guest message tries again. */
 	releaseCrmLink: (officeId: string, conversationId: string) => Promise<void>;
-	/** Record the lead a claimed thread is linked to. */
+	/** Record the lead a claimed thread is linked to; its failed writes are forgotten (#211). */
 	completeCrmLink: (
 		officeId: string,
 		conversationId: string,
 		link: { leadId: string; leadName: string; method: CrmLinkMethod },
 	) => Promise<void>;
+	/**
+	 * The thread's failed lead writes (#211): how many in a row, and when the last one was; null
+	 * when it has none. Stored so every instance waits out the same backoff.
+	 */
+	crmWriteFailure: (
+		officeId: string,
+		conversationId: string,
+	) => Promise<{ attempts: number; lastFailedAt: string } | null>;
+	/**
+	 * A lead write linked nothing at `at` (#211): count it. Nothing when the thread or the office's
+	 * CRM is gone meanwhile (ADR 0020): a deleted thread keeps no failure.
+	 */
+	recordCrmWriteFailure: (officeId: string, conversationId: string, at: Date) => Promise<void>;
+	/** Whether the office's mock CRM is down (ADR 0003, #211): E2E and the demo only. */
+	mockCrmDown: (officeId: string) => Promise<boolean>;
 	/** Write a lead into the mock CRM (ADR 0003). */
 	createMockCrmLead: (lead: NewMockCrmLead) => Promise<MockCrmLead>;
 	/** The office's mock CRM leads with this E.164 phone or Zalo user id; every lead with neither. */

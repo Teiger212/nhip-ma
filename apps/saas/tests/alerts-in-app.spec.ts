@@ -515,6 +515,8 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 		const { page } = manager;
 		await page.goto("/en/inbox");
 		await expect(rowOf(page, minji), "Minji waits in the manager's Unassigned").toBeVisible();
+		// From `md` up the row shows its Assign to… on hover (#208).
+		await rowOf(page, minji).hover();
 		await expect(assignFromRow(page, minji), "the row has its own Assign to…").toBeVisible();
 		await assignFromRow(page, minji).click();
 		await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
