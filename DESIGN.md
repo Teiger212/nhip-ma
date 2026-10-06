@@ -361,7 +361,7 @@ Cool, low-chroma slate and blue neutrals carrying a single saturated blue, with 
 
 The app is a canvas with panels on it. The sidebar is the canvas itself, with no border; the page area is the canvas too, and every block of content is a panel. There's no separate mobile design, only the same components on a narrower desk. Below `lg` (1024px) the shell is the phone one: a 56px top bar (menu, mark, bell, user menu) and the sidebar as a sheet. From `lg` the sidebar docks.
 
-**Inbox.** From `md` up, the thread list (`--container-inbox-list`, 22rem) and the thread are two panels with a 10px gap, inset 12px from the canvas; from `lg`, where the sidebar docks beside them, the left gutter tightens to 4px. Search, the owner filter and the view tabs live inside the list panel. Below `md` the panels go full-bleed on white with no border, and swap: the list, then a thread with a back action. Rows are inset from the panel edge by 6px on each side (`w-row-inset`) with 2px of vertical gap, pad 10px × 12px, and keep a 10px gap between avatar and text. Empty states are one centred sentence capped at 22ch (`--container-empty-note`), with an optional outline button under it.
+**Inbox.** From `md` up, the thread list (`--container-inbox-list`, 22rem) and the thread are two panels with a 10px gap, inset 12px from the canvas; from `lg`, where the sidebar docks beside them, the left gutter tightens to 4px. Search, the owner filter and the view tabs live inside the list panel. A manager's owner filter sits above search in every view, disabled in Unassigned (where it could only narrow the list to nothing), so the tabs never move between views. Below `md` the panels go full-bleed on white with no border, and swap: the list, then a thread with a back action. Rows are inset from the panel edge by 6px on each side (`w-row-inset`) with 2px of vertical gap, pad 10px × 12px, and keep a 10px gap between avatar and text. Empty states are one centred sentence capped at 22ch (`--container-empty-note`), with an optional outline button under it.
 
 **Home.** A `max-w-6xl` column under the page header. Panels stack with a 10px gap (12px from `md`): the funnel strip, one row of five cells from `lg`; then Leads by day (two thirds) beside Waiting now (one third) from `lg`; then Response time (median on a third, buckets on two thirds, from `md`). Below `lg` Waiting now comes above the chart, and the funnel's cells become Leads in across the top with the other four two by two. Grid children carry `min-w-0` so a long guest name truncates instead of widening the grid. Panel content pads 16px (20px from `md`).
 
@@ -435,7 +435,7 @@ Confident, compact pills that press in slightly.
 
 ### View Tabs
 
-A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note.
+A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills in 0.75rem semibold, 44px tall below `md` and 32px from `md`; inactive in Slate Note, the active one a white pill with the Hairline shadow. Each carries its count in Plex Mono at `text-2xs`, full Slate Note. After them (beside them where the row has room, otherwise under them), a Body Small count line in Slate Note: an agent's says how many guests wait on them; a manager's names the view's own count, then how many wait in the office ("4 unassigned · 6 waiting in the office"), or on the operator the owner filter shows. A manager's Your turn line is only the waiting count, which is that view's own.
 
 ### Navigation
 
@@ -443,6 +443,7 @@ A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills
 - **Variant:** `SidebarMenuButton variant="chip"` carries the whole treatment, so the app passes no restyle classes.
 - **Active:** a white chip with the Hairline shadow, ink text, the icon in Dispatch Blue. The settings entry in the user menu uses the same chip.
 - **Hover:** Hairline Blue accent fill.
+- **Coming soon:** a later feature named in PRODUCT.md's "Later, shown as Coming soon" list sits where it will live as a disabled item (the kit's 50% opacity, no link), with a neutral `Badge` reading "Coming soon" at its right edge. International sits under Inbox. In the collapsed sidebar it is the dimmed icon alone: a disabled item takes no pointer, so it has no tooltip.
 - **Count:** while any thread is Your turn, the Inbox link carries a numeric warning `Badge` at its right edge (`ml-auto`), inside the link itself.
 - **Phone (below `lg`):** the sidebar is a sheet behind the 56px top bar; links are 44px tall; the same active treatment applies.
 
@@ -458,7 +459,7 @@ The unit of the desk: who, when, what they said, whose turn.
 - **Rest:** transparent, 8.4px radius. **Hover:** 70% Morning Wash.
 - **Active (`aria-current`):** a Hairline Blue fill, and the guest mark turns solid Dispatch Blue with white initials (200ms). No press-scale, no stripe.
 - **Quiet threads** fold under a `<details>` disclosure at the list's foot (44px summary, Body Small, Slate Note).
-- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule). Below `md` it's a 44px tap target on the badges' last line; from `md` it's the 24px pill on the name's line, as the view tabs shrink from `md`, so the badges keep the row's whole width. It never selects the row, and it acts at once, as the header's owner menu does.
+- **Assign to… (a manager's Unassigned rows, ADR 0022):** a small ghost pill at the row's end, which opens the kit's dropdown of the office's operators. It's a control, so it's a pill (The Pill Acts Rule). Below `md` it's always there: a 44px tap target on the badges' last line. From `md` it's the 24px pill on the name's line, as the view tabs shrink from `md`, so the badges keep the row's whole width; it shows only on the row's hover, on focus within the row, on the selected row and while its menu is open, and then it takes the timestamp's place. On a touch screen from `md`, where nothing hovers, it shows on every row, still in the timestamp's place. The name is never under it: at rest the name has the line's whole width, and while the pill shows it ends before the pill. The pill's label never truncates. It never selects the row, and it acts at once, as the header's owner menu does.
 
 ### Message
 

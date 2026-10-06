@@ -255,6 +255,20 @@ function assignFromRow(page: Page, guest: Guest) {
 		.getByRole("button", { name: copy.assignTo, exact: true });
 }
 
+/**
+ * The manager points at the guest's row, which shows its "Assign to…" (from `md` up it shows on
+ * hover, focus or selection, #208), and opens its menu.
+ */
+async function openAssignFromRow(
+	page: Page,
+	guest: Guest,
+	message = "the row has its own Assign to…",
+) {
+	await rowOf(page, guest).hover();
+	await expect(assignFromRow(page, guest), message).toBeVisible();
+	await assignFromRow(page, guest).click();
+}
+
 /** The open "Assign to…" menu's item for an operator, by their name. */
 function assignMenuItem(page: Page, name: string) {
 	return page.getByRole("menu").getByRole("menuitem", { name, exact: true });
@@ -490,8 +504,7 @@ test.describe("Assign 2 — assigning gives the thread to that agent only", () =
 			"true",
 		);
 		await expect(rowOf(page, guest)).toBeVisible();
-		await expect(assignFromRow(page, guest), "the row has its own Assign to…").toBeVisible();
-		await assignFromRow(page, guest).click();
+		await openAssignFromRow(page, guest);
 		await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
 		await assignMenuItem(page, oneName).click();
 		await expect(rowOf(page, guest), "the thread leaves Unassigned").toHaveCount(0);
@@ -883,11 +896,7 @@ test.describe("Assign 10 — Unassigned comes first, oldest first", () => {
 		await rowOf(page, newest).click();
 		await expect(rowOf(page, newest)).toHaveAttribute("aria-current", "true");
 		await expect(openThread(page).getByText(newest.id).first()).toBeVisible();
-		await expect(
-			assignFromRow(page, oldest),
-			"the oldest row has its own Assign to…",
-		).toBeVisible();
-		await assignFromRow(page, oldest).click();
+		await openAssignFromRow(page, oldest, "the oldest row has its own Assign to…");
 		await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
 		await page.keyboard.press("Escape");
 		await expect(page.getByRole("menu")).toHaveCount(0);
@@ -905,7 +914,7 @@ test.describe("Assign 10 — Unassigned comes first, oldest first", () => {
 		).toHaveCount(0);
 
 		// Given to agent 1: it leaves Unassigned, and the next guest heads the list.
-		await assignFromRow(page, oldest).click();
+		await openAssignFromRow(page, oldest);
 		await assignMenuItem(page, oneName).click();
 		await expect(rowOf(page, oldest), "the oldest row leaves Unassigned").toHaveCount(0);
 		await expect(view(page, "Unassigned", 2), "its count drops").toBeVisible();

@@ -287,14 +287,17 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 					{/* Above the list, a panel of its own (The Canvas And Panel Rule, #135). */}
 					<AlertsPanel />
 					<aside className="min-h-0 min-w-0 md:rounded-3xl md:border flex flex-1 flex-col overflow-hidden bg-card">
-						{manager && view !== "unassigned" ? (
+						{/* In every view of a manager's, so the search and the tabs never move (#208):
+						    Unassigned holds no one's threads, so there it is disabled, on All threads. */}
+						{manager ? (
 							<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
 								<label htmlFor="inbox-owner-filter">{t("owner.filter")}</label>
 								<select
 									id="inbox-owner-filter"
 									data-test="owner-filter"
-									className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
+									className="h-8 px-2 text-sm rounded-md border bg-background text-foreground disabled:cursor-not-allowed disabled:opacity-50"
 									value={filterOwner ?? "all"}
+									disabled={view === "unassigned"}
 									onChange={(event) =>
 										void setOwnerFilter(event.target.value === "all" ? null : event.target.value)
 									}
@@ -319,6 +322,8 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								void setView(next);
 							}}
 							counts={queue.counts}
+							manager={manager}
+							ownerName={agents.data?.find((agent) => agent.id === filterOwner)?.name ?? null}
 						/>
 						<div
 							className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"

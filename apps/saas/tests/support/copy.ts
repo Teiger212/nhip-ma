@@ -92,6 +92,36 @@ export type OwnerCopy = {
 	onlyQuiet: string;
 };
 
+/**
+ * The count line under the Inbox's view tabs, in English (#208, worded by Eyal on the ticket).
+ * Written out here rather than read from saas.json: the wording is the contract the Inbox must
+ * meet, so a spec reading it back from the app's own strings would pass whatever they say.
+ * `on` is the operator the manager's owner filter shows, or none for "All threads".
+ */
+export const COUNT_LINE_EN = {
+	/** A manager's Unassigned view (its owner filter is disabled, on All threads). */
+	unassigned: (unassigned: number, waiting: number) =>
+		`${unassigned} unassigned · ${waitingIn(waiting)}`,
+	/** A manager's Your turn view. */
+	yourTurn: (waiting: number, on?: string) => waitingIn(waiting, on),
+	/** A manager's Sent view. */
+	sent: (sent: number, waiting: number, on?: string) => `${sent} sent · ${waitingIn(waiting, on)}`,
+	/** A manager's All view. */
+	all: (threads: number, waiting: number, on?: string) =>
+		`${threads} ${threads === 1 ? "thread" : "threads"} · ${waitingIn(waiting, on)}`,
+	/** An agent's line, the same in every view (unchanged by #208). */
+	agent: (waiting: number) =>
+		waiting === 0
+			? "No guest is waiting on you"
+			: waiting === 1
+				? "1 guest is waiting on you"
+				: `${waiting} guests are waiting on you`,
+} as const;
+
+function waitingIn(waiting: number, on?: string): string {
+	return `${waiting} waiting ${on === undefined ? "in the office" : `on ${on}`}`;
+}
+
 export function ownerCopy(locale: Locale): OwnerCopy {
 	const file = path.resolve(
 		__dirname,
