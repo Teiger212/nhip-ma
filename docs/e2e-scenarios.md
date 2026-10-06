@@ -821,8 +821,8 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
    CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
    fresh:
-   - It is Unassigned, shows the new message and its auto-reply, and is Your turn for the
-     manager; neither agent sees it.
+   - It is Unassigned, shows the new message and its auto-reply, and is waiting (the manager's
+     chip reads "Waiting", ADR 0022); neither agent sees it.
    - Home's Leads in counts it as one more lead.
    - The mock CRM holds one lead for that guest again: a new one.
 

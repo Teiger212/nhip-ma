@@ -1,11 +1,9 @@
-import { getActiveOrganization, getSession } from "@auth/lib/server";
 import { InviteMemberForm } from "@organizations/components/InviteMemberForm";
 import { OrganizationMembersBlock } from "@organizations/components/OrganizationMembersBlock";
+import { requireOfficeManager } from "@organizations/lib/require-office-manager";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
-import { permix, setupPermissions } from "@shared/lib/permix";
 import { getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
 
 export async function generateMetadata() {
 	const t = await getTranslations("organizations.settings");
@@ -20,27 +18,9 @@ export default async function OrganizationSettingsPage({
 }: {
 	params: Promise<{ organizationSlug: string }>;
 }) {
-	const session = await getSession();
 	const { organizationSlug } = await params;
-	const organization = await getActiveOrganization(organizationSlug);
-
-	if (!organization) {
-		return notFound();
-	}
-
-	const membershipRole = organization.members.find(
-		(member) => member.userId === session?.user.id,
-	)?.role;
-
-	setupPermissions({
-		user: session?.user,
-		membershipRole,
-	});
-
-	// Team is the managers' (#82): an agent finds no page here, not a read-only one.
-	if (!permix.check("organization.manage")) {
-		return notFound();
-	}
+	// Team is the managers' (#82): an agent finds no page here, not a read-only one (#212).
+	const { organization } = await requireOfficeManager(organizationSlug);
 
 	const t = await getTranslations("organizations.settings");
 
