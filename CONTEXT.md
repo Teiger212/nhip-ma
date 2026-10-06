@@ -29,7 +29,7 @@ is renamed.
 - **Manager**: the office manager or agency owner. The **customer**: pays for faster
   responses and fewer lost multinational leads. Reads Home, sees every thread in the
   office, assigns every new lead and reassigns owners (ADR 0022), turns the office's
-  auto-reply off or on (ADR 0021), invites the office's agents (ADR 0015), and deletes a guest's data
+  auto-reply off or on in Office settings (ADR 0021), invites the office's agents (ADR 0015), and deletes a guest's data
   on request (ADR 0020). An office may have
   several. (In the kit: a member with the role `owner` or `admin`; an agent is `member`.)
   _Avoid_: admin, office admin (admin means the platform admin only).
@@ -64,7 +64,8 @@ is renamed.
 
 - **Your turn**: the guest's latest message has no human reply yet (there is an unanswered
   inbound). The auto-reply is not a reply (ADR 0021). The only pending state. A fact, not a
-  judgment.
+  judgment. A manager's turn chip reads "Your turn" only on threads they own; on an Unassigned
+  thread or a colleague's it reads **"Waiting"** (ADR 0022, 2026-10-06).
 - **Quiet**: a Your-turn thread the guest last touched more than 48 hours ago. Collapsed
   at the bottom of the queue, still Your turn.
 - **Sent**: the guest's latest message has a human reply.
@@ -137,7 +138,8 @@ is renamed.
   inbound. Nothing else is sent, except the auto-reply (nudges deferred, ADR 0006).
 - **Auto-reply**: the one message Nhịp sends on its own (ADR 0021).
   - **When:** an answer to a new guest's first message, sent within seconds without an
-    approval. At most one per thread. On by default; a manager can turn it off for the office.
+    approval. At most one per thread. On by default; a manager can turn it off for the office,
+    on the office's settings page (General), reached from the user menu as "Office settings".
   - **What:** it thanks the guest, acknowledges what they gave, and asks for at most two
     missing details. It never gives prices, availability, listings, legal matters, promises
     or times.
@@ -217,6 +219,14 @@ is renamed.
   guest writes on a thread that has none: it finds the guest's CRM lead (by phone on WhatsApp,
   by the Zalo user id Nhịp stored on Zalo) or creates one. A guest who matches two CRM leads is
   linked to neither. The thread header shows the CRM lead, read-only.
+
+## Background work
+
+- **Job**: one piece of background work kept in Postgres so it can be retried, delayed or
+  scheduled (ADR 0023). Its payload holds opaque ids only, its handler is idempotent, and a job
+  that fails 5 attempts is **dead**. A job whose target is gone counts as done. Not built; it
+  comes after go-live, and until then background work runs once, in `after()` (ADR 0016).
+  _Avoid_: queue (the queue is the Inbox's).
 
 ## Guest data
 
