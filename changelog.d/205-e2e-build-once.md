@@ -9,3 +9,9 @@
   committed or not, it asks for a rebuild, while an edit under `tests/` alone never does.
   `--status` and `--stop` report on and stop the server. CI and the default mode still build
   fresh on every run.
+
+### Fixed
+
+- **The E2E HTTPS proxy no longer leaves a certificate folder behind** (#205). It reads its
+  throwaway certificate into memory and deletes the temp folder at once. Before, every
+  default-mode run left a `nhip-e2e-tls-*` folder in the OS temp dir.
