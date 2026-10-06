@@ -2,8 +2,8 @@ name: Release
 
 # Publishing a GitHub Release moves `production` to the release's commit (ADR 0016, #112), once
 # `scripts/release/check-release.sh` confirms it is on main, ahead of production, deployed on
-# staging and smoked there, and passed CI on main (#190). Vercel then builds production from it
-# (migrations first).
+# staging and smoked there, and passed CI on main (#190; a changelog fold commit passes on its
+# parent's CI, #200). Vercel then builds production from it (migrations first).
 #
 # Only this workflow may move `production`: the branch's ruleset (24113338) blocks every push
 # except by the repository's deploy key, whose private half is the `release` environment's

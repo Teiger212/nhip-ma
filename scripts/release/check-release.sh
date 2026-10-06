@@ -7,7 +7,10 @@
 #   - Vercel deployed it on staging (a `Preview` deployment of that commit that succeeded);
 #   - the staging smoke run passed against that deployment;
 #   - CI passed on it on main: a successful `ci.yml` run (its `ci` and `e2e` jobs) from the push
-#     to main of that very commit (#190).
+#     to main of that very commit (#190). The one exception is a changelog fold commit (#200),
+#     which has no CI run because github-actions[bot] pushes it with GITHUB_TOKEN: it passes on
+#     its parent's CI, and only when is-changelog-fold.sh confirms it changes nothing but
+#     CHANGELOG.md and deleted fragments.
 # Reads git (`origin/main` and `origin/production` must be fetched) and GitHub through `gh`.
 # Usage: scripts/release/check-release.sh <commit-ish>
 set -euo pipefail
@@ -55,34 +58,46 @@ smoked=$(gh api "repos/{owner}/{repo}/actions/workflows/staging-smoke.yml/runs?h
 # CI on main (#190): ci.yml runs on every push to main, but only on the push's head commit. Each
 # commit has its own concurrency group there, so a newer push never cancels it. Each run reports its latest attempt, so a failed re-run
 # of a green run refuses; if one commit has several push runs (main reset to it), any successful
-# one counts. Sets `ci_url`, or refuses.
+# one counts. Sets `ci_url`, or refuses. Takes the commit and how messages name it.
 ci_on_main() {
-	local runs verdict
+	local commit=$1 who=$2 runs verdict
 	# Read first, so a failed API call stops the gate instead of reading as "no run".
-	runs=$(gh api "repos/{owner}/{repo}/actions/workflows/ci.yml/runs?head_sha=$1&event=push&branch=main&per_page=100") ||
-		refuse "couldn't read $short's CI runs on main (above)."
+	runs=$(gh api "repos/{owner}/{repo}/actions/workflows/ci.yml/runs?head_sha=$commit&event=push&branch=main&per_page=100") ||
+		refuse "couldn't read $who's CI runs on main (above)."
 	verdict=$(jq -r '.workflow_runs
 		| (map(select(.conclusion == "success"))[0]
 			// map(select(.status != "completed"))[0]
 			// .[0])
 		// empty
 		| "\(.status) \(.conclusion // "none") \(.html_url)"' <<<"$runs") ||
-		refuse "couldn't read $short's CI runs on main: unexpected answer from GitHub."
-	[[ -n $verdict ]] ||
-		refuse "$short has no CI run from a push to main. Only the last commit of each push runs CI (and none with [skip ci]); release a later commit whose CI passed."
+		refuse "couldn't read $who's CI runs on main: unexpected answer from GitHub."
+	if [[ -z $verdict ]]; then
+		# A changelog fold commit (#200) has no run of its own; it passes on its parent's CI. Only
+		# the release's own commit gets this, never its parent, so it can't chain.
+		local not_fold=""
+		if [[ $commit == "$sha" ]] && not_fold=$("$(dirname "$0")/is-changelog-fold.sh" "$commit"); then
+			local parent=""
+			parent=$(git rev-parse "$commit^1")
+			ci_fold="$short is a changelog fold commit (#200), so its parent ${parent:0:7} stands for it: "
+			ci_on_main "$parent" "$short's parent ${parent:0:7}"
+			return
+		fi
+		[[ -z $not_fold ]] || not_fold=" It isn't a changelog fold commit either: $not_fold"
+		refuse "$who has no CI run from a push to main. Only the last commit of each push runs CI (and none with [skip ci]); release a later commit whose CI passed.$not_fold"
+	fi
 	local status conclusion url
 	read -r status conclusion url <<<"$verdict"
 	[[ $status == completed ]] ||
-		refuse "$short's CI on main is still running ($status): $url. Wait for it to pass, then re-run the release."
+		refuse "$who's CI on main is still running ($status): $url. Wait for it to pass, then re-run the release."
 	case $conclusion in
 	success) ci_url=$url ;;
 	cancelled)
-		refuse "$short's CI on main was cancelled: $url. Re-run it, and release once it passes." ;;
+		refuse "$who's CI on main was cancelled: $url. Re-run it, and release once it passes." ;;
 	*)
-		refuse "$short's CI on main didn't pass ($conclusion): $url. Fix it on main and release the fix, or, if it was a flake, re-run that run." ;;
+		refuse "$who's CI on main didn't pass ($conclusion): $url. Fix it on main and release the fix, or, if it was a flake, re-run that run." ;;
 	esac
 }
-ci_url=""
-ci_on_main "$sha"
+ci_url="" ci_fold=""
+ci_on_main "$sha" "$short"
 
-echo "OK: $short is on main, ahead of production (${production:0:7}); staging deployed it ($staging_url), its smoke run passed, and its CI on main passed ($ci_url)."
+echo "OK: $short is on main, ahead of production (${production:0:7}); staging deployed it ($staging_url), its smoke run passed, and ${ci_fold}its CI on main passed ($ci_url)."

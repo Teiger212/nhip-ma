@@ -262,7 +262,13 @@ on staging yet, and the gate refuses it. The workflow (`.github/workflows/releas
   pass, then re-run the release. Only the last commit of each push gets a run. On main each
   commit has its own CI concurrency group, so a newer push never cancels it; a run cancelled by
   hand can simply be re-run. Pushes to main run CI even for docs-only changes: `paths-ignore`
-  applies to pull requests only.
+  applies to pull requests only. The one exception is a changelog fold commit (#200), which
+  github-actions[bot] pushes with `GITHUB_TOKEN` and so starts no CI: with no run of its own,
+  it passes on its parent's CI, and the OK line names that parent's run. It counts as a fold
+  only when `scripts/release/is-changelog-fold.sh` confirms all of this: one parent; author
+  and committer both github-actions[bot]; the fold's subject; and, against its parent, a
+  change to `CHANGELOG.md` plus deleted `changelog.d/` fragments and nothing else. The
+  parent itself gets no exception, so the exception can't chain.
 
 The workflow waits for Eyal's approval (the `release` environment's required reviewer). It
 then fast-forwards `production` with the deploy key, and Vercel builds production from it.
@@ -296,7 +302,8 @@ bad migration noticed the next morning is past it. Before releasing such a migra
 `neon branches create --name pre-vX.Y.Z --parent production --project-id lingering-bonus-85587787`.
 
 `scripts/release/check-release.test.sh` checks the gate against known commits; it reads GitHub,
-so it runs by hand. Notes:
+so it runs by hand. Its changelog fold cases run offline, on commits it fabricates in a
+throwaway repository with a stub `gh`. Notes:
 
 - **A refused release** leaves its tag behind; remove both with
   `gh release delete vX.Y.Z --cleanup-tag`.
@@ -540,7 +547,12 @@ workspace package that imports them.
 ## Change management
 
 - Use conventional commits such as `feat:`, `fix:`, `docs:`, or `refactor:`.
-- Update `CHANGELOG.md` for consumer-impacting changes.
+- For consumer-impacting changes, add a changelog fragment, `changelog.d/<issue>-<slug>.md`,
+  holding the PR's section (format in [changelog.d/README.md](./changelog.d/README.md)). Never
+  edit `CHANGELOG.md`: the format check fails a PR that does. On main,
+  `.github/workflows/changelog.yml` folds the fragments into it, newest on top in the order
+  they reached main, and pushes the fold as github-actions[bot]. The fold's tests:
+  `node --test scripts/changelog/fold.test.mjs`.
 - Update [PRODUCT.md](./PRODUCT.md), [ARCHITECTURE.md](./ARCHITECTURE.md), or
   [HANDOFF.md](./HANDOFF.md) when intention, shape, or walk rules change.
 - Update `AGENTS.md` when conventions, aliases, scripts, or app boundaries change.
@@ -560,9 +572,8 @@ workspace package that imports them.
    flaky spec is fixed after merge.
 7. **Before every push, merge main**: `git fetch origin`, and if `origin/main` moved,
    `git merge origin/main`, resolve any conflict, re-run the gates the conflict touched, then
-   push. `CHANGELOG.md` merges as a union (`.gitattributes`), keeping both sides' entries, since
-   entries are only ever added on top. GitHub ignores that driver, so a PR can still show a
-   CHANGELOG conflict after main moves again; the next merge of main clears it.
+   push. The PR's changelog entry is a fragment of its own in `changelog.d/` (see "Change
+   management"), so two PRs never conflict over `CHANGELOG.md`.
 
 No stacked PRs: merged branches are not deleted automatically, so a stacked PR is not
 retargeted when its base merges. Pre-MVP edge cases: explore and record them; fix only the
@@ -578,6 +589,6 @@ it checks ("won or lost leaves the queue"), not by its number.
 - [ ] No `console.log` statements were added
 - [ ] No unjustified `any` types were added
 - [ ] User-facing strings have translations
-- [ ] Relevant docs and `CHANGELOG.md` are updated
+- [ ] Relevant docs are updated, and the changelog entry is a fragment in `changelog.d/`
 
 See [README.md](./README.md) for the product entry and [HANDOFF.md](./HANDOFF.md) to pick up work cold.
