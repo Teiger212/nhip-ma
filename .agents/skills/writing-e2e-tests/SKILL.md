@@ -29,7 +29,8 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 - Specs live in `apps/saas/tests` or `apps/marketing/tests` as `*.spec.ts` (not `e2e/`).
 - `playwright.config.ts` (per app) is authoritative: Chromium; SaaS on `https://localhost:3443` (a local HTTPS proxy in front of the build on `:3000`),
   marketing on `3001`; the `webServer` block always builds and starts production mode fresh
-  (a reused server silently tests stale code; use `E2E_BASE_URL` to target a running one). No retries anywhere: a flaky spec is fixed, not retried.
+  (a reused server silently tests stale code; use `E2E_BASE_URL` to target a running one, or
+  `E2E_REUSE=1` for the build `scripts/e2e-server.sh` started, below). No retries anywhere: a flaky spec is fixed, not retried.
 - Routes are locale-prefixed: navigate to `/en/…` or `/vi/…`; bare paths redirect.
 - Locators: `getByRole`, `getByLabel`, `getByText` for what users read; a `data-test`
   attribute only when nothing user-facing is stable (add it to the component deliberately).
@@ -43,6 +44,19 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   `.env.e2e` and its own `supastarter_e2e` database, pushed and seeded fresh. Use it for CI and
   the before-merge `--repeat-each=3` check. If port 3000 is taken, set `E2E_PORT` (e.g. `E2E_PORT=3100`); the
   app URL follows it.
+- Many spec files, one build (#205): the default mode builds afresh for every run, so don't pay
+  for it once per file.
+  1. `scripts/e2e-server.sh` (with the same `E2E_PORT`) builds and starts the E2E server in the
+     background: the default mode's chain, env, database and HTTPS proxy.
+  2. From `apps/saas`, run each file against it:
+     `E2E_REUSE=1 pnpm exec playwright test <file> --workers=1`.
+  3. After an app change, it refuses with "app code changed since the build: rerun
+     scripts/e2e-server.sh": rerun it. A change under `tests/` alone (a spec, a support helper)
+     runs as is.
+  4. `scripts/e2e-server.sh --status` says whether it is up and current;
+     `scripts/e2e-server.sh --stop` when you're done.
+
+  The database is seeded once per build, as in one CI run, so specs that pass in CI pass here.
 - Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (`test`, `expect`, the
   `admin` fixture: create offices, invite, clean up), `session-state.ts` (`signInContext`), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
   `offices.ts`, `operators.ts` (`joinOffice`), `data.ts` (`uniqueEmail`), `seed.ts` (seed
