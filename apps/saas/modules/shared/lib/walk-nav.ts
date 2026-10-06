@@ -2,20 +2,32 @@ import { isAdminPath, isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 
 /**
  * The sidebar, stated directly. Inbox is the agent's job and Home the numbers screen
- * (ADR 0001). No placeholders: a later feature appears only under PRODUCT.md's "Coming
- * soon" rule, where it will live. Admin is the kit's admin area, where Nhịp creates
- * offices and invites agents (ADR 0010), and it is only listed for a platform admin.
- * Account settings is reached from the user row in the footer, and its sections appear
- * there while a settings page is active.
+ * (ADR 0001). A later feature appears only under PRODUCT.md's "Coming soon" rule, where it will
+ * live: International (foreigners' documents in Vietnam) sits under Inbox, disabled, and links
+ * nowhere (#208). Admin is the kit's admin area, where Nhịp creates offices and invites agents
+ * (ADR 0010), and it is only listed for a platform admin. Account settings is reached from the
+ * user row in the footer, and its sections appear there while a settings page is active.
  */
-export type WalkNavId = "home" | "inbox" | "admin";
+export type WalkNavId = "home" | "inbox" | "international" | "admin";
 
-export type WalkNavItem = {
-	id: WalkNavId;
+export type WalkNavLink = {
+	id: Exclude<WalkNavId, "international">;
 	href: string;
 	iconName: "home" | "inbox" | "shield";
 	isActive: boolean;
+	comingSoon?: never;
 };
+
+/** A later feature shown where it will live, disabled: no link, never active. */
+export type WalkNavComingSoon = {
+	id: "international";
+	href: null;
+	iconName: "globe";
+	isActive: false;
+	comingSoon: true;
+};
+
+export type WalkNavItem = WalkNavLink | WalkNavComingSoon;
 
 export type SettingsSection = {
 	id: "general" | "security" | "notifications" | "billing";
@@ -55,6 +67,7 @@ export function buildWalkNav(
 			iconName: "inbox",
 			isActive: isInboxPath(pathname),
 		},
+		{ id: "international", href: null, iconName: "globe", isActive: false, comingSoon: true },
 	];
 }
 

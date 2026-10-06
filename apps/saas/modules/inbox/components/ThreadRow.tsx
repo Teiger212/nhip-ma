@@ -29,6 +29,19 @@ export function ThreadRow({
 	const preview = conversation.lastInboundText;
 	const name = displayName(conversation);
 	const when = conversation.lastGuestInboundAt;
+	// From `md` an action shows only on the row's hover, on focus within it, on the selected row
+	// and while its menu is open; it then takes the time's place, and the name ends before it so
+	// it is never under the pill (#208). Below `md` nothing hovers: it is always there.
+	const shown = !action
+		? null
+		: active
+			? { line: "md:pr-24", time: "md:hidden", action: "" }
+			: {
+					line: "md:group-hover:pr-24 md:group-focus-within:pr-24 md:group-has-data-popup-open:pr-24",
+					time: "md:group-hover:hidden md:group-focus-within:hidden md:group-has-data-popup-open:hidden",
+					action:
+						"md:invisible md:group-hover:visible md:group-focus-within:visible md:has-data-popup-open:visible",
+				};
 	return (
 		// The row stays lit while the pointer is on its action, which sits over it.
 		<li className="group relative">
@@ -43,13 +56,14 @@ export function ThreadRow({
 			>
 				<GuestMark name={name} selected={active} />
 				<span className="min-w-0 flex-1">
-					<span
-						className={cn("gap-2 flex w-full items-baseline justify-between", action && "md:pr-24")}
-					>
+					<span className={cn("gap-2 flex w-full items-baseline justify-between", shown?.line)}>
 						<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
 						{when ? (
 							<time
-								className="text-micro shrink-0 text-muted-foreground tabular-nums"
+								className={cn(
+									"text-micro shrink-0 text-muted-foreground tabular-nums",
+									shown?.time,
+								)}
 								dateTime={when}
 							>
 								{formatInboxTimestamp(when, locale)}
@@ -71,7 +85,14 @@ export function ThreadRow({
 			{/* A phone: its 44px target centred on the badges' last line. From `md`: the 24px pill
 			    on the name's line, so the badges keep the row's whole width. */}
 			{action ? (
-				<div className="right-1.5 bottom-0 md:top-2.5 md:bottom-auto absolute">{action}</div>
+				<div
+					className={cn(
+						"right-1.5 bottom-0 md:top-2.5 md:bottom-auto absolute whitespace-nowrap",
+						shown?.action,
+					)}
+				>
+					{action}
+				</div>
 			) : null}
 		</li>
 	);

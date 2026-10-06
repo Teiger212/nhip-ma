@@ -28,20 +28,27 @@ import {
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { UserMenu } from "@shared/components/UserMenu";
 import { KIT_SCREENS } from "@shared/lib/kit-screens";
-import { HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
+import { GlobeIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { buildSettingsSections, buildWalkNav, type WalkNavItem } from "../lib/walk-nav";
+import {
+	buildSettingsSections,
+	buildWalkNav,
+	type WalkNavComingSoon,
+	type WalkNavLink,
+} from "../lib/walk-nav";
 
 const NAV_ICONS = {
 	home: HomeIcon,
 	inbox: InboxIcon,
+	globe: GlobeIcon,
 	shield: ShieldCheckIcon,
 } as const;
 
 const NAV_LABEL_KEYS = {
 	home: "app.menu.home",
 	inbox: "app.menu.inbox",
+	international: "app.menu.international",
 	admin: "app.menu.admin",
 } as const;
 
@@ -60,7 +67,7 @@ function NavItemLink({
 	count,
 	countLabel,
 }: {
-	item: WalkNavItem;
+	item: WalkNavLink;
 	label: string;
 	onNavigate?: () => void;
 	showLabel: boolean;
@@ -93,6 +100,33 @@ function NavItemLink({
 				</LocaleLink>
 			)}
 		/>
+	);
+}
+
+/**
+ * A later feature where it will live (PRODUCT.md, the Coming soon rule): disabled, linking
+ * nowhere, with a neutral "Coming soon" badge where a link's count would sit.
+ */
+function NavItemComingSoon({
+	item,
+	label,
+	soon,
+	showLabel,
+}: {
+	item: WalkNavComingSoon;
+	label: string;
+	soon: string;
+	showLabel: boolean;
+}) {
+	const Icon = NAV_ICONS[item.iconName];
+	return (
+		<SidebarMenuButton variant="chip" disabled aria-disabled data-test={`nav-${item.id}`}>
+			<Icon />
+			<span className={cn(!showLabel && "sr-only")}>{label}</span>
+			<span className={cn("ml-auto", !showLabel && "sr-only")}>
+				<Badge>{soon}</Badge>
+			</span>
+		</SidebarMenuButton>
 	);
 }
 
@@ -168,16 +202,25 @@ export function NavBar() {
 						<SidebarMenu>
 							{items.map((item) => (
 								<SidebarMenuItem key={item.id}>
-									<NavItemLink
-										item={item}
-										label={t(NAV_LABEL_KEYS[item.id])}
-										onNavigate={closeMobileNav}
-										showLabel={showLabels}
-										count={item.id === "inbox" ? yourTurnCount : null}
-										countLabel={
-											yourTurnCount ? t("inbox.queueCount", { count: yourTurnCount }) : undefined
-										}
-									/>
+									{item.comingSoon ? (
+										<NavItemComingSoon
+											item={item}
+											label={t(NAV_LABEL_KEYS[item.id])}
+											soon={t("app.menu.comingSoon")}
+											showLabel={showLabels}
+										/>
+									) : (
+										<NavItemLink
+											item={item}
+											label={t(NAV_LABEL_KEYS[item.id])}
+											onNavigate={closeMobileNav}
+											showLabel={showLabels}
+											count={item.id === "inbox" ? yourTurnCount : null}
+											countLabel={
+												yourTurnCount ? t("inbox.queueCount", { count: yourTurnCount }) : undefined
+											}
+										/>
+									)}
 								</SidebarMenuItem>
 							))}
 						</SidebarMenu>

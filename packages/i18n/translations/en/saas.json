@@ -169,6 +169,7 @@
 			"home": "Home",
 			"inbox": "Inbox",
 			"international": "International",
+			"comingSoon": "Coming soon",
 			"groupWorkspace": "Workspace",
 			"groupAccount": "Account"
 		},
@@ -929,6 +930,13 @@
 			"all": "All"
 		},
 		"queueCount": "{count, plural, =0 {No guest is waiting on you} one {# guest is waiting on you} other {# guests are waiting on you}}",
+		"managerCount": {
+			"waitingOffice": "{count} waiting in the office",
+			"waitingOn": "{count} waiting on {name}",
+			"unassigned": "{count} unassigned",
+			"sent": "{count} sent",
+			"all": "{count, plural, one {# thread} other {# threads}}"
+		},
 		"allCaughtUp": "All caught up.",
 		"allAssigned": "Every lead is assigned.",
 		"viewSent": "View sent",

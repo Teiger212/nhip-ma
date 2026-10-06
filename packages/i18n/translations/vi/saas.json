@@ -169,6 +169,7 @@
 			"home": "Trang chủ",
 			"inbox": "Hộp thư",
 			"international": "Quốc tế",
+			"comingSoon": "Sắp ra mắt",
 			"groupWorkspace": "Không gian làm việc",
 			"groupAccount": "Tài khoản"
 		},
@@ -929,6 +930,13 @@
 			"all": "Tất cả"
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
+		"managerCount": {
+			"waitingOffice": "{count} khách đang chờ trong văn phòng",
+			"waitingOn": "{count} khách đang chờ {name}",
+			"unassigned": "{count} chưa giao",
+			"sent": "{count} đã gửi",
+			"all": "{count} cuộc trò chuyện"
+		},
 		"allCaughtUp": "Đã xử lý hết.",
 		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",

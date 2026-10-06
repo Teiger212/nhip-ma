@@ -345,6 +345,64 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     guest, so the manager's expected order (both Unassigned oldest first, then agent 1's) is
     neither oldest-first nor newest-first overall; nameless Zalo guests are listed by their id).
 
+## Inbox polish (#208)
+
+What the UI walk found in a manager's Inbox, as decided by Eyal on #208. A guest with a long name
+is a WhatsApp guest whose profile name is 40 characters.
+
+1. **The view tabs stay put.** A manager at a desk switches Unassigned → Your turn → Sent → All
+   → back to Unassigned. The view tabs and the search field stay where they were: neither moves
+   up or down. (Before #208, the "Showing" filter appeared above the search field in every view
+   but Unassigned, and the tabs jumped 44px.)
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 1; an office of the test's own with
+   an invited manager and three Unassigned guests, so no banner another spec raises in an office
+   moves the list while it is measured; at 1280×720; "where they were" is the top edge of the
+   Your turn tab and of the search field, the same to the pixel in every view as on Unassigned).
+2. **A manager's "Assign to…" shows when it's wanted.** On a manager's Unassigned rows, from
+   `md` (768px) up:
+   - A row that is not selected, not hovered and has no keyboard focus hides its "Assign to…".
+   - Pointing at the row shows it; the pointer gone, it hides again.
+   - Tabbing onto the row shows it, and the next Tab lands on "Assign to…" itself.
+   - The selected row shows it without any pointer or focus.
+   - While its menu is open, it stays shown.
+   - When it shows, it never covers the guest's name, however long.
+
+   On a phone it shows on every Unassigned row with no pointer, as a 44px target, and doesn't
+   cover the name either.
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 2; an office of the test's own with
+   an invited manager and three Unassigned guests with long names, written one, two and three
+   minutes ago, so they are listed oldest first. "Not selected" rows are those above a thread
+   opened by its `?thread=` link, with the pointer at the window's corner and nothing focused.
+   Hover, selection and the name are checked at 1280 and at 768px; keyboard and the open menu
+   at 1280. "Focus" is Tab from the search field to the first row; after Assign to…, the next Tab
+   reaches the next row, which shows its own while the first hides it. "Selected" is by link and
+   by a click on the row, after which the pointer and focus move to the search field. "Never
+   covers" is the pill's box and the name's box not overlapping, on the hovered and the selected
+   row. The phone is 390×844, its pills at least 44px tall. Before #208 the phone already
+   passed: a guard).
+
+3. **The count line under the tabs says what each view holds.** For a manager, per view:
+   - Unassigned: "{u} unassigned · {w} waiting in the office"
+   - Your turn: "{w} waiting in the office"
+   - Sent: "{s} sent · {w} waiting in the office"
+   - All: "{a} threads · {w} waiting in the office" ("1 thread" for one)
+
+   u is the Unassigned threads, w the office's Your turn threads, s the Sent threads and a all
+   threads. That w counts the Unassigned guests waiting too, as the manager's Your turn tab does,
+   is the test author's reading of #208, pending Eyal's confirmation: if w means only the guests
+   waiting on agents, every manager line in the spec changes. With
+   the "Showing" filter on an operator, the counts are that operator's threads and "waiting in the
+   office" becomes "waiting on <their name>". An agent's line is unchanged: "N guests are waiting
+   on you" ("1 guest is waiting on you"), the same in every view.
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 3; an office of the test's own with
+   an invited manager and two invited agents, each with a name of their own. Two guests wait
+   Unassigned; agent A holds three guests and has answered one through the Inbox; agent B holds
+   one, waiting. The office reads u 2, w 5, s 1, a 6, checked first on the view tabs; agent A
+   reads 2 waiting, 1 sent, 3 threads, judged on Your turn, Sent and All; agent B is "1 thread · 1
+   waiting on <B>". The agents' lines are "2 guests are waiting on you" and "1 guest is waiting on
+   you" in each of their views. The wording is #208's, written out in `tests/support/copy.ts`,
+   not read from the app's strings).
+
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
 1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,
