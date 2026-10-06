@@ -775,6 +775,15 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 			rowOf(page, guest).getByTestId("thread-status"),
 			"the guest who wrote again is Your turn",
 		).toHaveText(crmCopy.yourTurn);
+		// A second office on the mock CRM, only as a clock: once its guest, who writes after this
+		// one, is a lead, the background work for this guest's message has had its chance.
+		const clock = await newOffice("CRM 3 lost clock", { crm: "mock", agent: false });
+		const clockGuest = await clock.newGuest();
+		await expectLeadAppears(
+			clock.id,
+			clockGuest,
+			"lead writing ran: a later guest of another office became a lead",
+		);
 		expect(
 			(await leadsOf(office.id, guest))[0].outcome,
 			"the CRM still holds the lead as lost: Nhịp does not reopen it",

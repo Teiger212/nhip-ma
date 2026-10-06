@@ -20,13 +20,14 @@ import type { Readable, Writable } from "node:stream";
 /** Marks the process's own lines on stdout; anything else there is passed through. */
 const ANSWER = "@@state ";
 
-/** How long the process may take to load tsx, Prisma and Better Auth. */
-const BOOT_TIMEOUT_MS = 20_000;
-
 /**
- * How long one answer may take: a query takes milliseconds. Below Playwright's 30 s test
- * timeout, so a stuck call fails naming itself, not as a bare test timeout.
+ * How long the process may take to load tsx, Prisma and Better Auth (about 2 s on CI). With
+ * ANSWER_TIMEOUT_MS, below Playwright's 30 s test timeout, so a stuck first call fails naming
+ * itself, not as a bare test timeout.
  */
+const BOOT_TIMEOUT_MS = 15_000;
+
+/** How long one answer may take: a query takes milliseconds. */
 const ANSWER_TIMEOUT_MS = 10_000;
 
 type Answer = { id: number; result?: unknown; error?: string };
@@ -39,6 +40,8 @@ type StateProcess = {
 	ready: Promise<void>;
 	/** Why it can no longer answer, once it can't. */
 	dead?: string;
+	/** Fails every waiter with `reason` and ends the process. */
+	end: (reason: string) => void;
 };
 
 /** This worker's state process, started on first use, and again if it died. */
@@ -60,8 +63,11 @@ function stateProcess(): StateProcess {
 		ready: new Promise<void>((resolve) => {
 			loaded = resolve;
 		}),
+		end: () => {},
 	};
 	// Every waiter fails with the reason, rather than the test timing out with nothing to go on.
+	// Closing its stdin also ends the script itself if only tsx's wrapper died: tsx runs it in a
+	// child node of its own, which exits when stdin closes.
 	const die = (reason: string) => {
 		proc.dead ??= reason;
 		for (const [id, settle] of proc.waiting) {
@@ -69,6 +75,11 @@ function stateProcess(): StateProcess {
 		}
 		proc.waiting.clear();
 		loaded();
+		child.stdin.destroy();
+	};
+	proc.end = (reason) => {
+		die(reason);
+		child.kill();
 	};
 	readline.createInterface({ input: child.stdout }).on("line", (line) => {
 		if (!line.startsWith(ANSWER)) {
@@ -79,8 +90,7 @@ function stateProcess(): StateProcess {
 		try {
 			answer = JSON.parse(line.slice(ANSWER.length)) as Answer & { ready?: true };
 		} catch {
-			die(`answered something unreadable: ${line.slice(0, 200)}`);
-			child.kill();
+			proc.end(`answered something unreadable: ${line.slice(0, 200)}`);
 			return;
 		}
 		if (answer.ready) {
@@ -131,8 +141,7 @@ export async function askState<T = void>(command: string, ...args: string[]): Pr
 		);
 	} catch (error) {
 		// A process that never loads is ended, so the next call starts a new one.
-		proc.dead ??= `did not start in ${BOOT_TIMEOUT_MS / 1000} s`;
-		proc.child.kill();
+		proc.end(`did not start in ${BOOT_TIMEOUT_MS / 1000} s`);
 		throw new Error(`${call}: ${error instanceof Error ? error.message : String(error)}`);
 	}
 	if (proc.dead) throw new Error(`${call}: the state process ${proc.dead}`);
@@ -141,8 +150,7 @@ export async function askState<T = void>(command: string, ...args: string[]): Pr
 		const timer = setTimeout(() => {
 			proc.waiting.delete(id);
 			// A process that stops answering is ended, so the next call starts a new one.
-			proc.dead ??= `stopped answering (${call})`;
-			proc.child.kill();
+			proc.end(`stopped answering (${call})`);
 			resolve({ id, error: `the state process did not answer in ${ANSWER_TIMEOUT_MS / 1000} s` });
 		}, ANSWER_TIMEOUT_MS);
 		proc.waiting.set(id, (settled) => {

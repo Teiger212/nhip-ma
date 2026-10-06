@@ -38,35 +38,44 @@ const COMMANDS: Record<string, (...args: string[]) => Promise<unknown>> = {
 
 type Request = { id: number; command: string; args: string[] };
 
-function answer(body: Record<string, unknown>) {
-	process.stdout.write(`${ANSWER}${JSON.stringify(body)}\n`);
-}
-
-function parse(line: string): Request {
-	const request = JSON.parse(line) as Partial<Request>;
-	if (
-		typeof request.id !== "number" ||
-		typeof request.command !== "string" ||
-		!Array.isArray(request.args) ||
-		!request.args.every((arg) => typeof arg === "string")
-	) {
-		throw new Error(`not a request: ${line.slice(0, 200)}`);
+/** Writes one answer; a result JSON cannot carry becomes the call's error, not a crash. */
+function answer(body: { id?: number; result?: unknown; error?: string; ready?: true }) {
+	let line: string;
+	try {
+		line = JSON.stringify(body);
+	} catch (error) {
+		line = JSON.stringify({
+			id: body.id,
+			error: `its result is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+		});
 	}
-	return request as Request;
+	process.stdout.write(`${ANSWER}${line}\n`);
 }
 
 const lines = readline.createInterface({ input: process.stdin });
 lines.on("line", (line) => {
 	if (!line.trim()) return;
-	let request: Request;
+	let request: Partial<Request>;
 	try {
-		request = parse(line);
-	} catch (error) {
+		request = JSON.parse(line) as Partial<Request>;
+	} catch {
 		// No id to answer: the caller's own timeout names the call.
-		console.error("state-process:", error instanceof Error ? error.message : error);
+		console.error(`state-process: not JSON: ${line.slice(0, 200)}`);
 		return;
 	}
 	const { id, command, args } = request;
+	if (typeof id !== "number") {
+		console.error(`state-process: a request with no id: ${line.slice(0, 200)}`);
+		return;
+	}
+	if (
+		typeof command !== "string" ||
+		!Array.isArray(args) ||
+		!args.every((arg) => typeof arg === "string")
+	) {
+		answer({ id, error: `not a request (its arguments must be strings): ${line.slice(0, 200)}` });
+		return;
+	}
 	const run = COMMANDS[command];
 	if (!run) {
 		answer({ id, error: `unknown command ${command}` });
