@@ -44,6 +44,10 @@ if tool == "Bash":
             words = words[1:]  # E2E_PORT=3100 and the like
         if not words or (words[0] == "cd" and len(words) == 2):
             continue
+        # The build-once E2E server (#205): start it, check it, stop it; nothing else.
+        script = os.path.realpath(os.path.join(cwd, words[0]))
+        if script == os.path.join(checkout_of(cwd), "scripts", "e2e-server.sh") and all(w in ("--status", "--stop") for w in words[1:]):
+            continue
         runs_playwright = any(tuple(words[: len(prefix)]) == prefix for prefix in playwright)
         own_config = all(
             os.path.basename(word.split("=", 1)[-1]) in configs
@@ -51,7 +55,7 @@ if tool == "Bash":
             if word.startswith("--config") or (i > 0 and words[i - 1] in ("-c", "--config"))
         ) and "-c" not in words[-1:] and "--config" not in words[-1:]
         if not (tuple(words) in exact or (runs_playwright and own_config)):
-            refuse(f"test-author runs only Playwright, lint, format, type-check and git status, not: {segment.strip()}. Read and write files with the file tools.")
+            refuse(f"test-author runs only Playwright, scripts/e2e-server.sh, lint, format, type-check and git status, not: {segment.strip()}. Read and write files with the file tools.")
     sys.exit(0)
 
 raw = inp.get("file_path") or inp.get("path") or cwd
