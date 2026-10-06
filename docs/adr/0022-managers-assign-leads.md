@@ -2,7 +2,8 @@
 
 Date: 2026-10-05. Status: accepted. Supersedes ADR 0015's "Pool, then owner": the pool every agent
 sees, and the claim by first answer for agents. Amends ADR 0019's "Who". Keeps the rest of ADR 0015. Decided in the grill of 2026-10-05 (`reports/grill-prep/first-touch-and-assignment.md`:
-M1–M3, R5, R6, and round 4's P1, P4 and S2).
+M1–M3, R5, R6, and round 4's P1, P4 and S2). A manager's count line and turn chip are amended
+below (2026-10-06).
 
 ## Context
 
@@ -112,3 +113,23 @@ Two things have changed since:
 ## Open
 
 None. P1, P4 and S2 were decided in round 4 (2026-10-05).
+
+## Amendment (2026-10-06): a manager's count line, turn chip and Waiting view
+
+Decided in the grill of 2026-10-06, from Eyal's UI walk of main (Q1, Q2, Q15, Q16).
+
+- **The count line (Q1, #208).** A manager's count line under the Inbox's view tabs reads, for
+  example, "4 unassigned · 6 waiting in the office".
+  - "Waiting in the office" includes the unassigned guests.
+  - Built for #208 in PR #209 (open when this was written), with wording per view.
+  - Agents keep "N guests are waiting on you".
+- **The turn chip (Q2, #212).** A manager sees "Your turn" only on the threads they own.
+  - On a thread another operator owns, and on an Unassigned thread, the chip reads
+    **"Waiting"**.
+  - Agents are unchanged: every thread they see is their own.
+- **The manager's view is named "Waiting" (Q15, #210).** A manager's view of every guest the
+  office owes a reply is labelled **"Waiting N"**, not "Your turn N". It holds the same
+  threads, and its count is the same office-wide number as the nav badge, the tab title and the
+  count line. Agents keep "Your turn".
+- **The office Billing page is hidden (Q16, #210).** It goes in `kit-screens.ts` with the
+  account Billing page, hidden and not deleted, until ADR 0014's billing is built (#198).
