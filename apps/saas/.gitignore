@@ -38,3 +38,5 @@ next-env.d.ts
 
 .content-collections
 /playwright/.auth
+# The E2E server's state for E2E_REUSE (scripts/e2e-server.sh): it holds a VAPID private key.
+/.e2e-server

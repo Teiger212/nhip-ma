@@ -5,18 +5,31 @@ import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import { generateVAPIDKeys } from "web-push";
 
+import { assertReusable, readServerState } from "./tests/support/e2e-reuse";
+
 /**
- * Two ways to run (AGENTS.md, "Test quality"):
+ * Three ways to run (AGENTS.md, "Test quality"):
  * - Default (CI and before merge): a production build on :3000 with `.env.e2e`, against its
  *   own `supastarter_e2e` database, pushed and seeded fresh.
+ * - `E2E_REUSE=1` (#205): the default mode against the build `scripts/e2e-server.sh` started,
+ *   so many spec files share one build. It refuses a build of other app code.
  * - `E2E_BASE_URL=http://localhost:3010`: fast iteration against a running dev server; no
  *   build. The final `--repeat-each=3` check still runs the default way.
  */
 const devServer = process.env.E2E_BASE_URL;
+const reuse = process.env.E2E_REUSE === "1" ? readServerState() : undefined;
+if (process.env.E2E_REUSE === "1" && !reuse) {
+	throw new Error("E2E_REUSE: no E2E server is running: run scripts/e2e-server.sh");
+}
+if (reuse && devServer) {
+	throw new Error("E2E_REUSE and E2E_BASE_URL name two different servers: set one");
+}
+/** A server is already up (a dev server, or E2E_REUSE's build): Playwright starts none. */
+const serverRunning = Boolean(devServer || reuse);
 /** Port for the production build (default 3000, as in CI); set E2E_PORT when 3000 is taken. */
-const e2ePort = Number(process.env.E2E_PORT ?? 3000);
+const e2ePort = reuse?.port ?? Number(process.env.E2E_PORT ?? 3000);
 /** The app is reached over HTTPS, as when hosted: a local proxy in front of the build. */
-const httpsPort = Number(process.env.E2E_HTTPS_PORT ?? e2ePort + 443);
+const httpsPort = reuse?.httpsPort ?? Number(process.env.E2E_HTTPS_PORT ?? e2ePort + 443);
 const e2eUrl = `https://localhost:${httpsPort}`;
 // The test-only auth instance (tests/support/test-auth.ts) mints sessions for the server under
 // test, so the runner needs that server's database, secret and URL: dev's for a dev server.
@@ -28,7 +41,12 @@ if (devServer) {
 	process.env.NEXT_PUBLIC_SAAS_URL = e2eUrl;
 	// Web push's VAPID pair is made fresh for every run (#135), here and so in CI, and never
 	// committed: only its subject is in .env.e2e. The runner sets it once; its workers and the
-	// web server inherit it, so they all share the one pair.
+	// web server inherit it, so they all share the one pair. E2E_REUSE takes the running
+	// server's pair.
+	if (reuse) {
+		process.env.VAPID_PUBLIC_KEY = reuse.vapid.publicKey;
+		process.env.VAPID_PRIVATE_KEY = reuse.vapid.privateKey;
+	}
 	if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
 		const pair = generateVAPIDKeys();
 		process.env.VAPID_PUBLIC_KEY = pair.publicKey;
@@ -48,6 +66,10 @@ if (devServer) {
 			url.pathname = "/supastarter_e2e";
 			process.env.DATABASE_URL = url.toString();
 		}
+	}
+	// Up, and built from the app source and env there are now: never test stale code.
+	if (reuse) {
+		assertReusable(reuse);
 	}
 }
 
@@ -88,7 +110,7 @@ export default defineConfig({
 			dependencies: ["setup"],
 		},
 	],
-	webServer: devServer
+	webServer: serverRunning
 		? undefined
 		: [
 				{

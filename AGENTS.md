@@ -135,6 +135,16 @@ sounds once, and signing out stops the alerts.
   E2E exception. `E2E_PORT` moves both ports (HTTPS is `E2E_PORT + 443`).
   `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast
   iteration.
+- Build once, run many spec files (#205): `scripts/e2e-server.sh` (with `E2E_PORT` if 3000 is
+  taken) runs that same chain and the proxy in the background, then
+  `E2E_REUSE=1 pnpm --filter saas exec playwright test <file>` runs each spec file against it,
+  with the default mode's env and no build. It refuses ("app code changed since the build:
+  rerun scripts/e2e-server.sh") once the app source differs from the build's (`apps/saas`
+  outside `tests/`, `packages/`, `tooling/`, `.env.e2e`, the lockfile; committed or not), so
+  rebuild after an app change; a change under `tests/` alone needs none. It also refuses when
+  the server is down, the env changed, or another build in the worktree replaced `.next`. The database is
+  seeded once per build, as in one CI run. `--status` says whether it is up and current;
+  `--stop` stops it when you're done. CI and the default mode still build fresh every run.
 - After every staging deploy, `.github/workflows/staging-smoke.yml` runs the read-only
   staging smoke (`pnpm --filter saas smoke`, `tests/smoke/`) against the deployment.
   The same suite gates production as a Vercel Deployment Check
