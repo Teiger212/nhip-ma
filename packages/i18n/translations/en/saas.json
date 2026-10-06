@@ -169,6 +169,7 @@
 			"home": "Home",
 			"inbox": "Inbox",
 			"international": "International",
+			"comingSoon": "Coming soon",
 			"groupWorkspace": "Workspace",
 			"groupAccount": "Account"
 		},
@@ -179,6 +180,7 @@
 			"home": "Home",
 			"language": "Language",
 			"logout": "Log out",
+			"officeSettings": "Office settings",
 			"team": "Team"
 		},
 		"notifications": {
@@ -376,12 +378,22 @@
 			}
 		},
 		"settings": {
+			"autoReply": {
+				"error": "Couldn't save the auto-reply setting. Try again.",
+				"hint": "Sent within seconds, signed by the office, to guests who first write while it's on. Every other reply still waits for your team's approval.",
+				"loadError": "Couldn't load the auto-reply setting. Reload the page to try again.",
+				"off": "Off",
+				"on": "On",
+				"title": "Auto-reply to a new guest's first message",
+				"turnedOff": "Auto-reply is off",
+				"turnedOn": "Auto-reply is on for new guests"
+			},
 			"changeName": {
 				"notifications": {
 					"error": "Could not update organization name",
 					"success": "Organization name was updated successfully"
 				},
-				"title": "Organization name"
+				"title": "Office name"
 			},
 			"deleteOrganization": {
 				"confirmation": "Are you sure you want to delete your organization?",
@@ -489,8 +501,8 @@
 				"organizationNameUpdated": "Your organization name has been updated.",
 				"organizationNotDeleted": "We were unable to delete your organization. Please try again later."
 			},
-			"subtitle": "Manage the settings of the organization.",
-			"title": "Organization",
+			"subtitle": "Manage your office's settings.",
+			"title": "Office",
 			"dangerZone": {
 				"title": "Danger zone"
 			}
@@ -930,6 +942,14 @@
 			"all": "All"
 		},
 		"queueCount": "{count, plural, =0 {No guest is waiting on you} one {# guest is waiting on you} other {# guests are waiting on you}}",
+		"managerCount": {
+			"line": "{view} · {waiting}",
+			"waitingOffice": "{count} waiting in the office",
+			"waitingOn": "{count} waiting on {name}",
+			"unassigned": "{count} unassigned",
+			"sent": "{count} sent",
+			"all": "{count, plural, one {# thread} other {# threads}}"
+		},
 		"allCaughtUp": "All caught up.",
 		"allAssigned": "Every lead is assigned.",
 		"viewSent": "View sent",
@@ -959,6 +979,7 @@
 		},
 		"crm": {
 			"inCrm": "In CRM: {name}",
+			"notInCrmYet": "Not in CRM yet",
 			"won": "Won",
 			"lost": "Lost"
 		},

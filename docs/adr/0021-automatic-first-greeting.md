@@ -3,7 +3,8 @@
 Date: 2026-10-05. Status: accepted. Amends CONTEXT's "Not a guest-facing bot", ADR 0005's "Never
 auto-send" and ADR 0006's per-message approval, for exactly one message per thread. Decided in
 the grill of 2026-10-05 (`reports/grill-prep/first-touch-and-assignment.md`: G1–G6, R2–R4,
-R7–R11, and round 4's P2, P3 and S1).
+R7–R11, and round 4's P2, P3 and S1). Where the switch lives is decided in the amendment below
+(2026-10-06).
 
 ## Context
 
@@ -211,5 +212,12 @@ tell a name.
 - **The label's wording and position.** For the lawyer.
 - **The opt-out.** How a guest opts out of automated processing (Decree 356): through the
   agency, by a reply, or not at all. This is for the lawyer.
-- **Where the switch lives.** Proposed: the kit's office settings page (Settings → General),
-  managers only.
+- **Where the switch lives.** Decided 2026-10-06: see the amendment below.
+
+## Amendment (2026-10-06, #167): where the switch lives
+
+Decided in the grill of 2026-10-06 (Q6). It answers the open question above.
+
+- **The office's settings page, General tab, managers only.** The auto-reply switch is a row
+  there.
+- **The way in:** the user menu's "Office settings", next to Team.

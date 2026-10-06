@@ -48,6 +48,27 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 4. **A failed CRM write heals** (#64). With the mock CRM failing, a new guest's message still
    arrives and is in Your turn at once; the manager sees "Not in CRM yet". When the CRM
    recovers, the lead appears and the thread says "In CRM".
+
+   4a. **A missing lead says so, and heals when the thread is opened** (#211, before go-live;
+   healing with nobody opening the thread is CRM 4's, #64). An office on the mock CRM, the CRM
+   down when a new guest first writes on Zalo: the message still arrives and the thread is in
+   Your turn. The manager assigns it to the agent, who opens it: its header says "Not in CRM
+   yet", neutral like the pipe badge beside it, never red; the manager sees the same on that
+   thread. No lead is in the CRM. Once the CRM works again and Nhịp's wait before trying again
+   has passed, opening the thread writes the lead: within a poll the header says "In CRM: <the
+   guest's name>", and the CRM holds exactly one lead for the guest. An office with no CRM shows
+   no CRM status on a new guest's thread, neither "Not in CRM yet" nor "In CRM", to the agent
+   or the manager.
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 4a; offices of the test's own, as in CRM 1; the CRM
+   is down from before the guest's first message (`takeMockCrmDown`) and back with
+   `bringMockCrmBack`; the wait is made over with `passCrmRetryWait`, which retries nothing by
+   itself; "Not in CRM yet" is seen before the CRM comes back, so the heal is the opening's;
+   "neutral" is the tone of the thread header's pipe badge; "no lead" is judged once the header
+   says "Not in CRM yet", "exactly one lead" once a later guest's lead has arrived; "no CRM
+   status" once the guest's second message shows in the open thread. Not judged: that Nhịp
+   waits before trying again (no sign settles that a retry did not happen), so a build that
+   retries on every poll passes).
+
 5. **The reconcile catches a missed outcome** (#67). A lead marked lost with no notice to Nhịp
    is resolved after the reconcile runs.
 6. **Home counts deals from the CRM** (#68). Home shows Closings and Lost "as of" the last check,
@@ -382,8 +403,8 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN and VI; an office of the test's
    own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
    The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
-   title and the count line, judged by the waiting number and its noun ("3 guests" or, after #208, "3 waiting"; VI "3 khách"). Waiting
-   lists exactly the three guests owed a reply. The agent's tabs read Your turn 1, Sent 1, All 2,
+   title, and the count line is #208's manager line on Unassigned, "2 unassigned · 3 waiting in the
+   office" (VI "2 khách chưa giao · 3 khách đang chờ văn phòng"). Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1, Sent 1, All 2,
    their nav reads 1, and Your turn lists only their guest).
 
 ## Hidden kit screens (#210)
@@ -401,6 +422,64 @@ gives the not-found page. The account's Billing page is hidden already.
    and VI, the agent in EN. The account's page is read first, as the reference, and must itself
    be the 404 not-found page. The comparison is of the not-found content, not the page's
    surroundings: the account's settings carry their own menu).
+
+## Inbox polish (#208)
+
+What the UI walk found in a manager's Inbox, as decided by Eyal on #208. A guest with a long name
+is a WhatsApp guest whose profile name is 40 characters.
+
+1. **The view tabs stay put.** A manager at a desk switches Unassigned → Waiting → Sent → All
+   → back to Unassigned. The view tabs and the search field stay where they were: neither moves
+   up or down. (Before #208, the "Showing" filter appeared above the search field in every view
+   but Unassigned, and the tabs jumped 44px.)
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 1; an office of the test's own with
+   an invited manager and three Unassigned guests, so no banner another spec raises in an office
+   moves the list while it is measured; at 1280×720; "where they were" is the top edge of the
+   Waiting tab and of the search field, the same to the pixel in every view as on Unassigned).
+2. **A manager's "Assign to…" shows when it's wanted.** On a manager's Unassigned rows, from
+   `md` (768px) up:
+   - A row that is not selected, not hovered and has no keyboard focus hides its "Assign to…".
+   - Pointing at the row shows it; the pointer gone, it hides again.
+   - Tabbing onto the row shows it, and the next Tab lands on "Assign to…" itself.
+   - The selected row shows it without any pointer or focus.
+   - While its menu is open, it stays shown.
+   - When it shows, it never covers the guest's name, however long.
+
+   On a phone it shows on every Unassigned row with no pointer, as a 44px target, and doesn't
+   cover the name either.
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 2; an office of the test's own with
+   an invited manager and three Unassigned guests with long names, written one, two and three
+   minutes ago, so they are listed oldest first. "Not selected" rows are those above a thread
+   opened by its `?thread=` link, with the pointer at the window's corner and nothing focused.
+   Hover, selection and the name are checked at 1280 and at 768px; keyboard and the open menu
+   at 1280. "Focus" is Tab from the search field to the first row; after Assign to…, the next Tab
+   reaches the next row, which shows its own while the first hides it. "Selected" is by link and
+   by a click on the row, after which the pointer and focus move to the search field. "Never
+   covers" is the pill's box and the name's box not overlapping, on the hovered and the selected
+   row. The phone is 390×844, its pills at least 44px tall. Before #208 the phone already
+   passed: a guard).
+
+3. **The count line under the tabs says what each view holds.** For a manager, per view:
+   - Unassigned: "{u} unassigned · {w} waiting in the office"
+   - Waiting: "{w} waiting in the office"
+   - Sent: "{s} sent · {w} waiting in the office"
+   - All: "{a} threads · {w} waiting in the office" ("1 thread" for one)
+
+   u is the Unassigned threads, w the office's Waiting threads, s the Sent threads and a all
+   threads. That w counts the Unassigned guests waiting too, as the manager's Waiting tab does,
+   is the test author's reading of #208, pending Eyal's confirmation: if w means only the guests
+   waiting on agents, every manager line in the spec changes. With
+   the "Showing" filter on an operator, the counts are that operator's threads and "waiting in the
+   office" becomes "waiting on <their name>". An agent's line is unchanged: "N guests are waiting
+   on you" ("1 guest is waiting on you"), the same in every view.
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 3; an office of the test's own with
+   an invited manager and two invited agents, each with a name of their own. Two guests wait
+   Unassigned; agent A holds three guests and has answered one through the Inbox; agent B holds
+   one, waiting. The office reads u 2, w 5, s 1, a 6, checked first on the view tabs; agent A
+   reads 2 waiting, 1 sent, 3 threads, judged on Waiting, Sent and All; agent B is "1 thread · 1
+   waiting on <B>". The agents' lines are "2 guests are waiting on you" and "1 guest is waiting on
+   you" in each of their views. The wording is #208's, written out in `tests/support/copy.ts`,
+   not read from the app's strings).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
@@ -701,6 +780,15 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - The manager approves a reply: Engaged 1, and the response time runs from the guest's
      first message to that reply.
    - The guest writes again: In conversation 1.
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 3; the guest writes on a
+   WhatsApp number of the office's own, since only WhatsApp takes a backdated message: their
+   first message is written 20 minutes before the manager's reply, approved through the API, so
+   "runs from the first message" is that answered lead in Home's 15–60 min band with none under
+   5 min, which a clock started at the guest's later message would not give; "no answered leads"
+   is Response time's "No lead was answered in this window yet."; the guest's last message is
+   written once the reply's second is over, WhatsApp timing messages in whole seconds).
+
 4. **The guest's language picks the greeting.** Guests write in Vietnamese, Japanese, Korean
    and Russian. Each auto-reply, label included, is in the guest's language: a letter only
    Vietnamese uses, kana, Hangul or Cyrillic. A guest writing "Bonjour, je cherche un
@@ -727,6 +815,12 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    and the box still holds the follow-up template.
    - With a model configured, it would hold the model's follow-up draft. That case is
      covered by Vitest.
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 8; "the follow-up template" is
+   what the reply box holds, as the manager opens it, on another guest's thread who wrote the
+   same, was greeted, got a human reply and wrote the same again; the greeted guest's box must
+   hold exactly that, never text matching "Thanks for writing", on opening the thread and again,
+   reopened, after the guest's second message).
 
 ## Guest deletion (ADR 0020, spec #85)
 

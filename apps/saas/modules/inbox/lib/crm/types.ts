@@ -44,3 +44,21 @@ export type CrmNotice = { account: string; leadIds: string[] };
 
 /** A CRM webhook's request, as its reader needs it: nothing but these is signed. */
 export type CrmWebhookRequest = { method: string; rawBody: string; headers: Headers };
+
+/**
+ * What kind of failure a CRM call was (#211), the only thing a failed lead write is logged with:
+ * never the thread's, the guest's or the CRM's ids, nor the CRM's message, which can echo guest
+ * data (PDPL).
+ */
+export type CrmFailureKind = "timeout" | "auth" | "rejected" | "other";
+
+/** A CRM call that failed, and its kind. Its message names the operation and status only. */
+export class CrmError extends Error {
+	constructor(
+		message: string,
+		readonly kind: CrmFailureKind,
+	) {
+		super(message);
+		this.name = "CrmError";
+	}
+}

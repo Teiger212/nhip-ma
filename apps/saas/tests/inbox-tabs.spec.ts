@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { APIRequestContext, Browser, Page } from "@playwright/test";
 
+import { COUNT_LINE_EN } from "./support/copy";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
@@ -39,13 +40,14 @@ const LABEL = {
 const INBOX = { en: "Inbox", vi: "Hộp thư" } as const;
 
 /**
- * The line under the tabs saying how many guests wait ("3 guests are waiting on you", or a
- * manager's "2 unassigned · 3 waiting in the office" since #208): only the waiting number and
- * its noun are the point here, so the rest may be reworded.
+ * A manager's count line under the tabs on Unassigned, where their Inbox opens: #208's wording,
+ * the view's count then the office's waiting guests ("2 unassigned · 3 waiting in the office").
+ * EN is `COUNT_LINE_EN`'s; VI is spelled out here, pending the #78 review.
  */
-const COUNT_LINE = {
-	en: (n: number) => new RegExp(`(^|\\s)${n} (guests?|waiting)\\b`),
-	vi: (n: number) => new RegExp(`(^|\\s)${n} khách( |$)`),
+const MANAGER_COUNT_LINE = {
+	en: (unassigned: number, waiting: number) => COUNT_LINE_EN.unassigned(unassigned, waiting),
+	vi: (unassigned: number, waiting: number) =>
+		`${unassigned} khách chưa giao · ${waiting} khách đang chờ văn phòng`,
 } as const;
 
 /** Every label a view tab has had, in either language: a tab is one of these and its count. */
@@ -490,7 +492,7 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 				new RegExp(`^\\(3\\) ${INBOX[locale]}( |$)`),
 			);
 			await expect(
-				listPanel(page).getByText(COUNT_LINE[locale](3)),
+				listPanel(page).getByText(MANAGER_COUNT_LINE[locale](2, 3), { exact: true }),
 				"the list's count line counts the same three",
 			).toBeVisible();
 

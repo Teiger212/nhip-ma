@@ -22,6 +22,7 @@ import { UserAvatar } from "@shared/components/UserAvatar";
 import { WalkLocaleToggle } from "@shared/components/WalkLocaleToggle";
 import {
 	BookIcon,
+	Building2Icon,
 	HomeIcon,
 	LanguagesIcon,
 	LogOutIcon,
@@ -43,10 +44,11 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const marketingUrl = config.marketingUrl;
 	// Team is the manager's: the office's members page (#82). The platform admin has no office.
 	const office = useOfficeRole({ enabled: !!user && !isPlatformAdmin(user.role) });
-	const teamHref =
-		office.role === "manager" && office.officeSlug
-			? `/${office.officeSlug}/settings/members`
-			: null;
+	const officeHref =
+		office.role === "manager" && office.officeSlug ? `/${office.officeSlug}/settings` : null;
+	const teamHref = officeHref ? `${officeHref}/members` : null;
+	// Office settings is the manager's too: the auto-reply switch lives there (#167).
+	const officeSettingsHref = officeHref ? `${officeHref}/general` : null;
 
 	const onLogout = async () => {
 		// The server removes this sign-in's devices; the browser drops its subscription too (#135).
@@ -189,6 +191,22 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 							>
 								<UsersIcon className="mr-2 size-4" />
 								{t("app.userMenu.team")}
+							</LocaleLink>
+						)}
+					/>
+				) : null}
+
+				{officeSettingsHref ? (
+					<DropdownMenuItem
+						nativeButton={false}
+						render={(props) => (
+							<LocaleLink
+								{...props}
+								href={officeSettingsHref}
+								className={cn(props.className, "flex items-center")}
+							>
+								<Building2Icon className="mr-2 size-4" />
+								{t("app.userMenu.officeSettings")}
 							</LocaleLink>
 						)}
 					/>

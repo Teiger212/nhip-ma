@@ -167,6 +167,7 @@ model Organization {
   pipeConnections    PipeConnection[]
   crmConnection      CrmConnection?
   mockCrmLeads       MockCrmLead[]
+  mockCrmOutage      MockCrmOutage?
   inboxAlerts        InboxAlert[]
   leadTallies        LeadTally[]
   guestDeletions     GuestDeletion[]
@@ -319,19 +320,19 @@ enum AnswerStatus {
 /// thread knows it; other copies (a CRM link's `leadName`, mock CRM leads, message text) are
 /// guest deletion's to clear (ADR 0020, #138).
 model Conversation {
-  id                 String         @id
+  id                 String           @id
   pipe               Pipe
   guestId            String
   guestName          String?
   officeId           String
-  office             Organization   @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  office             Organization     @relation(fields: [officeId], references: [id], onDelete: Cascade)
   language           String?
   lastGuestInboundAt DateTime?
   sentAt             DateTime?
   /// The operator the thread is assigned to (ADR 0022); null = Unassigned. An owner whose
   /// account ends leaves the thread Unassigned.
   ownerId            String?
-  owner              User?          @relation("ConversationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  owner              User?            @relation("ConversationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   /// When the auto-reply claimed this thread (ADR 0021): set once, by a conditional update
   /// from null, so two first messages at once still make one greeting.
   autoReplyAt        DateTime?
@@ -342,6 +343,7 @@ model Conversation {
   paperwork          Paperwork?
   answers            Answer[]
   crmLink            CrmLink?
+  crmWriteFailure    CrmWriteFailure?
   alerts             InboxAlert[]
 
   @@unique([officeId, pipe, guestId])
@@ -577,19 +579,20 @@ enum CrmLinkMethod {
 
 /// The office's CRM (ADR 0003). One per office; set by the platform admin.
 model CrmConnection {
-  officeId    String       @id
-  office      Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  kind        CrmKind
+  officeId      String            @id
+  office        Organization      @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  kind          CrmKind
   /// The office's access token for a CRM that takes one, sealed by the app before it reaches
   /// this table (ADR 0017's encryption). Write-only: never read back to a client. Another kind
   /// replaces the row, so the token goes with it.
-  accessToken String?      @db.Text
+  accessToken   String?           @db.Text
   /// The CRM's own id for the account the office is on, where one app serves many accounts and
   /// its webhooks name the account, not the office (HubSpot's portal id, #66). Null until learned
   /// from the CRM; a new access token clears it, since it may reach another account.
-  accountId   String?
-  links       CrmLink[]
-  updatedAt   DateTime     @updatedAt
+  accountId     String?
+  links         CrmLink[]
+  writeFailures CrmWriteFailure[]
+  updatedAt     DateTime          @updatedAt
 
   @@index([kind, accountId])
   @@map("inbox_crm_connection")
@@ -646,6 +649,34 @@ model MockCrmLead {
   @@index([officeId, phone])
   @@index([officeId, zaloUserId])
   @@map("inbox_mock_crm_lead")
+}
+
+/// The mock CRM is down for this office (ADR 0003): every call to it fails, as a real CRM's does
+/// when it is unreachable. For E2E and the demo only; the mock never serves a client (#211).
+model MockCrmOutage {
+  officeId String       @id
+  office   Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  since    DateTime     @default(now())
+
+  @@map("inbox_mock_crm_outage")
+}
+
+/// A thread whose lead write into the office's CRM linked no lead (#211): the write failed, or
+/// the guest matched several leads. Opening the thread retries the write once the backoff has
+/// passed; the row is in the database so every instance waits out the same backoff. Linking the
+/// lead removes it, and so do deleting the thread (ADR 0020) and changing the office's CRM.
+model CrmWriteFailure {
+  conversationId String        @id
+  officeId       String
+  conversation   Conversation  @relation(fields: [conversationId, officeId], references: [id, officeId], onDelete: Cascade)
+  connection     CrmConnection @relation(fields: [officeId], references: [officeId], onDelete: Cascade)
+  attempts       Int
+  lastFailedAt   DateTime
+
+  /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
+  @@unique([conversationId, officeId])
+  @@index([officeId])
+  @@map("inbox_crm_write_failure")
 }
 
 /// What an alert is about (ADR 0019): a guest's message, a thread a manager returned to Unassigned,

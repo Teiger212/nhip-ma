@@ -7,6 +7,31 @@ import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 
 import type { InboxView, QueueCounts } from "../lib/queue";
 
+type InboxT = ReturnType<typeof useTranslations<"inbox">>;
+
+/**
+ * A manager's count line: the view's own count, then how many guests wait in the office, or on
+ * the operator the owner filter shows ("4 unassigned · 6 waiting in the office"). Waiting (the
+ * manager's Your turn) names only the waiting count, which is that view's own.
+ */
+function managerCountLine(
+	t: InboxT,
+	view: InboxView | null,
+	counts: QueueCounts,
+	ownerName: string | null,
+): string {
+	const waiting = ownerName
+		? t("managerCount.waitingOn", { count: counts.yourTurn, name: ownerName })
+		: t("managerCount.waitingOffice", { count: counts.yourTurn });
+	if (view === "unassigned" || view === "sent" || view === "all") {
+		return t("managerCount.line", {
+			view: t(`managerCount.${view}`, { count: counts[view] }),
+			waiting,
+		});
+	}
+	return waiting;
+}
+
 /**
  * A tab's side padding and the gap between its label and count, roomiest first: DESIGN.md's 12px
  * and 6px, then 8px, then 4px and 4px. The view tabs stay on one line and never scroll (#210), so
@@ -76,7 +101,7 @@ function useTabsFit(group: RefObject<HTMLDivElement | null>, views: readonly Inb
 
 /**
  * The two rows at the top of the thread list: search, then the view tabs with their counts
- * and the "Your turn" sentence. They live inside the list, so they hide with it.
+ * and the count line. They live inside the list, so they hide with it.
  */
 export function InboxToolbar({
 	query,
@@ -86,6 +111,7 @@ export function InboxToolbar({
 	onViewChange,
 	counts,
 	manager,
+	ownerName,
 }: {
 	query: string;
 	onQueryChange: (query: string) => void;
@@ -95,12 +121,20 @@ export function InboxToolbar({
 	view: InboxView | null;
 	onViewChange: (view: InboxView) => void;
 	counts: QueueCounts;
-	/** A manager's Your turn view is named Waiting: it holds the whole office's (ADR 0022). */
+	/**
+	 * A manager's Your turn view is named Waiting: it holds the whole office's (ADR 0022). Their
+	 * count line names the view's count, then who is waiting in the office (#208).
+	 */
 	manager: boolean;
+	/** The operator the owner filter shows, whose threads the counts then are. */
+	ownerName: string | null;
 }) {
 	const t = useTranslations("inbox");
 	const tabs = useRef<HTMLDivElement>(null);
 	const fit = useTabsFit(tabs, views);
+	const countLine = manager
+		? managerCountLine(t, view, counts, ownerName)
+		: t("queueCount", { count: counts.yourTurn });
 	return (
 		<>
 			<div className="px-3 py-3 flex shrink-0 items-center border-b">
@@ -151,7 +185,7 @@ export function InboxToolbar({
 					})}
 				</div>
 				<p className="text-xs text-muted-foreground" aria-live="polite">
-					{t("queueCount", { count: counts.yourTurn })}
+					{countLine}
 				</p>
 			</div>
 		</>

@@ -2,7 +2,15 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 
 import { toE164 } from "./phone";
-import type { CrmAdapter, CrmLead, GuestIdentity, LeadOutcome, NewGuestLead } from "./types";
+import {
+	type CrmAdapter,
+	CrmError,
+	type CrmFailureKind,
+	type CrmLead,
+	type GuestIdentity,
+	type LeadOutcome,
+	type NewGuestLead,
+} from "./types";
 
 /**
  * The HubSpot CRM (ADR 0003, #65). A Nhịp lead is a HubSpot deal; the guest is the deal's
@@ -11,6 +19,9 @@ import type { CrmAdapter, CrmLead, GuestIdentity, LeadOutcome, NewGuestLead } fr
  */
 
 const API = "https://api.hubapi.com";
+
+/** How long one HubSpot call may take, its answer read included, before it counts as failed. */
+const REQUEST_TIMEOUT_MS = 15_000;
 /** HubSpot's date-versioned API; `2026-09` is supported until about March 2028. */
 const VERSION = "2026-09";
 const CONTACTS = `/crm/objects/${VERSION}/contacts`;
@@ -87,7 +98,7 @@ const Refusal = z.object({
  * A non-2xx answer (spec #59 story 43): which operation failed, the status and HubSpot's
  * category. Never HubSpot's message, which can echo property values, nor the token.
  */
-class HubSpotError extends Error {
+class HubSpotError extends CrmError {
 	constructor(
 		readonly operation: string,
 		readonly status: number,
@@ -95,9 +106,20 @@ class HubSpotError extends Error {
 		/** Properties HubSpot says do not exist, from a refused write. */
 		readonly missingProperties: string[],
 	) {
-		super(`HubSpot ${operation} answered ${status}${category ? ` ${category}` : ""}`);
+		super(
+			`HubSpot ${operation} answered ${status}${category ? ` ${category}` : ""}`,
+			failureKindOf(status),
+		);
 		this.name = "HubSpotError";
 	}
+}
+
+/** A refusal's kind (#211): the token, a timeout, the data refused, or HubSpot itself failing. */
+function failureKindOf(status: number): CrmFailureKind {
+	if (status === 401 || status === 403) return "auth";
+	if (status === 408) return "timeout";
+	if (status >= 400 && status < 500 && status !== 429) return "rejected";
+	return "other";
 }
 
 export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch }): CrmAdapter {
@@ -116,6 +138,9 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 				method,
 				headers: { authorization: `Bearer ${deps.token}`, "content-type": "application/json" },
 				body: body === undefined ? undefined : JSON.stringify(body),
+				// A hung call would hold the thread's claim on writing its lead (#211); one that
+				// gives up is a `timeout`, retried when the thread is next opened.
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			const wait = response.status === 429 && attempt === 0 ? retryDelay(response) : null;
 			if (wait !== null) {

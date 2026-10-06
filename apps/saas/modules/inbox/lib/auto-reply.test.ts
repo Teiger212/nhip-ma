@@ -7,9 +7,16 @@ useTestDatabaseForAppClient();
 
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
-import { noDraftAdapter } from "./drafts";
+import { followUpTemplate } from "./draft";
+import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts";
 import { greetingLabel } from "./greeting";
-import { ingestEvents, injectDevInbound } from "./inbox";
+import {
+	applyOneShot,
+	approveAndSend,
+	ingestEvents,
+	injectDevInbound,
+	regenerateDraft,
+} from "./inbox";
 import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { type Runtime, setRuntimeForTests } from "./runtime";
 import type { Conversation, InboundEvent, Message } from "./types";
@@ -146,6 +153,20 @@ describe("a new guest's first message gets one auto-reply (G1)", () => {
 		expect(autoReplies(await thread("g5"))).toHaveLength(0);
 	});
 
+	test("turned back on, it greets a new guest, never one whose thread began while it was off (S1)", async () => {
+		await testDb.officeSetting.create({ data: { officeId: OFFICE, autoReply: false } });
+		// A minute before it comes back on (this file's guests otherwise write a few ms ahead).
+		await arrive(guest("s1-before", "Hello", { at: Date.now() - 60_000 }));
+		await testDb.officeSetting.update({
+			where: { officeId: OFFICE },
+			data: { autoReply: true, autoReplyOnSince: new Date() },
+		});
+		await arrive(guest("s1-before", "Are you there?"));
+		await arrive(guest("s1-after", "Hello"));
+		expect(autoReplies(await thread("s1-before"))).toHaveLength(0);
+		expect(autoReplies(await thread("s1-after"))).toHaveLength(1);
+	});
+
 	test("a disconnected OA greets no one, and the guest is still Your turn", async () => {
 		await connectZaloOa({ disconnected: true });
 		await arrive(guest("g6", "Hello"));
@@ -246,6 +267,38 @@ describe("one send attempt (ADR 0021, Consequences)", () => {
 	});
 });
 
+describe("the switch (ADR 0021 G6, S1, #167)", () => {
+	async function setting() {
+		return testDb.officeSetting.findUnique({ where: { officeId: OFFICE } });
+	}
+
+	test("turning it off, then on, stamps when it came back on", async () => {
+		await runtime.store.setOfficeAutoReply(OFFICE, false);
+		expect(await setting()).toMatchObject({ autoReply: false, autoReplyOnSince: null });
+		const before = Date.now();
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		const on = await setting();
+		expect(on?.autoReply).toBe(true);
+		// Now, in UTC: neither before the call nor after it (a time-zone slip is hours off).
+		expect(on?.autoReplyOnSince?.getTime()).toBeGreaterThanOrEqual(before);
+		expect(on?.autoReplyOnSince?.getTime()).toBeLessThanOrEqual(Date.now());
+		expect(await runtime.store.officeAutoReply(OFFICE)).toMatchObject({
+			on: true,
+			onSince: on?.autoReplyOnSince?.toISOString(),
+		});
+	});
+
+	test("turning on what is already on moves nothing, so no thread begun meanwhile is skipped", async () => {
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		expect(await setting()).toMatchObject({ autoReply: true, autoReplyOnSince: null });
+		await runtime.store.setOfficeAutoReply(OFFICE, false);
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		const stamped = (await setting())?.autoReplyOnSince;
+		await runtime.store.setOfficeAutoReply(OFFICE, true);
+		expect((await setting())?.autoReplyOnSince).toEqual(stamped);
+	});
+});
+
 describe("the claim (ADR 0021: at most one greeting per thread, held by the database)", () => {
 	test("of five claims at once, exactly one wins", async () => {
 		const { conversation } = await runtime.store.upsertInbound(guest("c1", "Hello"), OFFICE);
@@ -265,5 +318,159 @@ describe("the claim (ADR 0021: at most one greeting per thread, held by the data
 		const { conversation } = await runtime.store.upsertInbound(guest("c3", "Hello"), OFFICE);
 		expect(await runtime.store.claimAutoReply("office-b", conversation.id)).toBe(false);
 		expect(await runtime.store.claimAutoReply(OFFICE, conversation.id)).toBe(true);
+	});
+});
+
+describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)", () => {
+	const followUps: FollowUpInput[] = [];
+	const model: DraftAdapter = {
+		provider: "openai-compatible",
+		translate: async () => null,
+		followUp: async (input) => {
+			followUps.push(input);
+			return "Happy to help with your search. Which budget did you have in mind?";
+		},
+	};
+
+	beforeEach(() => {
+		followUps.length = 0;
+	});
+
+	test("without a model, the box holds the follow-up template, for the first message and the next", async () => {
+		await arrive(guest("p1", "Hi, we're looking to rent an apartment in Tay Ho"));
+		let conversation = await thread("p1");
+		expect(autoReplies(conversation)).toHaveLength(1);
+		expect(conversation.oneShot?.draft).toEqual({
+			reply: followUpTemplate("en"),
+			answersMessageId: conversation.messages[0].id,
+			source: "template",
+		});
+
+		await arrive(guest("p1", "Is anyone there?"));
+		conversation = await thread("p1");
+		expect(conversation.oneShot?.draft).toEqual({
+			reply: followUpTemplate("en"),
+			answersMessageId: conversation.messages[2].id,
+			source: "template",
+		});
+	});
+
+	test("asking for a new suggestion without a model puts back the follow-up template", async () => {
+		await arrive(guest("p2", "Hello, renting in Tay Ho"));
+		const conversation = await thread("p2");
+		const result = await regenerateDraft(conversation.id, MANAGER);
+		expect(result.ok && result.conversation.oneShot?.draft.reply).toBe(followUpTemplate("en"));
+	});
+
+	test("with a model, the first message gets the model's follow-up, written from the conversation with the greeting in it", async () => {
+		runtime.drafts = model;
+		await arrive(guest("p3", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const conversation = await thread("p3");
+		expect(conversation.oneShot?.draft).toEqual({
+			reply: "Happy to help with your search. Which budget did you have in mind?",
+			answersMessageId: conversation.messages[0].id,
+			source: "model",
+		});
+		expect(followUps).toHaveLength(1);
+		expect(followUps[0].messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
+		expect(followUps[0].messages[1].text).toBe(autoReplies(conversation)[0].text);
+
+		// The guest writes again before any human reply: the model drafts for that message.
+		await arrive(guest("p3", "Two bedrooms, please"));
+		const later = await thread("p3");
+		expect(followUps).toHaveLength(2);
+		expect(later.oneShot?.draft).toEqual({
+			reply: "Happy to help with your search. Which budget did you have in mind?",
+			answersMessageId: later.messages[2].id,
+			source: "model",
+		});
+	});
+
+	test("a guest message read before the greeting was filed still ends on the follow-up template", async () => {
+		await arrive(guest("p5", "Hello"));
+		const greeted = await thread("p5");
+		expect(autoReplies(greeted)).toHaveLength(1);
+		// The second message's thread as read before the greeting's row: the one-shot decides
+		// from it, then finds the greeting on the stored thread.
+		const { conversation: stale } = await runtime.store.upsertInbound(
+			guest("p5", "Renting in Tay Ho"),
+			OFFICE,
+		);
+		const before = {
+			...stale,
+			messages: stale.messages.filter((message) => message.source !== "auto-reply"),
+		};
+		const result = await applyOneShot(runtime.store, before);
+		expect(result?.oneShot?.draft).toEqual({
+			reply: followUpTemplate("en"),
+			answersMessageId: result?.messages.at(-1)?.id,
+			source: "template",
+		});
+	});
+
+	test("with no greeting sent, the box keeps the first-reply template", async () => {
+		await connectZaloOa({ disconnected: true });
+		await arrive(guest("p4", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const conversation = await thread("p4");
+		expect(autoReplies(conversation)).toHaveLength(0);
+		expect(conversation.oneShot?.draft.reply).toMatch(/^Thanks for writing/);
+	});
+});
+
+describe("the funnel ignores the auto-reply from first message to conversation (R10, First greeting 3)", () => {
+	test("Engaged, In conversation and response time move only with the human reply", async () => {
+		// Ten minutes before the greeting and the reply, so a response time run from the
+		// greeting would read near zero.
+		const tenMinutes = 10 * 60 * 1000;
+		await arrive(
+			guest("n1", "Hi, we're looking to rent an apartment in Tay Ho", {
+				at: Date.now() - tenMinutes,
+			}),
+		);
+		let conversation = await thread("n1");
+		expect(autoReplies(conversation)).toHaveLength(1);
+		expect(conversation.unansweredInboundId).toBe(conversation.messages[0].id);
+		expect(await funnel()).toMatchObject({
+			leadsIn: 1,
+			engaged: 0,
+			inConversation: 0,
+			responseTime: null,
+		});
+
+		// The guest writes back before any human reply: the greeting started no conversation.
+		// Just after the greeting, so it is surely before the reply that follows.
+		const greetedAt = Date.parse(autoReplies(conversation)[0].at);
+		await arrive(guest("n1", "Our budget is flexible", { at: greetedAt + 1 }));
+		conversation = await thread("n1");
+		expect(conversation.messages.map((message) => message.source)).toEqual([
+			"guest",
+			"auto-reply",
+			"guest",
+		]);
+		expect(conversation.unansweredInboundId).toBe(conversation.messages[2].id);
+		expect(await funnel()).toMatchObject({ engaged: 0, inConversation: 0, responseTime: null });
+
+		// The manager approves a reply: Engaged, and the response time runs from the guest's
+		// first message, not from the greeting.
+		const sent = await approveAndSend(
+			conversation.id,
+			{ inboundId: conversation.unansweredInboundId ?? undefined, text: "Welcome! Let's talk." },
+			MANAGER,
+		);
+		expect(sent.ok).toBe(true);
+		conversation = await thread("n1");
+		const answeredAt = Date.parse(conversation.answers[0].sentAt ?? "");
+		const firstAt = Date.parse(conversation.messages[0].at);
+		const afterReply = await funnel();
+		expect(afterReply).toMatchObject({ leadsIn: 1, engaged: 1, inConversation: 0 });
+		expect(answeredAt - firstAt).toBeGreaterThanOrEqual(tenMinutes);
+		expect(afterReply.responseTime).toMatchObject({
+			answered: 1,
+			medianMs: answeredAt - firstAt,
+			buckets: { under5m: 0, from5to15m: 1 },
+		});
+
+		await arrive(guest("n1", "Great, thanks"));
+		expect(await funnel()).toMatchObject({ leadsIn: 1, engaged: 1, inConversation: 1 });
 	});
 });

@@ -169,6 +169,7 @@
 			"home": "Trang chủ",
 			"inbox": "Hộp thư",
 			"international": "Quốc tế",
+			"comingSoon": "Sắp ra mắt",
 			"groupWorkspace": "Không gian làm việc",
 			"groupAccount": "Tài khoản"
 		},
@@ -179,6 +180,7 @@
 			"home": "Trang chủ",
 			"language": "Ngôn ngữ",
 			"logout": "Đăng xuất",
+			"officeSettings": "Cài đặt văn phòng",
 			"team": "Nhóm"
 		},
 		"notifications": {
@@ -376,6 +378,16 @@
 			}
 		},
 		"settings": {
+			"autoReply": {
+				"error": "Không lưu được cài đặt trả lời tự động. Vui lòng thử lại.",
+				"hint": "Gửi trong vài giây, dưới tên văn phòng, cho khách nhắn lần đầu khi đang bật. Các tin trả lời khác vẫn chờ nhóm của bạn duyệt.",
+				"loadError": "Không tải được cài đặt trả lời tự động. Hãy tải lại trang để thử lại.",
+				"off": "Tắt",
+				"on": "Bật",
+				"title": "Trả lời tự động cho tin nhắn đầu tiên của khách mới",
+				"turnedOff": "Đã tắt trả lời tự động",
+				"turnedOn": "Đã bật trả lời tự động cho khách mới"
+			},
 			"changeName": {
 				"notifications": {
 					"error": "Không cập nhật được tên văn phòng",
@@ -930,6 +942,14 @@
 			"all": "Tất cả"
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
+		"managerCount": {
+			"line": "{view} · {waiting}",
+			"waitingOffice": "{count} khách đang chờ văn phòng",
+			"waitingOn": "{count} khách đang chờ {name}",
+			"unassigned": "{count} khách chưa giao",
+			"sent": "{count} đã gửi",
+			"all": "{count} cuộc hội thoại"
+		},
 		"allCaughtUp": "Đã xử lý hết.",
 		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",
@@ -959,6 +979,7 @@
 		},
 		"crm": {
 			"inCrm": "Trong CRM: {name}",
+			"notInCrmYet": "Chưa có trong CRM",
 			"won": "Chốt",
 			"lost": "Mất"
 		},

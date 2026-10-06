@@ -1,6 +1,7 @@
 # 0014. The office pays per seat; a lapsed office is locked, a closing one is purged after 30 days
 
-Date: 2026-09-24. Status: accepted. Extends ADRs 0008 and 0013.
+Date: 2026-09-24. Status: accepted. Extends ADRs 0008 and 0013. The daily purge job runs on
+ADR 0023's background jobs (2026-10-06), built after go-live.
 
 ## Context
 

@@ -172,6 +172,18 @@ export const MockCrmLeadScalarFieldEnumSchema = z.enum(['id', 'officeId', 'name'
 
 export type MockCrmLeadScalarFieldEnum = z.infer<typeof MockCrmLeadScalarFieldEnumSchema>;
 
+// File: MockCrmOutageScalarFieldEnum.schema.ts
+
+export const MockCrmOutageScalarFieldEnumSchema = z.enum(['officeId', 'since'])
+
+export type MockCrmOutageScalarFieldEnum = z.infer<typeof MockCrmOutageScalarFieldEnumSchema>;
+
+// File: CrmWriteFailureScalarFieldEnum.schema.ts
+
+export const CrmWriteFailureScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'attempts', 'lastFailedAt'])
+
+export type CrmWriteFailureScalarFieldEnum = z.infer<typeof CrmWriteFailureScalarFieldEnumSchema>;
+
 // File: InboxAlertScalarFieldEnum.schema.ts
 
 export const InboxAlertScalarFieldEnumSchema = z.enum(['id', 'userId', 'conversationId', 'officeId', 'kind', 'sounded', 'link', 'createdAt'])
@@ -762,6 +774,28 @@ export const MockCrmLeadSchema = z.object({
 });
 
 export type MockCrmLeadType = z.infer<typeof MockCrmLeadSchema>;
+
+
+// File: MockCrmOutage.schema.ts
+
+export const MockCrmOutageSchema = z.object({
+  officeId: z.string(),
+  since: z.date(),
+});
+
+export type MockCrmOutageType = z.infer<typeof MockCrmOutageSchema>;
+
+
+// File: CrmWriteFailure.schema.ts
+
+export const CrmWriteFailureSchema = z.object({
+  conversationId: z.string(),
+  officeId: z.string(),
+  attempts: z.number().int(),
+  lastFailedAt: z.date(),
+});
+
+export type CrmWriteFailureType = z.infer<typeof CrmWriteFailureSchema>;
 
 
 // File: InboxAlert.schema.ts

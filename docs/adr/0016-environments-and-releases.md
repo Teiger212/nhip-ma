@@ -1,6 +1,8 @@
 # 0016. Dev is local; staging and prod run on Vercel and Neon in Singapore; prod ships by release
 
-Date: 2026-09-27. Status: accepted.
+Date: 2026-09-27. Status: accepted. "Background work runs on Next.js `after()`" is amended by
+ADR 0023 (2026-10-06): background jobs on Postgres, woken by an `after()` kick and a cron, built
+after go-live. Until then, `after()` alone stands.
 
 ## Context
 

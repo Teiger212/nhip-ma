@@ -152,8 +152,8 @@ smoked, each one approved by Eyal (#112).
 
 - Everything built: capture, translate, extract, draft, queue, approve and send, follow-up,
   Home, office tenancy, invitations, the account lifecycle. The CRM seam has shipped with the
-  mock and HubSpot (#72, #74, #75, #76, #88, #90); open: #64, #67, #68, #69–#71 and the
-  staging demo (#116). Searching the CRM to link a thread by hand is for managers only
+  mock and HubSpot (#72, #74, #75, #76, #88, #90); open: #68, #69–#71 and the staging demo
+  (#116); #64 and #67 come after go-live (ADR 0023). Searching the CRM to link a thread by hand is for managers only
   (2026-10-03).
 - Managers assign every new lead inside an office, and agents see only their own threads
   (ADR 0022, replacing ADR 0015's pool then owner); managers invite their own agents;
@@ -181,7 +181,8 @@ smoked, each one approved by Eyal (#112).
 
 **Later, shown as "Coming soon"**: saved replies (a decision model picks from the office's
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
-CSV export.
+CSV export, International (handling foreigners' documents in Vietnam: the paperwork for buyers
+and renters from abroad; a disabled sidebar item under Inbox, #208).
 
 **Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,
 listing match, per-agent performance, nudges, native iOS and Android apps built from the web
@@ -241,9 +242,11 @@ PRs; "open" means not started unless it says otherwise.
    VAPID keys on staging and prod (docs/setup-checklist.md).
 5. **Counting and paying**: the CRM seam merged, minimal billing, guest-data deletion,
    "Coming soon" controls.
-   _In progress_: the CRM seam has shipped (#72, #74, #75, #76, #88, #90); open: #64, #67,
-   #68, #69–#71, the staging demo (#116), and the client's own CRM as intake answers it
-   (#101 if Attio). With any real CRM, the WhatsApp `wa_id` "+" fix ships at go-live; the
+   _In progress_: the CRM seam has shipped (#72, #74, #75, #76, #88, #90); open: #68,
+   #69–#71, the staging demo (#116), and the client's own CRM as intake answers it
+   (#101 if Attio). #64 (write retries) and #67 (the hourly reconcile) come after go-live, on
+   background jobs (ADR 0023, #177); the first client goes live on today's try-once `after()`
+   (grill 2026-10-06, Q8). With any real CRM, the WhatsApp `wa_id` "+" fix ships at go-live; the
    rest of #125 after. The built-in CRM (#126) comes after go-live. _Open_: billing
    (#93; the kit's screens stay hidden), guest-data deletion's CRM checkbox (#139; deleting
    in Nhịp, with the lead tally and the receipt, shipped with #138; ADR 0020), "Coming soon"

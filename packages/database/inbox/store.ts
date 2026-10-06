@@ -60,6 +60,7 @@ const CONVERSATION_INCLUDE = {
 	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
 	owner: { select: { id: true, name: true, email: true } },
 	crmLink: true,
+	office: { select: { crmConnection: { select: { kind: true } } } },
 } satisfies Prisma.ConversationInclude;
 
 /**
@@ -321,6 +322,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 		officeId: record.officeId,
 		owner: record.owner ? { id: record.owner.id, name: operatorNameOf(record.owner) } : null,
 		crm: mapCrmLink(record.crmLink),
+		officeHasCrm: record.office.crmConnection !== null,
 		autoReplyAt: isoOrNull(record.autoReplyAt),
 		messages,
 		lastGuestInboundAt: isoOrNull(record.lastGuestInboundAt),
@@ -1008,6 +1010,24 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			};
 		},
 
+		async setOfficeAutoReply(officeId, on) {
+			// One statement, so two managers flipping it at once can't lose the stamp: the update
+			// reads the row it replaces under its lock. Only a row that says off can be turned on;
+			// no row is on since the office began. The column is UTC without a zone, as Prisma
+			// writes it.
+			await db.$executeRaw`
+				INSERT INTO "inbox_office_setting" ("officeId", "autoReply")
+				VALUES (${officeId}, ${on})
+				ON CONFLICT ("officeId") DO UPDATE SET
+					"autoReplyOnSince" = CASE
+						WHEN NOT "inbox_office_setting"."autoReply" AND EXCLUDED."autoReply"
+							THEN (now() AT TIME ZONE 'UTC')
+						ELSE "inbox_office_setting"."autoReplyOnSince"
+					END,
+					"autoReply" = EXCLUDED."autoReply"
+			`;
+		},
+
 		async claimAutoReply(officeId, id) {
 			// One conditional update: Postgres re-reads the row under its lock, so of two first
 			// messages at once only one sees `autoReplyAt` still null (ADR 0021).
@@ -1428,12 +1448,26 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return count > 0;
 		},
 
-		async claimCrmLink(officeId, conversationId) {
-			const { count } = await db.crmLink.createMany({
-				data: [{ conversationId, officeId }],
-				skipDuplicates: true,
+		async claimCrmLink(officeId, conversationId, staleBefore) {
+			let count: number;
+			try {
+				({ count } = await db.crmLink.createMany({
+					data: [{ conversationId, officeId }],
+					skipDuplicates: true,
+				}));
+			} catch (error) {
+				// The thread (ADR 0020) or the office's CRM is gone: there is nothing to claim.
+				if (isForeignKeyViolation(error)) return false;
+				throw error;
+			}
+			if (count > 0) return true;
+			// A claim this old outlived any function that could still be writing it (#211). The
+			// update re-checks `claimedAt` under the row's lock, so one caller takes it over.
+			const taken = await db.crmLink.updateMany({
+				where: { conversationId, officeId, leadId: null, claimedAt: { lt: staleBefore } },
+				data: { claimedAt: new Date() },
 			});
-			return count > 0;
+			return taken.count > 0;
 		},
 
 		async releaseCrmLink(officeId, conversationId) {
@@ -1441,10 +1475,43 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		},
 
 		async completeCrmLink(officeId, conversationId, link) {
-			await db.crmLink.updateMany({
+			await db.$transaction([
+				db.crmLink.updateMany({
+					where: { conversationId, officeId },
+					data: { ...link, linkedAt: new Date() },
+				}),
+				db.crmWriteFailure.deleteMany({ where: { conversationId, officeId } }),
+			]);
+		},
+
+		async crmWriteFailure(officeId, conversationId) {
+			const row = await db.crmWriteFailure.findUnique({
 				where: { conversationId, officeId },
-				data: { ...link, linkedAt: new Date() },
+				select: { attempts: true, lastFailedAt: true },
 			});
+			return row ? { attempts: row.attempts, lastFailedAt: iso(row.lastFailedAt) } : null;
+		},
+
+		async recordCrmWriteFailure(officeId, conversationId, at) {
+			try {
+				await db.crmWriteFailure.upsert({
+					where: { conversationId, officeId },
+					create: { conversationId, officeId, attempts: 1, lastFailedAt: at },
+					update: { attempts: { increment: 1 }, lastFailedAt: at },
+				});
+			} catch (error) {
+				// The thread was deleted meanwhile (ADR 0020), or the office's CRM removed: no failure
+				// is kept for either.
+				if (!isForeignKeyViolation(error)) throw error;
+			}
+		},
+
+		async mockCrmDown(officeId) {
+			const outage = await db.mockCrmOutage.findUnique({
+				where: { officeId },
+				select: { officeId: true },
+			});
+			return outage !== null;
 		},
 
 		async createMockCrmLead(lead) {
