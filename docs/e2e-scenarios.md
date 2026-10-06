@@ -644,6 +644,15 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - The manager approves a reply: Engaged 1, and the response time runs from the guest's
      first message to that reply.
    - The guest writes again: In conversation 1.
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 3; the guest writes on a
+   WhatsApp number of the office's own, since only WhatsApp takes a backdated message: their
+   first message is written 20 minutes before the manager's reply, approved through the API, so
+   "runs from the first message" is that answered lead in Home's 15–60 min band with none under
+   5 min, which a clock started at the guest's later message would not give; "no answered leads"
+   is Response time's "No lead was answered in this window yet."; the guest's last message is
+   written once the reply's second is over, WhatsApp timing messages in whole seconds).
+
 4. **The guest's language picks the greeting.** Guests write in Vietnamese, Japanese, Korean
    and Russian. Each auto-reply, label included, is in the guest's language: a letter only
    Vietnamese uses, kana, Hangul or Cyrillic. A guest writing "Bonjour, je cherche un
@@ -670,6 +679,12 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    and the box still holds the follow-up template.
    - With a model configured, it would hold the model's follow-up draft. That case is
      covered by Vitest.
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 8; "the follow-up template" is
+   what the reply box holds, as the manager opens it, on another guest's thread who wrote the
+   same, was greeted, got a human reply and wrote the same again; the greeted guest's box must
+   hold exactly that, never text matching "Thanks for writing", on opening the thread and again,
+   reopened, after the guest's second message).
 
 ## Guest deletion (ADR 0020, spec #85)
 

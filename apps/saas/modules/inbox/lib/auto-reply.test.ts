@@ -7,9 +7,10 @@ useTestDatabaseForAppClient();
 
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
-import { noDraftAdapter } from "./drafts";
+import { followUpTemplate } from "./draft";
+import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts";
 import { greetingLabel } from "./greeting";
-import { ingestEvents, injectDevInbound } from "./inbox";
+import { approveAndSend, ingestEvents, injectDevInbound, regenerateDraft } from "./inbox";
 import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { type Runtime, setRuntimeForTests } from "./runtime";
 import type { Conversation, InboundEvent, Message } from "./types";
@@ -265,5 +266,122 @@ describe("the claim (ADR 0021: at most one greeting per thread, held by the data
 		const { conversation } = await runtime.store.upsertInbound(guest("c3", "Hello"), OFFICE);
 		expect(await runtime.store.claimAutoReply("office-b", conversation.id)).toBe(false);
 		expect(await runtime.store.claimAutoReply(OFFICE, conversation.id)).toBe(true);
+	});
+});
+
+describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)", () => {
+	const followUps: FollowUpInput[] = [];
+	const model: DraftAdapter = {
+		provider: "openai-compatible",
+		translate: async () => null,
+		followUp: async (input) => {
+			followUps.push(input);
+			return "Happy to help with your search. Which budget did you have in mind?";
+		},
+	};
+
+	beforeEach(() => {
+		followUps.length = 0;
+	});
+
+	test("without a model, the box holds the follow-up template, for the first message and the next", async () => {
+		await arrive(guest("p1", "Hi, we're looking to rent an apartment in Tay Ho"));
+		let conversation = await thread("p1");
+		expect(autoReplies(conversation)).toHaveLength(1);
+		expect(conversation.oneShot?.draft).toEqual({
+			reply: followUpTemplate("en"),
+			answersMessageId: conversation.messages[0].id,
+			source: "template",
+		});
+
+		await arrive(guest("p1", "Is anyone there?"));
+		conversation = await thread("p1");
+		expect(conversation.oneShot?.draft).toEqual({
+			reply: followUpTemplate("en"),
+			answersMessageId: conversation.messages[2].id,
+			source: "template",
+		});
+	});
+
+	test("asking for a new suggestion without a model puts back the follow-up template", async () => {
+		await arrive(guest("p2", "Hello, renting in Tay Ho"));
+		const conversation = await thread("p2");
+		const result = await regenerateDraft(conversation.id, MANAGER);
+		expect(result.ok && result.conversation.oneShot?.draft.reply).toBe(followUpTemplate("en"));
+	});
+
+	test("with a model, the first message gets the model's follow-up, written from the conversation with the greeting in it", async () => {
+		runtime.drafts = model;
+		await arrive(guest("p3", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const conversation = await thread("p3");
+		expect(conversation.oneShot?.draft).toEqual({
+			reply: "Happy to help with your search. Which budget did you have in mind?",
+			answersMessageId: conversation.messages[0].id,
+			source: "model",
+		});
+		expect(followUps).toHaveLength(1);
+		expect(followUps[0].messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
+		expect(followUps[0].messages[1].text).toBe(autoReplies(conversation)[0].text);
+	});
+
+	test("with no greeting sent, the box keeps the first-reply template", async () => {
+		await connectZaloOa({ disconnected: true });
+		await arrive(guest("p4", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const conversation = await thread("p4");
+		expect(autoReplies(conversation)).toHaveLength(0);
+		expect(conversation.oneShot?.draft.reply).toMatch(/^Thanks for writing/);
+	});
+});
+
+describe("the funnel ignores the auto-reply from first message to conversation (R10, First greeting 3)", () => {
+	test("Engaged, In conversation and response time move only with the human reply", async () => {
+		// Ten minutes before the greeting and the reply, so a response time run from the
+		// greeting would read near zero.
+		const tenMinutes = 10 * 60 * 1000;
+		await arrive(
+			guest("n1", "Hi, we're looking to rent an apartment in Tay Ho", {
+				at: Date.now() - tenMinutes,
+			}),
+		);
+		let conversation = await thread("n1");
+		expect(autoReplies(conversation)).toHaveLength(1);
+		expect(conversation.unansweredInboundId).toBe(conversation.messages[0].id);
+		expect(await funnel()).toMatchObject({
+			leadsIn: 1,
+			engaged: 0,
+			inConversation: 0,
+			responseTime: null,
+		});
+
+		// The guest writes back before any human reply: the greeting started no conversation.
+		await arrive(guest("n1", "Our budget is flexible", { at: Date.now() - tenMinutes / 2 }));
+		conversation = await thread("n1");
+		expect(conversation.unansweredInboundId).toBe(
+			conversation.messages.find((message) => message.text === "Our budget is flexible")?.id,
+		);
+		expect(await funnel()).toMatchObject({ engaged: 0, inConversation: 0, responseTime: null });
+
+		// The manager approves a reply: Engaged, and the response time runs from the guest's
+		// first message, not from the greeting.
+		const sent = await approveAndSend(
+			conversation.id,
+			{ inboundId: conversation.unansweredInboundId ?? undefined, text: "Welcome! Let's talk." },
+			MANAGER,
+		);
+		expect(sent.ok).toBe(true);
+		conversation = await thread("n1");
+		const answeredAt = Date.parse(conversation.answers[0].sentAt ?? "");
+		const firstAt = Date.parse(conversation.messages[0].at);
+		const afterReply = await funnel();
+		expect(afterReply).toMatchObject({ leadsIn: 1, engaged: 1, inConversation: 0 });
+		expect(answeredAt - firstAt).toBeGreaterThanOrEqual(tenMinutes);
+		expect(afterReply.responseTime).toMatchObject({
+			answered: 1,
+			medianMs: answeredAt - firstAt,
+			buckets: { under5m: 0, from5to15m: 1 },
+		});
+
+		await arrive(guest("n1", "Great, thanks"));
+		expect(await funnel()).toMatchObject({ leadsIn: 1, engaged: 1, inConversation: 1 });
 	});
 });

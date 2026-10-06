@@ -8,14 +8,16 @@ import { expect, test as base } from "./support/fixtures";
 import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
-import { connectZaloOa, releaseZaloOa } from "./support/pipes";
+import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
+import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
 import { deliverZalo, signedZaloText } from "./support/zalo";
 
 /**
  * The Inbox's and Home's copy, from packages/i18n/translations/en/saas.json: the auto-reply's
  * meta line (inbox.source.autoReply, inbox.autoReply.template, inbox.mock), the office's own
- * app reply (inbox.source.oaEcho), and Home's funnel.
+ * app reply (inbox.source.oaEcho), the reply box (inbox.reply), and Home's funnel and response
+ * time.
  */
 const saas = JSON.parse(
 	fs.readFileSync(
@@ -25,15 +27,23 @@ const saas = JSON.parse(
 ) as {
 	inbox: {
 		mock: string;
+		reply: string;
 		searchAria: string;
 		source: { autoReply: string; oaEcho: string };
 		autoReply: { template: string };
 	};
 	home: {
 		waitingNow: string;
-		funnel: { title: string; leadsIn: string; engaged: string };
+		funnel: { title: string; leadsIn: string; engaged: string; inConversation: string };
+		responseTime: string;
+		noResponseTime: string;
+		answered: string;
+		spread: { under5m: string; from15to60m: string };
 	};
 };
+
+/** The first-reply template's opening (ADR 0021, Context): "Thanks for writing …". */
+const FIRST_REPLY_TEMPLATE = /Thanks for writing/i;
 
 /** The office every greeting here signs as (ADR 0021, R7: the label names the office). */
 const OFFICE_NAME = "Saigon Prime Test";
@@ -171,8 +181,11 @@ function threadAddress(threadId: string) {
 	return `/api/conversations/${encodeURIComponent(threadId)}`;
 }
 
+/** Who a thread is with, as the conversations API knows them: a Zalo id, or a WhatsApp number. */
+type GuestRef = Pick<Guest, "id">;
+
 /** The guest's thread as the manager's conversations API lists it, once it is there. */
-async function threadOf(manager: Api, guest: Guest): Promise<ListedThread> {
+async function threadOf(manager: Api, guest: GuestRef): Promise<ListedThread> {
 	let thread: ListedThread | undefined;
 	await expect(async () => {
 		const res = await manager.get("/api/conversations");
@@ -196,7 +209,7 @@ async function officeMessages(manager: Api, threadId: string): Promise<Message[]
 }
 
 /** The office greets the guest within seconds: the thread's one office message, once it is there. */
-async function greetingOf(manager: Api, guest: Guest): Promise<Message> {
+async function greetingOf(manager: Api, guest: GuestRef): Promise<Message> {
 	const { id } = await threadOf(manager, guest);
 	await expect
 		.poll(async () => (await officeMessages(manager, id)).length, {
@@ -205,6 +218,27 @@ async function greetingOf(manager: Api, guest: Guest): Promise<Message> {
 		})
 		.toBeGreaterThan(0);
 	return (await officeMessages(manager, id))[0];
+}
+
+/** The thread holds this many of the guest's messages: the last one they wrote has arrived. */
+async function guestMessagesArrived(manager: Api, threadId: string, count: number) {
+	await expect
+		.poll(
+			async () => (await messagesOf(manager, threadId)).filter((m) => m.direction === "in").length,
+			{ message: `the thread holds the guest's ${count} messages` },
+		)
+		.toBe(count);
+}
+
+/** The manager approves a reply to the guest's waiting message (a mock send in E2E). */
+async function approveAsManager(manager: Api, guest: GuestRef, reply: string) {
+	const thread = await threadOf(manager, guest);
+	expect(thread.unansweredInboundId, "a message of the guest's waits on a reply").not.toBeNull();
+	const res = await manager.post(`${threadAddress(thread.id)}/approve`, {
+		inboundId: thread.unansweredInboundId,
+		reply,
+	});
+	expect(res.status(), "the manager's reply is sent").toBe(200);
 }
 
 function lastLine(text: string): string {
@@ -264,8 +298,19 @@ function sourced(page: Page, source: string) {
 		.filter({ hasText: new RegExp(`^${source}$`) });
 }
 
-/** Home's funnel, read afresh, by stage (as the manager reads it). */
-async function funnelOnHome(page: Page): Promise<Record<string, number>> {
+/** The reply box of the open thread: what the manager would send. */
+function replyBox(page: Page) {
+	return openThread(page).getByRole("textbox", { name: saas.inbox.reply, exact: true });
+}
+
+/**
+ * Home, read afresh, as the manager reads it: the funnel by stage, and the Response time
+ * section as read aloud (how many leads were answered, and each band with its count).
+ */
+async function readHome(page: Page): Promise<{
+	funnel: Record<string, number>;
+	responseTime: string;
+}> {
 	await page.goto("/en/home");
 	const main = page.getByRole("main");
 	await expect(main.getByRole("heading", { name: saas.home.waitingNow })).toBeVisible();
@@ -276,7 +321,23 @@ async function funnelOnHome(page: Page): Promise<Record<string, number>> {
 	for (const match of said.matchAll(/paragraph: \d+ (.+)\n\s*- paragraph: "(\d+)"/g)) {
 		funnel[match[1]] = Number(match[2]);
 	}
-	return funnel;
+	const allSaid = await main.ariaSnapshot();
+	const responseAt = allSaid.indexOf(`heading "${saas.home.responseTime}"`);
+	expect(responseAt, "Home shows Response time").toBeGreaterThanOrEqual(0);
+	return { funnel, responseTime: allSaid.slice(responseAt) };
+}
+
+/** Home's funnel, read afresh, by stage (as the manager reads it). */
+async function funnelOnHome(page: Page): Promise<Record<string, number>> {
+	return (await readHome(page)).funnel;
+}
+
+/** "1 lead answered", as Home words the count of answered leads. */
+function answeredLeads(count: number): string {
+	return saas.home.answered.replace(
+		/\{count, plural, one \{([^}]*)\} other \{([^}]*)\}\}/,
+		(_, one: string, other: string) => (count === 1 ? one : other).replaceAll("#", String(count)),
+	);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -435,6 +496,101 @@ test.describe("First greeting 2 — only the first message is greeted", () => {
 	});
 });
 
+// scenario: docs/e2e-scenarios.md First greeting 3
+test.describe("First greeting 3 — the greeting counts nowhere in the funnel", () => {
+	test("after the auto-reply Home reads Leads in 1, Engaged 0, In conversation 0 and no answered lead; the guest writing back before a human reply leaves In conversation 0; the manager's reply makes Engaged 1, its response time timed from the guest's first message (20 minutes earlier: the 15–60 min band, not under 5 min); the guest writing again makes In conversation 1", async ({
+		office,
+		request,
+	}) => {
+		test.setTimeout(180_000);
+		const { manager } = office;
+		const { page } = manager;
+
+		// A WhatsApp guest, so their first message can be written 20 minutes before the reply:
+		// a response time timed from their later message, or to the auto-reply, then reads
+		// differently (Zalo's signature refuses a backdated message).
+		const phoneNumberId = newWhatsAppNumber("greeting");
+		await connectWhatsAppNumber(office.id, phoneNumberId);
+		const whatsAppGuest = newWhatsAppGuest();
+		const guest: GuestRef = { id: whatsAppGuest.phone };
+		const write = (text: string, at?: Date) =>
+			sendWhatsAppText(request, { phoneNumberId, guest: whatsAppGuest, text, at });
+
+		await write(
+			"Hi, we're looking to rent an apartment in Tay Ho",
+			new Date(Date.now() - 20 * 60_000),
+		);
+		await greetingOf(manager.api, guest);
+		const { id: threadId } = await threadOf(manager.api, guest);
+
+		// After the auto-reply: one lead, nobody engaged, no answered lead.
+		const greeted = await readHome(page);
+		expect(
+			greeted.funnel,
+			"after the auto-reply: one lead in, none engaged or in conversation",
+		).toMatchObject({
+			[saas.home.funnel.leadsIn]: 1,
+			[saas.home.funnel.engaged]: 0,
+			[saas.home.funnel.inConversation]: 0,
+		});
+		expect(greeted.responseTime, "no lead answered under Response time").toContain(
+			saas.home.noResponseTime,
+		);
+
+		// The guest writes back before any human reply: not a conversation yet.
+		await write("Also, is parking included?");
+		await guestMessagesArrived(manager.api, threadId, 2);
+		const wroteBack = await readHome(page);
+		expect(
+			wroteBack.funnel,
+			"the guest wrote back to the auto-reply only: still In conversation 0",
+		).toMatchObject({
+			[saas.home.funnel.leadsIn]: 1,
+			[saas.home.funnel.engaged]: 0,
+			[saas.home.funnel.inConversation]: 0,
+		});
+		expect(wroteBack.responseTime, "still no lead answered").toContain(saas.home.noResponseTime);
+
+		// The manager approves a reply: engaged, answered about 20 minutes after the first message.
+		await approveAsManager(
+			manager.api,
+			guest,
+			"Parking is something a colleague will check for you.",
+		);
+		const repliedAt = Date.now();
+		const replied = await readHome(page);
+		expect(replied.funnel, "a human reply: Engaged 1, not yet In conversation").toMatchObject({
+			[saas.home.funnel.leadsIn]: 1,
+			[saas.home.funnel.engaged]: 1,
+			[saas.home.funnel.inConversation]: 0,
+		});
+		expect(replied.responseTime, "one lead answered").toContain(answeredLeads(1));
+		expect(
+			replied.responseTime,
+			`answered 15–60 minutes after the guest's first message:\n${replied.responseTime}`,
+		).toContain(`${saas.home.spread.from15to60m} 1100%`);
+		expect(
+			replied.responseTime,
+			`not under 5 minutes, as timed from the guest's later message:\n${replied.responseTime}`,
+		).toContain(`${saas.home.spread.under5m} 00%`);
+
+		// The guest writes again after the human reply: In conversation. WhatsApp times a message
+		// in whole seconds, so they write once the reply's second is over (else it reads as
+		// written before the reply).
+		await expect
+			.poll(() => Date.now(), { message: "the reply's second is over" })
+			.toBeGreaterThan(repliedAt + 1_000);
+		await write("Great, when could we see it?");
+		await guestMessagesArrived(manager.api, threadId, 3);
+		const again = await readHome(page);
+		expect(again.funnel, "the guest wrote after the human reply: In conversation 1").toMatchObject({
+			[saas.home.funnel.leadsIn]: 1,
+			[saas.home.funnel.engaged]: 1,
+			[saas.home.funnel.inConversation]: 1,
+		});
+	});
+});
+
 /** A letter only Vietnamese uses (ADR 0021, R4): ă â đ ơ ư, a hook above or a dot below, ẽ ĩ ũ ỹ, a tone on ă â ê ô ơ ư. */
 const VIETNAMESE_ONLY = /[ăâđơưảẻỉỏủỷạẹịọụỵẽĩũỹắằẳẵặấầẩẫậếềểễệốồổỗộớờởỡợứừửữự]/iu;
 const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
@@ -558,5 +714,67 @@ test.describe("First greeting 7 — the greeting's echo is not a reply", () => {
 		const funnel = await funnelOnHome(page);
 		expect(funnel[saas.home.funnel.leadsIn], "one lead in").toBe(1);
 		expect(funnel[saas.home.funnel.engaged], "Engaged stays 0").toBe(0);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md First greeting 8
+test.describe("First greeting 8 — after the greeting, the reply box doesn't greet again", () => {
+	test("the manager opens a greeted guest's thread: the reply box holds the follow-up template (as on a thread a human already answered), never the first-reply template's \"Thanks for writing\"; the guest writes again and the box still holds the follow-up template", async ({
+		office,
+	}) => {
+		test.setTimeout(180_000);
+		const { manager } = office;
+		const { page } = manager;
+		const first = "Hi, we're looking to rent an apartment in Tay Ho";
+		const again = "Are you there?";
+
+		// The follow-up template, as the reply box shows it where nobody disputes it is a follow-up:
+		// a guest who wrote the same, was greeted, got a human reply and wrote the same again.
+		const answered = office.newGuest();
+		await answered.write(first);
+		await greetingOf(manager.api, answered);
+		await approveAsManager(manager.api, answered, "A colleague will be with you shortly.");
+		const { id: answeredThread } = await threadOf(manager.api, answered);
+		await answered.write(again);
+		await guestMessagesArrived(manager.api, answeredThread, 2);
+		await openThreadOf(page, answered);
+		await expect(
+			replyBox(page),
+			"the answered guest's reply box holds a suggestion",
+		).not.toHaveValue("");
+		const followUpTemplate = await replyBox(page).inputValue();
+		expect(followUpTemplate, "the follow-up template is not the first-reply template").not.toMatch(
+			FIRST_REPLY_TEMPLATE,
+		);
+
+		// A new guest, greeted: the reply box takes the follow-up path at once.
+		const guest = office.newGuest();
+		await guest.write(first);
+		await greetingOf(manager.api, guest);
+		const { id: threadId } = await threadOf(manager.api, guest);
+		await openThreadOf(page, guest);
+		await expect(
+			replyBox(page),
+			"after the greeting, the box holds the follow-up template",
+		).toHaveValue(followUpTemplate, WITHIN_SECONDS);
+		await expect(replyBox(page), "after the greeting, the box doesn't greet again").not.toHaveValue(
+			FIRST_REPLY_TEMPLATE,
+		);
+
+		// The guest writes again before anyone answers: still the follow-up template.
+		await guest.write(again);
+		await guestMessagesArrived(manager.api, threadId, 2);
+		await openThreadOf(page, guest);
+		await expect(
+			openThread(page).getByText(again, { exact: true }),
+			"the guest's second message is in the thread",
+		).toBeVisible();
+		await expect(replyBox(page), "the box still holds the follow-up template").toHaveValue(
+			followUpTemplate,
+			WITHIN_SECONDS,
+		);
+		await expect(replyBox(page), "the box still doesn't greet").not.toHaveValue(
+			FIRST_REPLY_TEMPLATE,
+		);
 	});
 });
