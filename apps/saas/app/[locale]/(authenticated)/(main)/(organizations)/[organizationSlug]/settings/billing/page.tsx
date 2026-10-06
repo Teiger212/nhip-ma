@@ -9,6 +9,7 @@ import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata() {
 	const t = await getTranslations("settings.billing");
