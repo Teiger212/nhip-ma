@@ -114,9 +114,9 @@ Two things have changed since:
 
 None. P1, P4 and S2 were decided in round 4 (2026-10-05).
 
-## Amendment (2026-10-06): a manager's count line and turn chip
+## Amendment (2026-10-06): a manager's count line, turn chip and Waiting view
 
-Decided in the grill of 2026-10-06, from Eyal's UI walk of main (Q1, Q2).
+Decided in the grill of 2026-10-06, from Eyal's UI walk of main (Q1, Q2, Q15, Q16).
 
 - **The count line (Q1, #208).** A manager's count line under the Inbox's view tabs reads, for
   example, "4 unassigned · 6 waiting in the office".
@@ -127,3 +127,9 @@ Decided in the grill of 2026-10-06, from Eyal's UI walk of main (Q1, Q2).
   - On a thread another operator owns, and on an Unassigned thread, the chip reads
     **"Waiting"**.
   - Agents are unchanged: every thread they see is their own.
+- **The manager's view is named "Waiting" (Q15, #210).** A manager's view of every guest the
+  office owes a reply is labelled **"Waiting N"**, not "Your turn N". It holds the same
+  threads, and its count is the same office-wide number as the nav badge, the tab title and the
+  count line. Agents keep "Your turn".
+- **The office Billing page is hidden (Q16, #210).** It goes in `kit-screens.ts` with the
+  account Billing page, hidden and not deleted, until ADR 0014's billing is built (#198).
