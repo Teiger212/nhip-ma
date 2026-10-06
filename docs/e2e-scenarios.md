@@ -179,9 +179,9 @@ are not here (the onboarding grill).
    (their user id, read from the platform admin's view of the office): it answers 400, and the
    thread's owner is unchanged.
 8. **Office settings are a manager's** (#212). As an agent of the walk office, opening the
-   office's settings by address (`/en/walk/settings/general`) shows the not-found page (404), as
-   Team does, with nothing of the office's settings on it. The walk office's manager opening the
-   same address gets the page.
+   office's settings by address (`/en/walk/settings/general`, and Billing,
+   `/en/walk/settings/billing`) shows the not-found page (404), as Team does, with nothing of the
+   office's settings on it. The walk office's manager opening the same addresses gets the pages.
    Spec: `apps/saas/tests/office-settings.spec.ts` (Team 8; the seeded agent and manager; "nothing
    of the settings" is no text field on the agent's page; "the page" is an answer under 400 with
    a heading and no not-found page, its wording left to #214's rework).

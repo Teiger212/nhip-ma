@@ -6,8 +6,8 @@ import { notFound } from "next/navigation";
 /**
  * The office's settings (General, Team, Billing) are the managers' (#82, #212): anyone without
  * `organization.manage` gets the not-found page, not a read-only one. Every page under
- * `[organizationSlug]/settings/` calls this first, before it reads anything. It is not in a
- * shared layout, whose check doesn't re-run when you move between its child pages, nor in
+ * `[organizationSlug]/settings/` calls this first, before it reads anything of its own. It is not
+ * in a layout, whose check doesn't re-run when you move between its child pages, nor in
  * `proxy.ts`, which can't read the membership. Server actions and API routes keep their own
  * checks.
  *

@@ -211,7 +211,7 @@ The inbox and pipe routes are plain route handlers outside oRPC and outside the
   `/{locale}/{office slug}/settings/` (General, Team, Billing) first calls
   `requireOfficeManager(slug)` (`modules/organizations/lib/require-office-manager.ts`), which
   answers the not-found page (404) to anyone without `organization.manage` before the page reads
-  anything. It is not in the settings layout, whose check wouldn't re-run between its child
+  anything of its own. It is not in a layout, whose check wouldn't re-run between its child
   pages, nor in `proxy.ts`; server actions and API routes keep their own checks.
 - **Team** (#82): a manager's user menu links to the kit's members page,
   `/{locale}/{office slug}/settings/members` (`/api/office` returns the slug). The page is
