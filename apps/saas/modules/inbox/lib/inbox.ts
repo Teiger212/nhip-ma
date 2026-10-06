@@ -41,10 +41,21 @@ export async function applyOneShot(
 		return conversation;
 	}
 	const shot = oneShot(inbound, conversation.unansweredInboundId);
-	if (takesFollowUpPath(conversation)) {
+	const followsUp = takesFollowUpPath(conversation);
+	if (followsUp) {
 		shot.draft.reply = followUpTemplate(shot.language);
 	}
-	return store.setOneShot(conversation.officeId, conversation.id, shot);
+	const stored = await store.setOneShot(conversation.officeId, conversation.id, shot);
+	// The greeting landed after this message's thread was read, and its own redraft may already
+	// have run: the first-reply template just written would stick, so take the follow-up path.
+	if (stored && !followsUp && takesFollowUpPath(stored)) {
+		return store.setDraft(stored.officeId, stored.id, {
+			reply: followUpTemplate(shot.language),
+			answersMessageId: stored.unansweredInboundId,
+			source: "template",
+		});
+	}
+	return stored;
 }
 
 /**
@@ -565,10 +576,10 @@ export async function approveAndSend(
 }
 
 /**
- * The operator asks for a new suggestion (ADR 0005). This is the one place a first reply
- * goes to the model: the automatic path keeps the template, an explicit request does not.
- * Without a model, or when the model's draft fails the post-check, the template is put
- * back so the box is never empty.
+ * The operator asks for a new suggestion (ADR 0005). This is the one place an ungreeted first
+ * reply goes to the model: the automatic path keeps the template for it, an explicit request
+ * does not (a greeted one is drafted automatically, ADR 0021 P2). Without a model, or when the
+ * model's draft fails the post-check, the template is put back so the box is never empty.
  */
 export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<InboxResult> {
 	const runtime = getRuntime();

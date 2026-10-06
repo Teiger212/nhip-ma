@@ -10,7 +10,13 @@ import { mockInboxConfig } from "./config";
 import { followUpTemplate } from "./draft";
 import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts";
 import { greetingLabel } from "./greeting";
-import { approveAndSend, ingestEvents, injectDevInbound, regenerateDraft } from "./inbox";
+import {
+	applyOneShot,
+	approveAndSend,
+	ingestEvents,
+	injectDevInbound,
+	regenerateDraft,
+} from "./inbox";
 import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { type Runtime, setRuntimeForTests } from "./runtime";
 import type { Conversation, InboundEvent, Message } from "./types";
@@ -322,6 +328,38 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 		expect(followUps).toHaveLength(1);
 		expect(followUps[0].messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
 		expect(followUps[0].messages[1].text).toBe(autoReplies(conversation)[0].text);
+
+		// The guest writes again before any human reply: the model drafts for that message.
+		await arrive(guest("p3", "Two bedrooms, please"));
+		const later = await thread("p3");
+		expect(followUps).toHaveLength(2);
+		expect(later.oneShot?.draft).toEqual({
+			reply: "Happy to help with your search. Which budget did you have in mind?",
+			answersMessageId: later.messages[2].id,
+			source: "model",
+		});
+	});
+
+	test("a guest message read before the greeting was filed still ends on the follow-up template", async () => {
+		await arrive(guest("p5", "Hello"));
+		const greeted = await thread("p5");
+		expect(autoReplies(greeted)).toHaveLength(1);
+		// The second message's thread as read before the greeting's row: the one-shot decides
+		// from it, then finds the greeting on the stored thread.
+		const { conversation: stale } = await runtime.store.upsertInbound(
+			guest("p5", "Renting in Tay Ho"),
+			OFFICE,
+		);
+		const before = {
+			...stale,
+			messages: stale.messages.filter((message) => message.source !== "auto-reply"),
+		};
+		const result = await applyOneShot(runtime.store, before);
+		expect(result?.oneShot?.draft).toEqual({
+			reply: followUpTemplate("en"),
+			answersMessageId: result?.messages.at(-1)?.id,
+			source: "template",
+		});
 	});
 
 	test("with no greeting sent, the box keeps the first-reply template", async () => {
@@ -354,11 +392,16 @@ describe("the funnel ignores the auto-reply from first message to conversation (
 		});
 
 		// The guest writes back before any human reply: the greeting started no conversation.
-		await arrive(guest("n1", "Our budget is flexible", { at: Date.now() - tenMinutes / 2 }));
+		// Just after the greeting, so it is surely before the reply that follows.
+		const greetedAt = Date.parse(autoReplies(conversation)[0].at);
+		await arrive(guest("n1", "Our budget is flexible", { at: greetedAt + 1 }));
 		conversation = await thread("n1");
-		expect(conversation.unansweredInboundId).toBe(
-			conversation.messages.find((message) => message.text === "Our budget is flexible")?.id,
-		);
+		expect(conversation.messages.map((message) => message.source)).toEqual([
+			"guest",
+			"auto-reply",
+			"guest",
+		]);
+		expect(conversation.unansweredInboundId).toBe(conversation.messages[2].id);
 		expect(await funnel()).toMatchObject({ engaged: 0, inConversation: 0, responseTime: null });
 
 		// The manager approves a reply: Engaged, and the response time runs from the guest's
