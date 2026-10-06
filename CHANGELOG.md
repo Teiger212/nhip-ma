@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-10-06 (local E2E: build once, run many spec files)
+
+### Added
+
+- **Many local spec files share one E2E build** (#205). `scripts/e2e-server.sh` builds and
+  starts the E2E server in the background, with the same chain, env, database and HTTPS proxy
+  as a fresh run, and `E2E_REUSE=1 playwright test <file>` runs spec files against it without
+  building again. It refuses to test stale code: once the app source differs from the build's,
+  committed or not, it asks for a rebuild, while an edit under `tests/` alone never does.
+  `--status` and `--stop` report on and stop the server. CI and the default mode still build
+  fresh on every run.
+
+### Fixed
+
+- **The E2E HTTPS proxy no longer leaves a certificate folder behind** (#205). It reads its
+  throwaway certificate into memory and deletes the temp folder at once. Before, every
+  default-mode run left a `nhip-e2e-tls-*` folder in the OS temp dir.
+
+## 2026-10-06 (E2E helpers query through one process per worker)
+
+### Changed
+
+- **E2E helpers that set up or read the database run in one long-lived process per Playwright worker, not a `pnpm exec tsx` spawn per call** (#203, follows #186). `pipes.ts`, `alerts.ts`, `crm.ts`, `deletion.ts` and `joinOffice`'s accounts send each call to the worker's state process (`apps/saas/tests/support/state-client.ts`, `state-process.ts`), which boots tsx, Prisma and the test-only Better Auth once. Each spawn cost about 2 s on CI. The helpers are now async. Every read the specs observe (`alertState`, `mockCrmLeads`, `guestDeletionRecords`) is still a fresh query, with no caching. A process that dies, never starts or doesn't answer fails the waiting test with its reason within 10–15 s, below the test's timeout, and the next call starts a new process. No spec checks anything different. CRM 3's check that a lost lead stays lost now waits on a second office's lead first, as CRM 1 does, since a read no longer takes 2 s. On CI, the E2E Playwright time fell from 9.3–9.4 min to 5.0–6.1 min.
+
 ## 2026-10-06 (workflows pin the pnpm action to a commit)
 
 ### Security
