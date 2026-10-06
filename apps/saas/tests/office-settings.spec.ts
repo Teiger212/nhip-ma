@@ -9,6 +9,12 @@ import { signInContext } from "./support/session-state";
 /** The walk office's settings pages, by address (the walk office's slug is `walk`). */
 const OFFICE_SETTINGS = ["/en/walk/settings/general", "/en/walk/settings/billing"];
 
+/**
+ * The pages a manager opens. Billing is hidden from everyone until billing is built (#210,
+ * Hidden kit screens 1), so only General opens for the manager.
+ */
+const MANAGER_OPENS = new Set(["/en/walk/settings/general"]);
+
 /** The app's not-found page. */
 const NOT_FOUND = "Page not found";
 
@@ -21,7 +27,7 @@ async function signedIn(browser: Browser, who: Login) {
 
 // scenario: docs/e2e-scenarios.md Team 8
 test.describe("Team 8 — office settings are a manager's", () => {
-	test("an agent opening the office's settings (General, Billing) by address gets the not-found page (404), with nothing of the settings on it; the manager gets the page", async ({
+	test("an agent opening the office's settings (General, Billing) by address gets the not-found page (404), with nothing of the settings on it; the manager gets General (Billing is hidden from everyone)", async ({
 		browser,
 	}) => {
 		const agent = await signedIn(browser, AGENT);
@@ -38,7 +44,8 @@ test.describe("Team 8 — office settings are a manager's", () => {
 					.soft(agent.page.getByRole("textbox"), `no settings field on the agent's ${address}`)
 					.toHaveCount(0);
 
-				// The manager: the page.
+				// The manager: the page, where it isn't hidden from everyone (Billing, #210).
+				if (!MANAGER_OPENS.has(address)) continue;
 				const opened = await manager.page.goto(address);
 				expect(opened?.status(), `${address} opens for the manager`).toBeLessThan(400);
 				await expect(

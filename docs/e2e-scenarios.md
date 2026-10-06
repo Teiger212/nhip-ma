@@ -202,7 +202,8 @@ are not here (the onboarding grill).
 8. **Office settings are a manager's** (#212). As an agent of the walk office, opening the
    office's settings by address (`/en/walk/settings/general`, and Billing,
    `/en/walk/settings/billing`) shows the not-found page (404), as Team does, with nothing of the
-   office's settings on it. The walk office's manager opening the same addresses gets the pages.
+   office's settings on it. The walk office's manager opening General gets the page. Billing is
+   hidden from everyone until billing is built (Hidden kit screens 1, #210).
    Spec: `apps/saas/tests/office-settings.spec.ts` (Team 8; the seeded agent and manager; "nothing
    of the settings" is no text field on the agent's page; "the page" is an answer under 400 with
    a heading and no not-found page, its wording left to #214's rework).
