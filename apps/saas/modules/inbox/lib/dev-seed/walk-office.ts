@@ -111,7 +111,7 @@ const unassigned: SeedGuest[] = [
 		greeted: true,
 		story: [
 			writes(
-				hoursAgo(5),
+				hoursAgo(18),
 				"你好！我是 Chinese，想在 Times City rent 一套 3 bedroom 公寓，预算 $2200/month，next week 可以看房吗？",
 				{
 					vi: "Xin chào! Tôi là người Trung Quốc, muốn thuê một căn hộ 3 phòng ngủ ở Times City, ngân sách 2200 USD/tháng. Tuần sau xem nhà được không?",
@@ -127,7 +127,7 @@ const unassigned: SeedGuest[] = [
 		greeted: true,
 		story: [
 			writes(
-				hoursAgo(7),
+				hoursAgo(27),
 				"Hi there, Australian here, moving to Hanoi in 3 weeks with my partner. Looking to rent a 2 bedroom in Ba Dinh, around $1500/month.",
 				{
 					vi: "Chào bạn, tôi là người Úc, sẽ chuyển đến Hà Nội sau 3 tuần cùng bạn đời. Tôi tìm thuê căn 2 phòng ngủ ở Ba Đình, khoảng 1500 USD/tháng.",
@@ -271,13 +271,13 @@ const firstAgent: SeedGuest[] = [
 		name: "Bảo",
 		story: [
 			writes(
-				hoursAgo(9),
+				hoursAgo(31),
 				"Anh ơi, em cần thuê căn 1 phòng ngủ ở Hoàn Kiếm, ngân sách 15 triệu, tuần sau em dọn vào được không?",
 				{
 					en: "Hi, I need to rent a 1-bedroom in Hoàn Kiếm, budget 15 million. Could I move in next week?",
 				},
 			),
-			assigns(hoursAgo(8.5), "agent"),
+			assigns(hoursAgo(30.5), "agent"),
 		],
 	},
 	{
@@ -516,14 +516,14 @@ const secondAgent: SeedGuest[] = [
 		name: "Dmitri",
 		story: [
 			writes(
-				hoursAgo(13),
+				hoursAgo(38),
 				"Привет! Ищу квартиру в аренду в Vinhomes, 2 bedroom, в следующем месяце, бюджет $1400/month.",
 				{
 					en: "Hi! I'm looking for a flat to rent in Vinhomes, 2 bedrooms, next month, budget $1400/month.",
 					vi: "Chào bạn! Tôi tìm thuê căn hộ ở Vinhomes, 2 phòng ngủ, tháng sau, ngân sách 1400 USD/tháng.",
 				},
 			),
-			assigns(hoursAgo(12.5), "agent2"),
+			assigns(hoursAgo(37.5), "agent2"),
 		],
 	},
 	{
@@ -798,14 +798,14 @@ const managerOwn: SeedGuest[] = [
 		name: "Hyun-woo",
 		story: [
 			writes(
-				hoursAgo(6),
+				hoursAgo(23),
 				"안녕하세요, 한국인입니다. Vinhomes 2 bedroom 구매 상담 받고 싶어요. 소유권 관련도 궁금합니다.",
 				{
 					en: "Hello, I'm Korean. I'd like advice on buying a 2-bedroom in Vinhomes. I'm also curious about ownership.",
 					vi: "Xin chào, tôi là người Hàn. Tôi muốn được tư vấn mua căn 2 phòng ngủ ở Vinhomes. Tôi cũng muốn hỏi về quyền sở hữu.",
 				},
 			),
-			assigns(hoursAgo(5.8), "manager"),
+			assigns(hoursAgo(22.8), "manager"),
 		],
 	},
 	{
