@@ -30,6 +30,18 @@ test("quoted values are blanked: error messages quote the input they choke on", 
 	);
 });
 
+test("record ids are removed whatever letter they start with: Prisma's cuid and the inbox's cuid2", () => {
+	// Prisma's cuid() starts with "c"; the inbox's thread and message ids (cuid2, #141) are 24
+	// characters starting with any letter, as in these, taken from a CI log.
+	expect(scrubText("thread cm1abcdefghijklmnopqrstu failed")).toBe("thread [id] failed");
+	expect(scrubText("thread ywh8noalsll0rc8icao9zu1b failed")).toBe("thread [id] failed");
+	expect(scrubText("message ybfp9tewuj6hk21f9w29ft6q not found")).toBe("message [id] not found");
+	// Ordinary words stay readable.
+	expect(scrubText("PrismaClientKnownRequestError: Unique constraint failed")).toBe(
+		"PrismaClientKnownRequestError: Unique constraint failed",
+	);
+});
+
 test("long messages are capped, and a huge input is scrubbed quickly", () => {
 	const scrubbed = scrubText("x ".repeat(500));
 	expect(scrubbed.length).toBeLessThan(MAX_MESSAGE_LENGTH + 20);
