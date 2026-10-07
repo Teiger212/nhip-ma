@@ -27,6 +27,11 @@ class StoryDate extends RealDate {
 	static now(): number {
 		return RealDate.now() + offsetMs;
 	}
+
+	/** A date made before the clock moved is still a `Date` to whoever checks while it is moved. */
+	static [Symbol.hasInstance](value: unknown): boolean {
+		return value instanceof RealDate;
+	}
 }
 
 /** Runs `step` as if it were `at` (epoch ms); the clock runs on from there while it does. */
