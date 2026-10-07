@@ -14,7 +14,8 @@ import { testDb, testInboxStore } from "../test-store";
 const OFFICE = "office-a";
 const OTHER_OFFICE = "office-b";
 const MINUTE = 60_000;
-const DAY = 24 * 60 * MINUTE;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 
 let store: InboxStore;
 afterEach(async () => {
@@ -115,15 +116,67 @@ test("Closings and Lost count distinct won and lost leads of the cohort, as of t
 	// Another office's won lead: invisible here.
 	const elsewhere = await guestWrites(OTHER_OFFICE, "elsewhere", now - DAY);
 	await link(OTHER_OFFICE, elsewhere, "lead-elsewhere");
-	await outcome(OTHER_OFFICE, elsewhere, "lead-elsewhere", "won", new Date(now));
+	await outcome(OTHER_OFFICE, elsewhere, "lead-elsewhere", "won", new Date(now + HOUR));
+	// Every lead was written before the last outcome; the other office's word is later than all.
+	await testDb.crmLink.updateMany({
+		where: { officeId: OFFICE },
+		data: { linkedAt: new Date(now - HOUR) },
+	});
+	await testDb.crmLink.updateMany({
+		where: { officeId: OTHER_OFFICE },
+		data: { linkedAt: new Date(now + HOUR) },
+	});
 
-	const counted = await store.crmOutcomes({ userId: "agent-1", officeId: OFFICE }, { since });
-	expect(counted?.closings).toBe(2);
-	expect(counted?.lost).toBe(1);
-	// The last word: the latest of a lead written (Linh's none) and an outcome first seen.
-	const asOf = Date.parse(counted?.asOf ?? "");
-	expect(asOf).toBeGreaterThanOrEqual(lastWord.getTime());
-	expect(asOf).toBeLessThanOrEqual(Date.now());
+	expect(await store.crmOutcomes({ userId: "agent-1", officeId: OFFICE }, { since })).toEqual({
+		closings: 2,
+		lost: 1,
+		asOf: lastWord.toISOString(),
+	});
+});
+
+test("'as of' is the latest lead written when no outcome is later", async () => {
+	store = await testInboxStore();
+	const now = Date.now();
+	await store.setCrmConnection(OFFICE, "mock");
+	const minji = await guestWrites(OFFICE, "minji", now - 3 * DAY);
+	await link(OFFICE, minji, "lead-minji");
+	await outcome(OFFICE, minji, "lead-minji", "won", new Date(now - 2 * HOUR));
+	const yuki = await guestWrites(OFFICE, "yuki", now - 2 * DAY);
+	await link(OFFICE, yuki, "lead-yuki");
+	const written = new Date(now - HOUR);
+	await testDb.crmLink.updateMany({ where: { officeId: OFFICE }, data: { linkedAt: written } });
+
+	expect(
+		await store.crmOutcomes(
+			{ userId: "agent-1", officeId: OFFICE },
+			{ since: new Date(now - 30 * DAY) },
+		),
+	).toEqual({ closings: 1, lost: 0, asOf: written.toISOString() });
+});
+
+test("deleting one of a won lead's two guests leaves one closing, and so does deleting both", async () => {
+	store = await testInboxStore();
+	const now = Date.now();
+	const window = { since: new Date(now - 30 * DAY) };
+	const viewer = { userId: "agent-1", officeId: OFFICE };
+	await store.setCrmConnection(OFFICE, "mock");
+	const zalo = await guestWrites(OFFICE, "minji", now - 3 * DAY);
+	const whatsApp = await guestWrites(OFFICE, "84900000001", now - 2 * DAY, "whatsapp");
+	await link(OFFICE, zalo, "lead-minji");
+	await link(OFFICE, whatsApp, "lead-minji");
+	await outcome(OFFICE, zalo, "lead-minji", "won", new Date(now - DAY));
+	await outcome(OFFICE, whatsApp, "lead-minji", "won", new Date(now - DAY));
+	const deletion = {
+		countMock: true,
+		actorId: "agent-1",
+		reason: "guest_request" as const,
+		note: null,
+	};
+
+	expect(await store.deleteGuest(OFFICE, zalo, deletion)).toMatchObject({ ok: true });
+	expect(await store.crmOutcomes(viewer, window)).toMatchObject({ closings: 1 });
+	expect(await store.deleteGuest(OFFICE, whatsApp, deletion)).toMatchObject({ ok: true });
+	expect(await store.crmOutcomes(viewer, window)).toMatchObject({ closings: 1 });
 });
 
 test("a lead whose threads disagree counts once, by the outcome Nhịp saw last", async () => {
@@ -150,11 +203,11 @@ test("a deleted guest's won or lost lead stays in Closings and Lost, as their le
 	const now = Date.now();
 	await store.setCrmConnection(OFFICE, "mock");
 	// What deleting a guest leaves (ADR 0020): their numbers, with the outcome Nhịp last heard.
-	const tally = (id: string, daysAgo: number, status: CrmOutcomeStatus | null) =>
+	const tally = (id: string, daysAgo: number, status: CrmOutcomeStatus | null, officeId = OFFICE) =>
 		testDb.leadTally.create({
 			data: {
 				id,
-				officeId: OFFICE,
+				officeId,
 				pipe: "zalo",
 				firstInboundAt: new Date(now - daysAgo * DAY),
 				inConversation: false,
@@ -165,6 +218,7 @@ test("a deleted guest's won or lost lead stays in Closings and Lost, as their le
 	await tally("lost-in-window", 3, "lost");
 	await tally("open-in-window", 3, "open");
 	await tally("won-before-window", 40, "won");
+	await tally("won-elsewhere", 3, "won", OTHER_OFFICE);
 
 	expect(
 		await store.crmOutcomes(

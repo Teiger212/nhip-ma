@@ -714,6 +714,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					tx.$queryRaw<LeadRow[]>(leadRows({ officeId, conversationId, countMock })),
 				]);
 				const linked = Boolean(link?.leadId);
+				// A lead another thread still links keeps its outcome there: only the lead's last
+				// thread hands it to the tally, so Home never counts one closing twice (#68).
+				const leadElsewhere = link?.leadId
+					? (await tx.crmLink.count({
+							where: { officeId, leadId: link.leadId, conversationId: { not: conversationId } },
+						})) > 0
+					: false;
 
 				// 4. The lead tally, by the funnel's own rule, if the guest ever wrote in.
 				const [numbers] = lead;
@@ -727,7 +734,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							firstInboundAt: numbers.firstInboundAt,
 							firstReplyAt: numbers.firstSentAt,
 							inConversation: numbers.wroteBack,
-							outcome: link?.outcome ?? null,
+							outcome: leadElsewhere ? null : (link?.outcome ?? null),
 						},
 					});
 				}
