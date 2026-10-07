@@ -6,6 +6,10 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: "node",
+		// Spies, stubbed globals and stubbed env vars are undone before every test (#223).
+		restoreMocks: true,
+		unstubGlobals: true,
+		unstubEnvs: true,
 		exclude: ["**/node_modules/**", "**/tests/**", "**/.next/**"],
 		globalSetup: ["./vitest.global-setup.ts"],
 		// The store hashes vendor message ids under a key from this secret (#141); tests bring

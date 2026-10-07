@@ -49,7 +49,6 @@ beforeEach(async () => {
 afterEach(async () => {
 	// Alerts follow a guest message in the background (ADR 0019); they finish before the reset.
 	await settleBackgroundWork();
-	vi.restoreAllMocks();
 	const runtime = peekTestRuntime();
 	if (runtime) {
 		await runtime.store.close();

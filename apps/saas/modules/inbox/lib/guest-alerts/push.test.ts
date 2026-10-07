@@ -1,7 +1,7 @@
 import { parse } from "node:url";
 
 import { createInboxStore } from "@repo/database/inbox";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import type { Vapid } from "../config";
 import { mockInboxConfig } from "../config";
@@ -43,10 +43,6 @@ beforeEach(async () => {
 	sendNotification.mockReset();
 	sendNotification.mockResolvedValue({ statusCode: 201, body: "", headers: {} });
 	warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-});
-
-afterEach(() => {
-	warn.mockRestore();
 });
 
 async function device(

@@ -49,8 +49,6 @@ beforeEach(async () => {
 afterEach(async () => {
 	await settleBackgroundWork();
 	setRuntimeForTests(null);
-	vi.unstubAllGlobals();
-	vi.restoreAllMocks();
 });
 
 let seq = 0;

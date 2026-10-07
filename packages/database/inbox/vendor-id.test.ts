@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 
 import { hashVendorMessageId, storedVendorMessageId } from "./vendor-id";
 
@@ -11,10 +11,6 @@ import { hashVendorMessageId, storedVendorMessageId } from "./vendor-id";
 const RAW = "wamid.HBgL84901234567FQIAEhgUM0FCQjI";
 const SECRET_A = "vendor-id-test-secret-a-0123456789abcdef";
 const SECRET_B = "vendor-id-test-secret-b-0123456789abcdef";
-
-afterEach(() => {
-	vi.unstubAllEnvs();
-});
 
 test("the stored form never holds the raw id, and the same id always stores the same", () => {
 	vi.stubEnv("BETTER_AUTH_SECRET", SECRET_A);

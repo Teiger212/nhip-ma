@@ -135,7 +135,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	vi.unstubAllGlobals();
 	const runtime = peekTestRuntime();
 	if (runtime) {
 		await runtime.store.close();
@@ -454,18 +453,14 @@ test("WhatsApp approve outside 24h window is refused", async () => {
 
 test("POST /dev/inbound is 404 in production", async () => {
 	vi.stubEnv("NODE_ENV", "production");
-	try {
-		const res = await inject(
-			post("http://localhost/dev/inbound", {
-				pipe: "zalo",
-				guestId: "guest-1",
-				text: "Looking to rent in Tay Ho",
-			}),
-		);
-		expect(res.status).toBe(404);
-	} finally {
-		vi.unstubAllEnvs();
-	}
+	const res = await inject(
+		post("http://localhost/dev/inbound", {
+			pipe: "zalo",
+			guestId: "guest-1",
+			text: "Looking to rent in Tay Ho",
+		}),
+	);
+	expect(res.status).toBe(404);
 });
 
 /** A guest's thread id in the walk office, found as the store finds it: by (office, pipe, guest). */
