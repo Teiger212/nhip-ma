@@ -28,7 +28,11 @@ const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
  */
 const WITHIN_A_POLL = { timeout: 30_000 };
 
-/** What a loaded page shows without waiting on a poll (its title follows the count it shows). */
+/**
+ * What a freshly loaded page shows from its first read of the list (its title follows the count it
+ * shows). In the E2E build a poll falls within this too (#222): it tells the count is right, not
+ * that it came before a poll.
+ */
 const ON_LOAD = { timeout: 10_000 };
 
 /** The notice for an alert that is not the viewer's to open (Alerts 8, #136). */

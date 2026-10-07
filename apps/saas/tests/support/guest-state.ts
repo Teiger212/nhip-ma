@@ -3,7 +3,7 @@
  * #222). A spec about what the Inbox shows of many threads, not about how a guest's message
  * arrives, writes them through the inbox store's own calls: the ones a Zalo webhook, a
  * manager's assignment and an agent's approval make. Nothing that follows a message runs (no
- * alert, auto-reply or draft), and a reply is sent mock. A spec that proves the arrival brings
+ * alert, auto-reply, one-shot, CRM lead, translation or draft), and a reply is sent mock. A spec that proves the arrival brings
  * its guest in by a signed webhook.
  */
 import { randomUUID } from "node:crypto";
@@ -18,7 +18,7 @@ const AT_ONCE = 8;
  * Each guest writes once to the office's Zalo OA; then, by `fate`, nothing (`unassigned`), the
  * thread is given to `ownerId` (`assigned`), or given to them and answered by them (`answered`).
  */
-export async function seedZaloGuests(
+export async function writeZaloGuests(
 	officeId: string,
 	oaId: string,
 	fate: string,

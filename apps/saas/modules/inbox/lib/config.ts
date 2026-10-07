@@ -77,8 +77,8 @@ const envSchema = z
 		}
 		// The E2E build is a production build (NODE_ENV=production) that sends no email and polls
 		// the Inbox every second (#222): production, staging (Vercel's Preview) and any live
-		// deployment refuse it. Vercel builds and runs with the same env, so a deployment whose
-		// build baked E2E into the page never starts.
+		// deployment refuse it, wherever it was built (`next.config.ts` also fails a Vercel build
+		// with it): the server then answers no request.
 		if (
 			env.E2E &&
 			(env.VERCEL_ENV === "production" || env.VERCEL_ENV === "preview" || env.SEND_MODE === "live")

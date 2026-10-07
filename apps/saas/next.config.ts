@@ -27,6 +27,11 @@ dotenv.config({ path: path.join(repoRoot, ".env") });
 // The E2E run (E2E=1) is a production build with its own env and database; it never reads
 // the developer's .env.local, and anything CI sets explicitly wins over .env.e2e.
 if (process.env.E2E === "1") {
+	// Never on Vercel: the E2E build sends no email and polls every second (#222). Refused here, a
+	// deployment fails its build; `config.ts` also refuses E2E at startup, wherever it was built.
+	if (process.env.VERCEL) {
+		throw new Error("E2E=1 is the E2E run's build and must not be set on Vercel");
+	}
 	dotenv.config({ path: path.join(repoRoot, ".env.e2e") });
 } else {
 	dotenv.config({ path: path.join(repoRoot, ".env.local"), override: true });

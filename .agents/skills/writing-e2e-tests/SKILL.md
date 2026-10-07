@@ -37,6 +37,10 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   Never CSS structure, never nth-child.
 - Waiting: web-first assertions (`await expect(locator).toBeVisible()`, `toHaveURL`,
   `toHaveText`). No `waitForTimeout`, no `networkidle`.
+- The E2E build polls the Inbox every second, not ten (#222). A change a page learns of shows
+  within a second or two; keep a ceiling of three production polls (30 s) for CI's margin. A
+  plain assertion can't tell an operator's own action showing at once from the next poll: to
+  prove "at once", hold `GET /api/conversations` with `page.route` while asserting.
 
 ## Running
 
