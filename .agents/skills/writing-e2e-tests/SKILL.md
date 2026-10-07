@@ -61,8 +61,6 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
      `scripts/e2e-server.sh --stop` when you're done.
 
   The database is seeded once per build, as in one CI run, so specs that pass in CI pass here.
-- A quick local check: about ten critical-path tests carry the `@core` tag (#223). Against the
-  running build, `E2E_REUSE=1 pnpm exec playwright test --grep @core`. CI still runs everything.
 - Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (`test`, `expect`, the
   `admin` fixture: create offices, invite, clean up), `session-state.ts` (`signInContext`), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
   `offices.ts`, `operators.ts` (`joinOffice`), `data.ts` (`uniqueEmail`), `seed.ts` (seed

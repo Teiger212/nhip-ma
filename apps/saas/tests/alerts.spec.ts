@@ -253,51 +253,49 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 	test.describe.configure({ timeout: 180_000 });
 
 	// scenario: docs/e2e-scenarios.md Alerts 1
-	test(
-		"a new guest alerts the managers only, each in their own language, and no agent or anyone else",
-		{ tag: "@core" },
-		async ({ newOffice }) => {
-			test.setTimeout(240_000);
-			const office = await newOffice({ managers: 2 });
-			const [first, second] = office.managers;
-			// Manager 1 is in English; manager 2 never chose a language.
-			await setLocale(first, "en");
-			expect(
-				(await sessionUser(second.api)).locale ?? null,
-				`${second.label} has no language set`,
-			).toBeNull();
+	test("a new guest alerts the managers only, each in their own language, and no agent or anyone else", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(240_000);
+		const office = await newOffice({ managers: 2 });
+		const [first, second] = office.managers;
+		// Manager 1 is in English; manager 2 never chose a language.
+		await setLocale(first, "en");
+		expect(
+			(await sessionUser(second.api)).locale ?? null,
+			`${second.label} has no language set`,
+		).toBeNull();
 
-			const guest = office.newGuest();
-			await guest.write();
-			const { id: threadId } = await threadSeenBy(first, guest);
+		const guest = office.newGuest();
+		await guest.write();
+		const { id: threadId } = await threadSeenBy(first, guest);
 
-			await expect
-				.poll(() => countsOn(office, threadId), {
-					...ON_THE_PHONES,
-					message: "the new guest alerts manager 1 and manager 2, once each, and no agent",
-				})
-				.toEqual(everyManager(office, 1));
-			await laterGuestArrives(office);
+		await expect
+			.poll(() => countsOn(office, threadId), {
+				...ON_THE_PHONES,
+				message: "the new guest alerts manager 1 and manager 2, once each, and no agent",
+			})
+			.toEqual(everyManager(office, 1));
+		await laterGuestArrives(office);
 
-			const alerts = await alertsOn(office, threadId);
-			expect(
-				alerts.map((row) => whose(office, row.userId)).sort(),
-				"one alert each for the two managers, and none for either agent or anyone else",
-			).toEqual(["manager 1", "manager 2"]);
-			for (const row of alerts) {
-				const who = whose(office, row.userId);
-				expect(row.kind, `${who}'s alert is a guest's message`).toBe("guest");
-				expect(row.sounded, `${who}'s alert sounds`).toBe(true);
-				const locale = who === first.label ? "en" : "vi";
-				expect(row.link, `${who}'s alert opens the Inbox in their language`).toMatch(
-					new RegExp(`^/${locale}/inbox\\?alert=`),
-				);
-				expect(row.link.endsWith(row.id), `${who}'s link carries the alert's own id`).toBe(true);
-				expect(row.link, `${who}'s link carries no thread id`).not.toContain(threadId);
-				expect(row.link, `${who}'s link names no guest`).not.toContain(guest.id);
-			}
-		},
-	);
+		const alerts = await alertsOn(office, threadId);
+		expect(
+			alerts.map((row) => whose(office, row.userId)).sort(),
+			"one alert each for the two managers, and none for either agent or anyone else",
+		).toEqual(["manager 1", "manager 2"]);
+		for (const row of alerts) {
+			const who = whose(office, row.userId);
+			expect(row.kind, `${who}'s alert is a guest's message`).toBe("guest");
+			expect(row.sounded, `${who}'s alert sounds`).toBe(true);
+			const locale = who === first.label ? "en" : "vi";
+			expect(row.link, `${who}'s alert opens the Inbox in their language`).toMatch(
+				new RegExp(`^/${locale}/inbox\\?alert=`),
+			);
+			expect(row.link.endsWith(row.id), `${who}'s link carries the alert's own id`).toBe(true);
+			expect(row.link, `${who}'s link carries no thread id`).not.toContain(threadId);
+			expect(row.link, `${who}'s link names no guest`).not.toContain(guest.id);
+		}
+	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 2
 	test("an owned thread's guest alerts only its owner", async ({ newOffice }) => {

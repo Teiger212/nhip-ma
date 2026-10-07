@@ -331,58 +331,56 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md First greeting 1
 test.describe("First greeting 1 — a new guest is greeted at once, and it's still their turn", () => {
-	test(
-		"a guest writing in English to rent in Tay Ho gets one office message within seconds: it acknowledges renting in Tây Hồ, asks about budget then move-in, has no digit, ends with the office's auto-reply label and is marked Auto-reply · Template · Demo send; the thread is still Your turn with no owner, the nav counts it and Sent is 0",
-		{ tag: "@core" },
-		async ({ office }) => {
-			const { manager } = office;
-			const guest = office.newGuest();
-			await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
+	test("a guest writing in English to rent in Tay Ho gets one office message within seconds: it acknowledges renting in Tây Hồ, asks about budget then move-in, has no digit, ends with the office's auto-reply label and is marked Auto-reply · Template · Demo send; the thread is still Your turn with no owner, the nav counts it and Sent is 0", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
 
-			const greeting = await greetingOf(manager.api, guest);
-			const { id: threadId } = await threadOf(manager.api, guest);
-			expect(await messagesOf(manager.api, threadId), "the thread holds two messages").toHaveLength(
-				2,
-			);
+		const greeting = await greetingOf(manager.api, guest);
+		const { id: threadId } = await threadOf(manager.api, guest);
+		expect(await messagesOf(manager.api, threadId), "the thread holds two messages").toHaveLength(
+			2,
+		);
 
-			// What it says.
-			const { text } = greeting;
-			expect(text, "it thanks the guest").toMatch(/thank/i);
-			expect(text, "it acknowledges renting").toMatch(/\brent/i);
-			expect(text, "it acknowledges Tây Hồ").toContain("Tây Hồ");
-			const budget = text.indexOf("What budget do you have in mind?");
-			const moveIn = text.indexOf("When would you like to move in?");
-			expect(budget, "it asks about budget").toBeGreaterThanOrEqual(0);
-			expect(moveIn, "it asks about move-in").toBeGreaterThan(budget);
-			expect(text.match(/[?？]/g) ?? [], "two questions at most").toHaveLength(2);
-			expect(text, "no digit of any script").not.toMatch(/\p{Nd}/u);
-			expect(lastLine(text), "its last line is the office's label").toBe(EN_LABEL);
+		// What it says.
+		const { text } = greeting;
+		expect(text, "it thanks the guest").toMatch(/thank/i);
+		expect(text, "it acknowledges renting").toMatch(/\brent/i);
+		expect(text, "it acknowledges Tây Hồ").toContain("Tây Hồ");
+		const budget = text.indexOf("What budget do you have in mind?");
+		const moveIn = text.indexOf("When would you like to move in?");
+		expect(budget, "it asks about budget").toBeGreaterThanOrEqual(0);
+		expect(moveIn, "it asks about move-in").toBeGreaterThan(budget);
+		expect(text.match(/[?？]/g) ?? [], "two questions at most").toHaveLength(2);
+		expect(text, "no digit of any script").not.toMatch(/\p{Nd}/u);
+		expect(lastLine(text), "its last line is the office's label").toBe(EN_LABEL);
 
-			// The queue doesn't move.
-			const listed = await threadOf(manager.api, guest);
-			expect(listed.unansweredInboundId, "still the guest's turn").not.toBeNull();
-			expect(listed.owner, "no owner").toBeNull();
+		// The queue doesn't move.
+		const listed = await threadOf(manager.api, guest);
+		expect(listed.unansweredInboundId, "still the guest's turn").not.toBeNull();
+		expect(listed.owner, "no owner").toBeNull();
 
-			const { page } = manager;
-			await openInbox(page);
-			await expect(view(page, "Waiting", 1), "the manager's Waiting counts it").toBeVisible();
-			await expect(view(page, "Sent", 0), "nothing is Sent").toBeVisible();
-			await expect(navCount(page), "the nav counts it").toHaveText("1");
-			await expect(rowOf(page, guest).getByTestId("thread-owner")).toHaveAttribute(
-				"data-owner",
-				"unassigned",
-			);
+		const { page } = manager;
+		await openInbox(page);
+		await expect(view(page, "Waiting", 1), "the manager's Waiting counts it").toBeVisible();
+		await expect(view(page, "Sent", 0), "nothing is Sent").toBeVisible();
+		await expect(navCount(page), "the nav counts it").toHaveText("1");
+		await expect(rowOf(page, guest).getByTestId("thread-owner")).toHaveAttribute(
+			"data-owner",
+			"unassigned",
+		);
 
-			// In the thread: the office's message, marked Auto-reply, Template and the mock badge.
-			await openThreadOf(page, guest);
-			await expect(sourced(page, saas.inbox.source.autoReply)).toHaveCount(1);
-			await expect(
-				openThread(page).getByText(saas.inbox.autoReply.template, { exact: true }),
-			).toHaveCount(1);
-			await expect(openThread(page).getByText(saas.inbox.mock, { exact: true })).toHaveCount(1);
-			await expect(openThread(page).getByText(EN_LABEL)).toBeVisible();
-		},
-	);
+		// In the thread: the office's message, marked Auto-reply, Template and the mock badge.
+		await openThreadOf(page, guest);
+		await expect(sourced(page, saas.inbox.source.autoReply)).toHaveCount(1);
+		await expect(
+			openThread(page).getByText(saas.inbox.autoReply.template, { exact: true }),
+		).toHaveCount(1);
+		await expect(openThread(page).getByText(saas.inbox.mock, { exact: true })).toHaveCount(1);
+		await expect(openThread(page).getByText(EN_LABEL)).toBeVisible();
+	});
 });
 
 // scenario: docs/e2e-scenarios.md First greeting 2

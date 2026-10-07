@@ -13,32 +13,31 @@ import { apiAs, withOrigin } from "./support/session";
 
 // scenario: docs/e2e-scenarios.md Auth 1
 test.describe("Auth 1 — an invitee joins", () => {
-	test(
-		"opening the invitation link and signing up signs the invitee in and lands them in the office",
-		{ tag: "@core" },
-		async ({ page, admin }) => {
-			const office = await admin.createOffice("Auth 1");
-			const email = admin.newEmail("join");
-			const invitationId = await admin.invite(email, office.id);
+	test("opening the invitation link and signing up signs the invitee in and lands them in the office", async ({
+		page,
+		admin,
+	}) => {
+		const office = await admin.createOffice("Auth 1");
+		const email = admin.newEmail("join");
+		const invitationId = await admin.invite(email, office.id);
 
-			await signUpByInvitationLink(page, invitationId, email);
+		await signUpByInvitationLink(page, invitationId, email);
 
-			// Signed in: sign-up leads straight into the app's first-run step, a signed-in page.
-			await expect(page).toHaveURL(/\/en\/onboarding/);
-			const session = await page.request.get("/api/auth/get-session");
-			expect(await session.json()).toMatchObject({ user: { email, emailVerified: true } });
+		// Signed in: sign-up leads straight into the app's first-run step, a signed-in page.
+		await expect(page).toHaveURL(/\/en\/onboarding/);
+		const session = await page.request.get("/api/auth/get-session");
+		expect(await session.json()).toMatchObject({ user: { email, emailVerified: true } });
 
-			await page.getByTestId("onboarding-continue").click();
-			await expect(page).toHaveURL(/\/en\/inbox/);
-			await expectInboxLoads(page);
+		await page.getByTestId("onboarding-continue").click();
+		await expect(page).toHaveURL(/\/en\/inbox/);
+		await expectInboxLoads(page);
 
-			// In the office it was invited to, and only that one.
-			expect(await officesOf(page)).toEqual([
-				expect.objectContaining({ id: office.id, name: office.name }),
-			]);
-			expect(await admin.memberEmails(office.id)).toContain(email);
-		},
-	);
+		// In the office it was invited to, and only that one.
+		expect(await officesOf(page)).toEqual([
+			expect.objectContaining({ id: office.id, name: office.name }),
+		]);
+		expect(await admin.memberEmails(office.id)).toContain(email);
+	});
 });
 
 // scenario: docs/e2e-scenarios.md Auth 5
