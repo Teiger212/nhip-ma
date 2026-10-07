@@ -17,8 +17,8 @@ import {
 	injectDevInbound,
 	regenerateDraft,
 } from "./inbox";
-import { encryptSecret, tokenContext } from "./pipes/secrets";
 import { type Runtime, setRuntimeForTests } from "./runtime";
+import { connectZaloOa, guestMessage, TEST_SECRETS_KEY, threadOf } from "./test-fixtures";
 import type { Conversation, InboundEvent, Message } from "./types";
 
 /**
@@ -31,14 +31,13 @@ import type { Conversation, InboundEvent, Message } from "./types";
 const OFFICE = "office-a";
 const OA = "oa-1";
 const MANAGER = { userId: "agent-1", officeId: OFFICE, role: "manager" as const };
-const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
 
 let runtime: Runtime;
 
 beforeEach(async () => {
 	runtime = {
 		store: createInboxStore(testDb),
-		config: mockInboxConfig({ pipeSecretsKey: SECRETS_KEY }),
+		config: mockInboxConfig({ pipeSecretsKey: TEST_SECRETS_KEY }),
 		drafts: noDraftAdapter,
 	};
 	setRuntimeForTests(runtime);
@@ -54,17 +53,13 @@ let seq = 0;
 
 function guest(guestId: string, text: string, extra: Partial<InboundEvent> = {}): InboundEvent {
 	seq += 1;
-	return {
-		pipe: "zalo",
-		source: "guest",
-		guestId,
-		guestName: null,
+	return guestMessage(guestId, {
 		text,
 		vendorMessageId: `zalo-msg-${seq}`,
 		at: Date.now() + seq,
 		pipeExternalId: OA,
 		...extra,
-	};
+	});
 }
 
 /** The office replying from the Zalo OA app itself, as Zalo echoes it. */
@@ -78,22 +73,12 @@ async function arrive(...events: InboundEvent[]): Promise<void> {
 }
 
 async function thread(guestId: string): Promise<Conversation> {
-	const id = (await testDb.conversation.findFirstOrThrow({ where: { officeId: OFFICE, guestId } }))
-		.id;
+	const { id } = await threadOf(OFFICE, guestId);
 	return (await runtime.store.getOfficeConversation(OFFICE, id)) as Conversation;
 }
 
 function autoReplies(conversation: Conversation): Message[] {
 	return conversation.messages.filter((message) => message.source === "auto-reply");
-}
-
-async function connectZaloOa({ disconnected = false } = {}): Promise<void> {
-	await runtime.store.savePipeCredential("zalo", OA, {
-		accessToken: encryptSecret("access-1", SECRETS_KEY, tokenContext("zalo", OA, "access")),
-		refreshToken: encryptSecret("refresh-1", SECRETS_KEY, tokenContext("zalo", OA, "refresh")),
-		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-	});
-	if (disconnected) await runtime.store.markPipeDisconnected("zalo", OA, "refresh refused");
 }
 
 async function funnel() {
@@ -165,7 +150,7 @@ describe("a new guest's first message gets one auto-reply (G1)", () => {
 	});
 
 	test("a disconnected OA greets no one, and the guest is still Your turn", async () => {
-		await connectZaloOa({ disconnected: true });
+		await connectZaloOa(runtime.store, OA, { disconnected: true });
 		await arrive(guest("g6", "Hello"));
 		const conversation = await thread("g6");
 		expect(autoReplies(conversation)).toHaveLength(0);
@@ -225,9 +210,9 @@ describe("one send attempt (ADR 0021, Consequences)", () => {
 		runtime.config = mockInboxConfig({
 			sendMode: "live",
 			zalo: { appId: "app-1", appSecret: "app-secret", oaSecretKey: "oa-secret" },
-			pipeSecretsKey: SECRETS_KEY,
+			pipeSecretsKey: TEST_SECRETS_KEY,
 		});
-		await connectZaloOa();
+		await connectZaloOa(runtime.store, OA);
 		const fetch = vi.fn(async () => {
 			throw new TypeError("fetch failed");
 		});
@@ -250,7 +235,7 @@ describe("one send attempt (ADR 0021, Consequences)", () => {
 		runtime.config = mockInboxConfig({
 			sendMode: "live",
 			zalo: { appId: "app-1", appSecret: "app-secret", oaSecretKey: "oa-secret" },
-			pipeSecretsKey: SECRETS_KEY,
+			pipeSecretsKey: TEST_SECRETS_KEY,
 		});
 		const fetch = vi.fn(async () => new Response("{}"));
 		vi.stubGlobal("fetch", fetch);
@@ -406,7 +391,7 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 	});
 
 	test("with no greeting sent, the box keeps the first-reply template", async () => {
-		await connectZaloOa({ disconnected: true });
+		await connectZaloOa(runtime.store, OA, { disconnected: true });
 		await arrive(guest("p4", "Hi, we're looking to rent an apartment in Tay Ho"));
 		const conversation = await thread("p4");
 		expect(autoReplies(conversation)).toHaveLength(0);

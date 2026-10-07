@@ -30,6 +30,7 @@ import { mockInboxConfig } from "./config";
 import { followUpTemplate } from "./draft";
 import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
+import { json, params, post, WALK_SESSION } from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
 
 /**
@@ -39,30 +40,6 @@ import type { Conversation, ConversationSummary } from "./types";
  * and it sends; a third approve with no new inbound is 409. Nothing is sent on its own but the
  * first message's auto-reply (ADR 0021).
  */
-
-const WALK_SESSION = {
-	session: { id: "walk-session", activeOrganizationId: "walk-office" },
-	user: { id: "walk-user" },
-};
-
-type Body = Record<string, unknown>;
-
-async function json(res: Response): Promise<{ status: number; body: Body }> {
-	const body = (await res.json().catch(() => ({}))) as Body;
-	return { status: res.status, body };
-}
-
-function params(id: string): { params: Promise<{ id: string }> } {
-	return { params: Promise.resolve({ id }) };
-}
-
-function post(url: string, body: unknown): Request {
-	return new Request(url, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(body),
-	});
-}
 
 const fakeAdapter = (followUp: (input: FollowUpInput) => string | null): DraftAdapter => ({
 	provider: "openai-compatible",

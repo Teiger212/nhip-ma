@@ -27,6 +27,7 @@ import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import type { DraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
+import { json, params, post, WALK_SESSION } from "./test-fixtures";
 import { TRANSLATION_MAX_ATTEMPTS, TRANSLATION_RETRY_AFTER_MS } from "./translate";
 import type { Conversation } from "./types";
 
@@ -36,11 +37,6 @@ import type { Conversation } from "./types";
  * paid model again. The failure is kept in the database and the model is asked again only
  * after a backoff, a bounded number of times.
  */
-
-const WALK_SESSION = {
-	session: { id: "walk-session", activeOrganizationId: "walk-office" },
-	user: { id: "walk-user" },
-};
 
 const MINUTE = 60_000;
 
@@ -79,15 +75,13 @@ afterEach(async () => {
 });
 
 async function arrive(text: string): Promise<Conversation> {
-	const res = await inject(
-		new Request("http://localhost/dev/inbound", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ pipe: "zalo", guestId: "backoff-guest", text }),
-		}),
+	const res = await json(
+		await inject(
+			post("http://localhost/dev/inbound", { pipe: "zalo", guestId: "backoff-guest", text }),
+		),
 	);
 	expect(res.status).toBe(200);
-	return ((await res.json()) as { conversation: Conversation }).conversation;
+	return res.body.conversation as Conversation;
 }
 
 /** One read of the list, as every open inbox and Home do every 10 seconds. */
@@ -101,7 +95,7 @@ async function pollList(): Promise<void> {
 async function openThread(id: string): Promise<Conversation> {
 	const res = await getConversation(
 		new Request(`http://localhost/api/conversations/${encodeURIComponent(id)}?locale=vi`),
-		{ params: Promise.resolve({ id }) },
+		params(id),
 	);
 	expect(res.status).toBe(200);
 	const conversation = (await res.json()) as Conversation;
