@@ -31,7 +31,7 @@ export const TEST_OPERATORS = ["agent-1", "agent-2", "walk-user"];
 /** Empty the inbox and make sure the fixture offices and operators exist. */
 export async function resetTestInbox(): Promise<void> {
 	// A previous test's background work (an alert, the auto-reply, a translation) may still hold
-	// row locks; TRUNCATE needs an exclusive one, so the two would deadlock (40P01).
+	// row locks the reset's deletes need, so the two could deadlock (40P01).
 	await settleBackgroundWork();
 	await resetInboxTables(testDb, { offices: TEST_OFFICES, operators: TEST_OPERATORS });
 }

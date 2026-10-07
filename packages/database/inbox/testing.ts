@@ -52,6 +52,27 @@ export async function ensureTestDatabase(url = testDatabaseUrl()): Promise<void>
 }
 
 /**
+ * The inbox tables, emptied in one statement. Every table that references them does so with
+ * `ON DELETE CASCADE` on a required column, so their rows go too: the same end state as
+ * `TRUNCATE … CASCADE`, at a fraction of the cost on near-empty tables, and with row locks
+ * rather than an exclusive lock on each table (#223).
+ */
+const EMPTY_INBOX_TABLES = `DO $$ BEGIN
+	DELETE FROM "inbox_conversation";
+	DELETE FROM "inbox_pipe_connection";
+	DELETE FROM "inbox_crm_connection";
+	DELETE FROM "inbox_mock_crm_lead";
+	DELETE FROM "inbox_mock_crm_outage";
+	DELETE FROM "inbox_crm_write_failure";
+	DELETE FROM "inbox_webhook_delivery";
+	DELETE FROM "inbox_alert";
+	DELETE FROM "inbox_lead_tally";
+	DELETE FROM "inbox_guest_deletion";
+	DELETE FROM "push_subscription";
+	DELETE FROM "inbox_office_setting";
+END $$`;
+
+/**
  * Empty the inbox tables (children go with them through the foreign keys) and make sure
  * the offices and operators a test names exist, because a thread needs an Organization
  * and an Answer's operator needs a User.
@@ -60,9 +81,7 @@ export async function resetInboxTables(
 	db: PrismaClient,
 	{ offices = [], operators = [] }: { offices?: string[]; operators?: string[] } = {},
 ): Promise<void> {
-	await db.$executeRawUnsafe(
-		`TRUNCATE "inbox_conversation", "inbox_pipe_connection", "inbox_crm_connection", "inbox_mock_crm_lead", "inbox_mock_crm_outage", "inbox_crm_write_failure", "inbox_webhook_delivery", "inbox_alert", "inbox_lead_tally", "inbox_guest_deletion", "push_subscription", "inbox_office_setting" CASCADE`,
-	);
+	await db.$executeRawUnsafe(EMPTY_INBOX_TABLES);
 	const now = new Date();
 	for (const id of offices) {
 		await db.organization.upsert({
