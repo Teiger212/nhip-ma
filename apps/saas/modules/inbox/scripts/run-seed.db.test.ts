@@ -250,9 +250,47 @@ test(
 		await runSeed({ env: localEnv(), reset: false, log: quiet });
 		expect(await rowCounts()).toEqual(seeded);
 
+		// What isn't the seed's stays through --reset: a guest of someone else's in the walk office,
+		// an agent's bell row whose alert is gone, and a deleted guest's tally from close to the
+		// seed's own deleted guest's first contact.
+		const elsewhere = await store.upsertInbound(
+			{
+				pipe: "whatsapp",
+				source: "guest",
+				guestId: "not-a-seed-guest",
+				guestName: "Someone else",
+				text: "Hello",
+				vendorMessageId: null,
+			},
+			WALK_OFFICE_ID,
+		);
+		const bellRow = await testDb.notification.create({
+			data: {
+				userId: await userId(WALK_USER_EMAIL),
+				type: "THREAD_ASSIGNED",
+				link: "http://localhost:3010/en/inbox?alert=pruned-long-ago",
+			},
+		});
+		const tally = await testDb.leadTally.create({
+			data: {
+				id: "not-a-seed-tally",
+				officeId: WALK_OFFICE_ID,
+				pipe: "whatsapp",
+				language: "en",
+				firstInboundAt: new Date(firstRun - 9 * DAY - 2 * 60_000),
+				inConversation: false,
+			},
+		});
+		const withOthers = await rowCounts();
+
 		const now = Date.now();
 		await runSeed({ env: localEnv(), reset: true, now, log: quiet });
-		expect(await rowCounts()).toEqual(seeded);
+		expect(await rowCounts()).toEqual(withOthers);
+		expect(
+			await store.getOfficeConversation(WALK_OFFICE_ID, elsewhere.conversation.id),
+		).not.toBeNull();
+		expect(await testDb.notification.findUnique({ where: { id: bellRow.id } })).not.toBeNull();
+		expect(await testDb.leadTally.findUnique({ where: { id: tally.id } })).not.toBeNull();
 		// As of now: the guest who wrote 40 minutes before this run is fresh again.
 		const { threads } = await viewOf(WALK_MANAGER_EMAIL, WALK_OFFICE_ID, "manager");
 		const latest = Math.max(

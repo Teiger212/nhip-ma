@@ -708,7 +708,8 @@ const secondAgent: SeedGuest[] = [
 		],
 	},
 	{
-		// Answered, then deleted on the guest's request: only a receipt and a lead tally stay.
+		// Answered by the manager, then deleted on the guest's request: only a receipt and a lead
+		// tally stay.
 		pipe: "whatsapp",
 		guestId: "12025550199",
 		name: "Tom",
@@ -721,10 +722,10 @@ const secondAgent: SeedGuest[] = [
 					vi: "Chào bạn, cho hỏi nhanh: bên bạn có căn 2 phòng ngủ cho thuê ở Ciputra từ tháng sau không? Ngân sách 1700 USD.",
 				},
 			),
-			assigns(daysAgo(9) - minutesAgo(5), "agent2"),
+			// Never assigned, so no "assigned" bell row outlives the thread (`removeSeeded`).
 			replies(
 				daysAgo(9) - minutesAgo(10),
-				"agent2",
+				"manager",
 				"Hi Tom, yes: two 2-bedroom flats in Ciputra fit $1700. Shall I send them?",
 			),
 		],

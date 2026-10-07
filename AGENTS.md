@@ -46,7 +46,7 @@ It then writes the rich dev and demo dataset (#69, `apps/saas/modules/inbox/lib/
 all invented: about sixty guests over the last 30 days, each one's story played through the
 app's own calls at its own time (the inbound path, one-shot, alerts, auto-reply, mock CRM,
 assignments, approvals, a guest deletion), with no model call and nothing sent or pushed.
-The walk office (auto-reply on, mock CRM) holds the walk's four demo threads (Minji, Yuki,
+The walk office (auto-reply on, as by default: the seed warns if it finds it off; mock CRM) holds the walk's four demo threads (Minji, Yuki,
 Alexei, Thảo) and about forty more: Unassigned, owned by each agent and by the manager, Your
 turn, Quiet, Sent, written back after a reply, greeted, in CRM, Not in CRM yet (a recorded
 write failure; a guest whose number is on two leads), Won, Lost, lost and written back, an

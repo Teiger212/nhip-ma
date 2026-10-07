@@ -1,6 +1,7 @@
+import { db } from "@repo/database";
+
 import { settleBackgroundWork } from "../lib/background";
 import { SeedRefused } from "../lib/dev-seed/guard";
-import { getRuntime } from "../lib/runtime";
 import { runSeed } from "./run-seed";
 
 /** `pnpm seed [-- --reset]` (#69): see `runSeed`. */
@@ -11,7 +12,7 @@ async function main(): Promise<void> {
 		// The E2E seed's demo threads translate and alert in the background (ADR 0007, 0019): let
 		// that land before the connection is released under it.
 		await settleBackgroundWork();
-		await getRuntime().store.close();
+		await db.$disconnect();
 	}
 }
 

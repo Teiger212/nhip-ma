@@ -34,6 +34,9 @@ export const SEED_OFFICES: readonly SeedOffice[] = [WALK_SEED_OFFICE, RIVER_SEED
 /** How long after a guest's first message the auto-reply lands. */
 const GREETING_DELAY_MS = 4_000;
 
+/** How long the deletion may run behind the seed's `now` (it runs first in its moved clock). */
+const TALLY_SLACK_MS = 30_000;
+
 type Sync = ReturnType<typeof createCrmSync>;
 
 type OfficeSeed = {
@@ -388,21 +391,15 @@ async function removeSeeded({ office, runtime: { store }, operators }: OfficeSee
 		},
 		select: { id: true, data: true, link: true },
 	});
-	const openAlerts = new Set(
-		(
-			await db.inboxAlert.findMany({
-				where: { id: { in: bellRows.flatMap((row) => alertIdOf(row.link) ?? []) } },
-				select: { id: true },
-			})
-		).map((alert) => alert.id),
-	);
+	// The seed's deleted guest is never assigned, so none of its "assigned" rows outlives its
+	// thread's alerts. One whose alert the app's 30-day retention pruned stays: it is no longer
+	// told apart from anyone else's.
 	const seeded = bellRows.filter((row) => {
 		const threadId = threadIdOf(row.data);
 		const alertId = alertIdOf(row.link);
-		// An "assigned" row whose alert is gone opened a thread that was deleted (the seed's own).
 		return (
 			(threadId !== null && threadIds.includes(threadId)) ||
-			(alertId !== null && (alertIds.has(alertId) || !openAlerts.has(alertId)))
+			(alertId !== null && alertIds.has(alertId))
 		);
 	});
 	await db.notification.deleteMany({ where: { id: { in: seeded.map((row) => row.id) } } });
@@ -426,8 +423,9 @@ async function removeSeeded({ office, runtime: { store }, operators }: OfficeSee
 		},
 	});
 
-	// The seed deletes its guest at its run's `now` (a few milliseconds go by), and the guest
-	// first wrote `firstWrote` before that `now`: so is their lead tally's first contact.
+	// The seed deletes its guest at its run's `now` (milliseconds go by before the receipt), and
+	// the guest first wrote exactly `firstWrote` before that `now`: so their lead tally is the one
+	// on their pipe whose first contact is that, give or take those milliseconds.
 	const receipts = await db.guestDeletion.findMany({
 		where: { officeId, note: SEED_DELETION_NOTE },
 		select: { id: true, at: true },
@@ -438,8 +436,9 @@ async function removeSeeded({ office, runtime: { store }, operators }: OfficeSee
 			await db.leadTally.deleteMany({
 				where: {
 					officeId,
+					pipe: guest.pipe,
 					firstInboundAt: {
-						gte: new Date(firstContact - 10 * 60_000),
+						gte: new Date(firstContact - TALLY_SLACK_MS),
 						lte: new Date(firstContact),
 					},
 				},

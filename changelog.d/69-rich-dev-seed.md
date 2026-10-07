@@ -12,5 +12,8 @@
   auto-reply off and no CRM, and shares nothing with the first. Guests write on WhatsApp and
   Zalo in seven languages, with translations and qualifiers filled. Every row is written by the
   app's own calls, each at its story's time, with no model call and nothing sent or pushed. A
-  re-run adds nothing, and `pnpm seed -- --reset` rewrites it as of now. The seed refuses
-  production and any database that isn't local. The E2E run's seed is unchanged.
+  re-run adds nothing, and `pnpm seed -- --reset` rewrites the seed's own rows as of now.
+- **The seed refuses production** (#69). It refuses `VERCEL_ENV=production`, and any database
+  that isn't on this machine unless `SEED_REMOTE_DATABASE_HOST` names its host (the Neon `dev`
+  branch). This includes the E2E run's seed, whose database is local. What the E2E run's seed
+  writes is unchanged: the walk logins and the four demo threads.
