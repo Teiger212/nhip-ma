@@ -1,99 +1,19 @@
-"use client";
-
-import { useSession } from "@auth/hooks/use-session";
-import { isInboxPath } from "@i18n/lib/locale-path";
-import { LocaleLink } from "@i18n/routing";
-import { GuestToasts } from "@inbox/components/GuestToasts";
-import { isPlatformAdmin } from "@repo/auth/lib/roles";
-import { Badge, cn, Logo, SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui";
-import { useTranslations } from "next-intl";
-import { usePathname } from "next/navigation";
+import { cookies } from "next/headers";
 import type { PropsWithChildren } from "react";
 
-import { NavBar, useShellYourTurnCount } from "./NavBar";
-import { NotificationCenter } from "./NotificationCenter";
-import { TabTitle } from "./TabTitle";
-import { UserMenu } from "./UserMenu";
+import { AppShell } from "./AppShell";
 
-/** While Nhịp is open: the Your-turn count in the tab title, and a toast when a guest writes (#136). */
-function OpenAppSignals() {
-	const { user } = useSession();
-	const yourTurnCount = useShellYourTurnCount();
-	return (
-		<>
-			<TabTitle count={yourTurnCount} />
-			<GuestToasts enabled={Boolean(user) && !isPlatformAdmin(user?.role)} />
-		</>
-	);
-}
+/**
+ * The kit's sidebar cookie (`packages/ui/components/sidebar.tsx`, which keeps it client-side).
+ * Read here so a sidebar collapsed before a reload is collapsed in the server's HTML too: no
+ * open first frame that then snaps shut (#234).
+ */
+const SIDEBAR_COOKIE = "sidebar_state";
 
-function AppMobileChrome() {
-	const t = useTranslations();
-	const yourTurnCount = useShellYourTurnCount();
+export async function AppWrapper({ children }: PropsWithChildren) {
+	// Read as the kit reads it: open with no cookie, otherwise open only when it says "true".
+	const saved = (await cookies()).get(SIDEBAR_COOKIE)?.value;
+	const sidebarOpen = saved === undefined || saved === "true";
 
-	return (
-		<header className="h-14 px-3 gap-2 lg:hidden flex shrink-0 items-center border-b border-sidebar-border bg-sidebar text-sidebar-foreground">
-			<SidebarTrigger
-				className="-ml-1 min-h-11 min-w-11 shrink-0"
-				aria-label={t("app.menu.openNavigation")}
-			/>
-			<LocaleLink href="/inbox" className="gap-2 flex shrink-0 items-center">
-				<Logo withLabel={false} className="shrink-0" />
-				<span className="font-semibold tracking-tight shrink-0">{t("inbox.brand")}</span>
-			</LocaleLink>
-			{/* The sidebar is a sheet here, so the queue's count rides in the top bar. */}
-			<span className="mr-auto flex">
-				{yourTurnCount ? (
-					<LocaleLink
-						href="/inbox"
-						data-test="topbar-your-turn-count"
-						aria-label={t("inbox.queueCount", { count: yourTurnCount })}
-						className="min-h-11 px-1 flex items-center"
-					>
-						<Badge status="warning" numeric>
-							{yourTurnCount}
-						</Badge>
-					</LocaleLink>
-				) : null}
-			</span>
-			<NotificationCenter className="size-11 shrink-0" />
-			<div className="shrink-0">
-				<UserMenu />
-			</div>
-		</header>
-	);
-}
-
-function AppContent({ children }: PropsWithChildren) {
-	const flush = isInboxPath(usePathname());
-
-	return (
-		<>
-			<OpenAppSignals />
-			<NavBar />
-			<SidebarInset
-				className={cn(flush ? "min-h-0 overflow-hidden" : "lg:overflow-y-auto", "min-w-0")}
-			>
-				<AppMobileChrome />
-				<div
-					className={cn(
-						flush ? "min-h-0 flex-1 overflow-hidden" : "flex-1",
-						!flush && "py-4 container",
-					)}
-				>
-					{children}
-				</div>
-			</SidebarInset>
-		</>
-	);
-}
-
-export function AppWrapper({ children }: PropsWithChildren) {
-	const flush = isInboxPath(usePathname());
-
-	return (
-		<SidebarProvider className={cn(flush && "h-dvh overflow-hidden")}>
-			<AppContent>{children}</AppContent>
-		</SidebarProvider>
-	);
+	return <AppShell sidebarOpen={sidebarOpen}>{children}</AppShell>;
 }
