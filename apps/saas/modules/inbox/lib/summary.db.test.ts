@@ -3,6 +3,7 @@ import { beforeEach, expect, test } from "vitest";
 import { oneShot } from "./draft";
 import { yourTurn } from "./queue";
 import { summarize } from "./summary";
+import { answer, guestMessage } from "./test-fixtures";
 import { testInboxStore } from "./test-store";
 import type { ConversationSummary, InboxViewer, Store } from "./types";
 
@@ -27,15 +28,7 @@ async function write(
 	officeId = OFFICE,
 ) {
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source,
-			guestId,
-			guestName: guestId,
-			text,
-			vendorMessageId: null,
-			at: at(minutes),
-		},
+		guestMessage(guestId, { source, guestName: guestId, text, at: at(minutes) }),
 		officeId,
 	);
 	return conversation;
@@ -48,23 +41,11 @@ async function approve(
 	operatorId: string,
 	then: "sending" | "sent" | "failed" | "unknown",
 ) {
-	const begun = await store.beginAnswer({
-		officeId: OFFICE,
-		conversationId,
-		inboundId,
-		text: "reply",
-		operatorId,
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	if (then === "sent") {
-		await store.completeAnswer(OFFICE, begun.answer.id, {
-			mock: true,
-			pipe: "zalo",
-			vendorMessageId: `mock-${begun.answer.id}`,
-		});
-	}
-	if (then === "failed") await store.failAnswer(OFFICE, begun.answer.id, "refused");
-	if (then === "unknown") await store.markAnswerUnknown(OFFICE, begun.answer.id, "timeout");
+	await answer(
+		store,
+		{ officeId: OFFICE, conversationId, inboundId, text: "reply", operatorId },
+		{ outcome: then, reason: then === "failed" ? "refused" : "timeout" },
+	);
 }
 
 async function guestThenApproval(

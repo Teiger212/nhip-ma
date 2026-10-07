@@ -1,7 +1,8 @@
-import { Funnel } from "@repo/database/inbox";
+import { Funnel, type InboxStore } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
-import { testDb, testInboxStore } from "./test-store";
+import { answer, guestMessage, lastInboundId, threadOf, type Thread } from "./test-fixtures";
+import { testInboxStore } from "./test-store";
 
 /**
  * The funnel (ADR 0002) counted from Answers (ADR 0011): a lead is a guest who first
@@ -24,74 +25,20 @@ const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** The calendar day of an instant in Ho Chi Minh City. */
 const localDay = (ms: number) => dayOf(ms + HCM_OFFSET);
 
-const inbound = (guestId: string, at: number, text = "Xin chào") => ({
-	pipe: "zalo" as const,
-	source: "guest" as const,
-	guestId,
-	guestName: null,
-	text,
-	vendorMessageId: null,
-	at,
-});
-
-type Store = Awaited<ReturnType<typeof testInboxStore>>;
-
-/** A thread as the helpers below act on it: its office and its (opaque) id. */
-type Thread = { officeId: string; id: string };
-
-/** The guest's Zalo thread at `officeId`, found as the store finds it: by (office, pipe, guest). */
-async function threadOf(officeId: string, guestId: string): Promise<Thread> {
-	return testDb.conversation.findUniqueOrThrow({
-		where: { officeId_pipe_guestId: { officeId, pipe: "zalo", guestId } },
-		select: { officeId: true, id: true },
-	});
-}
+const inbound = (guestId: string, at: number, text = "Xin chào") =>
+	guestMessage(guestId, { at, text });
 
 /** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
-async function sent(store: Store, { officeId, id }: Thread, inboundId: string) {
-	const begun = await store.beginAnswer({
-		officeId,
-		conversationId: id,
-		inboundId,
-		text: "Reply",
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	await store.completeAnswer(officeId, begun.answer.id, {
-		mock: true,
-		pipe: "zalo",
-		vendorMessageId: `mock-${inboundId}`,
-	});
-}
+const sent = (store: InboxStore, { officeId, id }: Thread, inboundId: string) =>
+	answer(store, { officeId, conversationId: id, inboundId });
 
 /** Approve, then let the vendor refuse or go silent: the Answer never counts as received. */
-async function notSent(
-	store: Store,
+const notSent = (
+	store: InboxStore,
 	{ officeId, id }: Thread,
 	inboundId: string,
 	how: "failed" | "unknown",
-) {
-	const begun = await store.beginAnswer({
-		officeId,
-		conversationId: id,
-		inboundId,
-		text: "Reply",
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	if (how === "failed") {
-		await store.failAnswer(officeId, begun.answer.id, "vendor refused");
-	} else {
-		await store.markAnswerUnknown(officeId, begun.answer.id, "timeout");
-	}
-}
-
-async function lastInboundId(store: Store, { officeId, id }: Thread): Promise<string> {
-	const conversation = await store.getOfficeConversation(officeId, id);
-	const message = conversation?.messages.filter((m) => m.direction === "in").at(-1);
-	if (!message) throw new Error(`no inbound on ${id}`);
-	return message.id;
-}
+) => answer(store, { officeId, conversationId: id, inboundId }, { outcome: how });
 
 test("the funnel counts leads, engaged and in conversation for one office in the window", async () => {
 	const store = await testInboxStore();
