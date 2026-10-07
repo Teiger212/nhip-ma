@@ -10,8 +10,9 @@ import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { sendZaloText } from "./support/zalo";
 
 /**
- * A page learns of a new guest when it asks again, which it does about every ten seconds (as
- * seen running it); a raise gets three of those rounds to show.
+ * A page learns of a new guest when it asks again: every ten seconds, and every second in the E2E
+ * build (#222). The ceiling stays three production rounds: a wait that passes ends when the raise
+ * shows, so a lower one would save nothing and only cut CI's margin.
  */
 const WITHIN_A_POLL = { timeout: 30_000 };
 

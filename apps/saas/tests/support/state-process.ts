@@ -22,6 +22,7 @@ import {
 	setMockCrmDown,
 } from "./crm-state";
 import { deletionRecords, holdReply, releaseReply } from "./deletion-state";
+import { writeZaloGuests } from "./guest-state";
 import { connectWhatsApp, connectZalo, releaseZalo } from "./pipe-state";
 
 const ANSWER = "@@state ";
@@ -39,6 +40,7 @@ const COMMANDS: Record<string, (...args: string[]) => Promise<unknown>> = {
 	"deletion.hold": holdReply,
 	"deletion.records": deletionRecords,
 	"deletion.release": releaseReply,
+	"guests.seed": writeZaloGuests,
 	"pipes.connect": connectZalo,
 	"pipes.connect-whatsapp": connectWhatsApp,
 	"pipes.release": releaseZalo,

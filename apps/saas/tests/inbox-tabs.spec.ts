@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type { Browser, Page } from "@playwright/test";
 
 import { COUNT_LINE_EN } from "./support/copy";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
+import { seedZaloGuests } from "./support/guests";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
-import { sendZaloText } from "./support/zalo";
 
 type Locale = "en" | "vi";
 type Role = "agent" | "manager";
@@ -109,13 +109,13 @@ type SeededOffice = {
 };
 
 const test = base.extend<{ seededOffice: (mix: Mix) => Promise<SeededOffice> }>({
-	seededOffice: async ({ admin, browser, request }, use) => {
+	seededOffice: async ({ admin, browser }, use) => {
 		const opened: Joined[] = [];
 		const oaIds: string[] = [];
 		await use(async (mix) => {
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
-			const seeded = await seedOffice(admin, browser, request, oaId, mix);
+			const seeded = await seedOffice(admin, browser, oaId, mix);
 			opened.push(seeded.agent, seeded.manager);
 			return seeded;
 		});
@@ -133,23 +133,9 @@ function uniqueId(kind: string): string {
 	return `e2e-tabs-${kind}-${randomUUID()}`;
 }
 
-/** Runs `work` over `items`, `size` at a time. */
-async function inBatches<T>(items: T[], size: number, work: (item: T) => Promise<void>) {
-	for (let i = 0; i < items.length; i += size) {
-		await Promise.all(items.slice(i, i + size).map(work));
-	}
-}
-
-type Listed = {
-	id: string;
-	guestId: string;
-	unansweredInboundId: string | null;
-};
-
 async function seedOffice(
 	admin: Admin,
 	browser: Browser,
-	request: APIRequestContext,
 	oaId: string,
 	mix: Mix,
 ): Promise<SeededOffice> {
@@ -164,47 +150,18 @@ async function seedOffice(
 		waitingOnAgent: make(mix.waitingOnAgent),
 		answeredByAgent: make(mix.answeredByAgent),
 	};
-	const everyone = [...guests.unassigned, ...guests.waitingOnAgent, ...guests.answeredByAgent];
 
-	// Each guest writes once, as Zalo delivers it.
-	await inBatches(everyone, 20, (guest) =>
-		sendZaloText(request, {
-			guestId: guest.id,
-			oaId,
-			text: `Hello from ${guest.id}`,
-		}),
-	);
-
-	// The manager lists every one of them, once.
-	let listed = new Map<string, Listed>();
-	await expect(async () => {
-		const res = await manager.api.get("/api/conversations");
-		expect(res.status(), "the manager lists the office's threads").toBe(200);
-		listed = new Map(((await res.json()) as Listed[]).map((t) => [t.guestId, t]));
-		expect(listed.size, "the manager lists every guest who wrote").toBe(everyone.length);
-	}).toPass({ timeout: 60_000 });
-	const thread = (guest: Guest) => {
-		const t = listed.get(guest.id);
-		if (!t) throw new Error(`the manager does not list ${guest.id}`);
-		return t;
-	};
-
-	// The manager gives the agent theirs (ADR 0022), through the owner API.
-	await inBatches([...guests.waitingOnAgent, ...guests.answeredByAgent], 20, async (guest) => {
-		const res = await manager.api.post(`/api/conversations/${thread(guest).id}/owner`, {
-			ownerId: agent.userId,
-		});
-		expect(res.status(), `the manager assigns ${guest.id}: ${await res.text()}`).toBe(200);
+	// Each guest wrote once to the OA; the manager gave the agent theirs (ADR 0022), and the agent
+	// answered some. Setup, written in bulk (#222): these specs are about the tabs, not the webhook.
+	const ids = (list: Guest[]) => list.map((guest) => guest.id);
+	await seedZaloGuests(office.id, oaId, ids(guests.unassigned), { fate: "unassigned" });
+	await seedZaloGuests(office.id, oaId, ids(guests.waitingOnAgent), {
+		fate: "assigned",
+		ownerId: agent.userId,
 	});
-
-	// The agent answers some of theirs, as the reply box's approve does.
-	await inBatches(guests.answeredByAgent, 20, async (guest) => {
-		const { id, unansweredInboundId } = thread(guest);
-		const res = await agent.api.post(`/api/conversations/${id}/approve`, {
-			inboundId: unansweredInboundId,
-			reply: `Reply to ${guest.id}`,
-		});
-		expect(res.status(), `the agent answers ${guest.id}: ${await res.text()}`).toBe(200);
+	await seedZaloGuests(office.id, oaId, ids(guests.answeredByAgent), {
+		fate: "answered",
+		ownerId: agent.userId,
 	});
 
 	return { agent, manager, guests };

@@ -63,6 +63,7 @@ const envSchema = z
 		AUTH_TRUSTED_ORIGINS: trimmed,
 		NODE_ENV: z.string().optional(),
 		VERCEL_ENV: trimmed,
+		E2E: trimmed,
 	})
 	.superRefine((env, ctx) => {
 		// The mock CRM is for development and E2E (ADR 0003): production never takes its notices.
@@ -72,6 +73,21 @@ const envSchema = z
 				path: ["MOCK_CRM_WEBHOOK_SECRET"],
 				message:
 					"MOCK_CRM_WEBHOOK_SECRET must not be set in production: the mock CRM's webhook is for development and E2E",
+			});
+		}
+		// The E2E build is a production build (NODE_ENV=production) that sends no email and polls
+		// the Inbox every second (#222): production, staging (Vercel's Preview) and any live
+		// deployment refuse it, wherever it was built (`next.config.ts` also fails a Vercel build
+		// with it): the server then answers no request.
+		if (
+			env.E2E &&
+			(env.VERCEL_ENV === "production" || env.VERCEL_ENV === "preview" || env.SEND_MODE === "live")
+		) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["E2E"],
+				message:
+					"E2E must not be set in production, staging or a live deployment: it is the E2E run's build (no email, a 1-second Inbox poll)",
 			});
 		}
 		// HubSpot's webhook is verified with both (#66): the secret, over the URL HubSpot calls.

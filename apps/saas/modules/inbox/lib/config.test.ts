@@ -103,6 +103,34 @@ test("a production deployment refuses the mock CRM's webhook secret, whatever it
 	expect(errorsOf(mock)).toEqual([]);
 });
 
+// #222: the E2E build sends no email and polls the Inbox every second; only the E2E run may be it.
+test("production, staging and live deployments refuse the E2E flag; the E2E run starts with it", () => {
+	const deployed = { ...PROD, NEXT_PUBLIC_SAAS_URL: "https://nhip.example" };
+	const deployments: Record<string, string>[] = [
+		{ VERCEL_ENV: "production" },
+		{ VERCEL_ENV: "preview" },
+		{ SEND_MODE: "live" },
+	];
+	for (const where of deployments) {
+		for (const value of ["1", "true"]) {
+			expect(
+				errorsOf({ ...deployed, E2E: value, ...where }).join("\n"),
+				JSON.stringify(where),
+			).toContain("E2E must not be set");
+		}
+		expect(errorsOf({ ...deployed, ...where }), JSON.stringify(where)).toEqual([]);
+	}
+	// The E2E run: a production build on the runner, mock sends, no Vercel.
+	expect(
+		errorsOf({
+			...PROD,
+			E2E: "1",
+			SEND_MODE: "mock",
+			NEXT_PUBLIC_SAAS_URL: "https://localhost:3443",
+		}),
+	).toEqual([]);
+});
+
 // #66: HubSpot's webhook is verified with the app's client secret over the URL HubSpot calls;
 // one without the other cannot verify anything, and the URL is the https one HubSpot is given.
 test("HubSpot's webhook settings are set together, its URL an https one", () => {

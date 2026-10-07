@@ -37,6 +37,10 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   Never CSS structure, never nth-child.
 - Waiting: web-first assertions (`await expect(locator).toBeVisible()`, `toHaveURL`,
   `toHaveText`). No `waitForTimeout`, no `networkidle`.
+- The E2E build polls the Inbox every second, not ten (#222). A change a page learns of shows
+  within a second or two; keep a ceiling of three production polls (30 s) for CI's margin. A
+  plain assertion can't tell an operator's own action showing at once from the next poll: to
+  prove "at once", hold `GET /api/conversations` with `page.route` while asserting.
 
 ## Running
 
@@ -107,7 +111,9 @@ oaId }, message: { text, msg_id } }` and header `X-ZEvent-Signature: mac=<sha256
 app_id + raw body + timestamp + ZALO_OA_SECRET_KEY>` (the E2E env's value).
 - A spec that needs its own guest brings it in the way the vendor does, through a signed
   webhook, with a unique guest id (e.g. from `test.info().testId`) so parallel specs never
-  share a thread. `/dev/inbound` is off in the E2E production build.
+  share a thread. `/dev/inbound` is off in the E2E production build. A spec that needs many
+  guests as setup, and doesn't prove how a message arrives, writes them in bulk instead:
+  `await seedZaloGuests(officeId, oaId, guestIds, { fate })` (`support/guests.ts`, #222).
   - Zalo: see above.
   - WhatsApp: connect the E2E number to the office first (`await connectWhatsAppNumber(officeId)` in
     `support/pipes.ts`, the number is the E2E env's `WHATSAPP_PHONE_NUMBER_ID`), then `POST

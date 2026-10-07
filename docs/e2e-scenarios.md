@@ -407,10 +407,10 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    the 22rem panel (768 wide) and on a phone (390 wide). The worst case is a manager in Vietnamese
    at the 22rem panel.
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 1; an office of the test's own with one
-   invited agent and one invited manager. Guests write through signed Zalo webhooks; the manager
-   gives some to the agent through the owner API, and the agent answers some through the approve
-   API. Two-digit counts: manager 12, 25, 14, 39; agent 13, 14, 27. Three-digit counts, on every
-   tab: manager 101, 203, 103, 306; agent 102, 103, 205. The 306 guests take a few seconds.
+   invited agent and one invited manager. The guests are setup, written in bulk through the inbox
+   store (#222): each wrote once to the office's Zalo OA, some were given to the agent, and the
+   agent answered some (a mock send). Two-digit counts: manager 12, 25, 14, 39; agent 13, 14, 27.
+   Three-digit counts, on every tab: manager 101, 203, 103, 306; agent 102, 103, 205.
    "On one line" is every tab at the same top and height, with no text in a tab on two lines.
    "Nothing cut" is no tab, nor anything in it, holding more than it shows. "Inside the panel"
    is every word of every tab, and the first and last tab, between the panel's inner edges.
