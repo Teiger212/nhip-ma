@@ -30,7 +30,9 @@ import { call } from "@orpc/server";
 import { auth } from "@repo/auth";
 import { getOrganizationById } from "@repo/database";
 
-vi.mocked(auth.api.getSession).mockResolvedValue(authenticatedSession);
+import { authenticatedSession } from "../../../test/session";
+
+vi.mocked(auth.api.getSession).mockResolvedValue(authenticatedSession());
 vi.mocked(getOrganizationById).mockResolvedValue(organization);
 
 const result = await call(procedure, input, {

@@ -15,6 +15,7 @@ import { settleBackgroundWork } from "../background";
 import type { Vapid } from "../config";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
+import { account } from "../test-fixtures";
 import { testDb, useTestDatabaseForAppClient } from "../test-store";
 import { DeviceRegistration, sendTestAlert } from "./devices";
 import { webPushTransport } from "./push";
@@ -178,17 +179,7 @@ test("signing out removes that sign-in's devices and no one else's", async () =>
 });
 
 test("an account that ends takes its devices with it (ADR 0013)", async () => {
-	const now = new Date();
-	await testDb.user.create({
-		data: {
-			id: "leaving",
-			name: "Leaving",
-			email: "leaving@test.nhip.local",
-			emailVerified: true,
-			createdAt: now,
-			updatedAt: now,
-		},
-	});
+	await account("leaving");
 	await register(registration("leaving", { userId: "leaving" }));
 	await testDb.user.delete({ where: { id: "leaving" } });
 	expect(await testDb.pushSubscription.count({ where: { userId: "leaving" } })).toBe(0);
