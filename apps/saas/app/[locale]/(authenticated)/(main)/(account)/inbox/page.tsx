@@ -3,6 +3,7 @@ import { Inbox } from "@inbox/components/Inbox";
 import { type AlertLinkTarget, resolveAlertLink } from "@inbox/lib/guest-alerts/alert-link";
 import { resolveOffice } from "@inbox/lib/office";
 import { getRuntime } from "@inbox/lib/runtime";
+import { requireSession } from "@organizations/lib/require-session";
 import { sendPlatformAdminToAdminArea } from "@shared/lib/platform-admin";
 import { getTranslations } from "next-intl/server";
 
@@ -34,6 +35,8 @@ export default async function InboxPage({
 }: {
 	searchParams: Promise<{ alert?: string | string[] }>;
 }) {
+	// Signed in, checked here and not only by the layout (#231), before an alert is resolved.
+	await requireSession();
 	await sendPlatformAdminToAdminArea();
 	const { alert } = await searchParams;
 	const alertId = typeof alert === "string" ? alert : null;

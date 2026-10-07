@@ -121,6 +121,27 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    manager and the platform admin still in it. The platform admin's delete of an office of the
    test's own still works: the office is gone. Spec: `apps/saas/tests/auth-join.spec.ts` (Auth 6; subscriptions untouched is not observable from outside).
 7. **Only a manager replaces the logo.** A member asking for a logo upload URL gets 403 (T6). Spec: `apps/saas/tests/auth-join.spec.ts` (Auth 7).
+8. **A signed-in page shows nothing to someone signed out, however it is asked for (#231).**
+   Signed out, opening Home sends you to the login page, with nothing of Home or the office on
+   the way. The same holds for the request the app itself makes when a signed-in person moves
+   from one page to another (a React Server Components request: `RSC: 1` plus the router state
+   of the page they came from, which tells the server the signed-in frame is already on screen,
+   so only the page itself is rendered; Next's guide, "Layouts and auth checks"). Replayed
+   without a session, that request is sent to the login page too: none of Home renders, not
+   its heading and not the office's numbers. It holds for a browser with no session cookie, and
+   for one still holding a session cookie that no longer opens a session (signed out, or made
+   up). Signed in, the same request does show Home's numbers, so the refusal is the session's
+   doing.
+   Spec: `apps/saas/tests/page-session.spec.ts` (Auth 8; the request is the one the seeded
+   agent's browser makes when they click Home in the nav from the Inbox, captured with its URL
+   (`_rsc` included) and its `RSC` and `Next-*` headers, prefetches left out, and every such
+   request is replayed from a request context with no cookie of its own, redirects not followed.
+   "Sent to the login page" is an HTTP redirect whose `Location` is `/en/login`, or Next's
+   redirect instruction to `/en/login` in the RSC answer (the form a signed-in move to `/en/walk`
+   answers with); a redirect anywhere else fails. "None of Home" is none of Home's own words
+   (subtitle, funnel labels, response time, the no-office cards) in the answer. "Signed out" is
+   an agent of an office of the test's own whose session opened Home until they signed out; the
+   positive control is the seeded agent's session cookie on the same replay. English only).
 
 ## Roles (ADR 0015, ADR 0018)
 

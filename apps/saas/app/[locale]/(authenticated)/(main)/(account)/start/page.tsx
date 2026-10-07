@@ -1,5 +1,6 @@
-import { getOrganizationList, getSession } from "@auth/lib/server";
+import { getOrganizationList } from "@auth/lib/server";
 import { OrganizationsGrid } from "@organizations/components/OrganizationsGrid";
+import { requireSession } from "@organizations/lib/require-session";
 import { config } from "@repo/auth/config";
 import { Card } from "@repo/ui";
 import { PageHeader } from "@shared/components/PageHeader";
@@ -18,17 +19,14 @@ export async function generateMetadata() {
 
 export default async function AppStartPage() {
 	if (!KIT_SCREENS.start) notFound();
-	const session = await getSession();
-
-	if (!session) {
-		redirect("/login");
-	}
+	// Signed in, checked here and not only by the layout (#231), before anything is read.
+	const session = await requireSession();
 
 	const organizations = await getOrganizationList();
 
 	if (config.organizations.enable && config.organizations.requireOrganization) {
 		const organization =
-			organizations.find((org) => org.id === session?.session.activeOrganizationId) ||
+			organizations.find((org) => org.id === session.session.activeOrganizationId) ||
 			organizations[0];
 
 		if (!organization) {
@@ -42,7 +40,7 @@ export default async function AppStartPage() {
 
 	return (
 		<div className="">
-			<PageHeader title={t("welcome", { name: session?.user.name })} subtitle={t("subtitle")} />
+			<PageHeader title={t("welcome", { name: session.user.name })} subtitle={t("subtitle")} />
 
 			<div>
 				{config.organizations.enable && <OrganizationsGrid />}

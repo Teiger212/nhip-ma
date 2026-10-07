@@ -93,6 +93,58 @@ export type OwnerCopy = {
 };
 
 /**
+ * Home's own words (packages/i18n/translations/<locale>/saas.json, `home`): what shows that Home
+ * rendered. `markers` is every one of them a person could read on Home, framed or not: its
+ * subtitle, the funnel's labels, the response time, and the cards Home shows an account it won't
+ * count for (no office, several offices, the platform admin).
+ */
+export type HomeCopy = {
+	subtitle: string;
+	funnel: { title: string; leadsIn: string };
+	markers: string[];
+};
+
+export function homeCopy(locale: Locale): HomeCopy {
+	const file = path.resolve(
+		__dirname,
+		`../../../../packages/i18n/translations/${locale}/saas.json`,
+	);
+	const saas = JSON.parse(fs.readFileSync(file, "utf8")) as {
+		home: {
+			subtitle: string;
+			funnel: {
+				title: string;
+				leadsIn: string;
+				engaged: string;
+				inConversation: string;
+				closings: string;
+				leadsInHint: string;
+			};
+			responseTime: string;
+			responseTimeHint: string;
+			denied: Record<string, string>;
+		};
+	};
+	const { home } = saas;
+	return {
+		subtitle: home.subtitle,
+		funnel: { title: home.funnel.title, leadsIn: home.funnel.leadsIn },
+		markers: [
+			home.subtitle,
+			home.funnel.title,
+			home.funnel.leadsIn,
+			home.funnel.engaged,
+			home.funnel.inConversation,
+			home.funnel.closings,
+			home.funnel.leadsInHint,
+			home.responseTime,
+			home.responseTimeHint,
+			...Object.values(home.denied),
+		],
+	};
+}
+
+/**
  * The count line under the Inbox's view tabs, in English (#208, worded by Eyal on the ticket).
  * Written out here rather than read from saas.json: the wording is the contract the Inbox must
  * meet, so a spec reading it back from the app's own strings would pass whatever they say.
