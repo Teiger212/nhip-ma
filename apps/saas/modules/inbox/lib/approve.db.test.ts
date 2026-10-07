@@ -1,7 +1,7 @@
 import { createInboxStore, Pipe } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { deleteThreadUnder, resetTestInbox, testDb } from "./test-store";
+import { deleteThreadUnder, testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -125,7 +125,6 @@ const WALK_SESSION = {
 beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ whatsapp: { verifyToken: "verify-me" } }),

@@ -7,7 +7,7 @@ import { settleBackgroundWork } from "../background";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
 import { peekTestRuntime, setRuntimeForTests } from "../runtime";
-import { resetTestInbox, testDb } from "../test-store";
+import { testDb } from "../test-store";
 import { handleInboundWebhook } from "./webhook";
 
 /**
@@ -38,7 +38,6 @@ function zaloRequest(guestId: string, text: string, oaId = "oa-1"): Request {
 }
 
 beforeEach(async () => {
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ zalo: { oaSecretKey: OA_SECRET } }),

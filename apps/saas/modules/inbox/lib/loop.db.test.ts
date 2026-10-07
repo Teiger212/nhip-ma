@@ -1,7 +1,7 @@
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { resetTestInbox, testDb } from "./test-store";
+import { testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -76,7 +76,6 @@ beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
 	followUps.length = 0;
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig(),

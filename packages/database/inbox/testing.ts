@@ -73,6 +73,33 @@ const EMPTY_INBOX_TABLES = `DO $$ BEGIN
 END $$`;
 
 /**
+ * Every user and office goes, and with them through `ON DELETE CASCADE` everything tied to one:
+ * memberships, invitations, sign-ins (sessions, accounts, passkeys, two-factor), purchases, bell
+ * rows and their preferences, and the inbox rows of every office. Better Auth's verification
+ * and rate-limit rows are tied to neither, so they are emptied by name.
+ */
+const EMPTY_PEOPLE_TABLES = `DO $$ BEGIN
+	DELETE FROM "user";
+	DELETE FROM "organization";
+	DELETE FROM "verification";
+	DELETE FROM "rateLimit";
+END $$`;
+
+/**
+ * Bring the test database back to the fixtures alone: no people or offices but the fixture
+ * ones, recreated with every column at its default whatever a previous test changed, and an
+ * empty inbox. Every test that uses the database starts here, so no test depends on what
+ * another left behind (#223).
+ */
+export async function resetTestDatabase(
+	db: PrismaClient,
+	fixtures: { offices: string[]; operators: string[] },
+): Promise<void> {
+	await db.$executeRawUnsafe(EMPTY_PEOPLE_TABLES);
+	await resetInboxTables(db, fixtures);
+}
+
+/**
  * Empty the inbox tables (children go with them through the foreign keys) and make sure
  * the offices and operators a test names exist, because a thread needs an Organization
  * and an Answer's operator needs a User.

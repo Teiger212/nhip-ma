@@ -15,7 +15,7 @@ import { settleBackgroundWork } from "../background";
 import type { Vapid } from "../config";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "../test-store";
+import { testDb, useTestDatabaseForAppClient } from "../test-store";
 import { DeviceRegistration, sendTestAlert } from "./devices";
 import { webPushTransport } from "./push";
 
@@ -38,7 +38,6 @@ afterEach(async () => {
 });
 
 beforeEach(async () => {
-	await resetTestInbox();
 	sendNotification.mockReset();
 	sendNotification.mockResolvedValue({ statusCode: 201, body: "", headers: {} });
 });

@@ -1,6 +1,6 @@
 import { createECDH, randomBytes } from "node:crypto";
 
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "@inbox/lib/test-store";
+import { testDb, useTestDatabaseForAppClient } from "@inbox/lib/test-store";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { POST } from "./route";
@@ -21,9 +21,7 @@ vi.mock("@inbox/lib/require-session", () => ({
 
 useTestDatabaseForAppClient();
 
-beforeEach(async () => {
-	await resetTestInbox();
-});
+beforeEach(async () => {});
 
 const endpoint = "https://fcm.googleapis.com/fcm/send/e2e-route";
 

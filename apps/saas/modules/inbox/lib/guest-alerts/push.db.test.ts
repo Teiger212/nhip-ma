@@ -6,7 +6,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { Vapid } from "../config";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "../test-store";
+import { testDb, useTestDatabaseForAppClient } from "../test-store";
 import { alertGuestMessage } from "./index";
 import { isAllowedPushEndpoint, normalizePushEndpoint, webPushTransport } from "./push";
 import type { AlertPayload } from "./transport";
@@ -39,7 +39,6 @@ const PAYLOAD: AlertPayload = {
 let warn: ReturnType<typeof vi.spyOn>;
 
 beforeEach(async () => {
-	await resetTestInbox();
 	sendNotification.mockReset();
 	sendNotification.mockResolvedValue({ statusCode: 201, body: "", headers: {} });
 	warn = vi.spyOn(console, "warn").mockImplementation(() => {});

@@ -39,6 +39,7 @@ export default defineConfig({
 					name: "db",
 					include: [DB_TESTS],
 					globalSetup: ["./vitest.global-setup.ts"],
+					setupFiles: ["./vitest.db-setup.ts"],
 					env: { NHIP_DB_TESTS: "1" },
 					fileParallelism: false,
 				},

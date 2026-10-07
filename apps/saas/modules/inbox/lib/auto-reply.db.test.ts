@@ -1,7 +1,7 @@
 import { createInboxStore } from "@repo/database/inbox";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "./test-store";
+import { testDb, useTestDatabaseForAppClient } from "./test-store";
 
 useTestDatabaseForAppClient();
 
@@ -36,7 +36,6 @@ const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
 let runtime: Runtime;
 
 beforeEach(async () => {
-	await resetTestInbox();
 	runtime = {
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ pipeSecretsKey: SECRETS_KEY }),

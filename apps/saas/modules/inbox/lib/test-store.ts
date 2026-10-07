@@ -1,7 +1,7 @@
 import { createInboxStore, type InboxStore } from "@repo/database/inbox";
 import {
 	createTestInboxClient,
-	resetInboxTables,
+	resetTestDatabase as resetDatabase,
 	testDatabaseUrl,
 } from "@repo/database/inbox/testing";
 
@@ -35,17 +35,20 @@ export const TEST_OFFICES = ["office-a", "office-b", WALK_OFFICE_ID];
 /** The operators tests approve as. `walk-user` is the mocked session in the API tests. */
 export const TEST_OPERATORS = ["agent-1", "agent-2", "walk-user"];
 
-/** Empty the inbox and make sure the fixture offices and operators exist. */
-export async function resetTestInbox(): Promise<void> {
+/**
+ * Bring the test database back to the fixture offices and operators alone, every other row
+ * gone. `vitest.db-setup.ts` runs it before every db test; call it yourself only to start
+ * over in the middle of one.
+ */
+export async function resetTestDatabase(): Promise<void> {
 	// A previous test's background work (an alert, the auto-reply, a translation) may still hold
 	// row locks the reset's deletes need, so the two could deadlock (40P01).
 	await settleBackgroundWork();
-	await resetInboxTables(testDb, { offices: TEST_OFFICES, operators: TEST_OPERATORS });
+	await resetDatabase(testDb, { offices: TEST_OFFICES, operators: TEST_OPERATORS });
 }
 
-/** A store over the test database with the inbox emptied and the fixtures present. */
+/** A store over the test database, which every db test starts with reset. */
 export async function testInboxStore(): Promise<InboxStore> {
-	await resetTestInbox();
 	return createInboxStore(testDb);
 }
 
