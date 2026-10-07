@@ -184,15 +184,24 @@ test("another office's thread, or one already gone, is not_found and nothing is 
 	await store.close();
 });
 
-test("the receipt says who, when and how many rows went; the tally keeps the lead's numbers (ADR 0020)", async () => {
+test("the receipt says who, when and how many rows went, counting only sent replies; the tally keeps the lead's numbers (ADR 0020)", async () => {
 	const store = await testInboxStore();
 	const now = Date.now();
 	const thread = await write(store, "counted", now - 2 * DAY, { guestName: "Minji Park" });
 	await store.setTranslation(OFFICE, await lastInboundId(store, thread), "en", "Hello");
 	await store.setTranslation(OFFICE, await lastInboundId(store, thread), "vi", "Xin chào");
 	await sent(store, thread, { mock: true });
+	// One Answer per guest message, and neither of the next two was sent: one the vendor refused,
+	// one still in progress (`unknown`, its delivery unsettled; a `sending` one refuses deletion).
+	const latest = async () => ({
+		officeId: OFFICE,
+		conversationId: thread.id,
+		inboundId: await lastInboundId(store, thread),
+	});
 	await write(store, "counted", now + MINUTE, { text: "Thanks" });
+	await answer(store, await latest(), { outcome: "failed" });
 	await write(store, "counted", now + 2 * MINUTE, { text: "See you" });
+	await answer(store, await latest(), { outcome: "unknown" });
 
 	expect(await store.deleteGuest(OFFICE, thread.id, deleteOptions(true))).toEqual({
 		ok: true,
@@ -202,8 +211,9 @@ test("the receipt says who, when and how many rows went; the tally keeps the lea
 	expect(receipt).toMatchObject({
 		actorId: MANAGER,
 		actorName: MANAGER,
-		// Three guest messages and the reply.
+		// Three guest messages and the reply that was sent.
 		messages: 4,
+		// Sent replies only: of the three Answers, the refused and the unsettled one were not.
 		answers: 1,
 		translations: 2,
 		notifications: 0,
