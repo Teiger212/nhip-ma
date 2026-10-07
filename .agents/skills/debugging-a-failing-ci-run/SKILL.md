@@ -37,7 +37,7 @@ Use for failures in `.github/workflows/validate-prs.yml`. Do not change tests, w
 
 ## Canonical reference
 
-`.github/workflows/validate-prs.yml` is authoritative for Node setup, package filters, command order, the 60-minute E2E timeout, and the sole uploaded report: `apps/saas/playwright-report/` as `playwright-report`.
+`.github/workflows/validate-prs.yml` is authoritative for Node setup, package filters, command order and the 60-minute E2E timeout. The e2e job (`.github/workflows/ci.yml`) uploads the `playwright-report` artifact on every run that isn't cancelled: the html report (`playwright-report/`) and every test's duration (`test-results/results.json`), both from `apps/saas/`.
 
 ## Done
 

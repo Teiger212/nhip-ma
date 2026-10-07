@@ -136,8 +136,8 @@ test.describe("Home 4 — the nav counts Your turn on every page", () => {
 		let agent: Joined | undefined;
 		let manager: Joined | undefined;
 		try {
-			// They join at once (setup), each kept as they join, so `finally` closes whoever joined
-			// should the other fail.
+			// They join at once (setup), each kept as they join, so `finally` closes whoever had joined
+			// when the other failed.
 			[agent, manager] = await Promise.all([
 				joinOffice(admin, browser, ownOffice.id, "member", "nav-count").then((a) => (agent = a)),
 				joinOffice(admin, browser, ownOffice.id, "admin", "nav-count-manager").then(
