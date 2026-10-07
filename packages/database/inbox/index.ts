@@ -12,6 +12,7 @@ export {
 	AnswerStatus,
 	CrmKind,
 	CrmLinkMethod,
+	CrmOutcomeCounts,
 	CrmOutcomeStatus,
 	DraftSource,
 	Funnel,

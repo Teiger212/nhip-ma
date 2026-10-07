@@ -1,6 +1,7 @@
 import { durationParts } from "@home/lib/duration";
 import { FUNNEL_WINDOW_DAYS, loadHomeFunnel } from "@home/lib/funnel";
-import type { Funnel } from "@repo/database/inbox";
+import { OFFICE_TIME_ZONE } from "@home/lib/window";
+import type { CrmOutcomeCounts, Funnel } from "@repo/database/inbox";
 import { Card, cn } from "@repo/ui";
 import { PageHeader } from "@shared/components/PageHeader";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -14,8 +15,9 @@ import { WaitingNow } from "./WaitingNow";
  * who is waiting now, and response time, the same for every operator. Leads in, engaged
  * and in conversation are counted from Answers inside the store (ADR 0011) over one fixed
  * window of the office's local days; closings and lost only ever come from the office's
- * CRM (ADR 0003), so until one is connected those two are hatched and say so rather than
- * show a zero that looks like a fact.
+ * CRM (ADR 0003): the distinct won and lost leads Nhịp cached from it, "as of" the last time
+ * it heard from the CRM, never a call to it (#68). An office with no CRM sees those two
+ * hatched with "No CRM" rather than a zero that looks like a fact.
  */
 const COUNTED = ["leadsIn", "engaged", "inConversation"] as const;
 const FROM_CRM = ["closings", "lost"] as const;
@@ -57,7 +59,17 @@ function Stage({
 	);
 }
 
-function FunnelStrip({ funnel, t }: { funnel: Funnel; t: Translate }) {
+function FunnelStrip({
+	funnel,
+	crm,
+	locale,
+	t,
+}: {
+	funnel: Funnel;
+	crm: CrmOutcomeCounts | null;
+	locale: string;
+	t: Translate;
+}) {
 	const hints: Record<(typeof COUNTED)[number], string> = {
 		leadsIn: funnel.leadsIn === 0 ? t("funnel.noLeads") : t("funnel.leadsInHint"),
 		engaged: t("funnel.ofLeads", { percent: percent(funnel.engaged, funnel.leadsIn) }),
@@ -90,12 +102,28 @@ function FunnelStrip({ funnel, t }: { funnel: Funnel; t: Translate }) {
 				))}
 				{FROM_CRM.map((stage, index) => (
 					<Stage key={stage} index={COUNTED.length + index} label={t(`funnel.${stage}`)}>
-						<div className="mt-1 h-10 px-3 shadow-hairline hatched flex items-center rounded-lg">
-							<span className="px-2 py-0.5 text-xs font-medium rounded-md bg-card text-foreground">
-								{t("connectCrm")}
-							</span>
+						<div data-test={`home-${stage}`} className="gap-3 flex flex-col">
+							{crm ? (
+								<>
+									<Figure parts={count(crm[stage])} className="mt-1" />
+									<ShareBar share={funnel.leadsIn > 0 ? crm[stage] / funnel.leadsIn : 0} />
+									<p className="text-xs text-pretty text-muted-foreground">
+										{crm.asOf
+											? t("crm.asOf", { time: formatAsOf(crm.asOf, locale) })
+											: t("crm.nothingYet")}
+									</p>
+								</>
+							) : (
+								<>
+									<div className="mt-1 h-10 px-3 shadow-hairline hatched flex items-center rounded-lg">
+										<span className="px-2 py-0.5 text-xs font-medium rounded-md bg-card text-foreground">
+											{t("crm.none")}
+										</span>
+									</div>
+									<p className="text-xs text-pretty text-muted-foreground">{t("crm.noneHint")}</p>
+								</>
+							)}
 						</div>
-						<p className="text-xs text-pretty text-muted-foreground">{t("connectCrmHint")}</p>
 					</Stage>
 				))}
 			</ol>
@@ -184,7 +212,7 @@ export async function Home() {
 				</Card>
 			) : funnel ? (
 				<div className="gap-2.5 md:gap-3 grid">
-					<FunnelStrip funnel={funnel} t={t} />
+					<FunnelStrip funnel={funnel} crm={loaded.crm ?? null} locale={locale} t={t} />
 					<div className="gap-2.5 md:gap-3 lg:grid-cols-3 grid">
 						<div className="min-w-0 lg:col-span-2 grid">
 							<LeadsByDay days={funnel.byDay} total={funnel.leadsIn} />
@@ -204,6 +232,18 @@ function formatParts(ms: number, locale: string): string {
 	return durationParts(ms, locale)
 		.map((part) => part.value)
 		.join("");
+}
+
+/** When Nhịp last heard from the CRM, in the office's time zone: "Oct 7, 14:32". */
+function formatAsOf(at: string, locale: string): string {
+	return new Intl.DateTimeFormat(locale, {
+		timeZone: OFFICE_TIME_ZONE,
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).format(new Date(at));
 }
 
 function percent(part: number, whole: number): number {

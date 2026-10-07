@@ -714,6 +714,13 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					tx.$queryRaw<LeadRow[]>(leadRows({ officeId, conversationId, countMock })),
 				]);
 				const linked = Boolean(link?.leadId);
+				// A lead another thread still links keeps its outcome there: only the lead's last
+				// thread hands it to the tally, so Home never counts one closing twice (#68).
+				const leadElsewhere = link?.leadId
+					? (await tx.crmLink.count({
+							where: { officeId, leadId: link.leadId, conversationId: { not: conversationId } },
+						})) > 0
+					: false;
 
 				// 4. The lead tally, by the funnel's own rule, if the guest ever wrote in.
 				const [numbers] = lead;
@@ -727,7 +734,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 							firstInboundAt: numbers.firstInboundAt,
 							firstReplyAt: numbers.firstSentAt,
 							inConversation: numbers.wroteBack,
-							outcome: link?.outcome ?? null,
+							outcome: leadElsewhere ? null : (link?.outcome ?? null),
 						},
 					});
 				}
@@ -1380,6 +1387,60 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				),
 			};
 			return funnel;
+		},
+
+		async crmOutcomes(viewer, window) {
+			const { officeId } = viewer;
+			const connection = await db.crmConnection.findUnique({
+				where: { officeId },
+				select: { officeId: true },
+			});
+			if (!connection) return null;
+			// The funnel's cohort (first message on or after `since`); each lead once, by the outcome
+			// Nhịp saw last on any of its threads; then the deleted guests' tallies (ADR 0020), which
+			// carry the outcome Nhịp last heard and no lead to tell two apart. "As of" is the latest
+			// word from the CRM on any of the office's threads: a lead written or found, or a won or
+			// lost outcome first seen.
+			const [row] = await db.$queryRaw<{ closings: number; lost: number; asOf: Date | null }[]>`
+				WITH "cohort" AS (
+					SELECT "m"."conversationId"
+					FROM "inbox_message" "m"
+					JOIN "inbox_conversation" "c" ON "c"."id" = "m"."conversationId"
+					WHERE "c"."officeId" = ${officeId} AND "m"."direction" = 'in'
+					GROUP BY "m"."conversationId"
+					HAVING MIN("m"."at") >= ${window.since}
+				),
+				"lead" AS (
+					SELECT DISTINCT ON ("l"."leadId") "l"."outcome"::text AS "outcome"
+					FROM "inbox_crm_link" "l"
+					JOIN "cohort" ON "cohort"."conversationId" = "l"."conversationId"
+					WHERE "l"."officeId" = ${officeId}
+					  AND "l"."leadId" IS NOT NULL
+					  AND "l"."outcome" IN ('won', 'lost')
+					ORDER BY "l"."leadId", "l"."outcomeObservedAt" DESC NULLS LAST
+				),
+				"counted" AS (
+					SELECT "outcome" FROM "lead"
+					UNION ALL
+					SELECT "outcome"::text FROM "inbox_lead_tally"
+					WHERE "officeId" = ${officeId}
+					  AND "firstInboundAt" >= ${window.since}
+					  AND "outcome" IN ('won', 'lost')
+				)
+				SELECT
+					(COUNT(*) FILTER (WHERE "outcome" = 'won'))::int AS "closings",
+					(COUNT(*) FILTER (WHERE "outcome" = 'lost'))::int AS "lost",
+					(
+						SELECT GREATEST(MAX("linkedAt"), MAX("outcomeObservedAt"))
+						FROM "inbox_crm_link" WHERE "officeId" = ${officeId}
+					) AS "asOf"
+				FROM "counted"
+			`;
+			return {
+				closings: row?.closings ?? 0,
+				lost: row?.lost ?? 0,
+				asOf: row?.asOf ? iso(row.asOf) : null,
+			};
 		},
 
 		async getCrmConnection(officeId) {

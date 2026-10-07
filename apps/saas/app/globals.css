@@ -34,7 +34,7 @@
 	--container-empty-note: 22ch;
 }
 
-/* A number Nhịp does not have yet (closings and lost before a CRM is connected). */
+/* A number Nhịp does not have (closings and lost of an office with no CRM). */
 @utility hatched {
 	background-image: repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 7px);
 }

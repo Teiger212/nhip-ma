@@ -20,6 +20,7 @@ import {
 	mockCrmLeadsOf,
 	passCrmRetryWait,
 	setMockCrmDown,
+	setMockCrmLeadZaloId,
 } from "./crm-state";
 import { deletionRecords, holdReply, releaseReply } from "./deletion-state";
 import { writeZaloGuests } from "./guest-state";
@@ -34,6 +35,7 @@ const COMMANDS: Record<string, (...args: string[]) => Promise<unknown>> = {
 	"alerts.devices": operatorDevices,
 	"crm.availability": setMockCrmDown,
 	"crm.connect": connectOfficeToMockCrm,
+	"crm.lead-zalo-id": setMockCrmLeadZaloId,
 	"crm.leads": mockCrmLeadsOf,
 	"crm.outcome": markMockCrmLead,
 	"crm.retry-wait-passes": passCrmRetryWait,
