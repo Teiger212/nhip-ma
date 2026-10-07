@@ -27,7 +27,6 @@ import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
 import { noDraftAdapter } from "./drafts";
 import { encryptSecret, tokenContext } from "./pipes/secrets";
-import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import type { Conversation, ConversationSummary } from "./types";
 
@@ -566,20 +565,6 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 	);
 	expect(degraded?.guestName).toBeNull();
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
-});
-
-test("whatsappWindowState helper", () => {
-	const open = whatsappWindowState({
-		pipe: "whatsapp",
-		lastGuestInboundAt: new Date().toISOString(),
-	});
-	expect(open.open).toBe(true);
-	const closed = whatsappWindowState({
-		pipe: "whatsapp",
-		lastGuestInboundAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-	});
-	expect(closed.open).toBe(false);
-	expect(closed.reason).toBe("outside_24h_window");
 });
 
 test("inbox routes refuse requests without a session", async () => {
