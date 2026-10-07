@@ -2,6 +2,12 @@ import { hashPassword } from "@repo/auth/lib/password";
 import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
 
 import {
+	RIVER_AGENT2_EMAIL,
+	RIVER_AGENT2_NAME,
+	RIVER_AGENT_EMAIL,
+	RIVER_AGENT_NAME,
+	RIVER_MANAGER_EMAIL,
+	RIVER_MANAGER_NAME,
 	WALK_ADMIN_EMAIL,
 	WALK_ADMIN_NAME,
 	WALK_AGENT2_EMAIL,
@@ -66,4 +72,25 @@ export async function seedWalkAgent2(): Promise<WalkUserSeedResult> {
 /** The walk office's manager (ADR 0015): an ordinary user; the office membership makes them a manager. */
 export async function seedWalkManager(): Promise<WalkUserSeedResult> {
 	return seedLogin({ email: WALK_MANAGER_EMAIL, name: WALK_MANAGER_NAME, role: "user" });
+}
+
+/** The second office's logins (#69): its manager and two agents, ordinary users all. */
+export async function seedRiverLogins(): Promise<Record<string, WalkUserSeedResult>> {
+	return {
+		[RIVER_MANAGER_EMAIL]: await seedLogin({
+			email: RIVER_MANAGER_EMAIL,
+			name: RIVER_MANAGER_NAME,
+			role: "user",
+		}),
+		[RIVER_AGENT_EMAIL]: await seedLogin({
+			email: RIVER_AGENT_EMAIL,
+			name: RIVER_AGENT_NAME,
+			role: "user",
+		}),
+		[RIVER_AGENT2_EMAIL]: await seedLogin({
+			email: RIVER_AGENT2_EMAIL,
+			name: RIVER_AGENT2_NAME,
+			role: "user",
+		}),
+	};
 }
