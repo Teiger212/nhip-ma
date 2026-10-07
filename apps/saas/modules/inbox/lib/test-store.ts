@@ -8,6 +8,13 @@ import {
 import { settleBackgroundWork } from "./background";
 import { WALK_OFFICE_ID } from "./walk-user";
 
+// Unit files run in parallel; only the db project runs its files one at a time on the database.
+if (process.env.NHIP_DB_TESTS !== "1") {
+	throw new Error(
+		"test-store is for *.db.test.ts files: they run one at a time in the Vitest db project. Rename this test file.",
+	);
+}
+
 const TEST_DATABASE_URL = testDatabaseUrl();
 
 /** One client per test process; every store-backed test runs on it after a reset. */
@@ -101,5 +108,7 @@ export async function waitForLockWaiters(
 		if ((row?.waiting ?? 0) >= count) return;
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
-	throw new Error(`waitForLockWaiters: ${count} never waited on a lock${query ? ` for ${query}` : ""}`);
+	throw new Error(
+		`waitForLockWaiters: ${count} never waited on a lock${query ? ` for ${query}` : ""}`,
+	);
 }

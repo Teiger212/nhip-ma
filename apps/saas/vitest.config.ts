@@ -2,6 +2,11 @@ import path from "node:path";
 
 import { defineConfig } from "vitest/config";
 
+const EXCLUDE = ["**/node_modules/**", "**/tests/**", "**/.next/**"];
+/** Tests that use the test database (through `test-store`) are named `*.db.test.ts`. */
+const DB_TESTS = "**/*.db.test.{ts,tsx}";
+const NO_DATABASE = "postgresql://unit-tests-have-no-database@localhost:1/none";
+
 export default defineConfig({
 	test: {
 		globals: true,
@@ -10,13 +15,35 @@ export default defineConfig({
 		restoreMocks: true,
 		unstubGlobals: true,
 		unstubEnvs: true,
-		exclude: ["**/node_modules/**", "**/tests/**", "**/.next/**"],
-		globalSetup: ["./vitest.global-setup.ts"],
+		exclude: EXCLUDE,
 		// The store hashes vendor message ids under a key from this secret (#141); tests bring
 		// their own, so they never need (or read) a real one.
 		env: { BETTER_AUTH_SECRET: "vitest-only-not-a-secret-0123456789abcdef-nhip" },
-		// Store tests share one database and truncate it; files must not interleave.
-		fileParallelism: false,
+		projects: [
+			{
+				// Everything that never touches a database: files run in parallel. Both database
+				// URLs point at a closed port, so a database file misnamed into this project fails
+				// loudly instead of racing the db project, or the dev database, for rows.
+				extends: true,
+				test: {
+					name: "unit",
+					exclude: [...EXCLUDE, DB_TESTS],
+					env: { DATABASE_URL: NO_DATABASE, TEST_DATABASE_URL: `${NO_DATABASE}_test` },
+				},
+			},
+			{
+				// The `*.db.test.ts` files share one test database and empty it before every test,
+				// so they run one file at a time, after the unit files.
+				extends: true,
+				test: {
+					name: "db",
+					include: [DB_TESTS],
+					globalSetup: ["./vitest.global-setup.ts"],
+					env: { NHIP_DB_TESTS: "1" },
+					fileParallelism: false,
+				},
+			},
+		],
 	},
 	resolve: {
 		alias: {
