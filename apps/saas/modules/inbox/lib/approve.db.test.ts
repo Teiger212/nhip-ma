@@ -612,7 +612,7 @@ test("a disconnected pipe refuses before anything is recorded, in a live or a mo
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);
 });
 
-test("approve does not echo vendor error bodies", async () => {
+test("approve does not echo vendor error bodies, and logs only the vendor's code (#220)", async () => {
 	const runtime = peekTestRuntime()!;
 	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
 	await connectZaloOa(runtime.store, "oa-1", { officeId: "walk-office" });
@@ -621,10 +621,15 @@ test("approve does not echo vendor error bodies", async () => {
 		"fetch",
 		vi.fn(async () => Response.json({ error: -201, message: "secret vendor detail" })),
 	);
+	const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
 	const failed = await approveReply(conv);
 	expect(failed.res.status).toBe(502);
 	expect(failed.body.error).toBe("send_failed");
 	expect(JSON.stringify(failed.body)).not.toContain("secret vendor detail");
+	const logged = JSON.stringify(error.mock.calls);
+	expect(logged).toContain('"code":-201');
+	expect(logged).not.toContain("secret vendor detail");
+	expect(logged).not.toContain(conv.id);
 	const after = await runtime.store.getOfficeConversation(conv.officeId, conv.id);
 	expect(after?.lastAnswer).toMatchObject({ status: "failed" });
 	expect(after?.unansweredInboundId).toBe(conv.unansweredInboundId);

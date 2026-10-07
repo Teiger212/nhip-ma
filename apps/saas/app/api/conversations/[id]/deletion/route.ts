@@ -2,6 +2,7 @@ import { createGuestDeletion } from "@inbox/lib/guest-deletion";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { getRuntime } from "@inbox/lib/runtime";
 import { GUEST_DELETION_NOTE_MAX, GuestDeletionReason } from "@repo/database/inbox";
+import { errorKind } from "@shared/lib/scrub";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -72,9 +73,4 @@ async function readJson(request: Request): Promise<unknown> {
 	} catch {
 		return null;
 	}
-}
-
-function errorKind(error: unknown): string {
-	if (typeof error === "object" && error !== null && "code" in error) return String(error.code);
-	return error instanceof Error ? error.name : "unknown";
 }

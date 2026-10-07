@@ -1,3 +1,5 @@
+import { errorKind } from "@shared/lib/scrub";
+
 import type { InboxConfig } from "../config";
 import type { Store } from "../types";
 import { decryptSecret, encryptSecret, tokenContext } from "./secrets";
@@ -87,7 +89,8 @@ export async function zaloAccessToken(input: {
 	} catch (err) {
 		// Nothing was sent: an outage, a timeout, or the lock itself failing. A definite
 		// failure the operator may retry, never an ambiguous delivery.
-		console.error(`[zalo] could not get a token for OA ${oaId}`, err);
+		// The OA id is the office's, not a guest's: it says which connection to look at (#220).
+		console.error(`[zalo] could not get a token for OA ${oaId}`, { kind: errorKind(err) });
 		throw new SendError("Zalo could not be reached; nothing was sent. Try again.", null, "config");
 	}
 	if ("token" in outcome) return outcome.token;

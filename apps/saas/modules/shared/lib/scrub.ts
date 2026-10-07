@@ -108,6 +108,34 @@ export function allowlistBrowserException(
 	};
 }
 
+/** A machine-made code: a Prisma, Node or vendor code, an error kind, a class name. */
+const CODE = /^[\w.-]{1,40}$/;
+
+/**
+ * An error as a server log names it (#220): its class, plus its code, kind, category and HTTP
+ * status where it has them (`PrismaClientKnownRequestError P2002`, `TypeError ECONNREFUSED`,
+ * `HubSpotError auth MISSING_SCOPES 403`). Never its message: a model's, a vendor's, a CRM's or
+ * the database's message can quote what a guest wrote or who they are, and no pattern finds every
+ * name or sentence. Server logs reach Vercel, which is telemetry under the PDPL.
+ */
+export function errorKind(error: unknown): string {
+	if (!(error instanceof Error)) return "unknown";
+	const { code, kind, category, status, statusCode } = error as {
+		code?: unknown;
+		kind?: unknown;
+		category?: unknown;
+		status?: unknown;
+		statusCode?: unknown;
+	};
+	const cause = (error.cause as { code?: unknown } | null | undefined)?.code;
+	const parts = [error.name, code, kind, category, cause, status ?? statusCode].filter(
+		(part): part is string | number =>
+			(typeof part === "string" && CODE.test(part)) || Number.isInteger(part),
+	);
+	// Codes are machine-made, but a long digit run could still be someone's id: scrubbed anyway.
+	return scrubText([...new Set(parts.map(String))].join(" ")) || "Error";
+}
+
 /**
  * A server error reduced to what may be sent. Prisma and Zod errors print the values they
  * rejected (a guest's message, a name), so only their kind and code are kept. Other messages

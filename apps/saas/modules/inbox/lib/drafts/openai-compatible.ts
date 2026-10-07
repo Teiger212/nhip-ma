@@ -1,3 +1,4 @@
+import { errorKind } from "@shared/lib/scrub";
 import { z } from "zod";
 
 import type { DraftAdapter } from "./adapter";
@@ -81,7 +82,9 @@ export function createOpenAiCompatibleDraftAdapter(input: {
 			const text = choice.message.content?.trim();
 			return text || null;
 		} catch (error) {
-			return warn({ reason: error instanceof Error ? error.message : String(error) });
+			// The kind only (#220): a body that isn't JSON fails with a SyntaxError quoting its
+			// start, which can be the guest's words, translated.
+			return warn({ kind: errorKind(error) });
 		}
 	}
 

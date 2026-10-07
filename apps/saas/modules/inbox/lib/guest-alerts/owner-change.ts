@@ -140,14 +140,6 @@ export function scheduleOwnerChangeAlert(
 	conversation: Conversation,
 	change: OwnerChange,
 ): void {
-	void runInBackground("owner change alert", async () => {
-		try {
-			await alertOwnerChange(runtime, conversation, change);
-		} catch (error) {
-			if (error instanceof RecipientsFailed) throw error;
-			throw new Error(
-				`owner change alert failed (${error instanceof Error ? error.name : "unknown"})`,
-			);
-		}
-	});
+	// A failure is logged by its kind only (`runInBackground`, #220).
+	void runInBackground("owner change alert", () => alertOwnerChange(runtime, conversation, change));
 }

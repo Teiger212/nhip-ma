@@ -1,3 +1,4 @@
+import { errorKind } from "@shared/lib/scrub";
 import { after } from "next/server";
 
 /**
@@ -8,15 +9,20 @@ import { after } from "next/server";
  * tests and scripts can wait for the queue to drain, and a failed job is logged rather
  * than surfaced, because the fallback (no translation, the template draft) is already in
  * place before the job starts.
+ *
+ * The log is telemetry under the PDPL (#220): it names the kind of job and the kind of error,
+ * never a thread's or guest's id nor the error's message, which can quote what a guest wrote.
  */
 const pending = new Set<Promise<void>>();
 
+/**
+ * `label` names the kind of job, as a string literal: "translate", never "translate <id>". The
+ * lint rule `nhip/background-label-is-literal` refuses anything else.
+ */
 export function runInBackground(label: string, work: () => Promise<void>): Promise<void> {
 	const job: Promise<void> = work()
 		.catch((error: unknown) => {
-			console.warn(`inbox background job failed: ${label}`, {
-				reason: error instanceof Error ? error.message : String(error),
-			});
+			console.warn(`inbox background job failed: ${label}`, { kind: errorKind(error) });
 		})
 		.finally(() => {
 			pending.delete(job);

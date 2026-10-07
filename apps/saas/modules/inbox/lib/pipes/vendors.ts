@@ -278,9 +278,27 @@ export class SendError extends Error {
 	kind: "rejected" | "config";
 	constructor(message: string, detail: unknown, kind: "rejected" | "config" = "rejected") {
 		super(message);
+		this.name = "SendError";
 		this.detail = detail;
 		this.kind = kind;
 	}
+}
+
+/**
+ * A vendor's error body (`SendError.detail`) as a server log may carry it (#220): its numeric
+ * codes and Meta's error type. Never its message or details, which can name the recipient or
+ * quote the text. WhatsApp answers `{ error: { code, error_subcode, type } }`; Zalo answers
+ * `{ error: <negative code>, message }`.
+ */
+export function vendorErrorCodes(detail: unknown): Record<string, number | string> {
+	const body = asRecord(detail);
+	const graph = asRecord(body.error);
+	const codes: Record<string, number | string> = {};
+	if (Number.isInteger(body.error)) codes.code = body.error as number;
+	if (Number.isInteger(graph.code)) codes.code = graph.code as number;
+	if (Number.isInteger(graph.error_subcode)) codes.subcode = graph.error_subcode as number;
+	if (typeof graph.type === "string" && /^\w{1,40}$/.test(graph.type)) codes.type = graph.type;
+	return codes;
 }
 
 export async function sendWhatsApp(input: {
@@ -326,7 +344,11 @@ export type ZaloTokens = { accessToken: string; refreshToken: string; expiresInS
  */
 /** Zalo definitely refused (an error body): the token sent is dead, not merely unanswered. */
 export class ZaloTokenRefused extends Error {
-	constructor(detail: string) {
+	constructor(
+		detail: string,
+		/** Zalo's error code, or the HTTP status: what a log keeps of the refusal (#220). */
+		readonly code?: number | string,
+	) {
 		super(`Zalo refused the token request: ${detail}`);
 		this.name = "ZaloTokenRefused";
 	}
@@ -346,7 +368,10 @@ async function zaloTokenRequest(
 	});
 	const body = (await res.json().catch(() => null)) as Json | null;
 	if (res.status >= 500 || !body) {
-		throw new Error(`Zalo token endpoint unavailable (HTTP ${res.status})`);
+		// The status as a field too: a log keeps an error's kind and status, never its text (#220).
+		throw Object.assign(new Error(`Zalo token endpoint unavailable (HTTP ${res.status})`), {
+			status: res.status,
+		});
 	}
 	const accessToken = typeof body.access_token === "string" ? body.access_token : null;
 	const refreshToken = typeof body.refresh_token === "string" ? body.refresh_token : null;
@@ -355,7 +380,7 @@ async function zaloTokenRequest(
 		const error =
 			typeof body.error === "number" || typeof body.error === "string" ? body.error : res.status;
 		const message = typeof body.message === "string" ? body.message : "no token in response";
-		throw new ZaloTokenRefused(`${String(error)} ${message}`.trim());
+		throw new ZaloTokenRefused(`${String(error)} ${message}`.trim(), error);
 	}
 	return { accessToken, refreshToken, expiresInSec };
 }
@@ -398,7 +423,12 @@ export async function zaloOaProfile(
 	const body = (await res.json().catch(() => ({}))) as Json;
 	const data = asRecord(body.data);
 	const oaId = asId(data.oa_id);
-	if (!oaId) throw new Error("Zalo did not say which OA this token belongs to");
+	if (!oaId) {
+		throw Object.assign(new Error("Zalo did not say which OA this token belongs to"), {
+			status: res.status,
+			...(Number.isInteger(body.error) ? { code: body.error } : {}),
+		});
+	}
 	return { oaId, name: typeof data.name === "string" ? data.name : null };
 }
 

@@ -120,12 +120,7 @@ export function scheduleGuestAlert(
 	conversation: Conversation,
 	transport: AlertTransport = alertTransport(runtime.config),
 ): void {
-	void runInBackground("guest alert", async () => {
-		try {
-			await alertGuestMessage(runtime, conversation, { transport });
-		} catch (error) {
-			if (error instanceof RecipientsFailed) throw error;
-			throw new Error(`guest alert failed (${error instanceof Error ? error.name : "unknown"})`);
-		}
-	});
+	void runInBackground("guest alert", () =>
+		alertGuestMessage(runtime, conversation, { transport }),
+	);
 }

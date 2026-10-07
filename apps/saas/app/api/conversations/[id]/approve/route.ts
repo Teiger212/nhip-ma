@@ -1,4 +1,5 @@
 import { approveAndSend } from "@inbox/lib/inbox";
+import { vendorErrorCodes } from "@inbox/lib/pipes/vendors";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { NextResponse } from "next/server";
 
@@ -32,11 +33,12 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	const result = await approveAndSend(decodeURIComponent(id), { inboundId, text }, gate.viewer);
 	if (!result.ok) {
 		if (result.detail) {
-			// Vendor error bodies stay in server logs; they are never echoed to the caller.
+			// The vendor's codes only, never echoed to the caller. The log names the office, not the
+			// thread, and keeps no vendor message, which can name the guest or quote the reply (#220).
 			console.error("inbox approve send failed", {
-				id,
+				officeId: gate.viewer.officeId,
 				error: result.error,
-				detail: result.detail,
+				vendor: vendorErrorCodes(result.detail),
 			});
 		}
 		return NextResponse.json(

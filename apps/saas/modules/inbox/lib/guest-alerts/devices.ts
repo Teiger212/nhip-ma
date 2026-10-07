@@ -88,13 +88,9 @@ export async function sendTestAlert(
 		url: alert.link,
 		sound: alert.sounded,
 	};
-	void runInBackground("test alert", async () => {
-		try {
-			await transport.send([{ userId: who.userId, sessionId: who.sessionId, payload }]);
-		} catch (error) {
-			// An error's text can name the device or the operator; the log keeps only its kind.
-			throw new Error(`test alert failed (${error instanceof Error ? error.name : "unknown"})`);
-		}
-	});
+	// An error's text can name the device or the operator; the log keeps only its kind (#220).
+	void runInBackground("test alert", () =>
+		transport.send([{ userId: who.userId, sessionId: who.sessionId, payload }]),
+	);
 	return "sent";
 }

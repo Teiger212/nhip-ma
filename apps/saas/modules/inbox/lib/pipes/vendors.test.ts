@@ -6,6 +6,7 @@ import {
 	parseWhatsAppWebhook,
 	parseZaloWebhook,
 	verifyWhatsAppSignature,
+	vendorErrorCodes,
 	verifyZaloSignature,
 	whatsappWindowState,
 	ZALO_SIGNATURE_WINDOW_MS,
@@ -332,4 +333,23 @@ test("whatsappWindowState helper", () => {
 	});
 	expect(closed.open).toBe(false);
 	expect(closed.reason).toBe("outside_24h_window");
+});
+
+test("a vendor's error body is logged by its codes only, never its message (#220)", () => {
+	expect(
+		vendorErrorCodes({
+			error: {
+				message: "(#131030) Recipient phone number +84 912 345 678 not in allowed list",
+				type: "OAuthException",
+				code: 131030,
+				error_subcode: 2494010,
+				error_data: { details: "Recipient phone number not in allowed list" },
+				fbtrace_id: "AbCdEf123",
+			},
+		}),
+	).toEqual({ code: 131030, subcode: 2494010, type: "OAuthException" });
+	expect(vendorErrorCodes({ error: -230, message: "User has not interacted with the OA" })).toEqual(
+		{ code: -230 },
+	);
+	expect(vendorErrorCodes("not a body")).toEqual({});
 });
