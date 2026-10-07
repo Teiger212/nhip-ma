@@ -12,8 +12,10 @@ export const MAX_MESSAGE_LENGTH = 200;
 const MAX_INPUT_LENGTH = 1000;
 
 const LONG_ID = /\b[A-Za-z0-9_-]{32,}\b/g;
-// cuid / cuid2 record ids (threads, offices, invitations): a letter then 20+ lowercase/digits.
-const RECORD_ID = /\bc[a-z0-9]{20,31}\b/g;
+// Record ids: Prisma's cuid (offices, invitations, users) starts with "c"; the inbox's cuid2
+// (threads, messages, #141) starts with any letter. Both are a lowercase letter, then 20+
+// lowercase letters and digits.
+const RECORD_ID = /\b[a-z][a-z0-9]{20,31}\b/g;
 const EMAIL = /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
 // Seven or more digits, allowing spaces, dots, dashes and brackets between them, with an
 // optional leading + or bracket: Vietnamese and international phone numbers (and, on
