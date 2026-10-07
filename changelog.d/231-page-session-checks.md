@@ -6,8 +6,9 @@
   signed-in layout's check doesn't run again when you move between its pages, and a crafted
   RSC request (an `RSC: 1` header and a router state that says the layout is already on
   screen) renders a page without it. Every page under `(authenticated)` that reads data on the
-  server now calls `requireSession()` first. It sends a visitor with no session to login in
-  their language, as the layout does. The audit in the PR lists each page. No data was exposed
+  server now checks first. The office's settings already called `requireOfficeManager()`
+  (#212). The others now call `requireSession()`, which sends a visitor with no session to
+  login in their language, as the layout does. The audit in the PR lists each page. No data was exposed
   before: where a page read data, the read itself already needed the session. But Home's frame
   rendered for a signed-out RSC request, and now it doesn't.
 - **A request for a signed-in page with no session cookie goes straight to login** (#231).
