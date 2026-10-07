@@ -1,4 +1,4 @@
-import { getSession } from "@auth/lib/server";
+import { requireSession } from "@organizations/lib/require-session";
 import { ActivePlan } from "@payments/components/ActivePlan";
 import { ChangePlan } from "@payments/components/ChangePlan";
 import { listPurchases } from "@payments/lib/server";
@@ -21,7 +21,8 @@ export async function generateMetadata() {
 
 export default async function BillingSettingsPage() {
 	if (!KIT_SCREENS.billing) notFound();
-	const session = await getSession();
+	// Signed in, checked here and not only by the layout (#231), before the purchases are read.
+	const session = await requireSession();
 	const purchases = await listPurchases();
 
 	const queryClient = getServerQueryClient();
@@ -43,7 +44,7 @@ export default async function BillingSettingsPage() {
 
 			<SettingsList>
 				{activePlan && <ActivePlan />}
-				<ChangePlan userId={session?.user.id} activePlanId={activePlan?.id} />
+				<ChangePlan userId={session.user.id} activePlanId={activePlan?.id} />
 			</SettingsList>
 		</>
 	);
