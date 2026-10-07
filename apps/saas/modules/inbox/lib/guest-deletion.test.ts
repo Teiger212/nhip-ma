@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
 import { createGuestDeletion } from "./guest-deletion";
-import { testDb, testInboxStore } from "./test-store";
+import { testDb, testInboxStore, waitForLockWaiters } from "./test-store";
 
 /**
  * Guest deletion (ADR 0020, spec #85): a manager hard-deletes a guest's thread in one
@@ -416,19 +416,6 @@ test("bell rows naming the thread go with it and are counted; others stay (ADR 0
 	await store.close();
 });
 
-/** Resolves once `count` other sessions on the test database wait on a lock. */
-async function lockWaiters(count: number): Promise<void> {
-	const deadline = Date.now() + 5_000;
-	while (Date.now() < deadline) {
-		const [row] = await testDb.$queryRaw<Array<{ waiting: number }>>`
-			SELECT count(*)::int AS waiting FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()`;
-		if ((row?.waiting ?? 0) >= count) return;
-		await new Promise((resolve) => setTimeout(resolve, 10));
-	}
-	throw new Error(`lockWaiters: ${count} never waited on a lock`);
-}
-
 type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 /** Run `work` now and keep its outcome, so a rejection waits to be read instead of escaping. */
@@ -458,9 +445,9 @@ async function inOrder<A, B>(
 			await tx.$queryRaw`SELECT 1 FROM "inbox_conversation" WHERE "id" = ${thread.id} FOR UPDATE`;
 			// Not awaited here: both must queue behind this lock before it is released.
 			const a = settle(first);
-			await lockWaiters(1);
+			await waitForLockWaiters(1);
 			const b = settle(second);
-			await lockWaiters(2);
+			await waitForLockWaiters(2);
 			queued = [a, b];
 		},
 		{ timeout: 15_000 },

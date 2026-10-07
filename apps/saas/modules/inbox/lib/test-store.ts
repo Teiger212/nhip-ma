@@ -69,7 +69,7 @@ export async function deleteThreadUnder<T>(
 					settled.done = true;
 				}
 			})();
-			await Promise.race([running, waitingOnALock(settled)]);
+			await Promise.race([running, waitForLockWaiters(1, { unless: () => settled.done })]);
 			settled.done = true;
 			await tx.$queryRaw`SELECT 1 FROM "inbox_answer" WHERE "conversationId" = ${conversationId} AND "officeId" = ${officeId} FOR UPDATE`;
 			await tx.conversation.deleteMany({ where: { id: conversationId, officeId } });
@@ -81,16 +81,25 @@ export async function deleteThreadUnder<T>(
 	return outcome.value;
 }
 
-/** Resolves once another session on the test database waits on a lock, or `settled` is done. */
-async function waitingOnALock(settled: { done: boolean }): Promise<void> {
+/**
+ * Resolves once `count` other sessions wait on a lock, or as soon as `unless()` is true; throws
+ * after 5 s. Only sessions on this run's own test database count: E2E, other worktrees and the
+ * dev server share the Postgres server, and a lock wait of theirs proves nothing here. `query`
+ * narrows it to waiting statements whose text contains it.
+ */
+export async function waitForLockWaiters(
+	count: number,
+	{ query, unless }: { query?: string; unless?: () => boolean } = {},
+): Promise<void> {
 	const deadline = Date.now() + 5_000;
 	while (Date.now() < deadline) {
-		if (settled.done) return;
+		if (unless?.()) return;
 		const [row] = await testDb.$queryRaw<Array<{ waiting: number }>>`
 			SELECT count(*)::int AS waiting FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()`;
-		if ((row?.waiting ?? 0) > 0) return;
+			WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()
+				AND (${query ?? null}::text IS NULL OR query ILIKE ${`%${query ?? ""}%`})`;
+		if ((row?.waiting ?? 0) >= count) return;
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
-	throw new Error("deleteThreadUnder: the work under the delete neither finished nor waited");
+	throw new Error(`waitForLockWaiters: ${count} never waited on a lock${query ? ` for ${query}` : ""}`);
 }
