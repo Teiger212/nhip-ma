@@ -48,10 +48,16 @@ rewrites them as of now, which the fresh pair needs after 48 hours. There is no 
 bypass route and public sign-up is closed (ADR 0010). Inbox stays invented threads +
 `SEND_MODE=mock`.
 
-Tests use `supastarter_test` on the same server (`TEST_DATABASE_URL` overrides it). The
-vitest global setup creates it and pushes the schema; every store test truncates the inbox
-tables first. A schema change that would lose data there is not accepted silently:
-`dropdb supastarter_test` and run again.
+Tests use `supastarter_test` on the same server (`TEST_DATABASE_URL` overrides it). saas
+Vitest has two projects (`apps/saas/vitest.config.ts`): `unit`, whose files run in parallel
+with no database, and `db`, the `*.db.test.ts` files, which run one at a time after it. A test
+file that imports `test-store` must be named `*.db.test.ts` (test-store refuses to load
+elsewhere, and `unit` points both database URLs at a closed port). The `db` project's global
+setup creates the database and pushes the schema, and `vitest.db-setup.ts` resets it before
+every test to the fixture offices and operators alone (`resetTestDatabase`), so a test adds
+the people and threads it needs and never cleans up. Shared builders are in
+`apps/saas/modules/inbox/lib/test-fixtures.ts`. A schema change that would lose data there is
+not accepted silently: `dropdb supastarter_test` and run again.
 
 This walk only needs `apps/saas` on port 3010, including its admin area (offices, pipe
 connections, webhook deliveries). Port 3010 is Eyal's dev server; an agent runs its own on
