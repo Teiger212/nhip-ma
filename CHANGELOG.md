@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-10-07 (a visible sidebar collapse button, smoother motion, a readable icon strip)
+
+### Added
+
+- **A button collapses and expands the sidebar on a desktop** (#234). It sits beside the bell, and heads the icon strip when the sidebar is collapsed. Its tooltip says what it does and gives the shortcut as the computer writes it: "Collapse sidebar (⌘B)" on a Mac, "(Ctrl+B)" elsewhere, in English and Vietnamese. ⌘B / Ctrl+B and the rail on the sidebar's edge still work as before.
+
+### Changed
+
+- **The sidebar moves smoothly** (#234). Its width eases out over 220ms instead of moving linearly, and the labels fade with it instead of vanishing at once. Both stop when the system asks for reduced motion.
+- **The collapsed icon strip reads on its own** (#234). Every item has a tooltip naming it, International included: it still says "Coming soon" and links nowhere. The Inbox's Your-turn count stays on the Inbox icon as a small badge. The user menu fits the strip instead of overhanging its edge.
+
+### Fixed
+
+- **A collapsed sidebar reloads collapsed from the first frame** (#234). The server reads the sidebar's cookie, so the page no longer paints the open sidebar and then snaps it shut.
+
+## 2026-10-07 (Home's Closings and Lost from the CRM)
+
+### Added
+
+- **Home counts Closings and Lost from the office's CRM** (#68, ADR 0003). For the last 30 days'
+  leads, Home shows the distinct won and lost leads from the outcomes Nhịp cached from the CRM,
+  with "As of <time>", the last time Nhịp heard from it. A deal reached on two threads counts once.
+  Home never asks the CRM, so it loads at once with the CRM down.
+
+### Changed
+
+- **An office with no CRM sees "No CRM"** (#68). Closings and Lost stay hatched with a neutral
+  "No CRM" chip and "Closings and lost come from your CRM. Nhịp connects the one your office
+  uses.", in place of "Connect your CRM", which managers can't do.
+
+## 2026-10-07 (a rich dev and demo seed: every state, two offices)
+
+### Added
+
+- **`pnpm seed` writes a dev and demo dataset with every state in it** (#69). About sixty
+  invented guests over the last 30 days, so Home's funnel, response time and leads by day have
+  shape and the Inbox tabs show two-digit counts. The walk office holds every Inbox state
+  (Unassigned, each agent's and the manager's, Your turn, Quiet, Sent, written back), greeted
+  guests, bell rows and the alert log, a deleted guest's receipt and lead tally, and every CRM
+  state on the mock CRM: in CRM, Not in CRM yet, Won, Lost, lost and written back, two leads
+  sharing a phone, an unmatched lead. A second office has its own manager and agents, its
+  auto-reply off and no CRM, and shares nothing with the first. Guests write on WhatsApp and
+  Zalo in seven languages, with translations and qualifiers filled. Every row is written by the
+  app's own calls, each at its story's time, with no model call and nothing sent or pushed. A
+  re-run adds nothing, and `pnpm seed -- --reset` rewrites the seed's own rows as of now.
+- **The seed refuses production** (#69). It refuses `VERCEL_ENV=production`, and any database
+  that isn't on this machine unless `SEED_REMOTE_DATABASE_HOST` names its host (the Neon `dev`
+  branch). This includes the E2E run's seed, whose database is local. What the E2E run's seed
+  writes is unchanged: the walk logins and the four demo threads.
+
 ## 2026-10-07 (every signed-in page checks the session itself)
 
 ### Security
