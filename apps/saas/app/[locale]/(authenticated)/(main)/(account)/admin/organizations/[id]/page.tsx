@@ -1,6 +1,7 @@
 import { OrganizationForm } from "@admin/component/organizations/OrganizationForm";
 import { getAdminPath } from "@admin/lib/links";
 import { fullOrganizationQueryKey } from "@organizations/lib/api";
+import { requireSession } from "@organizations/lib/require-session";
 import { auth } from "@repo/auth";
 import { Button } from "@repo/ui";
 import { getServerQueryClient } from "@shared/lib/server";
@@ -25,6 +26,8 @@ export default async function OrganizationFormPage({
 	params: Promise<{ id: string }>;
 	searchParams: Promise<{ backTo?: string }>;
 }) {
+	// Signed in, checked here and not only by the layout (#231), before the office is read.
+	await requireSession();
 	const { id } = await params;
 	const { backTo } = await searchParams;
 
