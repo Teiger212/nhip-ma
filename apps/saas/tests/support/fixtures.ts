@@ -137,26 +137,31 @@ export const test = base.extend<{ admin: Admin }>({
 			},
 		});
 
-		// Accepted invitations cannot be cancelled; that refusal is fine here.
-		for (const invitationId of invitations) {
-			await api.post("/api/auth/organization/cancel-invitation", { invitationId });
-		}
-		for (const organizationId of offices) {
-			await deleteOffice(api, organizationId);
-		}
-		for (const email of emails) {
-			const res = await api.get("/api/auth/admin/list-users", {
-				searchValue: email,
-				searchField: "email",
-			});
-			if (!res.ok()) {
-				continue;
-			}
-			const { users } = (await res.json()) as { users: { id: string; email: string }[] };
-			for (const user of users.filter((u) => u.email === email)) {
-				await api.post("/api/auth/admin/remove-user", { userId: user.id });
-			}
-		}
+		// Three rounds, each in parallel: the invitations, then the offices they were into, then
+		// the accounts. Accepted invitations cannot be cancelled; that refusal is fine here.
+		await Promise.all(
+			invitations.map((invitationId) =>
+				api.post("/api/auth/organization/cancel-invitation", { invitationId }),
+			),
+		);
+		await Promise.all(offices.map((organizationId) => deleteOffice(api, organizationId)));
+		await Promise.all(
+			emails.map(async (email) => {
+				const res = await api.get("/api/auth/admin/list-users", {
+					searchValue: email,
+					searchField: "email",
+				});
+				if (!res.ok()) {
+					return;
+				}
+				const { users } = (await res.json()) as { users: { id: string; email: string }[] };
+				await Promise.all(
+					users
+						.filter((u) => u.email === email)
+						.map((user) => api.post("/api/auth/admin/remove-user", { userId: user.id })),
+				);
+			}),
+		);
 		await context.close();
 	},
 });

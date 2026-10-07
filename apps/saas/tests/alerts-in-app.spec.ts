@@ -1,5 +1,4 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { setTimeout as pause } from "node:timers/promises";
 
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 
@@ -17,9 +16,9 @@ import { sendZaloText } from "./support/zalo";
 
 /**
  * Alerts are decided after the webhook has answered (ADR 0019: in the background), so every
- * look at the log polls.
+ * look at the log polls: at Playwright's default intervals, since a read is one query (#203).
  */
-const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
+const ON_THE_PHONES = { timeout: 30_000 };
 
 /**
  * An open page learns of a guest on its next poll: every ten seconds, and every second in the E2E
@@ -70,8 +69,8 @@ type Guest = {
 	waiting: string;
 	/** Every text they wrote, oldest first. */
 	texts: string[];
-	/** The guest writes; resolves with the text. */
-	write: (text?: string) => Promise<string>;
+	/** The guest writes, now unless `at` says when; resolves with the text. */
+	write: (text?: string, options?: { at?: Date }) => Promise<string>;
 };
 
 /**
@@ -122,12 +121,14 @@ const test = base.extend<{
 				contexts.push(joined);
 				return { label, id: joined.userId, page: joined.page, api: joined.api };
 			};
-			const agent1 = await join("agent 1", "member");
-			const agent2 = await join("agent 2", "member");
-			const joinedManagers =
-				managers === 2
-					? [await join("manager 1", "admin"), await join("manager 2", "admin")]
-					: [await join("manager", "admin")];
+			// Everyone joins at once (setup); each keeps their place in the list.
+			const [agent1, agent2, ...joinedManagers] = await Promise.all([
+				join("agent 1", "member"),
+				join("agent 2", "member"),
+				...(managers === 2
+					? [join("manager 1", "admin"), join("manager 2", "admin")]
+					: [join("manager", "admin")]),
+			]);
 			const manager = joinedManagers[0];
 			const assigner = assignerAs(manager.api);
 			return {
@@ -166,8 +167,8 @@ function zaloGuestOf(request: APIRequestContext, oaId: string): Guest {
 		listedAs: key,
 		waiting: "A guest is waiting",
 		texts,
-		write: async (text = `Hello from ${key}, ${randomUUID().slice(0, 8)}`) => {
-			await sendZaloText(request, { guestId: key, oaId, text });
+		write: async (text = `Hello from ${key}, ${randomUUID().slice(0, 8)}`, { at } = {}) => {
+			await sendZaloText(request, { guestId: key, oaId, text, at });
 			texts.push(text);
 			return text;
 		},
@@ -184,8 +185,11 @@ function whatsAppGuestOf(request: APIRequestContext, phoneNumberId: string, name
 		listedAs: name,
 		waiting: `${name} is waiting`,
 		texts,
-		write: async (text = `Is the flat on Xuan Dieu free? ${randomUUID().slice(0, 8)}`) => {
-			await sendWhatsAppText(request, { phoneNumberId, guest: { phone: key, name }, text });
+		write: async (
+			text = `Is the flat on Xuan Dieu free? ${randomUUID().slice(0, 8)}`,
+			{ at } = {},
+		) => {
+			await sendWhatsAppText(request, { phoneNumberId, guest: { phone: key, name }, text, at });
 			texts.push(text);
 			return text;
 		},
@@ -1076,15 +1080,16 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await openSettings(agent2.page);
 		await openSettings(manager.page);
 
-		// Minji, and a nameless Zalo guest, write and wait Unassigned.
+		// Minji, and a nameless Zalo guest, wrote a minute ago and wait Unassigned. A thread new to a
+		// list raises a "waiting" toast only if its guest wrote in the last 30 s (JUST_WROTE_MS,
+		// guest-toasts.ts), and the app keeps the vendor's send time: so what agent 1 sees comes
+		// from being given Minji, not from Minji writing.
 		const minji = office.whatsAppGuest("Minji");
 		const zalo = office.zaloGuest();
-		await minji.write();
-		await zalo.write();
+		const aMinuteAgo = new Date(Date.now() - 60_000);
+		await minji.write(undefined, { at: aMinuteAgo });
+		await zalo.write(undefined, { at: aMinuteAgo });
 		const minjisThread = await office.threadOf(minji);
-
-		// Long enough that what agent 1 sees comes from being given Minji, not from Minji writing.
-		await pause(35_000);
 
 		// The manager gives Minji to agent 1: one toast, "Minji was assigned to you", over "WhatsApp".
 		await office.assign(minji, agent1);

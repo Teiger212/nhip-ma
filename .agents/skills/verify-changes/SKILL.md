@@ -42,7 +42,7 @@ Use for the final repository gates and for selecting focused tests. Do not use t
    ```
    If they fail, use `pnpm lint:fix` and/or `pnpm format`, review the edits, then rerun the read-only gates.
 6. Reinspect `git diff` after any fix command. Confirm no secrets, generated client artifacts, `console.log`, unjustified `any`, or unrelated edits were introduced.
-7. Compare failures with `.github/workflows/validate-prs.yml`; its jobs are `lint`, `type-check`, `unit`, and `e2e`. The workflow uploads only `apps/saas/playwright-report/` as the `playwright-report` artifact.
+7. Compare failures with `.github/workflows/validate-prs.yml`; its jobs are `lint`, `type-check`, `unit`, and `e2e`. CI's e2e job (`.github/workflows/ci.yml`) uploads the `playwright-report` artifact on every run that isn't cancelled: `apps/saas/playwright-report/` and `apps/saas/test-results/results.json` (every test's duration).
 
 ## Canonical reference
 

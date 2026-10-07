@@ -1,5 +1,6 @@
 import { runInBackground } from "@inbox/lib/background";
 import { crmKindTakesToken } from "@inbox/lib/crm/adapters";
+import { logAccountLookupFailure } from "@inbox/lib/crm/sync";
 import { crmSyncFor } from "@inbox/lib/inbox";
 import { requirePlatformAdmin } from "@inbox/lib/require-platform-admin";
 import { getRuntime } from "@inbox/lib/runtime";
@@ -64,7 +65,12 @@ export async function PUT(request: Request): Promise<Response> {
 			// The deployment cannot store a token encrypted (PIPE_SECRETS_KEY unset, ADR 0017).
 			return NextResponse.json({ error: "secrets_key_missing" }, { status: 503 });
 		case "connected":
-			void runInBackground(`crm account ${officeId}`, () => sync.resolveAccount(officeId));
+			// The label names the job only (#220); the failure's own line names the office.
+			void runInBackground("crm account", () =>
+				sync.resolveAccount(officeId).catch((error: unknown) => {
+					logAccountLookupFailure(officeId, error);
+				}),
+			);
 			return NextResponse.json({ kind, tokenSet: crmKindTakesToken(kind) });
 	}
 }

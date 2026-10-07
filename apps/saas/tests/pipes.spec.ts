@@ -367,7 +367,7 @@ test.describe("Pipes 4 — disconnecting", () => {
 			manager = await joinOffice(admin, browser, office.id, "admin", "pipes-manager");
 			// While connected, a guest's message reaches the office.
 			await guestWritesOnZalo(request, oaId, guestId, before);
-			await manager.page.reload();
+			await manager.page.goto("/en/inbox");
 			await expect(threadOf(manager.page, guestId)).toBeVisible();
 
 			const connections = await openConnections(admin, office.id);

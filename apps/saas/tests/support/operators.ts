@@ -10,10 +10,14 @@ import type { Api } from "./session";
 import { clientIpHeaders, withOrigin } from "./session";
 import { askState } from "./state-client";
 
-/** An operator who joined an office, in a browser of their own, on their Inbox. */
+/** An operator who joined an office, in a browser of their own. */
 export type Joined = {
 	email: string;
 	userId: string;
+	/**
+	 * A blank tab, signed in: nothing is open until the test opens a page in it (#223), so an
+	 * operator the test never looks through costs no page load and no Inbox polling.
+	 */
 	page: Page;
 	api: Api;
 	close: () => Promise<void>;
@@ -37,7 +41,7 @@ async function signedUpAccount(email: string): Promise<Account> {
 }
 
 /**
- * A new operator of `officeId`, invited by the platform admin, on their Inbox in a browser
+ * A new operator of `officeId`, invited by the platform admin, with a blank tab in a browser
  * context of their own (its own client IP): an agent (the kit's `member`) or a manager (the kit's
  * `admin`, CONTEXT.md "Manager"). `tag` marks their email. Their account starts signed up and
  * signed in (setup, accounts.ts); they accept the invitation through the kit's API, so the
@@ -63,9 +67,8 @@ export async function joinOffice(
 		expect(accepted.ok(), `the invitee accepts the invitation: ${await accepted.text()}`).toBe(
 			true,
 		);
+		// Blank: the test opens the Inbox, or any page, when it looks (#223).
 		const page = await context.newPage();
-		await page.goto("/en/inbox");
-		await expect(page).toHaveURL(/\/en\/inbox/, { timeout: 15_000 });
 		return { email, userId: account.userId, page, api, close: () => context.close() };
 	} catch (error) {
 		await context.close();

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
 
@@ -13,6 +13,7 @@ import { AGENT, AGENT_2, MANAGER, WALK_OFFICE_ID } from "./support/seed";
 import type { Api } from "./support/session";
 import { clientIpHeaders, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
+import { sendZaloText } from "./support/zalo";
 
 const copy = ownerCopy("en");
 
@@ -95,14 +96,14 @@ const test = base.extend<{
 				contexts.push(joined);
 				return { label, page: joined.page, api: joined.api, userId: joined.userId };
 			};
-			const agents: [Member, Member] = [
-				await join("agent 1", "member"),
-				await join("agent 2", "member"),
-			];
-			const joinedManagers = [await join("manager 1", "admin")];
-			if (managers === 2) {
-				joinedManagers.push(await join("manager 2", "admin"));
-			}
+			// Everyone joins at once (setup); each keeps their place in the list.
+			const [agent1, agent2, ...joinedManagers] = await Promise.all([
+				join("agent 1", "member"),
+				join("agent 2", "member"),
+				join("manager 1", "admin"),
+				...(managers === 2 ? [join("manager 2", "admin")] : []),
+			]);
+			const agents: [Member, Member] = [agent1, agent2];
 			return {
 				id: office.id,
 				agents,
@@ -151,42 +152,13 @@ async function firstWordOf(request: APIRequestContext, oaId: string): Promise<Gu
 	const guest: Guest = {
 		id,
 		write: async (text = `Hello from ${id}, ${randomUUID().slice(0, 8)}`) => {
-			await zaloWebhook(request, "user_send_text", { from: id, to: oaId, text });
+			await sendZaloText(request, { guestId: id, oaId, text });
 			return text;
 		},
-		echoFromZaloApp: (text) => zaloWebhook(request, "oa_send_text", { from: oaId, to: id, text }),
+		echoFromZaloApp: (text) => sendZaloText(request, { guestId: id, oaId, text, from: "office" }),
 	};
 	await guest.write();
 	return guest;
-}
-
-/** A webhook as Zalo sends and signs it (the E2E env's app and secret). */
-async function zaloWebhook(
-	request: APIRequestContext,
-	eventName: "user_send_text" | "oa_send_text",
-	message: { from: string; to: string; text: string },
-) {
-	const appId = process.env.ZALO_APP_ID;
-	const secret = process.env.ZALO_OA_SECRET_KEY;
-	if (!appId || !secret)
-		throw new Error("ZALO_APP_ID and ZALO_OA_SECRET_KEY come from the E2E env");
-	const timestamp = String(Date.now());
-	const body = JSON.stringify({
-		app_id: appId,
-		event_name: eventName,
-		timestamp,
-		sender: { id: message.from },
-		recipient: { id: message.to },
-		message: { text: message.text, msg_id: randomUUID() },
-	});
-	const mac = createHash("sha256")
-		.update(appId + body + timestamp + secret)
-		.digest("hex");
-	const res = await request.post("/webhooks/zalo", {
-		data: body,
-		headers: { "content-type": "application/json", "X-ZEvent-Signature": `mac=${mac}` },
-	});
-	expect(res.ok(), `the Zalo webhook (${eventName}) is taken (${res.status()})`).toBe(true);
 }
 
 /* ---------------------------------------------------------------- what a person sees */

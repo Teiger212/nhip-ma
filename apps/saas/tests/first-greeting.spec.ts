@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -143,33 +143,9 @@ function guestOf(request: APIRequestContext, oaId: string): Guest {
 			return text;
 		},
 		echoFromOffice: (text, msgId = randomUUID()) =>
-			deliverZalo(request, signedZaloEcho({ oaId, guestId: id, text, msgId })),
+			deliverZalo(request, signedZaloText({ guestId: id, oaId, text, msgId, from: "office" })),
 	};
 	return guest;
-}
-
-/** The office's own message to a guest, echoed by Zalo as it signs it (`oa_send_text`). */
-function signedZaloEcho(message: { oaId: string; guestId: string; text: string; msgId: string }) {
-	const appId = process.env.ZALO_APP_ID;
-	const secret = process.env.ZALO_OA_SECRET_KEY;
-	if (!appId || !secret)
-		throw new Error("ZALO_APP_ID and ZALO_OA_SECRET_KEY come from the E2E env");
-	const timestamp = String(Date.now());
-	const body = JSON.stringify({
-		app_id: appId,
-		event_name: "oa_send_text",
-		timestamp,
-		sender: { id: message.oaId },
-		recipient: { id: message.guestId },
-		message: { text: message.text, msg_id: message.msgId },
-	});
-	const mac = createHash("sha256")
-		.update(appId + body + timestamp + secret)
-		.digest("hex");
-	return {
-		body,
-		headers: { "content-type": "application/json", "X-ZEvent-Signature": `mac=${mac}` },
-	};
 }
 
 /* ---------------------------------------------------------------- the thread, as the manager reads it */
@@ -795,6 +771,7 @@ test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
 		const agent = await joinOffice(admin, browser, office.id, "member", "greeting-agent");
 		try {
 			// The agent first: each absence judged once the menu, or the page, has shown.
+			await openInbox(agent.page);
 			await openUserMenu(agent.page);
 			await expect(officeSettingsItem(agent.page), "no Office settings for an agent").toHaveCount(
 				0,

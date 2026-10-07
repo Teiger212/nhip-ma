@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 
 import {
 	allowlistBrowserException,
+	errorKind,
 	MAX_MESSAGE_LENGTH,
 	scrubExceptionList,
 	scrubServerError,
@@ -26,6 +27,18 @@ test("phone numbers and emails never survive, in Vietnamese and international fo
 test("quoted values are blanked: error messages quote the input they choke on", () => {
 	expect(scrubText('Invalid value: text: "Minji here, arriving 10pm"')).toBe(
 		'Invalid value: text: "…"',
+	);
+});
+
+test("record ids are removed whatever letter they start with: Prisma's cuid and the inbox's cuid2", () => {
+	// Prisma's cuid() starts with "c"; the inbox's thread and message ids (cuid2, #141) are 24
+	// characters starting with any letter, as in these, taken from a CI log.
+	expect(scrubText("thread cm1abcdefghijklmnopqrstu failed")).toBe("thread [id] failed");
+	expect(scrubText("thread ywh8noalsll0rc8icao9zu1b failed")).toBe("thread [id] failed");
+	expect(scrubText("message ybfp9tewuj6hk21f9w29ft6q not found")).toBe("message [id] not found");
+	// Ordinary words stay readable.
+	expect(scrubText("PrismaClientKnownRequestError: Unique constraint failed")).toBe(
+		"PrismaClientKnownRequestError: Unique constraint failed",
 	);
 });
 
@@ -118,4 +131,32 @@ test("server errors: value-dumping errors keep only their kind, and a multi-line
 	const lines = scrubServerError(multiLine).stack!.split("\n");
 	expect(lines.slice(1).every((line) => /^\s+at /.test(line))).toBe(true);
 	expect(lines.join("\n")).not.toMatch(/Minji|Ben Thanh/);
+});
+
+test("an error's kind for a server log: its class and codes, never its message (#220)", () => {
+	const prisma = Object.assign(new Error('Unique constraint failed on "Minji 0912 345 678"'), {
+		name: "PrismaClientKnownRequestError",
+		code: "P2002",
+	});
+	expect(errorKind(prisma)).toBe("PrismaClientKnownRequestError P2002");
+
+	const network = new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } });
+	expect(errorKind(network)).toBe("TypeError ECONNREFUSED");
+
+	const crm = Object.assign(new Error("HubSpot create deal answered 403 MISSING_SCOPES"), {
+		name: "HubSpotError",
+		kind: "auth",
+		category: "MISSING_SCOPES",
+		status: 403,
+	});
+	expect(errorKind(crm)).toBe("HubSpotError auth MISSING_SCOPES 403");
+
+	// The message is never read, however much guest data it quotes.
+	expect(errorKind(new Error("model refused Nguyễn Thị Lan: em muốn thuê nhà"))).toBe("Error");
+	// A code that is free text is not a code; a long digit run is scrubbed like a phone number.
+	expect(errorKind(Object.assign(new Error("x"), { code: "Minji at Ben Thanh" }))).toBe("Error");
+	expect(errorKind(Object.assign(new Error("x"), { code: "3891748223501947521" }))).toBe(
+		"Error [phone]",
+	);
+	expect(errorKind("a thrown string with 0912 345 678")).toBe("unknown");
 });

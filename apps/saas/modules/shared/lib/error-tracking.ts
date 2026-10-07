@@ -1,7 +1,7 @@
 import "server-only";
 import { PostHog } from "posthog-node";
 
-import { scrubExceptionList, scrubServerError } from "./scrub";
+import { errorKind, scrubExceptionList, scrubServerError } from "./scrub";
 
 /**
  * Server-side error tracking (PostHog Cloud): unhandled request errors only, scrubbed of
@@ -54,6 +54,6 @@ export async function captureServerError(
 			$process_person_profile: false,
 		});
 	} catch (sendError) {
-		console.error("[error-tracking] could not report an error", sendError);
+		console.error("[error-tracking] could not report an error", { kind: errorKind(sendError) });
 	}
 }

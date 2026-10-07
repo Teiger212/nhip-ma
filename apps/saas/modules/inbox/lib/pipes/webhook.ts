@@ -1,3 +1,4 @@
+import { errorKind } from "@shared/lib/scrub";
 import { NextResponse } from "next/server";
 
 import { ingestEvents, type IngestSummary } from "../inbox";
@@ -73,6 +74,7 @@ async function logDelivery(
 			);
 		}
 	} catch (logError) {
-		console.error("[webhooks] could not record a delivery", logError);
+		// The kind only (#220): a database error quotes the row it refused, vendor ids included.
+		console.error("[webhooks] could not record a delivery", { kind: errorKind(logError) });
 	}
 }

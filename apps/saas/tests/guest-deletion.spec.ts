@@ -133,10 +133,16 @@ const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice>
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
 			await connectZaloOa(office.id, oaId);
-			const agent = await newOperatorOf(admin, browser, office.id, "the agent", "member");
-			contexts.push(agent);
-			const manager = await newOperatorOf(admin, browser, office.id, "the manager", "admin");
-			contexts.push(manager);
+			const join = async (label: string, role: "member" | "admin") => {
+				const operator = await newOperatorOf(admin, browser, office.id, label, role);
+				contexts.push(operator);
+				return operator;
+			};
+			// The agent and the manager join at once (setup).
+			const [agent, manager] = await Promise.all([
+				join("the agent", "member"),
+				join("the manager", "admin"),
+			]);
 			const assigner = assignerAs(manager.api);
 			return {
 				id: office.id,

@@ -387,6 +387,11 @@ set (it is not in dev, E2E or CI, so they send nothing).
   bundled, not loaded from PostHog's CDN.
 - **Scrubbing** (`modules/shared/lib/scrub.ts`): message text, names and phone numbers are
   removed before anything leaves the app (PRODUCT.md, milestone 1).
+- **Server logs** (#220): Vercel keeps them, so they are telemetry too. A failure is logged by
+  what failed and the error's kind (`errorKind` in `scrub.ts`), never by the error's message,
+  nor a thread's, message's or guest's id. A background job's label is a string literal naming
+  the job (`nhip/background-label-is-literal`, in `pnpm lint`). An office's own ids may appear
+  (its office id, Zalo OA id, WhatsApp number id): they say which connection to fix.
 
 Hosting is in Singapore and the model providers are abroad, so guests' data leaves Vietnam;
 the personal data protection duties (the cross-border transfer impact assessment filed with

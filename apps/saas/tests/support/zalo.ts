@@ -6,27 +6,36 @@ import type { APIRequestContext } from "@playwright/test";
 /** One webhook delivery exactly as Zalo signs it: posting it again is Zalo's retry of it. */
 export type ZaloDelivery = { body: string; headers: Record<string, string> };
 
-/**
- * A guest's text to a Zalo OA, signed as Zalo signs it (the E2E env's app and secret), with
- * its own message id unless given one.
- */
-export function signedZaloText(message: {
+/** A text on a guest's thread with a Zalo OA, as Zalo sends it to the webhook. */
+export type ZaloText = {
 	guestId: string;
 	oaId: string;
 	text: string;
+	/** Zalo's message id; a new one unless given. */
 	msgId?: string;
-}): ZaloDelivery {
+	/**
+	 * Who wrote it: the guest (Zalo's `user_send_text`, the default), or the office from the Zalo
+	 * app (`oa_send_text`, which Zalo echoes to the webhook).
+	 */
+	from?: "guest" | "office";
+	/** When it was written (Zalo's `timestamp`, which the app keeps as the message's time): now unless given. */
+	at?: Date;
+};
+
+/** A text on a guest's thread with a Zalo OA, signed as Zalo signs it (the E2E env's app and secret). */
+export function signedZaloText(message: ZaloText): ZaloDelivery {
 	const appId = process.env.ZALO_APP_ID;
 	const secret = process.env.ZALO_OA_SECRET_KEY;
 	if (!appId || !secret)
 		throw new Error("ZALO_APP_ID and ZALO_OA_SECRET_KEY come from the E2E env");
-	const timestamp = String(Date.now());
+	const timestamp = String((message.at ?? new Date()).getTime());
+	const fromOffice = message.from === "office";
 	const body = JSON.stringify({
 		app_id: appId,
-		event_name: "user_send_text",
+		event_name: fromOffice ? "oa_send_text" : "user_send_text",
 		timestamp,
-		sender: { id: message.guestId },
-		recipient: { id: message.oaId },
+		sender: { id: fromOffice ? message.oaId : message.guestId },
+		recipient: { id: fromOffice ? message.guestId : message.oaId },
 		message: { text: message.text, msg_id: message.msgId ?? randomUUID() },
 	});
 	const mac = createHash("sha256")
@@ -48,12 +57,10 @@ export async function deliverZalo(request: APIRequestContext, delivery: ZaloDeli
 }
 
 /**
- * A guest's text to a Zalo OA, delivered as Zalo sends and signs it (`POST /webhooks/zalo`,
- * the E2E env's app and secret). Fails the test unless the app takes it.
+ * A text on a guest's thread with a Zalo OA, delivered as Zalo sends and signs it (`POST
+ * /webhooks/zalo`, the E2E env's app and secret): the guest's unless `from: "office"`. Fails the
+ * test unless the app takes it.
  */
-export async function sendZaloText(
-	request: APIRequestContext,
-	message: { guestId: string; oaId: string; text: string },
-) {
+export async function sendZaloText(request: APIRequestContext, message: ZaloText) {
 	await deliverZalo(request, signedZaloText(message));
 }

@@ -55,8 +55,11 @@ const PANEL_TITLES = [COPY.ask, COPY.stopped, COPY.blocked, COPY.iphone];
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** A test alert is decided and logged like any alert, so a look at the log polls. */
-const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
+/**
+ * A test alert is decided and logged like any alert, so a look at the log polls: at Playwright's
+ * default intervals, since a read is one query (#203).
+ */
+const ON_THE_PHONES = { timeout: 30_000 };
 
 /**
  * Sets the browser's notification permission before every load of the page (init script):

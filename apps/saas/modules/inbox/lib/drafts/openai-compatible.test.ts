@@ -89,6 +89,10 @@ test("every failure is null so the fallback stands: HTTP errors, bad shapes, fil
 	stubFetch(() => new Response("{ not json", { status: 200 }));
 	expect(await adapter.translate(request)).toBeNull();
 
+	// A body that isn't JSON: the parser's error quotes its start, here the guest's words (#220).
+	stubFetch(() => new Response("hello, but not JSON", { status: 200 }));
+	expect(await adapter.translate(request)).toBeNull();
+
 	stubFetch(() => Response.json({ choices: [] }));
 	expect(await adapter.translate(request)).toBeNull();
 
@@ -106,11 +110,14 @@ test("every failure is null so the fallback stands: HTTP errors, bad shapes, fil
 	});
 	expect(await adapter.translate(request)).toBeNull();
 
-	// Guest text never reaches the log.
+	// Guest text never reaches the log; the error's kind does.
 	for (const call of warn.mock.calls) {
 		expect(JSON.stringify(call)).not.toContain("hello");
 	}
-	expect(warn).toHaveBeenCalled();
+	expect(warn).toHaveBeenCalledWith(
+		expect.any(String),
+		expect.objectContaining({ kind: "SyntaxError" }),
+	);
 });
 
 test("a base URL without a trailing slash is joined the same way", async () => {
