@@ -21,6 +21,8 @@ const TZ = "Asia/Ho_Chi_Minh";
 const HCM_OFFSET = 7 * HOUR;
 /** The calendar day of an instant read in UTC, or in Ho Chi Minh City with the offset added. */
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** The calendar day of an instant in Ho Chi Minh City. */
+const localDay = (ms: number) => dayOf(ms + HCM_OFFSET);
 
 const inbound = (guestId: string, at: number, text = "Xin chào") => ({
 	pipe: "zalo" as const,
@@ -284,10 +286,11 @@ test("leads by day count each lead on the office's local day of first contact, e
 	});
 	expect(Funnel.parse(funnel)).toEqual(funnel);
 
-	// Every local day from D-1 through today in Ho Chi Minh City, zeros included.
+	// Every local day from D-1 through the store's `until` in Ho Chi Minh City, zeros included.
+	// Read from `until`, not `now`: local midnight (17:00 UTC) may pass between the two.
 	const expected: Array<{ day: string; leads: number }> = [];
 	const leadsOn: Record<string, number> = { [dayOf(d)]: 1, [dayOf(d + DAY)]: 2 };
-	for (let at = d - DAY; dayOf(at) <= dayOf(now + HCM_OFFSET); at += DAY) {
+	for (let at = d - DAY; dayOf(at) <= localDay(Date.parse(funnel.until)); at += DAY) {
 		expected.push({ day: dayOf(at), leads: leadsOn[dayOf(at)] ?? 0 });
 	}
 	expect(funnel.byDay).toEqual(expected);
@@ -305,7 +308,7 @@ test("leads by day over the 30-day window add up to leads in (ADR 0002)", async 
 	const store = await testInboxStore();
 	const now = Date.now();
 	// Local midnight in Ho Chi Minh City 29 days before today: 30 local days including today.
-	const since = Date.parse(`${dayOf(now + HCM_OFFSET)}T00:00:00+07:00`) - 29 * DAY;
+	const since = Date.parse(`${localDay(now)}T00:00:00+07:00`) - 29 * DAY;
 	for (const [guest, ago] of [
 		["a", 1 * HOUR],
 		["b", 2 * DAY],
@@ -322,7 +325,9 @@ test("leads by day over the 30-day window add up to leads in (ADR 0002)", async 
 		countMock: true,
 		timeZone: TZ,
 	});
-	expect(funnel.byDay).toHaveLength(30);
+	// 30 local days through today; 31 if local midnight passed before the store stamped `until`.
+	const crossedMidnight = localDay(Date.parse(funnel.until)) !== localDay(now);
+	expect(funnel.byDay).toHaveLength(crossedMidnight ? 31 : 30);
 	expect(funnel.byDay.reduce((sum, entry) => sum + entry.leads, 0)).toBe(funnel.leadsIn);
 	expect(funnel.leadsIn).toBe(5);
 	await store.close();
