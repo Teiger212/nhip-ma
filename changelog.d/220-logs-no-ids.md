@@ -11,7 +11,7 @@
   which can quote what the guest wrote. A lint rule, `nhip/background-label-is-literal`, refuses
   any label that isn't a plain string literal.
 - **The rest of the server's logging keeps no guest data either** (#220). A failed approve logs
-  the vendor's error codes, without the thread id or the vendor's message. A failed draft or
+  the office and the vendor's error codes, without the thread id or the vendor's message. A failed draft or
   translation request logs the error's kind, not the parser's message, which quotes the model's
   answer. Failures of the webhook log, the Zalo connect and token refresh, the disconnect alert,
   error reporting and the CRM account lookup log the error's kind instead of the whole error.

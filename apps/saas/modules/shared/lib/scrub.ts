@@ -112,22 +112,23 @@ export function allowlistBrowserException(
 const CODE = /^[\w.-]{1,40}$/;
 
 /**
- * An error as a server log names it (#220): its class, plus its code, kind and HTTP status where
- * it has them (`PrismaClientKnownRequestError P2002`, `TypeError ECONNREFUSED`, `HubSpotError
- * auth 401`). Never its message: a model's, a vendor's, a CRM's or the database's message can
- * quote what a guest wrote or who they are, and no pattern finds every name or sentence. Server
- * logs reach Vercel, which is telemetry under the PDPL.
+ * An error as a server log names it (#220): its class, plus its code, kind, category and HTTP
+ * status where it has them (`PrismaClientKnownRequestError P2002`, `TypeError ECONNREFUSED`,
+ * `HubSpotError auth MISSING_SCOPES 403`). Never its message: a model's, a vendor's, a CRM's or
+ * the database's message can quote what a guest wrote or who they are, and no pattern finds every
+ * name or sentence. Server logs reach Vercel, which is telemetry under the PDPL.
  */
 export function errorKind(error: unknown): string {
 	if (!(error instanceof Error)) return "unknown";
-	const { code, kind, status, statusCode } = error as {
+	const { code, kind, category, status, statusCode } = error as {
 		code?: unknown;
 		kind?: unknown;
+		category?: unknown;
 		status?: unknown;
 		statusCode?: unknown;
 	};
 	const cause = (error.cause as { code?: unknown } | null | undefined)?.code;
-	const parts = [error.name, code, kind, cause, status ?? statusCode].filter(
+	const parts = [error.name, code, kind, category, cause, status ?? statusCode].filter(
 		(part): part is string | number =>
 			(typeof part === "string" && CODE.test(part)) || Number.isInteger(part),
 	);

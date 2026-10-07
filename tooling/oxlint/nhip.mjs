@@ -13,6 +13,17 @@ const backgroundLabelIsLiteral = {
 	},
 	create(context) {
 		return {
+			// Renamed on import, the calls below would no longer be recognised by name.
+			ImportSpecifier(node) {
+				const imported = node.imported.type === "Identifier" ? node.imported.name : null;
+				if (imported === "runInBackground" && node.local.name !== imported) {
+					context.report({
+						node,
+						message:
+							"Import runInBackground under its own name, so nhip/background-label-is-literal can check its labels (#220).",
+					});
+				}
+			},
 			CallExpression(node) {
 				const { callee } = node;
 				const name =

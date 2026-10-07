@@ -131,12 +131,13 @@ test("an error's kind for a server log: its class and codes, never its message (
 	const network = new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } });
 	expect(errorKind(network)).toBe("TypeError ECONNREFUSED");
 
-	const crm = Object.assign(new Error("HubSpot create deal answered 401"), {
+	const crm = Object.assign(new Error("HubSpot create deal answered 403 MISSING_SCOPES"), {
 		name: "HubSpotError",
 		kind: "auth",
-		status: 401,
+		category: "MISSING_SCOPES",
+		status: 403,
 	});
-	expect(errorKind(crm)).toBe("HubSpotError auth 401");
+	expect(errorKind(crm)).toBe("HubSpotError auth MISSING_SCOPES 403");
 
 	// The message is never read, however much guest data it quotes.
 	expect(errorKind(new Error("model refused Nguyễn Thị Lan: em muốn thuê nhà"))).toBe("Error");

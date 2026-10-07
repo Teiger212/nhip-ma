@@ -33,9 +33,10 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	const result = await approveAndSend(decodeURIComponent(id), { inboundId, text }, gate.viewer);
 	if (!result.ok) {
 		if (result.detail) {
-			// The vendor's codes only, never echoed to the caller. The log names no thread and
-			// keeps no vendor message, which can name the guest or quote the reply (#220).
+			// The vendor's codes only, never echoed to the caller. The log names the office, not the
+			// thread, and keeps no vendor message, which can name the guest or quote the reply (#220).
 			console.error("inbox approve send failed", {
+				officeId: gate.viewer.officeId,
 				error: result.error,
 				vendor: vendorErrorCodes(result.detail),
 			});
