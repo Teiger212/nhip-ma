@@ -3,6 +3,7 @@ import type {
 	AnswerStatus,
 	CrmKind,
 	CrmLinkMethod,
+	CrmOutcomeCounts,
 	CrmOutcomeStatus,
 	DraftSource,
 	GuestDeletionReason,
@@ -535,6 +536,13 @@ export type InboxStore = {
 		viewer: InboxViewer,
 		window: { since: Date; countMock: boolean; timeZone: string },
 	) => Promise<Funnel>;
+	/**
+	 * Home's Closings and Lost (ADR 0003, #68) for the funnel's cohort (leads whose first message
+	 * landed on or after `since`), from the outcomes cached on the office's threads and its
+	 * deleted guests' lead tallies (ADR 0020); never asks the CRM. A lead linked from two threads
+	 * counts once, by the outcome Nhịp saw last. Null when the office has no CRM.
+	 */
+	crmOutcomes: (viewer: InboxViewer, window: { since: Date }) => Promise<CrmOutcomeCounts | null>;
 	/**
 	 * Give a thread to an operator, or back to Unassigned (null); the last call wins. The new
 	 * owner must be a member of the thread's office, and not the platform admin (ADR 0022);

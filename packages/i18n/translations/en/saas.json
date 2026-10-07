@@ -815,8 +815,12 @@
 			"noLeads": "No guest has written in during this window.",
 			"ofLeads": "{percent}% of leads in"
 		},
-		"connectCrm": "Connect your CRM",
-		"connectCrmHint": "Closings and lost come from your CRM, never from the chat.",
+		"crm": {
+			"none": "No CRM",
+			"noneHint": "Closings and lost come from your CRM. Nhịp connects the one your office uses.",
+			"asOf": "As of {time}",
+			"nothingYet": "Nothing from your CRM yet."
+		},
 		"responseTime": "Response time",
 		"responseTimeHint": "First inbound to first approved send.",
 		"median": "median",

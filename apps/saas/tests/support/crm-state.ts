@@ -29,6 +29,22 @@ export async function markMockCrmLead(
 	});
 }
 
+/**
+ * The CRM's own record of a lead gains the guest's Zalo user id, as a manager edits the contact in
+ * HubSpot; never Nhịp's link to it.
+ */
+export async function setMockCrmLeadZaloId(
+	officeId: string,
+	leadId: string,
+	zaloUserId: string,
+): Promise<void> {
+	const { count } = await db.mockCrmLead.updateMany({
+		where: { id: leadId, officeId },
+		data: { zaloUserId },
+	});
+	if (count !== 1) throw new Error(`lead-zalo-id: the office has no lead ${leadId}`);
+}
+
 /** The office's mock leads, as the store reads them, afresh on every call. */
 export function mockCrmLeadsOf(officeId: string) {
 	return createInboxStore(db).findMockCrmLeads(officeId);

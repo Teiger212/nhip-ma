@@ -76,6 +76,25 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    office with no CRM shows Closings and Lost hatched with "No CRM" and the line "Closings and
    lost come from your CRM. Nhịp connects the one your office uses.", and no call to connect
    one.
+   Spec: `apps/saas/tests/home-crm.spec.ts` (CRM 6; offices of the test's own, each with an
+   invited manager, who sees every thread and reads Home; all threads stay Unassigned. "Two
+   threads on one lead" is one person on two pipes (spec #59 story 31): they write on WhatsApp
+   first and become a lead with their phone; in the mock CRM itself the manager adds their Zalo
+   user id to that lead (`addZaloIdInMockCrm`, the CRM's data only, never Nhịp's link), and they
+   then write on Zalo with that id. Both threads, opened by their `?thread=` links, say "In CRM"
+   (the name after it is not judged: the person goes by another name on each pipe), and the CRM
+   holds that one lead and no other. A second guest's lead is marked lost, then the person's won;
+   Home is read once both of the person's threads say Won and the second guest's says Lost. The Closings and Lost cells are
+   `data-test="home-closings"` / `"home-lost"`: the cell's only digit-only text is its figure (1
+   and 1, so a closing counted per thread reads 2), with a line beginning "As of ", and no "No
+   CRM". "CRM failing" is `takeMockCrmDown` after the won outcome was heard (the thread says
+   Won), then Home: it answers under 400 with Closings 1, the "As of" line and no error words in
+   either cell; the CRM is brought back afterwards. "No CRM" is each cell saying "No CRM" and the
+   hint line, with no figure and no "As of"; "no call to connect" is no text, link or button
+   matching "Connect your CRM" anywhere on Home. Not judged: that Home loads "at once" (the mock
+   CRM fails fast, so a Home that asks it on view takes no longer), that the "As of" time is the
+   last time Nhịp heard from the CRM rather than when Home loaded (telling them apart takes
+   minutes), and the hatch).
 7. **A manager links or unlinks by hand** (#70). As the manager, search the CRM ("min", 3
    characters at least) and link Minji's thread to Minji Park; the agent sees it read-only and
    has no link controls. Unlinked, it stays unlinked. Another office's lead or thread answers

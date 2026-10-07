@@ -144,3 +144,16 @@ export const Funnel = z.object({
 	),
 });
 export type Funnel = z.infer<typeof Funnel>;
+
+/**
+ * Home's Closings and Lost (ADR 0003, spec #59 stories 30 and 31, #68): the funnel's cohort's
+ * distinct won and lost leads, read from the outcomes Nhịp cached from the office's CRM, never
+ * from the CRM itself. `asOf` is the last time Nhịp heard from the CRM (a lead written or found,
+ * or a won or lost outcome first seen), or null when it has heard nothing yet.
+ */
+export const CrmOutcomeCounts = z.object({
+	closings: z.number().int().nonnegative(),
+	lost: z.number().int().nonnegative(),
+	asOf: Timestamp.nullable(),
+});
+export type CrmOutcomeCounts = z.infer<typeof CrmOutcomeCounts>;

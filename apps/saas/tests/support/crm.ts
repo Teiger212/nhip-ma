@@ -68,6 +68,18 @@ export async function markInMockCrm(
 	return res.status();
 }
 
+/**
+ * In the CRM itself, the office adds the guest's Zalo user id to a lead, as a manager edits the
+ * contact in HubSpot. Nothing here writes Nhịp's own link to the lead.
+ */
+export async function addZaloIdInMockCrm(
+	officeId: string,
+	leadId: string,
+	zaloUserId: string,
+): Promise<void> {
+	await askState("crm.lead-zalo-id", officeId, leadId, zaloUserId);
+}
+
 /** Every lead the office has in the mock CRM, oldest first, read afresh on every call. */
 export function mockCrmLeads(officeId: string): Promise<MockCrmLead[]> {
 	return askState<MockCrmLead[]>("crm.leads", officeId);
