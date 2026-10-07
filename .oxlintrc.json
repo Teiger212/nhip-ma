@@ -5,8 +5,9 @@
 	"options": {
 		"typeAware": true
 	},
-	"jsPlugins": ["@shadcn/lint"],
+	"jsPlugins": ["@shadcn/lint", "./tooling/oxlint/nhip.mjs"],
 	"rules": {
+		"nhip/background-label-is-literal": "error",
 		"react/set-state-in-effect": "off",
 		"react/purity": "off",
 		"react/immutability": "off",

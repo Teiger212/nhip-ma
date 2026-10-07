@@ -265,7 +265,7 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 async function redraftAfterGreeting(runtime: Runtime, greeted: Conversation): Promise<void> {
 	const updated = await applyOneShot(runtime.store, greeted);
 	if (updated?.oneShot && updated.unansweredInboundId && runtime.drafts.provider !== "none") {
-		await runInBackground(`follow-up draft ${updated.id}`, async () => {
+		await runInBackground("follow-up draft", async () => {
 			await generateModelDraft(runtime, updated);
 		});
 	}
@@ -322,7 +322,7 @@ export async function afterGuestInbound(
 	if (inbound) {
 		scheduleTranslations(runtime, updated.officeId, inbound);
 		if (takesFollowUpPath(updated) && updated.oneShot && runtime.drafts.provider !== "none") {
-			void runInBackground(`follow-up draft ${updated.id}`, async () => {
+			void runInBackground("follow-up draft", async () => {
 				await generateModelDraft(runtime, updated);
 			});
 		}

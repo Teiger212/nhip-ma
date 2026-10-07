@@ -1,4 +1,5 @@
 import type { InboxStore } from "@repo/database/inbox";
+import { errorKind } from "@shared/lib/scrub";
 
 import { displayName } from "../display-name";
 import { crmTokenContext, decryptSecret, encryptSecret } from "../pipes/secrets";
@@ -34,6 +35,14 @@ function failedAt(startedAt: Date): Date {
  * asks the CRM about: the CRM waits on the answer, and may give up after a few seconds.
  */
 const MAX_ACCOUNT_LOOKUPS = 5;
+
+/**
+ * A failed lookup of which CRM account an office's token reaches (#66), logged with the office's
+ * id, which is the office's and no guest's, and the error's kind only (#220).
+ */
+export function logAccountLookupFailure(officeId: string, error: unknown): void {
+	console.warn("crm: account lookup failed", { officeId, kind: errorKind(error) });
+}
 
 /**
  * The CRM sync module (spec #59): it owns a thread's link to its lead in the office's CRM.
@@ -109,11 +118,7 @@ export function createCrmSync(deps: {
 			await Promise.all(
 				unknown.map((officeId) =>
 					resolveAccount(officeId).catch((error: unknown) => {
-						// The CRM's error names its operation, status and category only (story 43).
-						console.warn("crm: account lookup failed", {
-							officeId,
-							reason: error instanceof Error ? error.message : "unknown",
-						});
+						logAccountLookupFailure(officeId, error);
 					}),
 				),
 			);

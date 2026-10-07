@@ -1,6 +1,7 @@
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { db } from "@repo/database";
 import { createNotification, NOTIFICATION_TYPES } from "@repo/notifications";
+import { errorKind } from "@shared/lib/scrub";
 
 import type { Pipe } from "../types";
 
@@ -40,6 +41,9 @@ export async function notifyPipeDisconnected(input: {
 			});
 		}
 	} catch (err) {
-		console.error(`[pipes] could not alert about ${input.pipe} ${input.externalId}`, err);
+		// The pipe's external id is the office's OA or number id, never a guest's (#220).
+		console.error(`[pipes] could not alert about ${input.pipe} ${input.externalId}`, {
+			kind: errorKind(err),
+		});
 	}
 }

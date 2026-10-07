@@ -62,7 +62,7 @@ export function scheduleTranslation(
 	if (existing) {
 		return existing;
 	}
-	const job = runInBackground(`translate ${id}`, async () => {
+	const job = runInBackground("translate", async () => {
 		let text: string | null;
 		try {
 			text = await runtime.drafts.translate({
@@ -113,7 +113,7 @@ export function scheduleMissingTranslations(
 	if (missing.length === 0) {
 		return;
 	}
-	void runInBackground(`translations ${conversation.id} ${locale}`, async () => {
+	void runInBackground("translations", async () => {
 		const failures = await runtime.store.translationFailures(
 			conversation.officeId,
 			missing.map((message) => message.id),

@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import { errorKind } from "@shared/lib/scrub";
+
 import type { InboxConfig } from "../config";
 import type { Store } from "../types";
 import { decryptSecret, encryptSecret, tokenContext } from "./secrets";
@@ -102,7 +104,7 @@ export async function completeZaloConnect(input: {
 		});
 		return "connected";
 	} catch (err) {
-		console.error("[zalo] connect failed", err);
+		console.error("[zalo] connect failed", { kind: errorKind(err) });
 		return "failed";
 	}
 }

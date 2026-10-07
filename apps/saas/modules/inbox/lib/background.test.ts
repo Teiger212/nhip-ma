@@ -32,3 +32,13 @@ test("outside a request (scripts, tests), after() throws and the job still runs 
 	await settleBackgroundWork();
 	expect(done).toBe(true);
 });
+
+test("a failed job logs its label and the error's kind, never the error's message (#220)", async () => {
+	const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+	await runInBackground("translate", async () => {
+		throw new TypeError("thread ywh8noalsll0rc8icao9zu1b, guest 3891748223501947521: thuê nhà");
+	});
+	expect(warn).toHaveBeenCalledExactlyOnceWith("inbox background job failed: translate", {
+		kind: "TypeError",
+	});
+});

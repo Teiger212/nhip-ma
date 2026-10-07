@@ -283,6 +283,23 @@ export class SendError extends Error {
 	}
 }
 
+/**
+ * A vendor's error body (`SendError.detail`) as a server log may carry it (#220): its numeric
+ * codes and Meta's error type. Never its message or details, which can name the recipient or
+ * quote the text. WhatsApp answers `{ error: { code, error_subcode, type } }`; Zalo answers
+ * `{ error: <negative code>, message }`.
+ */
+export function vendorErrorCodes(detail: unknown): Record<string, number | string> {
+	const body = asRecord(detail);
+	const graph = asRecord(body.error);
+	const codes: Record<string, number | string> = {};
+	if (Number.isInteger(body.error)) codes.code = body.error as number;
+	if (Number.isInteger(graph.code)) codes.code = graph.code as number;
+	if (Number.isInteger(graph.error_subcode)) codes.subcode = graph.error_subcode as number;
+	if (typeof graph.type === "string" && /^\w{1,40}$/.test(graph.type)) codes.type = graph.type;
+	return codes;
+}
+
 export async function sendWhatsApp(input: {
 	to: string;
 	text: string;
