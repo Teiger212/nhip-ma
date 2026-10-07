@@ -57,7 +57,7 @@ const test = base.extend<{ ownOffice: OwnOffice }>({
 });
 
 /**
- * The office's only agent, who just accepted their invitation, on their Inbox. A new guest
+ * The office's only agent, who just accepted their invitation. A new guest
  * waits in Unassigned until a manager gives them out (ADR 0022): the office's manager, joined the
  * same way, gives the agent these guests.
  */

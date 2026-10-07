@@ -44,9 +44,16 @@ const test = base.extend<{ office: ChipOffice }>({
 				const operator: Operator = { label, id: joined.userId, page: joined.page };
 				return { operator, api: joined.api };
 			};
-			const { operator: agent } = await join("agent 1", "member");
-			const { operator: manager, api: managerApi } = await join("the manager", "admin");
-			const { operator: secondManager } = await join("the second manager", "admin");
+			// Everyone joins at once (setup).
+			const [
+				{ operator: agent },
+				{ operator: manager, api: managerApi },
+				{ operator: secondManager },
+			] = await Promise.all([
+				join("agent 1", "member"),
+				join("the manager", "admin"),
+				join("the second manager", "admin"),
+			]);
 			const assigner = assignerAs(managerApi);
 			await use({
 				agent,

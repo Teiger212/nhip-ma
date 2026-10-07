@@ -69,7 +69,8 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 - An agent or manager of an office of the test's own is setup: `joinOffice(admin, browser,
   officeId, "member" | "admin", tag)` (`support/operators.ts`, #186). It invites them through the
   API, gives them a signed-up account and a minted session without the sign-up page, accepts the
-  invitation through the kit's API and opens their Inbox. Their password is `NEW_PASSWORD`, for a
+  invitation through the kit's API. Their `page` starts blank (#223): open the Inbox, or whatever
+  the test looks at, before reading it. Their password is `NEW_PASSWORD`, for a
   spec that signs them in elsewhere. Sign up through the invitation page (`invitee.ts`) only
   where signing up or joining is what the spec proves (the Auth specs, Team).
 - The support helpers that touch the database directly (`pipes.ts`, `alerts.ts`, `crm.ts`,

@@ -1,8 +1,8 @@
-import { createHmac, randomInt, randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, Page, Request } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 
 import { assignerAs } from "./support/assign";
 import type { MockCrmLead } from "./support/crm";
@@ -13,6 +13,7 @@ import { joinOffice } from "./support/operators";
 import { connectWhatsAppNumber } from "./support/pipes";
 import { AGENT } from "./support/seed";
 import { apiAs } from "./support/session";
+import { sendWhatsAppText } from "./support/whatsapp";
 
 /** What the Inbox says when a link names no thread the operator can open (inbox.threadNotFound). */
 const THREAD_NOT_FOUND = (() => {
@@ -64,10 +65,16 @@ const test = base.extend<{
 			// A number of the test's own, so the walk office keeps the E2E env's.
 			const number = `e2e-links-${randomUUID()}`;
 			await connectWhatsAppNumber(office.id, number);
-			const agent = await joinOffice(admin, browser, office.id, "member", "thread-links");
-			contexts.push(agent);
-			const manager = await joinOffice(admin, browser, office.id, "admin", "thread-links-manager");
-			contexts.push(manager);
+			const join = async (role: "member" | "admin", tag: string) => {
+				const joined = await joinOffice(admin, browser, office.id, role, tag);
+				contexts.push(joined);
+				return joined;
+			};
+			// The agent and the manager join at once (setup).
+			const [agent, manager] = await Promise.all([
+				join("member", "thread-links"),
+				join("admin", "thread-links-manager"),
+			]);
 			const assigner = assignerAs(manager.api);
 			return {
 				id: office.id,
@@ -75,7 +82,7 @@ const test = base.extend<{
 				assignToAgent: (guest) => assigner.assignGuestTo(guest.phone, agent.userId),
 				guestWrites: async () => {
 					const guest = newWhatsAppGuest();
-					await whatsAppWebhook(request, number, guest);
+					await sendWhatsAppText(request, { phoneNumberId: number, guest, text: guest.text });
 					return guest;
 				},
 			};
@@ -91,41 +98,6 @@ function newWhatsAppGuest(): Guest {
 	const phone = `849${randomInt(100_000_000, 1_000_000_000)}`;
 	const tag = randomUUID().slice(0, 8);
 	return { phone, name: `Guest ${tag}`, text: `Hello, is the flat still free? ${tag}` };
-}
-
-/** The guest's text as Meta sends and signs it, to the office's number. */
-async function whatsAppWebhook(request: APIRequestContext, phoneNumberId: string, guest: Guest) {
-	const secret = process.env.WHATSAPP_APP_SECRET;
-	if (!secret) throw new Error("WHATSAPP_APP_SECRET comes from the E2E env");
-	const body = JSON.stringify({
-		entry: [
-			{
-				changes: [
-					{
-						value: {
-							metadata: { phone_number_id: phoneNumberId },
-							contacts: [{ wa_id: guest.phone, profile: { name: guest.name } }],
-							messages: [
-								{
-									from: guest.phone,
-									id: `wamid.${randomUUID()}`,
-									timestamp: String(Math.floor(Date.now() / 1000)),
-									type: "text",
-									text: { body: guest.text },
-								},
-							],
-						},
-					},
-				],
-			},
-		],
-	});
-	const signature = createHmac("sha256", secret).update(body).digest("hex");
-	const res = await request.post("/webhooks/whatsapp", {
-		data: body,
-		headers: { "content-type": "application/json", "X-Hub-Signature-256": `sha256=${signature}` },
-	});
-	expect(res.ok(), `the WhatsApp webhook takes the message (${res.status()})`).toBe(true);
 }
 
 /* ---------------------------------------------------------------- what a person sees */
@@ -371,7 +343,7 @@ test.describe("Thread links 3 — a link to an answered thread opens that thread
 		await office.assignToAgent(waiting);
 
 		// The agent answers the first guest; the other is still waiting, first in Your turn.
-		await page.reload();
+		await page.goto("/en/inbox");
 		const reply = await answer(page, answered);
 		await expect(
 			page.getByRole("button", { name: "Your turn 1", exact: true }),

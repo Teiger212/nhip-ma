@@ -24,11 +24,11 @@ import { deliverZalo, sendZaloText, signedZaloText } from "./support/zalo";
 
 /**
  * Alerts are decided after the webhook has answered (ADR 0019: in the background), so every
- * look at the log polls.
+ * look at the log polls: at Playwright's default intervals, since a read is one query (#203).
  */
-const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
+const ON_THE_PHONES = { timeout: 30_000 };
 
-/** An operator of the test's office, signed in in a browser of their own, on their Inbox. */
+/** An operator of the test's office, signed in in a browser of their own. */
 type Operator = {
 	/** How the test speaks of them ("agent 1", "manager 2"). */
 	label: string;
@@ -88,12 +88,13 @@ const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promis
 				contexts.push(joined);
 				return { label, id: joined.userId, page: joined.page, api: joined.api };
 			};
-			const agent1 = await join("agent 1", "member");
-			const agent2 = await join("agent 2", "member");
-			const joinedManagers = [await join("manager 1", "admin")];
-			if (managers === 2) {
-				joinedManagers.push(await join("manager 2", "admin"));
-			}
+			// Everyone joins at once (setup); each keeps their place in the list.
+			const [agent1, agent2, ...joinedManagers] = await Promise.all([
+				join("agent 1", "member"),
+				join("agent 2", "member"),
+				join("manager 1", "admin"),
+				...(managers === 2 ? [join("manager 2", "admin")] : []),
+			]);
 			const assigner = assignerAs(joinedManagers[0].api);
 			return {
 				id: office.id,
@@ -137,7 +138,7 @@ function newGuestOf(request: APIRequestContext, oaId: string): Guest {
 }
 
 /**
- * A newly joined operator of `officeId`, on their Inbox: an agent (the kit's `member`) or a
+ * A newly joined operator of `officeId`: an agent (the kit's `member`) or a
  * manager (the kit's `admin`).
  */
 async function newOperatorOf(
@@ -510,6 +511,7 @@ test.describe("Alerts 10 — signing out removes the device", () => {
 			const secondDevice = afterSecond[1]!.id;
 
 			// The agent signs out in the first browser, through the user menu.
+			await agent.page.goto("/en/inbox");
 			await logOutThroughUserMenu(agent.page);
 			const firstSession = await first.request.get("/api/auth/get-session");
 			expect(firstSession.status(), "the first browser's session is readable").toBe(200);
