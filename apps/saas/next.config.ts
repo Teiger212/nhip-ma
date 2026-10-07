@@ -39,6 +39,10 @@ const withNextIntl = nextIntlPlugin("./modules/i18n/request.ts");
 const localeAlternation = Object.keys(i18nConfig.locales).join("|");
 
 const nextConfig: NextConfig = {
+	// The browser's view of E2E=1, baked in at build: the E2E build polls the Inbox every second
+	// (`inbox-queries.ts`, #222). Derived here, never set on its own, so E2E stays the one switch;
+	// a production or staging deployment refuses E2E (`config.ts`).
+	env: { NEXT_PUBLIC_E2E: process.env.E2E === "1" ? "1" : "" },
 	experimental: {
 		useTypeScriptCli: true,
 	},

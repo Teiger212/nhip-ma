@@ -25,9 +25,13 @@ const detailQueryKey = (id: string) => [...conversationsQueryKey, "detail", id] 
 
 /**
  * The queue changes without the operator doing anything: guests write back, translations
- * and model drafts land in the background (ADR 0007). A short poll is how those arrive.
+ * and model drafts land in the background (ADR 0007). A short poll is how those arrive. It is
+ * the one poll behind the list, the open thread, the nav count, the tab title and the guest
+ * toasts. The E2E build (E2E=1, `next.config.ts`) polls every second, so specs wait on a change
+ * for a second, not ten (#222); a production or staging deployment refuses E2E (`config.ts`).
+ * Read literally: Next inlines only `process.env.NEXT_PUBLIC_…` written out in full.
  */
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = process.env.NEXT_PUBLIC_E2E === "1" ? 1_000 : 10_000;
 
 export class InboxApiError extends Error {
 	code: string | null;

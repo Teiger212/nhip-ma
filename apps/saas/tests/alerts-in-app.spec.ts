@@ -21,7 +21,11 @@ import { sendZaloText } from "./support/zalo";
  */
 const ON_THE_PHONES = { timeout: 30_000, intervals: [1_000, 2_000] };
 
-/** An open page learns of a guest on its next poll, about every ten seconds. */
+/**
+ * An open page learns of a guest on its next poll: every ten seconds, and every second in the E2E
+ * build (#222). The ceiling stays three production rounds: a wait that passes ends when the guest
+ * shows, so a lower one would save nothing and only cut CI's margin.
+ */
 const WITHIN_A_POLL = { timeout: 30_000 };
 
 /** What a loaded page shows without waiting on a poll (its title follows the count it shows). */

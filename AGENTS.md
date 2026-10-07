@@ -132,7 +132,10 @@ sounds once, and signing out stops the alerts.
   with `.env.e2e` against its own `supastarter_e2e` database (pushed and seeded fresh),
   behind a local HTTPS proxy on `:3443` (`tests/support/https-proxy.mjs`, a throwaway
   self-signed certificate), so the app runs with an https URL and secure cookies and has no
-  E2E exception. `E2E_PORT` moves both ports (HTTPS is `E2E_PORT + 443`).
+  E2E exception. `E2E_PORT` moves both ports (HTTPS is `E2E_PORT + 443`). Two things differ
+  in the E2E build (`E2E=1`): it logs email instead of sending it, and the Inbox polls every
+  second instead of every ten (`NEXT_PUBLIC_E2E`, derived from `E2E` in `next.config.ts`, #222).
+  Production, staging and `SEND_MODE=live` refuse `E2E` at startup (`config.ts`).
   `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for fast
   iteration.
 - Build once, run many spec files (#205): `scripts/e2e-server.sh` (with `E2E_PORT` if 3000 is
