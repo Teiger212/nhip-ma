@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
+import { answer, guestMessage } from "./test-fixtures";
 import { testDb, testInboxStore } from "./test-store";
 import type { Store } from "./types";
 
@@ -14,15 +15,7 @@ const THEIRS = "office-b";
 
 const guestWrites = async (store: Store, officeId: string, guestId: string) => {
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName: null,
-			text: "Looking to rent in Tay Ho",
-			vendorMessageId: null,
-			pipeExternalId: null,
-		},
+		guestMessage(guestId, { text: "Looking to rent in Tay Ho", pipeExternalId: null }),
 		officeId,
 	);
 	return conversation;
@@ -34,17 +27,20 @@ async function theirThread(store: Store) {
 	const inboundId = thread.unansweredInboundId!;
 	await store.setOneShot(THEIRS, thread.id, oneShot("Looking to rent in Tay Ho", inboundId));
 	await store.recordTranslationFailure(THEIRS, inboundId, "en", new Date());
-	const begun = await store.beginAnswer({
-		officeId: THEIRS,
-		conversationId: thread.id,
-		inboundId,
-		text: "Their reply",
-		operatorId: "agent-2",
-	});
-	if (!begun.ok) throw new Error(begun.reason);
+	const answerId = await answer(
+		store,
+		{
+			officeId: THEIRS,
+			conversationId: thread.id,
+			inboundId,
+			text: "Their reply",
+			operatorId: "agent-2",
+		},
+		{ outcome: "sending" },
+	);
 	await store.setCrmConnection(THEIRS, "mock");
 	await store.claimCrmLink(THEIRS, thread.id, new Date(0));
-	return { thread, inboundId, answerId: begun.answer.id };
+	return { thread, inboundId, answerId };
 }
 
 /** Run a write across offices; whether it refuses or does nothing, it must not land. */
@@ -112,8 +108,8 @@ test("one office cannot answer, complete, fail or mark another office's Answer",
 		}),
 	);
 
-	const answer = await testDb.answer.findUniqueOrThrow({ where: { id: answerId } });
-	expect(answer).toMatchObject({ status: "sending", text: "Their reply", failureReason: null });
+	const stored = await testDb.answer.findUniqueOrThrow({ where: { id: answerId } });
+	expect(stored).toMatchObject({ status: "sending", text: "Their reply", failureReason: null });
 	expect(await testDb.message.count({ where: { conversationId: thread.id } })).toBe(1);
 	expect((await store.getOfficeConversation(THEIRS, thread.id))?.owner?.id).toBe("agent-2");
 	expect(await testDb.answer.count({ where: { conversationId: unanswered.id } })).toBe(0);

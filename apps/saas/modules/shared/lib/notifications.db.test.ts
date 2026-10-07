@@ -2,6 +2,7 @@ import { sendEmail } from "@repo/mail";
 import { createNotification, NOTIFICATION_TYPES } from "@repo/notifications";
 import { beforeEach, expect, test, vi } from "vitest";
 
+import { account } from "../../inbox/lib/test-fixtures";
 import { testDb, useTestDatabaseForAppClient } from "../../inbox/lib/test-store";
 
 /**
@@ -16,21 +17,8 @@ const USER = "notify-user";
 
 beforeEach(async () => {
 	vi.mocked(sendEmail).mockClear();
-	await testDb.user.upsert({
-		where: { id: USER },
-		create: {
-			id: USER,
-			name: USER,
-			email: `${USER}@test.nhip.local`,
-			emailVerified: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-		update: {},
-	});
-	// Email left on: no preference turns any type or channel off.
-	await testDb.userNotificationPreference.deleteMany({ where: { userId: USER } });
-	await testDb.notification.deleteMany({ where: { userId: USER } });
+	// Email left on: the user has no preference, so none turns any type or channel off.
+	await account(USER);
 });
 
 test("a notification other than the welcome is a bell row and is never emailed, with email on in preferences", async () => {

@@ -1,7 +1,7 @@
 import { createECDH, randomBytes } from "node:crypto";
 
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "@inbox/lib/test-store";
-import { beforeEach, expect, test, vi } from "vitest";
+import { testDb, useTestDatabaseForAppClient } from "@inbox/lib/test-store";
+import { expect, test, vi } from "vitest";
 
 import { POST } from "./route";
 
@@ -21,10 +21,6 @@ vi.mock("@inbox/lib/require-session", () => ({
 
 useTestDatabaseForAppClient();
 
-beforeEach(async () => {
-	await resetTestInbox();
-});
-
 const endpoint = "https://fcm.googleapis.com/fcm/send/e2e-route";
 
 function browserKeys() {
@@ -36,7 +32,6 @@ function browserKeys() {
 
 async function signIn(userId: string, sessionId: string) {
 	const now = new Date();
-	await testDb.session.deleteMany({ where: { id: sessionId } });
 	await testDb.session.create({
 		data: {
 			id: sessionId,

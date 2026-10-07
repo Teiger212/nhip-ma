@@ -4,6 +4,7 @@ import path from "node:path";
 import { beforeEach, expect, test } from "vitest";
 
 import { yourTurnCount } from "./queue";
+import { account, guestMessage, membership } from "./test-fixtures";
 import { testDb, testInboxStore } from "./test-store";
 import type { Store } from "./types";
 
@@ -20,40 +21,16 @@ const manager2 = { userId: "manager-2", officeId: OFFICE, role: "manager" as con
 
 let store: Store;
 
-async function user(id: string) {
-	await testDb.user.upsert({
-		where: { id },
-		create: {
-			id,
-			name: id,
-			email: `${id}@test.nhip.local`,
-			emailVerified: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-		update: {},
-	});
-}
-
-async function member(userId: string, role: string) {
-	await testDb.member.upsert({
-		where: { organizationId_userId: { organizationId: OFFICE, userId } },
-		create: { id: `m-${userId}`, organizationId: OFFICE, userId, role, createdAt: new Date() },
-		update: { role },
-	});
-}
+const member = (userId: string, role: string) => membership(OFFICE, userId, role);
 
 async function guestWrites(guestId: string) {
 	const { conversation } = await store.upsertInbound(
-		{
+		guestMessage(guestId, {
 			pipe: "whatsapp",
-			source: "guest",
-			guestId,
 			guestName: guestId,
 			text: "Hello",
-			vendorMessageId: null,
 			pipeExternalId: "phone-a",
-		},
+		}),
 		OFFICE,
 	);
 	return conversation;
@@ -74,8 +51,7 @@ const ALL = { listed: true, summarised: true, counted: 1, opened: true };
 
 beforeEach(async () => {
 	store = await testInboxStore();
-	await testDb.member.deleteMany({ where: { organizationId: OFFICE } });
-	await user("manager-2");
+	await account("manager-2");
 	await member("agent-1", "member");
 	await member("agent-2", "member");
 	await member("walk-user", "admin");
@@ -177,7 +153,7 @@ test("two managers approving the same Unassigned lead at once end with one owner
 
 test("an owner whose account ends leaves their threads to Unassigned, which no agent sees", async () => {
 	const conv = await guestWrites("g-leaver");
-	await user("leaver");
+	await account("leaver");
 	await member("leaver", "member");
 	expect(await store.setOwner(conv.id, "leaver", OFFICE)).toBe(true);
 	await testDb.user.delete({ where: { id: "leaver" } });

@@ -2,12 +2,12 @@ import type { InboxStore } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
 import { applyOneShot } from "../inbox";
+import { guestMessage, TEST_SECRETS_KEY, threadUrl } from "../test-fixtures";
 import { testInboxStore } from "../test-store";
 import { mockCrmAdapter } from "./mock";
 import { createCrmSync } from "./sync";
 
 const OFFICE = "office-a";
-const threadUrl = (id: string) => `https://nhip.test/vi/inbox?thread=${encodeURIComponent(id)}`;
 
 let store: InboxStore;
 afterEach(async () => {
@@ -16,14 +16,7 @@ afterEach(async () => {
 
 async function guestWrites(pipe: "zalo" | "whatsapp", guestId: string, guestName: string | null) {
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe,
-			source: "guest",
-			guestId,
-			guestName,
-			text: "Xin chào, tôi cần thuê căn hộ",
-			vendorMessageId: null,
-		},
+		guestMessage(guestId, { pipe, guestName, text: "Xin chào, tôi cần thuê căn hộ" }),
 		OFFICE,
 	);
 	return conversation;
@@ -277,14 +270,7 @@ test("choosing the office's CRM again keeps its links; choosing none drops them,
 	const ours = await guestWrites("zalo", "zalo-user-9", "Minh");
 	const theirs = (
 		await store.upsertInbound(
-			{
-				pipe: "zalo",
-				source: "guest",
-				guestId: "zalo-user-10",
-				guestName: "Lan",
-				text: "Chào",
-				vendorMessageId: null,
-			},
+			guestMessage("zalo-user-10", { guestName: "Lan", text: "Chào" }),
 			"office-b",
 		)
 	).conversation;
@@ -312,9 +298,6 @@ test("an unknown office cannot be connected to a CRM", async () => {
 
 /* ------------------------------------------------- an office on a CRM that takes an access token */
 
-/** The deployment's key for sealed tokens (ADR 0017), as `PIPE_SECRETS_KEY` holds it. */
-const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
-
 /**
  * The sync with an adapter factory that remembers the connection it was handed and answers as
  * the mock CRM, so a guest's first message shows which token the office's CRM would be opened with.
@@ -324,7 +307,7 @@ function syncSeeingTokens() {
 	const sync = createCrmSync({
 		store,
 		threadUrl,
-		secretsKey: SECRETS_KEY,
+		secretsKey: TEST_SECRETS_KEY,
 		adapterFor: (connection, deps) => {
 			seen.push(connection.token);
 			return mockCrmAdapter(deps.store, deps.officeId);
@@ -391,7 +374,7 @@ function syncOnAccounts(accounts: Record<string, string>) {
 	return createCrmSync({
 		store,
 		threadUrl,
-		secretsKey: SECRETS_KEY,
+		secretsKey: TEST_SECRETS_KEY,
 		adapterFor: (connection, deps) => ({
 			...mockCrmAdapter(deps.store, deps.officeId),
 			accountId: async () => accounts[connection.token ?? ""] ?? "unknown",
@@ -407,17 +390,7 @@ async function wonThread(
 	name: string,
 ) {
 	const conversation = (
-		await store.upsertInbound(
-			{
-				pipe: "zalo",
-				source: "guest",
-				guestId,
-				guestName: name,
-				text: "Chào",
-				vendorMessageId: null,
-			},
-			officeId,
-		)
+		await store.upsertInbound(guestMessage(guestId, { guestName: name, text: "Chào" }), officeId)
 	).conversation;
 	await sync.newGuest(conversation);
 	const { leadId } = await leadOf(conversation);

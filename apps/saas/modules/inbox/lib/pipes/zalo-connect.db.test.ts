@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import { mockInboxConfig } from "../config";
 import { testInboxStore } from "../test-store";
@@ -32,10 +32,6 @@ function zaloIssuesTokensFor(oaId: string) {
 beforeEach(async () => {
 	store = await testInboxStore();
 	vi.spyOn(console, "error").mockImplementation(() => {});
-});
-
-afterEach(() => {
-	vi.unstubAllGlobals();
 });
 
 test("the OA is the one Zalo issued the tokens for; an edited oa_id is refused", async () => {

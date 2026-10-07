@@ -7,7 +7,7 @@ import { settleBackgroundWork } from "../background";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
 import { peekTestRuntime, setRuntimeForTests } from "../runtime";
-import { resetTestInbox, testDb } from "../test-store";
+import { testDb } from "../test-store";
 import { handleInboundWebhook } from "./webhook";
 
 /**
@@ -38,7 +38,6 @@ function zaloRequest(guestId: string, text: string, oaId = "oa-1"): Request {
 }
 
 beforeEach(async () => {
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ zalo: { oaSecretKey: OA_SECRET } }),
@@ -49,7 +48,6 @@ beforeEach(async () => {
 afterEach(async () => {
 	// Alerts follow a guest message in the background (ADR 0019); they finish before the reset.
 	await settleBackgroundWork();
-	vi.restoreAllMocks();
 	const runtime = peekTestRuntime();
 	if (runtime) {
 		await runtime.store.close();

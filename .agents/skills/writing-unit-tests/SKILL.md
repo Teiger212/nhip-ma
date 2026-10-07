@@ -12,7 +12,7 @@ Use for deterministic logic and server handlers that can be exercised without a 
 ## Procedure
 
 1. Co-locate a `*.test.ts` or `*.test.tsx` file with the implementation. Existing suites run in `packages/api`, `apps/saas`, and `apps/marketing`.
-2. Follow the nearest `vitest.config.ts`; SaaS aliases such as `@auth` and `@organizations` are configured there, while API tests use package imports.
+2. Follow the nearest `vitest.config.ts`; SaaS aliases such as `@auth` and `@organizations` are configured there, while API tests use package imports. In `apps/saas`, a test that uses the test database (it imports `test-store`) is named `*.db.test.ts` and runs in the serial `db` project; every other file runs in the parallel `unit` project, which has no database. Each db test starts from the fixture offices and operators alone (`vitest.db-setup.ts`): add the rows the test needs with the builders in `modules/inbox/lib/test-fixtures.ts`, and never clean up after it. Spies, stubbed globals and stubbed env vars are restored by the config before every test, so don't restore them by hand.
 3. Mock external boundaries with `vi.mock` before importing mocked bindings and the subject. Reset mocks in `beforeEach` when return values or call counts can leak. Keep validation, authorization, success, and failure cases explicit.
 4. For protected oRPC procedures, mock Better Auth plus database/provider boundaries, then call the procedure with the real oRPC context shape shown below. The middleware builds `context.user`/`context.session` from `auth.api.getSession`; do not inject a fake user directly into the base context. For failures, use `await expect(call(...)).rejects.toMatchObject({ code: "FORBIDDEN" })`. Import `ORPCError` from `@orpc/server` only when asserting the error class.
 
@@ -30,7 +30,9 @@ import { call } from "@orpc/server";
 import { auth } from "@repo/auth";
 import { getOrganizationById } from "@repo/database";
 
-vi.mocked(auth.api.getSession).mockResolvedValue(authenticatedSession);
+import { authenticatedSession } from "../../../test/session";
+
+vi.mocked(auth.api.getSession).mockResolvedValue(authenticatedSession());
 vi.mocked(getOrganizationById).mockResolvedValue(organization);
 
 const result = await call(procedure, input, {

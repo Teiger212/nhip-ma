@@ -29,7 +29,7 @@ Use for typed notification events, delivered in-app (the bell). Nhịp sends no 
 
 ## Canonical reference
 
-`apps/saas/modules/inbox/lib/pipes/alerts.ts` gives every platform admin a `PIPE_DISCONNECTED` bell row, logging failures without blocking the send path; `alerts.test.ts` beside it is the test.
+`apps/saas/modules/inbox/lib/pipes/alerts.ts` gives every platform admin a `PIPE_DISCONNECTED` bell row, logging failures without blocking the send path; `alerts.db.test.ts` beside it is the test.
 
 ## Done
 

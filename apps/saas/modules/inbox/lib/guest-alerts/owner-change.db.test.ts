@@ -4,6 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
+import { account, guestMessage, membership } from "../test-fixtures";
 import { testDb, testInboxStore, useTestDatabaseForAppClient } from "../test-store";
 import type { Conversation, Store } from "../types";
 import { alertOwnerChange } from "./owner-change";
@@ -33,52 +34,25 @@ const transport: AlertTransport = {
 	},
 };
 
-async function account(id: string, platformRole: string | null, memberRole: string) {
-	await testDb.user.upsert({
-		where: { id },
-		create: {
-			id,
-			name: id,
-			email: `${id}@test.nhip.local`,
-			emailVerified: true,
-			role: platformRole,
-			createdAt: at,
-			updatedAt: at,
-		},
-		update: { role: platformRole },
-	});
-	await testDb.member.create({
-		data: { id: `m-${id}`, organizationId: OFFICE, userId: id, role: memberRole, createdAt: at },
-	});
+async function operator(id: string, platformRole: string | null, memberRole: string) {
+	await account(id, { role: platformRole, at });
+	await membership(OFFICE, id, memberRole, { at });
 }
 
 beforeEach(async () => {
 	vi.mocked(sendEmail).mockClear();
 	pushed = [];
 	store = await testInboxStore();
-	// One office each: a member of two offices opens no thread, so is never alerted.
-	const operators = ["agent-1", "agent-2", "walk-user", "manager-2", "platform-admin"];
-	await testDb.member.deleteMany({
-		where: { OR: [{ organizationId: OFFICE }, { userId: { in: operators } }] },
-	});
-	await testDb.notification.deleteMany({ where: { userId: { in: operators } } });
-	await account("agent-1", "user", "member");
-	await account("agent-2", null, "member");
-	await account("walk-user", "user", "admin");
-	await account("manager-2", null, "admin");
+	await operator("agent-1", "user", "member");
+	await operator("agent-2", null, "member");
+	await operator("walk-user", "user", "admin");
+	await operator("manager-2", null, "admin");
 	// The office's creator, its kit `owner`: their membership opens nothing (ADR 0015).
-	await account("platform-admin", "admin", "owner");
+	await operator("platform-admin", "admin", "owner");
 	await testDb.user.update({ where: { id: "agent-1" }, data: { locale: "en" } });
 	await testDb.user.update({ where: { id: "agent-2" }, data: { locale: null } });
 	({ conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "zalo-guest-133",
-			guestName: "Minji Kim",
-			text: "Xin chào",
-			vendorMessageId: null,
-		},
+		guestMessage("zalo-guest-133", { guestName: "Minji Kim" }),
 		OFFICE,
 	));
 });
@@ -202,14 +176,7 @@ test("agent 1's thread returned to Unassigned: one `returned` alert for the othe
 
 test("a nameless guest's bell row carries no name, so it reads as a guest", async () => {
 	({ conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "zalo-guest-nameless",
-			guestName: null,
-			text: "Hi",
-			vendorMessageId: null,
-		},
+		guestMessage("zalo-guest-nameless", { text: "Hi" }),
 		OFFICE,
 	));
 	await move("agent-1", "agent-2");

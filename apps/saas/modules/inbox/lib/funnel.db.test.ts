@@ -1,7 +1,8 @@
-import { Funnel } from "@repo/database/inbox";
+import { Funnel, type InboxStore } from "@repo/database/inbox";
 import { expect, test } from "vitest";
 
-import { testDb, testInboxStore } from "./test-store";
+import { answer, guestMessage, lastInboundId, threadOf, type Thread } from "./test-fixtures";
+import { testInboxStore } from "./test-store";
 
 /**
  * The funnel (ADR 0002) counted from Answers (ADR 0011): a lead is a guest who first
@@ -21,75 +22,30 @@ const TZ = "Asia/Ho_Chi_Minh";
 const HCM_OFFSET = 7 * HOUR;
 /** The calendar day of an instant read in UTC, or in Ho Chi Minh City with the offset added. */
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-
-const inbound = (guestId: string, at: number, text = "Xin chào") => ({
-	pipe: "zalo" as const,
-	source: "guest" as const,
-	guestId,
-	guestName: null,
-	text,
-	vendorMessageId: null,
-	at,
-});
-
-type Store = Awaited<ReturnType<typeof testInboxStore>>;
-
-/** A thread as the helpers below act on it: its office and its (opaque) id. */
-type Thread = { officeId: string; id: string };
-
-/** The guest's Zalo thread at `officeId`, found as the store finds it: by (office, pipe, guest). */
-async function threadOf(officeId: string, guestId: string): Promise<Thread> {
-	return testDb.conversation.findUniqueOrThrow({
-		where: { officeId_pipe_guestId: { officeId, pipe: "zalo", guestId } },
-		select: { officeId: true, id: true },
-	});
+/** The calendar day of an instant in Ho Chi Minh City. */
+const localDay = (ms: number) => dayOf(ms + HCM_OFFSET);
+/** The funnel's `until`, which must be when it was asked: after the test's `now`, not after this. */
+function untilOf(funnel: { until: string }, now: number): number {
+	const until = Date.parse(funnel.until);
+	expect(until).toBeGreaterThanOrEqual(now);
+	expect(until).toBeLessThanOrEqual(Date.now());
+	return until;
 }
+
+const inbound = (guestId: string, at: number, text = "Xin chào") =>
+	guestMessage(guestId, { at, text });
 
 /** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
-async function sent(store: Store, { officeId, id }: Thread, inboundId: string) {
-	const begun = await store.beginAnswer({
-		officeId,
-		conversationId: id,
-		inboundId,
-		text: "Reply",
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	await store.completeAnswer(officeId, begun.answer.id, {
-		mock: true,
-		pipe: "zalo",
-		vendorMessageId: `mock-${inboundId}`,
-	});
-}
+const sent = (store: InboxStore, { officeId, id }: Thread, inboundId: string) =>
+	answer(store, { officeId, conversationId: id, inboundId });
 
 /** Approve, then let the vendor refuse or go silent: the Answer never counts as received. */
-async function notSent(
-	store: Store,
+const notSent = (
+	store: InboxStore,
 	{ officeId, id }: Thread,
 	inboundId: string,
 	how: "failed" | "unknown",
-) {
-	const begun = await store.beginAnswer({
-		officeId,
-		conversationId: id,
-		inboundId,
-		text: "Reply",
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	if (how === "failed") {
-		await store.failAnswer(officeId, begun.answer.id, "vendor refused");
-	} else {
-		await store.markAnswerUnknown(officeId, begun.answer.id, "timeout");
-	}
-}
-
-async function lastInboundId(store: Store, { officeId, id }: Thread): Promise<string> {
-	const conversation = await store.getOfficeConversation(officeId, id);
-	const message = conversation?.messages.filter((m) => m.direction === "in").at(-1);
-	if (!message) throw new Error(`no inbound on ${id}`);
-	return message.id;
-}
+) => answer(store, { officeId, conversationId: id, inboundId }, { outcome: how });
 
 test("the funnel counts leads, engaged and in conversation for one office in the window", async () => {
 	const store = await testInboxStore();
@@ -284,10 +240,12 @@ test("leads by day count each lead on the office's local day of first contact, e
 	});
 	expect(Funnel.parse(funnel)).toEqual(funnel);
 
-	// Every local day from D-1 through today in Ho Chi Minh City, zeros included.
+	// Every local day from D-1 through the store's `until` in Ho Chi Minh City, zeros included.
+	// Read from `until`, not `now`: local midnight (17:00 UTC) may pass between the two.
 	const expected: Array<{ day: string; leads: number }> = [];
 	const leadsOn: Record<string, number> = { [dayOf(d)]: 1, [dayOf(d + DAY)]: 2 };
-	for (let at = d - DAY; dayOf(at) <= dayOf(now + HCM_OFFSET); at += DAY) {
+	const until = untilOf(funnel, now);
+	for (let at = d - DAY; dayOf(at) <= localDay(until); at += DAY) {
 		expected.push({ day: dayOf(at), leads: leadsOn[dayOf(at)] ?? 0 });
 	}
 	expect(funnel.byDay).toEqual(expected);
@@ -305,7 +263,7 @@ test("leads by day over the 30-day window add up to leads in (ADR 0002)", async 
 	const store = await testInboxStore();
 	const now = Date.now();
 	// Local midnight in Ho Chi Minh City 29 days before today: 30 local days including today.
-	const since = Date.parse(`${dayOf(now + HCM_OFFSET)}T00:00:00+07:00`) - 29 * DAY;
+	const since = Date.parse(`${localDay(now)}T00:00:00+07:00`) - 29 * DAY;
 	for (const [guest, ago] of [
 		["a", 1 * HOUR],
 		["b", 2 * DAY],
@@ -322,7 +280,9 @@ test("leads by day over the 30-day window add up to leads in (ADR 0002)", async 
 		countMock: true,
 		timeZone: TZ,
 	});
-	expect(funnel.byDay).toHaveLength(30);
+	// 30 local days through today; 31 if local midnight passed before the store stamped `until`.
+	const crossedMidnight = localDay(untilOf(funnel, now)) !== localDay(now);
+	expect(funnel.byDay).toHaveLength(crossedMidnight ? 31 : 30);
 	expect(funnel.byDay.reduce((sum, entry) => sum + entry.leads, 0)).toBe(funnel.leadsIn);
 	expect(funnel.leadsIn).toBe(5);
 	await store.close();

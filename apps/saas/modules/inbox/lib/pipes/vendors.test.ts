@@ -7,6 +7,7 @@ import {
 	parseZaloWebhook,
 	verifyWhatsAppSignature,
 	verifyZaloSignature,
+	whatsappWindowState,
 	ZALO_SIGNATURE_WINDOW_MS,
 } from "./vendors";
 
@@ -317,4 +318,18 @@ test("Zalo parser returns [] for an unparseable body and never throws", () => {
 	for (const body of UNPARSEABLE) {
 		expect(parseZaloWebhook(body)).toEqual([]);
 	}
+});
+
+test("whatsappWindowState helper", () => {
+	const open = whatsappWindowState({
+		pipe: "whatsapp",
+		lastGuestInboundAt: new Date().toISOString(),
+	});
+	expect(open.open).toBe(true);
+	const closed = whatsappWindowState({
+		pipe: "whatsapp",
+		lastGuestInboundAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+	});
+	expect(closed.open).toBe(false);
+	expect(closed.reason).toBe("outside_24h_window");
 });

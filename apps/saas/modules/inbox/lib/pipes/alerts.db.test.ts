@@ -1,6 +1,7 @@
 import { sendEmail } from "@repo/mail";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
+import { account, membership } from "../test-fixtures";
 import { testDb, testInboxStore, useTestDatabaseForAppClient } from "../test-store";
 import { notifyPipeDisconnected } from "./alerts";
 
@@ -16,50 +17,18 @@ const OFFICE = "office-a";
 const OFFICE_NAME = "Alerts Office";
 const OA = "oa-alerts";
 
-async function account(id: string, role: string | null, memberRole?: string) {
-	await testDb.user.upsert({
-		where: { id },
-		create: {
-			id,
-			name: id,
-			email: `${id}@test.nhip.local`,
-			emailVerified: true,
-			role,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-		update: { role },
-	});
-	if (memberRole) {
-		await testDb.member.deleteMany({ where: { userId: id } });
-		await testDb.member.create({
-			data: {
-				id: `${id}-m`,
-				userId: id,
-				organizationId: OFFICE,
-				role: memberRole,
-				createdAt: new Date(),
-			},
-		});
-	}
-}
-
 beforeEach(async () => {
 	vi.mocked(sendEmail).mockClear();
 	const store = await testInboxStore();
 	await store.claimPipe({ pipe: "zalo", externalId: OA, officeId: OFFICE });
 	await testDb.organization.update({ where: { id: OFFICE }, data: { name: OFFICE_NAME } });
-	await account("alerts-admin", "admin", "owner");
-	await account("alerts-admin-2", "user,admin");
-	await account("alerts-manager", "user", "admin");
-	await account("alerts-agent", "user", "member");
-	await testDb.notification.deleteMany({ where: { type: "PIPE_DISCONNECTED" } });
-	await testDb.userNotificationPreference.deleteMany({ where: { type: "PIPE_DISCONNECTED" } });
-});
-
-// The shared fixture office keeps its id as its name for the other test files.
-afterEach(async () => {
-	await testDb.organization.update({ where: { id: OFFICE }, data: { name: OFFICE } });
+	await account("alerts-admin", { role: "admin" });
+	await membership(OFFICE, "alerts-admin", "owner");
+	await account("alerts-admin-2", { role: "user,admin" });
+	await account("alerts-manager", { role: "user" });
+	await membership(OFFICE, "alerts-manager", "admin");
+	await account("alerts-agent", { role: "user" });
+	await membership(OFFICE, "alerts-agent", "member");
 });
 
 test("a disconnected Zalo OA gives every platform admin one bell row naming the pipe and the office, and emails no one", async () => {
