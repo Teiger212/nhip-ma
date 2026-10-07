@@ -36,7 +36,6 @@ import {
 	params,
 	post,
 	TEST_SECRETS_KEY,
-	threadOf,
 	WALK_SESSION,
 } from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
@@ -423,6 +422,18 @@ test("POST /dev/inbound is 404 in production", async () => {
 	expect(res.status).toBe(404);
 });
 
+/** The walk office's thread for `guestId` on `pipe`, found through the inbox list (its own pipe check). */
+async function walkThreadId(pipe: string, guestId: string): Promise<string> {
+	const threads = await peekTestRuntime()!.store.listConversations({
+		userId: "walk-user",
+		officeId: "walk-office",
+		role: "manager",
+	});
+	const thread = threads.find((c) => c.pipe === pipe && c.guestId === guestId);
+	if (!thread) throw new Error(`no ${pipe} thread for ${guestId}`);
+	return thread.id;
+}
+
 test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 	// `Pipe` being importable as a value at all is the point: the app checks against the
 	// same declaration the store parses with. Driving the loop off `Pipe.options` rather
@@ -437,7 +448,7 @@ test("the pipe vocabulary is single-sourced in schema.ts", async () => {
 		// End to end: the value survives the write and the strict parse on the way back out.
 		const stored = await peekTestRuntime()?.store.getOfficeConversation(
 			"walk-office",
-			(await threadOf("walk-office", guestId, pipe)).id,
+			await walkThreadId(pipe, guestId),
 		);
 		expect(stored?.pipe, pipe).toBe(pipe);
 	}
@@ -505,12 +516,12 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 	const runtime = peekTestRuntime();
 	const trimmed = await runtime?.store.getOfficeConversation(
 		"walk-office",
-		(await threadOf("walk-office", "guest-trim")).id,
+		await walkThreadId("zalo", "guest-trim"),
 	);
 	expect(trimmed?.messages[0]?.text).toBe("Looking to rent in Tay Ho");
 	const degraded = await runtime?.store.getOfficeConversation(
 		"walk-office",
-		(await threadOf("walk-office", "g4")).id,
+		await walkThreadId("zalo", "g4"),
 	);
 	expect(degraded?.guestName).toBeNull();
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();

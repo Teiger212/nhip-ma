@@ -76,11 +76,13 @@ END $$`;
  * Every user and office goes, and with them through `ON DELETE CASCADE` everything tied to one:
  * memberships, invitations, sign-ins (sessions, accounts, passkeys, two-factor), purchases, bell
  * rows and their preferences, and the inbox rows of every office. Better Auth's verification
- * and rate-limit rows are tied to neither, so they are emptied by name.
+ * and rate-limit rows are tied to neither, and a purchase may have neither, so those are
+ * emptied by name.
  */
 const EMPTY_PEOPLE_TABLES = `DO $$ BEGIN
 	DELETE FROM "user";
 	DELETE FROM "organization";
+	DELETE FROM "purchase";
 	DELETE FROM "verification";
 	DELETE FROM "rateLimit";
 END $$`;

@@ -24,6 +24,13 @@ const HCM_OFFSET = 7 * HOUR;
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** The calendar day of an instant in Ho Chi Minh City. */
 const localDay = (ms: number) => dayOf(ms + HCM_OFFSET);
+/** The funnel's `until`, which must be when it was asked: after the test's `now`, not after this. */
+function untilOf(funnel: { until: string }, now: number): number {
+	const until = Date.parse(funnel.until);
+	expect(until).toBeGreaterThanOrEqual(now);
+	expect(until).toBeLessThanOrEqual(Date.now());
+	return until;
+}
 
 const inbound = (guestId: string, at: number, text = "Xin chào") =>
 	guestMessage(guestId, { at, text });
@@ -237,7 +244,8 @@ test("leads by day count each lead on the office's local day of first contact, e
 	// Read from `until`, not `now`: local midnight (17:00 UTC) may pass between the two.
 	const expected: Array<{ day: string; leads: number }> = [];
 	const leadsOn: Record<string, number> = { [dayOf(d)]: 1, [dayOf(d + DAY)]: 2 };
-	for (let at = d - DAY; dayOf(at) <= localDay(Date.parse(funnel.until)); at += DAY) {
+	const until = untilOf(funnel, now);
+	for (let at = d - DAY; dayOf(at) <= localDay(until); at += DAY) {
 		expected.push({ day: dayOf(at), leads: leadsOn[dayOf(at)] ?? 0 });
 	}
 	expect(funnel.byDay).toEqual(expected);
@@ -273,7 +281,7 @@ test("leads by day over the 30-day window add up to leads in (ADR 0002)", async 
 		timeZone: TZ,
 	});
 	// 30 local days through today; 31 if local midnight passed before the store stamped `until`.
-	const crossedMidnight = localDay(Date.parse(funnel.until)) !== localDay(now);
+	const crossedMidnight = localDay(untilOf(funnel, now)) !== localDay(now);
 	expect(funnel.byDay).toHaveLength(crossedMidnight ? 31 : 30);
 	expect(funnel.byDay.reduce((sum, entry) => sum + entry.leads, 0)).toBe(funnel.leadsIn);
 	expect(funnel.leadsIn).toBe(5);
