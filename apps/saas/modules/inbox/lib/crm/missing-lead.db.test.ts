@@ -1,6 +1,7 @@
 import type { InboxStore } from "@repo/database/inbox";
 import { afterEach, expect, test } from "vitest";
 
+import { guestMessage, threadUrl } from "../test-fixtures";
 import { testInboxStore } from "../test-store";
 import type { Conversation } from "../types";
 import { mockCrmAdapter } from "./mock";
@@ -15,7 +16,6 @@ import { CrmError } from "./types";
 
 const OFFICE = "office-a";
 const MINUTE = 60_000;
-const threadUrl = (id: string) => `https://nhip.test/vi/inbox?thread=${encodeURIComponent(id)}`;
 
 let store: InboxStore;
 afterEach(async () => {
@@ -24,14 +24,7 @@ afterEach(async () => {
 
 async function guestWrites(guestId: string, guestName: string): Promise<Conversation> {
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName,
-			text: "Xin chào, tôi cần thuê căn hộ",
-			vendorMessageId: null,
-		},
+		guestMessage(guestId, { guestName, text: "Xin chào, tôi cần thuê căn hộ" }),
 		OFFICE,
 	);
 	return conversation;

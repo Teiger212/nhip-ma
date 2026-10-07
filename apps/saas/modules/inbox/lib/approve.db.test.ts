@@ -1,7 +1,7 @@
 import { createInboxStore, Pipe } from "@repo/database/inbox";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { deleteThreadUnder, resetTestInbox, testDb } from "./test-store";
+import { deleteThreadUnder, testDb } from "./test-store";
 
 vi.mock("@repo/auth", () => ({
 	auth: {
@@ -27,28 +27,18 @@ import { POST as inject } from "../../../app/dev/inbound/route";
 import { mockInboxConfig } from "./config";
 import { noDraftAdapter } from "./drafts";
 import { encryptSecret, tokenContext } from "./pipes/secrets";
-import { whatsappWindowState } from "./pipes/vendors";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
+import {
+	type Body,
+	connectZaloOa,
+	guestMessage,
+	json,
+	params,
+	post,
+	TEST_SECRETS_KEY,
+	WALK_SESSION,
+} from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
-
-type Body = Record<string, unknown>;
-
-async function json(res: Response): Promise<{ res: Response; body: Body }> {
-	const body = (await res.json().catch(() => ({}))) as Body;
-	return { res, body };
-}
-
-function params(id: string): { params: Promise<{ id: string }> } {
-	return { params: Promise.resolve({ id }) };
-}
-
-function post(url: string, body: unknown): Request {
-	return new Request(url, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: typeof body === "string" ? body : JSON.stringify(body),
-	});
-}
 
 /** Inject a guest message through the dev route and return the thread. */
 async function arrive(body: Body): Promise<Conversation> {
@@ -57,41 +47,19 @@ async function arrive(body: Body): Promise<Conversation> {
 	return injected.body.conversation as Conversation;
 }
 
-const SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
-
 /** A live deployment with Nhịp's Zalo app configured (ADR 0017). */
 function liveZaloConfig() {
 	return mockInboxConfig({
 		sendMode: "live",
 		zalo: { appId: "app-1", appSecret: "app-secret", oaSecretKey: "oa-secret" },
-		pipeSecretsKey: SECRETS_KEY,
+		pipeSecretsKey: TEST_SECRETS_KEY,
 	});
-}
-
-/** The walk office's Zalo OA, connected with a token good for a day (setup, not the flow). */
-async function connectZaloOa(oaId: string, { disconnected = false } = {}): Promise<void> {
-	const store = peekTestRuntime()!.store;
-	await store.claimPipe({ pipe: "zalo", externalId: oaId, officeId: "walk-office" });
-	await store.savePipeCredential("zalo", oaId, {
-		accessToken: encryptSecret("access-1", SECRETS_KEY, tokenContext("zalo", oaId, "access")),
-		refreshToken: encryptSecret("refresh-1", SECRETS_KEY, tokenContext("zalo", oaId, "refresh")),
-		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-	});
-	if (disconnected) await store.markPipeDisconnected("zalo", oaId, "refresh refused");
 }
 
 /** A guest message that arrived on the office's endpoint `pipeExternalId`. */
 async function arriveOn(pipe: "zalo" | "whatsapp", pipeExternalId: string, guestId: string) {
 	const { conversation } = await peekTestRuntime()!.store.upsertInbound(
-		{
-			pipe,
-			source: "guest",
-			guestId,
-			guestName: null,
-			text: "Hello",
-			vendorMessageId: null,
-			pipeExternalId,
-		},
+		guestMessage(guestId, { pipe, text: "Hello", pipeExternalId }),
 		"walk-office",
 	);
 	return conversation;
@@ -101,10 +69,7 @@ async function arriveOn(pipe: "zalo" | "whatsapp", pipeExternalId: string, guest
  * Approve the way the client does: name the guest message being answered and the exact
  * text. `overrides` lets a test send a stale target, no target, or an empty reply.
  */
-async function approveReply(
-	conv: Conversation,
-	overrides: Body = {},
-): Promise<{ res: Response; body: Body }> {
+async function approveReply(conv: Conversation, overrides: Body = {}) {
 	const body = {
 		inboundId: conv.unansweredInboundId,
 		reply: conv.oneShot?.draft.reply ?? "Thanks",
@@ -118,15 +83,9 @@ async function approveReply(
 	);
 }
 
-const WALK_SESSION = {
-	session: { id: "walk-session", activeOrganizationId: "walk-office" },
-	user: { id: "walk-user" },
-};
-
 beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ whatsapp: { verifyToken: "verify-me" } }),
@@ -135,7 +94,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	vi.unstubAllGlobals();
 	const runtime = peekTestRuntime();
 	if (runtime) {
 		await runtime.store.close();
@@ -301,7 +259,7 @@ test("a vendor success whose record fails is never sent twice", async () => {
 test("a definite vendor refusal may be retried; an ambiguous transport failure may not", async () => {
 	const runtime = peekTestRuntime()!;
 	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
-	await connectZaloOa("oa-1");
+	await connectZaloOa(runtime.store, "oa-1", { officeId: "walk-office" });
 
 	// Vendor says no: failed, retry allowed, and the retry can succeed.
 	const refused = await arriveOn("zalo", "oa-1", "guest-refused");
@@ -454,21 +412,17 @@ test("WhatsApp approve outside 24h window is refused", async () => {
 
 test("POST /dev/inbound is 404 in production", async () => {
 	vi.stubEnv("NODE_ENV", "production");
-	try {
-		const res = await inject(
-			post("http://localhost/dev/inbound", {
-				pipe: "zalo",
-				guestId: "guest-1",
-				text: "Looking to rent in Tay Ho",
-			}),
-		);
-		expect(res.status).toBe(404);
-	} finally {
-		vi.unstubAllEnvs();
-	}
+	const res = await inject(
+		post("http://localhost/dev/inbound", {
+			pipe: "zalo",
+			guestId: "guest-1",
+			text: "Looking to rent in Tay Ho",
+		}),
+	);
+	expect(res.status).toBe(404);
 });
 
-/** A guest's thread id in the walk office, found as the store finds it: by (office, pipe, guest). */
+/** The walk office's thread for `guestId` on `pipe`, found through the inbox list (its own pipe check). */
 async function walkThreadId(pipe: string, guestId: string): Promise<string> {
 	const threads = await peekTestRuntime()!.store.listConversations({
 		userId: "walk-user",
@@ -573,20 +527,6 @@ test("POST /dev/inbound still accepts the shapes it always did", async () => {
 	expect(degraded?.messages[0]?.vendorMessageId).toBeNull();
 });
 
-test("whatsappWindowState helper", () => {
-	const open = whatsappWindowState({
-		pipe: "whatsapp",
-		lastGuestInboundAt: new Date().toISOString(),
-	});
-	expect(open.open).toBe(true);
-	const closed = whatsappWindowState({
-		pipe: "whatsapp",
-		lastGuestInboundAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-	});
-	expect(closed.open).toBe(false);
-	expect(closed.reason).toBe("outside_24h_window");
-});
-
 test("inbox routes refuse requests without a session", async () => {
 	const conv = await arrive({ pipe: "zalo", guestId: "guest-anon", text: "Hello" });
 	vi.mocked(auth.api.getSession).mockResolvedValue(null as never);
@@ -628,20 +568,7 @@ test("a live reply is refused when the thread arrived on an endpoint the office 
 	const runtime = peekTestRuntime();
 	if (!runtime) throw new Error("runtime missing");
 	// The guest wrote to the office's second number; this deployment can only send from "phone-a".
-	const conv = (
-		await runtime.store.upsertInbound(
-			{
-				pipe: "whatsapp",
-				source: "guest",
-				guestId: "16315551199",
-				guestName: null,
-				text: "Hello",
-				vendorMessageId: null,
-				pipeExternalId: "phone-b",
-			},
-			"walk-office",
-		)
-	).conversation;
+	const conv = await arriveOn("whatsapp", "phone-b", "16315551199");
 	setRuntimeForTests({
 		...runtime,
 		config: mockInboxConfig({
@@ -669,7 +596,7 @@ test("a live reply is refused when the thread arrived on an endpoint the office 
 test("a disconnected pipe refuses before anything is recorded, in a live or a mock deployment", async () => {
 	const runtime = peekTestRuntime()!;
 	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
-	await connectZaloOa("oa-1", { disconnected: true });
+	await connectZaloOa(runtime.store, "oa-1", { officeId: "walk-office", disconnected: true });
 	const conv = await arriveOn("zalo", "oa-1", "guest-blocked");
 	const fetchSpy = vi.fn();
 	vi.stubGlobal("fetch", fetchSpy);
@@ -688,7 +615,7 @@ test("a disconnected pipe refuses before anything is recorded, in a live or a mo
 test("approve does not echo vendor error bodies", async () => {
 	const runtime = peekTestRuntime()!;
 	setRuntimeForTests({ ...runtime, config: liveZaloConfig() });
-	await connectZaloOa("oa-1");
+	await connectZaloOa(runtime.store, "oa-1", { officeId: "walk-office" });
 	const conv = await arriveOn("zalo", "oa-1", "guest-live");
 	vi.stubGlobal(
 		"fetch",
@@ -710,8 +637,16 @@ test("an office cannot send as an OA it no longer holds, whatever tokens the OA 
 	const conv = await arriveOn("zalo", "oa-1", "guest-old-office");
 	await runtime.store.claimPipe({ pipe: "zalo", externalId: "oa-1", officeId: "office-a" });
 	await runtime.store.savePipeCredential("zalo", "oa-1", {
-		accessToken: encryptSecret("access-a", SECRETS_KEY, tokenContext("zalo", "oa-1", "access")),
-		refreshToken: encryptSecret("refresh-a", SECRETS_KEY, tokenContext("zalo", "oa-1", "refresh")),
+		accessToken: encryptSecret(
+			"access-a",
+			TEST_SECRETS_KEY,
+			tokenContext("zalo", "oa-1", "access"),
+		),
+		refreshToken: encryptSecret(
+			"refresh-a",
+			TEST_SECRETS_KEY,
+			tokenContext("zalo", "oa-1", "refresh"),
+		),
 		accessTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
 	});
 	const fetchSpy = vi.fn();

@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "vitest";
 
 import { createCrmSync } from "./crm/sync";
+import { guestMessage, threadUrl } from "./test-fixtures";
 import { testDb, testInboxStore } from "./test-store";
 
 /**
@@ -14,7 +15,6 @@ const PHONE = "84901234567";
 /** WhatsApp message ids carry the guest's number in Meta's format; these are shaped like them. */
 const INBOUND_WAMID = `wamid.HBgL${PHONE}FQIAEhgUM0FCQjI`;
 const REPLY_WAMID = `wamid.HBgL${PHONE}FQIAERgSNUQ5RTE`;
-const threadUrl = (id: string) => `https://nhip.test/vi/inbox?thread=${encodeURIComponent(id)}`;
 
 let store: Awaited<ReturnType<typeof testInboxStore>>;
 afterEach(async () => {
@@ -24,35 +24,16 @@ afterEach(async () => {
 test("no stored thread id, answer or vendor-id column contains the guest's id", async () => {
 	store = await testInboxStore();
 	await store.setCrmConnection(OFFICE, "mock");
-	const written = (
-		await store.upsertInbound(
-			{
-				pipe: "whatsapp",
-				source: "guest",
-				guestId: PHONE,
-				guestName: "Minh",
-				text: "Hello, I'm looking for a flat",
-				vendorMessageId: INBOUND_WAMID,
-				pipeExternalId: "office-number-1",
-			},
-			OFFICE,
-		)
-	).conversation;
+	const event = guestMessage(PHONE, {
+		pipe: "whatsapp",
+		guestName: "Minh",
+		text: "Hello, I'm looking for a flat",
+		vendorMessageId: INBOUND_WAMID,
+		pipeExternalId: "office-number-1",
+	});
+	const written = (await store.upsertInbound(event, OFFICE)).conversation;
 	// The vendor retries the same message: still one message (the dedupe works on what is stored).
-	const thread = (
-		await store.upsertInbound(
-			{
-				pipe: "whatsapp",
-				source: "guest",
-				guestId: PHONE,
-				guestName: "Minh",
-				text: "Hello, I'm looking for a flat",
-				vendorMessageId: INBOUND_WAMID,
-				pipeExternalId: "office-number-1",
-			},
-			OFFICE,
-		)
-	).conversation;
+	const thread = (await store.upsertInbound(event, OFFICE)).conversation;
 	expect(thread.id).toBe(written.id);
 	expect(thread.messages).toHaveLength(1);
 	await store.setOneShot(OFFICE, thread.id, {

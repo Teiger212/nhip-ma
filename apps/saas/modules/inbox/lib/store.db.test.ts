@@ -2,32 +2,21 @@ import { backfillAnswerOperatorNames } from "@repo/database";
 import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
+import { answer, guestMessage, threadOf } from "./test-fixtures";
 import { deleteThreadUnder, testDb, testInboxStore } from "./test-store";
 
 const OFFICE = "office-a";
 const OTHER_OFFICE = "office-b";
 /** A vendor message id as stored: an HMAC-SHA256, hex. */
 const HASHED = expect.stringMatching(/^[0-9a-f]{64}$/);
-/** The id of a guest's Zalo thread at an office, found as the store finds it: by (office, pipe, guest). */
-async function threadId(officeId: string, guestId: string): Promise<string> {
-	const thread = await testDb.conversation.findUniqueOrThrow({
-		where: { officeId_pipe_guestId: { officeId, pipe: "zalo", guestId } },
-		select: { id: true },
-	});
-	return thread.id;
-}
+/** The id of a guest's Zalo thread at an office. */
+const threadId = async (officeId: string, guestId: string) =>
+	(await threadOf(officeId, guestId)).id;
 /** The id of a guest's Zalo thread in office A. */
 const zalo = (guestId: string) => threadId(OFFICE, guestId);
 
-const inbound = (guestId: string, text = "Xin chào", pipeExternalId: string | null = null) => ({
-	pipe: "zalo" as const,
-	source: "guest" as const,
-	guestId,
-	guestName: null,
-	text,
-	vendorMessageId: null,
-	pipeExternalId,
-});
+const inbound = (guestId: string, text = "Xin chào", pipeExternalId: string | null = null) =>
+	guestMessage(guestId, { text, pipeExternalId });
 
 let sends = 0;
 /** Vendor ids are unique per message, as a real vendor's are. */
@@ -39,17 +28,10 @@ const mockSend = (guest: string) => ({
 
 type Store = Awaited<ReturnType<typeof testInboxStore>>;
 
-/** Approve and deliver in one go: the happy path of an Answer (ADR 0011). */
-async function answer(store: Store, conversationId: string, inboundId: string, text: string) {
-	const begun = await store.beginAnswer({
-		officeId: OFFICE,
-		conversationId,
-		inboundId,
-		text,
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	return store.completeAnswer(OFFICE, begun.answer.id, mockSend("guest"));
+/** Approve and deliver in one go: the happy path of an Answer (ADR 0011). Returns the thread. */
+async function answered(store: Store, conversationId: string, inboundId: string, text: string) {
+	await answer(store, { officeId: OFFICE, conversationId, inboundId, text });
+	return store.getOfficeConversation(OFFICE, conversationId);
 }
 
 test("one Answer per guest message: two approvals in the same instant let one in", async () => {
@@ -125,7 +107,7 @@ test("each message remembers the office endpoint it travelled through", async ()
 	const store = await testInboxStore();
 	const conv = (await store.upsertInbound(inbound("ep", "hi", "oa-1"), OFFICE)).conversation;
 	expect(conv.messages[0].pipeExternalId).toBe("oa-1");
-	const sent = await answer(store, conv.id, conv.messages[0].id, "hello");
+	const sent = await answered(store, conv.id, conv.messages[0].id, "hello");
 	// The reply went out on the endpoint the guest wrote to.
 	expect(sent?.messages[1]).toMatchObject({ source: "nhip", pipeExternalId: "oa-1" });
 	// A dev injection has no endpoint, and that is allowed.
@@ -165,7 +147,7 @@ test("your turn is derived from the messages: the guest spoke last and nothing a
 	const secondInbound = burst.messages[1].id;
 	expect(burst.unansweredInboundId).toBe(secondInbound);
 
-	const sent = await answer(store, await zalo("turn"), secondInbound, "reply");
+	const sent = await answered(store, await zalo("turn"), secondInbound, "reply");
 	expect(sent?.unansweredInboundId).toBeNull();
 	expect(sent?.sentAt).toBeTruthy();
 
@@ -315,7 +297,7 @@ test("your turn reads the Answers, not message order: a guest message mid-send s
 	expect(done?.messages.map((m) => m.text)).toEqual(["M1", "M2", "reply to M1"]);
 	expect(done?.unansweredInboundId).toBe(m2);
 	// Answering M2 closes the thread's turn.
-	const closed = await answer(store, await zalo("mid"), m2, "reply to M2");
+	const closed = await answered(store, await zalo("mid"), m2, "reply to M2");
 	expect(closed?.unansweredInboundId).toBeNull();
 	expect(closed?.answers.map((a) => [a.inboundId, a.status])).toEqual([
 		[m1, "sent"],
@@ -377,7 +359,6 @@ test("deleting an office deletes its threads and pipe connections", async () => 
 test("an Answer keeps its sender's name after the account is deleted (ADR 0013)", async () => {
 	const store = await testInboxStore();
 	const now = new Date();
-	await testDb.user.deleteMany({ where: { id: "leaver" } });
 	await testDb.user.create({
 		data: {
 			id: "leaver",
@@ -407,7 +388,7 @@ test("an Answer keeps its sender's name after the account is deleted (ADR 0013)"
 test("Answers approved before ADR 0013 get their sender's name filled in", async () => {
 	const store = await testInboxStore();
 	const conv = (await store.upsertInbound(inbound("old"), OFFICE)).conversation;
-	await answer(store, await zalo("old"), conv.unansweredInboundId!, "reply");
+	await answered(store, await zalo("old"), conv.unansweredInboundId!, "reply");
 	await testDb.answer.updateMany({ data: { operatorName: null } });
 	expect(await backfillAnswerOperatorNames(testDb)).toBe(1);
 	expect(await backfillAnswerOperatorNames(testDb)).toBe(0);
@@ -460,9 +441,7 @@ async function approvable(store: Store, guestId: string, operatorId: string | nu
 
 /** The thread's first approval failed at the vendor, so the next one is a retry. */
 async function failedOnce(store: Store, input: Parameters<Store["beginAnswer"]>[0]) {
-	const begun = await store.beginAnswer(input);
-	if (!begun.ok) throw new Error(begun.reason);
-	await store.failAnswer(OFFICE, begun.answer.id, "token expired");
+	await answer(store, input, { outcome: "failed", reason: "token expired" });
 }
 
 test("approving a thread already deleted is not_found, on a first send and on a retry (ADR 0020)", async () => {

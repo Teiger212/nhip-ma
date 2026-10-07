@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 
 import { createOpenAiCompatibleDraftAdapter } from "./openai-compatible";
 
@@ -25,11 +25,6 @@ const adapter = createOpenAiCompatibleDraftAdapter({
 	apiKey: "sk-test",
 	baseUrl: "https://openrouter.ai/api/v1/",
 	model: "vendor/cheap-model",
-});
-
-afterEach(() => {
-	vi.unstubAllGlobals();
-	vi.restoreAllMocks();
 });
 
 test("translate speaks the chat-completions protocol and frames guest text as data", async () => {

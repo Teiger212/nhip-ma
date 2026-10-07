@@ -5,7 +5,7 @@ import { ensureTestDatabase, testDatabaseUrl } from "@repo/database/inbox/testin
 
 /**
  * Store tests need the inbox tables in the test database. Push the schema there once per
- * run; each test then truncates what it needs (`resetInboxTables`). The push is the plain
+ * run; each test then empties what it needs (`resetInboxTables`). The push is the plain
  * one: a schema change that would lose data on the test database is not accepted
  * silently; drop the test database (`dropdb supastarter_test`) and run again.
  */

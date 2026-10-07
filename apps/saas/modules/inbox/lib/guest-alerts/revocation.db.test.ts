@@ -3,7 +3,8 @@ import { betterAuth } from "better-auth";
 import { testUtils } from "better-auth/plugins";
 import { beforeEach, expect, test } from "vitest";
 
-import { testDb, useTestDatabaseForAppClient } from "../test-store";
+import { account } from "../test-fixtures";
+import { testDb, useTestDatabaseForAppClient, waitForLockWaiters } from "../test-store";
 
 /**
  * A device alerts until its sign-in ends (ADR 0019, spec #84 A5; #134): signing out is one
@@ -20,24 +21,8 @@ const AGENT = "revoke-agent";
 const ADMIN = "revoke-admin";
 
 beforeEach(async () => {
-	await testDb.user.deleteMany({ where: { id: { in: [AGENT, ADMIN] } } });
-	const now = new Date();
-	for (const [id, role] of [
-		[AGENT, null],
-		[ADMIN, "admin"],
-	] as const) {
-		await testDb.user.create({
-			data: {
-				id,
-				name: id,
-				email: `${id}@test.nhip.local`,
-				emailVerified: true,
-				role,
-				createdAt: now,
-				updatedAt: now,
-			},
-		});
-	}
+	await account(AGENT);
+	await account(ADMIN, { role: "admin" });
 });
 
 async function signIn(userId: string) {
@@ -111,18 +96,6 @@ test("a session that merely expired keeps its device (A5)", async () => {
 	expect(await endpointsOf(AGENT)).toEqual(["phone"]);
 });
 
-/** Waits until some statement is waiting on a lock, its text matching `query`. */
-async function waitForLockWait(query: string) {
-	for (let i = 0; i < 100; i++) {
-		const rows = await testDb.$queryRaw<{ n: bigint }[]>`
-			SELECT count(*) AS n FROM pg_stat_activity
-			WHERE wait_event_type = 'Lock' AND query ILIKE ${`%${query}%`}`;
-		if (Number(rows[0]?.n ?? 0) > 0) return;
-		await new Promise((resolve) => setTimeout(resolve, 50));
-	}
-	throw new Error(`nothing waited on a lock for ${query}`);
-}
-
 test("a device registered while its sign-in is being revoked does not outlive it (#135)", async () => {
 	const phone = await signIn(AGENT);
 	const laptop = await signIn(AGENT);
@@ -142,7 +115,7 @@ test("a device registered while its sign-in is being revoked does not outlive it
 			},
 		});
 		revoking = auth.api.revokeSession({ headers: laptop.headers, body: { token: phone.token } });
-		await waitForLockWait("session");
+		await waitForLockWaiters(1, { query: "session" });
 	});
 	await revoking;
 

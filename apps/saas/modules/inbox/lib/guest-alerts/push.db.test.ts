@@ -1,12 +1,13 @@
 import { parse } from "node:url";
 
 import { createInboxStore } from "@repo/database/inbox";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import type { Vapid } from "../config";
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "../test-store";
+import { guestMessage, membership } from "../test-fixtures";
+import { testDb, useTestDatabaseForAppClient } from "../test-store";
 import { alertGuestMessage } from "./index";
 import { isAllowedPushEndpoint, normalizePushEndpoint, webPushTransport } from "./push";
 import type { AlertPayload } from "./transport";
@@ -39,14 +40,9 @@ const PAYLOAD: AlertPayload = {
 let warn: ReturnType<typeof vi.spyOn>;
 
 beforeEach(async () => {
-	await resetTestInbox();
 	sendNotification.mockReset();
 	sendNotification.mockResolvedValue({ statusCode: 201, body: "", headers: {} });
 	warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-});
-
-afterEach(() => {
-	warn.mockRestore();
 });
 
 async function device(
@@ -306,28 +302,12 @@ test("a delivery for one sign-in reaches that sign-in's devices only (the test a
 
 test("an operator removed from the office keeps no alerts from it, even with a device left", async () => {
 	const store = createInboxStore(testDb);
-	await testDb.member.deleteMany({ where: { organizationId: "office-a" } });
 	// A manager, whom an Unassigned guest alerts (ADR 0022).
-	await testDb.member.create({
-		data: {
-			id: "m-office-a-agent-1",
-			organizationId: "office-a",
-			userId: "agent-1",
-			role: "admin",
-			createdAt: new Date(),
-		},
-	});
+	await membership("office-a", "agent-1", "admin");
 	const stays = await device("agent-1", fcm("stays"));
 	await device("agent-2", fcm("left-the-office"));
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "removed-operator",
-			guestName: "Minji",
-			text: "Xin chào",
-			vendorMessageId: null,
-		},
+		guestMessage("removed-operator", { guestName: "Minji" }),
 		"office-a",
 	);
 	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };

@@ -34,7 +34,7 @@ export class RecipientsFailed extends Error {
  */
 export async function inboxTranslator(locale: AlertLocale): Promise<AlertTranslate> {
 	const messages = await getMessagesForLocale(locale, "saas");
-	// The catalog is loaded untyped here, so next-intl cannot check keys; alert-log.test.ts
+	// The catalog is loaded untyped here, so next-intl cannot check keys; alert-log.db.test.ts
 	// renders through this translator.
 	return createTranslator({ locale, messages, namespace: "inbox" }) as unknown as AlertTranslate;
 }

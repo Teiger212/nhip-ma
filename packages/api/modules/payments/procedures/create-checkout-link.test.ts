@@ -1,5 +1,4 @@
 import { call } from "@orpc/server";
-import type { Session } from "@repo/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@repo/auth", () => ({
@@ -36,45 +35,14 @@ import {
 	isPlanId,
 } from "@repo/payments";
 
+import { authenticatedSession } from "../../../test/session";
 import { verifyOrganizationBillingManagement } from "../../organizations/lib/membership";
 import { createCheckoutLink } from "./create-checkout-link";
-
-const authenticatedSession = {
-	session: {
-		id: "session-1",
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		userId: "user-1",
-		expiresAt: new Date(Date.now() + 60_000),
-		token: "session-token",
-		ipAddress: null,
-		userAgent: null,
-		impersonatedBy: null,
-		activeOrganizationId: null,
-	},
-	user: {
-		id: "user-1",
-		name: "Test User",
-		email: "test@example.com",
-		emailVerified: true,
-		image: null,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		role: "user",
-		banned: null,
-		banReason: null,
-		banExpires: null,
-		onboardingComplete: true,
-		locale: null,
-		twoFactorEnabled: false,
-		lastActiveOrganizationId: null,
-	},
-} satisfies Session;
 
 describe("createCheckoutLink", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(auth.api.getSession).mockResolvedValue(authenticatedSession);
+		vi.mocked(auth.api.getSession).mockResolvedValue(authenticatedSession());
 	});
 
 	it("rejects checkout management for an unauthorized organization", async () => {

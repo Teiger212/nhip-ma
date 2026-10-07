@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import { mockInboxConfig } from "../config";
 import { testInboxStore } from "../test-store";
@@ -42,10 +42,6 @@ function zaloIssuesTokens() {
 
 beforeEach(async () => {
 	store = await testInboxStore();
-});
-
-afterEach(() => {
-	vi.unstubAllGlobals();
 });
 
 test("a token far from expiry is used as is, with no refresh", async () => {

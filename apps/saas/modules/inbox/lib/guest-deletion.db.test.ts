@@ -3,7 +3,8 @@ import { expect, test } from "vitest";
 
 import { oneShot } from "./draft";
 import { createGuestDeletion } from "./guest-deletion";
-import { testDb, testInboxStore } from "./test-store";
+import { answer, guestMessage, lastInboundId, type Thread } from "./test-fixtures";
+import { testDb, testInboxStore, waitForLockWaiters } from "./test-store";
 
 /**
  * Guest deletion (ADR 0020, spec #85): a manager hard-deletes a guest's thread in one
@@ -22,25 +23,12 @@ const DAY = 24 * 60 * MINUTE;
 const TZ = "Asia/Ho_Chi_Minh";
 
 type Store = Awaited<ReturnType<typeof testInboxStore>>;
-type Thread = { officeId: string; id: string };
 
 const message = (
 	guestId: string,
 	at: number,
-	{
-		source = "guest",
-		text = "Xin chào",
-		guestName = null,
-	}: { source?: "guest" | "oa-echo"; text?: string; guestName?: string | null } = {},
-) => ({
-	pipe: "zalo" as const,
-	source,
-	guestId,
-	guestName,
-	text,
-	vendorMessageId: null,
-	at,
-});
+	options: { source?: "guest" | "oa-echo"; text?: string; guestName?: string | null } = {},
+) => guestMessage(guestId, { at, ...options });
 
 async function write(
 	store: Store,
@@ -53,29 +41,14 @@ async function write(
 	return { officeId, id: conversation.id };
 }
 
-async function lastInboundId(store: Store, { officeId, id }: Thread): Promise<string> {
-	const conversation = await store.getOfficeConversation(officeId, id);
-	const inbound = conversation?.messages.filter((m) => m.direction === "in").at(-1);
-	if (!inbound) throw new Error("no guest message");
-	return inbound.id;
-}
-
-let sends = 0;
 /** Approve the guest's latest message and let the vendor deliver it, as a mock send or a live one. */
 async function sent(store: Store, thread: Thread, { mock }: { mock: boolean }) {
-	const begun = await store.beginAnswer({
-		officeId: thread.officeId,
-		conversationId: thread.id,
-		inboundId: await lastInboundId(store, thread),
-		text: "Reply",
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(`beginAnswer: ${begun.reason}`);
-	await store.completeAnswer(thread.officeId, begun.answer.id, {
-		mock,
-		pipe: "zalo",
-		vendorMessageId: `vendor-${++sends}`,
-	});
+	const inboundId = await lastInboundId(store, thread);
+	await answer(
+		store,
+		{ officeId: thread.officeId, conversationId: thread.id, inboundId },
+		{ mock },
+	);
 }
 
 const deleteOptions = (countMock: boolean) => ({
@@ -111,15 +84,11 @@ async function officeOfLeads(store: Store, now: number): Promise<Thread[]> {
 	await write(store, "echoed", now - 2 * DAY + 17 * MINUTE, { source: "oa-echo", text: "Hi" });
 	const unanswered = await write(store, "unanswered", now - 1 * DAY);
 	const failed = await write(store, "failed", now - 1 * DAY - 3 * MINUTE);
-	const begun = await store.beginAnswer({
-		officeId: OFFICE,
-		conversationId: failed.id,
-		inboundId: await lastInboundId(store, failed),
-		text: "Reply",
-		operatorId: "agent-1",
-	});
-	if (!begun.ok) throw new Error(begun.reason);
-	await store.failAnswer(OFFICE, begun.answer.id, "vendor refused");
+	await answer(
+		store,
+		{ officeId: OFFICE, conversationId: failed.id, inboundId: await lastInboundId(store, failed) },
+		{ outcome: "failed" },
+	);
 	const beforeWindow = await write(store, "before-window", now - 40 * DAY);
 	await sent(store, beforeWindow, { mock: false });
 	return [
@@ -388,7 +357,6 @@ test("bell rows naming the thread go with it and are counted; others stay (ADR 0
 	const thread = await write(store, "moved", Date.now() - MINUTE);
 	const other = await write(store, "stays", Date.now() - MINUTE);
 	// The reassignment bell row (#133): `data.threadId` is the thread's opaque id.
-	await testDb.notification.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
 	await testDb.notification.createMany({
 		data: [
 			{
@@ -412,22 +380,8 @@ test("bell rows naming the thread go with it and are counted; others stay (ADR 0
 	expect(left).toHaveLength(2);
 	const [receipt] = await testDb.guestDeletion.findMany({ where: { officeId: OFFICE } });
 	expect(receipt.notifications).toBe(2);
-	await testDb.notification.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
 	await store.close();
 });
-
-/** Resolves once `count` other sessions on the test database wait on a lock. */
-async function lockWaiters(count: number): Promise<void> {
-	const deadline = Date.now() + 5_000;
-	while (Date.now() < deadline) {
-		const [row] = await testDb.$queryRaw<Array<{ waiting: number }>>`
-			SELECT count(*)::int AS waiting FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()`;
-		if ((row?.waiting ?? 0) >= count) return;
-		await new Promise((resolve) => setTimeout(resolve, 10));
-	}
-	throw new Error(`lockWaiters: ${count} never waited on a lock`);
-}
 
 type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
@@ -458,9 +412,9 @@ async function inOrder<A, B>(
 			await tx.$queryRaw`SELECT 1 FROM "inbox_conversation" WHERE "id" = ${thread.id} FOR UPDATE`;
 			// Not awaited here: both must queue behind this lock before it is released.
 			const a = settle(first);
-			await lockWaiters(1);
+			await waitForLockWaiters(1);
 			const b = settle(second);
-			await lockWaiters(2);
+			await waitForLockWaiters(2);
 			queued = [a, b];
 		},
 		{ timeout: 15_000 },
@@ -515,9 +469,12 @@ async function deletedFirst(store: Store, thread: Thread, operatorId: string | n
 /** A thread whose first approval failed at the vendor, so the next approval is a retry. */
 async function failedOnce(store: Store, guestId: string, operatorId: string | null) {
 	const thread = await write(store, guestId, Date.now() - MINUTE);
-	const begun = await (await approval(store, thread, operatorId))();
-	if (!begun.ok) throw new Error(begun.reason);
-	await store.failAnswer(OFFICE, begun.answer.id, "token expired");
+	const inboundId = await lastInboundId(store, thread);
+	await answer(
+		store,
+		{ officeId: OFFICE, conversationId: thread.id, inboundId, operatorId },
+		{ outcome: "failed", reason: "token expired" },
+	);
 	return thread;
 }
 
@@ -565,8 +522,8 @@ test("the vendor's answer and a deletion, either first: the reply is recorded an
 		if (order === "delete first") {
 			// The delete found the reply still sending and refused; the reply was then recorded.
 			expect(deleted, order).toEqual({ ok: false, reason: "reply_sending" });
-			const answer = await testDb.answer.findUniqueOrThrow({ where: { id: begun.answer.id } });
-			expect(answer.status, order).toBe("sent");
+			const recorded = await testDb.answer.findUniqueOrThrow({ where: { id: begun.answer.id } });
+			expect(recorded.status, order).toBe("sent");
 		} else {
 			// The delete waited for the send to be recorded, then deleted the thread.
 			expect(deleted, order).toEqual({ ok: true, crm: null });

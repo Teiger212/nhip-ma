@@ -8,7 +8,8 @@ import { noDraftAdapter } from "./drafts";
 import { isQuiet } from "./queue";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
-import { resetTestInbox, testDb, useTestDatabaseForAppClient } from "./test-store";
+import { account, guestMessage, membership } from "./test-fixtures";
+import { testDb, useTestDatabaseForAppClient } from "./test-store";
 import { WALK_OFFICE_ID } from "./walk-user";
 
 // Web push stubbed at its boundary: the seed must never reach it (#134, Q3).
@@ -58,19 +59,11 @@ test("demo threads extract; Japanese paperwork does not invent law", () => {
 });
 
 test("seed finds an existing thread by guest and does not write it twice", async () => {
-	await resetTestInbox();
 	const store = createInboxStore(testDb);
 	setRuntimeForTests({ store, config: mockInboxConfig(), drafts: noDraftAdapter });
 	const earlier = (
 		await store.upsertInbound(
-			{
-				pipe: "zalo",
-				source: "guest",
-				guestId: "demo-vi-tayho",
-				guestName: "Thảo",
-				text: "old message",
-				vendorMessageId: null,
-			},
+			guestMessage("demo-vi-tayho", { guestName: "Thảo", text: "old message" }),
 			WALK_OFFICE_ID,
 		)
 	).conversation;
@@ -85,7 +78,6 @@ test("seed finds an existing thread by guest and does not write it twice", async
 });
 
 test("seed writes invented threads once", async () => {
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
@@ -117,7 +109,6 @@ test("seed writes invented threads once", async () => {
 });
 
 test("the fresh pair lands in Your turn, the other two in Quiet", async () => {
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
@@ -133,7 +124,6 @@ test("the fresh pair lands in Your turn, the other two in Quiet", async () => {
 });
 
 test("reset rewrites the demo threads as of now", async () => {
-	await resetTestInbox();
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
@@ -152,33 +142,11 @@ test("reset rewrites the demo threads as of now", async () => {
 // #134, Q3: `pnpm seed` writes guest messages, and those alert; a seed run must never push to a
 // real device, whatever SEND_MODE says. The alerts are still decided and logged.
 test("seeding never pushes, even live with VAPID keys and a manager's device", async () => {
-	await resetTestInbox();
 	const store = createInboxStore(testDb);
 	// A manager of the walk office alone (a member of two offices is alerted by neither).
 	const manager = "seed-push-manager";
-	const now = new Date();
-	await testDb.user.upsert({
-		where: { id: manager },
-		create: {
-			id: manager,
-			name: manager,
-			email: `${manager}@test.nhip.local`,
-			emailVerified: true,
-			createdAt: now,
-			updatedAt: now,
-		},
-		update: {},
-	});
-	await testDb.member.deleteMany({ where: { organizationId: WALK_OFFICE_ID } });
-	await testDb.member.create({
-		data: {
-			id: "m-seed-push-manager",
-			organizationId: WALK_OFFICE_ID,
-			userId: manager,
-			role: "admin",
-			createdAt: now,
-		},
-	});
+	await account(manager);
+	await membership(WALK_OFFICE_ID, manager, "admin");
 	await testDb.pushSubscription.create({
 		data: {
 			userId: manager,
@@ -208,5 +176,4 @@ test("seeding never pushes, even live with VAPID keys and a manager's device", a
 		await testDb.inboxAlert.count({ where: { officeId: WALK_OFFICE_ID, userId: manager } }),
 	).toBe(DEMO_THREADS.length);
 	expect(sendNotification).not.toHaveBeenCalled();
-	await testDb.user.delete({ where: { id: manager } });
 });
