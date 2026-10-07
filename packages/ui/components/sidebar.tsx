@@ -212,7 +212,7 @@ function Sidebar({
 			<div
 				data-slot="sidebar-gap"
 				className={cn(
-					"relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+					"ease-out relative w-(--sidebar-width) bg-transparent transition-[width] duration-220 motion-reduce:transition-none",
 					"group-data-[collapsible=offcanvas]:w-0",
 					"group-data-[side=right]:rotate-180",
 					variant === "floating" || variant === "inset"
@@ -223,7 +223,7 @@ function Sidebar({
 			<div
 				data-slot="sidebar-container"
 				className={cn(
-					"inset-y-0 lg:flex fixed z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear",
+					"inset-y-0 lg:flex ease-out fixed z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-220 motion-reduce:transition-none",
 					side === "left"
 						? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
 						: "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -381,7 +381,7 @@ function SidebarGroupLabel({ className, ...props }: React.ComponentProps<"div">)
 			data-slot="sidebar-group-label"
 			data-sidebar="group-label"
 			className={cn(
-				"h-8 px-2 text-xs font-medium [&>svg]:size-4 flex shrink-0 items-center rounded-md text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:shrink-0",
+				"h-8 px-2 text-xs font-medium [&>svg]:size-4 ease-out flex shrink-0 items-center rounded-md text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-220 focus-visible:ring-2 motion-reduce:transition-none [&>svg]:shrink-0",
 				"group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
 				className,
 			)}
@@ -441,7 +441,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-	"peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+	"peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] duration-220 ease-out motion-reduce:transition-none group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
 	{
 		variants: {
 			variant: {
@@ -499,9 +499,11 @@ function SidebarMenuButton({
 
 	const showTooltip = Boolean(tooltip) && state === "collapsed" && !isMobile;
 
-	if (showTooltip && tooltip) {
+	// Nhịp (#234): the tooltip is switched off rather than unmounted while it isn't shown, so the
+	// button keeps its element across a collapse and its width and label can transition.
+	if (tooltip) {
 		return (
-			<Tooltip>
+			<Tooltip disabled={!showTooltip}>
 				<TooltipTrigger
 					render={(triggerProps) => {
 						const nodeProps = mergeTriggerProps(triggerProps, {

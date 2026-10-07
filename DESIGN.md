@@ -443,8 +443,10 @@ A pill toggle on Morning Wash with a hairline, 2px inner padding. Tabs are pills
 - **Variant:** `SidebarMenuButton variant="chip"` carries the whole treatment, so the app passes no restyle classes.
 - **Active:** a white chip with the Hairline shadow, ink text, the icon in Dispatch Blue. The settings entry in the user menu uses the same chip.
 - **Hover:** Hairline Blue accent fill.
-- **Coming soon:** a later feature named in PRODUCT.md's "Later, shown as Coming soon" list sits where it will live as a disabled item (the kit's 50% opacity, no link), with a neutral `Badge` reading "Coming soon" at its right edge. International sits under Inbox. In the collapsed sidebar it is the dimmed icon alone: a disabled item takes no pointer, so it has no tooltip.
-- **Count:** while any thread is Your turn, the Inbox link carries a numeric warning `Badge` at its right edge (`ml-auto`), inside the link itself.
+- **Coming soon:** a later feature named in PRODUCT.md's "Later, shown as Coming soon" list sits where it will live as a disabled item (the kit's 50% opacity, no link), with a neutral `Badge` reading "Coming soon" at its right edge. International sits under Inbox. In the collapsed sidebar it is the dimmed icon alone, and its tooltip names it with the same "Coming soon" badge (#234); it still links nowhere.
+- **Count:** while any thread is Your turn, the Inbox link carries a numeric warning `Badge` at its right edge (`ml-auto`), inside the link itself. In the collapsed sidebar the same count sits on the icon's top-right corner as a `size="sm"` badge, on a canvas backing with a 2px canvas ring, so its 12% tint reads over the icon.
+- **Collapse (from `lg`):** the sidebar collapses to a 48px icon strip and back by a ghost icon button beside the bell (the kit's `SidebarTrigger`, 32px), by ⌘B / Ctrl+B, or by the rail on its edge, and keeps the state in the kit's `sidebar_state` cookie, which the server reads so a reload paints the same state. Collapsed, the button heads the strip, above the logo and the bell; its tooltip says what it does and the shortcut as this computer writes it ("Collapse sidebar (⌘B)", "Expand sidebar (Ctrl+B)"). Every strip item has a tooltip naming it.
+- **Motion:** the width moves over 220ms ease-out, and the labels fade with it (opacity, same curve) while the 32px items clip them. Both stop under `prefers-reduced-motion`.
 - **Phone (below `lg`):** the sidebar is a sheet behind the 56px top bar; links are 44px tall; the same active treatment applies.
 
 ### Page Header

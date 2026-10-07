@@ -1009,3 +1009,61 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
     dialog's holds `[phone]` and `[email]` and no run of three digits, no `@` and no part of the
     email; one lead tally per deleted guest (ADR 0020), so the identifier check has something to
     read; no message text either, ADR 0020 keeping no free text.)
+
+## Sidebar (#234)
+
+From `lg` (1024px) up, the sidebar is a column that collapses to a 48px icon strip and expands
+back. It already could, by ⌘B (Ctrl+B off a Mac) and by the thin rail on its edge, and it
+remembers the choice in a cookie. #234 (decided by Eyal 2026-10-07) adds a visible button and
+makes the strip readable. Below `lg` the sidebar is a sheet behind a 56px top bar, unchanged.
+
+**How these run.** "Collapsed" and "open" are told by size, not by labels: on the strip the
+Home link is at most 48px wide, open it is at least 150px. The width animates, so it is polled.
+The shortcut a tooltip names follows the person's computer, so each test that reads it runs as a
+Mac and as Linux (CI's), every signal a page can read (user agent, `navigator.platform`,
+`navigator.userAgentData.platform`) pinned to that computer: Playwright's desktop Chrome sends a
+Windows user agent while `navigator.platform` reports the host. A tooltip is read with the real
+pointer, after resting on the page's heading until no tooltip is open.
+
+1. **A button collapses the sidebar and expands it, and says how.** Open, a button sits in the
+   sidebar's header on the bell's row, named "Collapse sidebar"; pointing at it shows "Collapse
+   sidebar (⌘B)" on a Mac, "Collapse sidebar (Ctrl+B)" elsewhere. Pressing it collapses the
+   sidebar to the strip. The button stays, at the top of the strip, above Home, now "Expand
+   sidebar", its tooltip "Expand sidebar (⌘B)" / "(Ctrl+B)". Pressing it again opens the sidebar.
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 1; the seeded agent on Home, as a Mac at 1280
+   wide and as Linux at exactly 1024, `lg` itself; the button is `data-test="sidebar-toggle"`,
+   since the rail is a button with the same names; "on the bell's row" is the two vertical centres
+   within 8px; "on the strip" is its right edge within 56px of the window's left).
+2. **⌘B / Ctrl+B still collapses and expands, and the button follows.** The shortcut collapses
+   the sidebar to the strip, and the button now offers "Expand sidebar"; again, and it is open,
+   the button offering "Collapse sidebar".
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 2; `ControlOrMeta+b`, the seeded agent at 1280. The shortcut itself already worked before #234: only the button's part is new).
+3. **The sidebar stays as it was left, across a reload.** Collapsed, then reloaded: still the
+   strip, with the button offering "Expand sidebar". Expanded again with the button, then
+   reloaded: open, the button offering "Collapse sidebar".
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 3; collapsed by the shortcut and expanded by
+   the button, never by setting the cookie; "after the reload" is judged once the button's
+   tooltip has opened, which needs the live page, so a server paint the page then undoes does not
+   pass. Before #234 a collapsed sidebar already reloaded collapsed).
+4. **The strip keeps the Inbox's count.** With the sidebar collapsed, the agent's Your-turn
+   number is still on the Inbox icon, as a small badge they can read.
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 4; an office of the test's own with one
+   invited agent and two Zalo guests the invited manager gave them, so the number is exactly 2;
+   collapsed by the shortcut; one `nav-your-turn-count` in the Inbox link, reading "2", at least
+   12×12px, overlapping the Inbox link's box and inside the strip (right edge within 56px).
+   Before #234 the number was there only for screen readers, a 1×1px box).
+5. **The strip names its items on hover.** Collapsed, pointing at Home shows "Home", at Inbox
+   "Inbox", at International "International" with "Coming soon". International stays disabled:
+   it is no link, and clicking it goes nowhere.
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 5; the seeded agent, collapsed by the
+   shortcut; tooltips are `role="tooltip"`; International is `data-test="nav-international"`,
+   pointed at with the mouse since it takes no pointer events; "goes nowhere" is still on
+   `/en/home` once Home's tooltip has shown after the click).
+6. **The button speaks Vietnamese.** On `/vi`, its tooltip reads "Thu gọn thanh bên (⌘B)" open
+   and "Mở rộng thanh bên (⌘B)" collapsed; Ctrl+B off a Mac.
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 6; as a Mac and as Linux, as in 1).
+7. **A phone keeps its menu sheet.** Below `lg`, the top bar's menu opens the sheet with Home and
+   Inbox, and #234's collapse button is in neither the sheet nor the top bar.
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 7; 390×844; no visible `sidebar-toggle`. A
+   guard: it held before #234. The kit's rail, a button named "Collapse sidebar", is inside the
+   sheet already and is left as it is, the rail being unchanged by #234).
