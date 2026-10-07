@@ -1,7 +1,8 @@
 import type { AlertKind } from "@repo/database/inbox";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
 
-import { testDb, testInboxStore } from "../test-store";
+import { guestMessage, membership } from "../test-fixtures";
+import { testInboxStore } from "../test-store";
 import type { Store } from "../types";
 import { resolveAlertLink } from "./alert-link";
 import { alertSounds } from "./burst";
@@ -23,30 +24,9 @@ const NOTICE = { threadId: null };
 
 let store: Store;
 
-async function member(officeId: string, userId: string, role: string) {
-	await testDb.member.upsert({
-		where: { organizationId_userId: { organizationId: officeId, userId } },
-		create: {
-			id: `m-${officeId}-${userId}`,
-			organizationId: officeId,
-			userId,
-			role,
-			createdAt: new Date(),
-		},
-		update: { role },
-	});
-}
-
 async function guestWrites(guestId: string, officeId = OFFICE): Promise<string> {
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName: "Minji",
-			text: "Xin chào",
-			vendorMessageId: null,
-		},
+		guestMessage(guestId, { guestName: "Minji" }),
 		officeId,
 	);
 	return conversation.id;
@@ -71,15 +51,9 @@ async function alert(
 
 beforeEach(async () => {
 	store = await testInboxStore();
-	await testDb.member.deleteMany({ where: { organizationId: { in: [OFFICE, OTHER_OFFICE] } } });
-	await member(OFFICE, "agent-1", "member");
-	await member(OFFICE, "agent-2", "member");
-	await member(OFFICE, "walk-user", "admin");
-});
-
-// A member of two offices opens nothing (ADR 0010): leave no one in the second office.
-afterEach(async () => {
-	await testDb.member.deleteMany({ where: { organizationId: OTHER_OFFICE } });
+	await membership(OFFICE, "agent-1", "member");
+	await membership(OFFICE, "agent-2", "member");
+	await membership(OFFICE, "walk-user", "admin");
 });
 
 test("the viewer's own alert on a thread they hold opens that thread", async () => {
@@ -129,7 +103,7 @@ test("a test alert has no thread and opens nothing", async () => {
 });
 
 test("the viewer's own alert from another office opens nothing in this one", async () => {
-	await member(OTHER_OFFICE, "agent-1", "member");
+	await membership(OTHER_OFFICE, "agent-1", "member");
 	const thread = await guestWrites("elsewhere", OTHER_OFFICE);
 	await store.setOwner(thread, "agent-1", OTHER_OFFICE);
 	const id = await alert("agent-1", thread, { officeId: OTHER_OFFICE });

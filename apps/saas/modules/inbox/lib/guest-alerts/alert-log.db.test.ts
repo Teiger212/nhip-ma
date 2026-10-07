@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 
 import { mockInboxConfig } from "../config";
 import { noDraftAdapter } from "../drafts";
+import { guestMessage, membership } from "../test-fixtures";
 import { testDb, testInboxStore } from "../test-store";
 import type { Store } from "../types";
 import { alertSounds } from "./burst";
@@ -20,17 +21,7 @@ const MINUTE = 60 * 1000;
 const at = new Date("2026-10-05T09:00:00.000Z");
 
 async function thread(store: Store, guestId: string): Promise<string> {
-	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName: null,
-			text: "Xin chào",
-			vendorMessageId: null,
-		},
-		OFFICE,
-	);
+	const { conversation } = await store.upsertInbound(guestMessage(guestId), OFFICE);
 	return conversation.id;
 }
 
@@ -109,23 +100,11 @@ test("old alerts are pruned; recent ones stay to resolve their links", async () 
 	await store.close();
 });
 
-async function member(officeId: string, userId: string, role: string) {
-	await testDb.member.upsert({
-		where: { organizationId_userId: { organizationId: officeId, userId } },
-		create: {
-			id: `m-${officeId}-${userId}`,
-			organizationId: officeId,
-			userId,
-			role,
-			createdAt: at,
-		},
-		update: { role },
-	});
-}
+const member = (officeId: string, userId: string, role: string) =>
+	membership(officeId, userId, role, { at });
 
 test("an operator in two offices opens no thread (ADR 0010), so no office alerts them", async () => {
 	const store = await testInboxStore();
-	await testDb.member.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
 	await member(OFFICE, "agent-1", "member");
 	await member(OFFICE, "agent-2", "member");
 	await member("office-b", "agent-2", "member");
@@ -137,12 +116,6 @@ test("an operator in two offices opens no thread (ADR 0010), so no office alerts
 
 test("officeOperators says who manages: kit owner and admin are managers, a member is not (ADR 0022)", async () => {
 	const store = await testInboxStore();
-	// One office each: a member of two offices opens no thread, so is never alerted.
-	await testDb.member.deleteMany({
-		where: {
-			OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }],
-		},
-	});
 	await member(OFFICE, "agent-1", "member");
 	await member(OFFICE, "agent-2", "admin");
 	await member(OFFICE, "walk-user", "owner");
@@ -155,24 +128,11 @@ test("officeOperators says who manages: kit owner and admin are managers, a memb
 
 test("an Unassigned guest alerts the office's managers and no agent; once assigned, only the owner (ADR 0022)", async () => {
 	const store = await testInboxStore();
-	// One office each: a member of two offices opens no thread, so is never alerted.
-	await testDb.member.deleteMany({
-		where: {
-			OR: [{ organizationId: OFFICE }, { userId: { in: ["agent-1", "agent-2", "walk-user"] } }],
-		},
-	});
 	await member(OFFICE, "agent-1", "member");
 	await member(OFFICE, "agent-2", "member");
 	await member(OFFICE, "walk-user", "admin");
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "unassigned-alerts",
-			guestName: null,
-			text: "Hi",
-			vendorMessageId: null,
-		},
+		guestMessage("unassigned-alerts", { text: "Hi" }),
 		OFFICE,
 	);
 	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
@@ -204,19 +164,11 @@ test("a thread's alerts go with the thread (guest deletion, ADR 0020)", async ()
 
 test("one operator's failed alert never costs the others theirs", async () => {
 	const store = await testInboxStore();
-	await testDb.member.deleteMany({ where: { userId: { in: ["agent-1", "agent-2"] } } });
 	// Managers, so an Unassigned guest alerts both (ADR 0022).
 	await member(OFFICE, "agent-1", "admin");
 	await member(OFFICE, "agent-2", "admin");
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId: "one-fails",
-			guestName: null,
-			text: "Hi",
-			vendorMessageId: null,
-		},
+		guestMessage("one-fails", { text: "Hi" }),
 		OFFICE,
 	);
 	// The store refuses agent-2's alert, as a database error would; everyone else's is written.
@@ -242,7 +194,6 @@ test("one operator's failed alert never costs the others theirs", async () => {
 
 test("each operator's alert is in their language, and the payload names no thread and no guest", async () => {
 	const store = await testInboxStore();
-	await testDb.member.deleteMany({ where: { organizationId: OFFICE } });
 	// Managers, so an Unassigned guest alerts both (ADR 0022).
 	await member(OFFICE, "agent-1", "admin");
 	await member(OFFICE, "agent-2", "owner");
@@ -250,14 +201,7 @@ test("each operator's alert is in their language, and the payload names no threa
 	await testDb.user.update({ where: { id: "agent-2" }, data: { locale: null } });
 	const guestId = "zalo-guest-4471";
 	const { conversation } = await store.upsertInbound(
-		{
-			pipe: "zalo",
-			source: "guest",
-			guestId,
-			guestName: "Minji",
-			text: "안녕하세요",
-			vendorMessageId: null,
-		},
+		guestMessage(guestId, { guestName: "Minji", text: "안녕하세요" }),
 		OFFICE,
 	);
 	const korean = {

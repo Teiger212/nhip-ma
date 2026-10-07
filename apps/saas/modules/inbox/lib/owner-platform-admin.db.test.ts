@@ -1,6 +1,7 @@
 import { beforeEach, expect, test } from "vitest";
 
-import { testDb, testInboxStore } from "./test-store";
+import { account, guestMessage, membership } from "./test-fixtures";
+import { testInboxStore } from "./test-store";
 import type { Store } from "./types";
 
 /**
@@ -13,49 +14,21 @@ const PLATFORM_ADMIN = "platform-admin-owner-pa";
 
 let store: Store;
 
-async function user(id: string, role: string) {
-	await testDb.user.upsert({
-		where: { id },
-		create: {
-			id,
-			name: id,
-			email: `${id}@test.nhip.local`,
-			emailVerified: true,
-			role,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-		update: { role },
-	});
-}
-
-async function member(userId: string, role: string) {
-	await testDb.member.upsert({
-		where: { organizationId_userId: { organizationId: OFFICE, userId } },
-		create: { id: `m-${userId}`, organizationId: OFFICE, userId, role, createdAt: new Date() },
-		update: { role },
-	});
-}
-
 beforeEach(async () => {
 	store = await testInboxStore();
-	await testDb.member.deleteMany({ where: { organizationId: OFFICE } });
-	await user(PLATFORM_ADMIN, "admin");
-	await member(PLATFORM_ADMIN, "owner");
-	await member("agent-1", "member");
+	await account(PLATFORM_ADMIN, { role: "admin" });
+	await membership(OFFICE, PLATFORM_ADMIN, "owner");
+	await membership(OFFICE, "agent-1", "member");
 });
 
 test("a thread can't be given to the platform admin, though they hold a membership", async () => {
 	const { conversation } = await store.upsertInbound(
-		{
+		guestMessage("g-platform-admin", {
 			pipe: "whatsapp",
-			source: "guest",
-			guestId: "g-platform-admin",
 			guestName: "Guest",
 			text: "Hello",
-			vendorMessageId: null,
 			pipeExternalId: "phone-a",
-		},
+		}),
 		OFFICE,
 	);
 	expect(await store.setOwner(conversation.id, PLATFORM_ADMIN, OFFICE)).toBe(false);

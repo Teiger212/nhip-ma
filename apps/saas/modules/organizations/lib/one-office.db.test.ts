@@ -1,6 +1,7 @@
 import { keepOldestMembership } from "@repo/database";
 import { beforeEach, expect, test } from "vitest";
 
+import { account } from "../../inbox/lib/test-fixtures";
 import { testDb } from "../../inbox/lib/test-store";
 
 /** One operator, one office (ADR 0010), held when two invitations are accepted at once. */
@@ -8,20 +9,6 @@ const now = Date.now();
 
 async function office(id: string) {
 	await testDb.organization.create({ data: { id, name: id, slug: id, createdAt: new Date() } });
-}
-
-async function account(id: string, role: string | null = null) {
-	await testDb.user.create({
-		data: {
-			id,
-			name: id,
-			email: `${id}@test.nhip.local`,
-			emailVerified: true,
-			role,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-	});
 }
 
 async function join(id: string, userId: string, organizationId: string, at: number) {
@@ -39,8 +26,6 @@ async function offices(userId: string): Promise<string[]> {
 }
 
 beforeEach(async () => {
-	await testDb.user.deleteMany({ where: { id: { startsWith: "one-" } } });
-	await testDb.organization.deleteMany({ where: { id: { startsWith: "office-one-" } } });
 	await office("office-one-a");
 	await office("office-one-b");
 });
@@ -67,7 +52,7 @@ test("two accepts in the same millisecond settle the same way whichever runs fir
 
 test("one membership is left alone, and the platform admin is exempt", async () => {
 	await account("one-agent");
-	await account("one-admin", "admin");
+	await account("one-admin", { role: "admin" });
 	await join("one-m1", "one-agent", "office-one-a", now);
 	await join("one-a1", "one-admin", "office-one-a", now);
 	await join("one-a2", "one-admin", "office-one-b", now + 5);

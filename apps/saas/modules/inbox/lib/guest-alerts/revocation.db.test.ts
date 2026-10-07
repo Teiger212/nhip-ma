@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { testUtils } from "better-auth/plugins";
 import { beforeEach, expect, test } from "vitest";
 
+import { account } from "../test-fixtures";
 import { testDb, useTestDatabaseForAppClient, waitForLockWaiters } from "../test-store";
 
 /**
@@ -20,24 +21,8 @@ const AGENT = "revoke-agent";
 const ADMIN = "revoke-admin";
 
 beforeEach(async () => {
-	await testDb.user.deleteMany({ where: { id: { in: [AGENT, ADMIN] } } });
-	const now = new Date();
-	for (const [id, role] of [
-		[AGENT, null],
-		[ADMIN, "admin"],
-	] as const) {
-		await testDb.user.create({
-			data: {
-				id,
-				name: id,
-				email: `${id}@test.nhip.local`,
-				emailVerified: true,
-				role,
-				createdAt: now,
-				updatedAt: now,
-			},
-		});
-	}
+	await account(AGENT);
+	await account(ADMIN, { role: "admin" });
 });
 
 async function signIn(userId: string) {

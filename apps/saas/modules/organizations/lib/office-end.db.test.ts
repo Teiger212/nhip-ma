@@ -1,6 +1,7 @@
 import { officeEndHooks } from "@repo/auth/lib/offboarding";
 import { beforeEach, expect, test } from "vitest";
 
+import { account as user, membership } from "../../inbox/lib/test-fixtures";
 import { testDb } from "../../inbox/lib/test-store";
 
 /** No office, no account (ADR 0013), through each path that ends a membership. */
@@ -20,17 +21,7 @@ async function office(id: string) {
 }
 
 async function account(id: string, role: string | null = null) {
-	await testDb.user.create({
-		data: {
-			id,
-			name: id,
-			email: `${id}@test.nhip.local`,
-			emailVerified: true,
-			role,
-			createdAt: now,
-			updatedAt: now,
-		},
-	});
+	await user(id, { role, at: now });
 	await testDb.session.create({
 		data: {
 			userId: id,
@@ -42,9 +33,8 @@ async function account(id: string, role: string | null = null) {
 	});
 }
 
-async function join(userId: string, organizationId: string, role = "member") {
-	await testDb.member.create({ data: { userId, organizationId, role, createdAt: now } });
-}
+const join = (userId: string, organizationId: string, role = "member") =>
+	membership(organizationId, userId, role, { at: now });
 
 /** What the kit does before it calls the remove and leave hooks. */
 async function dropMembership(userId: string, organizationId: string) {
@@ -61,8 +51,6 @@ async function accounts(): Promise<string[]> {
 }
 
 beforeEach(async () => {
-	await testDb.user.deleteMany({ where: { id: { startsWith: "end-" } } });
-	await testDb.organization.deleteMany({ where: { id: { startsWith: "office-end-" } } });
 	await office(OFFICE);
 });
 
