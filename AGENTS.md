@@ -42,11 +42,26 @@ are required; the redirects and the rejected cookie-only locale are in
 (members, see Inbox and Home); `manager@nhip.local`, the office's manager (kit role `admin`,
 sees every thread and reassigns); and `admin@nhip.local`, the platform admin (owner of the
 walk office, also sees the kit's admin area where offices are created and agents invited).
-It writes four invented threads into the walk office once: Minji and Thảo as just written
-(Your turn), Yuki and Alexei three days old (Quiet). A re-run skips existing threads; `pnpm seed --reset`
-rewrites them as of now, which the fresh pair needs after 48 hours. There is no auth
-bypass route and public sign-up is closed (ADR 0010). Inbox stays invented threads +
-`SEND_MODE=mock`.
+It then writes the rich dev and demo dataset (#69, `apps/saas/modules/inbox/lib/dev-seed`),
+all invented: about sixty guests over the last 30 days, each one's story played through the
+app's own calls at its own time (the inbound path, one-shot, alerts, auto-reply, mock CRM,
+assignments, approvals, a guest deletion), with no model call and nothing sent or pushed.
+The walk office (auto-reply on, mock CRM) holds the walk's four demo threads (Minji, Yuki,
+Alexei, Thảo) and about forty more: Unassigned, owned by each agent and by the manager, Your
+turn, Quiet, Sent, written back after a reply, greeted, in CRM, Not in CRM yet (a recorded
+write failure; a guest whose number is on two leads), Won, Lost, lost and written back, an
+unmatched lead, bell rows and the alert log, and one deleted guest (receipt and lead tally).
+A second office, `river-office`, has its own manager (`river-manager@nhip.local`) and agents
+(`river-agent@nhip.local`, `river-agent2@nhip.local`), its auto-reply off and no CRM; nothing
+crosses offices. Guests write on WhatsApp (numbers in North America's 555-01xx fiction range)
+and Zalo, in Vietnamese, English, Korean, Japanese, Russian, French and Chinese, with
+translations and qualifiers filled. It prints every login at the end. A re-run adds nothing;
+`pnpm seed -- --reset` rewrites the seed's own rows as of now, which fresh threads need after
+48 hours. It refuses `VERCEL_ENV=production` and any database that is not local, unless
+`SEED_REMOTE_DATABASE_HOST` names that database's host (the Neon `dev` branch; never staging or
+production). Under `E2E` (the E2E run's own seed) it writes only the walk logins and the four
+demo threads, as before. There is no auth bypass route and public sign-up is closed (ADR 0010).
+Inbox stays invented threads + `SEND_MODE=mock`.
 
 Tests use `supastarter_test` on the same server (`TEST_DATABASE_URL` overrides it). saas
 Vitest has two projects (`apps/saas/vitest.config.ts`): `unit`, whose files run in parallel
@@ -78,17 +93,17 @@ pnpm dev
 
 ### Root commands
 
-| Command                             | Purpose                             |
-| ----------------------------------- | ----------------------------------- |
-| `pnpm dev`                          | Start development tasks             |
-| `pnpm build`                        | Build the workspace                 |
-| `pnpm start`                        | Start built applications            |
-| `pnpm lint` / `pnpm lint:fix`       | Check / fix Oxlint issues           |
-| `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting      |
-| `pnpm type-check`                   | Run workspace type checks           |
-| `pnpm test`                         | Run Vitest workspace tests          |
-| `pnpm seed`                         | Seed invented threads + walk logins |
-| `pnpm clean`                        | Clear Turbo outputs                 |
+| Command                             | Purpose                        |
+| ----------------------------------- | ------------------------------ |
+| `pnpm dev`                          | Start development tasks        |
+| `pnpm build`                        | Build the workspace            |
+| `pnpm start`                        | Start built applications       |
+| `pnpm lint` / `pnpm lint:fix`       | Check / fix Oxlint issues      |
+| `pnpm format` / `pnpm format:check` | Write / check Oxfmt formatting |
+| `pnpm type-check`                   | Run workspace type checks      |
+| `pnpm test`                         | Run Vitest workspace tests     |
+| `pnpm seed`                         | Seed the dev and demo dataset  |
+| `pnpm clean`                        | Clear Turbo outputs            |
 
 Required gates:
 

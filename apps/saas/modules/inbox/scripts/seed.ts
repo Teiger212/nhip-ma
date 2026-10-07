@@ -1,87 +1,22 @@
-import { backfillAnswerOperatorNames, getUserByEmail } from "@repo/database";
-
 import { settleBackgroundWork } from "../lib/background";
+import { SeedRefused } from "../lib/dev-seed/guard";
 import { getRuntime } from "../lib/runtime";
-import { DEMO_THREADS, seedInbox } from "../lib/seed";
-import {
-	WALK_ADMIN_EMAIL,
-	WALK_AGENT2_EMAIL,
-	WALK_MANAGER_EMAIL,
-	WALK_OFFICE_ID,
-	WALK_USER_EMAIL,
-	WALK_USER_PASSWORD,
-} from "../lib/walk-user";
-import { seedWalkOffice } from "./seed-walk-office";
-import { seedWalkAdmin, seedWalkAgent2, seedWalkManager, seedWalkUser } from "./seed-walk-user";
+import { runSeed } from "./run-seed";
 
+/** `pnpm seed [-- --reset]` (#69): see `runSeed`. */
 async function main(): Promise<void> {
-	const { store } = getRuntime();
-
-	const walkUser = await seedWalkUser();
-	const walkAdmin = await seedWalkAdmin();
-	const walkAgent2 = await seedWalkAgent2();
-	const walkManager = await seedWalkManager();
-	const walkOffice = await seedWalkOffice();
-	console.info(
-		`Agent login ${walkUser === "exists" ? "already exists" : "created"}: ${WALK_USER_EMAIL} / ${WALK_USER_PASSWORD}`,
-	);
-	console.info(
-		`Second agent login ${walkAgent2 === "exists" ? "already exists" : "created"}: ${WALK_AGENT2_EMAIL} / ${WALK_USER_PASSWORD}`,
-	);
-	console.info(
-		`Manager login ${walkManager === "exists" ? "already exists" : "created"}: ${WALK_MANAGER_EMAIL} / ${WALK_USER_PASSWORD} (sees every thread, reassigns)`,
-	);
-	console.info(
-		`Admin login ${walkAdmin === "exists" ? "already exists" : "created"}: ${WALK_ADMIN_EMAIL} / ${WALK_USER_PASSWORD} (platform admin; its office membership opens nothing)`,
-	);
-	console.info(
-		`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}\n`,
-	);
-	const named = await backfillAnswerOperatorNames();
-	if (named > 0) console.info(`Answers given their sender's name (ADR 0013): ${named}\n`);
-
-	const reset = process.argv.includes("--reset");
-	const owned = reset
-		? []
-		: await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID, role: "manager" });
-	const existing = DEMO_THREADS.filter((thread) =>
-		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
-	).length;
-	const conversations = await seedInbox(WALK_OFFICE_ID, { reset });
-	for (const conv of conversations) {
-		const q = conv.oneShot?.qualification;
-		const paper = conv.oneShot?.paperwork?.mentioned ? "paperwork flagged" : "no paperwork";
-		console.info(
-			`${conv.id}  ${conv.guestName}  ${q?.rentOrBuy ?? "—"}  ${q?.timeframe ?? "—"}  ${q?.areaOfInterest ?? "—"}  ${paper}`,
-		);
+	try {
+		await runSeed({ env: process.env, reset: process.argv.includes("--reset") });
+	} finally {
+		// The E2E seed's demo threads translate and alert in the background (ADR 0007, 0019): let
+		// that land before the connection is released under it.
+		await settleBackgroundWork();
+		await getRuntime().store.close();
 	}
-	// Every state of assignment (ADR 0022): Minji is agent 1's, Yuki agent 2's, the rest Unassigned
-	// (the manager's alone). Rewritten on every seed, so the demo always starts the same.
-	const agent1 = await getUserByEmail(WALK_USER_EMAIL);
-	const agent2 = await getUserByEmail(WALK_AGENT2_EMAIL);
-	const owners: Record<string, string | null> = {
-		"demo-ko-stay": agent1?.id ?? null,
-		"demo-jp-buy": agent2?.id ?? null,
-	};
-	for (const conv of conversations) {
-		await store.setOwner(conv.id, owners[conv.guestId] ?? null, WALK_OFFICE_ID);
-	}
-	const created = conversations.length - existing;
-	console.info(
-		`\n${conversations.length} demo threads in ${WALK_OFFICE_ID}` +
-			(existing ? ` (wrote ${created}, skipped ${existing} existing)` : " (fresh write)"),
-	);
-	console.info(
-		"Re-run skips threads that already exist. `pnpm seed --reset` rewrites them as of now (the fresh pair goes Quiet after 48 hours).",
-	);
-	console.info("Open http://localhost:3010 — sign in, then Inbox. Nothing here is a real guest.");
-	// Translations (ADR 0007) run in the background after each inbound; let them land
-	// before the connection is released under them.
-	await settleBackgroundWork();
-	await store.close();
 }
 
-main().catch((err) => {
-	console.error(err);
+main().catch((err: unknown) => {
+	// A refusal says why in one sentence; anything else needs its stack.
+	console.error(err instanceof SeedRefused ? err.message : err);
 	process.exit(1);
 });

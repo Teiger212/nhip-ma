@@ -22,3 +22,18 @@ export const WALK_ADMIN_NAME = "Walk Admin";
 export const WALK_OFFICE_ID = "walk-office";
 export const WALK_OFFICE_NAME = "Walk Office";
 export const WALK_OFFICE_SLUG = "walk";
+
+/**
+ * A second office (#69), seeded for local dev and the demo only (never in E2E): its own manager
+ * and two agents, members of it alone (a member of two offices opens nothing, ADR 0010), with
+ * the auto-reply off and no CRM. It shows tenancy: nothing crosses offices.
+ */
+export const RIVER_OFFICE_ID = "river-office";
+export const RIVER_OFFICE_NAME = "River Office";
+export const RIVER_OFFICE_SLUG = "river";
+export const RIVER_MANAGER_EMAIL = "river-manager@nhip.local";
+export const RIVER_MANAGER_NAME = "River Manager";
+export const RIVER_AGENT_EMAIL = "river-agent@nhip.local";
+export const RIVER_AGENT_NAME = "River Agent";
+export const RIVER_AGENT2_EMAIL = "river-agent2@nhip.local";
+export const RIVER_AGENT2_NAME = "River Agent Two";

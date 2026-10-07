@@ -5,8 +5,13 @@ gets a test"). The E2E tools and architecture are still to be planned; until the
 user-driven flow is written here, so the plan starts from a list instead of a memory. When
 a scenario gets its test, link the spec file next to it.
 
-Seed: `pnpm seed --reset` (walk office, mock CRM). Logins: `walk@nhip.local` (agent),
-`admin@nhip.local` (platform admin), password `walkthrough`.
+Seed: the E2E run seeds its own database with `E2E=1`, which writes only the walk logins and
+the walk office's four demo threads (Minji, Yuki, Alexei, Thảo); specs build their own offices
+for everything else. Logins: `walk@nhip.local` (agent), `admin@nhip.local` (platform admin),
+password `walkthrough`. Without `E2E`, `pnpm seed -- --reset` writes the rich dev and demo
+dataset instead (#69, AGENTS.md "Environment"): about sixty guests in every Inbox, CRM and
+alert state, in the walk office (mock CRM) and a second office. A spec run against a dev
+server (`E2E_BASE_URL`) on that dataset sees those extra threads.
 
 ## CRM (ADR 0003, spec #59)
 

@@ -1,6 +1,12 @@
 import { ensureOrganizationMembership, getUserByEmail } from "@repo/database";
 
 import {
+	RIVER_AGENT2_EMAIL,
+	RIVER_AGENT_EMAIL,
+	RIVER_MANAGER_EMAIL,
+	RIVER_OFFICE_ID,
+	RIVER_OFFICE_NAME,
+	RIVER_OFFICE_SLUG,
 	WALK_ADMIN_EMAIL,
 	WALK_AGENT2_EMAIL,
 	WALK_MANAGER_EMAIL,
@@ -37,5 +43,31 @@ export async function seedWalkOffice(): Promise<WalkOfficeSeedResult> {
 	await ensureOrganizationMembership({ organization, userId: agent2.id, role: "member" });
 	// The office's manager is kit `admin`; kit `owner` is the platform admin's inert membership.
 	await ensureOrganizationMembership({ organization, userId: manager.id, role: "admin" });
+	return owner.created ? "created" : "exists";
+}
+
+/**
+ * The second office (#69): the platform admin as its (inert) owner, as for any office they
+ * create, its own manager as kit admin and two agents as members. Its operators belong to it
+ * alone. Seed it before the walk office, so the platform admin's active office stays the walk
+ * office. Idempotent.
+ */
+export async function seedRiverOffice(): Promise<WalkOfficeSeedResult> {
+	const admin = await getUserByEmail(WALK_ADMIN_EMAIL);
+	const manager = await getUserByEmail(RIVER_MANAGER_EMAIL);
+	const agent = await getUserByEmail(RIVER_AGENT_EMAIL);
+	const agent2 = await getUserByEmail(RIVER_AGENT2_EMAIL);
+	if (!admin || !manager || !agent || !agent2) {
+		throw new Error("Seed the second office's logins before the office.");
+	}
+	const organization = { id: RIVER_OFFICE_ID, name: RIVER_OFFICE_NAME, slug: RIVER_OFFICE_SLUG };
+	const owner = await ensureOrganizationMembership({
+		organization,
+		userId: admin.id,
+		role: "owner",
+	});
+	await ensureOrganizationMembership({ organization, userId: manager.id, role: "admin" });
+	await ensureOrganizationMembership({ organization, userId: agent.id, role: "member" });
+	await ensureOrganizationMembership({ organization, userId: agent2.id, role: "member" });
 	return owner.created ? "created" : "exists";
 }
