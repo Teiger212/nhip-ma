@@ -1,4 +1,5 @@
-import { getOrganizationList, getSession } from "@auth/lib/server";
+import { getOrganizationList } from "@auth/lib/server";
+import { requireSession } from "@organizations/lib/require-session";
 import { PricingTable } from "@payments/components/PricingTable";
 import { listPurchases } from "@payments/lib/server";
 import { config as authConfig } from "@repo/auth/config";
@@ -23,12 +24,9 @@ export async function generateMetadata() {
 
 export default async function ChoosePlanPage() {
 	if (!KIT_SCREENS.billing) notFound();
+	// Signed in, checked here and not only by the layout (#231), before anything is read.
+	const session = await requireSession();
 	const t = await getTranslations("choosePlan");
-	const session = await getSession();
-
-	if (!session) {
-		redirect("/login");
-	}
 
 	let organizationId: string | undefined;
 	if (authConfig.organizations.enable && paymentsConfig.billingAttachedTo === "organization") {
