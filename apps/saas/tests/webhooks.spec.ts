@@ -156,52 +156,52 @@ async function sendTheDeliveries(admin: Admin, request: APIRequestContext, newOa
 
 // scenario: docs/e2e-scenarios.md Webhook deliveries 1
 test.describe("Webhook deliveries 1 — every delivery is on record", () => {
-	test("Admin → Webhooks lists a signed message to a held OA as filed to its office, one to an OA no office holds as dropped, an unsigned one as refused, newest first", async ({
-		admin,
-		request,
-		newOa,
-	}) => {
-		const { office, heldOa, dropped, last } = await sendTheDeliveries(admin, request, newOa);
-		const { page } = admin;
+	test(
+		"Admin → Webhooks lists a signed message to a held OA as filed to its office, one to an OA no office holds as dropped, an unsigned one as refused, newest first",
+		{ tag: "@core" },
+		async ({ admin, request, newOa }) => {
+			const { office, heldOa, dropped, last } = await sendTheDeliveries(admin, request, newOa);
+			const { page } = admin;
 
-		// Admin → Webhooks, through the admin menu.
-		await page.goto("/en/admin/organizations");
-		const menuItem = page.getByRole("link", { name: "Webhooks", exact: true });
-		await expect(menuItem, "the admin menu has Webhooks").toBeVisible();
-		await menuItem.click();
-		await expect(page).toHaveURL(/\/en\/admin\/webhooks/);
-		await expect(page.getByTestId("webhook-deliveries")).toBeVisible();
+			// Admin → Webhooks, through the admin menu.
+			await page.goto("/en/admin/organizations");
+			const menuItem = page.getByRole("link", { name: "Webhooks", exact: true });
+			await expect(menuItem, "the admin menu has Webhooks").toBeVisible();
+			await menuItem.click();
+			await expect(page).toHaveURL(/\/en\/admin\/webhooks/);
+			await expect(page.getByTestId("webhook-deliveries")).toBeVisible();
 
-		// Filed: on the OA the office holds, to that office.
-		const filedItem = deliveryTo(page, heldOa);
-		await expect(filedItem).toHaveCount(1);
-		await expect(filedItem).toHaveAttribute("data-outcome", "filed");
-		await expect(filedItem.getByTestId("webhook-delivery-outcome")).toHaveText(
-			OUTCOME.filed(office.name),
-		);
+			// Filed: on the OA the office holds, to that office.
+			const filedItem = deliveryTo(page, heldOa);
+			await expect(filedItem).toHaveCount(1);
+			await expect(filedItem).toHaveAttribute("data-outcome", "filed");
+			await expect(filedItem.getByTestId("webhook-delivery-outcome")).toHaveText(
+				OUTCOME.filed(office.name),
+			);
 
-		// Dropped: no office holds the OA it came to.
-		const droppedItem = deliveryTo(page, dropped.oaId);
-		await expect(droppedItem).toHaveCount(1);
-		await expect(droppedItem).toHaveAttribute("data-outcome", "dropped");
-		await expect(droppedItem.getByTestId("webhook-delivery-outcome")).toHaveText(OUTCOME.dropped);
-		await expect(deliveryTo(page, last.oaId)).toHaveCount(1);
+			// Dropped: no office holds the OA it came to.
+			const droppedItem = deliveryTo(page, dropped.oaId);
+			await expect(droppedItem).toHaveCount(1);
+			await expect(droppedItem).toHaveAttribute("data-outcome", "dropped");
+			await expect(droppedItem.getByTestId("webhook-delivery-outcome")).toHaveText(OUTCOME.dropped);
+			await expect(deliveryTo(page, last.oaId)).toHaveCount(1);
 
-		// Newest first, and the unsigned one is on record as refused, where it came in.
-		await expect(async () => {
-			const listed = await listedDeliveries(page);
-			const at = (oaId: string) => listed.findIndex((d) => d.text.includes(endpointOf(oaId)));
-			const [lastAt, droppedAt, filedAt] = [at(last.oaId), at(dropped.oaId), at(heldOa)];
-			expect(lastAt, "the last delivery is listed").toBeGreaterThanOrEqual(0);
-			expect(lastAt, "the last delivery is above the dropped one").toBeLessThan(droppedAt);
-			expect(droppedAt, "the dropped delivery is above the filed one").toBeLessThan(filedAt);
-			const between = listed.slice(lastAt + 1, droppedAt);
-			expect(
-				between.filter((d) => d.outcome === "refused" && d.badge === OUTCOME.refused),
-				"the unsigned delivery, between the dropped one and the last, is refused (bad signature)",
-			).not.toHaveLength(0);
-		}).toPass({ timeout: 10_000 });
-	});
+			// Newest first, and the unsigned one is on record as refused, where it came in.
+			await expect(async () => {
+				const listed = await listedDeliveries(page);
+				const at = (oaId: string) => listed.findIndex((d) => d.text.includes(endpointOf(oaId)));
+				const [lastAt, droppedAt, filedAt] = [at(last.oaId), at(dropped.oaId), at(heldOa)];
+				expect(lastAt, "the last delivery is listed").toBeGreaterThanOrEqual(0);
+				expect(lastAt, "the last delivery is above the dropped one").toBeLessThan(droppedAt);
+				expect(droppedAt, "the dropped delivery is above the filed one").toBeLessThan(filedAt);
+				const between = listed.slice(lastAt + 1, droppedAt);
+				expect(
+					between.filter((d) => d.outcome === "refused" && d.badge === OUTCOME.refused),
+					"the unsigned delivery, between the dropped one and the last, is refused (bad signature)",
+				).not.toHaveLength(0);
+			}).toPass({ timeout: 10_000 });
+		},
+	);
 });
 
 // scenario: docs/e2e-scenarios.md Webhook deliveries 2

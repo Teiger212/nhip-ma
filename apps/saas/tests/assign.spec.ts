@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
 
@@ -13,6 +13,7 @@ import { AGENT, AGENT_2, MANAGER, WALK_OFFICE_ID } from "./support/seed";
 import type { Api } from "./support/session";
 import { clientIpHeaders, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
+import { sendZaloText } from "./support/zalo";
 
 const copy = ownerCopy("en");
 
@@ -95,14 +96,14 @@ const test = base.extend<{
 				contexts.push(joined);
 				return { label, page: joined.page, api: joined.api, userId: joined.userId };
 			};
-			const agents: [Member, Member] = [
-				await join("agent 1", "member"),
-				await join("agent 2", "member"),
-			];
-			const joinedManagers = [await join("manager 1", "admin")];
-			if (managers === 2) {
-				joinedManagers.push(await join("manager 2", "admin"));
-			}
+			// Everyone joins at once (setup); each keeps their place in the list.
+			const [agent1, agent2, ...joinedManagers] = await Promise.all([
+				join("agent 1", "member"),
+				join("agent 2", "member"),
+				join("manager 1", "admin"),
+				...(managers === 2 ? [join("manager 2", "admin")] : []),
+			]);
+			const agents: [Member, Member] = [agent1, agent2];
 			return {
 				id: office.id,
 				agents,
@@ -151,42 +152,13 @@ async function firstWordOf(request: APIRequestContext, oaId: string): Promise<Gu
 	const guest: Guest = {
 		id,
 		write: async (text = `Hello from ${id}, ${randomUUID().slice(0, 8)}`) => {
-			await zaloWebhook(request, "user_send_text", { from: id, to: oaId, text });
+			await sendZaloText(request, { guestId: id, oaId, text });
 			return text;
 		},
-		echoFromZaloApp: (text) => zaloWebhook(request, "oa_send_text", { from: oaId, to: id, text }),
+		echoFromZaloApp: (text) => sendZaloText(request, { guestId: id, oaId, text, from: "office" }),
 	};
 	await guest.write();
 	return guest;
-}
-
-/** A webhook as Zalo sends and signs it (the E2E env's app and secret). */
-async function zaloWebhook(
-	request: APIRequestContext,
-	eventName: "user_send_text" | "oa_send_text",
-	message: { from: string; to: string; text: string },
-) {
-	const appId = process.env.ZALO_APP_ID;
-	const secret = process.env.ZALO_OA_SECRET_KEY;
-	if (!appId || !secret)
-		throw new Error("ZALO_APP_ID and ZALO_OA_SECRET_KEY come from the E2E env");
-	const timestamp = String(Date.now());
-	const body = JSON.stringify({
-		app_id: appId,
-		event_name: eventName,
-		timestamp,
-		sender: { id: message.from },
-		recipient: { id: message.to },
-		message: { text: message.text, msg_id: randomUUID() },
-	});
-	const mac = createHash("sha256")
-		.update(appId + body + timestamp + secret)
-		.digest("hex");
-	const res = await request.post("/webhooks/zalo", {
-		data: body,
-		headers: { "content-type": "application/json", "X-ZEvent-Signature": `mac=${mac}` },
-	});
-	expect(res.ok(), `the Zalo webhook (${eventName}) is taken (${res.status()})`).toBe(true);
 }
 
 /* ---------------------------------------------------------------- what a person sees */
@@ -448,105 +420,109 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md Assigning leads 1
 test.describe("Assign 1 — a new guest waits in Unassigned, for managers only", () => {
-	test("the manager finds the new guest in the Unassigned view, marked Unassigned in the list and the thread; for both agents it is not listed, counted or searched, its link opens nothing and the API answers 404", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(180_000);
-		const office = await newOffice();
-		const [manager] = office.managers;
-		const guest = await office.newGuest();
-		const threadId = await assignerAs(manager.api).threadOf(guest.id);
+	test(
+		"the manager finds the new guest in the Unassigned view, marked Unassigned in the list and the thread; for both agents it is not listed, counted or searched, its link opens nothing and the API answers 404",
+		{ tag: "@core" },
+		async ({ newOffice }) => {
+			test.setTimeout(180_000);
+			const office = await newOffice();
+			const [manager] = office.managers;
+			const guest = await office.newGuest();
+			const threadId = await assignerAs(manager.api).threadOf(guest.id);
 
-		// The manager: in the Unassigned view, which their Inbox opens on, marked so in the list
-		// and the thread.
-		const { page } = manager;
-		await openInbox(page);
-		await expect(view(page, "Unassigned", 1), "the Inbox opens on Unassigned").toHaveAttribute(
-			"aria-pressed",
-			"true",
-		);
-		const row = rowOf(page, guest);
-		await expect(row, "the new guest is under Unassigned").toBeVisible();
-		await expectOwner(row, "unassigned", "the row says Unassigned");
-		await row.click();
-		await expectOwner(openThread(page), "unassigned", "the thread's header says Unassigned");
+			// The manager: in the Unassigned view, which their Inbox opens on, marked so in the list
+			// and the thread.
+			const { page } = manager;
+			await openInbox(page);
+			await expect(view(page, "Unassigned", 1), "the Inbox opens on Unassigned").toHaveAttribute(
+				"aria-pressed",
+				"true",
+			);
+			const row = rowOf(page, guest);
+			await expect(row, "the new guest is under Unassigned").toBeVisible();
+			await expectOwner(row, "unassigned", "the row says Unassigned");
+			await row.click();
+			await expectOwner(openThread(page), "unassigned", "the thread's header says Unassigned");
 
-		// Each agent: nothing at all in the office's Inbox, the nav counts nothing, and the
-		// thread can't be found or opened.
-		for (const agent of office.agents) {
-			await openInbox(agent.page);
-			for (const name of ["Your turn", "Sent", "All"] as const) {
-				await expect(
-					view(agent.page, name, 0),
-					`${agent.label}: ${name} counts nothing`,
-				).toBeVisible();
+			// Each agent: nothing at all in the office's Inbox, the nav counts nothing, and the
+			// thread can't be found or opened.
+			for (const agent of office.agents) {
+				await openInbox(agent.page);
+				for (const name of ["Your turn", "Sent", "All"] as const) {
+					await expect(
+						view(agent.page, name, 0),
+						`${agent.label}: ${name} counts nothing`,
+					).toBeVisible();
+				}
+				await expect(navCount(agent.page), `${agent.label}: the nav counts nothing`).toHaveCount(0);
+				await expectHasNot(agent, guest, threadId);
 			}
-			await expect(navCount(agent.page), `${agent.label}: the nav counts nothing`).toHaveCount(0);
-			await expectHasNot(agent, guest, threadId);
-		}
-	});
+		},
+	);
 });
 
 // scenario: docs/e2e-scenarios.md Assigning leads 2
 test.describe("Assign 2 — assigning gives the thread to that agent only", () => {
-	test("from the row's Assign to… in the manager's Unassigned view, choosing agent 1 takes the thread out of Unassigned; agent 1 has it in Your turn, marked Yours, agent 2 finds nothing (404); agent 1 approves a reply and the thread stays theirs", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(180_000);
-		const office = await newOffice();
-		const [one, two] = office.agents;
-		const [manager] = office.managers;
-		// Agent 1 goes by a name of their own, so the menu item and the owner flag name them.
-		const oneName = await rename(one);
-		const guest = await office.newGuest();
-		const threadId = await assignerAs(manager.api).threadOf(guest.id);
+	test(
+		"from the row's Assign to… in the manager's Unassigned view, choosing agent 1 takes the thread out of Unassigned; agent 1 has it in Your turn, marked Yours, agent 2 finds nothing (404); agent 1 approves a reply and the thread stays theirs",
+		{ tag: "@core" },
+		async ({ newOffice }) => {
+			test.setTimeout(180_000);
+			const office = await newOffice();
+			const [one, two] = office.agents;
+			const [manager] = office.managers;
+			// Agent 1 goes by a name of their own, so the menu item and the owner flag name them.
+			const oneName = await rename(one);
+			const guest = await office.newGuest();
+			const threadId = await assignerAs(manager.api).threadOf(guest.id);
 
-		// The manager, in Unassigned: the row's Assign to… → agent 1.
-		const { page } = manager;
-		await openInbox(page);
-		await expect(view(page, "Unassigned"), "the manager has an Unassigned view").toBeVisible();
-		await view(page, "Unassigned").click();
-		await expect(view(page, "Unassigned", 1), "the guest waits in Unassigned").toHaveAttribute(
-			"aria-pressed",
-			"true",
-		);
-		await expect(rowOf(page, guest)).toBeVisible();
-		await openAssignFromRow(page, guest);
-		await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
-		await assignMenuItem(page, oneName).click();
-		await expect(rowOf(page, guest), "the thread leaves Unassigned").toHaveCount(0);
-		await expect(view(page, "Unassigned", 0), "Unassigned counts nothing").toBeVisible();
+			// The manager, in Unassigned: the row's Assign to… → agent 1.
+			const { page } = manager;
+			await openInbox(page);
+			await expect(view(page, "Unassigned"), "the manager has an Unassigned view").toBeVisible();
+			await view(page, "Unassigned").click();
+			await expect(view(page, "Unassigned", 1), "the guest waits in Unassigned").toHaveAttribute(
+				"aria-pressed",
+				"true",
+			);
+			await expect(rowOf(page, guest)).toBeVisible();
+			await openAssignFromRow(page, guest);
+			await expect(assignMenuItem(page, oneName), "the menu offers agent 1").toBeVisible();
+			await assignMenuItem(page, oneName).click();
+			await expect(rowOf(page, guest), "the thread leaves Unassigned").toHaveCount(0);
+			await expect(view(page, "Unassigned", 0), "Unassigned counts nothing").toBeVisible();
 
-		// Agent 1: Your turn, theirs.
-		await openInbox(one.page);
-		await expect(view(one.page, "Unassigned"), "an agent has no Unassigned view").toHaveCount(0);
-		await search(one.page, guest.id);
-		await expect(view(one.page, "Your turn", 1)).toHaveAttribute("aria-pressed", "true");
-		const row = rowOf(one.page, guest);
-		await expect(row, "the guest is waiting on agent 1").toBeVisible();
-		await expectOwner(row, "mine", "agent 1's row says Yours");
+			// Agent 1: Your turn, theirs.
+			await openInbox(one.page);
+			await expect(view(one.page, "Unassigned"), "an agent has no Unassigned view").toHaveCount(0);
+			await search(one.page, guest.id);
+			await expect(view(one.page, "Your turn", 1)).toHaveAttribute("aria-pressed", "true");
+			const row = rowOf(one.page, guest);
+			await expect(row, "the guest is waiting on agent 1").toBeVisible();
+			await expectOwner(row, "mine", "agent 1's row says Yours");
 
-		// Agent 2: nothing.
-		await expectHasNot(two, guest, threadId);
+			// Agent 2: nothing.
+			await expectHasNot(two, guest, threadId);
 
-		// Agent 1 answers: the reply goes out, and the thread is still theirs.
-		await openInbox(one.page);
-		await search(one.page, guest.id);
-		await rowOf(one.page, guest).click();
-		await expect(openThread(one.page).getByText(guest.id).first()).toBeVisible();
-		await one.page.getByRole("textbox", { name: "Reply" }).fill(`Reply to ${guest.id}`);
-		const sent = one.page.waitForResponse((r) => r.url().endsWith("/approve"));
-		await one.page.getByTestId("approve-and-send").click();
-		expect((await sent).status(), "agent 1's reply is sent").toBe(200);
-		await view(one.page, "Sent").click();
-		await expect(view(one.page, "Sent", 1), "the answered thread is under Sent").toHaveAttribute(
-			"aria-pressed",
-			"true",
-		);
-		await expectOwner(rowOf(one.page, guest), "mine", "after the reply, still agent 1's");
-		await expectHas(manager, guest, { other: oneName });
-		await expectHasNot(two, guest, threadId);
-	});
+			// Agent 1 answers: the reply goes out, and the thread is still theirs.
+			await openInbox(one.page);
+			await search(one.page, guest.id);
+			await rowOf(one.page, guest).click();
+			await expect(openThread(one.page).getByText(guest.id).first()).toBeVisible();
+			await one.page.getByRole("textbox", { name: "Reply" }).fill(`Reply to ${guest.id}`);
+			const sent = one.page.waitForResponse((r) => r.url().endsWith("/approve"));
+			await one.page.getByTestId("approve-and-send").click();
+			expect((await sent).status(), "agent 1's reply is sent").toBe(200);
+			await view(one.page, "Sent").click();
+			await expect(view(one.page, "Sent", 1), "the answered thread is under Sent").toHaveAttribute(
+				"aria-pressed",
+				"true",
+			);
+			await expectOwner(rowOf(one.page, guest), "mine", "after the reply, still agent 1's");
+			await expectHas(manager, guest, { other: oneName });
+			await expectHasNot(two, guest, threadId);
+		},
+	);
 });
 
 // scenario: docs/e2e-scenarios.md Assigning leads 3

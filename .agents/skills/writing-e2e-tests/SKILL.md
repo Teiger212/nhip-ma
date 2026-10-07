@@ -61,6 +61,8 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
      `scripts/e2e-server.sh --stop` when you're done.
 
   The database is seeded once per build, as in one CI run, so specs that pass in CI pass here.
+- A quick local check: about ten critical-path tests carry the `@core` tag (#223). Against the
+  running build, `E2E_REUSE=1 pnpm exec playwright test --grep @core`. CI still runs everything.
 - Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (`test`, `expect`, the
   `admin` fixture: create offices, invite, clean up), `session-state.ts` (`signInContext`), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
   `offices.ts`, `operators.ts` (`joinOffice`), `data.ts` (`uniqueEmail`), `seed.ts` (seed
@@ -69,7 +71,8 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 - An agent or manager of an office of the test's own is setup: `joinOffice(admin, browser,
   officeId, "member" | "admin", tag)` (`support/operators.ts`, #186). It invites them through the
   API, gives them a signed-up account and a minted session without the sign-up page, accepts the
-  invitation through the kit's API and opens their Inbox. Their password is `NEW_PASSWORD`, for a
+  invitation through the kit's API. Their `page` starts blank (#223): open the Inbox, or whatever
+  the test looks at, before reading it. Their password is `NEW_PASSWORD`, for a
   spec that signs them in elsewhere. Sign up through the invitation page (`invitee.ts`) only
   where signing up or joining is what the spec proves (the Auth specs, Team).
 - The support helpers that touch the database directly (`pipes.ts`, `alerts.ts`, `crm.ts`,

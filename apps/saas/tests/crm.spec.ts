@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -21,6 +21,7 @@ import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
 import { appOrigin } from "./support/session";
+import { sendZaloText } from "./support/zalo";
 
 /**
  * The thread's CRM status and turn, as an operator reads them (inbox), and the platform admin's
@@ -80,7 +81,7 @@ type Guest = {
 	write: (text?: string) => Promise<string>;
 };
 
-/** An operator of an office, signed in in a browser of their own, on their Inbox. */
+/** An operator of an office, signed in in a browser of their own. */
 type Operator = Joined;
 
 /** An office of the test's own, with a Zalo OA of its own. */
@@ -133,8 +134,11 @@ const test = base.extend<{
 				contexts.push(newcomer);
 				return newcomer;
 			};
-			const joinedAgent = agent ? await join("member") : undefined;
-			const joinedManager = manager ? await join("admin") : undefined;
+			// The agent and the manager join at once (setup).
+			const [joinedAgent, joinedManager] = await Promise.all([
+				agent ? join("member") : undefined,
+				manager ? join("admin") : undefined,
+			]);
 			const assigner = joinedManager && assignerAs(joinedManager.api);
 			return {
 				...office,
@@ -144,7 +148,7 @@ const test = base.extend<{
 						id,
 						texts: [],
 						write: async (text = `Hello from ${id}, ${randomUUID().slice(0, 8)}`) => {
-							await zaloWebhook(request, { from: id, to: oaId, text });
+							await sendZaloText(request, { guestId: id, oaId, text });
 							guest.texts.push(text);
 							return text;
 						},
@@ -180,34 +184,6 @@ const test = base.extend<{
 /** A vendor id (OA, guest) no other test, repeat or earlier run uses. */
 function uniqueId(kind: string): string {
 	return `e2e-crm-${kind}-${randomUUID()}`;
-}
-
-/** A guest's text as Zalo sends and signs it (the E2E env's app and secret). */
-async function zaloWebhook(
-	request: APIRequestContext,
-	message: { from: string; to: string; text: string },
-) {
-	const appId = process.env.ZALO_APP_ID;
-	const secret = process.env.ZALO_OA_SECRET_KEY;
-	if (!appId || !secret)
-		throw new Error("ZALO_APP_ID and ZALO_OA_SECRET_KEY come from the E2E env");
-	const timestamp = String(Date.now());
-	const body = JSON.stringify({
-		app_id: appId,
-		event_name: "user_send_text",
-		timestamp,
-		sender: { id: message.from },
-		recipient: { id: message.to },
-		message: { text: message.text, msg_id: randomUUID() },
-	});
-	const mac = createHash("sha256")
-		.update(appId + body + timestamp + secret)
-		.digest("hex");
-	const res = await request.post("/webhooks/zalo", {
-		data: body,
-		headers: { "content-type": "application/json", "X-ZEvent-Signature": `mac=${mac}` },
-	});
-	expect(res.ok(), `the Zalo webhook is taken (${res.status()})`).toBe(true);
 }
 
 /**
@@ -358,17 +334,18 @@ function expectNoticeTaken(status: number, what: string) {
 }
 
 /**
- * The agent opens the guest's thread until its header says the guest is in the CRM, by name.
- * The lead is written in the background, after the guest's message is taken.
+ * The operator opens the guest's thread, and its header says the guest is in the CRM, by name.
+ * The lead is written in the background, after the guest's message is taken: wait for the
+ * office's CRM to hold it, then open the thread once; the open thread shows the link on its next
+ * poll.
  */
-async function expectInCrmOnThread(page: Page, guest: Guest) {
-	await expect(async () => {
-		await openThreadOf(page, guest);
-		await expect(
-			openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
-			"the thread header says the guest is in the CRM",
-		).toBeVisible({ timeout: 3_000 });
-	}, "the thread header says In CRM: <the guest's name>").toPass({ timeout: 45_000 });
+async function expectInCrmOnThread(page: Page, officeId: string, guest: Guest) {
+	await expectLeadAppears(officeId, guest, `${guest.id} becomes a lead in the CRM`);
+	await openThreadOf(page, guest);
+	await expect(
+		openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+		"the thread header says In CRM: <the guest's name>",
+	).toBeVisible(WITHIN_A_POLL);
 }
 
 /** The open thread's header. */
@@ -560,77 +537,72 @@ async function expectCardShowsTokenSetNeverToken(admin: Admin, officeId: string,
 
 // scenario: docs/e2e-scenarios.md CRM 1
 test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
-	test("on the mock CRM: the thread header says In CRM with the guest's name to the agent and the manager, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 1 mock", { crm: "mock", manager: true });
-		const { page, api } = office.agent;
+	test(
+		"on the mock CRM: the thread header says In CRM with the guest's name to the agent and the manager, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again",
+		{ tag: "@core" },
+		async ({ newOffice }) => {
+			test.setTimeout(150_000);
+			const office = await newOffice("CRM 1 mock", { crm: "mock", manager: true });
+			const { page, api } = office.agent;
 
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
+			const guest = await office.newGuest();
+			await office.assignToAgent(guest);
 
-		// The agent opens the thread: its header says the guest is in the CRM, by name. The lead
-		// is written in the background, so the agent opens it again until it shows.
-		await expect(async () => {
-			await openThreadOf(page, guest);
+			// The agent opens the thread: its header says the guest is in the CRM, by name.
+			await expectInCrmOnThread(page, office.id, guest);
+
+			// The manager sees it too, on the same thread.
+			const manager = office.manager.page;
+			await openThreadOf(manager, guest, { all: true });
 			await expect(
-				openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
-				"the thread header says the guest is in the CRM",
-			).toBeVisible({ timeout: 3_000 });
-		}, "the thread header says In CRM: <the guest's name>").toPass({ timeout: 45_000 });
+				manager.getByTestId("owner-filter"),
+				"they are the office's manager (only a manager filters by owner, Assign 9)",
+			).toBeVisible();
+			await expect(
+				openThread(manager).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+				"the manager's thread header says the guest is in the CRM",
+			).toBeVisible();
 
-		// The manager sees it too, on the same thread.
-		const manager = office.manager.page;
-		await openThreadOf(manager, guest, { all: true });
-		await expect(
-			manager.getByTestId("owner-filter"),
-			"they are the office's manager (only a manager filters by owner, Assign 9)",
-		).toBeVisible();
-		await expect(
-			openThread(manager).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
-			"the manager's thread header says the guest is in the CRM",
-		).toBeVisible();
+			// In the CRM: exactly one lead for the guest, theirs, linked to the thread, with no
+			// message text in it.
+			const threadId = await threadIdOf(api, guest);
+			const [lead, ...more] = await leadsOf(office.id, guest);
+			expect(lead, "the CRM holds a lead for the guest").toBeDefined();
+			expect(more, "and only one").toHaveLength(0);
+			expect(lead.name, "the lead carries the guest's name").toBe(nameOf(guest));
+			expect(lead.zaloUserId, "the lead carries the guest's Zalo user id").toBe(guest.id);
+			expect(lead.pipe, "the lead says the guest came on Zalo").toBe("zalo");
+			const link = new URL(lead.threadUrl);
+			expect(link.pathname, "the lead links to the Inbox").toMatch(/^(\/(en|vi))?\/inbox\/?$/);
+			expect(link.searchParams.get("thread"), "the link names the guest's thread").toBe(threadId);
+			for (const text of guest.texts) {
+				expect(JSON.stringify(lead), "no message text in the lead").not.toContain(text);
+			}
 
-		// In the CRM: exactly one lead for the guest, theirs, linked to the thread, with no
-		// message text in it.
-		const threadId = await threadIdOf(api, guest);
-		const [lead, ...more] = await leadsOf(office.id, guest);
-		expect(lead, "the CRM holds a lead for the guest").toBeDefined();
-		expect(more, "and only one").toHaveLength(0);
-		expect(lead.name, "the lead carries the guest's name").toBe(nameOf(guest));
-		expect(lead.zaloUserId, "the lead carries the guest's Zalo user id").toBe(guest.id);
-		expect(lead.pipe, "the lead says the guest came on Zalo").toBe("zalo");
-		const link = new URL(lead.threadUrl);
-		expect(link.pathname, "the lead links to the Inbox").toMatch(/^(\/(en|vi))?\/inbox\/?$/);
-		expect(link.searchParams.get("thread"), "the link names the guest's thread").toBe(threadId);
-		for (const text of guest.texts) {
-			expect(JSON.stringify(lead), "no message text in the lead").not.toContain(text);
-		}
+			// The link opens the guest's thread.
+			await page.goto(lead.threadUrl);
+			await expect(
+				openThread(page).getByText(guest.texts[0], { exact: true }),
+				"the lead's link opens the guest's thread",
+			).toBeVisible();
 
-		// The link opens the guest's thread.
-		await page.goto(lead.threadUrl);
-		await expect(
-			openThread(page).getByText(guest.texts[0], { exact: true }),
-			"the lead's link opens the guest's thread",
-		).toBeVisible();
-
-		// The guest writes again; once a later guest's lead is in (the office's background work
-		// has caught up), the first guest still has exactly one lead, still without message text.
-		await guest.write(`Is it still available? ${randomUUID().slice(0, 8)}`);
-		const later = await office.newGuest();
-		await expectLeadAppears(office.id, later, "a later guest's lead arrives in the CRM");
-		const leads = await leadsOf(office.id, guest);
-		expect(leads, "the guest writing again makes no second lead").toHaveLength(1);
-		expect(leads[0].id, "it is the same lead").toBe(lead.id);
-		for (const text of guest.texts) {
-			expect(JSON.stringify(leads[0]), "no message text in the lead").not.toContain(text);
-		}
-		expect(
-			(await mockCrmLeads(office.id)).map((l) => l.zaloUserId),
-			"the office's CRM holds one lead per guest",
-		).toEqual([guest.id, later.id]);
-	});
+			// The guest writes again; once a later guest's lead is in (the office's background work
+			// has caught up), the first guest still has exactly one lead, still without message text.
+			await guest.write(`Is it still available? ${randomUUID().slice(0, 8)}`);
+			const later = await office.newGuest();
+			await expectLeadAppears(office.id, later, "a later guest's lead arrives in the CRM");
+			const leads = await leadsOf(office.id, guest);
+			expect(leads, "the guest writing again makes no second lead").toHaveLength(1);
+			expect(leads[0].id, "it is the same lead").toBe(lead.id);
+			for (const text of guest.texts) {
+				expect(JSON.stringify(leads[0]), "no message text in the lead").not.toContain(text);
+			}
+			expect(
+				(await mockCrmLeads(office.id)).map((l) => l.zaloUserId),
+				"the office's CRM holds one lead per guest",
+			).toEqual([guest.id, later.id]);
+		},
+	);
 
 	test("with no CRM: a new guest's thread header says nothing about a CRM, and no lead is made", async ({
 		newOffice,
@@ -686,7 +658,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		// A new guest writes: they become a lead in the mock CRM, and the agent sees it.
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
-		await expectInCrmOnThread(office.agent.page, guest);
+		await expectInCrmOnThread(office.agent.page, office.id, guest);
 		const leads = await leadsOf(office.id, guest);
 		expect(leads, "the office's CRM holds one lead for the guest").toHaveLength(1);
 		expect(leads[0].name, "the lead carries the guest's name").toBe(nameOf(guest));
@@ -701,7 +673,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		await (await openCrmSetting(admin, office.id)).choose("mock");
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
-		await expectInCrmOnThread(page, guest);
+		await expectInCrmOnThread(page, office.id, guest);
 
 		// The admin chooses None (a fresh page, so the earlier "CRM saved." is gone).
 		await (await openCrmSetting(admin, office.id)).choose("none");

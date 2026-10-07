@@ -33,16 +33,18 @@ async function expectAdminSidebarOnly(page: Page) {
 
 // scenario: docs/e2e-scenarios.md Roles 1
 test.describe("Roles 1 — the platform admin lands in the admin area", () => {
-	test("signing in as the platform admin opens Admin → Organizations, with no Inbox or Home", async ({
-		page,
-	}) => {
-		const login = new LoginPage(page);
-		await login.goto("en");
-		await login.signIn(PLATFORM_ADMIN.email, PLATFORM_ADMIN.password);
+	test(
+		"signing in as the platform admin opens Admin → Organizations, with no Inbox or Home",
+		{ tag: "@core" },
+		async ({ page }) => {
+			const login = new LoginPage(page);
+			await login.goto("en");
+			await login.signIn(PLATFORM_ADMIN.email, PLATFORM_ADMIN.password);
 
-		await expectAdminArea(page);
-		await expectAdminSidebarOnly(page);
-	});
+			await expectAdminArea(page);
+			await expectAdminSidebarOnly(page);
+		},
+	);
 });
 
 // scenario: docs/e2e-scenarios.md Roles 2

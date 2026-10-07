@@ -6,22 +6,26 @@ test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI
 	// rule: docs/adr/0010-office-assignment.md "Public sign-up is closed: an account exists
 	// because it was invited into an office." Also AGENTS.md: password login for the seed logins,
 	// and ADR 0013: a login can reset its password.
-	test("ADR 0010 — offers signing in, never creating an account", async ({ page }) => {
-		const login = new LoginPage(page);
-		await login.goto("en");
+	test(
+		"ADR 0010 — offers signing in, never creating an account",
+		{ tag: "@core" },
+		async ({ page }) => {
+			const login = new LoginPage(page);
+			await login.goto("en");
 
-		await expect(login.email).toBeVisible();
-		await login.switchMode("password");
-		await expect(login.password).toBeVisible();
-		await expect(login.submit).toHaveText("Sign in");
-		await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
+			await expect(login.email).toBeVisible();
+			await login.switchMode("password");
+			await expect(login.password).toBeVisible();
+			await expect(login.submit).toHaveText("Sign in");
+			await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
 
-		// Public sign-up is closed: nothing on the page leads to creating an account.
-		await expect(
-			page.getByRole("link", { name: /create an account|sign up|register/i }),
-		).toHaveCount(0);
-		await expect(page.getByText(/don't have an account/i)).toHaveCount(0);
-	});
+			// Public sign-up is closed: nothing on the page leads to creating an account.
+			await expect(
+				page.getByRole("link", { name: /create an account|sign up|register/i }),
+			).toHaveCount(0);
+			await expect(page.getByText(/don't have an account/i)).toHaveCount(0);
+		},
+	);
 
 	// rule: AGENTS.md password login; docs/e2e-scenarios.md Auth 3 names the magic link as a way
 	// to sign in (for an existing account only).
