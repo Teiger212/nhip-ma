@@ -124,8 +124,9 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 							className={cn(
 								props.className,
 								rowClassName,
-								/* 44px to tap in the phone's top bar; 32px in the desktop strip, so it fits (#234). */
-								"min-h-11 min-w-11 gap-2 lg:min-h-8 lg:min-w-8 justify-center hover:bg-sidebar-accent",
+								/* 44px to tap in the phone's top bar; 32px in the desktop strip, so it fits, and
+								   held at the strip's edge while the sidebar collapses (#234). */
+								"min-h-11 min-w-11 gap-2 lg:min-h-8 lg:min-w-8 lg:self-start justify-center hover:bg-sidebar-accent",
 							)}
 							aria-label="User menu"
 						>

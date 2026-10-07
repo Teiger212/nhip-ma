@@ -11,7 +11,9 @@ import { AppShell } from "./AppShell";
 const SIDEBAR_COOKIE = "sidebar_state";
 
 export async function AppWrapper({ children }: PropsWithChildren) {
-	const sidebarOpen = (await cookies()).get(SIDEBAR_COOKIE)?.value !== "false";
+	// Read as the kit reads it: open with no cookie, otherwise open only when it says "true".
+	const saved = (await cookies()).get(SIDEBAR_COOKIE)?.value;
+	const sidebarOpen = saved === undefined || saved === "true";
 
 	return <AppShell sidebarOpen={sidebarOpen}>{children}</AppShell>;
 }

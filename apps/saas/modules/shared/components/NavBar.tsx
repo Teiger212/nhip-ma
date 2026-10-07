@@ -34,7 +34,7 @@ import { UserMenu } from "@shared/components/UserMenu";
 import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { GlobeIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import {
 	buildSettingsSections,
@@ -66,11 +66,15 @@ const SECTION_LABEL_KEYS = {
 
 /**
  * A label in the sidebar fades with its width instead of vanishing at once (#234); in the strip
- * the 32px item clips it, and it stays the item's accessible name. The phone sheet never
- * collapses, so it always shows.
+ * the 32px item clips it, and it stays the item's accessible name. It truncates while the width
+ * moves, so what follows it (the count) stays in view. The phone sheet never collapses.
  */
 const FADING_LABEL =
-	"whitespace-nowrap transition-opacity duration-220 ease-out group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none";
+	"min-w-0 truncate transition-opacity duration-220 ease-out group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none";
+
+/** What closes a row (the Coming soon badge) fades the same way, at its full width. */
+const FADING_END =
+	"ml-auto shrink-0 transition-opacity duration-220 ease-out group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none";
 
 const subscribeToNothing = () => () => {};
 
@@ -91,9 +95,15 @@ function SidebarToggle() {
 	const { state } = useSidebar();
 	const shortcut = useSidebarShortcut();
 	const collapsed = state === "collapsed";
+	// The hint is read when the tooltip opens, so a click doesn't flip it while it fades out.
+	const [hintCollapsed, setHintCollapsed] = useState(collapsed);
 
 	return (
-		<Tooltip>
+		<Tooltip
+			onOpenChange={(open) => {
+				if (open) setHintCollapsed(collapsed);
+			}}
+		>
 			<TooltipTrigger
 				render={
 					<SidebarTrigger
@@ -103,8 +113,8 @@ function SidebarToggle() {
 					/>
 				}
 			/>
-			<TooltipContent side={collapsed ? "right" : "bottom"}>
-				{collapsed
+			<TooltipContent side={hintCollapsed ? "right" : "bottom"}>
+				{hintCollapsed
 					? t("app.menu.expandSidebarHint", { shortcut })
 					: t("app.menu.collapseSidebarHint", { shortcut })}
 			</TooltipContent>
@@ -145,7 +155,7 @@ function NavItemLink({
 						<span
 							data-test="nav-your-turn-count"
 							aria-label={countLabel}
-							className="group-data-[collapsible=icon]:top-0 group-data-[collapsible=icon]:-right-1 ml-auto flex group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:bg-sidebar group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
+							className="group-data-[collapsible=icon]:top-0 group-data-[collapsible=icon]:-right-1 ml-auto flex shrink-0 group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:z-20 group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:bg-sidebar group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
 						>
 							<Badge status="warning" numeric size={collapsed ? "sm" : "md"}>
 								{count}
@@ -181,7 +191,7 @@ function NavItemComingSoon({
 				<SidebarMenuButton variant="chip" disabled data-test={`nav-${item.id}`}>
 					<Icon />
 					<span className={FADING_LABEL}>{label}</span>
-					<span className={cn("ml-auto", FADING_LABEL)}>
+					<span className={FADING_END}>
 						<Badge>{soon}</Badge>
 					</span>
 				</SidebarMenuButton>
@@ -232,7 +242,7 @@ export function NavBar() {
 			mobileDescription={t("app.menu.openNavigation")}
 		>
 			<SidebarHeader>
-				<div className="gap-2 flex items-center group-data-[collapsible=icon]:flex-col">
+				<div className="gap-2 flex items-center group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-start">
 					<SidebarMenu className="min-w-0 flex-1">
 						<SidebarMenuItem>
 							<SidebarMenuButton
