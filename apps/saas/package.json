@@ -41,6 +41,7 @@
 		"@tanstack/react-table": "catalog:",
 		"@teispace/next-themes": "catalog:",
 		"cropperjs": "catalog:",
+		"eld": "2.1.0",
 		"hono": "catalog:",
 		"input-otp": "catalog:",
 		"js-cookie": "catalog:",

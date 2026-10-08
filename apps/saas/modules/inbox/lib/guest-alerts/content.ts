@@ -1,5 +1,6 @@
+import { languageName } from "../language-name";
 import { PIPE_NAMES } from "../pipe-names";
-import type { GuestLanguage, Pipe } from "../types";
+import type { Pipe } from "../types";
 
 export type AlertLocale = "en" | "vi";
 
@@ -26,14 +27,21 @@ export function alertLink(locale: AlertLocale, alertId: string): string {
  * body is the pipe alone.
  */
 export function guestAlertContent(
-	guest: { guestName: string | null; pipe: Pipe; guestLanguage: GuestLanguage | null },
+	guest: { guestName: string | null; pipe: Pipe; guestLanguage: string | null },
 	t: AlertTranslate,
+	locale = "en",
 ): { title: string; body: string } {
 	const name = guest.guestName?.trim();
 	const title = name ? t("alerts.waiting", { name }) : t("alerts.waitingUnnamed");
 	const pipe = PIPE_NAMES[guest.pipe];
+	// The guest language, named whatever it is (#245): "Zalo · French".
 	const body = guest.guestLanguage
-		? t("alerts.body", { pipe, language: t(`guestLanguage.${guest.guestLanguage}`) })
+		? t("alerts.body", {
+				pipe,
+				language: languageName(guest.guestLanguage, locale, (language) =>
+					t(`guestLanguage.${language}`),
+				),
+			})
 		: pipe;
 	return { title, body };
 }

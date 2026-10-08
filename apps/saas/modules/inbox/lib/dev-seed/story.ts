@@ -22,7 +22,8 @@ export type Actor = "agent" | "agent2" | "manager";
 /**
  * The message in each operator language (ADR 0007). The seed writes the ones the app would
  * translate (`needsTranslation`): never into the message's own language, so an English message
- * carries only `vi`, and French or Chinese (which read as English) only `vi` too.
+ * carries only `vi`; and none for a guest whose language Nhịp doesn't support (#245): French or
+ * Chinese carry none.
  */
 export type Translations = { en?: string; vi?: string };
 

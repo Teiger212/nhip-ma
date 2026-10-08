@@ -1,3 +1,4 @@
+import { isSupportedLanguage, languageName, namedLanguage } from "./language-name";
 import type { Conversation, GuestLanguage, Paperwork, Qualification } from "./types";
 
 export type CribTranslate = (key: string, values?: Record<string, string>) => string;
@@ -5,6 +6,7 @@ export type CribTranslate = (key: string, values?: Record<string, string>) => st
 export function formatConversationCrib(
 	conversation: Pick<Conversation, "oneShot">,
 	t: CribTranslate,
+	locale = "en",
 ): string | null {
 	if (!conversation.oneShot) {
 		return null;
@@ -13,25 +15,39 @@ export function formatConversationCrib(
 	return formatCribNotes(
 		{
 			language: conversation.oneShot.language,
+			guestLanguage: namedLanguage(conversation.oneShot),
 			qualification: conversation.oneShot.qualification,
 			paperwork: conversation.oneShot.paperwork,
 		},
 		t,
+		locale,
 	);
 }
 
+/**
+ * The operator note, in the interface language. It names the language the reply is in; for a
+ * guest language Nhịp doesn't support, it names that language and says the reply is in English
+ * (#245).
+ */
 export function formatCribNotes(
 	input: {
 		language: GuestLanguage;
+		/** The guest language, named (#245); `language` when absent. */
+		guestLanguage?: string;
 		qualification: Qualification;
 		paperwork: Paperwork | null | undefined;
 	},
 	t: CribTranslate,
+	locale = "en",
 ): string {
 	const facts = cribFacts(input.qualification, t);
 	const paperwork = input.paperwork?.mentioned ? ` ${t("paperworkFlag")}` : "";
-	return t("crib.body", {
-		language: t(`guestLanguage.${input.language}`),
+	const guestLanguage = input.guestLanguage ?? input.language;
+	const unsupported = !isSupportedLanguage(guestLanguage);
+	return t(unsupported ? "crib.bodyUnsupported" : "crib.body", {
+		language: languageName(unsupported ? guestLanguage : input.language, locale, (language) =>
+			t(`guestLanguage.${language}`),
+		),
 		facts: facts.length > 0 ? facts.join(", ") : t("crib.emptyFacts"),
 		paperwork,
 	});

@@ -1,5 +1,6 @@
 import { runInBackground } from "./background";
 import { detectLanguage } from "./language";
+import { isSupportedLanguage } from "./language-name";
 import type { Runtime } from "./runtime";
 import {
 	type Conversation,
@@ -40,7 +41,19 @@ export function translationRetryDue(
 	return now - new Date(failure.lastFailedAt).getTime() >= TRANSLATION_RETRY_AFTER_MS;
 }
 
-export function needsTranslation(message: Message, locale: OperatorLanguage): boolean {
+/**
+ * Whether a guest message gets a translation into `locale`. Not on a thread whose guest
+ * language Nhịp doesn't support (#245): the thread's language decides, not each message, so a
+ * French guest's mostly English line isn't translated either. The message shows a note instead.
+ */
+export function needsTranslation(
+	message: Message,
+	locale: OperatorLanguage,
+	guestLanguage?: string | null,
+): boolean {
+	if (guestLanguage && !isSupportedLanguage(guestLanguage)) {
+		return false;
+	}
 	return (
 		message.direction === "in" &&
 		!message.translations[locale] &&
@@ -53,8 +66,9 @@ export function scheduleTranslation(
 	officeId: string,
 	message: Message,
 	locale: OperatorLanguage,
+	guestLanguage?: string | null,
 ): Promise<void> | null {
-	if (runtime.drafts.provider === "none" || !needsTranslation(message, locale)) {
+	if (runtime.drafts.provider === "none" || !needsTranslation(message, locale, guestLanguage)) {
 		return null;
 	}
 	const id = key(message.id, locale);
@@ -87,9 +101,14 @@ export function scheduleTranslation(
 }
 
 /** At ingest: the new guest message, into every operator language it is not already in. */
-export function scheduleTranslations(runtime: Runtime, officeId: string, message: Message): void {
+export function scheduleTranslations(
+	runtime: Runtime,
+	officeId: string,
+	message: Message,
+	guestLanguage?: string | null,
+): void {
 	for (const locale of OperatorLanguage.options) {
-		void scheduleTranslation(runtime, officeId, message, locale);
+		void scheduleTranslation(runtime, officeId, message, locale, guestLanguage);
 	}
 }
 
@@ -101,14 +120,16 @@ export function scheduleTranslations(runtime: Runtime, officeId: string, message
  */
 export function scheduleMissingTranslations(
 	runtime: Runtime,
-	conversation: Pick<Conversation, "id" | "officeId" | "messages">,
+	conversation: Pick<Conversation, "id" | "officeId" | "messages" | "oneShot">,
 	locale: OperatorLanguage,
 ): void {
 	if (runtime.drafts.provider === "none") {
 		return;
 	}
+	const guestLanguage = conversation.oneShot?.guestLanguage;
 	const missing = conversation.messages.filter(
-		(message) => needsTranslation(message, locale) && !inFlight.has(key(message.id, locale)),
+		(message) =>
+			needsTranslation(message, locale, guestLanguage) && !inFlight.has(key(message.id, locale)),
 	);
 	if (missing.length === 0) {
 		return;
@@ -123,7 +144,7 @@ export function scheduleMissingTranslations(
 		const now = Date.now();
 		for (const message of missing) {
 			if (translationRetryDue(byMessage.get(message.id), now)) {
-				void scheduleTranslation(runtime, conversation.officeId, message, locale);
+				void scheduleTranslation(runtime, conversation.officeId, message, locale, guestLanguage);
 			}
 		}
 	});

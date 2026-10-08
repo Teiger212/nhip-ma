@@ -1,5 +1,6 @@
-import { detectLanguage } from "./language";
-import type { Qualification } from "./types";
+import { identifyLanguage } from "./language";
+import { isSupportedLanguage } from "./language-name";
+import type { GuestLanguage, Qualification } from "./types";
 
 function bounded(source: string): RegExp {
 	return new RegExp(`(?<![A-Za-z])(?:${source})(?![A-Za-z])`, "iu");
@@ -134,7 +135,8 @@ export function emptyQualification(): Qualification {
 }
 
 export function extractFromInbound(text: string): {
-	language: ReturnType<typeof detectLanguage>;
+	language: GuestLanguage;
+	guestLanguage: string;
 	qualification: Qualification;
 	paperwork: { mentioned: boolean; flag: string | null };
 } {
@@ -142,10 +144,13 @@ export function extractFromInbound(text: string): {
 	const inbound = String(text || "")
 		.normalize("NFC")
 		.trim();
-	const language = detectLanguage(inbound);
+	// The guest language, named (#245); Nhịp writes in it if supported, else in English.
+	const guestLanguage = identifyLanguage(inbound);
+	const language = isSupportedLanguage(guestLanguage) ? guestLanguage : "en";
 	if (!inbound) {
 		return {
 			language,
+			guestLanguage,
 			qualification: emptyQualification(),
 			paperwork: { mentioned: false, flag: null },
 		};
@@ -154,6 +159,7 @@ export function extractFromInbound(text: string): {
 	const mentioned = PAPERWORK_RE.test(inbound);
 	return {
 		language,
+		guestLanguage,
 		qualification: {
 			areaOfInterest: firstMatch(AREAS, inbound),
 			nationality: firstMatch(NATIONALITIES, inbound),

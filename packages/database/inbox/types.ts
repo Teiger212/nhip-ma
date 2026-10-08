@@ -8,6 +8,7 @@ import type {
 	DraftSource,
 	GuestDeletionReason,
 	GuestLanguage,
+	LanguageCode,
 	MessageDirection,
 	MessageSource,
 	OperatorLanguage,
@@ -57,7 +58,13 @@ export type Draft = {
 };
 
 export type OneShot = {
+	/** The language Nhịp writes to the guest in: the guest language if supported, else English. */
 	language: GuestLanguage;
+	/**
+	 * The guest language, named whatever it is (#245). Absent on a one-shot from before it, which
+	 * reads as `language`.
+	 */
+	guestLanguage?: LanguageCode;
 	qualification: Qualification;
 	paperwork: Paperwork;
 	draft: Draft;
@@ -208,8 +215,11 @@ export type ConversationSummary = Pick<
 > & {
 	/** The thread's linked lead, as `Conversation`'s without where it opens in the CRM. */
 	crm: ConversationCrm | null;
-	/** The guest's language as the one-shot detected it; null until it has run. */
-	guestLanguage: GuestLanguage | null;
+	/**
+	 * The guest language as the one-shot detected it, named whatever it is (#245): an ISO 639-1
+	 * code, supported or not. Null until it has run.
+	 */
+	guestLanguage: LanguageCode | null;
 	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
 	lastInboundText: string;
 };

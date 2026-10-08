@@ -130,26 +130,31 @@ test(
 			),
 		).toBeGreaterThanOrEqual(2);
 
-		// Both pipes; Vietnamese, English, Korean, Japanese and Russian, with French and Chinese
-		// (which read as English) among the English.
+		// Both pipes; Vietnamese, English, Korean, Japanese and Russian, and French and Chinese,
+		// named though Nhịp doesn't support them (#245).
 		const all = [
 			...walk,
 			...(await viewOf(RIVER_MANAGER_EMAIL, RIVER_OFFICE_ID, "manager")).threads,
 		];
 		expect(new Set(all.map((thread) => thread.pipe))).toEqual(new Set(["whatsapp", "zalo"]));
 		expect(new Set(all.map((thread) => thread.guestLanguage))).toEqual(
-			new Set(["vi", "en", "ko", "ja", "ru"]),
+			new Set(["vi", "en", "ko", "ja", "ru", "fr", "zh"]),
 		);
 		expect(all.some((thread) => /Bonjour|Salut/.test(thread.lastInboundText))).toBe(true);
 		expect(all.some((thread) => /[一-鿿]/.test(thread.lastInboundText))).toBe(true);
-		// Qualifiers filled, and every guest message translated wherever the app would translate it.
+		// Qualifiers filled, and every guest message translated wherever the app would translate it:
+		// never on a French or Chinese thread (#245).
 		for (const summary of all) {
 			const thread = await store.getOfficeConversation(summary.officeId, summary.id);
 			expect(thread?.oneShot?.qualification.areaOfInterest, summary.guestId).toBeTruthy();
 			expect(thread?.oneShot?.qualification.rentOrBuy, summary.guestId).toBeTruthy();
+			const guestLanguage = thread?.oneShot?.guestLanguage;
 			for (const message of thread?.messages ?? []) {
-				expect(needsTranslation(message, "en"), message.text).toBe(false);
-				expect(needsTranslation(message, "vi"), message.text).toBe(false);
+				expect(needsTranslation(message, "en", guestLanguage), message.text).toBe(false);
+				expect(needsTranslation(message, "vi", guestLanguage), message.text).toBe(false);
+				if (guestLanguage === "fr" || guestLanguage === "zh") {
+					expect(message.translations, message.text).toEqual({});
+				}
 			}
 		}
 

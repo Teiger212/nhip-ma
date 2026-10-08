@@ -920,6 +920,61 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    hold exactly that, never text matching "Thanks for writing", on opening the thread and again,
    reopened, after the guest's second message).
 
+## Guest language (ADR 0021 R4 as amended by #245, ADR 0025)
+
+A guest who writes in a language Nhịp doesn't support is named in that language, with a note
+that it isn't supported, instead of reading as English. What the guest gets is unchanged: the
+English greeting and an English suggested reply. Their messages aren't translated.
+
+**How these run.** As First greeting: guests write through signed Zalo webhooks to an office of
+the test's own, with a manager and an invited agent, the auto-reply on, `SEND_MODE=mock` and no
+`DRAFT_*` key, so no thread shows a translation line at all and the reply box holds a template.
+The interface language (EN or VI) stands for the office language (ADR 0025) until that setting
+is built. The VI copy is pending a native read (#78).
+
+1. **A guest writes in French: the thread names French and says it isn't supported.** A guest
+   writes "Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget
+   $3000/month." The manager opens the thread.
+   - **The details' Language row** reads "French · not supported, replies in English". In VI:
+     "tiếng Pháp · chưa hỗ trợ, trả lời bằng tiếng Anh". It never reads "English" alone.
+   - **The message** shows "French isn't supported: no translation" where a translation would
+     sit, under the guest's text. In VI: "Chưa hỗ trợ tiếng Pháp: không dịch".
+   - **The operator note** names French and says the reply is in English: "Guest writes French,
+     not supported: reply is in English." In VI: "Khách viết tiếng Pháp, chưa hỗ trợ: trả lời
+     bằng tiếng Anh."
+   - **What the guest gets is English.** The auto-reply is the English template, label
+     included ("Auto-reply from …: a colleague will continue with you right here."). The reply
+     box holds the English follow-up template ("Thanks for your message. A colleague will get
+     back to you here shortly.").
+   - **A mixed second message** ("Oui, merci ! Photos please, and is a viewing possible this
+     Saturday?") also shows the no-translation note: the thread's language decides, not each
+     message.
+   - **Home's Waiting now** names the guest's language as "French" (VI: "tiếng Pháp"), not
+     "English".
+
+   Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 1; once in `/en/` and once in
+   `/vi/`, each with an office of its own and a manager, no agent: nothing here is an agent's.
+   The manager opens the thread by its `?thread=` link. The Language row is the details' term
+   "Language" and the value beside it, matched exactly. "Under each message" is the open thread's
+   text, read top to bottom: the guest's first message, the note, the auto-reply's label, the mixed
+   message, the note; the note shows exactly twice, so not on the auto-reply. The operator note is
+   a paragraph of the open thread that opens with the scenario's sentence. What the guest gets is
+   checked first and stops the test: the auto-reply (read as the manager, through the API) starts
+   "Thanks for writing" and ends with the English label, marked Template, and the reply box holds
+   the English follow-up exactly. Home's entry is judged by its link's name: it holds "French"
+   (VI "tiếng Pháp") and not "English" (VI "tiếng Anh")).
+
+2. **A guest writes in Korean: the thread reads as before.** A guest writes "안녕하세요, 서호에서
+   방 두 개짜리 아파트를 월세로 찾고 있어요." The Language row reads "Korean" with no note, no
+   message shows a "isn't supported" note, the operator note reads "Reply is in Korean.", and the
+   auto-reply is in Hangul. Home's Waiting now names "Korean".
+   Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 2; in `/en/` only. The Language
+   row reads exactly "Korean"; "no note" is nothing in the open thread reading "isn't supported",
+   "not supported" or "chưa hỗ trợ", judged once the row reads Korean; the operator note opens
+   "Reply is in Korean."; the auto-reply and its label hold Hangul and the label isn't the English
+   one; Home's entry names Korean and not English. It passed before Guest language 1 was built: a
+   guard against the change reaching supported languages).
+
 ## Guest deletion (ADR 0020, spec #85)
 
 A guest asks the agency to delete their data; a manager does it from the thread (Vietnam's

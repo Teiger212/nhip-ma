@@ -16,6 +16,13 @@ export const GuestLanguage = z.enum(["en", "vi", "ja", "ko", "ru"]);
 export type GuestLanguage = z.infer<typeof GuestLanguage>;
 
 /**
+ * Any language a guest may write in, as its ISO 639-1 code (#245): "fr", "zh". The five above
+ * are the ones Nhịp supports; any other is named, and Nhịp writes back in English.
+ */
+export const LanguageCode = z.string().regex(/^[a-z]{2,3}$/);
+export type LanguageCode = z.infer<typeof LanguageCode>;
+
+/**
  * The operator's language (CONTEXT.md): the target of every translation and the language
  * of the operator note. EN or VI, from the operator's locale setting.
  */

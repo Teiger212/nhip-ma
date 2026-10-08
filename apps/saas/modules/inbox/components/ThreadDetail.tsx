@@ -99,7 +99,11 @@ export function ThreadDetail({
 			<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 				<div className="max-w-3xl gap-3 p-3 min-w-0 mx-auto flex flex-col">
 					{conversation.messages.map((message) => (
-						<ThreadMessage key={message.id} message={message} />
+						<ThreadMessage
+							key={message.id}
+							message={message}
+							guestLanguage={conversation.oneShot?.guestLanguage ?? null}
+						/>
 					))}
 					<div className="border-t" />
 					<ExtractFields conversation={conversation} />

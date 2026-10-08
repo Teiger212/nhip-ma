@@ -118,9 +118,7 @@ const guests: SeedGuest[] = [
 			writes(
 				daysAgo(5),
 				"Bonjour ! Je suis française, je cherche un 2 bedroom to rent à Ba Dinh, budget $1400/month, next month.",
-				{
-					vi: "Xin chào! Tôi là người Pháp, tìm thuê căn 2 phòng ngủ ở Ba Đình, ngân sách 1400 USD/tháng, từ tháng sau.",
-				},
+				{},
 			),
 			assigns(daysAgo(5) - minutesAgo(4), "agent"),
 			replies(
@@ -138,9 +136,7 @@ const guests: SeedGuest[] = [
 			writes(
 				daysAgo(9),
 				"你好，我是 Chinese，想在 Cau Giay rent 一套 studio，预算 $600/month，this week 能看吗？",
-				{
-					vi: "Xin chào, tôi là người Trung Quốc, muốn thuê một studio ở Cầu Giấy, ngân sách 600 USD/tháng. Tuần này xem được không?",
-				},
+				{},
 			),
 			assigns(daysAgo(9) - minutesAgo(10), "agent"),
 			replies(

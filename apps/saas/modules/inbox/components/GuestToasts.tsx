@@ -3,7 +3,7 @@
 import { isInboxPath } from "@i18n/lib/locale-path";
 import { LocaleLink } from "@i18n/routing";
 import { toast } from "@repo/ui";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { type AlertTranslate, guestAlertContent } from "../lib/guest-alerts/content";
@@ -34,6 +34,7 @@ const toastId = (threadId: string) => `guest-${threadId}`;
  */
 export function GuestToasts({ enabled }: { enabled: boolean }) {
 	const t = useTranslations("inbox");
+	const locale = useLocale();
 	const list = useConversations({ enabled });
 	const { userId, role } = useOfficeRole({ enabled });
 	const listShown = useInboxListShown();
@@ -77,6 +78,7 @@ export function GuestToasts({ enabled }: { enabled: boolean }) {
 			const content = guestAlertContent(
 				{ guestName: thread.guestName, pipe: thread.pipe, guestLanguage: thread.guestLanguage },
 				t as unknown as AlertTranslate,
+				locale,
 			);
 			const name = thread.guestName?.trim();
 			const title =
@@ -122,7 +124,7 @@ export function GuestToasts({ enabled }: { enabled: boolean }) {
 			open.current.set(thread.id, kind);
 			while (open.current.size > GUEST_TOASTS_MAX) close(open.current.keys().next().value!);
 		}
-	}, [list.data, userId, role, listShown, t]);
+	}, [list.data, userId, role, listShown, t, locale]);
 
 	return null;
 }

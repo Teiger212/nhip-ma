@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, cn, toast } from "@repo/ui";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 
@@ -68,6 +68,7 @@ function turnState(thread: ConversationSummary): string {
  */
 export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const t = useTranslations("inbox");
+	const locale = useLocale();
 	const disconnectedPipes = [...new Set(useDisconnectedEndpoints().map((item) => item.pipe))];
 	const conversationsQuery = useConversations();
 	const approve = useApproveAndSend();
@@ -221,7 +222,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	}, [rowState, detailState, detailFetching, refetchDetail]);
 	const { reply, edited, setReply, dropEdit } = useReplyDraft(selected);
 	const cribNotes = selected
-		? formatConversationCrib(selected, (key, values) => t(key, values))
+		? formatConversationCrib(selected, (key, values) => t(key, values), locale)
 		: null;
 	const canApprove = Boolean(selected?.unansweredInboundId) && reply.trim().length > 0;
 

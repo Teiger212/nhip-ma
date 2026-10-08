@@ -108,3 +108,6 @@ catalog:
   usehooks-ts: ^3.1.1
   vitest: ^4.1.10
   zod: ^4.4.3
+
+patchedDependencies:
+  eld@2.1.0: patches/eld@2.1.0.patch

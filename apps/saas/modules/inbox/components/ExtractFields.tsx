@@ -1,22 +1,31 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { arrangeExtractRows, type ExtractRow } from "../lib/extract-rows";
+import { isSupportedLanguage, languageName } from "../lib/language-name";
 import type { Conversation } from "../lib/types";
 
 /** Translate one extract row for display. Presence was decided upstream from the value. */
 function useExtractRowText() {
 	const t = useTranslations("inbox");
+	const locale = useLocale();
 	return (row: ExtractRow): { label: string; value: string } => {
 		const label = t(`fields.${row.id}`);
 		if (!row.present) {
 			return { label, value: row.id === "paperwork" ? t("fields.noneMentioned") : t("missing") };
 		}
 		switch (row.id) {
-			case "language":
-				return { label, value: t(`guestLanguage.${String(row.value)}`) };
+			case "language": {
+				// An unsupported guest language is named, with the note that replies are English (#245).
+				const code = String(row.value);
+				const name = languageName(code, locale, (language) => t(`guestLanguage.${language}`));
+				return {
+					label,
+					value: isSupportedLanguage(code) ? name : t("languageUnsupported", { language: name }),
+				};
+			}
 			case "rentOrBuy":
 				return { label, value: t(`intent.${String(row.value)}`) };
 			case "inVietnamNow":

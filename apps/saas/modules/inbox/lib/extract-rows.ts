@@ -1,3 +1,4 @@
+import { namedLanguage } from "./language-name";
 import type { Conversation, Qualification } from "./types";
 
 /**
@@ -53,7 +54,12 @@ export function arrangeExtractRows(
 ): ArrangedExtractRows {
 	const paperworkMentioned = Boolean(oneShot?.paperwork?.mentioned);
 	const rows: ExtractRow[] = [
-		{ id: "language", value: oneShot?.language ?? null, present: Boolean(oneShot?.language) },
+		// The guest language, named (#245), whether Nhịp supports it or not.
+		{
+			id: "language",
+			value: oneShot ? namedLanguage(oneShot) : null,
+			present: Boolean(oneShot?.language),
+		},
 		...qualificationRows(oneShot?.qualification),
 		{
 			id: "paperwork",

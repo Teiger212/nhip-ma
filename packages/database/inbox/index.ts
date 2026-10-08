@@ -19,6 +19,7 @@ export {
 	GUEST_DELETION_NOTE_MAX,
 	GuestDeletionReason,
 	GuestLanguage,
+	LanguageCode,
 	MessageDirection,
 	MessageSource,
 	OperatorLanguage,

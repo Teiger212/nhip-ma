@@ -4,6 +4,7 @@ import { LocaleLink } from "@i18n/routing";
 import { GuestMark, ThreadListState } from "@inbox/components/ThreadParts";
 import { displayName } from "@inbox/lib/display-name";
 import { useConversations, useOfficeRole } from "@inbox/lib/inbox-queries";
+import { languageName } from "@inbox/lib/language-name";
 import { waitingNow } from "@inbox/lib/queue";
 import { Badge, Button, Card, Skeleton } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
@@ -94,7 +95,12 @@ export function WaitingNow() {
 										<span className="mt-0.5 gap-1.5 text-xs flex items-center text-muted-foreground">
 											<Badge status="neutral">{tInbox(`pipes.${conversation.pipe}`)}</Badge>
 											{language ? (
-												<span className="truncate">{tInbox(`guestLanguage.${language}`)}</span>
+												<span className="truncate">
+													{/* The guest language, named whatever it is (#245). */}
+													{languageName(language, locale, (supported) =>
+														tInbox(`guestLanguage.${supported}`),
+													)}
+												</span>
 											) : null}
 										</span>
 									</span>

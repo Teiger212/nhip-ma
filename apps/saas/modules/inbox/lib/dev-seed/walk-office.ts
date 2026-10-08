@@ -98,9 +98,7 @@ const unassigned: SeedGuest[] = [
 			writes(
 				hoursAgo(3),
 				"Bonjour ! Je suis française, currently in Hanoi. Je cherche un 2 bedroom to rent à Tay Ho, budget $1800/month, à partir de next month.",
-				{
-					vi: "Xin chào! Tôi là người Pháp, hiện đang ở Hà Nội. Tôi tìm thuê căn 2 phòng ngủ ở Tây Hồ, ngân sách 1800 USD/tháng, từ tháng sau.",
-				},
+				{},
 			),
 		],
 	},
@@ -113,9 +111,7 @@ const unassigned: SeedGuest[] = [
 			writes(
 				hoursAgo(18),
 				"你好！我是 Chinese，想在 Times City rent 一套 3 bedroom 公寓，预算 $2200/month，next week 可以看房吗？",
-				{
-					vi: "Xin chào! Tôi là người Trung Quốc, muốn thuê một căn hộ 3 phòng ngủ ở Times City, ngân sách 2200 USD/tháng. Tuần sau xem nhà được không?",
-				},
+				{},
 			),
 		],
 	},
@@ -403,9 +399,7 @@ const firstAgent: SeedGuest[] = [
 			writes(
 				hoursAgo(50),
 				"Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget $3000/month.",
-				{
-					vi: "Xin chào, tôi là người Pháp. Tôi tìm thuê căn 3 phòng ngủ ở Ba Đình, ngân sách 3000 USD/tháng.",
-				},
+				{},
 			),
 			assigns(hoursAgo(49.9), "agent"),
 			replies(
@@ -413,9 +407,11 @@ const firstAgent: SeedGuest[] = [
 				"agent",
 				"Bonjour Claire! We have a 3-bedroom in Ba Dinh at $2900/month, newly renovated. Would you like photos first?",
 			),
-			writes(hoursAgo(3), "Oui, merci ! Photos please, and is a viewing possible this Saturday?", {
-				vi: "Vâng, cảm ơn! Cho tôi xem ảnh nhé, và thứ Bảy này có xem nhà được không?",
-			}),
+			writes(
+				hoursAgo(3),
+				"Oui, merci ! Photos please, and is a viewing possible this Saturday?",
+				{},
+			),
 		],
 	},
 	{
@@ -571,9 +567,7 @@ const secondAgent: SeedGuest[] = [
 			writes(
 				daysAgo(7),
 				"Salut ! Je suis français, je cherche un studio to rent dans le Old Quarter, budget $700/month, à partir de next week.",
-				{
-					vi: "Chào bạn! Tôi là người Pháp, tìm thuê một studio ở Phố Cổ, ngân sách 700 USD/tháng, từ tuần sau.",
-				},
+				{},
 			),
 			assigns(daysAgo(7) - minutesAgo(5), "agent2"),
 			replies(
@@ -591,9 +585,7 @@ const secondAgent: SeedGuest[] = [
 			writes(
 				daysAgo(10),
 				"您好！我从 Singapore 来，想在 Ecopark buy 一套 2 bedroom 公寓，预算 $250,000 左右。Can foreigners buy here?",
-				{
-					vi: "Xin chào! Tôi đến từ Singapore, muốn mua một căn hộ 2 phòng ngủ ở Ecopark, ngân sách khoảng 250.000 USD. Người nước ngoài có được mua ở đây không?",
-				},
+				{},
 			),
 			assigns(daysAgo(10) - minutesAgo(10), "agent2"),
 			replies(

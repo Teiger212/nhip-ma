@@ -3,6 +3,7 @@
 import { Badge, cn } from "@repo/ui";
 import { useTranslations } from "next-intl";
 
+import { isSupportedLanguage, languageName } from "../lib/language-name";
 import { formatInboxTimestamp } from "../lib/time";
 import type { Message } from "../lib/types";
 import { useOperatorLanguage } from "./ThreadParts";
@@ -17,12 +18,24 @@ const SOURCE_KEYS = {
 	"auto-reply": "autoReply",
 } as const;
 
-export function ThreadMessage({ message }: { message: Message }) {
+export function ThreadMessage({
+	message,
+	guestLanguage = null,
+}: {
+	message: Message;
+	/** The thread's guest language, named (#245); null before the one-shot has run. */
+	guestLanguage?: string | null;
+}) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
 	const inbound = message.direction === "in";
 	// Rendered as text, never as markup (ADR 0007): a React text node cannot carry HTML.
 	const translation = inbound ? message.translations?.[locale] : undefined;
+	// A guest language Nhịp doesn't support gets no translation; a note says so in its place (#245).
+	const untranslated =
+		inbound && !translation && guestLanguage && !isSupportedLanguage(guestLanguage)
+			? languageName(guestLanguage, locale, (language) => t(`guestLanguage.${language}`))
+			: null;
 	return (
 		<div
 			data-test="message"
@@ -63,6 +76,10 @@ export function ThreadMessage({ message }: { message: Message }) {
 						{t("translation")}
 					</span>
 					{translation}
+				</div>
+			) : untranslated ? (
+				<div className="mt-1.5 pt-1.5 text-xs leading-relaxed border-t border-dashed text-muted-foreground">
+					{t("noTranslation", { language: untranslated })}
 				</div>
 			) : null}
 		</div>
