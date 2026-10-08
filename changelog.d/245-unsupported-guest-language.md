@@ -10,4 +10,5 @@
   Waiting now and the alerts name French too. The guest still gets the English greeting and an
   English suggested reply. Their messages aren't translated: each shows "French isn't supported:
   no translation" where the translation would be. The VI copy is pending a native read (#78).
-  The walk office's French and Chinese guests show it after `pnpm seed -- --reset`.
+  A new guest's CRM lead records the named language too ("fr"), not English. The walk office's
+  French and Chinese guests show it after `pnpm seed -- --reset`.

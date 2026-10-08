@@ -249,7 +249,9 @@ the five reads as English".
   guest.
 - **The thread says it.** The details' Language row names the language with a note ("French
   · not supported, replies in English"). The operator note says the guest writes French and
-  the reply is in English. Home's Waiting now and the alerts name the real language.
+  the reply is in English. Home's Waiting now and the alerts name the real language. So does
+  the guest's new lead in the office's CRM (ADR 0003): its language is the named one ("fr"),
+  never the reply's English.
 - **No translation; a note instead.**
   - A guest message on a thread in an unsupported language is not translated, even where a
     model is configured.
