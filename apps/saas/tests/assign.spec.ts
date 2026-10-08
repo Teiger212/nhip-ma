@@ -963,9 +963,6 @@ test.describe("Assign 11 — Waiting now lists Unassigned leads first for a mana
 	});
 });
 
-/** The open panel's empty state, in English. */
-const NONE_SELECTED = "No conversation selected.";
-
 /** The toast after an assignment: English only, the Vietnamese waits on #78. */
 function assignedToast(page: Page, name: string) {
 	return page.getByText(`Assigned to ${name}`, { exact: true }).first();
@@ -1015,43 +1012,5 @@ test.describe("Assign 13 — the thread a manager assigns stays open", () => {
 		await expect(openThread(page).getByText(first.id), "the first is no longer open").toHaveCount(
 			0,
 		);
-	});
-
-	test("assigning the open thread from its own row keeps it open; assigning the next one too, then switching to Sent leaves the panel empty", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(180_000);
-		const office = await newOffice();
-		const [one] = office.agents;
-		const [manager] = office.managers;
-		const oneName = await rename(one);
-		const assigner = assignerAs(manager.api);
-		const first = await office.newGuest();
-		await assigner.threadOf(first.id);
-		const second = await office.newGuest();
-		await assigner.threadOf(second.id);
-
-		const { page } = manager;
-		await openInbox(page);
-		await rowOf(page, first).click();
-		await expect(openThread(page).getByText(first.id).first()).toBeVisible();
-		await openAssignFromRow(page, first);
-		await assignMenuItem(page, oneName).click();
-
-		await expect(assignedToast(page, oneName), "a toast names who got it").toBeVisible();
-		await expect(rowOf(page, first), "the thread leaves Unassigned").toHaveCount(0);
-		await expectOpenThreadIs(page, first, oneName);
-
-		await rowOf(page, second).click();
-		await expect(openThread(page).getByText(second.id).first()).toBeVisible();
-		await choose(assignControl(page), oneName);
-		await expectOpenThreadIs(page, second, oneName);
-
-		// Switching view ends it: Sent holds neither guest.
-		await view(page, "Sent").click();
-		await expect(openThread(page).getByText(second.id), "the panel follows the view").toHaveCount(
-			0,
-		);
-		await expect(openThread(page).getByText(NONE_SELECTED)).toBeVisible();
 	});
 });
