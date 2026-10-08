@@ -1079,6 +1079,79 @@ is built. The VI copy is pending a native read (#78).
    It passed before Guest language 1 was built: a guard against the change reaching supported
    languages).
 
+## Office language (ADR 0025, #256)
+
+An office works in one language, English or Vietnamese, which its manager sets. Guest messages
+are translated once, into it. An office whose manager hasn't set one is in English (decided by
+Eyal on 2026-10-08).
+
+**How these run.** As First greeting: offices of the test's own, never the walk office (a
+changed language would reach every other spec), each with a manager and an invited agent, guests
+writing through signed Zalo webhooks, and translation against the stub model ("Stub translation,
+Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
+
+1. **The manager sets the office language.** The manager opens the office's settings, General
+   tab. An "Office language" setting (VI "Ngôn ngữ văn phòng") reads "English": no manager has
+   set one yet. The manager chooses "Tiếng Việt". A toast says "Office language saved", and after
+   a reload the setting still reads "Tiếng Việt".
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 1; the setting is the
+   General tab's combobox named "Office language", its value read within the trigger's text (the
+   trigger also holds its arrow) as "English" and not "Tiếng Việt", then the reverse; both options
+   are offered; the toast is the exact text "Office language saved"; after the reload, the `/vi/`
+   page's combobox named "Ngôn ngữ văn phòng" reads "Tiếng Việt" too. The VI toast is not
+   checked, nor that there is no Save button: the toast and the reload prove it saved on choice).
+2. **An agent can't set it.** The agent's General tab doesn't exist for them (Team 8's
+   not-found page). The office language API refuses the agent's change
+   (`PUT /api/office/language` with `{ "language": "vi" }`, 403) and a signed-out caller's
+   (401), and the language is unchanged. The agent can read it
+   (`GET /api/office/language` answers `{ "language": "en" }`): their open thread shows its
+   translations in it.
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 2; the not-found page is
+   Team 8's: 404, "Page not found", no "Office language" on it; the PUTs carry the app's Origin
+   and follow no redirect; "unchanged" is the manager's and the agent's `GET` both answering
+   `{ "language": "en" }` after the refusals; "their open thread" is a Korean guest the manager
+   gave the agent, opened by its link in `/vi/`, so the line into English, and none into
+   Vietnamese, shows the office deciding rather than the agent's interface. The agent's
+   not-found half held before #256: a guard).
+3. **The platform admin's page for an office doesn't show it.** As the platform admin, Admin →
+   Organizations → the office shows no "Office language" (VI "Ngôn ngữ văn phòng") anywhere on
+   the page, and the office language API refuses the platform admin (403), as the inbox does.
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 3; `/en/admin/organizations/<id>`
+   with no "Office language" and `/vi/…` with no "Ngôn ngữ văn phòng", nor a combobox so named,
+   judged once the office's Connections card has shown. The API's `GET` and `PUT` both answer 403;
+   the `PUT` sends `{ "language": "en" }` only: the platform admin's session may name the walk
+   office, and a build that wrongly took it must not move the walk office for every other spec.
+   The page half held before #256: a guard).
+4. **One translation, in the office language.** The manager sets the office to Vietnamese.
+   - A guest writes in Korean: the open thread shows the translation line "Stub translation,
+     Korean to Vietnamese.", and no line into English. It reads so in `/en/` too: the
+     translation follows the office, not the reader's interface.
+   - A guest writes in Vietnamese: their message shows no translation line.
+   - In an office left at the default, a Korean message shows "Stub translation, Korean to
+     English.", in `/vi/` too.
+
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 4, two tests, each with an
+   office of its own; the manager sets Vietnamese through `PUT /api/office/language` (setup: 1
+   proves the setting). The line is looked for in the guest's bubble (`data-test="message"`),
+   within a poll; "no line into English" is no "Stub translation, … to English." anywhere in the
+   open thread, the auto-reply's bubble included; the thread is opened by its `?thread=` link in
+   `/vi/`, then in `/en/`. The Vietnamese guest writes first and their thread is opened once
+   before the Korean line is awaited; "no translation line" is judged on reopening it in `/en/`
+   after the Korean line has shown: neither the "Translation" label nor any "Stub translation" in
+   their bubble. The default office's Korean thread is read in `/vi/`: the English line, and no
+   line into Vietnamese).
+
+5. **After a change, an older thread is translated when it's opened.** In an English office, a
+   guest writes in Korean, and the thread shows "Stub translation, Korean to English.". The
+   manager switches the office to Vietnamese. Opening that thread again shows "Stub translation,
+   Korean to Vietnamese." (a model call then, counted against the office's daily translation
+   cap); the English line doesn't show.
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 5; read in `/en/` both times,
+   so an interface-led line can't pass the second read; the switch is the manager's `PUT`, as in
+   4; "opening again" is leaving for Home and opening the thread by its link; the new line within
+   a poll, and no "… to English." line anywhere in the thread. Not judged: the daily cap's count,
+   which nothing a person sees shows).
+
 ## Guest deletion (ADR 0020, spec #85)
 
 A guest asks the agency to delete their data; a manager does it from the thread (Vietnam's
