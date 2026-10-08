@@ -8,8 +8,8 @@ import { formatInboxTimestamp } from "../lib/time";
 
 /**
  * The only send control (ADR 0006): one button that approves the reply for the open guest
- * message, next to what the last attempt came to. The status is decided in
- * `sendStatusFor`; this only words it.
+ * message, next to what the last attempt came to: the last row of the reply box docked under the
+ * conversation (#248). The status is decided in `sendStatusFor`; this only words it.
  */
 export function SendBar({
 	status,
@@ -41,7 +41,7 @@ export function SendBar({
 	const warn = Boolean(blockedReason) || status.kind === "error" || status.kind === "unknown";
 	const quiet = !blockedReason && status.kind === "none";
 	return (
-		<div className="px-3 py-2 gap-3 flex shrink-0 items-center justify-between border-t bg-muted/40">
+		<div className="gap-3 flex items-center justify-between">
 			<output
 				data-test="send-status"
 				aria-live="polite"

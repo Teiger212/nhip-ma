@@ -188,8 +188,10 @@ is renamed.
   (`draft`, `translate`), each with its own model (ADR 0024).
 - **Daily cap**: how many model calls of one task an office gets in a day, midnight to
   midnight in Asia/Ho_Chi_Minh (ADR 0024). Past it, the task falls back.
-- **Operator note**: the agent-language summary of facts and flags. Not shown to the
-  guest, never invents Vietnamese law, and is not a translation.
+- **Operator note**: one line in the agent's language beside the reply box: the language the
+  reply is in, and not to interview the guest. The guest's facts and the paperwork flag are in
+  the guest details beside it (#248). Not shown to the guest, never invents Vietnamese law, and
+  is not a translation.
 - **Translation**: the guest message rendered in the office language, shown under the
   original. Made once per message, and none for a message already in the office language.
   Stored per message per locale, so a thread keeps the translations it already has (ADR 0007,

@@ -888,6 +888,7 @@
 		"forYou": "Ghi chú nội bộ",
 		"forYouHint": "Khách không thấy phần này.",
 		"reply": "Trả lời",
+		"newMessage": "Tin nhắn mới",
 		"approveAndSend": "Duyệt và gửi",
 		"notSent": "Chưa gửi",
 		"alreadySent": "Đã gửi {at}",
@@ -923,11 +924,12 @@
 		},
 		"paperworkFlag": "Khách có nhắc giấy tờ hoặc sở hữu. Không bịa luật Việt Nam. Không hứa sổ hồng.",
 		"crib": {
-			"body": "Bản trả lời bằng {language}. Lấy từ tin khách: {facts}. Đừng hỏi thêm kiểu phỏng vấn.{paperwork}",
-			"emptyFacts": "chưa lấy được gì từ tin khách",
-			"nationality": "quốc tịch {value}",
-			"inVietnamNow": "đang ở Việt Nam",
-			"notInVietnam": "chưa ở Việt Nam"
+			"note": "bằng {language} · đừng hỏi thêm kiểu phỏng vấn"
+		},
+		"details": {
+			"title": "Thông tin khách",
+			"crm": "CRM",
+			"owner": "Phụ trách"
 		},
 		"fields": {
 			"language": "Ngôn ngữ",

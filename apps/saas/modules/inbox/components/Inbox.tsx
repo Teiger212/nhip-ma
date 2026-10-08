@@ -1,6 +1,15 @@
 "use client";
 
-import { Button, cn, toast } from "@repo/ui";
+import {
+	Button,
+	cn,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	toast,
+} from "@repo/ui";
 import { useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
@@ -90,6 +99,11 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		manager && view !== "unassigned" && agents.data?.some((agent) => agent.id === ownerFilter)
 			? ownerFilter
 			: null;
+	// The Showing filter's choices: all threads, then each operator in the office's order.
+	const ownerFilterItems = [
+		{ value: "all", label: t("owner.all") },
+		...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
+	];
 	const listPending = conversationsQuery.isPending || rolePending;
 	// `?thread=` opens one thread on arrival (Home's Waiting now and CRM leads link here); it
 	// is read once, then dropped from the URL, so the selection stays local like every other click.
@@ -291,24 +305,32 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 						    Unassigned holds no one's threads, so there it is disabled, on All threads. */}
 						{manager ? (
 							<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
-								<label htmlFor="inbox-owner-filter">{t("owner.filter")}</label>
-								<select
-									id="inbox-owner-filter"
-									data-test="owner-filter"
-									className="h-8 px-2 text-sm rounded-md border bg-background text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+								<span id="inbox-owner-filter-label">{t("owner.filter")}</span>
+								<Select
+									items={ownerFilterItems}
 									value={filterOwner ?? "all"}
 									disabled={view === "unassigned"}
-									onChange={(event) =>
-										void setOwnerFilter(event.target.value === "all" ? null : event.target.value)
-									}
+									onValueChange={(value) => {
+										if (value === null) return;
+										void setOwnerFilter(value === "all" ? null : value);
+									}}
 								>
-									<option value="all">{t("owner.all")}</option>
-									{agents.data?.map((agent) => (
-										<option key={agent.id} value={agent.id}>
-											{agent.name}
-										</option>
-									))}
-								</select>
+									<SelectTrigger
+										data-test="owner-filter"
+										aria-labelledby="inbox-owner-filter-label"
+										size="sm"
+										className="w-auto"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{ownerFilterItems.map((item) => (
+											<SelectItem key={item.value} value={item.value}>
+												{item.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</div>
 						) : null}
 						<InboxToolbar

@@ -888,6 +888,7 @@
 		"forYou": "Operator note",
 		"forYouHint": "Not shown to the guest.",
 		"reply": "Reply",
+		"newMessage": "New message",
 		"approveAndSend": "Approve and send",
 		"notSent": "Not sent",
 		"alreadySent": "Sent {at}",
@@ -923,11 +924,12 @@
 		},
 		"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
 		"crib": {
-			"body": "Reply is in {language}. From the guest: {facts}. Do not interview.{paperwork}",
-			"emptyFacts": "nothing from the guest yet",
-			"nationality": "nationality {value}",
-			"inVietnamNow": "in Vietnam now",
-			"notInVietnam": "not in Vietnam"
+			"note": "in {language} · don't interview"
+		},
+		"details": {
+			"title": "Guest details",
+			"crm": "CRM",
+			"owner": "Owner"
 		},
 		"fields": {
 			"language": "Language",

@@ -298,7 +298,7 @@ Cool, low-chroma slate and blue neutrals carrying a single saturated blue, with 
 - **Plain White** (#ffffff): panels, cards, and the active nav chip in light mode.
 - **Harbor Ink** (#0f172a): body text and headings. Deep slate, not black.
 - **Slate Note** (#475569): secondary text, such as previews, metadata, hints, empty-state sentences and the send-status line.
-- **Morning Wash** (#f1f5fd): the secondary button fill, muted surfaces, the search field, the pipe badge, the send bar tint, outbound messages.
+- **Morning Wash** (#f1f5fd): the secondary button fill, muted surfaces, the search field, the pipe badge, the reply box and details strip tint, outbound messages.
 - **Deep Navy** (#1e3a8a): text on Morning Wash (secondary buttons).
 - **Hairline Blue** (#e4ecfc): every border and divider, and the accent fill for the active thread row and hovered menu items. Borders are blue-tinted, never grey.
 - **Field Edge** (#cbd9f5; night #34456b): input strokes, one step stronger than Hairline Blue so fields read as fields.
@@ -363,6 +363,8 @@ The app is a canvas with panels on it. The sidebar is the canvas itself, with no
 
 **Inbox.** From `md` up, the thread list (`--container-inbox-list`, 22rem) and the thread are two panels with a 10px gap, inset 12px from the canvas; from `lg`, where the sidebar docks beside them, the left gutter tightens to 4px. Search, the owner filter and the view tabs live inside the list panel. A manager's owner filter sits above search in every view, disabled in Unassigned (where it could only narrow the list to nothing), so the tabs never move between views. Below `md` the panels go full-bleed on white with no border, and swap: the list, then a thread with a back action. Rows are inset from the panel edge by 6px on each side (`w-row-inset`) with 2px of vertical gap, pad 10px × 12px, and keep a 10px gap between avatar and text. Empty states are one centred sentence capped at 22ch (`--container-empty-note`), with an optional outline button under it.
 
+**The open thread (#248).** The thread panel is a workbench: the header, then the conversation with the reply box docked at its foot, always in view, and the guest's details in a 22rem rail on the right, split from the conversation by a hairline. Whether the rail fits is decided on the thread panel's own width, never the window's, so the sidebar counts: from 56rem (896px) of panel the rail shows; narrower, it folds into a strip under the header (the details on one line, the missing ones on a second), and the CRM status and the manager's Assign to move into the header. At 1563px with the sidebar open, and at 1366px with it collapsed, the panel keeps the rail; at 1366px with the sidebar open, and on a phone, it gets the strip. The conversation opens scrolled to the latest message, and follows new messages in while the operator is at (or within 80px of) the latest. Scrolled up to read older messages, it stays put when the guest writes, and a "New message" pill (a small primary Button with a down arrow, floating 12px above the reply box with the overlay `shadow-md`, as a floating layer may) takes them down to it; it goes when they reach the latest, by the pill or by scrolling. Their own send always goes to the latest.
+
 **Home.** A `max-w-6xl` column under the page header. Panels stack with a 10px gap (12px from `md`): the funnel strip, one row of five cells from `lg`; then Leads by day (two thirds) beside Waiting now (one third) from `lg`; then Response time (median on a third, buckets on two thirds, from `md`). Below `lg` Waiting now comes above the chart, and the funnel's cells become Leads in across the top with the other four two by two. Grid children carry `min-w-0` so a long guest name truncates instead of widening the grid. Panel content pads 16px (20px from `md`).
 
 Tap targets that matter mid-conversation (Send, Retry, Regenerate, View sent, the Quiet disclosure, Open inbox) are at least 44px tall (`min-h-11`), even where the button's visual height is smaller. On a phone the top bar's menu, bell (`size-11`) and user-menu trigger are 44px, the view tabs are 44px below `md`, and nav links are 44px below `lg`. Settings use a label/control grid: a third of the width for the label, capped at 360px (`grid-cols-setting`). Extracted fields use a `minmax(7rem, auto) 1fr` label/value grid (`grid-cols-fields`); response-time buckets use label, bar, count (`grid-cols-bucket`). Spacing is Tailwind's 4px step. The inbox lives on 6, 8, 10 and 12px.
@@ -373,7 +375,7 @@ Tap targets that matter mid-conversation (Send, Retry, Regenerate, View sent, th
 
 ## Elevation & Depth
 
-Nhịp is flat. Depth comes from tone: the canvas under everything, white panels on it, Morning Wash for muted strips such as the send bar and outbound messages, Hairline Blue for selection. Inputs keep the kit's `shadow-xs` hairline. Surfaces have no drop shadows, and nothing has blur or glass. The one named surface shadow is really a line, drawn inside the box so it never shifts layout. Floating layers are the exception (see below).
+Nhịp is flat. Depth comes from tone: the canvas under everything, white panels on it, Morning Wash for muted strips such as the docked reply box and outbound messages, Hairline Blue for selection. Inputs keep the kit's `shadow-xs` hairline. Surfaces have no drop shadows, and nothing has blur or glass. The one named surface shadow is really a line, drawn inside the box so it never shifts layout. Floating layers are the exception (see below).
 
 ### Shadow Vocabulary
 
@@ -412,7 +414,7 @@ Confident, compact pills that press in slightly.
 
 - **One component:** `Badge` (`packages/ui/components/badge.tsx`) is the only status mark, in the inbox, on Home and in Admin. 20px tall (`h-5`), 8px horizontal padding, 4.8px radius (`rounded-md`), Label type (500, `text-micro`), no border.
 - **Tones:** each is its color as text on a 12% tint of itself. Neutral (default) is Slate Note on Morning Wash; info is Dispatch Blue; success is Sent Green; warning is Your-Turn Amber; error is Signal Red.
-- **In the inbox:** Your turn is warning, and so is a manager's Waiting (a waiting guest on a thread that isn't theirs, ADR 0022); Sent is success, the pipe (WhatsApp / Zalo) and the owner (a name, "Yours" or "Unassigned") are neutral. Row and thread header use the same badges in the same order: pipe, owner, then turn. The thread header adds the CRM status last ("In CRM", neutral), metadata like the owner. When the office has a CRM and the thread's lead isn't written yet, it reads "Not in CRM yet", neutral too: a missing lead is a fact Nhịp is fixing, not an error (The Red Means Broken Rule, #211). An office with no CRM shows no CRM status.
+- **In the inbox:** Your turn is warning, and so is a manager's Waiting (a waiting guest on a thread that isn't theirs, ADR 0022); Sent is success, the pipe (WhatsApp / Zalo) and the owner (a name, "Yours" or "Unassigned") are neutral. Row and thread header use the same badges in the same order: pipe, owner, then turn. The CRM status ("In CRM", neutral) is metadata like the owner: last in the thread header on a narrow thread panel, in the details rail on a wide one (#248). When the office has a CRM and the thread's lead isn't written yet, it reads "Not in CRM yet", neutral too: a missing lead is a fact Nhịp is fixing, not an error (The Red Means Broken Rule, #211). An office with no CRM shows no CRM status.
 - **Won and Lost:** while a thread is resolved (ADR 0003), the CRM's outcome takes the turn's place as a neutral badge, on the row and the header. Neither is colored: an outcome is not the turn (The Turn Is The Signal Rule), and Lost is not an error. When the guest writes again, the turn badge comes back.
 - **A badge that opens the CRM (`BadgeLink`):** where the office's CRM has a web app and Nhịp knows the office's account there (HubSpot), "In CRM" is a link to the thread's lead in it, opening in a new tab. It stays the neutral squared badge, not a pill: it leaves Nhịp rather than acting in it. A 12px external-link icon after the label (4px gap) says it goes elsewhere; hover darkens the label and icon to ink, and keyboard focus shows the focus ring. On the mock CRM, and until Nhịp knows the account, it is the plain badge. "Not in CRM yet" is never a link.
 - **Count (`numeric`):** the same badge in Count type (Plex Mono, tabular). The amber count of Your-turn threads rides on the Inbox nav item on every page, and on Waiting now's title.
@@ -466,17 +468,29 @@ The unit of the desk: who, when, what they said, whose turn.
 
 ### Message
 
-- **Inbound (guest):** card background with the Hairline shadow, 8.4px radius, 8px × 12px padding, Body type.
-- **Outbound (us):** indented 24px from the left, 60% Morning Wash, no edge.
-- **Meta line:** the source in 80% ink, then a Clock time (sans, tabular) and an optional inline mock badge. A translation sits under a dashed hairline with a Micro Caps label.
+Chat bubbles, capped at 36rem (`max-w-xl`), with 16px between them.
+
+- **Inbound (guest):** on the left; card background with the Hairline shadow, 8.4px radius, 10px × 14px padding, Body type.
+- **Outbound (us):** on the right; Morning Wash, no edge.
+- **Translation:** inside the guest's bubble, a muted second block (Body Small, Slate Note) under a Hairline Blue rule. No label: the line and the tone say it.
+- **Meta line:** under the bubble, on its side, in Body Small Slate Note: the source on our messages ("Sent from Nhịp", or the neutral inline "Auto-reply" badge then "Model" / "Template"), an optional inline mock badge, then a Clock time (sans, tabular). A guest's bubble needs no source: its side says who wrote it.
 
 ### Operator Note
 
-The "for you" note in the thread's side detail: an 8% Touch Blue tint, 8.4px radius, 12px padding, a semibold title and a Slate Note hint above the text. No stripe.
+One short line in Body Small Slate Note beside the reply box's "Reply" label: the language the reply is in and "don't interview" ("in Korean · don't interview"). The guest's facts and the paperwork flag are in the details, so the note never repeats them (#248).
 
-### Send Bar
+### Reply Box (docked)
 
-A strip under the thread: card background tinted 40% Morning Wash, top hairline, 8px × 12px. On the left, a polite live-region status in Body Small (Slate Note, or Signal Red when a send failed or a pipe is disconnected). On the right, the Send button, at least 44px tall.
+The foot of the conversation column, always in view: card background tinted 40% Morning Wash, top hairline, 12px × 20px. A first row holds "Reply" (Be Vietnam Pro semibold, 0.875rem), the operator note, and, while the box holds the server's suggestion, where it came from, with Regenerate (ghost, 44px target) at its end. Then the textarea (at least 80px, at most 12rem before it scrolls). The last row has a polite live-region status in Body Small on the left (Slate Note, or Signal Red when a send failed or a pipe is disconnected) and Approve and send on the right, at least 44px tall.
+
+### Guest Details (rail and strip)
+
+- **Rail:** 22rem, a hairline on its left, scrolling on its own. Sections split by hairlines, 16px padding, each titled in Micro-Caps-style Be Vietnam Pro semibold 0.75rem uppercase Slate Note: Guest details (the extracted fields in the `grid-cols-fields` grid, then the "N missing" disclosure), CRM (the CRM status badge; no section when the office has no CRM), and Owner (the manager's Assign to; for an agent, the owner's name, read-only).
+- **Strip:** under the header, 40% Morning Wash, bottom hairline, 8px × 16px, Body Small: each present field as a Slate Note label then its value in ink, wrapping; the "N missing" disclosure on its own line under them.
+
+### Owner Select
+
+Assign to, on the open thread, and the manager's Showing filter over the list are the kit's `Select` (Base UI), never a native `<select>`: a field-shaped trigger showing the current choice (36px and 1rem in the details rail; `size="sm"`, 32px and 0.875rem, in the thread header and over the list), and a floating list of the office's operators, in the same order as a row's Assign to… menu. `nhip/no-native-select` refuses a JSX `<select>` outside `packages/ui`.
 
 ### Waiting Now (Home)
 
