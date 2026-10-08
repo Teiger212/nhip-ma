@@ -12,7 +12,7 @@ is renamed.
   from the agency's own number.
 - **Language bridge**: the durable value. Agents who work in Vietnamese and some English
   serve multinational guests (JA, KO, RU, EN today) without a translator in the loop.
-  Two-way: every guest message is translated into the operator's language (ADR 0007),
+  Two-way: every guest message is translated into the office language (ADR 0007, ADR 0025),
   and every reply is drafted in the guest's language.
 - **Listing match**: the horizon. The office's own pool of properties searched against
   what the guest said, so the reply carries the best few matches. Not built.
@@ -102,7 +102,7 @@ is renamed.
   given the thread, with a bell row that names no guest ("A manager gave you a thread"); a
   thread returned to Unassigned alerts the managers. Whoever acts is never alerted for
   their own action, and the platform admin is never alerted. It says the guest's name ("A
-  guest" when there is none), pipe and language in the operator's language, never the
+  guest" when there is none), pipe and language in the office language, never the
   message, and nothing that identifies the thread. One per thread: a new one replaces the
   last and sounds again only after 2 minutes of quiet. Only a message Nhịp had not stored
   before alerts; a vendor's retry does not. In a mock deployment alerts are decided and
@@ -171,19 +171,33 @@ is renamed.
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
   (Qualification), first-reply template, operator note. Regex and templates. The
   auto-reply's fallback template is built from it too (ADR 0021).
-- **Suggested reply**: the text in the reply box. For a first reply in an office with the
-  auto-reply off, the template. Once the auto-reply is sent, and for every follow-up, an AI
-  draft from the whole conversation, written knowing the greeting went out, so it never
-  greets twice; with no model, the follow-up template (ADR 0005, ADR 0021). Always editable,
-  never sent without Approve and send.
+- **Suggested reply**: the text in the reply box, from one of two sources (ADR 0024):
+  - **Template**: a reply with no model, in the agent's own voice. It holds every reply until
+    the office's first human reply, after the auto-reply too. It introduces the
+    agent while the office has no human reply yet; on an unassigned thread it names the office
+    only. Later it stands in when there is no model, the call fails, or the office is past its
+    daily cap. Shown as "Suggested reply · template".
+  - **AI**: the model's draft for every reply after the office's first human reply, from the
+    last 10 messages. It never introduces anyone. It comes with the same reply in the office
+    language. Shown as "Suggested reply · AI".
+  - A draft the agent hasn't touched is replaced when the guest writes again. An edited one
+    stays, with a "Guest wrote again" note, and sending it answers the latest guest message.
+    Always editable, never sent without Approve and send.
 - **Draft adapter**: one interface, one implementation per model provider, with the
-  template drafter as fallback.
+  template drafter as fallback. Every model call goes through it as a named **task**
+  (`draft`, `translate`), each with its own model (ADR 0024).
+- **Daily cap**: how many model calls of one task an office gets in a day, midnight to
+  midnight in Asia/Ho_Chi_Minh (ADR 0024). Past it, the task falls back.
 - **Operator note**: the agent-language summary of facts and flags. Not shown to the
   guest, never invents Vietnamese law, and is not a translation.
-- **Translation**: the guest message rendered in the operator's language, shown under the
-  original. Stored per message per operator locale (ADR 0007).
-- **Operator language**: EN or VI, from the operator's locale setting. The target for
-  translations and the language of the operator note.
+- **Translation**: the guest message rendered in the office language, shown under the
+  original. Made once per message, and none for a message already in the office language.
+  Stored per message per locale, so a thread keeps the translations it already has (ADR 0007,
+  ADR 0025).
+- **Office language**: EN or VI, one per office, set by the office's manager (ADR 0025). It
+  is the interface language of every member of the office, the target of translations, the
+  language of the operator note, and the second text of an AI suggested reply. The platform
+  admin keeps their own interface language. _Avoid_: operator language, operator locale.
 - **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class. Any
   other language reads as EN. VI is read only from letters Vietnamese alone uses (ă, â, đ, ơ,
   ư, a hook above or a dot below, ẽ ĩ ũ ỹ, any tone on ă â ê ô ơ ư) or its common words, so
