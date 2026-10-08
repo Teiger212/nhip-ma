@@ -1426,6 +1426,38 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    Việt, and choosing Tiếng Việt goes to `/vi/login`: no office is known there yet.
    Spec: `apps/saas/tests/login.spec.ts` ("language switcher offers only English and
    Vietnamese", unchanged).
+10. **Until the new language's translation lands, the kept one shows, labelled** (decided by
+    Eyal on 2026-10-08). In an English office, a guest writes in Korean and the thread shows
+    "Stub translation, Korean to English." with no visible label, as every translation in the
+    office language reads. Another guest writes in Vietnamese and gets "Stub translation,
+    Vietnamese to English.". The office's translations for the day are spent (its translate
+    count at the daily cap, 1,000), and the manager switches the office to Vietnamese.
+    - Opening the Korean thread shows the English line, labelled "Bản dịch · tiếng Anh" (EN
+      "Translation · English"), and no line into Vietnamese: past the cap, no model call. The
+      VI copy is pending a native read (#78).
+    - The Vietnamese guest's message shows no line: it is in the office language now.
+    - Once the office's day has translations again (its count back under the cap), opening the
+      Korean thread shows "Stub translation, Korean to Vietnamese." with no visible label, and
+      the labelled English line is gone.
+
+    Spec: `apps/saas/tests/office-language.spec.ts` (Office language 10; an office of its own,
+    the manager reading every thread by its `?thread=` link, in `/en/` before the switch and
+    `/vi/` after it. Spending the day's translations is setup: the office's translate count for
+    its calendar day (Asia/Ho_Chi_Minh) is set to the cap through the test state process, only
+    once both English lines have shown, so no translation still under way spends it after; back
+    under the cap is the count set to 0. The switch is the manager's `PUT
+/api/office/language`, as in 4. "Labelled" is the guest's bubble (`data-test="message"`)
+    holding "Bản dịch · tiếng Anh" (the spaces around "·" aside) with the English line;
+    "no visible label" is no "Translation ·" or "Bản dịch ·" in the bubble (a translation's
+    visually hidden "Translation" prefix stays, as in 4). "No line into Vietnamese" can only be
+    judged once the labelled line has shown, since a declined call shows nothing: it is judged
+    then, and again after the Vietnamese thread and a second opening of the Korean one. The
+    Vietnamese message's "no line" is as in 4: no "Translation" / "Bản dịch" label and no "Stub
+    translation" in its bubble. Back under the cap, the thread is opened again from Home: the
+    Vietnamese line within a poll, no "… to English." line anywhere in the thread, and no
+    labelled line in the bubble. Every past-the-cap check is reported, not only the first to
+    fail. A run that straddles midnight in Vietnam sets yesterday's count and may not be past
+    the cap).
 
 ## Guest deletion (ADR 0020, spec #85)
 

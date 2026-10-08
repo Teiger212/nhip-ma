@@ -34,11 +34,18 @@ export function ThreadMessage({
 	const locale = useOperatorLanguage();
 	const officeLanguage = useOfficeLanguage().data;
 	const inbound = message.direction === "in";
-	// In the office language, whatever the reader's interface (ADR 0025): a translation kept from
-	// before the manager changed it doesn't show. Rendered as text, never as markup (ADR 0007): a
-	// React text node cannot carry HTML.
+	// In the office language, whatever the reader's interface (ADR 0025). Rendered as text, never
+	// as markup (ADR 0007): a React text node cannot carry HTML.
 	const translation =
 		inbound && officeLanguage ? message.translations?.[officeLanguage] : undefined;
+	// Until that one lands (the day's cap spent after a language change, or still on its way), the
+	// one kept from before the change shows, labelled with its language, with no model call
+	// (decided by Eyal, 2026-10-08). Never for a thread whose guest writes in the office language.
+	const keptLanguage = officeLanguage === "en" ? "vi" : "en";
+	const kept =
+		inbound && officeLanguage && !translation && guestLanguage && guestLanguage !== officeLanguage
+			? message.translations?.[keptLanguage]
+			: undefined;
 	// A guest language Nhịp doesn't support gets no translation; a note says so in its place (#245).
 	const untranslated =
 		inbound && !translation && guestLanguage && !isSupportedLanguage(guestLanguage)
@@ -58,6 +65,16 @@ export function ThreadMessage({
 					<p className="mt-2 pt-2 text-xs leading-relaxed border-t whitespace-pre-wrap text-muted-foreground">
 						<span className="sr-only">{t("translation")}: </span>
 						{translation}
+					</p>
+				) : kept ? (
+					<p
+						data-test="kept-translation"
+						className="mt-2 pt-2 text-xs leading-relaxed border-t whitespace-pre-wrap text-muted-foreground"
+					>
+						<span className="font-medium block">
+							{t("translationIn", { language: t(`guestLanguage.${keptLanguage}`) })}
+						</span>
+						{kept}
 					</p>
 				) : untranslated ? (
 					<p className="mt-2 pt-2 text-xs leading-relaxed border-t text-muted-foreground">

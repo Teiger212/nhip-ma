@@ -883,6 +883,7 @@
 		"quietHint": "Khách nhắn lần cuối hơn 48 giờ trước. Vẫn đến lượt bạn.",
 		"onlyQuiet": "Không có gì mới. Các cuộc đã lắng bên dưới vẫn đến lượt bạn.",
 		"translation": "Bản dịch",
+		"translationIn": "Bản dịch · {language}",
 		"noTranslation": "Chưa hỗ trợ {language}: không dịch",
 		"suggested": {
 			"template": "Gợi ý trả lời · mẫu",
