@@ -26,8 +26,10 @@ or `pnpm --filter saas e2e:ci`. E2E requires a running application and database.
 - The `test-author` agent (`.claude/agents/test-author.md`) can write E2E specs from intent,
   without reading application source (a hook enforces it); using it is optional. The building
   agent may write specs itself, following `writing-e2e-tests`.
+- No retries and no `--repeat-each`; a flaky spec is fixed after merge (root AGENTS.md, ticket
+  workflow step 5).
 
-## How E2E runs
+### How E2E runs
 
 `pnpm --filter saas exec playwright test` builds production on `:3000` with `.env.e2e` against
 its own `supastarter_e2e` database (pushed and seeded fresh), behind a local HTTPS proxy on
@@ -40,7 +42,7 @@ instead of sending it, and the Inbox polls every second instead of every ten
 (`config.ts`). `E2E_BASE_URL=http://localhost:3010` runs against your dev server instead, for
 fast iteration.
 
-### Build once, run many spec files (#205)
+#### Build once, run many spec files (#205)
 
 `scripts/e2e-server.sh` (with `E2E_PORT` if 3000 is taken) runs that same chain and the proxy
 in the background, then `E2E_REUSE=1 pnpm --filter saas exec playwright test <file>` runs each

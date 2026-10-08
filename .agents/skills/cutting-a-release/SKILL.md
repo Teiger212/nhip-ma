@@ -5,8 +5,7 @@ description: Use when releasing Nhịp to production, reading a refused release 
 
 # Cut a release (Nhịp)
 
-The release gate, the production smoke check and rollback. Eyal approves every release; never
-force a step the gate refuses. Schema rules (expand/contract) are in
+The release gate, the production smoke check and rollback. Schema rules (expand/contract) are in
 `packages/database/AGENTS.md`.
 
 ## Vercel (ADR 0016)

@@ -15,13 +15,14 @@ A nested `AGENTS.md` loads when Claude reads a file below it, but never in a wor
 subagent: a brief into an area names its file, and the agent reads it before working there.
 Where a skill disagrees with an `AGENTS.md`, the `AGENTS.md` wins.
 
-| Touching                                                           | Read first                    |
-| ------------------------------------------------------------------ | ----------------------------- |
-| Schema, migrations, worktree databases, Neon                       | `packages/database/AGENTS.md` |
-| `apps/saas`: seed data, Vitest, aliases, auth, Permix, UI, i18n    | `apps/saas/AGENTS.md`         |
-| E2E: running Playwright, build-once, smoke                         | `apps/saas/tests/AGENTS.md`   |
-| oRPC procedures, notifications                                     | `packages/api/AGENTS.md`      |
-| A release, the production smoke gate, rollback, the Vercel project | skill `cutting-a-release`     |
+| Touching                                                                       | Read first                    |
+| ------------------------------------------------------------------------------ | ----------------------------- |
+| Schema, migrations, worktree databases, Neon                                   | `packages/database/AGENTS.md` |
+| `apps/saas`: seed data, Vitest, aliases, auth, Permix, UI, i18n, data fetching | `apps/saas/AGENTS.md`         |
+| E2E: running Playwright, build-once, smoke                                     | `apps/saas/tests/AGENTS.md`   |
+| oRPC procedures, notifications                                                 | `packages/api/AGENTS.md`      |
+| A release, the production smoke gate, rollback, the Vercel project             | skill `cutting-a-release`     |
+| A dependency (24-hour `minimumReleaseAge`, `catalog:` versions)                | skill `adding-a-dependency`   |
 
 ## Stack and layout
 
@@ -30,13 +31,14 @@ Better Auth, and Prisma for auth and the inbox alike (ADR 0012); Tailwind CSS, S
 components and Base UI (`@base-ui/react`); React Hook Form, Zod 4, TanStack Query, next-intl,
 Vitest, Playwright, Oxlint, and Oxfmt.
 
-Monorepo: `apps/` (`saas`, the authenticated product; `marketing`, public site and blog; `docs`,
-Fumadocs; `mail-preview`); `packages/` (`ai`, `api`, `auth`, `database`, `i18n`, `logs`, `mail`,
-`notifications`, `payments`, `permissions`: Permix definitions + rule builder, `storage`, `ui`,
-`utils`); `tooling/` (`scripts`, `tailwind`, `typescript`). Product work is scoped to `apps/saas`
-unless asked otherwise; do not build or ship `apps/marketing`. `@repo/*` and `@repo/ui/*` are
-workspace package names, not TypeScript, Vite, or Next path mappings: import package exports
-(`@repo/auth`, `@repo/database`, `@repo/ui/components/button`).
+Monorepo: `apps/` (`saas`, authenticated product; `marketing`, public site, blog, and content;
+`docs`, Next.js/Fumadocs documentation; `mail-preview`, email preview); `packages/` (`ai`, `api`,
+`auth`, `database`, `i18n`, `logs`, `mail`, `notifications`, `payments`, `permissions`: Permix
+definitions + rule builder, `storage`, `ui`, `utils`); `tooling/` (`scripts`, `tailwind`,
+`typescript`). Product work is scoped to `apps/saas` unless asked otherwise; do not build or ship
+`apps/marketing`. `@repo/*` and `@repo/ui/*` are workspace package names, not TypeScript, Vite,
+or Next path mappings: import package exports (`@repo/auth`, `@repo/database`,
+`@repo/ui/components/button`).
 
 ## Environment
 
@@ -75,9 +77,8 @@ only on purpose. What Eyal sets by hand (accounts, secrets, vendor settings) is 
 
 ## Commands and gates
 
-`pnpm dev` (all apps through Turbo), `pnpm build`, `pnpm start`, `pnpm lint` / `pnpm lint:fix`
-(Oxlint), `pnpm format` / `pnpm format:check` (Oxfmt), `pnpm type-check`, `pnpm test` (Vitest),
-`pnpm seed` (dev and demo dataset), `pnpm clean` (Turbo outputs).
+`pnpm` scripts: `dev` (all apps through Turbo), `build`, `start`, `lint` / `lint:fix` (Oxlint),
+`format` / `format:check` (Oxfmt), `type-check`, `test` (Vitest), `seed`, `clean` (Turbo outputs).
 
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.
@@ -110,9 +111,8 @@ changes need no new test. There is no red-first rule.
 
 ## Change management
 
-- Use conventional commits such as `feat:`, `fix:`, `docs:`, or `refactor:`. Commits, PRs,
-  issues and comments carry no Claude or AI attribution: no `Co-Authored-By: Claude`, no
-  "Generated with Claude Code".
+- Use conventional commits such as `feat:`, `fix:`, `docs:`, or `refactor:`. Commits, PRs, issues
+  and comments carry no Claude or AI attribution (`Co-Authored-By: Claude`, "Generated with …").
 - For consumer-impacting changes, add a changelog fragment, `changelog.d/<issue>-<slug>.md`,
   holding the PR's section ([changelog.d/README.md](./changelog.d/README.md)). Never edit
   `CHANGELOG.md`: the format check fails a PR that does; CI folds fragments in on main.

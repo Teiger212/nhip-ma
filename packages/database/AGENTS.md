@@ -48,7 +48,7 @@ drops them when the worktree goes. Running a single test file through that env i
 
 ## Neon (staging and prod, ADR 0016)
 
-This folder is linked to Neon project `lingering-bonus-85587787` (`.neon`, git-ignored;
+The repo root is linked to Neon project `lingering-bonus-85587787` (`.neon`, git-ignored;
 `neon.ts` is the project config). Pass `--no-env-pull` to every `neon link`, `neon deploy` and
 `neon checkout`, or the CLI writes the linked branch's `DATABASE_URL` into `.env.local` and
 repoints dev without asking.
