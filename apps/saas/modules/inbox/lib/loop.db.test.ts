@@ -28,7 +28,7 @@ import { POST as inject } from "../../../app/dev/inbound/route";
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import { followUpTemplate } from "./draft";
-import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts";
+import { type DraftAdapter, type DraftInput, noDraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { json, params, post, WALK_SESSION } from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
@@ -41,10 +41,10 @@ import type { Conversation, ConversationSummary } from "./types";
  * first message's auto-reply (ADR 0021).
  */
 
-const fakeAdapter = (followUp: (input: FollowUpInput) => string | null): DraftAdapter => ({
-	provider: "openai-compatible",
+const fakeAdapter = (followUp: (input: DraftInput) => string | null): DraftAdapter => ({
+	serves: () => true,
 	translate: async ({ text, to }) => `[${to}] ${text}`,
-	followUp: async (input) => followUp(input),
+	draft: async (input) => followUp(input),
 });
 
 const followUps: string[] = [];

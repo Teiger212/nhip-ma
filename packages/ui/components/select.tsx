@@ -16,11 +16,16 @@ const SelectValue = SelectPrimitive.Value;
 const SelectTrigger = ({
 	className,
 	children,
+	size = "md",
 	...props
-}: React.ComponentProps<typeof SelectPrimitive.Trigger>) => (
+}: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
+	/** `sm`: 32px and 0.875rem, for a select inside a dense row (a thread header, a list filter). */
+	size?: "md" | "sm";
+}) => (
 	<SelectPrimitive.Trigger
 		className={cn(
-			"h-9 shadow-xs px-3 py-2 text-base flex w-full items-center justify-between rounded-xl border border-input bg-card ring-offset-background placeholder:text-foreground/60 focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+			"shadow-xs flex w-full items-center justify-between rounded-xl border border-input bg-card ring-offset-background placeholder:text-foreground/60 focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+			size === "sm" ? "h-8 gap-2 px-2.5 text-sm" : "h-9 px-3 py-2 text-base",
 			className,
 		)}
 		{...props}

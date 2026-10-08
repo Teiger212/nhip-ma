@@ -248,8 +248,8 @@ the five reads as English".
   reply written, in English: the fallback R4 and G3 already give. Nothing new reaches the
   guest.
 - **The thread says it.** The details' Language row names the language with a note ("French
-  · not supported, replies in English"). The operator note says the guest writes French and
-  the reply is in English. Home's Waiting now and the alerts name the real language. So does
+  · not supported, replies in English"). The one-line operator note says the reply is in
+  English and names French ("in English · French isn't supported · don't interview"). Home's Waiting now and the alerts name the real language. So does
   the guest's new lead in the office's CRM (ADR 0003): its language is the named one ("fr"),
   never the reply's English.
 - **No translation; a note instead.**

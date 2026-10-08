@@ -172,6 +172,7 @@ model Organization {
   leadTallies        LeadTally[]
   guestDeletions     GuestDeletion[]
   inboxSetting       OfficeSetting?
+  modelUsage         ModelUsage[]
 
   @@unique([slug])
   @@map("organization")
@@ -738,6 +739,22 @@ model OfficeSetting {
   autoReplyOnSince DateTime?
 
   @@map("inbox_office_setting")
+}
+
+/// An office's model calls on one day, per task (ADR 0024): the daily caps count these. A retry
+/// is a call, and so is Regenerate. The day is the office's, midnight to midnight in
+/// Asia/Ho_Chi_Minh. A draft is one row per thread, overwritten, so calls can't be counted
+/// from rows: this is the count.
+model ModelUsage {
+  officeId String
+  office   Organization @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  day      DateTime     @db.Date
+  /// The task: `draft` or `translate`.
+  task     String
+  calls    Int
+
+  @@id([officeId, day, task])
+  @@map("inbox_model_usage")
 }
 
 /// One deleted guest who wrote in (ADR 0020), kept so Home's numbers for past days never move:

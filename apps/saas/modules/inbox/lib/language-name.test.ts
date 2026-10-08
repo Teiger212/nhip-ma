@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 
-import { formatCribNotes } from "./crib";
-import { emptyQualification } from "./extract";
+import { formatCribNote } from "./crib";
 import { guestAlertContent } from "./guest-alerts/content";
 import { isSupportedLanguage, languageName } from "./language-name";
 import { inboxEn as en, inboxVi as vi } from "./test-translate";
@@ -30,22 +29,20 @@ test("a supported language keeps its own copy", () => {
 	expect(languageName("ko", "vi", supportedName(vi))).toBe("tiếng Hàn");
 });
 
-test("the operator note names French and says the reply is in English", () => {
-	const shot = { language: "en" as const, guestLanguage: "fr", paperwork: null };
-	const qualification = emptyQualification();
-	expect(formatCribNotes({ ...shot, qualification }, en, "en")).toMatch(
-		/^Guest writes French, not supported: reply is in English\. /,
+test("the one-line operator note says the reply is in English and names French", () => {
+	const shot = { language: "en" as const, guestLanguage: "fr" };
+	expect(formatCribNote(shot, en, "en")).toBe(
+		"in English · French isn't supported · don't interview",
 	);
-	expect(formatCribNotes({ ...shot, qualification }, vi, "vi")).toMatch(
-		/^Khách viết tiếng Pháp, chưa hỗ trợ: trả lời bằng tiếng Anh\. /,
+	expect(formatCribNote(shot, vi, "vi")).toBe(
+		"bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi thêm kiểu phỏng vấn",
 	);
 });
 
 test("the operator note of a supported language reads as before", () => {
-	const qualification = emptyQualification();
-	expect(
-		formatCribNotes({ language: "ko", guestLanguage: "ko", qualification, paperwork: null }, en),
-	).toMatch(/^Reply is in Korean\. /);
+	expect(formatCribNote({ language: "ko", guestLanguage: "ko" }, en)).toBe(
+		"in Korean · don't interview",
+	);
 });
 
 test("an alert names the unsupported language", () => {

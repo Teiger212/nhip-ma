@@ -8,9 +8,7 @@ import { formatInboxTimestamp } from "../lib/time";
 import type { Message } from "../lib/types";
 import { useOperatorLanguage } from "./ThreadParts";
 
-/** One message on the thread, with its translation under the original for a guest message. */
-
-/** Who a message came from, as a person reads it (the stored values are internal). */
+/** Who sent one of the office's messages, as a person reads it (the stored values are internal). */
 const SOURCE_KEYS = {
 	guest: "guest",
 	nhip: "nhip",
@@ -18,6 +16,11 @@ const SOURCE_KEYS = {
 	"auto-reply": "autoReply",
 } as const;
 
+/**
+ * One message on the thread as a chat bubble (#248): the guest's on the left, with its
+ * translation as a muted second block inside the bubble; the office's on the right. Under the
+ * bubble, on its side: where an office message came from, the demo-send badge, and the time.
+ */
 export function ThreadMessage({
 	message,
 	guestLanguage = null,
@@ -37,15 +40,28 @@ export function ThreadMessage({
 			? languageName(guestLanguage, locale, (language) => t(`guestLanguage.${language}`))
 			: null;
 	return (
-		<div
-			data-test="message"
-			className={cn(
-				"px-3 py-2 text-sm rounded-xl",
-				inbound ? "shadow-hairline bg-card" : "ml-6 bg-muted/60",
-			)}
-		>
-			<div className="mb-1 gap-x-2 text-xs flex flex-wrap items-baseline text-muted-foreground">
-				{message.source === "auto-reply" ? (
+		<div className={cn("gap-1 min-w-0 flex flex-col", inbound ? "items-start" : "items-end")}>
+			<div
+				data-test="message"
+				className={cn(
+					"px-3.5 py-2.5 text-sm max-w-xl min-w-0 rounded-xl break-words",
+					inbound ? "shadow-hairline bg-card" : "bg-muted",
+				)}
+			>
+				<p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
+				{translation ? (
+					<p className="mt-2 pt-2 text-xs leading-relaxed border-t whitespace-pre-wrap text-muted-foreground">
+						<span className="sr-only">{t("translation")}: </span>
+						{translation}
+					</p>
+				) : untranslated ? (
+					<p className="mt-2 pt-2 text-xs leading-relaxed border-t text-muted-foreground">
+						{t("noTranslation", { language: untranslated })}
+					</p>
+				) : null}
+			</div>
+			<div className="gap-x-2 gap-y-1 px-1 text-xs flex flex-wrap items-center text-muted-foreground">
+				{inbound ? null : message.source === "auto-reply" ? (
 					<>
 						{/* The office's greeting, sent on its own (ADR 0021, DESIGN.md: inline badges). */}
 						<Badge status="neutral" size="sm" data-test="message-source">
@@ -60,28 +76,15 @@ export function ThreadMessage({
 						{t(`source.${SOURCE_KEYS[message.source]}`)}
 					</span>
 				)}
-				<time className="tabular-nums" dateTime={message.at}>
-					{formatInboxTimestamp(message.at, locale)}
-				</time>
 				{message.mock ? (
 					<Badge status="info" size="sm">
 						{t("mock")}
 					</Badge>
 				) : null}
+				<time className="tabular-nums" dateTime={message.at}>
+					{formatInboxTimestamp(message.at, locale)}
+				</time>
 			</div>
-			<div className="leading-relaxed whitespace-pre-wrap">{message.text}</div>
-			{translation ? (
-				<div className="mt-1.5 pt-1.5 text-xs leading-relaxed border-t border-dashed whitespace-pre-wrap text-muted-foreground">
-					<span className="mr-1.5 font-medium tracking-wide text-2xs text-muted-foreground uppercase">
-						{t("translation")}
-					</span>
-					{translation}
-				</div>
-			) : untranslated ? (
-				<div className="mt-1.5 pt-1.5 text-xs leading-relaxed border-t border-dashed text-muted-foreground">
-					{t("noTranslation", { language: untranslated })}
-				</div>
-			) : null}
 		</div>
 	);
 }

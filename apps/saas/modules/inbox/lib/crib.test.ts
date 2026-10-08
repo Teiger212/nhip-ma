@@ -1,7 +1,7 @@
 import { getMessagesForLocale, type SaasMessages } from "@repo/i18n";
 import { expect, test } from "vitest";
 
-import { formatConversationCrib, formatCribNotes } from "./crib";
+import { formatConversationCrib, formatCribNote } from "./crib";
 import { emptyQualification } from "./extract";
 import { inboxEn as en, inboxVi as vi } from "./test-translate";
 import type { GuestLanguage, Qualification } from "./types";
@@ -15,12 +15,14 @@ const thao: Qualification = {
 	bedsOrHousehold: "2 bed",
 };
 
-test("loaded en and vi saas messages include inbox.crib.body", async () => {
+test("loaded en and vi saas messages include inbox.crib.note", async () => {
 	const enMessages = await getMessagesForLocale<SaasMessages>("en", "saas");
 	const viMessages = await getMessagesForLocale<SaasMessages>("vi", "saas");
-	expect(enMessages.inbox.crib.body).toMatch(/Reply is in \{language\}/);
-	expect(viMessages.inbox.crib.body).toMatch(/Bản trả lời bằng \{language\}/);
-	expect(viMessages.inbox.crib.body).not.toMatch(/Draft|inbound|interviewer|field/i);
+	expect(enMessages.inbox.crib.note).toMatch(/in \{language\}/);
+	expect(viMessages.inbox.crib.note).toMatch(/bằng \{language\}/);
+	expect(viMessages.inbox.crib.note).not.toMatch(/Draft|inbound|interviewer|field/i);
+	expect(enMessages.inbox.paperworkFlag).toMatch(/Do not invent Vietnamese law/);
+	expect(viMessages.inbox.paperworkFlag).toMatch(/Không bịa luật Việt Nam/);
 	expect(enMessages.inbox.guestLanguage.vi).toBe("Vietnamese");
 	expect(viMessages.inbox.guestLanguage.vi).toBe("tiếng Việt");
 	expect(enMessages.inbox.loading).toBe("Loading conversations…");
@@ -75,64 +77,48 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.menu.accountSettings).toBe("Cài đặt tài khoản");
 });
 
-test("English UI crib uses the English template and extracted facts", () => {
-	const crib = formatCribNotes(
-		{ language: "vi", qualification: thao, paperwork: { mentioned: false, flag: null } },
-		en,
-	);
-	expect(crib).toBe(
-		"Reply is in Vietnamese. From the guest: Rent, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Do not interview.",
-	);
+// #248: the note is one line beside "Reply" on how to answer; the guest's facts and the
+// paperwork flag are in the guest details beside it, so the note no longer repeats them.
+test("English UI note names the reply's language and the no-interview rule, not the facts", () => {
+	const note = formatCribNote({ language: "vi" }, en);
+	expect(note).toBe("in Vietnamese · don't interview");
+	expect(formatConversationCrib({ oneShot: shotOf(thao, false) }, en)).toBe(note);
+	expect(note).not.toMatch(/Tây Hồ|30 triệu|Rent/);
 });
 
-test("Vietnamese UI crib uses the Vietnamese template for the same extract", () => {
-	const crib = formatCribNotes(
-		{ language: "vi", qualification: thao, paperwork: { mentioned: false, flag: null } },
-		vi,
-	);
-	expect(crib).toBe(
-		"Bản trả lời bằng tiếng Việt. Lấy từ tin khách: thuê, đầu tháng 9, Tây Hồ, 30 triệu, 2 bed. Đừng hỏi thêm kiểu phỏng vấn.",
-	);
-	expect(crib).not.toMatch(/Draft|inbound|interviewer|field/i);
-	expect(crib).not.toMatch(/Draft is in/);
-	expect(crib).not.toMatch(/Not an interviewer/);
+test("Vietnamese UI note uses the Vietnamese wording for the same thread", () => {
+	const note = formatCribNote({ language: "vi" }, vi);
+	expect(note).toBe("bằng tiếng Việt · đừng hỏi thêm kiểu phỏng vấn");
+	expect(note).not.toMatch(/Draft|inbound|interviewer|field/i);
+	expect(note).not.toMatch(/Tây Hồ|30 triệu|thuê/);
 });
 
-test("paperwork flag is localized and does not invent law", () => {
-	const paperwork = {
-		mentioned: true,
-		flag: "stored English flag",
-	};
-	const enCrib = formatCribNotes(
-		{ language: "ja" as GuestLanguage, qualification: emptyQualification(), paperwork },
-		en,
-	);
-	const viCrib = formatCribNotes(
-		{ language: "ja" as GuestLanguage, qualification: emptyQualification(), paperwork },
-		vi,
-	);
-	expect(enCrib).toMatch(/Do not invent Vietnamese law/);
-	expect(enCrib).not.toMatch(/stored English flag/);
-	expect(viCrib).toMatch(/Không bịa luật Việt Nam/);
-	expect(viCrib).not.toMatch(/sổ hồng ngày mai/i);
+test("paperwork is left to the details: the note does not repeat the flag, nor invent law", () => {
+	const enNote = formatConversationCrib({ oneShot: shotOf(emptyQualification(), true) }, en);
+	const viNote = formatConversationCrib({ oneShot: shotOf(emptyQualification(), true) }, vi);
+	expect(enNote).toBe("in Japanese · don't interview");
+	expect(enNote).not.toMatch(/stored English flag|pink book/);
+	expect(viNote).not.toMatch(/sổ hồng/i);
 });
 
 test("For you is omitted when there is no one-shot crib", () => {
 	expect(formatConversationCrib({ oneShot: null }, en)).toBeNull();
 });
 
-test("empty one-shot facts use the empty-facts crib string", () => {
-	const crib = formatConversationCrib(
-		{
-			oneShot: {
-				language: "en",
-				qualification: emptyQualification(),
-				paperwork: { mentioned: false, flag: null },
-				draft: { reply: "", answersMessageId: null, source: "template" },
-			},
-		},
-		en,
-	);
-	expect(crib).toMatch(/nothing from the guest yet/);
-	expect(crib).not.toBe("");
+test("a one-shot with no facts still gives the note", () => {
+	const note = formatConversationCrib({ oneShot: shotOf(emptyQualification(), false, "en") }, en);
+	expect(note).toBe("in English · don't interview");
 });
+
+function shotOf(
+	qualification: Qualification,
+	paperwork: boolean,
+	language: GuestLanguage = paperwork ? "ja" : "vi",
+) {
+	return {
+		language,
+		qualification,
+		paperwork: { mentioned: paperwork, flag: paperwork ? "stored English flag" : null },
+		draft: { reply: "", answersMessageId: null, source: "template" as const },
+	};
+}

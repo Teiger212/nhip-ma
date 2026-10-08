@@ -45,7 +45,35 @@ const backgroundLabelIsLiteral = {
 	},
 };
 
+/**
+ * `nhip/no-native-select` (#248): every select in the app is the kit's `Select`
+ * (`@repo/ui`, Base UI), never a native `<select>`, so a list of choices looks and behaves the
+ * same everywhere (DESIGN.md, Owner Select). `packages/ui` is exempt: it is where the kit's own
+ * controls are built.
+ */
+const noNativeSelect = {
+	meta: {
+		type: "problem",
+		docs: { description: "Use the kit's Select from @repo/ui, never a native <select>." },
+	},
+	create(context) {
+		return {
+			JSXOpeningElement(node) {
+				if (node.name.type !== "JSXIdentifier" || node.name.name !== "select") return;
+				context.report({
+					node,
+					message:
+						"Use the kit's Select (Select, SelectTrigger, SelectValue, SelectContent, SelectItem from @repo/ui), never a native <select> (#248, DESIGN.md Owner Select).",
+				});
+			},
+		};
+	},
+};
+
 export default {
 	meta: { name: "nhip" },
-	rules: { "background-label-is-literal": backgroundLabelIsLiteral },
+	rules: {
+		"background-label-is-literal": backgroundLabelIsLiteral,
+		"no-native-select": noNativeSelect,
+	},
 };

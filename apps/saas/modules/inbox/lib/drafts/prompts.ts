@@ -1,5 +1,5 @@
 import type { GuestLanguage, OperatorLanguage } from "../types";
-import type { FollowUpInput, TranslateInput } from "./adapter";
+import type { DraftInput, TranslateInput } from "./adapter";
 
 const LANGUAGE_NAMES: Record<GuestLanguage, string> = {
 	en: "English",
@@ -55,7 +55,7 @@ export function followUpSystemPrompt(guestLanguage: GuestLanguage): string {
 	].join("\n");
 }
 
-export function followUpUserPrompt(input: FollowUpInput): string {
+export function followUpUserPrompt(input: DraftInput): string {
 	const q = input.qualification;
 	const facts = [
 		// The profile name is vendor-supplied text the guest controls: data, like the messages.

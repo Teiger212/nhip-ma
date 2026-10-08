@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-10-08 (The open thread: conversation, docked reply box, guest details beside it)
+
+### Changed
+
+- **The open thread is a workbench** (#248). Messages are chat bubbles, the guest's on the left with the translation as a muted second line inside the bubble, the office's on the right, with the source and time under each. The reply box is docked under the conversation and always in view, with Approve and send in it, and the conversation opens on the latest message. The guest's details sit in a rail beside the conversation (details and what is missing, the CRM status, the owner); when the thread's own pane is narrower than 56rem (1366px with the sidebar open, a phone) the rail folds into a strip under the header, and the CRM status and Assign to move into the header.
+- **A new guest message no longer pulls an operator reading older ones** (#248, PR #258). The conversation follows new messages only while the operator is at the latest; scrolled up, it stays put and a "New message" pill above the reply box takes them down to it. Opening a thread and the operator's own send still go to the latest.
+- **The operator note is one line beside "Reply"** (#248): the reply's language and "don't interview" ("in Korean · don't interview"). The guest's facts and the paperwork flag it used to repeat are in the details.
+- **Assign to and the manager's Showing filter are the kit's Select** (#248), showing the current choice, with the office's operators in the same order as a row's Assign to… menu. A new lint rule, `nhip/no-native-select`, refuses a native `<select>` outside `packages/ui`.
+
+## 2026-10-08 (the model layer: a model per task, zero-retention, daily caps)
+
+### Added
+
+- **A model per task, defaulted in code** (#250, ADR 0024). Every model call is a task,
+  `draft` or `translate`, with its own model: `DRAFT_MODEL` and `TRANSLATE_MODEL`, both
+  `anthropic/claude-haiku-5.5` unless set. A key alone is enough to start; the startup error for
+  a key without `DRAFT_MODEL` is gone. Switching a model is an env change and a redeploy.
+- **Daily caps per office** (#250, ADR 0024). Drafts 50 a day (Regenerate counts), translations
+  1,000 a day, from `DRAFT_DAILY_CAP` and `TRANSLATE_DAILY_CAP`, counted per model call (a retry
+  counts) in the new `inbox_model_usage` table. The day runs midnight to midnight in
+  Asia/Ho_Chi_Minh. Past a cap the task falls back without calling the model: the template, or
+  no translation line. A capped translation isn't a failed one: it spends none of the message's
+  attempts and waits out no backoff, and the thread's first open after the office's day turns
+  translates it.
+- **One log line per model call** (#250, ADR 0024): task, model, officeId, input and output
+  tokens, latency and outcome (ok, timeout, error, capped, filtered, empty). Never message text,
+  a thread id or a guest id.
+- **A deterministic stub model for E2E** (#250, ADR 0024). `MODEL_STUB` names the tasks it
+  answers with fixed text; production refuses it. E2E now translates guest messages with it
+  ("Stub translation, Korean to Vietnamese."); its drafts are built and turn on with #252.
+
+### Changed
+
+- **OpenRouter only, with zero-retention routing on every request** (#250, ADR 0024). Every
+  request sends `provider: { zdr: true, data_collection: "deny" }`, so guests' text is neither
+  kept nor trained on. A production deployment refuses a `DRAFT_BASE_URL` other than OpenRouter.
+- **A model call gives up after 20 s and is tried once more** (#250, ADR 0024), then the
+  fallback stands, with no error banner. It was 30 s and no retry.
+
 ## 2026-10-08 (the built-in CRM in the sidebar, Coming soon)
 
 ### Added

@@ -196,6 +196,12 @@ export const OfficeSettingScalarFieldEnumSchema = z.enum(['officeId', 'autoReply
 
 export type OfficeSettingScalarFieldEnum = z.infer<typeof OfficeSettingScalarFieldEnumSchema>;
 
+// File: ModelUsageScalarFieldEnum.schema.ts
+
+export const ModelUsageScalarFieldEnumSchema = z.enum(['officeId', 'day', 'task', 'calls'])
+
+export type ModelUsageScalarFieldEnum = z.infer<typeof ModelUsageScalarFieldEnumSchema>;
+
 // File: LeadTallyScalarFieldEnum.schema.ts
 
 export const LeadTallyScalarFieldEnumSchema = z.enum(['id', 'officeId', 'pipe', 'language', 'firstInboundAt', 'firstReplyAt', 'inConversation', 'outcome'])
@@ -825,6 +831,18 @@ export const OfficeSettingSchema = z.object({
 });
 
 export type OfficeSettingType = z.infer<typeof OfficeSettingSchema>;
+
+
+// File: ModelUsage.schema.ts
+
+export const ModelUsageSchema = z.object({
+  officeId: z.string(),
+  day: z.date(),
+  task: z.string(),
+  calls: z.number().int(),
+});
+
+export type ModelUsageType = z.infer<typeof ModelUsageSchema>;
 
 
 // File: LeadTally.schema.ts
