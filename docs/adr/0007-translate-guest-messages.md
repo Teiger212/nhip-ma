@@ -2,6 +2,9 @@
 
 Date: 2026-09-17. Status: accepted.
 
+**Amended by ADR 0025 (2026-10-08).** A guest message is translated once, into the office
+language the manager sets, not into each operator's language.
+
 ## Context
 
 The operator note is written in the operator's language, but it carries only what the

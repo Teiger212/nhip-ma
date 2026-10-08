@@ -3,7 +3,7 @@
 Date: 2026-09-20. Status: accepted. Refines ADR 0006.
 
 **Amended by ADR 0024 (2026-10-08).** An edited reply stays when the guest writes again; it is
-no longer emptied.
+no longer emptied. Sending it answers the latest guest message, with no `409 stale_target`.
 
 ## Context
 
