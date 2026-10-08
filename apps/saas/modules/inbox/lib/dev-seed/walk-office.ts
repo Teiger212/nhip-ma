@@ -242,7 +242,7 @@ const unassigned: SeedGuest[] = [
 	},
 ];
 
-/** The first agent's (walk@nhip.local): Your turn, Quiet, Sent, written back, won. */
+/** The first agent's (linh@nhip.local): Your turn, Quiet, Sent, written back, won. */
 const firstAgent: SeedGuest[] = [
 	{
 		pipe: "whatsapp",
@@ -466,7 +466,7 @@ const firstAgent: SeedGuest[] = [
 	},
 ];
 
-/** The second agent's (walk2@nhip.local): one moved from the first, lost, lost and back. */
+/** The second agent's (duc@nhip.local): one moved from the first, lost, lost and back. */
 const secondAgent: SeedGuest[] = [
 	{
 		// The first agent had it, then the manager moved it: the first agent's "moved" bell row.

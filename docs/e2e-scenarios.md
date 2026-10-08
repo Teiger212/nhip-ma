@@ -7,7 +7,7 @@ a scenario gets its test, link the spec file next to it.
 
 Seed: the E2E run seeds its own database with `E2E=1`, which writes only the walk logins and
 the walk office's four demo threads (Minji, Yuki, Alexei, Thảo); specs build their own offices
-for everything else. Logins: `walk@nhip.local` (agent), `admin@nhip.local` (platform admin),
+for everything else. Logins: `linh@nhip.local` (agent), `admin@nhip.local` (platform admin),
 password `walkthrough`. Without `E2E`, `pnpm seed -- --reset` writes the rich dev and demo
 dataset instead (#69, AGENTS.md "Environment"): about sixty guests in every Inbox, CRM and
 alert state, in the walk office (mock CRM) and a second office. A spec run against a dev
@@ -177,7 +177,7 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    (`_rsc` included) and its `RSC` and `Next-*` headers, prefetches left out, and every such
    request is replayed from a request context with no cookie of its own, redirects not followed.
    "Sent to the login page" is an HTTP redirect whose `Location` is `/en/login`, or Next's
-   redirect instruction to `/en/login` in the RSC answer (the form a signed-in move to `/en/walk`
+   redirect instruction to `/en/login` in the RSC answer (the form a signed-in move to `/en/hanoi-nest-seekers`
    answers with); a redirect anywhere else fails. "None of Home" is none of Home's own words
    (subtitle, funnel labels, response time, the no-office cards) in the answer. "Signed out" is
    an agent of an office of the test's own whose session opened Home until they signed out; the
@@ -202,13 +202,13 @@ creates an office its owner). That membership must open nothing.
 A manager invites the office's agents from **Team**, the kit's members page refitted (decided
 2026-10-05 on #82). It is reached from the user menu (no sidebar item: the sidebar stays Home
 and Inbox) and lives at `/<locale>/<office slug>/settings/members` (the walk office's slug is
-`walk`). Its words are Nhịp's: the roles read **Agent** and **Manager** (VI **Nhân viên**,
+`hanoi-nest-seekers`). Its words are Nhịp's: the roles read **Agent** and **Manager** (VI **Nhân viên**,
 **Quản lý**), never member, admin or owner. A manager is the kit's `admin` or `owner`, an agent
 its `member` (CONTEXT.md). The invite's language, resend and expiry, and the invitee's path
 are not here (the onboarding grill).
 
 1. **A manager invites an agent from Team.** As the walk office's manager, the user menu (the
-   ⋯ beside their name in the sidebar) has a "Team" item; it opens `/en/walk/settings/members`,
+   ⋯ beside their name in the sidebar) has a "Team" item; it opens `/en/hanoi-nest-seekers/settings/members`,
    whose page title is "Team". The invite form's role offers exactly "Agent" and "Manager",
    with "Agent" chosen; there is no "Owner". The manager invites a new email as Agent: a toast
    says "Invitation sent", and under "Pending invitations" the email shows with role "Agent".
@@ -216,7 +216,7 @@ are not here (the onboarding grill).
    (`/vi/<office slug>/settings/members`; ADR 0025, a member reads Nhịp in the office language)
    the menu item is "Nhóm", the page title "Nhóm", and the role options "Nhân viên" and "Quản lý".
 2. **An agent has no Team.** As an agent of the walk office, the user menu has no "Team", and
-   opening `/en/walk/settings/members` shows the not-found page (404) with no member list and
+   opening `/en/hanoi-nest-seekers/settings/members` shows the not-found page (404) with no member list and
    no invite form. The kit's API refuses the agent too: inviting into the office
    (`POST /api/auth/organization/invite-member`, any role) answers 403 and no invitation is
    made; changing a member's role (`POST /api/auth/organization/update-member-role`) answers
@@ -261,8 +261,8 @@ are not here (the onboarding grill).
    (their user id, read from the platform admin's view of the office): it answers 400, and the
    thread's owner is unchanged.
 8. **Office settings are a manager's** (#212). As an agent of the walk office, opening the
-   office's settings by address (`/en/walk/settings/general`, and Billing,
-   `/en/walk/settings/billing`) shows the not-found page (404), as Team does, with nothing of the
+   office's settings by address (`/en/hanoi-nest-seekers/settings/general`, and Billing,
+   `/en/hanoi-nest-seekers/settings/billing`) shows the not-found page (404), as Team does, with nothing of the
    office's settings on it. The walk office's manager opening General gets the page. Billing is
    hidden from everyone until billing is built (Hidden kit screens 1, #210).
    Spec: `apps/saas/tests/office-settings.spec.ts` (Team 8; the seeded agent and manager; "nothing
@@ -346,8 +346,8 @@ time: nothing in it can be trusted.
 
 ## Assigning leads (ADR 0022, spec #160)
 
-Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and a manager
-(`manager@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
+Seed: the walk office has two agents (`linh@nhip.local`, `duc@nhip.local`) and a manager
+(`ha@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
 1's, Yuki is agent 2's, and Alexei and Thảo are Unassigned. "A second manager" is an invited
 kit `admin` of an office of the test's own. Every new guest also gets the auto-reply (ADR
 0021); nothing here depends on it.
@@ -503,7 +503,7 @@ A kit screen Nhịp doesn't use yet is hidden (`kit-screens.ts`), not deleted: o
 gives the not-found page. The account's Billing page is hidden already.
 
 1. **The office's Billing page is hidden** (ADR 0022 amendment, Q16, docs PR #213; until #198
-   builds ADR 0014's billing). The walk office's manager opening `/en/walk/settings/billing` (in
+   builds ADR 0014's billing). The walk office's manager opening `/en/hanoi-nest-seekers/settings/billing` (in
    Vietnamese, a Vietnamese office's manager opening `/vi/<office slug>/settings/billing`) gets what
    the account's hidden Billing page (`/<locale>/settings/billing`) gives: the same status (404)
    and the same not-found page ("404", "Page not found", "Go to dashboard"; VI "Không tìm thấy

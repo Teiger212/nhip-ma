@@ -38,11 +38,14 @@ are required; the redirects and the rejected cookie-only locale are in
 [ARCHITECTURE.md](./ARCHITECTURE.md), with layout and data details.
 
 `pnpm seed` (when `DATABASE_URL` is Postgres) creates four logins with password
-`walkthrough`, all in the walk office: `walk@nhip.local` and `walk2@nhip.local`, the agents
-(members, see Inbox and Home); `manager@nhip.local`, the office's manager (kit role `admin`,
+`walkthrough`, all in the walk office (Hanoi Nest Seekers; internal id `walk-office`, #264):
+`linh@nhip.local` (Trần Thị Linh) and `duc@nhip.local` (Phạm Minh Đức), the agents
+(members, see Inbox and Home); `ha@nhip.local` (Lê Thu Hà), the office's manager (kit role `admin`,
 sees every thread and reassigns); and `admin@nhip.local`, the platform admin (owner of the
 walk office, also sees the kit's admin area where offices are created and agents invited).
-It then writes the rich dev and demo dataset (#69, `apps/saas/modules/inbox/lib/dev-seed`),
+A database seeded before #264 has `walk@`, `walk2@` and `manager@`: the seed renames those
+users in place to Linh, Đức and Hà (same ids, so threads keep their owners), so no old login
+survives it. It then writes the rich dev and demo dataset (#69, `apps/saas/modules/inbox/lib/dev-seed`),
 all invented: about sixty guests over the last 30 days, each one's story played through the
 app's own calls at its own time (the inbound path, one-shot, alerts, auto-reply, mock CRM,
 assignments, approvals, a guest deletion), with no model call and nothing sent or pushed.

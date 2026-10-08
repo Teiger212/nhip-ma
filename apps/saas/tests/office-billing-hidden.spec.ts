@@ -5,13 +5,10 @@ import { expect, test } from "./support/fixtures";
 import { officeSlug, setOfficeLanguage } from "./support/office-language";
 import { joinOffice } from "./support/operators";
 import type { Login } from "./support/seed";
-import { AGENT, MANAGER } from "./support/seed";
+import { AGENT, MANAGER, WALK_OFFICE_SLUG } from "./support/seed";
 import { signInContext } from "./support/session-state";
 
 type Locale = "en" | "vi";
-
-/** The walk office's slug (seed): its settings live under `/<locale>/walk/settings/…`. */
-const WALK_SLUG = "walk";
 
 /** The not-found page, as each language says it (spelled out: it is what this spec proves). */
 const NOT_FOUND = {
@@ -68,7 +65,7 @@ async function expectNotFound(page: Page, locale: Locale, what: string) {
 async function signedIn(browser: Browser, who: Login) {
 	const context = await browser.newContext();
 	await signInContext(context, who);
-	return { page: await context.newPage(), slug: WALK_SLUG, close: () => context.close() };
+	return { page: await context.newPage(), slug: WALK_OFFICE_SLUG, close: () => context.close() };
 }
 
 /**

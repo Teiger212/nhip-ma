@@ -13,8 +13,8 @@ things are.
 
 ## Run locally
 
-Setup, the four seeded logins (`walk@nhip.local` and `walk2@nhip.local`, the agents;
-`manager@nhip.local`, the office's manager; `admin@nhip.local`, the platform admin) and the
+Setup, the four seeded logins (`linh@nhip.local` and `duc@nhip.local`, the agents;
+`ha@nhip.local`, the office's manager; `admin@nhip.local`, the platform admin) and the
 test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
 injects an inbound locally (404 in production). Only the exact `SEND_MODE` value `live`
 talks to a vendor, and live needs the webhook secrets set or inbound is refused.
@@ -109,7 +109,7 @@ PostHog privacy setting, domain and DMARC, Vietnam's data protection filing) is 
 - Pipes are connected per office in the admin area (ADR 0017); Nhịp's own vendor apps are
   env vars (`WHATSAPP_*`, `ZALO_APP_ID`, `ZALO_APP_SECRET`, `ZALO_OA_SECRET_KEY`), each pipe
   whole or not at all, and `PIPE_SECRETS_KEY` encrypts stored tokens.
-- The seed's logins (`walk@nhip.local`, `admin@nhip.local`) never go near a shared
+- The seed's logins (`linh@nhip.local`, `admin@nhip.local`) never go near a shared
   database; the first platform admin comes from `pnpm --filter @repo/scripts create:user`.
 - Auth: a fresh `BETTER_AUTH_SECRET`; `NEXT_PUBLIC_SAAS_URL` is the public https origin;
   rate-limit counters live in the database (`rateLimit`), plus the Vercel Firewall rule.

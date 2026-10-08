@@ -19,6 +19,8 @@ import {
 	WALK_AGENT2_EMAIL,
 	WALK_MANAGER_EMAIL,
 	WALK_OFFICE_ID,
+	WALK_OFFICE_NAME,
+	WALK_OFFICE_SLUG,
 	WALK_USER_EMAIL,
 } from "../lib/walk-user";
 import { runSeed } from "./run-seed";
@@ -339,5 +341,69 @@ test(
 		expect(threads.every((thread) => thread.officeId === WALK_OFFICE_ID)).toBe(true);
 		expect(await testDb.organization.findUnique({ where: { id: RIVER_OFFICE_ID } })).toBeNull();
 		expect(await testDb.user.count({ where: { email: RIVER_MANAGER_EMAIL } })).toBe(0);
+	},
+);
+
+test(
+	"a database seeded before #264 loses walk@, walk2@ and manager@: they become Linh, Đức and Hà, the office Hanoi Nest Seekers at /hanoi-nest-seekers (#264)",
+	SEEDING,
+	async () => {
+		const old = [
+			["walk@nhip.local", "Walk Operator", "member"],
+			["walk2@nhip.local", "Walk Operator Two", "member"],
+			["manager@nhip.local", "Walk Manager", "admin"],
+		] as const;
+		await testDb.organization.upsert({
+			where: { id: WALK_OFFICE_ID },
+			create: { id: WALK_OFFICE_ID, name: "Walk Office", slug: "walk", createdAt: new Date() },
+			update: { name: "Walk Office", slug: "walk" },
+		});
+		const ids: string[] = [];
+		for (const [email, name, role] of old) {
+			const user = await testDb.user.create({
+				data: {
+					email,
+					name,
+					emailVerified: true,
+					onboardingComplete: true,
+					role: "user",
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			ids.push(user.id);
+			await testDb.member.create({
+				data: { organizationId: WALK_OFFICE_ID, userId: user.id, role, createdAt: new Date() },
+			});
+		}
+
+		await runSeed({ env: { ...localEnv(), E2E: "1" }, reset: true, log: quiet });
+
+		for (const [email] of old) {
+			expect(await testDb.user.count({ where: { email } }), email).toBe(0);
+		}
+		// The same people, renamed: their ids, and so their memberships, carry over.
+		const renamed = await testDb.user.findMany({
+			where: { id: { in: ids } },
+			orderBy: { email: "asc" },
+		});
+		expect(renamed.map((user) => [user.email, user.name])).toEqual([
+			["duc@nhip.local", "Phạm Minh Đức"],
+			["ha@nhip.local", "Lê Thu Hà"],
+			["linh@nhip.local", "Trần Thị Linh"],
+		]);
+		const managerMember = await testDb.member.findUniqueOrThrow({
+			where: { organizationId_userId: { organizationId: WALK_OFFICE_ID, userId: ids[2] } },
+		});
+		expect(managerMember.role).toBe("admin");
+		const office = await testDb.organization.findUniqueOrThrow({ where: { id: WALK_OFFICE_ID } });
+		expect(office.name).toBe(WALK_OFFICE_NAME);
+		expect(office.slug).toBe(WALK_OFFICE_SLUG);
+		expect(WALK_OFFICE_SLUG).toBe("hanoi-nest-seekers");
+		expect(WALK_OFFICE_NAME).toBe("Hanoi Nest Seekers");
+		// A second run adds nothing.
+		const before = await rowCounts();
+		await runSeed({ env: { ...localEnv(), E2E: "1" }, reset: false, log: quiet });
+		expect(await rowCounts()).toEqual(before);
 	},
 );

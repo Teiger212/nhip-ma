@@ -8,7 +8,7 @@ import { homeCopy } from "./support/copy";
 import { expect, test } from "./support/fixtures";
 import { LoginPage } from "./support/login-page";
 import { joinOffice } from "./support/operators";
-import { AGENT } from "./support/seed";
+import { AGENT, WALK_OFFICE_SLUG } from "./support/seed";
 import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
 import { sessionStatePath, signInContext } from "./support/session-state";
 
@@ -89,7 +89,7 @@ async function replay(move: Navigation, cookie?: string): Promise<Answer> {
 /**
  * Where the answer sends the caller, as a path: an HTTP redirect's `Location`, or the redirect
  * instruction Next puts in an RSC answer (`NEXT_REDIRECT;replace;<url>;307;`, as the office's own
- * address `/en/walk` answers a signed-in agent's move). Anything else says what it was instead.
+ * address `/en/<office slug>` answers a signed-in agent's move). Anything else says what it was instead.
  */
 function sentTo(answer: Answer): string {
 	if (answer.status >= 300 && answer.status < 400) {
@@ -255,9 +255,9 @@ test.describe("Auth 8 — a signed-in page shows nothing to someone signed out, 
 		await expectHomeRendered(moves, agentCookie(), "the signed-in agent");
 
 		// The same move aimed at an address that sends a signed-in agent on, the office's own
-		// (/en/walk) and the locale root (/en), both to the Inbox: the redirect is read where it is,
+		// (/en/<office slug>) and the locale root (/en), both to the Inbox: the redirect is read where it is,
 		// so a refusal above is judged by where it sends, not merely that it redirects.
-		for (const address of ["/en/walk", "/en"]) {
+		for (const address of [`/en/${WALK_OFFICE_SLUG}`, "/en"]) {
 			const url = new URL(moves[0].url);
 			url.pathname = address;
 			const answer = await replay({ ...moves[0], url: url.toString() }, agentCookie());
