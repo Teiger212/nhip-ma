@@ -51,6 +51,9 @@ const nextConfig: NextConfig = {
 	experimental: {
 		useTypeScriptCli: true,
 	},
+	// The E2E build skips the build's own type check (#278): CI's `ci` job type-checks the same
+	// commit, and every other build, Vercel's included, still runs it.
+	typescript: { ignoreBuildErrors: process.env.E2E === "1" },
 	transpilePackages: ["@repo/api", "@repo/auth", "@repo/database", "@repo/i18n", "@repo/ui"],
 	serverExternalPackages: ["better-sqlite3"],
 	images: {
