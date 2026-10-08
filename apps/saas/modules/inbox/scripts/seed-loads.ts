@@ -3,9 +3,9 @@
  * once when a transitive ESM-only dependency entered the `@repo/auth` import chain (PR #8),
  * which only surfaced on a fresh machine. `run-seed` brings in the rich seed's chain too (#69).
  */
-Promise.all([import("./seed-walk-user"), import("./run-seed")])
+Promise.all([import("./seed-demo-user"), import("./run-seed")])
 	.then(() => {
-		console.info("seed-walk-user loads");
+		console.info("seed-demo-user loads");
 		console.info("run-seed loads");
 	})
 	.catch((error: unknown) => {

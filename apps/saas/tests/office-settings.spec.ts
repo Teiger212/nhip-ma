@@ -2,21 +2,18 @@ import type { Browser } from "@playwright/test";
 
 import { expect, test } from "./support/fixtures";
 import type { Login } from "./support/seed";
-import { AGENT, MANAGER, WALK_OFFICE_SLUG } from "./support/seed";
+import { AGENT, MANAGER, officeUrl } from "./support/seed";
 import { clientIpHeaders } from "./support/session";
 import { signInContext } from "./support/session-state";
 
-/** The walk office's settings pages, by address (`WALK_OFFICE_SLUG`). */
-const OFFICE_SETTINGS = [
-	`/en/${WALK_OFFICE_SLUG}/settings/general`,
-	`/en/${WALK_OFFICE_SLUG}/settings/billing`,
-];
+/** The walk office's settings pages, by address. */
+const OFFICE_SETTINGS = [officeUrl("settings/general"), officeUrl("settings/billing")];
 
 /**
  * The pages a manager opens. Billing is hidden from everyone until billing is built (#210,
  * Hidden kit screens 1), so only General opens for the manager.
  */
-const MANAGER_OPENS = new Set([`/en/${WALK_OFFICE_SLUG}/settings/general`]);
+const MANAGER_OPENS = new Set([officeUrl("settings/general")]);
 
 /** The app's not-found page. */
 const NOT_FOUND = "Page not found";

@@ -8,7 +8,7 @@ import {
 } from "./support/invitee";
 import type { Office } from "./support/offices";
 import { acceptInvitation, deleteOffice, officesOf } from "./support/offices";
-import { AGENT, PLATFORM_ADMIN, WALK_OFFICE_ID } from "./support/seed";
+import { AGENT, PLATFORM_ADMIN, DEMO_OFFICE_ID } from "./support/seed";
 import { apiAs, withOrigin } from "./support/session";
 
 // scenario: docs/e2e-scenarios.md Auth 1
@@ -192,7 +192,7 @@ test.describe("Auth 7 — only a manager replaces the logo", () => {
 
 		// The agent is a plain member of the walk office (ADR 0010 seed).
 		const res = await agent.post("/api/rpc/organizations/createLogoUploadUrl", {
-			json: { organizationId: WALK_OFFICE_ID },
+			json: { organizationId: DEMO_OFFICE_ID },
 		});
 		const body = await res.text();
 		await agent.dispose();

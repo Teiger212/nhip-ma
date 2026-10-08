@@ -1,33 +1,33 @@
 import { backfillAnswerOperatorNames, db, getUserByEmail } from "@repo/database";
 import { createInboxStore } from "@repo/database/inbox";
 
+import {
+	RIVER_AGENT2_EMAIL,
+	RIVER_AGENT_EMAIL,
+	RIVER_MANAGER_EMAIL,
+	RIVER_OFFICE_ID,
+	DEMO_ADMIN_EMAIL,
+	DEMO_AGENT2_EMAIL,
+	DEMO_MANAGER_EMAIL,
+	DEMO_OFFICE_ID,
+	DEMO_AGENT_EMAIL,
+	DEMO_PASSWORD,
+} from "../lib/demo-user";
 import { type SeedEnv, SeedRefused, seedRefusal } from "../lib/dev-seed/guard";
 import { SEED_OFFICES, seedDevOffices } from "../lib/dev-seed/seed-offices";
 import { refreshTemplate } from "../lib/inbox";
 import { inView, isQuiet, threadStatus } from "../lib/queue";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
-import {
-	RIVER_AGENT2_EMAIL,
-	RIVER_AGENT_EMAIL,
-	RIVER_MANAGER_EMAIL,
-	RIVER_OFFICE_ID,
-	WALK_ADMIN_EMAIL,
-	WALK_AGENT2_EMAIL,
-	WALK_MANAGER_EMAIL,
-	WALK_OFFICE_ID,
-	WALK_USER_EMAIL,
-	WALK_USER_PASSWORD,
-} from "../lib/walk-user";
-import { seedRiverOffice, seedWalkOffice } from "./seed-walk-office";
+import { seedRiverOffice, seedDemoOffice } from "./seed-demo-office";
 import {
 	seedRiverLogins,
-	seedWalkAdmin,
+	seedDemoAdmin,
 	retireLegacyWalkLogins,
-	seedWalkAgent2,
-	seedWalkManager,
-	seedWalkUser,
-} from "./seed-walk-user";
+	seedDemoAgent2,
+	seedDemoManager,
+	seedDemoUser,
+} from "./seed-demo-user";
 
 export type SeedOptions = {
 	env: SeedEnv;
@@ -57,15 +57,15 @@ export async function runSeed({
 
 	const retired = await retireLegacyWalkLogins();
 	if (retired > 0) log(`Old walk logins renamed to the Hanoi Nest Seekers team (#264): ${retired}`);
-	const walkUser = await seedWalkUser();
-	const walkAdmin = await seedWalkAdmin();
-	const walkAgent2 = await seedWalkAgent2();
-	const walkManager = await seedWalkManager();
+	const walkUser = await seedDemoUser();
+	const walkAdmin = await seedDemoAdmin();
+	const walkAgent2 = await seedDemoAgent2();
+	const walkManager = await seedDemoManager();
 	const logins: Array<[string, "created" | "exists", string]> = [
-		[WALK_USER_EMAIL, walkUser, "agent, Hanoi Nest Seekers"],
-		[WALK_AGENT2_EMAIL, walkAgent2, "second agent, Hanoi Nest Seekers"],
-		[WALK_MANAGER_EMAIL, walkManager, "manager, Hanoi Nest Seekers: sees every thread, reassigns"],
-		[WALK_ADMIN_EMAIL, walkAdmin, "platform admin: its office memberships open nothing"],
+		[DEMO_AGENT_EMAIL, walkUser, "agent, Hanoi Nest Seekers"],
+		[DEMO_AGENT2_EMAIL, walkAgent2, "second agent, Hanoi Nest Seekers"],
+		[DEMO_MANAGER_EMAIL, walkManager, "manager, Hanoi Nest Seekers: sees every thread, reassigns"],
+		[DEMO_ADMIN_EMAIL, walkAdmin, "platform admin: its office memberships open nothing"],
 	];
 	if (rich) {
 		const river = await seedRiverLogins();
@@ -80,26 +80,26 @@ export async function runSeed({
 			`River office ${riverOffice === "exists" ? "already exists" : "created"}: ${RIVER_OFFICE_ID}`,
 		);
 	}
-	const walkOffice = await seedWalkOffice();
-	log(`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${WALK_OFFICE_ID}`);
+	const walkOffice = await seedDemoOffice();
+	log(`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${DEMO_OFFICE_ID}`);
 	const named = await backfillAnswerOperatorNames();
 	if (named > 0) log(`Answers given their sender's name (ADR 0013): ${named}`);
 
 	if (rich) {
 		await seedRich({ reset, now, log });
 	} else {
-		await seedWalkDemo({ reset, log });
+		await seedDemoThreads({ reset, log });
 	}
 
 	log("\nLogins (password for all: walkthrough):");
 	for (const [email, result, role] of logins) {
-		log(`  ${email} / ${WALK_USER_PASSWORD}  ${role}${result === "created" ? " (created)" : ""}`);
+		log(`  ${email} / ${DEMO_PASSWORD}  ${role}${result === "created" ? " (created)" : ""}`);
 	}
 	log("Nothing here is a real guest.");
 }
 
 /** The E2E seed, unchanged: the walk's four demo threads, Minji agent 1's, Yuki agent 2's. */
-async function seedWalkDemo({
+async function seedDemoThreads({
 	reset,
 	log,
 }: {
@@ -109,11 +109,11 @@ async function seedWalkDemo({
 	const { store } = getRuntime();
 	const owned = reset
 		? []
-		: await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID, role: "manager" });
+		: await store.listConversations({ userId: "seed", officeId: DEMO_OFFICE_ID, role: "manager" });
 	const existing = DEMO_THREADS.filter((thread) =>
 		owned.some((conv) => conv.pipe === thread.pipe && conv.guestId === thread.guestId),
 	).length;
-	const conversations = await seedInbox(WALK_OFFICE_ID, { reset });
+	const conversations = await seedInbox(DEMO_OFFICE_ID, { reset });
 	for (const conv of conversations) {
 		const q = conv.oneShot?.qualification;
 		const paper = conv.oneShot?.paperwork?.mentioned ? "paperwork flagged" : "no paperwork";
@@ -123,21 +123,21 @@ async function seedWalkDemo({
 	}
 	// Every state of assignment (ADR 0022): Minji is agent 1's, Yuki agent 2's, the rest Unassigned
 	// (the manager's alone). Rewritten on every seed, so the demo always starts the same.
-	const agent1 = await getUserByEmail(WALK_USER_EMAIL);
-	const agent2 = await getUserByEmail(WALK_AGENT2_EMAIL);
+	const agent1 = await getUserByEmail(DEMO_AGENT_EMAIL);
+	const agent2 = await getUserByEmail(DEMO_AGENT2_EMAIL);
 	const owners: Record<string, string | null> = {
 		"demo-ko-stay": agent1?.id ?? null,
 		"demo-jp-buy": agent2?.id ?? null,
 	};
 	for (const conv of conversations) {
-		await store.setOwner(conv.id, owners[conv.guestId] ?? null, WALK_OFFICE_ID);
+		await store.setOwner(conv.id, owners[conv.guestId] ?? null, DEMO_OFFICE_ID);
 		// The template introduces the owner it now has (ADR 0024).
-		const reassigned = await store.getOfficeConversation(WALK_OFFICE_ID, conv.id);
+		const reassigned = await store.getOfficeConversation(DEMO_OFFICE_ID, conv.id);
 		if (reassigned) await refreshTemplate(store, reassigned);
 	}
 	const created = conversations.length - existing;
 	log(
-		`\n${conversations.length} demo threads in ${WALK_OFFICE_ID}` +
+		`\n${conversations.length} demo threads in ${DEMO_OFFICE_ID}` +
 			(existing ? ` (wrote ${created}, skipped ${existing} existing)` : " (fresh write)"),
 	);
 	log(
@@ -185,6 +185,6 @@ async function seedRich({
 		"\nA re-run adds nothing. `pnpm seed -- --reset` rewrites the seed's guests as of now (fresh ones go Quiet after 48 hours).",
 	);
 	log(
-		`Open the app, sign in, then Inbox: the walk office's manager sees ${WALK_OFFICE_ID}, the river office's ${RIVER_OFFICE_ID}.`,
+		`Open the app, sign in, then Inbox: the walk office's manager sees ${DEMO_OFFICE_ID}, the river office's ${RIVER_OFFICE_ID}.`,
 	);
 }

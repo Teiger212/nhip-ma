@@ -92,7 +92,7 @@ test <file>` against your running dev server (no build).
 - Database: local Postgres (brew `postgresql@16`), schema via
   `pnpm --filter @repo/database push`, demo data via `pnpm seed --reset` (walk office, four
   demo threads). Specs must not depend on each other or on order.
-- Logins come from the seed (`apps/saas/modules/inbox/lib/walk-user.ts`): the agent
+- Logins come from the seed (`apps/saas/modules/inbox/lib/demo-user.ts`): the agent
   `linh@nhip.local` and the platform admin `admin@nhip.local`, password `walkthrough`.
 - Starting signed in is setup: `signInContext(context, AGENT)` (`support/session-state.ts`),
   the `admin` fixture, or `apiAs(AGENT)`. They use sessions minted before the run

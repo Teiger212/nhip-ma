@@ -1,10 +1,10 @@
-import { DEMO_THREADS } from "../seed";
 import {
-	WALK_AGENT2_EMAIL,
-	WALK_MANAGER_EMAIL,
-	WALK_OFFICE_ID,
-	WALK_USER_EMAIL,
-} from "../walk-user";
+	DEMO_AGENT2_EMAIL,
+	DEMO_MANAGER_EMAIL,
+	DEMO_OFFICE_ID,
+	DEMO_AGENT_EMAIL,
+} from "../demo-user";
+import { DEMO_THREADS } from "../seed";
 import {
 	assigns,
 	crmMarks,
@@ -846,9 +846,9 @@ const managerOwn: SeedGuest[] = [
 	},
 ];
 
-export const WALK_SEED_OFFICE: SeedOffice = {
-	officeId: WALK_OFFICE_ID,
-	operators: { agent: WALK_USER_EMAIL, agent2: WALK_AGENT2_EMAIL, manager: WALK_MANAGER_EMAIL },
+export const DEMO_SEED_OFFICE: SeedOffice = {
+	officeId: DEMO_OFFICE_ID,
+	operators: { agent: DEMO_AGENT_EMAIL, agent2: DEMO_AGENT2_EMAIL, manager: DEMO_MANAGER_EMAIL },
 	mockCrm: true,
 	autoReply: true,
 	crmLeads: [

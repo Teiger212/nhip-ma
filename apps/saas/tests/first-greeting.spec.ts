@@ -9,6 +9,7 @@ import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
+import { officeUrlOf } from "./support/seed";
 import type { Api } from "./support/session";
 import { appOrigin } from "./support/session";
 import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
@@ -659,7 +660,7 @@ const OLD_FIRST_REPLY = /Thanks for writing/i;
 
 /** The office's settings, General tab, where a manager finds the switch. */
 function settingsAddress(office: GreetingOffice) {
-	return `/en/${office.slug}/settings/general`;
+	return officeUrlOf(office.slug, "settings/general");
 }
 
 function autoReplySwitch(page: Page) {
@@ -724,7 +725,7 @@ test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
 			await openUserMenu(page);
 			await expect(officeSettingsItem(page), "the user menu offers Office settings").toBeVisible();
 			await officeSettingsItem(page).click();
-			await expect(page).toHaveURL(new RegExp(`/en/${office.slug}/settings/general$`));
+			await expect(page).toHaveURL(new RegExp(`${officeUrlOf(office.slug, "settings/general")}$`));
 			await expect(autoReplySwitch(page), "the auto-reply is on by default").toBeChecked();
 		});
 

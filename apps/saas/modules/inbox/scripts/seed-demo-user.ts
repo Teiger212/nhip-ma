@@ -2,37 +2,37 @@ import { hashPassword } from "@repo/auth/lib/password";
 import { createUser, createUserAccount, db, getUserByEmail, updateUser } from "@repo/database";
 
 import {
-	LEGACY_WALK_LOGINS,
+	LEGACY_DEMO_LOGINS,
 	RIVER_AGENT2_EMAIL,
 	RIVER_AGENT2_NAME,
 	RIVER_AGENT_EMAIL,
 	RIVER_AGENT_NAME,
 	RIVER_MANAGER_EMAIL,
 	RIVER_MANAGER_NAME,
-	WALK_ADMIN_EMAIL,
-	WALK_ADMIN_NAME,
-	WALK_AGENT2_EMAIL,
-	WALK_AGENT2_NAME,
-	WALK_MANAGER_EMAIL,
-	WALK_MANAGER_NAME,
-	WALK_USER_EMAIL,
-	WALK_USER_NAME,
-	WALK_USER_PASSWORD,
-} from "../lib/walk-user";
+	DEMO_ADMIN_EMAIL,
+	DEMO_ADMIN_NAME,
+	DEMO_AGENT2_EMAIL,
+	DEMO_AGENT2_NAME,
+	DEMO_MANAGER_EMAIL,
+	DEMO_MANAGER_NAME,
+	DEMO_AGENT_EMAIL,
+	DEMO_AGENT_NAME,
+	DEMO_PASSWORD,
+} from "../lib/demo-user";
 
-export type WalkUserSeedResult = "created" | "exists";
+export type DemoUserSeedResult = "created" | "exists";
 
 async function seedLogin(login: {
 	email: string;
 	name: string;
 	role: "admin" | "user";
-}): Promise<WalkUserSeedResult> {
+}): Promise<DemoUserSeedResult> {
 	const existing = await getUserByEmail(login.email);
 	if (existing) {
 		return "exists";
 	}
 
-	const hashedPassword = await hashPassword(WALK_USER_PASSWORD);
+	const hashedPassword = await hashPassword(DEMO_PASSWORD);
 	const user = await createUser({
 		email: login.email,
 		name: login.name,
@@ -63,7 +63,7 @@ async function seedLogin(login: {
  */
 export async function retireLegacyWalkLogins(): Promise<number> {
 	let retired = 0;
-	for (const { from, to, name } of LEGACY_WALK_LOGINS) {
+	for (const { from, to, name } of LEGACY_DEMO_LOGINS) {
 		const legacy = await getUserByEmail(from);
 		if (!legacy) continue;
 		if (await getUserByEmail(to)) {
@@ -77,27 +77,27 @@ export async function retireLegacyWalkLogins(): Promise<number> {
 }
 
 /** The agent login. */
-export async function seedWalkUser(): Promise<WalkUserSeedResult> {
-	return seedLogin({ email: WALK_USER_EMAIL, name: WALK_USER_NAME, role: "user" });
+export async function seedDemoUser(): Promise<DemoUserSeedResult> {
+	return seedLogin({ email: DEMO_AGENT_EMAIL, name: DEMO_AGENT_NAME, role: "user" });
 }
 
 /** The platform admin login (ADR 0010): the account that creates offices and invites agents. */
-export async function seedWalkAdmin(): Promise<WalkUserSeedResult> {
-	return seedLogin({ email: WALK_ADMIN_EMAIL, name: WALK_ADMIN_NAME, role: "admin" });
+export async function seedDemoAdmin(): Promise<DemoUserSeedResult> {
+	return seedLogin({ email: DEMO_ADMIN_EMAIL, name: DEMO_ADMIN_NAME, role: "admin" });
 }
 
 /** The second agent (ADR 0015). */
-export async function seedWalkAgent2(): Promise<WalkUserSeedResult> {
-	return seedLogin({ email: WALK_AGENT2_EMAIL, name: WALK_AGENT2_NAME, role: "user" });
+export async function seedDemoAgent2(): Promise<DemoUserSeedResult> {
+	return seedLogin({ email: DEMO_AGENT2_EMAIL, name: DEMO_AGENT2_NAME, role: "user" });
 }
 
 /** The walk office's manager (ADR 0015): an ordinary user; the office membership makes them a manager. */
-export async function seedWalkManager(): Promise<WalkUserSeedResult> {
-	return seedLogin({ email: WALK_MANAGER_EMAIL, name: WALK_MANAGER_NAME, role: "user" });
+export async function seedDemoManager(): Promise<DemoUserSeedResult> {
+	return seedLogin({ email: DEMO_MANAGER_EMAIL, name: DEMO_MANAGER_NAME, role: "user" });
 }
 
 /** The second office's logins (#69): its manager and two agents, ordinary users all. */
-export async function seedRiverLogins(): Promise<Record<string, WalkUserSeedResult>> {
+export async function seedRiverLogins(): Promise<Record<string, DemoUserSeedResult>> {
 	return {
 		[RIVER_MANAGER_EMAIL]: await seedLogin({
 			email: RIVER_MANAGER_EMAIL,

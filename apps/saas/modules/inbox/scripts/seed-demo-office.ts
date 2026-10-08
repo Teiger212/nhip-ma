@@ -7,16 +7,16 @@ import {
 	RIVER_OFFICE_ID,
 	RIVER_OFFICE_NAME,
 	RIVER_OFFICE_SLUG,
-	WALK_ADMIN_EMAIL,
-	WALK_AGENT2_EMAIL,
-	WALK_MANAGER_EMAIL,
-	WALK_OFFICE_ID,
-	WALK_OFFICE_NAME,
-	WALK_OFFICE_SLUG,
-	WALK_USER_EMAIL,
-} from "../lib/walk-user";
+	DEMO_ADMIN_EMAIL,
+	DEMO_AGENT2_EMAIL,
+	DEMO_MANAGER_EMAIL,
+	DEMO_OFFICE_ID,
+	DEMO_OFFICE_NAME,
+	DEMO_OFFICE_SLUG,
+	DEMO_AGENT_EMAIL,
+} from "../lib/demo-user";
 
-export type WalkOfficeSeedResult = "created" | "exists";
+export type DemoOfficeSeedResult = "created" | "exists";
 
 /**
  * The walk office (ADRs 0008, 0010, 0015): the kit organization with a fixed id, the platform
@@ -25,15 +25,15 @@ export type WalkOfficeSeedResult = "created" | "exists";
  * Idempotent. In the pilot a real office is created the same way by the admin in
  * `/admin/organizations`, and agents join through its invitation.
  */
-export async function seedWalkOffice(): Promise<WalkOfficeSeedResult> {
-	const admin = await getUserByEmail(WALK_ADMIN_EMAIL);
-	const agent = await getUserByEmail(WALK_USER_EMAIL);
-	const agent2 = await getUserByEmail(WALK_AGENT2_EMAIL);
-	const manager = await getUserByEmail(WALK_MANAGER_EMAIL);
+export async function seedDemoOffice(): Promise<DemoOfficeSeedResult> {
+	const admin = await getUserByEmail(DEMO_ADMIN_EMAIL);
+	const agent = await getUserByEmail(DEMO_AGENT_EMAIL);
+	const agent2 = await getUserByEmail(DEMO_AGENT2_EMAIL);
+	const manager = await getUserByEmail(DEMO_MANAGER_EMAIL);
 	if (!admin || !agent || !agent2 || !manager) {
 		throw new Error("Seed the walk logins before the walk office.");
 	}
-	const organization = { id: WALK_OFFICE_ID, name: WALK_OFFICE_NAME, slug: WALK_OFFICE_SLUG };
+	const organization = { id: DEMO_OFFICE_ID, name: DEMO_OFFICE_NAME, slug: DEMO_OFFICE_SLUG };
 	const owner = await ensureOrganizationMembership({
 		organization,
 		userId: admin.id,
@@ -45,13 +45,13 @@ export async function seedWalkOffice(): Promise<WalkOfficeSeedResult> {
 	await ensureOrganizationMembership({ organization, userId: manager.id, role: "admin" });
 	// An office seeded before #264 is still "Walk Office" at /walk: rename it, keeping its id.
 	if (
-		owner.organization.name !== WALK_OFFICE_NAME ||
-		owner.organization.slug !== WALK_OFFICE_SLUG
+		owner.organization.name !== DEMO_OFFICE_NAME ||
+		owner.organization.slug !== DEMO_OFFICE_SLUG
 	) {
 		await updateOrganization({
-			id: WALK_OFFICE_ID,
-			name: WALK_OFFICE_NAME,
-			slug: WALK_OFFICE_SLUG,
+			id: DEMO_OFFICE_ID,
+			name: DEMO_OFFICE_NAME,
+			slug: DEMO_OFFICE_SLUG,
 		});
 	}
 	return owner.created ? "created" : "exists";
@@ -63,8 +63,8 @@ export async function seedWalkOffice(): Promise<WalkOfficeSeedResult> {
  * alone. Seed it before the walk office, so the platform admin's active office stays the walk
  * office. Idempotent.
  */
-export async function seedRiverOffice(): Promise<WalkOfficeSeedResult> {
-	const admin = await getUserByEmail(WALK_ADMIN_EMAIL);
+export async function seedRiverOffice(): Promise<DemoOfficeSeedResult> {
+	const admin = await getUserByEmail(DEMO_ADMIN_EMAIL);
 	const manager = await getUserByEmail(RIVER_MANAGER_EMAIL);
 	const agent = await getUserByEmail(RIVER_AGENT_EMAIL);
 	const agent2 = await getUserByEmail(RIVER_AGENT2_EMAIL);

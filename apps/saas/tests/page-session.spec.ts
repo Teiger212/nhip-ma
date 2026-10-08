@@ -8,7 +8,7 @@ import { homeCopy } from "./support/copy";
 import { expect, test } from "./support/fixtures";
 import { LoginPage } from "./support/login-page";
 import { joinOffice } from "./support/operators";
-import { AGENT, WALK_OFFICE_SLUG } from "./support/seed";
+import { AGENT, officeUrl } from "./support/seed";
 import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
 import { sessionStatePath, signInContext } from "./support/session-state";
 
@@ -257,7 +257,7 @@ test.describe("Auth 8 — a signed-in page shows nothing to someone signed out, 
 		// The same move aimed at an address that sends a signed-in agent on, the office's own
 		// (/en/<office slug>) and the locale root (/en), both to the Inbox: the redirect is read where it is,
 		// so a refusal above is judged by where it sends, not merely that it redirects.
-		for (const address of [`/en/${WALK_OFFICE_SLUG}`, "/en"]) {
+		for (const address of [officeUrl(""), "/en"]) {
 			const url = new URL(moves[0].url);
 			url.pathname = address;
 			const answer = await replay({ ...moves[0], url: url.toString() }, agentCookie());

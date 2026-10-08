@@ -17,6 +17,7 @@ import type { Runtime } from "../runtime";
 import { needsTranslation } from "../translate";
 import type { Conversation, InboxViewer } from "../types";
 import { atTime } from "./clock";
+import { DEMO_SEED_OFFICE } from "./demo-office";
 import { RIVER_SEED_OFFICE } from "./river-office";
 import {
 	type Actor,
@@ -26,10 +27,9 @@ import {
 	type SeedOffice,
 	type StoryStep,
 } from "./story";
-import { WALK_SEED_OFFICE } from "./walk-office";
 
 /** The offices the rich seed fills (#69), each with its own operators and guests. */
-export const SEED_OFFICES: readonly SeedOffice[] = [WALK_SEED_OFFICE, RIVER_SEED_OFFICE];
+export const SEED_OFFICES: readonly SeedOffice[] = [DEMO_SEED_OFFICE, RIVER_SEED_OFFICE];
 
 /** How long after a guest's first message the auto-reply lands. */
 const GREETING_DELAY_MS = 4_000;

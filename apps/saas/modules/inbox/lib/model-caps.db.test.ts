@@ -29,7 +29,7 @@ import { mockInboxConfig, validateInboxEnv } from "./config";
 import { CAPPED, type DraftAdapter, type DraftInput, draftAdapterFromConfig } from "./drafts";
 import { officeDay } from "./drafts/layer";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import { json, params, post, WALK_SESSION } from "./test-fixtures";
+import { json, params, post, DEMO_SESSION } from "./test-fixtures";
 import type { Conversation } from "./types";
 
 /**
@@ -199,7 +199,7 @@ test("the two tasks count apart: drafts at their cap leave translations running"
 
 test("Regenerate counts: the 50th of the day is the model's, the 51st puts the template back", async () => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
@@ -266,7 +266,7 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 // ADR 0024: past the cap the task falls back; a capped translation isn't a failed one (#257).
 test("a translation past the office's cap uses none of its attempts, and lands once the office's day turns", async () => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	// A Vietnamese office (ADR 0025): its guest messages are translated into Vietnamese.
 	await testDb.officeSetting.create({
 		data: { officeId: "walk-office", autoReply: false, language: "vi" },

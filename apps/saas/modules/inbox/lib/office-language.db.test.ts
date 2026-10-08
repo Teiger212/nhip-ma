@@ -27,7 +27,7 @@ import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import type { DraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import { json, params, post, WALK_SESSION } from "./test-fixtures";
+import { json, params, post, DEMO_SESSION } from "./test-fixtures";
 import type { Conversation } from "./types";
 
 /**
@@ -54,7 +54,7 @@ const adapter: DraftAdapter = {
 beforeEach(() => {
 	role = "admin";
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	calls.length = 0;
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
@@ -183,7 +183,7 @@ test("only a manager sets the office language: an agent gets 403 and a signed-ou
 	expect((await getLanguage(new Request("http://localhost/api/office/language"))).status).toBe(401);
 
 	role = "admin";
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	expect(await peekTestRuntime()?.store.officeLanguage(OFFICE)).toBe("vi");
 	expect((await json(await putLanguage(put("fr")))).status).toBe(400);
 });
