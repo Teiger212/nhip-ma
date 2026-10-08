@@ -1,5 +1,13 @@
 import { askedIn, greetingQuestion, type Qualifier } from "./greeting";
-import type { Conversation, GuestLanguage, Qualification, RentOrBuy } from "./types";
+import { officeRender } from "./office-line";
+import type {
+	Conversation,
+	Draft,
+	GuestLanguage,
+	OperatorLanguage,
+	Qualification,
+	RentOrBuy,
+} from "./types";
 
 /**
  * The template suggested reply (ADR 0024, CONTEXT.md "Suggested reply"): the reply with no
@@ -226,4 +234,19 @@ export function replyTemplate(
 	if (ask) sentences.push(greetingQuestion(language, ask));
 	// Japanese runs its sentences together; the others leave a space.
 	return sentences.join(language === "ja" ? "" : " ");
+}
+
+/**
+ * The template suggested reply in the reply's language, and the same template in the office
+ * language as its operator line (#242): no model call. No line when the reply is already in it.
+ */
+export function templateTexts(
+	language: GuestLanguage,
+	officeLanguage: OperatorLanguage,
+	qualification: Qualification,
+	thread: TemplateThread,
+): Pick<Draft, "reply" | "officeReply"> {
+	const render = (each: GuestLanguage) => replyTemplate(each, qualification, thread);
+	const officeReply = officeRender(language, officeLanguage, render);
+	return { reply: render(language), ...(officeReply ? { officeReply } : {}) };
 }

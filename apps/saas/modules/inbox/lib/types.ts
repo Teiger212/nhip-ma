@@ -28,11 +28,13 @@ export type {
 	InboxStore as Store,
 	InboxViewer,
 	Message,
+	OfficeText,
 	OneShot,
 	Paperwork,
 	Qualification,
 	SendMode,
 	SendResult,
+	SuggestedReplyLine,
 	TranslationFailure,
 	Translations,
 } from "@repo/database/inbox";

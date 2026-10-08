@@ -164,6 +164,8 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.sentAt).toBeTruthy();
 	expect(conv.oneShot?.draft).toEqual({
 		reply: laterTurn("ko", conv),
+		// The same template in the office language, for the agent to read (#242).
+		officeReply: laterTurn("en", conv),
 		answersMessageId: secondInbound,
 		source: "template",
 	});
@@ -384,7 +386,7 @@ test("without a model there is no translation and every suggestion is a template
  * The template once the office has replied (ADR 0024): it introduces no one and asks nothing,
  * whatever the thread holds.
  */
-function laterTurn(language: "ko" | "ru", conv: Conversation): string {
+function laterTurn(language: "ko" | "ru" | "en", conv: Conversation): string {
 	const qualification = conv.oneShot?.qualification;
 	if (!qualification) throw new Error("no one-shot");
 	return replyTemplate(language, qualification, { ...NEW_THREAD, sentAt: conv.sentAt });

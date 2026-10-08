@@ -894,6 +894,10 @@
 		"translation": "Translation",
 		"translationIn": "Translation · {language}",
 		"noTranslation": "{language} isn't supported: no translation",
+		"inLanguage": {
+			"en": "In English",
+			"vi": "In Vietnamese"
+		},
 		"suggested": {
 			"template": "Suggested reply · template",
 			"model": "Suggested reply · AI"

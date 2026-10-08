@@ -894,6 +894,10 @@
 		"translation": "Bản dịch",
 		"translationIn": "Bản dịch · {language}",
 		"noTranslation": "Chưa hỗ trợ {language}: không dịch",
+		"inLanguage": {
+			"en": "Bằng tiếng Anh",
+			"vi": "Bằng tiếng Việt"
+		},
 		"suggested": {
 			"template": "Gợi ý trả lời · mẫu",
 			"model": "Gợi ý trả lời · AI"

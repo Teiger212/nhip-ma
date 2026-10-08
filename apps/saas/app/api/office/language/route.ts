@@ -1,3 +1,5 @@
+import { runInBackground } from "@inbox/lib/background";
+import { refreshOfficeTemplates } from "@inbox/lib/inbox";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { getRuntime } from "@inbox/lib/runtime";
 import { OperatorLanguage } from "@inbox/lib/types";
@@ -23,7 +25,9 @@ export async function GET(request: Request): Promise<Response> {
 
 /**
  * A manager sets it. Translations already made in the other language are kept; a thread opened
- * afterwards is translated into the new one then (decided by Eyal, 2026-10-08).
+ * afterwards is translated into the new one then (decided by Eyal, 2026-10-08). Each open
+ * thread's template suggested reply has its operator line written again in the new one, in the
+ * background (#242): no model call.
  */
 export async function PUT(request: Request): Promise<Response> {
 	const gate = await requireInboxSession(request);
@@ -36,6 +40,9 @@ export async function PUT(request: Request): Promise<Response> {
 	}
 	const parsed = body.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) return NextResponse.json({ error: "bad_request" }, { status: 400 });
-	await getRuntime().store.setOfficeLanguage(gate.viewer.officeId, parsed.data.language);
+	const { store } = getRuntime();
+	await store.setOfficeLanguage(gate.viewer.officeId, parsed.data.language);
+	const { viewer } = gate;
+	void runInBackground("template refresh", () => refreshOfficeTemplates(store, viewer));
 	return NextResponse.json({ language: parsed.data.language });
 }
