@@ -171,13 +171,20 @@ is renamed.
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
   (Qualification), first-reply template, operator note. Regex and templates. The
   auto-reply's fallback template is built from it too (ADR 0021).
-- **Suggested reply**: the text in the reply box. For a first reply in an office with the
-  auto-reply off, the template. Once the auto-reply is sent, and for every follow-up, an AI
-  draft from the whole conversation, written knowing the greeting went out, so it never
-  greets twice; with no model, the follow-up template (ADR 0005, ADR 0021). Always editable,
-  never sent without Approve and send.
+- **Suggested reply**: the text in the reply box, from one of two sources (ADR 0024):
+  - **AI**: the model's draft from the last 10 messages, the auto-reply included, written in
+    the agent's voice, so it never greets twice. Shown as "Suggested reply · AI".
+  - **Template**: a reply with no model, in the agent's own voice, following the same rules.
+    It stands in when there is no model, the call fails, or the office is past its daily cap.
+    Shown as "Suggested reply · template".
+  - A draft the agent hasn't touched is replaced when the guest writes again. An edited one
+    stays, with a "Guest wrote again" note. Always editable, never sent without Approve and
+    send.
 - **Draft adapter**: one interface, one implementation per model provider, with the
-  template drafter as fallback.
+  template drafter as fallback. Every model call goes through it as a named **task**
+  (`draft`, `translate`), each with its own model (ADR 0024).
+- **Daily cap**: how many model calls of one task an office gets in a day, midnight to
+  midnight in Asia/Ho_Chi_Minh (ADR 0024). Past it, the task falls back.
 - **Operator note**: the agent-language summary of facts and flags. Not shown to the
   guest, never invents Vietnamese law, and is not a translation.
 - **Translation**: the guest message rendered in the operator's language, shown under the

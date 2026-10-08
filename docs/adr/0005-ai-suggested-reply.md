@@ -4,6 +4,9 @@ Date: 2026-09-17. Status: accepted. Supersedes the "heuristic drafts only" short
 auto-send" has one exception: a new guest's first message gets the automatic greeting
 (ADR 0021).
 
+**Amended by ADR 0024 (2026-10-08).** The model drafts first replies too, drafts are capped
+per office and day, and the fallback template is new copy in the agent's own voice.
+
 ## Context
 
 The first reply is a template keyed on language and extracted facts. A template cannot
