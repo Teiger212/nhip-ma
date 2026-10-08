@@ -32,7 +32,7 @@ import {
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { UserMenu } from "@shared/components/UserMenu";
 import { KIT_SCREENS } from "@shared/lib/kit-screens";
-import { FileTextIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
+import { ContactRoundIcon, FileTextIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useSyncExternalStore } from "react";
 
@@ -47,6 +47,7 @@ const NAV_ICONS = {
 	home: HomeIcon,
 	inbox: InboxIcon,
 	fileText: FileTextIcon,
+	contact: ContactRoundIcon,
 	shield: ShieldCheckIcon,
 } as const;
 
@@ -54,6 +55,7 @@ const NAV_LABEL_KEYS = {
 	home: "app.menu.home",
 	inbox: "app.menu.inbox",
 	paperwork: "app.menu.paperwork",
+	crm: "app.menu.crm",
 	admin: "app.menu.admin",
 } as const;
 

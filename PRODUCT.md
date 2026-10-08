@@ -182,9 +182,11 @@ smoked, each one approved by Eyal (#112).
 **Later, shown as "Coming soon"**: saved replies (a decision model picks from the office's
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
 CSV export, Paperwork (handling foreigners' documents in Vietnam: the paperwork for buyers
-and renters from abroad; a disabled sidebar item under Inbox, #208; formerly International).
+and renters from abroad; a disabled sidebar item under Inbox, #208; formerly International),
+the built-in CRM (#126; a disabled sidebar item "CRM" after Paperwork, decided by Eyal
+2026-10-08).
 
-**Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,
+**Later, not shown**: internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,
 listing match, per-agent performance, nudges, native iOS and Android apps built from the web
 app (#124; for alerts they change only the transport), escalation when an owner does not
 answer (#131), no alert while the operator is viewing that thread, alerts to the agent on
@@ -193,7 +195,8 @@ Zalo or WhatsApp.
 **"Coming soon" rule**: a later feature gets a disabled control only where it will obviously
 live, and only if we are confident it ships. It names the feature, never a date. One exception (2026-10-04): the platform admin's CRM selector lists the CRMs on the
 roadmap as disabled "coming soon" options (the built-in CRM, Bitrix24, Getfly CRM, Zoho CRM;
-#123), to show Nhịp is CRM-agnostic. Managers never see a promise of the built-in CRM.
+#123), to show Nhịp is CRM-agnostic. Everyone else sees the built-in CRM only as the
+sidebar's disabled "CRM" item (#126, decided by Eyal 2026-10-08).
 
 **Trust bar**
 

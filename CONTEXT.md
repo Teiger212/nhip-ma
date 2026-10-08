@@ -211,9 +211,9 @@ is renamed.
   development and demos only; HubSpot's free CRM, the demo and a client's own (ADR 0003, spec
   #59); and Attio, for an agency already on it (#101).
 - **Built-in CRM**: the CRM Nhịp will host for an agency that has none (#126, Twenty-based).
-  One more adapter behind the same seam, never inbox tables. Not built; only the platform
-  admin's CRM selector names it, as coming soon. A glossary name: the name agencies see is
-  decided in #126's spec.
+  One more adapter behind the same seam, never inbox tables. Not built; the platform admin's
+  CRM selector names it as coming soon, and the office sidebar shows it as a disabled "CRM"
+  item, Coming soon. A glossary name: the name agencies see is decided in #126's spec.
 - **CRM lead**: the guest's record in the office's CRM (a contact with its deal). Not the
   funnel's **Lead**, which is a guest who wrote in.
 - **CRM link**: the stored association between a thread and its CRM lead. Nhịp makes it when a

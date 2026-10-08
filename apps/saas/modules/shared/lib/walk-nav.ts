@@ -3,15 +3,17 @@ import { isAdminPath, isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 /**
  * The sidebar, stated directly. Inbox is the agent's job and Home the numbers screen
  * (ADR 0001). A later feature appears only under PRODUCT.md's "Coming soon" rule, where it will
- * live: Paperwork (foreigners' documents in Vietnam) sits under Inbox, disabled, and links
- * nowhere (#208). Admin is the kit's admin area, where Nhịp creates offices and invites agents
+ * live, disabled, linking nowhere: Paperwork (foreigners' documents in Vietnam) under Inbox
+ * (#208), then CRM, the built-in CRM (#126). Admin is the kit's admin area, where Nhịp creates offices and invites agents
  * (ADR 0010), and it is only listed for a platform admin. Account settings is reached from the
  * user row in the footer, and its sections appear there while a settings page is active.
  */
-export type WalkNavId = "home" | "inbox" | "paperwork" | "admin";
+export type WalkNavComingSoonId = "paperwork" | "crm";
+
+export type WalkNavId = "home" | "inbox" | WalkNavComingSoonId | "admin";
 
 export type WalkNavLink = {
-	id: Exclude<WalkNavId, "paperwork">;
+	id: Exclude<WalkNavId, WalkNavComingSoonId>;
 	href: string;
 	iconName: "home" | "inbox" | "shield";
 	isActive: boolean;
@@ -20,9 +22,9 @@ export type WalkNavLink = {
 
 /** A later feature shown where it will live, disabled: no link, never active. */
 export type WalkNavComingSoon = {
-	id: "paperwork";
+	id: WalkNavComingSoonId;
 	href: null;
-	iconName: "fileText";
+	iconName: "fileText" | "contact";
 	isActive: false;
 	comingSoon: true;
 };
@@ -68,6 +70,7 @@ export function buildWalkNav(
 			isActive: isInboxPath(pathname),
 		},
 		{ id: "paperwork", href: null, iconName: "fileText", isActive: false, comingSoon: true },
+		{ id: "crm", href: null, iconName: "contact", isActive: false, comingSoon: true },
 	];
 }
 
