@@ -106,8 +106,8 @@ live probe in `reports/attio-probe-2026-10-04.md`). The spec is GitHub issue #10
 in the 2026-10-03 amendment holds unless a point below differs.
 
 - **Which CRM an office gets.** An agency connects the CRM it already uses, through an
-  adapter, or uses Nhịp's built-in CRM (#126; the leading option is Twenty, self-hosted in
-  Vietnam). Nhịp never sets up a
+  adapter, or uses Nhịp's built-in CRM (#126), built on top of Twenty (decided by Eyal
+  2026-10-08; the leading option is to self-host it in Vietnam). Nhịp never sets up a
   third-party CRM for an agency that has none, so Attio is only for agencies that already
   use it. HubSpot stays the demo CRM. The mock never goes to production for a client; an
   office with no CRM has no connection, writes nothing, and shows no won or lost until

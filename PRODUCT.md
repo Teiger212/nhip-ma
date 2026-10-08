@@ -119,8 +119,9 @@ well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
 
 - **Pipes**: WhatsApp Cloud API, Zalo OA. One adapter each.
 - **CRM** (ADR 0003, amended 2026-10-04): one adapter per system. An agency connects the CRM it
-  already uses, or later Nhịp's **built-in CRM** (#126, Twenty-based; the leading option is
-  unmodified and self-hosted in Vietnam). Nhịp never sets up a third-party CRM for an agency,
+  already uses, or later Nhịp's **built-in CRM** (#126), which Nhịp will build on top of
+  Twenty, the open-source CRM (decided by Eyal 2026-10-08; the leading option is to run it
+  self-hosted in Vietnam). Nhịp never sets up a third-party CRM for an agency,
   and an office with no CRM goes live with no connection: it writes nothing and shows no won
   or lost. Which CRM the first client uses comes from intake (#128):
   - **HubSpot:** a production static app of Nhịp's own, installed in the client's portal
@@ -183,8 +184,8 @@ smoked, each one approved by Eyal (#112).
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
 CSV export, Paperwork (handling foreigners' documents in Vietnam: the paperwork for buyers
 and renters from abroad; a disabled sidebar item under Inbox, #208; formerly International),
-the built-in CRM (#126; a disabled sidebar item "CRM" after Paperwork, decided by Eyal
-2026-10-08).
+the built-in CRM (#126, built on top of Twenty; a disabled sidebar item "CRM" after
+Paperwork, decided by Eyal 2026-10-08).
 
 **Later, not shown**: internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,
 listing match, per-agent performance, nudges, native iOS and Android apps built from the web
