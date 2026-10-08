@@ -7,6 +7,7 @@ import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { assignerAs } from "./support/assign";
 import type { Locale } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
+import { setNameGuestsSee } from "./support/name-guests-see";
 import { setOfficeLanguage } from "./support/office-language";
 import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
@@ -21,18 +22,19 @@ import { sendZaloText } from "./support/zalo";
 const OFFICE_NAME = "Saigon Prime Test";
 
 /**
- * The office's agent and manager, each with a name of their own: a first name is the first word
- * of the account name, and these two are told apart (an invited account is "E2E Invitee").
+ * The office's agent and manager, each with an account name and a "name guests see" of their own
+ * (Name guests see, #266), so the two are told apart (an invited account is "E2E Invitee"). The
+ * template introduces an owner by their name guests see, never by a word of their account name.
  */
-const AGENT = { name: "Lan Pham", first: "Lan" } as const;
-const MANAGER = { name: "Minh Tran", first: "Minh" } as const;
+const AGENT = { name: "Lan Pham", nameGuestsSee: "Lan" } as const;
+const MANAGER = { name: "Minh Tran", nameGuestsSee: "Minh" } as const;
 
 /**
  * The template's intro, as the scenarios' EN copy words it. A Zalo guest has no profile name, so
  * the template greets them with none.
  */
 const OFFICE_INTRO = `Hi, this is ${OFFICE_NAME}.`;
-const AGENT_INTRO = `Hi, I'm ${AGENT.first} from ${OFFICE_NAME}.`;
+const AGENT_INTRO = `Hi, I'm ${AGENT.nameGuestsSee} from ${OFFICE_NAME}.`;
 
 /**
  * The label above the reply box while it holds the template (ADR 0024, "The label"), written out
@@ -70,13 +72,14 @@ function replyLabel(locale: Locale): string {
 
 type Guest = { id: string; write: (text: string) => Promise<void> };
 
-/** An operator of the office, signed in, with a name of their own. */
-type Operator = Joined & { name: string; first: string };
+/** An operator of the office, signed in, with an account name and a name guests see of their own. */
+type Operator = Joined & { name: string; nameGuestsSee: string };
 
 /**
  * An office of the test's own named "Saigon Prime Test" (deleted afterwards), with its own Zalo
- * OA (released afterwards), an invited manager (the kit's `admin`) named Minh Tran and an invited
- * agent named Lan Pham. The auto-reply is on, by default.
+ * OA (released afterwards), an invited manager (the kit's `admin`) named Minh Tran, whom guests
+ * see as Minh, and an invited agent named Lan Pham, whom guests see as Lan. The auto-reply is on,
+ * by default.
  */
 type TemplateOffice = { manager: Operator; agent: Operator; newGuest: () => Guest };
 
@@ -94,12 +97,14 @@ const test = base.extend<{ office: TemplateOffice }>({
 			await connectZaloOa(id, oaId);
 			const join = async (
 				role: "member" | "admin",
-				who: { name: string; first: string },
+				who: { name: string; nameGuestsSee: string },
 			): Promise<Operator> => {
 				const operator = await joinOffice(admin, browser, id, role, `suggest-${role}`);
 				joined.push(operator);
 				const renamed = await operator.api.post("/api/auth/update-user", { name: who.name });
 				expect(renamed.ok(), `${who.name} takes their name (${renamed.status()})`).toBe(true);
+				// The name the template introduces them by (Name guests see, "How these run").
+				await setNameGuestsSee(operator.page.request, who.nameGuestsSee);
 				return { ...operator, ...who };
 			};
 			const [manager, agent] = await Promise.all([join("admin", MANAGER), join("member", AGENT)]);
@@ -229,9 +234,9 @@ function startingWith(sentence: string): RegExp {
 	return new RegExp(`^${literal(sentence)}`);
 }
 
-/** A first name, as a word of its own. */
-function naming(first: string): RegExp {
-	return new RegExp(`(?<![\\p{L}])${literal(first)}(?![\\p{L}])`, "u");
+/** A name guests see, as a word of its own. */
+function naming(name: string): RegExp {
+	return new RegExp(`(?<![\\p{L}])${literal(name)}(?![\\p{L}])`, "u");
 }
 
 function literal(text: string): string {
@@ -267,10 +272,10 @@ test.describe("Suggested reply template 1 — the suggested reply after the auto
 		const { page } = agent;
 		await openByLink(page, "en", threadId, FIRST_MESSAGE);
 		const box = replyBox(page);
-		await expect(box, "the box introduces the agent by first name, and the office").toHaveValue(
-			startingWith(AGENT_INTRO),
-			WITHIN_SECONDS,
-		);
+		await expect(
+			box,
+			"the box introduces the agent by their name guests see, and the office",
+		).toHaveValue(startingWith(AGENT_INTRO), WITHIN_SECONDS);
 		const text = await box.inputValue();
 		expect(text, "it doesn't thank the guest again, after the auto-reply").not.toMatch(/\bthank/i);
 		expect(text, 'it doesn\'t say "a colleague": the agent is that colleague').not.toMatch(
@@ -296,8 +301,8 @@ test.describe("Suggested reply template 2 — an unassigned thread names the off
 			WITHIN_SECONDS,
 		);
 		const text = await box.inputValue();
-		expect(text, "it doesn't name the manager").not.toMatch(naming(manager.first));
-		expect(text, "it doesn't name the office's agent").not.toMatch(naming(agent.first));
+		expect(text, "it doesn't name the manager").not.toMatch(naming(manager.nameGuestsSee));
+		expect(text, "it doesn't name the office's agent").not.toMatch(naming(agent.nameGuestsSee));
 	});
 });
 
@@ -324,7 +329,7 @@ test.describe("Suggested reply template 3 — assigning writes it again in the o
 		).toContainText(agent.name);
 		await expect(
 			box,
-			"assigned, the same box, unreloaded, introduces the owner by first name",
+			"assigned, the same box, unreloaded, introduces the owner by their name guests see",
 		).toHaveValue(startingWith(AGENT_INTRO), WITHIN_POLLS);
 	});
 });
@@ -358,7 +363,9 @@ test.describe("Suggested reply template 4 — no intro once the office has repli
 		await guestMessagesArrived(agent.api, threadId, 2);
 		await openByLink(page, "en", threadId, again);
 		const text = await suggestion(box);
-		expect(text, "the new suggestion doesn't name the agent").not.toMatch(naming(agent.first));
+		expect(text, "the new suggestion doesn't name the agent").not.toMatch(
+			naming(agent.nameGuestsSee),
+		);
 		expect(text, "the new suggestion doesn't name the office").not.toContain(OFFICE_NAME);
 	});
 });

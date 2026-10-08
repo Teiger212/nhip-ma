@@ -31,6 +31,8 @@ model User {
   locale                   String?
   twoFactorEnabled         Boolean?
   lastActiveOrganizationId String?
+  /// The name the template suggested reply introduces this operator by (#266). Null: not set.
+  nameGuestsSee            String?
   sessions                 Session[]
   accounts                 Account[]
   passkeys                 Passkey[]

@@ -1,13 +1,13 @@
 import { describe, expect, test } from "vitest";
 
 import { greetingAsks, greetingQuestion, greetingTemplate } from "./greeting";
-import { firstName, NEW_THREAD, replyTemplate, type TemplateThread } from "./reply-template";
+import { NEW_THREAD, replyTemplate, type TemplateThread } from "./reply-template";
 import type { GuestLanguage, Qualification } from "./types";
 
 /**
  * The template suggested reply (ADR 0024, "The template"; #253): in the agent's own voice, it
- * introduces the owner by first name and the office while the office has no human reply yet,
- * names the office alone on an Unassigned thread, introduces no one on a later turn, never asks
+ * introduces the owner by their name guests see (#266) and the office while the office has no human reply yet,
+ * names the office alone on an Unassigned thread or when the owner has no name guests see, introduces no one on a later turn, never asks
  * again what the office already asked, and asks nothing when nothing is missing.
  */
 
@@ -29,7 +29,8 @@ const EVERYTHING: Qualification = {
 };
 const LANGUAGES: GuestLanguage[] = ["en", "vi", "ja", "ko", "ru"];
 const OFFICE = "Saigon Prime";
-const OWNER = "Lan Pham";
+/** The owner's name guests see (#266). */
+const OWNER = "Lan";
 
 const guestSays = (text: string) => ({ direction: "in" as const, source: "guest" as const, text });
 const agentSays = (text: string) => ({ direction: "out" as const, source: "nhip" as const, text });
@@ -40,7 +41,7 @@ function thread(overrides: Partial<TemplateThread> = {}): TemplateThread {
 	return {
 		...NEW_THREAD,
 		officeName: OFFICE,
-		ownerName: OWNER,
+		agentName: OWNER,
 		messages: [guestSays("Hi")],
 		...overrides,
 	};
@@ -75,15 +76,14 @@ describe.each(LANGUAGES)("in %s", (language) => {
 		return text;
 	};
 
-	test("an assigned thread with no human reply introduces the owner by first name and the office", () => {
-		const text = reply(RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO));
-		expect(text).toContain("Lan");
-		expect(text).not.toContain("Pham");
+	test("an assigned thread with no human reply introduces the owner by their name guests see and the office", () => {
+		const text = reply(RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO, { agentName: " Thu Lan " }));
+		expect(text).toContain("Thu Lan");
 		expect(text).toContain(OFFICE);
 	});
 
-	test("an Unassigned thread names the office only", () => {
-		const text = reply(RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO, { ownerName: null }));
+	test("an Unassigned thread, or an owner with no name guests see, names the office only", () => {
+		const text = reply(RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO, { agentName: null }));
 		expect(text).toContain(OFFICE);
 		expect(text).not.toContain("Lan");
 	});
@@ -153,7 +153,7 @@ describe("the EN reference copy", () => {
 	});
 
 	test("with no auto-reply, an Unassigned thread with a named guest", () => {
-		expect(replyTemplate("en", NOTHING, thread({ ownerName: null, guestName: "Minji" }))).toBe(
+		expect(replyTemplate("en", NOTHING, thread({ agentName: null, guestName: "Minji" }))).toBe(
 			"Hi Minji, this is Saigon Prime. Thanks for getting in touch. I'll help you find the right place. Are you looking to rent or to buy?",
 		);
 	});
@@ -166,14 +166,5 @@ describe("the EN reference copy", () => {
 				thread({ messages: [guestSays("Hi"), agentSays("Hello")] }),
 			),
 		).toBe("Noted. I'll look into this and get back to you here shortly.");
-	});
-});
-
-describe("the agent's first name", () => {
-	test("is the first word of their account name", () => {
-		expect(firstName("Lan Pham")).toBe("Lan");
-		expect(firstName("  Walk Operator Two ")).toBe("Walk");
-		expect(firstName("")).toBeNull();
-		expect(firstName(null)).toBeNull();
 	});
 });

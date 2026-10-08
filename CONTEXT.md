@@ -171,11 +171,16 @@ is renamed.
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
   (Qualification), the template suggested reply, operator note. Regex and templates. The
   auto-reply's fallback template is built from it too (ADR 0021).
+- **Name guests see**: the name an operator gives guests, a field on their own account page
+  (#266). The template suggested reply introduces the thread's owner by it, never by a word of
+  their account name (Vietnamese names are written family name first). Empty, the template
+  names the office only (pending Eyal's nod). Changing it writes an untouched template again on
+  that operator's threads, as assigning does.
 - **Suggested reply**: the text in the reply box, from one of two sources (ADR 0024):
   - **Template**: a reply with no model, in the agent's own voice. It holds every reply until
     the office's first human reply, after the auto-reply too. It introduces the
-    agent while the office has no human reply yet; on an unassigned thread it names the office
-    only. Later it stands in when there is no model, the call fails, or the office is past its
+    agent by their name guests see while the office has no human reply yet; on an unassigned
+    thread, or when the owner hasn't set one, it names the office only. Later it stands in when there is no model, the call fails, or the office is past its
     daily cap. Shown as "Suggested reply · template".
   - **AI**: the model's draft for every reply after the office's first human reply, from the
     last 10 messages. It never introduces anyone. It comes with the same reply in the office

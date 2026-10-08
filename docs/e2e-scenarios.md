@@ -1107,15 +1107,17 @@ is unchanged.
 has no profile name, so the template greets them without one) to an office of the test's own
 named "Saigon Prime Test", with a manager and an invited agent, the auto-reply on and
 `SEND_MODE=mock`. The stub model drafts (First greeting, "How these run"), but only after the
-office's first human reply (#252), so before it the reply box holds the template. An
-agent's first name is the first word of their account name. The EN copy is the reference; the
+office's first human reply (#252), so before it the reply box holds the template. The template
+introduces the owner by their "Name guests see" (Name guests see, #266), never by a word of
+their account name. The EN copy is the reference; the
 VI copy is pending a native read (#78), and JA, KO and RU have no native read planned yet.
 
 **The EN copy.** The template's parts, in order:
 
 - **The intro**, only while the office has no human reply yet (a sent reply, or one from the
-  office's own app; the auto-reply doesn't count). Assigned: "Hi, I'm ‹first name› from
-  ‹office›." Unassigned: "Hi, this is ‹office›." A guest with a profile name is greeted by it
+  office's own app; the auto-reply doesn't count). Assigned to an owner with a "Name guests
+  see": "Hi, I'm ‹name guests see› from ‹office›." Unassigned, or the owner hasn't set one
+  (pending Eyal's nod, #266): "Hi, this is ‹office›." A guest with a profile name is greeted by it
   ("Hi Minji, I'm …").
 - **The thanks**, only when the office has sent nothing at all, the auto-reply included:
   "Thanks for getting in touch."
@@ -1131,15 +1133,15 @@ VI copy is pending a native read (#78), and JA, KO and RU have no native read pl
 
 1. **The suggested reply after the auto-reply is the agent's own.** A guest's first message,
    "Hi, we're looking to rent an apartment in Tay Ho", gets the auto-reply. The manager assigns
-   the thread to an agent, who opens it. The reply box introduces the agent by first name and
-   the office ("Hi, I'm ‹first name› from Saigon Prime Test."), doesn't thank the guest again,
+   the thread to an agent, who opens it. The reply box introduces the agent by their name guests
+   see and the office ("Hi, I'm ‹name› from Saigon Prime Test."), doesn't thank the guest again,
    doesn't say "a colleague", and is labelled "Suggested reply · template".
 2. **An unassigned thread names the office only.** The manager opens an unassigned thread after
    its auto-reply. The suggestion names the office ("Hi, this is Saigon Prime Test.") and no
-   person: neither the manager's nor any agent's first name.
+   person: neither the manager's nor any agent's name guests see.
 3. **Assigning writes it again in the owner's name.** The manager then assigns the thread to an
-   agent without typing. Without reloading, the suggestion now introduces that agent by first
-   name ("Hi, I'm ‹first name› from Saigon Prime Test."). Typed text is never overwritten: had
+   agent without typing. Without reloading, the suggestion now introduces that agent by their
+   name guests see ("Hi, I'm ‹name› from Saigon Prime Test."). Typed text is never overwritten: had
    the manager typed into the box first, their text stays after the assignment.
 4. **No intro once the office has replied.** Before the agent replies, the suggestion
    introduces them. The agent sends a reply. The guest writes again. The new suggestion
@@ -1155,15 +1157,17 @@ VI copy is pending a native read (#78), and JA, KO and RU have no native read pl
 
 Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1–6; each test has an
 office of its own named "Saigon Prime Test" with one invited manager and one invited agent, who
-take the names "Minh Tran" and "Lan Pham" through the kit's user update, so their first names,
-"Minh" and "Lan", tell them apart (every invited account is otherwise "E2E Invitee"). Each guest
+take the names "Minh Tran" and "Lan Pham" through the kit's user update, and set their name
+guests see to "Minh" and "Lan" through `PUT /api/account/name-guests-see` (Name guests see, "How
+this runs"), so the two are told apart (every invited account is otherwise "E2E Invitee"). Each guest
 is a nameless Zalo guest whose first message is "Hi, we're looking to rent an apartment in Tay
 Ho", judged once the auto-reply is in the thread. "Introduces" is the reply box's text starting
 with the intro exactly, "Hi, I'm Lan from Saigon Prime Test." or "Hi, this is Saigon Prime
 Test."; the rest of the template is not pinned. "Doesn't thank" is no "thank" in any form, and
 "doesn't say a colleague" no "colleague". The label is a text in the open thread reading
 "Suggested reply · template" (VI "Gợi ý trả lời · mẫu"), the spaces around "·" aside, written in
-the spec and never read from saas.json. "A first name" is that name as a word of its own.
+the spec and never read from saas.json. "Naming" someone is their name guests see as a word of
+its own.
 1: the manager assigns through the owner API and the agent opens the thread by its `?thread=`
 link. 2: the manager opens it by link; "no person" is neither "Minh" nor "Lan" in the text.
 3: the manager opens it from the All view (under Unassigned, assigning takes the thread out of
@@ -1180,6 +1184,40 @@ in, finds the box starting "Hi, this is Saigon Prime Test." with no "budget" in 
 manager sets the test's own office to Vietnamese (`PUT /api/office/language`) before the guest
 writes, opens the thread at `/vi/inbox?thread=…`, and the label is judged once the box holds a
 suggestion; 1 to 5 leave their offices at English).
+
+## Name guests see (#266)
+
+The template suggested reply introduces the thread's owner by their **name guests see**, a field
+on their own account page, never by a word of their account name: Vietnamese names are written
+family name first, so "Trần Thị Linh" would otherwise introduce herself as "Trần" (decided by
+Eyal, 2026-10-08: a field only, no name-guessing rule). An owner who hasn't set it gets the
+office-only intro, as an unassigned thread does (recommended, pending Eyal's nod). Changing the
+field writes an untouched template again on that person's open threads, the way assigning does
+(Suggested reply template 3): never typed text, never a model draft. The demo seed sets it for
+Linh, Đức and Hà.
+
+**How this runs.** As Suggested reply template: an office of the test's own named "Saigon Prime
+Test", with an invited manager and an invited agent, its own Zalo OA, the auto-reply on and
+`SEND_MODE=mock`; a nameless Zalo guest's first message, "Hi, we're looking to rent an apartment
+in Tay Ho", is greeted by the auto-reply, and the manager assigns the thread to the agent through
+the owner API. The agent's account name, set through the kit's user update, is "Trần Thị Lan",
+family name first. The field is on the kit's account page, `/<locale>/settings/general` (not
+under the office's address): a text box labelled "Name guests see" (VI "Tên hiển thị với khách",
+wording pending #78) with its own "Save" button. Its API, which specs use for setup, is `GET` and
+`PUT /api/account/name-guests-see`, body `{ "nameGuestsSee": "Lan" }`; a blank value clears it;
+it answers `{ "nameGuestsSee": "Lan" }` (null when cleared), 401 signed out, 403 for the platform
+admin (who doesn't see the field), 400 for more than 40 characters.
+
+1. **An agent sets it and is introduced by it.** The agent opens their account page, where "Name
+   guests see" is empty, types "Lan" and saves. Opening their assigned, greeted thread, the reply
+   box starts "Hi, I'm Lan from Saigon Prime Test.". Back on the account page after a reload,
+   the field still reads "Lan".
+
+Spec: `apps/saas/tests/name-guests-see.spec.ts` (Name guests see 1). The rest is proven in Vitest
+(`apps/saas/modules/inbox/lib/name-guests-see.db.test.ts`, `reply-template.test.ts`): with none set
+the template names the office alone and no word of the account name; setting it writes the
+untouched template again on the operator's open threads, and clearing it brings the office intro
+back; a model draft and a colleague's threads are left as they are.
 
 ## When the model drafts (ADR 0024, #252)
 

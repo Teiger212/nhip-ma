@@ -1,15 +1,19 @@
 /** The first agent: a member of the walk office (Hanoi Nest Seekers), sees Inbox and Home. */
 export const DEMO_AGENT_EMAIL = "linh@nhip.local";
 export const DEMO_AGENT_NAME = "Trần Thị Linh";
+/** The name the template introduces her by (#266): family name first, so not the first word. */
+export const DEMO_AGENT_NAME_GUESTS_SEE = "Linh";
 export const DEMO_PASSWORD = "walkthrough";
 
 /** The second agent (ADR 0015): shows that one agent never sees another's threads. */
 export const DEMO_AGENT2_EMAIL = "duc@nhip.local";
 export const DEMO_AGENT2_NAME = "Phạm Minh Đức";
+export const DEMO_AGENT2_NAME_GUESTS_SEE = "Đức";
 
 /** The walk office's manager (ADR 0015): kit role `admin`; sees every thread and reassigns. */
 export const DEMO_MANAGER_EMAIL = "ha@nhip.local";
 export const DEMO_MANAGER_NAME = "Lê Thu Hà";
+export const DEMO_MANAGER_NAME_GUESTS_SEE = "Hà";
 
 /** The platform admin (Nhịp): owner of the walk office, also sees the kit's admin area. */
 export const DEMO_ADMIN_EMAIL = "admin@nhip.local";

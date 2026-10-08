@@ -366,6 +366,13 @@ export const authOptions = {
 				type: "string",
 				required: false,
 			},
+			// Read on the session, written only through Nhịp's own route (#266), which also writes the
+			// untouched template again on the operator's threads: the kit's update-user can't set it.
+			nameGuestsSee: {
+				type: "string",
+				required: false,
+				input: false,
+			},
 		},
 		deleteUser: {
 			enabled: true,

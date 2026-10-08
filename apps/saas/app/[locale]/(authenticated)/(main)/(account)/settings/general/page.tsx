@@ -3,6 +3,7 @@ import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { ChangeEmailForm } from "@settings/components/ChangeEmailForm";
 import { ChangeNameForm } from "@settings/components/ChangeNameForm";
 import { DeleteAccountForm } from "@settings/components/DeleteAccountForm";
+import { NameGuestsSeeForm } from "@settings/components/NameGuestsSeeForm";
 import { UserAvatarForm } from "@settings/components/UserAvatarForm";
 import { UserLanguageForm } from "@settings/components/UserLanguageForm";
 import { PageHeader } from "@shared/components/PageHeader";
@@ -36,6 +37,8 @@ export default async function AccountSettingsPage() {
 				{/* An office member's language is the office's (ADR 0025); the platform admin keeps theirs. */}
 				{isPlatformAdmin(session.user.role) ? <UserLanguageForm /> : null}
 				<ChangeNameForm />
+				{/* The name the suggested reply introduces an office member by (#266); the platform admin owns no threads. */}
+				{isPlatformAdmin(session.user.role) ? null : <NameGuestsSeeForm />}
 				<ChangeEmailForm />
 				<DeleteAccountForm />
 			</SettingsList>

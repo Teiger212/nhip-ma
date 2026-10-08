@@ -1085,6 +1085,18 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			};
 		},
 
+		async nameGuestsSee(userId) {
+			const user = await db.user.findUnique({
+				where: { id: userId },
+				select: { nameGuestsSee: true },
+			});
+			return user?.nameGuestsSee ?? null;
+		},
+
+		async setNameGuestsSee(userId, name) {
+			await db.user.update({ where: { id: userId }, data: { nameGuestsSee: name } });
+		},
+
 		async setOfficeAutoReply(officeId, on) {
 			// One statement, so two managers flipping it at once can't lose the stamp: the update
 			// reads the row it replaces under its lock. Only a row that says off can be turned on;
