@@ -896,7 +896,7 @@
 		"language": "Ngôn ngữ",
 		"back": "Quay lại",
 		"backAria": "Quay lại danh sách hội thoại",
-		"missingLine": "Còn thiếu: {fields}",
+		"missingLabel": "Còn thiếu",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"

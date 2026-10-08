@@ -896,7 +896,7 @@
 		"language": "Language",
 		"back": "Back",
 		"backAria": "Back to thread list",
-		"missingLine": "Missing: {fields}",
+		"missingLabel": "Missing",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
