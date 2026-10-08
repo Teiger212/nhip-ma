@@ -1161,3 +1161,66 @@ test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
 		await expectHubSpotWithTokenUnseen(admin, office.id, [token]);
 	});
 });
+
+/**
+ * The open thread's CRM status reads exactly `text`, and is plain text: nothing to click through.
+ * No link named for it in the thread header, no link, `a` or `href` inside the badge, and the
+ * badge itself, and everything around it up to the header, is no `a`, `href` or link role.
+ */
+async function expectPlainCrmStatus(page: Page, text: string) {
+	const status = crmStatus(page);
+	await expect(status, `the thread header says exactly ${text}`).toHaveText(text, WITHIN_A_POLL);
+	await expect(
+		threadHeader(page).getByRole("link", { name: text }),
+		`no link named ${text} in the thread header`,
+	).toHaveCount(0);
+	await expect(status.getByRole("link"), `no link inside ${text}`).toHaveCount(0);
+	await expect(status.locator("a, [href]"), `no a or href inside ${text}`).toHaveCount(0);
+	const around = await status.evaluate((badge) => {
+		const found: string[] = [];
+		for (let el: Element | null = badge; el; el = el.parentElement) {
+			if (el.tagName === "A" || el.hasAttribute("href") || el.getAttribute("role") === "link") {
+				found.push(el === badge ? "the badge itself" : `an ancestor <${el.tagName.toLowerCase()}>`);
+			}
+			if (el.tagName === "HEADER") break;
+		}
+		return found;
+	});
+	expect(around, `${text} is no link, nor inside one, within the thread header`).toEqual([]);
+}
+
+// scenario: docs/e2e-scenarios.md CRM 10
+test.describe("CRM 10 — In CRM opens the lead in the CRM, where the CRM has a web app", () => {
+	// The mock half only: the mock CRM has no web app, so its In CRM is plain text. The HubSpot
+	// half (In CRM a link to the deal) needs a deal Nhịp linked in real HubSpot, so Vitest holds it.
+
+	test("on the mock CRM, the thread header's In CRM reads exactly In CRM and is plain text: no link, nothing to click through", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 10 in", { crm: "mock", manager: true });
+		const { page } = office.agent;
+
+		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
+
+		await expectInCrmOnThread(page, office.id, guest);
+		await expectPlainCrmStatus(page, crmCopy.inCrm);
+	});
+
+	test("with the lead not written (the mock CRM down when the guest first writes), the thread header's Not in CRM yet is plain text: no link, nothing to click through", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(150_000);
+		const office = await newOffice("CRM 10 not yet", { crm: "mock", manager: true });
+		const { page } = office.agent;
+		await takeMockCrmDown(office.id);
+
+		const guest = await office.newGuest();
+		await office.assignToAgent(guest);
+
+		await openThreadOf(page, guest);
+		await expectNotInCrmYet(page, "the agent");
+		await expectPlainCrmStatus(page, crmCopy.notInCrmYet);
+	});
+});

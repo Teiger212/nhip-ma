@@ -590,6 +590,10 @@ model CrmConnection {
   /// its webhooks name the account, not the office (HubSpot's portal id, #66). Null until learned
   /// from the CRM; a new access token clears it, since it may reach another account.
   accountId     String?
+  /// Where the account's leads open in the CRM's web app: the address a lead's id is appended to
+  /// (HubSpot's deal record on the account's own domain, which differs by data centre). Learned
+  /// with `accountId` and cleared with it; null for a CRM with no web app, and until learned.
+  leadUrlPrefix String?
   links         CrmLink[]
   writeFailures CrmWriteFailure[]
   updatedAt     DateTime          @updatedAt

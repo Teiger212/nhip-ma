@@ -124,9 +124,14 @@ url, sound }`, encrypted for the device; `tag` is an HMAC of the thread id. Devi
   signed v3 with `HUBSPOT_APP_CLIENT_SECRET` over `HUBSPOT_WEBHOOK_URL`; each absent where unset).
   The kind's reader (`crmWebhookFor`) returns the CRM accounts its notice names and their changed
   leads; the sync's `noticesReceived` finds the offices on each account (the mock's account is
-  the office; HubSpot's is the portal id the adapter's `accountId` reports, kept on
+  the office; HubSpot's is the portal id the adapter's `account` reports, kept on
   `inbox_crm_connection.accountId` after the token is saved, or asked lazily) and only theirs
-  are touched (ADR 0008). There the sync's
+  are touched (ADR 0008). With the account the adapter reports where its leads open in the CRM's
+  web app (`leadUrlPrefix`: HubSpot's deal record on the portal's own `uiDomain`, which differs by
+  data centre; null for the mock), and the store builds the open thread's `crm.leadUrl` from it
+  and the lead id, so "In CRM" links to the deal (CRM 10). Opening a linked thread with no
+  address yet asks the CRM again in the background, once per office per instance every ten
+  minutes (`scheduleMissingLeadAddress`). On a notice, the sync's
   `outcomesChanged` asks the adapter for the changed leads' outcomes and caches them on the link,
   observed when Nhịp first heard them (`observeOutcome`). The thread summary carries the link, so
   the queue rule (`isResolved`, `inQueue`) and the nav count read it on the client. Home still

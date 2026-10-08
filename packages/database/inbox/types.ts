@@ -175,7 +175,7 @@ export type Conversation = {
 	/** The operator who owns the thread (ADR 0022), or null while it is Unassigned. */
 	owner: { id: string; name: string } | null;
 	/** The thread's lead in the office's CRM (ADR 0003); null until Nhịp has linked one. */
-	crm: ConversationCrm | null;
+	crm: OpenThreadCrm | null;
 	/**
 	 * Whether the thread's office has a CRM (ADR 0003). With one and no `crm`, the thread reads
 	 * "Not in CRM yet" (#211).
@@ -205,8 +205,9 @@ export type ConversationSummary = Pick<
 	| "sentAt"
 	| "unansweredInboundId"
 	| "updatedAt"
-	| "crm"
 > & {
+	/** The thread's linked lead, as `Conversation`'s without where it opens in the CRM. */
+	crm: ConversationCrm | null;
 	/** The guest's language as the one-shot detected it; null until it has run. */
 	guestLanguage: GuestLanguage | null;
 	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
@@ -219,6 +220,16 @@ export type ConversationCrm = {
 	leadName: string;
 	method: CrmLinkMethod;
 } & CrmOutcome;
+
+/** The open thread's linked lead, with where it opens in the CRM's web app (CRM 10). */
+export type OpenThreadCrm = ConversationCrm & {
+	/**
+	 * The lead's address in the CRM's web app, built from what the CRM told Nhịp about the office's
+	 * account and the lead's id, never from anything a guest wrote. Null for a CRM with no web app
+	 * (the mock), and while Nhịp doesn't know the account yet.
+	 */
+	leadUrl: string | null;
+};
 
 /**
  * What Nhịp last heard from the CRM about a thread's lead (ADR 0003). `outcomeObservedAt` is
@@ -610,13 +621,14 @@ export type InboxStore = {
 	/** Up to `limit` offices on this CRM whose account is not known yet, most recently saved first. */
 	crmOfficesWithoutAccount: (kind: CrmKind, limit: number) => Promise<string[]>;
 	/**
-	 * Record the CRM account the office's connection is on, learned with the connection as it was
-	 * (`kind` and sealed `accessToken`); false, and nothing written, when it has changed since.
+	 * Record the CRM account the office's connection is on, and where its leads open in the CRM's
+	 * web app (`leadUrlPrefix`, null for none), learned with the connection as it was (`kind` and
+	 * sealed `accessToken`); false, and nothing written, when it has changed since.
 	 */
 	setCrmAccountId: (
 		officeId: string,
 		learnedWith: { kind: CrmKind; accessToken: string | null },
-		accountId: string,
+		account: { id: string; leadUrlPrefix: string | null },
 	) => Promise<boolean>;
 	/**
 	 * Claim writing the thread's lead: true for the one caller whose claim is new, false when the

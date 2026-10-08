@@ -1,4 +1,4 @@
-import { scheduleMissingLeadRetry } from "@inbox/lib/inbox";
+import { scheduleMissingLeadAddress, scheduleMissingLeadRetry } from "@inbox/lib/inbox";
 import { requireInboxSession } from "@inbox/lib/require-session";
 import { getRuntime } from "@inbox/lib/runtime";
 import { scheduleMissingTranslations } from "@inbox/lib/translate";
@@ -13,7 +13,8 @@ type RouteContext = { params: Promise<{ id: string }> };
  * One thread, whole. `?locale=` is the operator's language: any guest message on it that
  * lacks a translation into it is translated in the background (ADR 0007). A thread of an office
  * with a CRM and no lead yet tries its lead write again in the background, once its wait is over
- * (#211). The thread returned now is what exists now.
+ * (#211); a linked one whose lead has no address in the CRM's web app yet asks the CRM which
+ * account the office is on (CRM 10). The thread returned now is what exists now.
  */
 export async function GET(request: Request, context: RouteContext): Promise<Response> {
 	const gate = await requireInboxSession(request);
@@ -31,5 +32,6 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
 		scheduleMissingTranslations(runtime, conv, locale.data);
 	}
 	scheduleMissingLeadRetry(runtime, conv);
+	scheduleMissingLeadAddress(runtime, conv);
 	return NextResponse.json(conv);
 }

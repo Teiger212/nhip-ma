@@ -121,6 +121,23 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    selector lists the CRMs on the roadmap (the built-in CRM, Bitrix24, Getfly CRM, Zoho CRM)
    as disabled "coming soon" options that can't be saved. In production, the mock CRM isn't
    offered.
+10. **In CRM opens the lead in the CRM, where the CRM has a web app** (demo milestone). On an
+    office on HubSpot whose account Nhịp knows, the thread header's "In CRM" is a link that
+    opens the thread's deal in HubSpot in a new tab, on the account's own HubSpot address (an
+    EU-hosted account's is `app-eu1.hubspot.com`), and Nhịp's page sends nothing with it
+    (`rel="noopener noreferrer"`). It still looks like the neutral badge beside it, with a small
+    external-link icon. Until Nhịp knows the account, "In CRM" is plain text. The mock CRM has no
+    web app: on an office on the mock CRM, "In CRM" is plain text, no link and nothing to click
+    through, and "Not in CRM yet" is plain text on every CRM.
+    Spec: `apps/saas/tests/crm.spec.ts` (CRM 10; the mock half: offices of the test's own on the
+    mock CRM, "In CRM" reached as in CRM 1 and "Not in CRM yet" as in CRM 4a (the CRM down when
+    the guest first writes); "no link" is no link role and no `a` element or `href` in or around
+    the `crm-status` badge, which still reads exactly "In CRM" or "Not in CRM yet". The HubSpot
+    half needs a deal Nhịp linked, which only real HubSpot makes, and no test writes Nhịp's own
+    link to a lead, so Vitest holds it: the address built from the recorded account details
+    equals the `url` HubSpot itself returns for that deal in the recordings (`hubspot.test.ts`),
+    and a HubSpot office's thread carries its lead's address once the account is known, none
+    before, and none on the mock CRM (`crm/sync.db.test.ts`)).
 
 ## Auth (red team batch A, `reports/audit-2026-09-27/`)
 

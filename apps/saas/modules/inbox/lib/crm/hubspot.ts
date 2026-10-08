@@ -64,7 +64,32 @@ const Properties = z.record(z.string(), z.string().nullable());
 type Properties = z.infer<typeof Properties>;
 const HubSpotObject = z.object({ id: z.string(), properties: Properties });
 const Results = z.object({ results: z.array(HubSpotObject) });
-const AccountDetails = z.object({ portalId: z.number() });
+/**
+ * The account details Nhịp reads: the portal, and `uiDomain`, the domain of the account's own web
+ * app, which differs by data centre (`app.hubspot.com`, `app-eu1.hubspot.com`, …). Both are
+ * required in HubSpot's 2026-09 schema (developers.hubspot.com/docs/api-reference/latest/account/
+ * account-information/get-account-details); an answer without the domain still names the portal.
+ */
+const AccountDetails = z.object({ portalId: z.number(), uiDomain: z.string().optional() });
+
+/** A HubSpot web app's domain, one data centre's (`app.hubspot.com`, `app-eu1.hubspot.com`). */
+const HUBSPOT_UI_DOMAIN = /^app(-[a-z0-9]+)?\.hubspot\.com$/;
+/** HubSpot's object type id for deals (developers.hubspot.com/docs/api-reference/latest/crm/understanding-the-crm). */
+const DEAL_OBJECT_TYPE = "0-3";
+
+/**
+ * Where a deal opens in the account's web app, but for the deal's id: HubSpot's own record address,
+ * `https://{uiDomain}/contacts/{portalId}/record/0-3/{dealId}`, as HubSpot returns it in each
+ * deal's `url` (developers.hubspot.com/docs/api-reference/latest/crm/using-object-apis; the
+ * recordings hold it for an EU portal). Null unless the domain is HubSpot's own: the link never
+ * goes anywhere else.
+ */
+function hubspotDealUrlPrefix(portalId: number, uiDomain: string | undefined): string | null {
+	if (!uiDomain || !HUBSPOT_UI_DOMAIN.test(uiDomain) || !Number.isSafeInteger(portalId)) {
+		return null;
+	}
+	return `https://${uiDomain}/contacts/${portalId}/record/${DEAL_OBJECT_TYPE}/`;
+}
 const Pipelines = z.object({
 	results: z.array(
 		z.object({
@@ -335,10 +360,16 @@ export function hubspotCrmAdapter(deps: { token: string; fetch?: typeof fetch })
 			return outcomes;
 		},
 
-		/** The portal the token was installed on, which HubSpot's webhooks name (#66). */
-		async accountId() {
+		/**
+		 * The portal the token was installed on, which HubSpot's webhooks name (#66), and where its
+		 * deals open on the portal's own web domain (CRM 10).
+		 */
+		async account() {
 			const details = await request("read account details", AccountDetails, "GET", ACCOUNT_DETAILS);
-			return String(details.portalId);
+			return {
+				id: String(details.portalId),
+				leadUrlPrefix: hubspotDealUrlPrefix(details.portalId, details.uiDomain),
+			};
 		},
 	};
 }

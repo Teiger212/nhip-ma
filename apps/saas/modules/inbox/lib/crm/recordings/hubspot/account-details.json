@@ -1,5 +1,5 @@
 {
-	"call": "accountId",
+	"call": "account",
 	"scenario": "The portal the token was installed on",
 	"recordedAt": "2026-10-04T04:45:49.740Z",
 	"expected": "149475500",

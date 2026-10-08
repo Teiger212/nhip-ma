@@ -297,7 +297,7 @@ async function main() {
 
 	// #66: the portal a token reaches, which HubSpot's webhooks name; the guard's own call.
 	save("account-details", {
-		...meta("accountId", "The portal the token was installed on", { expected: String(portalId) }),
+		...meta("account", "The portal the token was installed on", { expected: String(portalId) }),
 		exchanges: [account],
 	});
 

@@ -85,18 +85,19 @@ export function createCrmSync(deps: {
 	}
 
 	/**
-	 * Ask the office's CRM which account its connection reaches, and remember it (#66); nothing
-	 * for a CRM whose webhook names the office itself. Throws what the CRM refused.
+	 * Ask the office's CRM which account its connection reaches, and remember it (#66) with where
+	 * its leads open in the CRM's web app (CRM 10); nothing for a CRM whose webhook names the office
+	 * itself. Throws what the CRM refused.
 	 */
 	async function resolveAccount(officeId: string): Promise<void> {
 		const opened = await connectionOf(officeId);
 		if (!opened || !crmKindHasAccount(opened.connection.kind)) return;
-		const accountId = await adapterFor(opened.connection, { store, officeId }).accountId();
+		const account = await adapterFor(opened.connection, { store, officeId }).account();
 		// Written only if the connection is still the one asked about (a new token clears it).
 		await store.setCrmAccountId(
 			officeId,
 			{ kind: opened.connection.kind, accessToken: opened.sealed },
-			accountId,
+			account,
 		);
 	}
 

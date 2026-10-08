@@ -29,12 +29,19 @@ export type CrmAdapter = {
 	/** What the CRM says now about each of these leads; leads it does not know are absent. */
 	outcomesFor(leadIds: string[]): Promise<Record<string, LeadOutcome>>;
 	/**
-	 * The CRM's own id for the account the office's connection reaches, which its webhook names
-	 * (#66). Asked only of a kind whose one app serves many accounts (`crmKindHasAccount`); the
-	 * mock's account is the office itself.
+	 * The account the office's connection reaches (#66): the CRM's own id for it, which its webhook
+	 * names, and where its leads open in the CRM's web app (CRM 10). Asked only of a kind whose one
+	 * app serves many accounts (`crmKindHasAccount`); the mock's account is the office itself.
 	 */
-	accountId(): Promise<string>;
+	account(): Promise<CrmAccount>;
 };
+
+/**
+ * The CRM account an office's connection reaches. `leadUrlPrefix` is the address a lead's id is
+ * appended to, to open that lead in the CRM's web app (HubSpot's on the account's own domain);
+ * null for a CRM with no web app, or when the CRM did not name a domain Nhịp trusts.
+ */
+export type CrmAccount = { id: string; leadUrlPrefix: string | null };
 
 /**
  * A CRM's outcome notice, verified: the CRM's own account it came from (for the mock, the office

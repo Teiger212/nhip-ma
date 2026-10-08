@@ -35,6 +35,7 @@ export type {
 	Conversation,
 	ConversationCrm,
 	CrmOutcome,
+	OpenThreadCrm,
 	ConversationSummary,
 	Draft,
 	GuestDeletionResult,
