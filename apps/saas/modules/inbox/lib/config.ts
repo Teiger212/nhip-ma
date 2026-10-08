@@ -229,7 +229,7 @@ const envSchema = z
 		}
 		for (const key of ["DRAFT_DAILY_CAP", "TRANSLATE_DAILY_CAP"] as const) {
 			const value = env[key];
-			if (value !== undefined && !/^\d+$/.test(value)) {
+			if (value !== undefined && !isCap(value)) {
 				ctx.addIssue({
 					code: "custom",
 					path: [key],
@@ -405,7 +405,13 @@ export const MODEL_DEFAULTS = {
 } as const satisfies Record<ModelTask, { model: string; dailyCap: number }>;
 
 function isOpenRouter(value: string): boolean {
-	return new URL(value).hostname === "openrouter.ai";
+	const url = new URL(value);
+	return url.protocol === "https:" && url.hostname === "openrouter.ai";
+}
+
+/** A daily cap: a whole number of calls the counter's integer column can hold (0 turns the task off). */
+function isCap(value: string): boolean {
+	return /^\d{1,10}$/.test(value) && Number(value) <= 2_147_483_647;
 }
 
 function splitList(value: string): string[] {
@@ -419,7 +425,7 @@ function modelsFromEnv(env: Record<string, string | undefined>): ModelsConfig {
 	const clean = (value: string | undefined) => value?.trim() || undefined;
 	const cap = (value: string | undefined, fallback: number) => {
 		const text = clean(value);
-		return text && /^\d+$/.test(text) ? Number(text) : fallback;
+		return text && isCap(text) ? Number(text) : fallback;
 	};
 	const stub = clean(env.MODEL_STUB);
 	return {

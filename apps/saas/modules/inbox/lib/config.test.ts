@@ -65,6 +65,10 @@ test("each task's model and cap is overridden by its own env var", () => {
 		'DRAFT_DAILY_CAP must be a whole number of model calls a day, got "fifty"',
 		'TRANSLATE_DAILY_CAP must be a whole number of model calls a day, got "-1"',
 	]);
+	// More than the counter can hold would make every claim fail, and so turn the task off.
+	expect(errorsOf({ ...BASE, DRAFT_DAILY_CAP: "9999999999" })).toEqual([
+		'DRAFT_DAILY_CAP must be a whole number of model calls a day, got "9999999999"',
+	]);
 });
 
 test("no key means no model, whatever else is set", () => {
@@ -91,6 +95,10 @@ test("the base URL may be any absolute http(s) endpoint in development, trimmed"
 test("production calls OpenRouter only", () => {
 	const production = { ...BASE, VERCEL_ENV: "production", DRAFT_API_KEY: "sk" };
 	expect(errorsOf({ ...production, DRAFT_BASE_URL: "https://api.openai.com/v1" })).toEqual([
+		`DRAFT_BASE_URL must be OpenRouter (${DEFAULT_DRAFT_BASE_URL}) in production`,
+	]);
+	// The key is a bearer token: never over plain http.
+	expect(errorsOf({ ...production, DRAFT_BASE_URL: "http://openrouter.ai/api/v1" })).toEqual([
 		`DRAFT_BASE_URL must be OpenRouter (${DEFAULT_DRAFT_BASE_URL}) in production`,
 	]);
 	expect(errorsOf({ ...production, DRAFT_BASE_URL: "https://openrouter.ai/api/v1" })).toEqual([]);

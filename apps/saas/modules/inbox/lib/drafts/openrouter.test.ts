@@ -157,13 +157,13 @@ test("every failure is null so the fallback stands; a filtered or empty answer i
 	const layer = layerFor({ DRAFT_API_KEY: "sk-test" });
 	const request = { officeId: "office-a", text: "hello", from: "en", to: "vi" } as const;
 
-	// Failures: tried once more, then the fallback.
+	// Failures the provider may get past: tried once more, then the fallback.
 	for (const respond of [
 		() => new Response("rate limited", { status: 429 }),
+		() => new Response("bad gateway", { status: 502 }),
 		() => new Response("{ not json", { status: 200 }),
 		// A body that isn't JSON: the parser's error quotes its start, here the guest's words (#220).
 		() => new Response("hello, but not JSON", { status: 200 }),
-		() => Response.json({ choices: [] }),
 		() => {
 			throw new TypeError("fetch failed: hello");
 		},
@@ -171,6 +171,19 @@ test("every failure is null so the fallback stands; a filtered or empty answer i
 		const calls = stubFetch(respond);
 		expect(await layer.translate(request)).toBeNull();
 		expect(calls).toHaveLength(2);
+	}
+
+	// Refusals that would fail again (a bad key, no balance, an unknown model, a shape this
+	// client can't read): the fallback at once, with no second call spent on the cap.
+	for (const respond of [
+		() => new Response("unauthorized", { status: 401 }),
+		() => new Response("payment required", { status: 402 }),
+		() => new Response("no such model", { status: 404 }),
+		() => Response.json({ choices: [] }),
+	]) {
+		const calls = stubFetch(respond);
+		expect(await layer.translate(request)).toBeNull();
+		expect(calls).toHaveLength(1);
 	}
 
 	// Answers: nothing to show, and nothing to retry.

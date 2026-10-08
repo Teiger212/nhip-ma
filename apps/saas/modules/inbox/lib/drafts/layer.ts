@@ -5,8 +5,9 @@ import type { DraftAdapter, DraftInput, ModelTask, TranslateInput } from "./adap
 
 /**
  * What came of one model call. Only `ok` carries text; every other outcome leaves the fallback
- * standing. `timeout` and `error` are retried once (ADR 0024); `filtered` (the provider's
- * content filter) and `empty` are answers, not failures, and are not.
+ * standing. A timeout, and an error the provider may get past (`mayPassOnRetry`), are retried
+ * once (ADR 0024); `filtered` (the provider's content filter) and `empty` are answers, not
+ * failures, and are not.
  */
 export type Attempt =
 	| { outcome: "ok"; text: string; inputTokens: number | null; outputTokens: number | null }
@@ -42,6 +43,15 @@ export type ClaimModelCall = (call: {
 export const MODEL_TIMEOUT_MS = 20_000;
 /** The first call and one retry. */
 const MAX_ATTEMPTS = 2;
+
+/**
+ * Whether a failed call is worth its retry: no answer at all (the network), a timeout, or the
+ * provider busy or down (408, 429, 5xx). A refusal such as a bad key, an unknown model or an
+ * empty balance would fail again and only spend another of the office's calls.
+ */
+function mayPassOnRetry(status: number | undefined): boolean {
+	return status === undefined || status === 408 || status === 429 || status >= 500;
+}
 
 /** One line per model call (ADR 0024): never message text, never a thread or guest id. */
 export type ModelCallLog = {
@@ -123,14 +133,13 @@ export function createModelLayer(deps: {
 		if (!backend) return null;
 		const base = { task, model: backend.model, officeId: input.officeId };
 		for (let tries = 0; tries < MAX_ATTEMPTS; tries += 1) {
-			const startedAt = now();
 			// A retry is a call, so it counts too.
 			let allowed: boolean;
 			try {
 				allowed = await deps.claim({
 					officeId: input.officeId,
 					task,
-					day: officeDay(startedAt),
+					day: officeDay(now()),
 					cap: deps.caps[task],
 				});
 			} catch (error) {
@@ -155,8 +164,10 @@ export function createModelLayer(deps: {
 				});
 				return null;
 			}
+			// The model's latency: from the request, not counting the claim.
+			const sentAt = now().getTime();
 			const result = await attempt(backend, input);
-			const latencyMs = now().getTime() - startedAt.getTime();
+			const latencyMs = now().getTime() - sentAt;
 			if (result.outcome === "timeout" || result.outcome === "error") {
 				const detail =
 					result.outcome === "error"
@@ -173,7 +184,8 @@ export function createModelLayer(deps: {
 					outcome: result.outcome,
 					...detail,
 				});
-				continue;
+				if (result.outcome === "timeout" || mayPassOnRetry(result.status)) continue;
+				return null;
 			}
 			logCall({
 				...base,

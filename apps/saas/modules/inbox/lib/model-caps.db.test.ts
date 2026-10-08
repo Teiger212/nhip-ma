@@ -193,7 +193,7 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
-		drafts: layerAt(),
+		drafts: layerAt(MORNING),
 	});
 	const injected = await json(
 		await inject(
@@ -206,7 +206,7 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 	);
 	const conv = injected.body.conversation as Conversation;
 	await settleBackgroundWork();
-	const today = officeDay(new Date());
+	const today = officeDay(MORNING);
 	await used("walk-office", "draft", today, 49);
 
 	const first = await json(
