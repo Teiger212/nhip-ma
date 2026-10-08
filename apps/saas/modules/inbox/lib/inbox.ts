@@ -4,6 +4,7 @@ import { runInBackground } from "./background";
 import { crmFailureKind } from "./crm/retry";
 import { createCrmSync, logAccountLookupFailure } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
+import { CAPPED } from "./drafts";
 import { checkFollowUp } from "./drafts/guardrails";
 import { greetingTemplate } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
@@ -81,7 +82,8 @@ export async function generateModelDraft(
 		qualification: shot.qualification,
 		paperwork: shot.paperwork,
 	});
-	const reply = checkFollowUp(raw);
+	// Past the office's daily cap the template stands; a draft keeps no attempts to spare.
+	const reply = checkFollowUp(raw === CAPPED ? null : raw);
 	if (!reply) {
 		return null;
 	}

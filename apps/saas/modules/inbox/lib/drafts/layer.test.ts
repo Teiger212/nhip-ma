@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, type MockInstance, test, vi } from "vitest";
 
-import type { DraftInput, TranslateInput } from "./adapter";
+import { CAPPED, type DraftInput, type TranslateInput } from "./adapter";
 import {
 	type Attempt,
 	createModelLayer,
@@ -240,7 +240,7 @@ test("a retry is a call: it counts against the cap, and a cap reached on it stop
 			return claims.length === 1;
 		},
 	});
-	expect(await layer.translate(TRANSLATE_INPUT)).toBeNull();
+	expect(await layer.translate(TRANSLATE_INPUT)).toBe(CAPPED);
 	expect(claims).toEqual(["translate/1000", "translate/1000"]);
 	expect(translate.calls).toHaveLength(1);
 	expect(lines().map(([, line]) => line.outcome)).toEqual(["error", "capped"]);

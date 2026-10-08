@@ -21,10 +21,11 @@ vi.mock("@repo/database", () => ({
 import { auth } from "@repo/auth";
 
 import { POST as regenerate } from "../../../app/api/conversations/[id]/draft/route";
+import { GET as getConversation } from "../../../app/api/conversations/[id]/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig, validateInboxEnv } from "./config";
-import { type DraftAdapter, type DraftInput, draftAdapterFromConfig } from "./drafts";
+import { CAPPED, type DraftAdapter, type DraftInput, draftAdapterFromConfig } from "./drafts";
 import { officeDay } from "./drafts/layer";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { json, params, post, WALK_SESSION } from "./test-fixtures";
@@ -71,7 +72,7 @@ afterEach(async () => {
 });
 
 /** The model layer as production builds it: OpenRouter for both tasks, no cap env vars set. */
-function layerAt(now?: Date): DraftAdapter {
+function layerAt(now?: Date | (() => Date)): DraftAdapter {
 	const result = validateInboxEnv({
 		NODE_ENV: "test",
 		NEXT_PUBLIC_SAAS_URL: "http://localhost:3010",
@@ -83,7 +84,7 @@ function layerAt(now?: Date): DraftAdapter {
 	if (!result.ok) throw new Error(result.errors.join("\n"));
 	return draftAdapterFromConfig(result.config, {
 		claim: store.claimModelCall,
-		now: now ? () => now : undefined,
+		now: now instanceof Date ? () => now : now,
 	});
 }
 
@@ -145,7 +146,7 @@ describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call })
 		expect(requested).toEqual([model]);
 		expect(await callsOn("office-a", task, "2026-10-08")).toBe(cap);
 
-		expect(await call(layer, "office-a")).toBeNull();
+		expect(await call(layer, "office-a")).toBe(CAPPED);
 		expect(requested).toEqual([model]);
 		expect(await callsOn("office-a", task, "2026-10-08")).toBe(cap);
 	});
@@ -153,7 +154,7 @@ describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call })
 	test("a new day in Asia/Ho_Chi_Minh, at 17:00 UTC, starts a new count", async () => {
 		await used("office-a", task, "2026-10-08", cap);
 
-		expect(await call(layerAt(new Date("2026-10-08T16:59:59.000Z")), "office-a")).toBeNull();
+		expect(await call(layerAt(new Date("2026-10-08T16:59:59.000Z")), "office-a")).toBe(CAPPED);
 		expect(requested).toEqual([]);
 
 		expect(await call(layerAt(new Date("2026-10-08T17:00:00.000Z")), "office-a")).toBe(
@@ -167,7 +168,7 @@ describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call })
 		await used("office-a", task, "2026-10-08", cap);
 		const layer = layerAt(MORNING);
 
-		expect(await call(layer, "office-a")).toBeNull();
+		expect(await call(layer, "office-a")).toBe(CAPPED);
 		expect(await call(layer, "office-b")).toBe("Happy to help.");
 		expect(requested).toEqual([model]);
 		expect(await callsOn("office-b", task, "2026-10-08")).toBe(1);
@@ -178,7 +179,7 @@ describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call })
 test("the two tasks count apart: drafts at their cap leave translations running", async () => {
 	await used("office-a", "draft", "2026-10-08", 50);
 	const layer = layerAt(MORNING);
-	expect(await layer.draft(draftInput("office-a"))).toBeNull();
+	expect(await layer.draft(draftInput("office-a"))).toBe(CAPPED);
 	expect(
 		await layer.translate({ officeId: "office-a", text: "Xin chào", from: "vi", to: "en" }),
 	).toBe("Happy to help.");
@@ -232,4 +233,58 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 	expect((second.body.conversation as Conversation).oneShot?.draft.source).toBe("template");
 	expect(requested.filter((model) => model === DRAFTER)).toHaveLength(1);
 	expect(await callsOn("walk-office", "draft", today)).toBe(50);
+});
+
+// ADR 0024: past the cap the task falls back; a capped translation isn't a failed one (#257).
+test("a translation past the office's cap uses none of its attempts, and lands once the office's day turns", async () => {
+	vi.mocked(auth.api.getSession).mockReset();
+	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
+	// Late evening in Hà Nội, with the office's 1,000 translations of the day spent.
+	let clock = new Date("2026-10-08T15:30:00.000Z");
+	await used("walk-office", "translate", "2026-10-08", 1000);
+	setRuntimeForTests({
+		store: createInboxStore(testDb),
+		config: mockInboxConfig(),
+		drafts: layerAt(() => clock),
+	});
+
+	const injected = await json(
+		await inject(
+			post("http://localhost/dev/inbound", {
+				pipe: "zalo",
+				guestId: "capped-translation",
+				text: "안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
+			}),
+		),
+	);
+	const conv = injected.body.conversation as Conversation;
+	const messageId = conv.messages[0].id;
+	await settleBackgroundWork();
+
+	/** One open of the thread in Vietnamese, as the agent does. */
+	async function open(): Promise<Conversation> {
+		const res = await getConversation(
+			new Request(`http://localhost/api/conversations/${encodeURIComponent(conv.id)}?locale=vi`),
+			params(conv.id),
+		);
+		expect(res.status).toBe(200);
+		await settleBackgroundWork();
+		return (await res.json()) as Conversation;
+	}
+
+	// More opens than a translation's failures allow: still capped, no model call, nothing spent.
+	for (let opened = 0; opened < 6; opened += 1) await open();
+	expect(requested).toEqual([]);
+	expect(
+		await testDb.translationFailure.findMany({ where: { messageId } }),
+		"a capped translation is not recorded as a failed one",
+	).toEqual([]);
+	expect((await open()).messages[0].translations.vi).toBeUndefined();
+
+	// Midnight in Hà Nội: the next open translates it.
+	clock = new Date("2026-10-08T17:00:00.000Z");
+	await open();
+	expect(requested).toContain(TRANSLATOR);
+	expect((await open()).messages[0].translations.vi).toBe("Happy to help.");
 });

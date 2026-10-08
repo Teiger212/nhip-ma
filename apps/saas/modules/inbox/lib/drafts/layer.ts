@@ -1,7 +1,14 @@
 import { OFFICE_TIME_ZONE } from "@home/lib/window";
 import { errorKind } from "@shared/lib/scrub";
 
-import type { DraftAdapter, DraftInput, ModelTask, TranslateInput } from "./adapter";
+import {
+	CAPPED,
+	type Capped,
+	type DraftAdapter,
+	type DraftInput,
+	type ModelTask,
+	type TranslateInput,
+} from "./adapter";
 
 /**
  * What came of one model call. Only `ok` carries text; every other outcome leaves the fallback
@@ -129,7 +136,7 @@ export function createModelLayer(deps: {
 		task: ModelTask,
 		backend: TaskBackend<Input> | undefined,
 		input: Input,
-	): Promise<string | null> {
+	): Promise<string | null | Capped> {
 		if (!backend) return null;
 		const base = { task, model: backend.model, officeId: input.officeId };
 		for (let tries = 0; tries < MAX_ATTEMPTS; tries += 1) {
@@ -162,7 +169,8 @@ export function createModelLayer(deps: {
 					latencyMs: 0,
 					outcome: "capped",
 				});
-				return null;
+				// Not a failure: the caller may ask again once the office's day turns.
+				return CAPPED;
 			}
 			// The model's latency: from the request, not counting the claim.
 			const sentAt = now().getTime();

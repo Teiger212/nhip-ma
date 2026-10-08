@@ -27,11 +27,18 @@ export type DraftInput = {
 	paperwork: Paperwork;
 };
 
+/**
+ * The office has spent its daily cap for the task (ADR 0024): the model wasn't called. The
+ * fallback stands, but nothing failed: it's worth asking again once the office's day turns.
+ */
+export const CAPPED = Symbol("capped");
+export type Capped = typeof CAPPED;
+
 export type DraftAdapter = {
 	/** Whether the task has a model (or, in E2E, the stub) behind it. One that hasn't returns null. */
 	serves(task: ModelTask): boolean;
-	translate(input: TranslateInput): Promise<string | null>;
-	draft(input: DraftInput): Promise<string | null>;
+	translate(input: TranslateInput): Promise<string | null | Capped>;
+	draft(input: DraftInput): Promise<string | null | Capped>;
 };
 
 /** The fallback adapter: no model, no translation, template drafts. */

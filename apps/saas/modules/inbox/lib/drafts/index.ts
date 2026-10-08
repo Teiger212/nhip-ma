@@ -37,6 +37,8 @@ export function draftAdapterFromConfig(
 }
 
 export {
+	CAPPED,
+	type Capped,
 	noDraftAdapter,
 	type DraftAdapter,
 	type DraftInput,

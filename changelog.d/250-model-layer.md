@@ -10,7 +10,9 @@
   1,000 a day, from `DRAFT_DAILY_CAP` and `TRANSLATE_DAILY_CAP`, counted per model call (a retry
   counts) in the new `inbox_model_usage` table. The day runs midnight to midnight in
   Asia/Ho_Chi_Minh. Past a cap the task falls back without calling the model: the template, or
-  no translation line.
+  no translation line. A capped translation isn't a failed one: it spends none of the message's
+  attempts and waits out no backoff, and the thread's first open after the office's day turns
+  translates it.
 - **One log line per model call** (#250, ADR 0024): task, model, officeId, input and output
   tokens, latency and outcome (ok, timeout, error, capped, filtered, empty). Never message text,
   a thread id or a guest id.
