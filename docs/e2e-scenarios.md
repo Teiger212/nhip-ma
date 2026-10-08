@@ -994,12 +994,13 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
   - **Translation is on** (`MODEL_STUB=translate`). A guest message's translation line reads
     "Stub translation, ‹guest language› to ‹operator language›.", for example "Stub
     translation, Korean to Vietnamese.", and never repeats the guest's words.
-  - **Drafting is built but off** until the trigger ticket (#252) moves the model's draft to
-    after the office's first human reply (`MODEL_STUB=draft,translate` then). Until then every
-    suggested reply in E2E is a template. Once on, the stub's suggested reply reads "Thanks
-    for your message. I'll look into it and come back to you here." ("Suggested reply · AI");
-    a guest whose last message asks about the pink book (or sổ hồng) gets one the post-check
-    blocks, so the template stands ("Suggested reply · template").
+  - **Drafting is on too** (`MODEL_STUB=draft,translate`, #252), and the model drafts only
+    after the office's first human reply (a sent reply, or one from the office's own app; the
+    auto-reply doesn't count). Before it, every suggested reply is the template. After it, the
+    stub's suggested reply reads "Thanks for your message. I'll look into it and come back to
+    you here." ("Suggested reply · AI"); a guest whose last message asks about the pink book
+    (or sổ hồng) gets one the post-check blocks, so the template stands ("Suggested reply ·
+    template").
 - The model's path is proven in Vitest (the post-check, the caps, the timeout and retry, the
   log line, the request's zero-retention routing and each task's model), by the greeting test
   set run by hand, and on staging (`docs/setup-checklist.md`).
@@ -1063,12 +1064,12 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      `/api/conversations`.
 8. **After the greeting, the reply box doesn't thank the guest again.** The manager opens a
    guest's thread after its auto-reply. The reply box holds the template suggested reply
-   (ADR 0024; drafting is off in E2E): it names the office, and it never thanks the guest
+   (ADR 0024: the office has no human reply yet, so the stub model doesn't draft): it names the office, and it never thanks the guest
    again ("Thanks for writing", "Thanks for getting in touch", "Thanks for your message") or
    promises "a colleague". The guest writes again, and the box still holds a template that
    neither thanks them nor promises a colleague.
-   - With a model configured, it would hold the model's follow-up draft. That case is
-     covered by Vitest.
+   - A model doesn't change this: until the office's first human reply, a greeted thread
+     holds the template, not a model draft (ADR 0024, amending ADR 0021's P2).
 
    Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 8; the manager opens the
    Unassigned thread from All; "names the office" is "Saigon Prime Test" in the box's text;
@@ -1092,8 +1093,8 @@ is unchanged.
 **How these run.** As First greeting: guests write through signed Zalo webhooks (a Zalo guest
 has no profile name, so the template greets them without one) to an office of the test's own
 named "Saigon Prime Test", with a manager and an invited agent, the auto-reply on and
-`SEND_MODE=mock`. Drafting is off in E2E until the trigger ticket (#252), so before the office's
-first human reply the reply box holds the template in every order these tickets land. An
+`SEND_MODE=mock`. The stub model drafts (First greeting, "How these run"), but only after the
+office's first human reply (#252), so before it the reply box holds the template. An
 agent's first name is the first word of their account name. The EN copy is the reference; the
 VI copy is pending a native read (#78), and JA, KO and RU have no native read planned yet.
 
@@ -1167,6 +1168,67 @@ manager sets the test's own office to Vietnamese (`PUT /api/office/language`) be
 writes, opens the thread at `/vi/inbox?thread=…`, and the label is judged once the box holds a
 suggestion; 1 to 5 leave their offices at English).
 
+## When the model drafts (ADR 0024, #252)
+
+The model writes the suggested reply only after the office's first human reply: a sent reply, or
+one from the office's own app. The auto-reply doesn't count. A guest message is drafted about
+30 s after it lands, so a burst gets one draft, or at once when the agent opens the thread first.
+When the guest writes again, a suggestion the agent hasn't touched follows them; one the agent
+has typed into stays, with a quiet "Guest wrote again" note, and sending it answers the guest's
+latest message (ADR 0024, amending ADR 0011's stale-target rule for that case only).
+
+**How these run.** As First greeting: guests write through signed Zalo webhooks to an office of
+the test's own named "Saigon Prime Test", with a manager and an invited agent, the auto-reply on,
+`SEND_MODE=mock`, and the stub model drafting (`MODEL_STUB=draft,translate`). The stub's draft
+reads "Thanks for your message. I'll look into it and come back to you here." and is labelled
+"Suggested reply · AI"; a guest whose last message asks about the pink book gets a draft the
+post-check blocks, so the template stands, labelled "Suggested reply · template" (once the
+office has replied, the template reads "Noted. I'll look into this and get back to you here
+shortly."). The agent keeps the thread open or opens it, so no scenario waits out the 30 s: an
+open thread is drafted at once. The 30 s wait and the burst are proven in Vitest.
+
+1. **The model writes the reply after the office's first human reply.** A guest's first
+   message gets the auto-reply. The agent sends a reply. The guest writes again ("Could you
+   send me some photos?"). The reply box holds the stub model's draft, labelled "Suggested
+   reply · AI".
+2. **No model draft before the first human reply.** A guest's first message gets the
+   auto-reply. The agent opens the thread. The reply box holds the template, labelled
+   "Suggested reply · template", and still does a few polls later: the stub model is on, but
+   the office hasn't replied yet.
+3. **An edited reply survives the guest writing again.** After the agent's first reply, the
+   guest writes again and the box holds the stub's draft. The agent types their own reply into
+   the box. The guest writes again. The box still holds exactly the agent's text, and "Guest
+   wrote again" shows next to Regenerate.
+4. **Sending the kept edit answers the latest message.** Then the agent sends it with Approve
+   and send. It goes out with no "The guest wrote again" error: the thread holds the agent's
+   text as the office's reply, after the guest's latest message, and the thread leaves Your
+   turn.
+5. **An untouched reply follows the guest.** After the agent's first reply, the guest writes
+   again and the box holds the stub's draft, labelled "Suggested reply · AI". The agent doesn't
+   type. The guest writes again, asking about the pink book ("Is the pink book ready?"). The box
+   now holds the template for that message, labelled "Suggested reply · template", with no
+   "Guest wrote again" note.
+
+Spec: `apps/saas/tests/model-draft.spec.ts` (When the model drafts 1–5; each test has an office
+of its own, the guest a nameless Zalo guest whose first message is "Hi, we're looking to rent an
+apartment in Tay Ho", judged once the auto-reply is in the thread, and the thread given to the
+agent by the manager through the owner API. "The agent sends a reply" is Approve and send on the
+template as it stands, the thread opened by its `?thread=` link, until `unansweredInboundId` is
+null; the agent then opens it again by link once "Could you send me some photos?" is in it, and
+keeps it open from there (never reloaded once typed into). The box is the textbox named "Reply";
+"holds the draft" is its value exactly the stub's text, and each label a text in the open thread,
+the spaces around "·" aside, written in the spec. 2: from the opened thread, the box, the labels
+and whether it holds the stub's text are read together after every Inbox poll for 5 s: no "· AI"
+label, the template label, and the same text throughout. 3: the agent's text is typed with
+`fill`, and two polls pass before the guest writes "Also, do any of them have a balcony?"; once
+that shows in the open thread, the box's value and the exact note "Guest wrote again" are read
+together, Regenerate is visible, and the value holds for 5 s of polls. "Next to" is not measured.
+4: 3's setup, then Approve and send; through the agent's API, an office message with the typed
+text comes after the balcony message, and `unansweredInboundId` is null, while no
+"The guest wrote again" (any case) shows on the page. 5: once "Is the pink book ready?" shows in
+the open thread, the box is exactly "Noted. I'll look into this and get back to you here
+shortly.", with the template label, no AI label and no note).
+
 ## Guest language (ADR 0021 R4 as amended by #245, ADR 0025)
 
 A guest who writes in a language Nhịp doesn't support is named in that language, with a note
@@ -1176,8 +1238,8 @@ English greeting and an English suggested reply. Their messages aren't translate
 **How these run.** As First greeting: guests write through signed Zalo webhooks to an office of
 the test's own, with a manager and an invited agent, the auto-reply on and `SEND_MODE=mock`.
 Translation runs against First greeting's stub model, so a supported language's message shows a
-stub translation line and an unsupported one must show none; drafting is off, so the reply box
-holds a template. Each test's office is left at the default office language, English (ADR 0025,
+stub translation line and an unsupported one must show none; no one replies, so the reply box
+holds a template (the stub model drafts only after the office's first human reply, #252). Each test's office is left at the default office language, English (ADR 0025,
 Office language), except Guest language 1's `/vi/` pass, whose manager sets its office to
 Vietnamese: a member reads Nhịp in the office language (Office language 6). The VI copy is
 pending a native read (#78).
