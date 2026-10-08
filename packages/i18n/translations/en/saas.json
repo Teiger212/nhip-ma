@@ -879,8 +879,8 @@
 		"translation": "Translation",
 		"noTranslation": "{language} isn't supported: no translation",
 		"suggested": {
-			"template": "Suggested reply",
-			"model": "AI suggestion from the conversation"
+			"template": "Suggested reply · template",
+			"model": "Suggested reply · AI"
 		},
 		"regenerate": "Regenerate",
 		"regenerating": "Regenerating…",
