@@ -614,14 +614,18 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    IntersectionObserver ratio of 0.98, a pixel's give) and ends above the reply box. Approve and send already sat in
    the window before #248: the reply box is what was pushed out).
 4. **On a phone the details are a strip too.** At 390×844 the thread, opened from the list, has
-   its details under the header and above the first message, and the reply box and Approve and
+   its details under the header and above the conversation (the first message, scrolled into
+   view, is below them), and the reply box and Approve and
    send wholly inside the window, with the latest message in view.
    Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 4; the office as in 1, opened
-   from the list at 390×844. "A strip too" is 2's strip: under the header, above the first
-   message and spanning the messages' column, judged on a guest who wrote once, since a ten-message
-   thread opened at its latest message has its first message scrolled up past a strip that stays
-   put; the reply box, Approve and send and the latest message are judged as in 3, on a second
-   guest who wrote ten messages).
+   from the list at 390×844. "A strip too" is 2's strip: under the header and spanning the
+   messages' column, with the first message, once scrolled into view in its own pane, below it:
+   the thread opens at its latest message (3), so on a phone even a guest who wrote once has their
+   first message scrolled up under the strip next to the office's auto-reply. Judged on a guest
+   who wrote once; the reply box, Approve and send and the latest message are judged as in 3, on
+   a second guest who wrote ten messages. The "scrolled into view" step was added by the
+   implementer after the first green run, when the phone check found the first message scrolled
+   up under the strip; the test author's reading had been "above the first message" as it lies).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
