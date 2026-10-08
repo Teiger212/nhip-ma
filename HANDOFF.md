@@ -62,8 +62,11 @@ saas test`. Do not commit untracked local scripts.
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model draft
   is JSON with the reply and the same reply in the office language (#251); one that states a
   price, an availability, a viewing time or a legal answer, or a number the guest didn't write,
-  is dropped by the post-check and the template stands. E2E translates
-  with the stub model (`MODEL_STUB=translate` in `.env.e2e`).
+  is dropped by the post-check and the template stands. The model drafts only after the
+  office's first human reply (a sent Answer or an OA-app reply; the auto-reply isn't one), about
+  30 s after a guest message, a burst getting one draft, or at once when the thread is opened
+  (#252). E2E translates and drafts with the stub model (`MODEL_STUB=draft,translate` in
+  `.env.e2e`).
 - The office is the tenant (ADR 0008) and Nhịp assigns it (ADR 0010): one operator, one
   office, read from the membership table on every request, never from the session's
   active organization. Threads are one per guest per

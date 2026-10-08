@@ -888,6 +888,7 @@
 			"template": "Suggested reply · template",
 			"model": "Suggested reply · AI"
 		},
+		"guestWroteAgain": "Guest wrote again",
 		"regenerate": "Regenerate",
 		"regenerating": "Regenerating…",
 		"regenerateFailed": "Could not get a new suggestion.",

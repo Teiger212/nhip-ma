@@ -9,6 +9,11 @@ export type Runtime = {
 	config: InboxConfig;
 	/** The model layer for translation and drafts (ADR 0005, ADR 0024). */
 	drafts: DraftAdapter;
+	/**
+	 * How long a guest message waits before the model drafts its reply; `DRAFT_DEBOUNCE_MS`
+	 * (about 30 s, ADR 0024) unless a test shortens it.
+	 */
+	draftDebounceMs?: number;
 };
 
 type GlobalRuntime = typeof globalThis & { __nhipRuntime?: Runtime; __nhipConfig?: InboxConfig };

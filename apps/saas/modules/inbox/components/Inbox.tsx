@@ -45,7 +45,7 @@ import {
 import { sendStatusFor } from "../lib/send-status";
 import { summarize } from "../lib/summary";
 import type { ConversationSummary } from "../lib/types";
-import { replyKey, useReplyDraft } from "../lib/use-reply-draft";
+import { useReplyDraft } from "../lib/use-reply-draft";
 import { AlertsPanel } from "./AlertsPanel";
 import { InboxToolbar } from "./InboxToolbar";
 import { AssignFromRow } from "./OwnerControl";
@@ -234,19 +234,25 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			void refetchDetail();
 		}
 	}, [rowState, detailState, detailFetching, refetchDetail]);
-	const { reply, edited, setReply, dropEdit } = useReplyDraft(selected);
+	const { reply, edited, guestWroteAgain, target, setReply, dropEdit } = useReplyDraft(selected);
 	const cribNotes = selected
 		? formatConversationCrib(selected, (key, values) => t(key, values), locale)
 		: null;
 	const canApprove = Boolean(selected?.unansweredInboundId) && reply.trim().length > 0;
 
 	async function onApprove() {
-		if (!selected || !selected.unansweredInboundId || !reply.trim() || approve.isPending) return;
+		if (!selected || !selected.unansweredInboundId || !target || !reply.trim() || approve.isPending)
+			return;
 		setSendError(null);
-		const inboundId = selected.unansweredInboundId;
 		try {
-			const result = await approve.mutateAsync({ id: selected.id, inboundId, reply });
-			dropEdit(inboundId);
+			// A kept edit names the message it was typed for; the server answers the latest with it.
+			const result = await approve.mutateAsync({
+				id: selected.id,
+				inboundId: target,
+				reply,
+				edited,
+			});
+			dropEdit(selected.id);
 			toast.add({
 				title: t("sentTo", { name: displayName(result.conversation) }),
 				type: "success",
@@ -263,7 +269,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		if (!selected || !selected.unansweredInboundId || regenerate.isPending) return;
 		try {
 			await regenerate.mutateAsync({ id: selected.id });
-			dropEdit(replyKey(selected));
+			dropEdit(selected.id);
 		} catch (error) {
 			toast.add({
 				title: error instanceof Error ? error.message : t("regenerateFailed"),
@@ -424,6 +430,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							reply={{
 								reply,
 								edited,
+								guestWroteAgain,
 								draftSource: selected.oneShot?.draft?.source ?? "template",
 								canApprove,
 								onReplyChange: setReply,
