@@ -889,6 +889,7 @@
 			"template": "Gợi ý trả lời · mẫu",
 			"model": "Gợi ý trả lời · AI"
 		},
+		"guestWroteAgain": "Khách vừa nhắn thêm",
 		"regenerate": "Tạo lại",
 		"regenerating": "Đang tạo lại…",
 		"regenerateFailed": "Không tạo được gợi ý mới.",

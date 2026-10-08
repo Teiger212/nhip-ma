@@ -10,12 +10,14 @@ import type { DraftSource } from "../lib/types";
  * The suggested reply, always editable, never sent from here: the send bar approves it. Beside
  * "Reply", the operator note, one line on how to answer (#248). While the box still holds the
  * server's suggestion it says where that came from; once the operator has typed, that goes.
+ * Typed text kept after the guest wrote again says so, quietly, in its place (ADR 0024).
  * Regenerate asks the server for a new one.
  */
 export function ReplyBox({
 	reply,
 	onReplyChange,
 	edited,
+	guestWroteAgain,
 	draftSource,
 	canApprove,
 	regenerating,
@@ -25,6 +27,7 @@ export function ReplyBox({
 	reply: string;
 	onReplyChange: (reply: string) => void;
 	edited: boolean;
+	guestWroteAgain: boolean;
 	draftSource: DraftSource;
 	canApprove: boolean;
 	regenerating: boolean;
@@ -50,6 +53,10 @@ export function ReplyBox({
 						{!edited ? (
 							<span className="text-xs text-muted-foreground">
 								{draftSource === "model" ? t("suggested.model") : t("suggested.template")}
+							</span>
+						) : guestWroteAgain ? (
+							<span data-test="guest-wrote-again" className="text-xs text-muted-foreground">
+								{t("guestWroteAgain")}
 							</span>
 						) : null}
 						<Button

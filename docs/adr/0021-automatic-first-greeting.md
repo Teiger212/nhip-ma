@@ -157,6 +157,9 @@ tell a name.
   covers the first message, still unanswered, and every message after it. The model drafts
   from the whole conversation, knowing the greeting went out, so it never greets twice. With
   no model, the box holds the follow-up template.
+  **Amended by ADR 0024 (2026-10-08, built in #252):** a greeted thread with no human reply yet
+  holds the template, not a model draft; the model drafts only after the office's first human
+  reply.
 
 ## Considered options
 

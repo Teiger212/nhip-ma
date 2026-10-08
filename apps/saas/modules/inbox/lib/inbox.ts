@@ -4,38 +4,15 @@ import { runInBackground } from "./background";
 import { crmFailureKind } from "./crm/retry";
 import { createCrmSync, logAccountLookupFailure } from "./crm/sync";
 import { oneShot } from "./draft";
-import { CAPPED, DRAFT_MESSAGES } from "./drafts";
-import { checkFollowUp, parseModelDraft } from "./drafts/guardrails";
-import { askedIn, greetingQuestion, greetingTemplate, missingQualifiers } from "./greeting";
+import { greetingTemplate } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
 import type { AlertTransport } from "./guest-alerts/transport";
+import { draftNow, modelDrafts, scheduleModelDraft } from "./model-draft";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { replyTemplate, type TemplateThread } from "./reply-template";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
-import type {
-	Conversation,
-	GuestLanguage,
-	InboundEvent,
-	InboxViewer,
-	Pipe,
-	Qualification,
-	SendResult,
-	Store,
-} from "./types";
-
-/**
- * Whether the model drafts the suggested reply (ADR 0005; ADR 0021, R11 and P2): once a human
- * reply was sent, or the auto-reply went out. A greeting claimed but never sent doesn't count.
- * The template is the same function either way (ADR 0024); #252 moves this to after the
- * office's first human reply.
- */
-function takesFollowUpPath(conversation: Conversation): boolean {
-	return (
-		Boolean(conversation.sentAt) ||
-		conversation.messages.some((message) => message.source === "auto-reply")
-	);
-}
+import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
 
 /** What the template suggested reply reads of `conversation` (ADR 0024): its office's name too. */
 async function templateThread(
@@ -58,8 +35,8 @@ async function templateThread(
 /**
  * Write the template suggested reply again for the thread as it is now (ADR 0024): after it was
  * assigned, or after the greeting landed. Only the server's template is rewritten: a model draft
- * stays, and an edit the operator typed lives in their browser, keyed by the guest message, so it
- * is never overwritten. Returns the thread, rewritten or not.
+ * stays, and an edit the operator typed lives in their browser (`use-reply-draft.ts`), so it is
+ * never overwritten. Returns the thread, rewritten or not.
  */
 export async function refreshTemplate(
 	store: Store,
@@ -92,80 +69,9 @@ export async function applyOneShot(
 	const thread = await templateThread(store, conversation);
 	const shot = oneShot(inbound, conversation.unansweredInboundId, thread);
 	const stored = await store.setOneShot(conversation.officeId, conversation.id, shot);
-	// The thread may have moved since it was read (the greeting landed, its own redraft may
+	// The thread may have moved since it was read (the greeting landed, its own rewrite may
 	// already have run, or it was assigned): the template follows the stored thread.
 	return stored ? refreshTemplate(store, stored, thread.officeName) : stored;
-}
-
-/**
- * The auto-reply's questions the guest hasn't answered yet (ADR 0024): what it asked, as it
- * was sent, less the details the guest has given since. Worded in the reply's language.
- */
-export function autoReplyOpenQuestions(
-	messages: Conversation["messages"],
-	language: GuestLanguage,
-	qualification: Qualification,
-): string[] {
-	const asked = new Set(
-		messages
-			.filter((message) => message.source === "auto-reply")
-			.flatMap((message) => askedIn(message.text)),
-	);
-	return missingQualifiers(qualification)
-		.filter((qualifier) => asked.has(qualifier))
-		.map((qualifier) => greetingQuestion(language, qualifier));
-}
-
-/**
- * Ask the model for a follow-up (ADR 0024, #251) and store it as the suggested reply, unless
- * the guest message was answered in the meantime (a stale draft must never overwrite the next
- * inbound's). The model reads the last 10 messages and the auto-reply's open questions, and
- * answers JSON with the reply and the same reply in the office language. Both texts pass the
- * post-check against the guest's own messages, or the template stands: so does a malformed
- * answer. Returns null when the template stands.
- */
-export async function generateModelDraft(
-	runtime: Runtime,
-	conversation: Conversation,
-): Promise<Conversation | null> {
-	const inboundId = conversation.unansweredInboundId;
-	const shot = conversation.oneShot;
-	if (!inboundId || !shot) {
-		return null;
-	}
-	const officeLanguage = await runtime.store.officeLanguage(conversation.officeId);
-	const raw = await runtime.drafts.draft({
-		officeId: conversation.officeId,
-		guestName: conversation.guestName,
-		guestLanguage: shot.language,
-		officeLanguage,
-		openQuestions: autoReplyOpenQuestions(conversation.messages, shot.language, shot.qualification),
-		messages: conversation.messages.slice(-DRAFT_MESSAGES),
-		qualification: shot.qualification,
-		paperwork: shot.paperwork,
-	});
-	// Past the office's daily cap the template stands; a draft keeps no attempts to spare.
-	const drafted = parseModelDraft(raw === CAPPED ? null : raw);
-	const guestTexts = conversation.messages
-		.filter((message) => message.direction === "in")
-		.map((message) => message.text);
-	const reply = checkFollowUp(drafted?.reply, guestTexts);
-	const officeReply = checkFollowUp(drafted?.officeReply, guestTexts);
-	if (!reply || !officeReply) {
-		return null;
-	}
-	const current = await runtime.store.getOfficeConversation(conversation.officeId, conversation.id);
-	if (!current || current.unansweredInboundId !== inboundId) {
-		return null;
-	}
-	return runtime.store.setDraft(conversation.officeId, conversation.id, {
-		reply,
-		answersMessageId: inboundId,
-		source: "model",
-		// A reply already in the office language needs no second text, as a guest message in it
-		// gets no translation (ADR 0025).
-		...(shot.language === officeLanguage ? {} : { officeReply }),
-	});
 }
 
 /**
@@ -359,34 +265,22 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 		console.warn("inbox: auto-reply record failed");
 		return;
 	}
-	if (greeted) await redraftAfterGreeting(runtime, greeted);
-}
-
-/**
- * The greeting is on file, so the reply box takes the follow-up path (R11, P2): the guest's
- * message, still unanswered, gets the template written again now (it no longer thanks the guest
- * or asks what the greeting asked, ADR 0024), then the model's follow-up,
- * written from the whole conversation with the greeting in it, where there is a model. It runs
- * on the thread as reloaded after the greeting's row, so a guest message that landed meanwhile
- * is the one drafted for.
- */
-async function redraftAfterGreeting(runtime: Runtime, greeted: Conversation): Promise<void> {
-	const updated = await applyOneShot(runtime.store, greeted);
-	if (updated?.oneShot && updated.unansweredInboundId && runtime.drafts.serves("draft")) {
-		await runInBackground("follow-up draft", async () => {
-			await generateModelDraft(runtime, updated);
-		});
-	}
+	// The greeting is on file: the guest's message, still unanswered, gets the template written
+	// again (it no longer thanks the guest or asks what the greeting asked). Never a model draft:
+	// the office has no human reply yet (ADR 0024, amending ADR 0021's P2). It runs on the thread
+	// as reloaded after the greeting's row, so a guest message that landed meanwhile is the one
+	// written for.
+	if (greeted) await applyOneShot(store, greeted);
 }
 
 /**
  * Everything that follows a guest message: the one-shot now, then the alert (a new message
  * only), the auto-reply for a new guest's first message (ADR 0021), translation and, on a
- * thread the office has sent or greeted on, the model draft in the background. A thread with
- * no lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
- * queue never wait on the CRM. An ungreeted first message keeps the template suggested reply
- * (ADR 0005, ADR 0024); a greeted one gets
- * the follow-up path once the greeting is on file (`redraftAfterGreeting`, ADR 0021 P2).
+ * thread the office has a human reply on, the model draft once the guest has been quiet for
+ * about 30 s (`scheduleModelDraft`, ADR 0024). A thread with no lead yet gets one in the
+ * office's CRM, in the background too (spec #59): the guest and the queue never wait on the CRM.
+ * Until the office's first human reply the template suggested reply stands, after the auto-reply
+ * too (ADR 0005, ADR 0024).
  */
 export async function afterGuestInbound(
 	runtime: Runtime,
@@ -429,11 +323,8 @@ export async function afterGuestInbound(
 	const inbound = updated.messages.find((message) => message.id === updated.unansweredInboundId);
 	if (inbound) {
 		scheduleTranslations(runtime, updated.officeId, inbound, updated.oneShot?.guestLanguage);
-		if (takesFollowUpPath(updated) && updated.oneShot && runtime.drafts.serves("draft")) {
-			void runInBackground("follow-up draft", async () => {
-				await generateModelDraft(runtime, updated);
-			});
-		}
+		// A vendor's retry of a message already stored has its wait running already.
+		if (inserted) scheduleModelDraft(runtime, updated);
 	}
 	return updated;
 }
@@ -566,12 +457,48 @@ export type ApproveInput = {
 	inboundId: string | undefined;
 	/** Exactly the text the operator approved. Blank is refused, never filled in. */
 	text: string | undefined;
+	/**
+	 * The text is the operator's own edit, not the suggestion as it stood. An edit kept after the
+	 * guest wrote again names the message it was typed for (ADR 0024).
+	 */
+	edited?: boolean;
+	/**
+	 * The latest guest message the operator's screen showed. A kept edit is sent to the latest
+	 * message only if it is this one: the "Guest wrote again" note was on screen (ADR 0024).
+	 */
+	seenInboundId?: string;
 };
+
+/**
+ * Whether `named` is the guest message an edit was typed for, kept after the guest wrote again
+ * (ADR 0024, amending ADR 0011): an earlier guest message of this thread that is still part of
+ * the open turn, with no Answer of its own (a refused one aside) and no human reply after it.
+ * The auto-reply doesn't close a turn.
+ */
+function keptEditFor(conversation: Conversation, named: string): boolean {
+	const index = conversation.messages.findIndex(
+		(message) => message.id === named && message.direction === "in",
+	);
+	if (index < 0) return false;
+	if (
+		conversation.answers.some((answer) => answer.inboundId === named && answer.status !== "failed")
+	) {
+		return false;
+	}
+	return !conversation.messages
+		.slice(index + 1)
+		.some((message) => message.direction === "out" && message.source !== "auto-reply");
+}
 
 /**
  * Approve and send (CONTEXT.md): one human approving one reply for one inbound message.
  * Reply-only (ADR 0006): the send answers the unanswered inbound, and a second approve
- * against the same inbound is refused. The Answer (ADR 0011) is on record before any
+ * against the same inbound is refused. An approval naming an older guest message is refused
+ * as out of date (`stale_target`, ADR 0011), with one exception (ADR 0024): the operator's own
+ * edit, kept after the guest wrote again, answers the latest guest message. The request says it
+ * is an edit (`edited`), it saw the latest guest message (`seenInboundId`), and the message it
+ * names must still be in the open turn (`keptEditFor`): the suggestion as it stood, or an edit
+ * sent before the new message showed, is never sent to a message it wasn't written for. The Answer (ADR 0011) is on record before any
  * vendor is called, so nothing that happens between approval and acknowledgement can
  * send the wrong text, send twice, or hide a guest message that lands in between.
  */
@@ -599,7 +526,11 @@ export async function approveAndSend(
 			message: "An approval must name the guest message it answers.",
 		};
 	}
-	if (input.inboundId !== inboundId) {
+	const keptEdit =
+		input.edited === true &&
+		input.seenInboundId === inboundId &&
+		keptEditFor(conv, input.inboundId);
+	if (input.inboundId !== inboundId && !keptEdit) {
 		return {
 			ok: false,
 			status: 409,
@@ -733,10 +664,11 @@ export async function approveAndSend(
 }
 
 /**
- * The operator asks for a new suggestion (ADR 0005). This is the one place an ungreeted first
- * reply goes to the model: the automatic path keeps the template for it, an explicit request
- * does not (a greeted one is drafted automatically, ADR 0021 P2). Without a model, or when the
- * model's draft fails the post-check, the template is put back so the box is never empty.
+ * The operator asks for a new suggestion (ADR 0005). Once the office has a human reply the model
+ * is asked, and the call counts against the office's daily draft cap (ADR 0024); before it, the
+ * template is written again and no model is asked (ADR 0024: the first replies keep the
+ * template). Without a model, past the cap, or when the model's draft fails the post-check, the
+ * template is put back so the box is never empty.
  */
 export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<InboxResult> {
 	const runtime = getRuntime();
@@ -750,7 +682,7 @@ export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<
 	if (!conv.oneShot) {
 		return { ok: false, status: 400, error: "no_draft" };
 	}
-	const drafted = await generateModelDraft(runtime, conv);
+	const drafted = modelDrafts(conv) ? await draftNow(runtime, conv) : null;
 	if (drafted) {
 		return { ok: true, conversation: drafted };
 	}
