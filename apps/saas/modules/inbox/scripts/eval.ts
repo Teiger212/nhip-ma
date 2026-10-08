@@ -195,9 +195,14 @@ function backendsFor(options: Options, model: string) {
 	const apiKey = process.env.DRAFT_API_KEY?.trim();
 	if (!apiKey)
 		throw new Error("DRAFT_API_KEY is not set: a real run needs it (or use --dry-run or --stub)");
+	const baseUrl = process.env.DRAFT_BASE_URL?.trim() || DEFAULT_DRAFT_BASE_URL;
+	// The eval measures what production calls: OpenRouter, with its zero-retention routing.
+	if (new URL(baseUrl).hostname !== "openrouter.ai") {
+		throw new Error("DRAFT_BASE_URL is not OpenRouter: unset it for the eval");
+	}
 	return createOpenRouterBackends({
 		apiKey,
-		baseUrl: process.env.DRAFT_BASE_URL?.trim() || DEFAULT_DRAFT_BASE_URL,
+		baseUrl,
 		models: { draft: model, translate: model },
 	});
 }

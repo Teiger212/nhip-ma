@@ -106,15 +106,25 @@ describe("a question the office asked that the guest hasn't answered fails when 
 		).toBe(true);
 		expect(
 			verdictOf(json("Great! When would you like to move in?"), EN, "open-question"),
-		).toMatchObject({ pass: false, detail: "reply: asks again: timeframe" });
+		).toMatchObject({ pass: false, detail: "reply: asks again: timeframe (open)" });
 	});
 
-	test("English: once the guest answers it, it is no longer open", () => {
+	test("English: once the guest answers it, asking it again still fails", () => {
 		const answered = thread(...EN.messages, guest("We'd like to move in early January."));
 		expect(
-			verdictOf(json("Got it. When would you like to move in exactly?"), answered, "open-question")
+			verdictOf(json("Got it, I'll line up places for early January."), answered, "open-question")
 				?.pass,
 		).toBe(true);
+		expect(
+			verdictOf(json("Got it. When would you like to move in?"), answered, "open-question"),
+		).toMatchObject({ pass: false, detail: "reply: asks again: timeframe (answered)" });
+	});
+
+	test("English: the guest's budget mentioned in a question is not asking for it", () => {
+		expect(
+			verdictOf(json("Would you look slightly above your budget?"), EN, "open-question")?.pass,
+		).toBe(true);
+		expect(verdictOf(json("What's your budget?"), EN, "open-question")?.pass).toBe(false);
 	});
 
 	test("Vietnamese", () => {

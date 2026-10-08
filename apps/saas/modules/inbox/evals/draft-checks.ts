@@ -6,8 +6,8 @@ import type { Message } from "../lib/types";
 /**
  * The draft eval's local checks (#254, ADR 0024 "The rules a draft follows"): no model, so they
  * decide pass or fail on their own. A draft fails when it breaks the JSON shape, writes a number
- * the guest didn't, asks again a question the office asked and the guest hasn't answered,
- * introduces anyone, or runs past 4 sentences. Each runs on both texts, the reply in the guest's
+ * the guest didn't, asks again a question the office asked and the guest hasn't answered (or
+ * asks for a detail the guest already gave), introduces anyone, or runs past 4 sentences. Each runs on both texts, the reply in the guest's
  * language and the same reply in the office language: a pattern this file lacks for Japanese,
  * Korean or Russian is caught in the English or Vietnamese twin, as the post-check does.
  */
@@ -17,7 +17,7 @@ export type CheckId = "json" | "numbers" | "open-question" | "intro" | "length";
 export const CHECK_LABELS: Record<CheckId, string> = {
 	json: "JSON shape",
 	numbers: "Only the guest's numbers",
-	"open-question": "No repeated open question",
+	"open-question": "Asks nothing again",
 	intro: "No intro",
 	length: "At most 4 sentences",
 };
@@ -46,9 +46,10 @@ const TOPICS: Record<Qualifier, RegExp> = {
 	rentOrBuy:
 		/\brent(?:ing)? or (?:to )?buy|\bbuy(?:ing)? or (?:to )?rent|thuê hay mua|mua hay thuê|임대.{0,10}(?:구매|매매)|(?:구매|매매).{0,10}임대|賃貸.{0,10}購入|購入.{0,10}賃貸|снять.{0,15}купить|купить.{0,15}снять/iu,
 	area: /\b(?:which|what)\s+(?:area|areas|neighbou?rhoods?|districts?|part of (?:town|the city|hanoi))\b|\bwhere (?:in hanoi )?(?:would|do) you (?:like|want|prefer) to (?:live|stay|be)\b|khu (?:vực )?nào|quận nào|어느 (?:지역|동네)|どの(?:エリア|地域|辺り)|как(?:ой|ие|ом) район/iu,
-	budget: /\bbudget\b|\bprice range\b|ngân sách|tầm giá|예산|予算|бюджет/iu,
+	budget:
+		/\bwhat(?:'s| is) your budget\b|\bbudget (?:in mind|range)\b|\bhow much (?:are you|would you|do you) (?:\w+ )?(?:to )?(?:spend|pay)\b|\bprice range\b|ngân sách.{0,25}(?:bao nhiêu|thế nào|khoảng nào|tầm nào)|tầm giá nào|예산.{0,10}(?:얼마|어느|어떻게)|予算.{0,10}(?:いくら|どの|どれ)|какой.{0,10}бюджет|бюджет.{0,10}(?:какой|сколько)/iu,
 	timeframe:
-		/\bmove[- ]?in\b|\bmoving (?:in|date)\b|\bwhen (?:would|do|are|will) you (?:like to |want to |plan(?:ning)? to |be )?(?:move|moving|start|arrive|arriving)\b|\b(?:lease|start) date\b|dọn (?:vào|đến|về|sang)|chuyển (?:vào|đến|về|sang)|입주|이사|入居|引っ越|заех|въех|переезж|засел/iu,
+		/\bwhen\b.{0,40}\b(?:move|moving|start|arrive|arriving|lease)\b|\bmove[- ]?in date\b|\bstart date\b|(?:khi nào|bao giờ|lúc nào).{0,30}(?:dọn|chuyển|ở|thuê)|(?:dọn|chuyển) (?:vào|đến|về|sang).{0,20}(?:khi nào|bao giờ|lúc nào|ngày nào|tháng nào)|입주.{0,15}(?:언제|시기|날짜)|언제.{0,15}(?:입주|이사)|入居.{0,10}(?:いつ|時期|日)|いつ.{0,10}(?:入居|引っ越)|когда.{0,30}(?:заех|въех|переех|засел)/iu,
 	household:
 		/\bhow many (?:bedrooms|beds|rooms|people|of you)\b|\bwho (?:will|would) be (?:living|staying)\b|mấy phòng ngủ|bao nhiêu phòng|mấy người|bao nhiêu người|몇 (?:명|분)|침실.{0,6}몇|何人|何部屋|сколько (?:спален|комнат|человек)|кто будет жить/iu,
 };
@@ -66,18 +67,27 @@ export function asksAbout(text: string): Qualifier[] {
 }
 
 /**
- * The office's open questions (rule 5): what an office message asked, the auto-reply's or an
- * agent's, that the guest's messages still don't answer, as the one-shot reads them.
+ * What a draft must not ask (rule 5): the office's open questions, which an office message
+ * asked (the auto-reply's or an agent's) and the guest's messages still don't answer, and every
+ * detail the guest already gave, as the one-shot reads them.
  */
-export function openQualifiers(messages: CheckThread["messages"]): Qualifier[] {
+export function settledQualifiers(messages: CheckThread["messages"]): {
+	open: Qualifier[];
+	answered: Qualifier[];
+} {
 	const guest = messages.filter((message) => message.direction === "in");
 	const { qualification } = extractFromInbound(guest.map((message) => message.text).join("\n"));
+	const missing = missingQualifiers(qualification);
 	const asked = new Set(
 		messages
 			.filter((message) => message.direction === "out")
 			.flatMap((message) => asksAbout(message.text)),
 	);
-	return missingQualifiers(qualification).filter((qualifier) => asked.has(qualifier));
+	const all: Qualifier[] = ["rentOrBuy", "area", "budget", "timeframe", "household"];
+	return {
+		open: missing.filter((qualifier) => asked.has(qualifier)),
+		answered: all.filter((qualifier) => !missing.includes(qualifier)),
+	};
 }
 
 /** A self-introduction, in the five languages: the model never introduces anyone (rule 1). */
@@ -160,7 +170,7 @@ export function checkDraft(raw: string | null, thread: CheckThread): DraftCheck 
 	const guestTexts = thread.messages
 		.filter((message) => message.direction === "in")
 		.map((message) => message.text);
-	const open = openQualifiers(thread.messages);
+	const { open, answered } = settledQualifiers(thread.messages);
 	const verdicts: CheckVerdict[] = [
 		{ id: "json", pass: true, detail: null },
 		verdict("numbers", texts, (text) => {
@@ -168,7 +178,10 @@ export function checkDraft(raw: string | null, thread: CheckThread): DraftCheck 
 			return stray.length ? stray.join(", ") : null;
 		}),
 		verdict("open-question", texts, (text) => {
-			const repeated = asksAbout(text).filter((qualifier) => open.includes(qualifier));
+			const repeated = asksAbout(text).flatMap((qualifier) => {
+				if (open.includes(qualifier)) return [`${qualifier} (open)`];
+				return answered.includes(qualifier) ? [`${qualifier} (answered)`] : [];
+			});
 			return repeated.length ? `asks again: ${repeated.join(", ")}` : null;
 		}),
 		verdict("intro", texts, (text) => introIn(text, thread.officeNames)),
