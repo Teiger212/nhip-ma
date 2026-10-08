@@ -170,7 +170,7 @@
 			"start": "Bắt đầu",
 			"home": "Trang chủ",
 			"inbox": "Hộp thư",
-			"documentation": "Giấy tờ",
+			"paperwork": "Giấy tờ",
 			"comingSoon": "Sắp ra mắt",
 			"groupWorkspace": "Không gian làm việc",
 			"groupAccount": "Tài khoản"
@@ -855,7 +855,7 @@
 		"brand": "Nhịp",
 		"navItem": "Hộp thư",
 		"navReports": "Báo cáo",
-		"navDocumentation": "Giấy tờ",
+		"navPaperwork": "Giấy tờ",
 		"footer": "Khách thấy số của môi giới. Không bao giờ gửi tự động.",
 		"missing": "(thiếu)",
 		"yes": "Có",

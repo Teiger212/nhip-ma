@@ -53,7 +53,7 @@ const NAV_ICONS = {
 const NAV_LABEL_KEYS = {
 	home: "app.menu.home",
 	inbox: "app.menu.inbox",
-	documentation: "app.menu.documentation",
+	paperwork: "app.menu.paperwork",
 	admin: "app.menu.admin",
 } as const;
 

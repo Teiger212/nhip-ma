@@ -1098,10 +1098,10 @@ pointer, after resting on the page's heading until no tooltip is open.
    12×12px, overlapping the Inbox link's box and inside the strip (right edge within 56px).
    Before #234 the number was there only for screen readers, a 1×1px box).
 5. **The strip names its items on hover.** Collapsed, pointing at Home shows "Home", at Inbox
-   "Inbox", at Documentation "Documentation" with "Coming soon". Documentation stays disabled:
+   "Inbox", at Paperwork "Paperwork" with "Coming soon". Paperwork stays disabled:
    it is no link, and clicking it goes nowhere.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 5; the seeded agent, collapsed by the
-   shortcut; tooltips are `role="tooltip"`; Documentation is `data-test="nav-documentation"`,
+   shortcut; tooltips are `role="tooltip"`; Paperwork is `data-test="nav-paperwork"`,
    pointed at with the mouse since it takes no pointer events; "goes nowhere" is still on
    `/en/home` once Home's tooltip has shown after the click).
 6. **The button speaks Vietnamese.** On `/vi`, its tooltip reads "Thu gọn thanh bên (⌘B)" open

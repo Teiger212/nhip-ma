@@ -146,7 +146,7 @@ async function loaded(page: Page) {
 }
 
 /**
- * Points at `target` with the real mouse (the disabled Documentation item takes no pointer
+ * Points at `target` with the real mouse (the disabled Paperwork item takes no pointer
  * events, so `hover()` would wait forever), after first resting on the page's heading until no
  * tooltip is open, so the tooltip read next is the target's own.
  */
@@ -402,7 +402,7 @@ test.describe("Sidebar 4 — the strip keeps the Inbox's Your-turn count", () =>
 test.describe("Sidebar 5 — the strip names its items on hover", () => {
 	test.use({ viewport: DESKTOP });
 
-	test("collapsed, pointing at Home, Inbox and Documentation shows each one's name; Documentation says Coming soon and still goes nowhere", async ({
+	test("collapsed, pointing at Home, Inbox and Paperwork shows each one's name; Paperwork says Coming soon and still goes nowhere", async ({
 		context,
 		page,
 	}) => {
@@ -418,19 +418,19 @@ test.describe("Sidebar 5 — the strip names its items on hover", () => {
 		await pointAt(page, inboxLink(page));
 		await expect(tooltip(page).first()).toHaveText(/^Inbox\b/);
 
-		const documentation = page.getByTestId("nav-documentation");
-		await pointAt(page, documentation);
-		await expect(tooltip(page).first()).toContainText("Documentation");
+		const paperwork = page.getByTestId("nav-paperwork");
+		await pointAt(page, paperwork);
+		await expect(tooltip(page).first()).toContainText("Paperwork");
 		await expect(tooltip(page).first()).toContainText("Coming soon");
 
 		// Still disabled: no link, and a click on it goes nowhere.
-		await expect(page.getByRole("link", { name: /Documentation/ })).toHaveCount(0);
-		const box = await documentation.boundingBox();
+		await expect(page.getByRole("link", { name: /Paperwork/ })).toHaveCount(0);
+		const box = await paperwork.boundingBox();
 		await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
 		// Judged once something after the click has settled: Home's tooltip, on this same page.
 		await pointAt(page, homeLink(page));
 		await expect(tooltip(page).first()).toHaveText("Home");
-		await expect(page, "Documentation took the agent nowhere").toHaveURL(/\/en\/home$/);
+		await expect(page, "Paperwork took the agent nowhere").toHaveURL(/\/en\/home$/);
 	});
 });
 

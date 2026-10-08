@@ -3,17 +3,17 @@ import { describe, expect, it } from "vitest";
 import { buildSettingsSections, buildWalkNav, isNavSubItemActive } from "./walk-nav";
 
 describe("buildWalkNav", () => {
-	it("is Home, Inbox, then Documentation, coming soon (PRODUCT.md, the Coming soon rule)", () => {
+	it("is Home, Inbox, then Paperwork, coming soon (PRODUCT.md, the Coming soon rule)", () => {
 		const items = buildWalkNav("/inbox");
-		expect(items.map((item) => item.id)).toEqual(["home", "inbox", "documentation"]);
+		expect(items.map((item) => item.id)).toEqual(["home", "inbox", "paperwork"]);
 		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(true);
 		expect(items.find((item) => item.id === "home")?.isActive).toBe(false);
 	});
 
-	it("Documentation is disabled, marked Coming soon, links nowhere and is never active", () => {
-		for (const pathname of ["/inbox", "/home", "/documentation", "/settings/general"]) {
-			expect(buildWalkNav(pathname).find((item) => item.id === "documentation")).toEqual({
-				id: "documentation",
+	it("Paperwork is disabled, marked Coming soon, links nowhere and is never active", () => {
+		for (const pathname of ["/inbox", "/home", "/paperwork", "/settings/general"]) {
+			expect(buildWalkNav(pathname).find((item) => item.id === "paperwork")).toEqual({
+				id: "paperwork",
 				href: null,
 				iconName: "fileText",
 				isActive: false,
@@ -27,7 +27,7 @@ describe("buildWalkNav", () => {
 		expect(buildWalkNav("/admin/organizations").map((item) => item.id)).toEqual([
 			"home",
 			"inbox",
-			"documentation",
+			"paperwork",
 		]);
 		const admin = buildWalkNav("/admin/organizations", { isAdmin: true });
 		expect(admin).toEqual([

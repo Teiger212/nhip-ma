@@ -181,7 +181,7 @@ smoked, each one approved by Eyal (#112).
 
 **Later, shown as "Coming soon"**: saved replies (a decision model picks from the office's
 approved replies and fills the reply box when confident; no popup list), the weekly digest,
-CSV export, Documentation (handling foreigners' documents in Vietnam: the paperwork for buyers
+CSV export, Paperwork (handling foreigners' documents in Vietnam: the paperwork for buyers
 and renters from abroad; a disabled sidebar item under Inbox, #208; formerly International).
 
 **Later, not shown**: the built-in CRM beyond its admin-only selector entry (#126), internal notes, an admin audit log, a managers' list of guest deletions (#85), a guest's data export before deletion (#109), a per-office AI kill switch,

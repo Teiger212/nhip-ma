@@ -67,8 +67,8 @@ test("loaded en and vi saas messages include inbox.crib.body", async () => {
 	expect(viMessages.app.menu.inbox).toBe("Hộp thư");
 	expect(enMessages.app.menu.home).toBe("Home");
 	expect(viMessages.app.menu.home).toBe("Trang chủ");
-	expect(enMessages.app.menu.documentation).toBe("Documentation");
-	expect(viMessages.app.menu.documentation).toBe("Giấy tờ");
+	expect(enMessages.app.menu.paperwork).toBe("Paperwork");
+	expect(viMessages.app.menu.paperwork).toBe("Giấy tờ");
 	expect(enMessages.app.menu).not.toHaveProperty("international");
 	expect(viMessages.app.menu.accountSettings).toBe("Cài đặt tài khoản");
 });
