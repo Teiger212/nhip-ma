@@ -28,6 +28,14 @@ const DRAFT_MAX_TOKENS = 768;
 /** OpenRouter's provider routing: zero-retention endpoints only, and no training on the text. */
 export const ZERO_RETENTION = { zdr: true, data_collection: "deny" } as const;
 
+/**
+ * Gemini 3.x bills its thinking as output (ADR 0024), so it thinks at its lowest level, kept out
+ * of the answer. Every other model's request carries no `reasoning`.
+ */
+export function reasoningFor(model: string): { effort: "minimal"; exclude: true } | undefined {
+	return /^google\/gemini-3/u.test(model) ? { effort: "minimal", exclude: true } : undefined;
+}
+
 /** The slice of a chat-completions response this client reads. Everything else is ignored. */
 const completion = z.object({
 	choices: z
@@ -56,6 +64,7 @@ export function createOpenRouterBackends(input: {
 	const endpoint = `${input.baseUrl.replace(/\/+$/, "")}/chat/completions`;
 
 	async function complete(model: string, prompt: Prompt, signal: AbortSignal): Promise<Attempt> {
+		const reasoning = reasoningFor(model);
 		const response = await fetch(endpoint, {
 			method: "POST",
 			headers: {
@@ -67,6 +76,7 @@ export function createOpenRouterBackends(input: {
 				max_tokens: prompt.maxTokens,
 				temperature: 0.2,
 				provider: ZERO_RETENTION,
+				...(reasoning ? { reasoning } : {}),
 				messages: [
 					{ role: "system", content: prompt.system },
 					{ role: "user", content: prompt.user },

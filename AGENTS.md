@@ -79,6 +79,8 @@ only on purpose. What Eyal sets by hand (accounts, secrets, vendor settings) is 
 
 `pnpm` scripts: `dev` (all apps through Turbo), `build`, `start`, `lint` / `lint:fix` (Oxlint),
 `format` / `format:check` (Oxfmt), `type-check`, `test` (Vitest), `seed`, `clean` (Turbo outputs).
+`eval:drafts` / `eval:translation` (#254) call a paid model through OpenRouter: run by hand only,
+never in CI or tests; `--dry-run` and `--stub` spend nothing (`apps/saas/modules/inbox/scripts/eval.ts`).
 
 1. After every meaningful change, run `pnpm format` and `pnpm lint`.
 2. Before every commit, run `pnpm type-check`.

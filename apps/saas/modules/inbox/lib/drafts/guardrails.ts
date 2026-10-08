@@ -95,7 +95,7 @@ const DEFERRAL =
 	/\b(?:check|checking|confirm|confirming|find out|look into|looking into|get back|come back to you|verify|double-check|ask the (?:owner|landlord)|let you know)\b|kiểm tra|xác nhận|báo lại|hỏi lại|tìm hiểu|hỏi chủ nhà|phản hồi|確認|お調べ|改めて|확인|알아보|다시 연락|уточн|провер|узна|сообщ|свяж/iu;
 
 /** A sentence, ending at its stop: the question mark tells a question. */
-function sentences(text: string): string[] {
+export function sentences(text: string): string[] {
 	// A stop ends a sentence only before a space, so "2.8k" and "3.500.000.000" stay whole.
 	return text
 		.split(/(?<=[.!?])\s+|(?<=[。！？])|\n+/u)
@@ -139,7 +139,7 @@ const NUMBER = /\d+(?:[.,]\d+)*/gu;
  * group ("2,800", "3.500.000.000"); anything else after one is a decimal ("2,5 tỷ"). Full-width
  * digits read as digits.
  */
-function numbersIn(text: string): number[][] {
+export function numbersIn(text: string): number[][] {
 	const normalized = text.normalize("NFKC");
 	return [...normalized.matchAll(NUMBER)].map((match) => {
 		const [first, ...rest] = match[0].split(/[.,]/u);
