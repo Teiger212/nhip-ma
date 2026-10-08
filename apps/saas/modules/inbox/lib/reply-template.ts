@@ -5,9 +5,10 @@ import type { Conversation, GuestLanguage, Qualification, RentOrBuy } from "./ty
  * The template suggested reply (ADR 0024, CONTEXT.md "Suggested reply"): the reply with no
  * model, in the agent's own voice. It is the first reply, and the fallback for every later one.
  *
- * - While the office has no human reply yet, it introduces the agent: the thread owner's first
- *   name and the office, or the office alone while the thread is Unassigned. Only the template
- *   names anyone; the model's draft never does.
+ * - While the office has no human reply yet, it introduces the agent: the thread owner's name
+ *   guests see (#266) and the office, or the office alone while the thread is Unassigned or its
+ *   owner hasn't set that name. Never a word of their account name: Vietnamese names are written
+ *   family name first. Only the template names anyone; the model's draft never does.
  * - It thanks the guest only when the office has sent nothing at all: after the auto-reply that
  *   would be the second thanks.
  * - It promises an action and never claims stock, and it states no figure.
@@ -22,8 +23,11 @@ import type { Conversation, GuestLanguage, Qualification, RentOrBuy } from "./ty
 
 /** What the template reads of a thread. */
 export type TemplateThread = Pick<Conversation, "guestName" | "sentAt"> & {
-	/** The thread owner's account name; null while the thread is Unassigned. */
-	ownerName: string | null;
+	/**
+	 * The thread owner's name guests see (#266); null while the thread is Unassigned, or when the
+	 * owner hasn't set one.
+	 */
+	agentName: string | null;
 	/** The office's name (`organization.name`); null when it can't be read, and then no intro. */
 	officeName: string | null;
 	messages: Pick<Conversation["messages"][number], "direction" | "source" | "text">[];
@@ -33,7 +37,7 @@ export type TemplateThread = Pick<Conversation, "guestName" | "sentAt"> & {
 export const NEW_THREAD: TemplateThread = {
 	guestName: null,
 	sentAt: null,
-	ownerName: null,
+	agentName: null,
 	officeName: null,
 	messages: [],
 };
@@ -171,14 +175,6 @@ export function officeHasHumanReply(thread: Pick<TemplateThread, "sentAt" | "mes
 	);
 }
 
-/**
- * The name the template introduces the agent by: the first word of their account name.
- * A name written family name first (as Vietnamese names are) gives the family name: pending.
- */
-export function firstName(name: string | null): string | null {
-	return name?.trim().split(/\s+/u)[0] || null;
-}
-
 /** The details still missing, in the auto-reply's order (R3). */
 function missing(qualification: Qualification): Qualifier[] {
 	const known: Record<Qualifier, boolean> = {
@@ -217,7 +213,8 @@ export function replyTemplate(
 
 	const sentences: string[] = [];
 	const guest = thread.guestName?.trim() || null;
-	const agent = firstName(thread.ownerName);
+	// No name guests see: the office alone, as on an Unassigned thread (pending Eyal's nod, #266).
+	const agent = thread.agentName?.trim() || null;
 	const office = thread.officeName?.trim() || null;
 	if (office) {
 		sentences.push(agent ? copy.introAgent(guest, agent, office) : copy.introOffice(guest, office));

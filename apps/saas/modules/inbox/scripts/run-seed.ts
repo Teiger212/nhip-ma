@@ -8,14 +8,17 @@ import {
 	RIVER_OFFICE_ID,
 	DEMO_ADMIN_EMAIL,
 	DEMO_AGENT2_EMAIL,
+	DEMO_AGENT2_NAME_GUESTS_SEE,
+	DEMO_AGENT_NAME_GUESTS_SEE,
 	DEMO_MANAGER_EMAIL,
+	DEMO_MANAGER_NAME_GUESTS_SEE,
 	DEMO_OFFICE_ID,
 	DEMO_AGENT_EMAIL,
 	DEMO_PASSWORD,
 } from "../lib/demo-user";
 import { type SeedEnv, SeedRefused, seedRefusal } from "../lib/dev-seed/guard";
 import { SEED_OFFICES, seedDevOffices } from "../lib/dev-seed/seed-offices";
-import { refreshTemplate } from "../lib/inbox";
+import { refreshTemplate, setNameGuestsSee } from "../lib/inbox";
 import { inView, isQuiet, threadStatus } from "../lib/queue";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
@@ -82,6 +85,7 @@ export async function runSeed({
 	}
 	const walkOffice = await seedDemoOffice();
 	log(`Walk office ${walkOffice === "exists" ? "already exists" : "created"}: ${DEMO_OFFICE_ID}`);
+	await seedNamesGuestsSee();
 	const named = await backfillAnswerOperatorNames();
 	if (named > 0) log(`Answers given their sender's name (ADR 0013): ${named}`);
 
@@ -96,6 +100,25 @@ export async function runSeed({
 		log(`  ${email} / ${DEMO_PASSWORD}  ${role}${result === "created" ? " (created)" : ""}`);
 	}
 	log("Nothing here is a real guest.");
+}
+
+/**
+ * The walk office's team introduce themselves by their given names (#266): Vietnamese names are
+ * written family name first. Before the threads, so new ones are written with them; on a database
+ * seeded before, their untouched suggestions are written again. River's logins have none, so
+ * their threads show the office-only intro.
+ */
+async function seedNamesGuestsSee(): Promise<void> {
+	const store = createInboxStore(db);
+	const team: Array<[string, string]> = [
+		[DEMO_AGENT_EMAIL, DEMO_AGENT_NAME_GUESTS_SEE],
+		[DEMO_AGENT2_EMAIL, DEMO_AGENT2_NAME_GUESTS_SEE],
+		[DEMO_MANAGER_EMAIL, DEMO_MANAGER_NAME_GUESTS_SEE],
+	];
+	for (const [email, name] of team) {
+		const user = await getUserByEmail(email);
+		if (user) await setNameGuestsSee(store, { userId: user.id, officeId: DEMO_OFFICE_ID }, name);
+	}
 }
 
 /** The E2E seed, unchanged: the walk's four demo threads, Minji agent 1's, Yuki agent 2's. */

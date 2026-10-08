@@ -1179,49 +1179,32 @@ on their own account page, never by a word of their account name: Vietnamese nam
 family name first, so "Trần Thị Linh" would otherwise introduce herself as "Trần" (decided by
 Eyal, 2026-10-08: a field only, no name-guessing rule). An owner who hasn't set it gets the
 office-only intro, as an unassigned thread does (recommended, pending Eyal's nod). Changing the
-field writes an untouched template again on that person's threads, the way assigning does
-(Suggested reply template 3): never typed text, never a model draft.
+field writes an untouched template again on that person's open threads, the way assigning does
+(Suggested reply template 3): never typed text, never a model draft. The demo seed sets it for
+Linh, Đức and Hà.
 
-**How these run.** As Suggested reply template: an office of the test's own named "Saigon Prime
+**How this runs.** As Suggested reply template: an office of the test's own named "Saigon Prime
 Test", with an invited manager and an invited agent, its own Zalo OA, the auto-reply on and
-`SEND_MODE=mock`; each guest is a nameless Zalo guest whose first message is "Hi, we're looking
-to rent an apartment in Tay Ho", greeted by the auto-reply, and the manager assigns the thread to
-the agent through the owner API. The agent's account name, set through the kit's user update, is
-"Trần Thị Lan", family name first. The field is on the kit's account page,
-`/<locale>/settings/general` (not under the office's address): a text box labelled "Name guests
-see" (VI "Tên hiển thị với khách", wording pending #78) with the page's "Save" button (VI "Lưu").
-Its API is `GET` and `PUT /api/account/name-guests-see`, body `{ "nameGuestsSee": "Lan" }`;
-an empty or blank value clears it; it answers `{ "nameGuestsSee": "Lan" }` (null when cleared),
-401 signed out, 403 for the platform admin, 400 for more than 40 characters. "Introduces" is the
-reply box's text starting with the intro exactly, as in Suggested reply template.
+`SEND_MODE=mock`; a nameless Zalo guest's first message, "Hi, we're looking to rent an apartment
+in Tay Ho", is greeted by the auto-reply, and the manager assigns the thread to the agent through
+the owner API. The agent's account name, set through the kit's user update, is "Trần Thị Lan",
+family name first. The field is on the kit's account page, `/<locale>/settings/general` (not
+under the office's address): a text box labelled "Name guests see" (VI "Tên hiển thị với khách",
+wording pending #78) with its own "Save" button. Its API, which specs use for setup, is `GET` and
+`PUT /api/account/name-guests-see`, body `{ "nameGuestsSee": "Lan" }`; a blank value clears it;
+it answers `{ "nameGuestsSee": "Lan" }` (null when cleared), 401 signed out, 403 for the platform
+admin (who doesn't see the field), 400 for more than 40 characters.
 
 1. **An agent sets it and is introduced by it.** The agent opens their account page, where "Name
    guests see" is empty, types "Lan" and saves. Opening their assigned, greeted thread, the reply
    box starts "Hi, I'm Lan from Saigon Prime Test.". Back on the account page after a reload,
    the field still reads "Lan".
-2. **Left empty, the template introduces the office only** (pending Eyal's nod). The agent hasn't
-   set it. Their assigned, greeted thread's reply box starts "Hi, this is Saigon Prime Test."
-   and holds no word of their account name: no "Trần", no "Thị", no "Lan".
-3. **Changing it writes an untouched suggestion again, never typed text.** The agent's name
-   guests see is "Lan" and they have two assigned, greeted threads. They open the first: its box
-   starts "Hi, I'm Lan from Saigon Prime Test.". From another tab (the API) they change their
-   name guests see to "Lanie": without a reload, the open box starts "Hi, I'm Lanie from Saigon
-   Prime Test." within three polls. They clear it: the box starts "Hi, this is Saigon Prime
-   Test.". On the second thread they type their own text into the box, then set their name guests
-   see to "Lan" again: their text stays, unchanged, after three polls.
-4. **The demo seed fills it.** The seeded agent Linh (`linh@nhip.local`, account name "Trần Thị
-   Linh") opens her account page: "Name guests see" reads "Linh". (Đức and Hà are seeded the same
-   way.)
-5. **The field in Vietnamese.** The manager sets the test's office to Vietnamese
-   (`PUT /api/office/language`, as Suggested reply template 6); the agent's account page at
-   `/vi/settings/general` has a text box labelled "Tên hiển thị với khách".
-6. **Not for the platform admin.** The platform admin, who works in no office's inbox, finds no
-   "Name guests see" on their account page.
 
-Spec: `apps/saas/tests/name-guests-see.spec.ts` (Name guests see 1–6). What the field does to a
-thread already answered, or to a model draft, is proven in Vitest
-(`apps/saas/modules/inbox/lib/name-guests-see.db.test.ts`): a later turn names no one whatever the
-field says, and a model draft is never rewritten.
+Spec: `apps/saas/tests/name-guests-see.spec.ts` (Name guests see 1). The rest is proven in Vitest
+(`apps/saas/modules/inbox/lib/name-guests-see.db.test.ts`, `reply-template.test.ts`): with none set
+the template names the office alone and no word of the account name; setting it writes the
+untouched template again on the operator's open threads, and clearing it brings the office intro
+back; a model draft and a colleague's threads are left as they are.
 
 ## When the model drafts (ADR 0024, #252)
 

@@ -531,6 +531,10 @@ export type InboxStore = {
 	failAnswer: (officeId: string, answerId: string, reason: string) => Promise<void>;
 	/** The office's name and its auto-reply switch (ADR 0021): no setting row means on. */
 	officeAutoReply: (officeId: string) => Promise<OfficeAutoReply | null>;
+	/** The operator's name guests see (#266); null when they haven't set one, or no such user. */
+	nameGuestsSee: (userId: string) => Promise<string | null>;
+	/** The operator sets their name guests see (#266); null clears it. */
+	setNameGuestsSee: (userId: string, name: string | null) => Promise<void>;
 	/**
 	 * A manager turns the office's auto-reply on or off (ADR 0021 G6, #167). Only a turn from off
 	 * to on stamps `autoReplyOnSince` (S1): turning on what is already on moves nothing, so it

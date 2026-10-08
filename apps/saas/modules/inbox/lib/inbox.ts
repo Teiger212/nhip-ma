@@ -14,7 +14,10 @@ import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
 import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
 
-/** What the template suggested reply reads of `conversation` (ADR 0024): its office's name too. */
+/**
+ * What the template suggested reply reads of `conversation` (ADR 0024): its office's name too, and
+ * its owner's name guests see (#266).
+ */
 async function templateThread(
 	store: Store,
 	conversation: Conversation,
@@ -23,7 +26,7 @@ async function templateThread(
 	return {
 		guestName: conversation.guestName,
 		sentAt: conversation.sentAt,
-		ownerName: conversation.owner?.name ?? null,
+		agentName: conversation.owner ? await store.nameGuestsSee(conversation.owner.id) : null,
 		officeName:
 			officeName === undefined
 				? ((await store.officeAutoReply(conversation.officeId))?.name ?? null)
@@ -49,6 +52,39 @@ export async function refreshTemplate(
 	const reply = replyTemplate(shot.language, shot.qualification, thread);
 	if (reply === shot.draft.reply) return conversation;
 	return store.rewriteTemplateDraft(conversation.officeId, conversation.id, shot.draft, reply);
+}
+
+/**
+ * An operator sets their name guests see (#266): blank clears it. Then the untouched template
+ * suggested reply on every open thread they own is written again with it, as assigning does
+ * (`refreshTemplate`): a model draft stays, and typed text lives in the browser. A thread whose
+ * rewrite fails keeps its suggestion; the failure is logged by its kind only (PDPL). Returns
+ * the name as saved.
+ */
+export async function setNameGuestsSee(
+	store: Store,
+	operator: { userId: string; officeId: string },
+	name: string | null,
+): Promise<string | null> {
+	const saved = name?.trim() || null;
+	await store.setNameGuestsSee(operator.userId, saved);
+	// Read as an agent, whatever their role: only the threads they own, never the whole office.
+	const owned = await store.listConversations({ ...operator, role: "agent" });
+	const open = owned.filter(
+		(conversation) => conversation.unansweredInboundId && conversation.oneShot,
+	);
+	if (open.length === 0) return saved;
+	const officeName = (await store.officeAutoReply(operator.officeId))?.name ?? null;
+	for (const conversation of open) {
+		try {
+			await refreshTemplate(store, conversation, officeName);
+		} catch (error) {
+			console.warn("inbox: template rewrite after a name change failed", {
+				kind: error instanceof Error ? error.name : "unknown",
+			});
+		}
+	}
+	return saved;
 }
 
 /**

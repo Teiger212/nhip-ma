@@ -564,6 +564,15 @@
 				},
 				"title": "Ngôn ngữ của bạn"
 			},
+			"nameGuestsSee": {
+				"title": "Tên hiển thị với khách",
+				"description": "Gợi ý trả lời giới thiệu bạn với khách bằng tên này. Để trống thì chỉ giới thiệu văn phòng.",
+				"placeholder": "Linh",
+				"notifications": {
+					"error": "Không cập nhật được tên hiển thị với khách",
+					"success": "Đã cập nhật tên hiển thị với khách"
+				}
+			},
 			"security": {
 				"activeSessions": {
 					"description": "Đây là tất cả phiên đăng nhập đang hoạt động của tài khoản bạn. Bấm X để kết thúc một phiên.",

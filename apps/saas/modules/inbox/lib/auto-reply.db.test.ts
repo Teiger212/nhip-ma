@@ -505,7 +505,10 @@ describe("the funnel ignores the auto-reply from first message to conversation (
 describe("assigning writes the untouched template again in the owner's name (ADR 0024)", () => {
 	beforeEach(async () => {
 		await membership(OFFICE, "agent-1", "member");
-		await testDb.user.update({ where: { id: "agent-1" }, data: { name: "Lan Pham" } });
+		await testDb.user.update({
+			where: { id: "agent-1" },
+			data: { name: "Lan Pham", nameGuestsSee: "Lan" },
+		});
 	});
 
 	/** As the owner route does: move the thread, then write its template again. */
@@ -516,7 +519,7 @@ describe("assigning writes the untouched template again in the owner's name (ADR
 		return (await refreshTemplate(runtime.store, moved)) as Conversation;
 	}
 
-	test("an Unassigned thread's template names the office; assigned, it introduces the owner by first name; back to Unassigned, the office again", async () => {
+	test("an Unassigned thread's template names the office; assigned, it introduces the owner by their name guests see; back to Unassigned, the office again", async () => {
 		await arrive(guest("a1", "Hi, we're looking to rent an apartment in Tay Ho"));
 		const unassigned = await thread("a1");
 		expect(unassigned.owner).toBeNull();
