@@ -650,6 +650,40 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    view, then the pill hidden. "No pill" at the latest message is judged once the new message has
    come into view. The Vietnamese name "Tin nhắn mới" is not tested.)
 
+## Guest details (#244)
+
+The guest's details name what the agent should still ask for, so the agent knows without opening
+anything. It is one more row of the details, like the others (Eyal on PR #261, 2026-10-08): the
+label "Missing", and as its value the names, "budget, move-in", in the amber Waiting tone. Only the
+auto-reply's asks count (ADR 0021 R3), in its order: rent or buy, area, budget, move-in, beds /
+household. Nationality and "In Vietnam now" show only when known, and paperwork only when the guest
+mentioned it; none of them is ever missing. There is no "N missing" count and nothing to open (a
+fold was considered and rejected).
+
+**How these run.** As Guest language: a guest writes through a signed Zalo webhook to an office of
+the test's own, with a manager, the auto-reply on and `SEND_MODE=mock`. The manager opens the
+thread by its `?thread=` link. The details are `data-test="thread-details"` (Thread layout), judged
+on a wide pane (1563×784, the rail) and on a narrow one (1366×768 with the sidebar open, the
+strip). Each detail is a term (`dt`) and its value (`dd`) in the details' one description list, in
+the rail and in the strip alike: the Missing row is the term "Missing" and the value beside it,
+the names joined by ", ". "The Waiting tone" is the text colour of a Waiting badge (the amber
+warning tone, DESIGN.md "In the inbox"). The VI copy is pending a native read (#78).
+
+1. **The details name what to ask for.** A guest writes "I want to rent a 2 bedroom in Tay Ho."
+   The details have a row "Missing" whose value reads "budget, move-in", in that order, in the
+   Waiting tone, in the rail and in the strip; it is a row of the same list as the other details
+   (Area, Rent or buy, …), not a line apart. No "N missing" count shows, and nothing in the details
+   opens or closes (no disclosure, no button).
+2. **A guest who gave everything shows nothing missing.** A guest writes "I want to rent a 2
+   bedroom in Tay Ho, budget $1500/month, moving in next month." The details show no "Missing"
+   row, and no Paperwork, Nationality or "In Vietnam now" row, in the rail and in the strip.
+3. **A Vietnamese operator reads the missing row in Vietnamese.** The same guest as in 1, viewed
+   in `/vi/`: the row "Còn thiếu" reads "ngân sách, ngày vào". The names are the details' own field
+   labels, lower-cased; #244 proposed "thời gian dọn vào" (the auto-reply's VI wording) for
+   move-in, which differs from the field label "Ngày vào": left to #78.
+
+Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1 to 3).
+
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
 1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,

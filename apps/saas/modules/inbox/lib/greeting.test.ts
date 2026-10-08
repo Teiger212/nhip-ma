@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { greetingAsks, greetingLabel, greetingTemplate } from "./greeting";
+import { greetingAsks, greetingLabel, greetingTemplate, missingQualifiers } from "./greeting";
 import type { GuestLanguage, Qualification } from "./types";
 
 // The auto-reply's fixed template (ADR 0021: G2, R3, R7, R9).
@@ -53,6 +53,20 @@ describe("what the auto-reply asks for (R3: rent or buy, area, budget, timeframe
 
 	test("nothing missing: no question", () => {
 		expect(greetingAsks(EVERYTHING)).toEqual([]);
+	});
+
+	test("everything missing is listed in R3's order, uncapped, for the guest details (#244)", () => {
+		expect(missingQualifiers(NOTHING)).toEqual([
+			"rentOrBuy",
+			"area",
+			"budget",
+			"timeframe",
+			"household",
+		]);
+		expect(missingQualifiers(RENT_IN_TAY_HO)).toEqual(["budget", "timeframe", "household"]);
+		expect(
+			missingQualifiers({ ...NOTHING, nationality: "Korean", inVietnamNow: true }),
+		).toHaveLength(5);
 	});
 });
 
