@@ -1146,7 +1146,7 @@ Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1–6;
 office of its own named "Saigon Prime Test" with one invited manager and one invited agent, who
 take the names "Minh Tran" and "Lan Pham" through the kit's user update, and set their name
 guests see to "Minh" and "Lan" through `PUT /api/account/name-guests-see` (Name guests see, "How
-these run"), so the two are told apart (every invited account is otherwise "E2E Invitee"). Each guest
+this runs"), so the two are told apart (every invited account is otherwise "E2E Invitee"). Each guest
 is a nameless Zalo guest whose first message is "Hi, we're looking to rent an apartment in Tay
 Ho", judged once the auto-reply is in the thread. "Introduces" is the reply box's text starting
 with the intro exactly, "Hi, I'm Lan from Saigon Prime Test." or "Hi, this is Saigon Prime

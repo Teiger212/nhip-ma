@@ -26,6 +26,8 @@ async function templateThread(
 	return {
 		guestName: conversation.guestName,
 		sentAt: conversation.sentAt,
+		// An owner with no name guests see is introduced as the office alone, as on an Unassigned
+		// thread (pending Eyal's nod, #266): this line is the switch, never a word of the account name.
 		agentName: conversation.owner ? await store.nameGuestsSee(conversation.owner.id) : null,
 		officeName:
 			officeName === undefined

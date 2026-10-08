@@ -213,7 +213,6 @@ export function replyTemplate(
 
 	const sentences: string[] = [];
 	const guest = thread.guestName?.trim() || null;
-	// No name guests see: the office alone, as on an Unassigned thread (pending Eyal's nod, #266).
 	const agent = thread.agentName?.trim() || null;
 	const office = thread.officeName?.trim() || null;
 	if (office) {
