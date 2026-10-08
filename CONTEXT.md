@@ -169,7 +169,7 @@ is renamed.
 ## Drafting
 
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
-  (Qualification), first-reply template, operator note. Regex and templates. The
+  (Qualification), the template suggested reply, operator note. Regex and templates. The
   auto-reply's fallback template is built from it too (ADR 0021).
 - **Suggested reply**: the text in the reply box, from one of two sources (ADR 0024):
   - **Template**: a reply with no model, in the agent's own voice. It holds every reply until

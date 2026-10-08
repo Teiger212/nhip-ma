@@ -11,7 +11,7 @@ import { alertGuestMessage } from "../guest-alerts";
 import { alertOwnerChange } from "../guest-alerts/owner-change";
 import { mockAlertTransport } from "../guest-alerts/transport";
 import { createGuestDeletion } from "../guest-deletion";
-import { applyOneShot, sendAutoReply, threadUrl } from "../inbox";
+import { applyOneShot, refreshTemplate, sendAutoReply, threadUrl } from "../inbox";
 import { transmit } from "../pipes";
 import type { Runtime } from "../runtime";
 import { needsTranslation } from "../translate";
@@ -311,6 +311,8 @@ async function managerAssigns(
 	const ownerId = to ? ctx.operators[to] : null;
 	const moved = await store.reassign(conversation.id, ownerId, conversation.officeId);
 	if (!moved) throw new Error(`dev seed: ${to} cannot be given ${conversation.guestId}'s thread`);
+	const reassigned = await store.getOfficeConversation(conversation.officeId, conversation.id);
+	if (reassigned) await refreshTemplate(store, reassigned);
 	await alertOwnerChange(
 		ctx.runtime,
 		conversation,

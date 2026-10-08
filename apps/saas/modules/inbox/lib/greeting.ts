@@ -140,6 +140,30 @@ const COPY: Record<GuestLanguage, Copy> = {
 };
 
 /**
+ * The auto-reply's question for `qualifier`, in `language`. The template suggested reply asks in
+ * the same words (ADR 0024), so a question either one sent is recognised by `askedIn`.
+ */
+export function greetingQuestion(language: GuestLanguage, qualifier: Qualifier): string {
+	return COPY[language].questions[qualifier];
+}
+
+/**
+ * The details an office message asks for, by these questions in any language: what the
+ * auto-reply asked as it was sent, not as today's details would ask it. A question the agent
+ * reworded before sending is not recognised.
+ */
+export function askedIn(text: string): Qualifier[] {
+	const normalized = text.normalize("NFC");
+	const asked = new Set<Qualifier>();
+	for (const copy of Object.values(COPY)) {
+		for (const [qualifier, question] of Object.entries(copy.questions) as [Qualifier, string][]) {
+			if (normalized.includes(question.normalize("NFC"))) asked.add(qualifier);
+		}
+	}
+	return [...asked];
+}
+
+/**
  * The always-on disclosure (R7), in the guest's language. It names the office, so it is also
  * the signature (G2). Code adds it to every auto-reply, never the model, and it is never
  * shortened. Its proposed place is the last line, pending the lawyer.

@@ -3,21 +3,23 @@ import { getBaseUrl } from "@shared/lib/base-url";
 import { runInBackground } from "./background";
 import { crmFailureKind } from "./crm/retry";
 import { createCrmSync, logAccountLookupFailure } from "./crm/sync";
-import { draftReply, followUpTemplate, oneShot } from "./draft";
+import { oneShot } from "./draft";
 import { CAPPED } from "./drafts";
 import { checkFollowUp } from "./drafts/guardrails";
 import { greetingTemplate } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
 import type { AlertTransport } from "./guest-alerts/transport";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
+import { replyTemplate, type TemplateThread } from "./reply-template";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
 import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
 
 /**
- * Whether the reply box takes the follow-up path (ADR 0005; ADR 0021, R11 and P2): once a human
- * reply was sent, or the auto-reply went out. A greeting claimed but never sent doesn't count:
- * that thread waits for a human with today's first-reply template.
+ * Whether the model drafts the suggested reply (ADR 0005; ADR 0021, R11 and P2): once a human
+ * reply was sent, or the auto-reply went out. A greeting claimed but never sent doesn't count.
+ * The template is the same function either way (ADR 0024); #252 moves this to after the
+ * office's first human reply.
  */
 function takesFollowUpPath(conversation: Conversation): boolean {
 	return (
@@ -26,10 +28,46 @@ function takesFollowUpPath(conversation: Conversation): boolean {
 	);
 }
 
+/** What the template suggested reply reads of `conversation` (ADR 0024): its office's name too. */
+async function templateThread(
+	store: Store,
+	conversation: Conversation,
+	officeName?: string | null,
+): Promise<TemplateThread> {
+	return {
+		guestName: conversation.guestName,
+		sentAt: conversation.sentAt,
+		ownerName: conversation.owner?.name ?? null,
+		officeName:
+			officeName === undefined
+				? ((await store.officeAutoReply(conversation.officeId))?.name ?? null)
+				: officeName,
+		messages: conversation.messages,
+	};
+}
+
 /**
- * The deterministic pass after a guest message. The template in the reply box is the
- * first-reply template for a new lead, and the follow-up template once the office has sent
- * or greeted; the model draft (ADR 0005) replaces the latter when it lands.
+ * Write the template suggested reply again for the thread as it is now (ADR 0024): after it was
+ * assigned, or after the greeting landed. Only the server's template is rewritten: a model draft
+ * stays, and an edit the operator typed lives in their browser, keyed by the guest message, so it
+ * is never overwritten. Returns the thread, rewritten or not.
+ */
+export async function refreshTemplate(
+	store: Store,
+	conversation: Conversation,
+	officeName?: string | null,
+): Promise<Conversation | null> {
+	const shot = conversation.oneShot;
+	if (!shot || shot.draft.source !== "template") return conversation;
+	const thread = await templateThread(store, conversation, officeName);
+	const reply = replyTemplate(shot.language, shot.qualification, thread);
+	if (reply === shot.draft.reply) return conversation;
+	return store.rewriteTemplateDraft(conversation.officeId, conversation.id, shot.draft, reply);
+}
+
+/**
+ * The deterministic pass after a guest message, with the template suggested reply for the
+ * thread as it stands (ADR 0024); the model draft (ADR 0005) replaces it when it lands.
  */
 export async function applyOneShot(
 	store: Store,
@@ -42,22 +80,12 @@ export async function applyOneShot(
 	if (!inbound) {
 		return conversation;
 	}
-	const shot = oneShot(inbound, conversation.unansweredInboundId);
-	const followsUp = takesFollowUpPath(conversation);
-	if (followsUp) {
-		shot.draft.reply = followUpTemplate(shot.language);
-	}
+	const thread = await templateThread(store, conversation);
+	const shot = oneShot(inbound, conversation.unansweredInboundId, thread);
 	const stored = await store.setOneShot(conversation.officeId, conversation.id, shot);
-	// The greeting landed after this message's thread was read, and its own redraft may already
-	// have run: the first-reply template just written would stick, so take the follow-up path.
-	if (stored && !followsUp && takesFollowUpPath(stored)) {
-		return store.setDraft(stored.officeId, stored.id, {
-			reply: followUpTemplate(shot.language),
-			answersMessageId: stored.unansweredInboundId,
-			source: "template",
-		});
-	}
-	return stored;
+	// The thread may have moved since it was read (the greeting landed, its own redraft may
+	// already have run, or it was assigned): the template follows the stored thread.
+	return stored ? refreshTemplate(store, stored, thread.officeName) : stored;
 }
 
 /**
@@ -294,7 +322,8 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 
 /**
  * The greeting is on file, so the reply box takes the follow-up path (R11, P2): the guest's
- * message, still unanswered, gets the follow-up template now, then the model's follow-up,
+ * message, still unanswered, gets the template written again now (it no longer thanks the guest
+ * or asks what the greeting asked, ADR 0024), then the model's follow-up,
  * written from the whole conversation with the greeting in it, where there is a model. It runs
  * on the thread as reloaded after the greeting's row, so a guest message that landed meanwhile
  * is the one drafted for.
@@ -313,8 +342,8 @@ async function redraftAfterGreeting(runtime: Runtime, greeted: Conversation): Pr
  * only), the auto-reply for a new guest's first message (ADR 0021), translation and, on a
  * thread the office has sent or greeted on, the model draft in the background. A thread with
  * no lead yet gets one in the office's CRM, in the background too (spec #59): the guest and the
- * queue never wait on the CRM. An ungreeted first message keeps the first-reply template until
- * the model draft is shown to be better on the invented threads (ADR 0005); a greeted one gets
+ * queue never wait on the CRM. An ungreeted first message keeps the template suggested reply
+ * (ADR 0005, ADR 0024); a greeted one gets
  * the follow-up path once the greeting is on file (`redraftAfterGreeting`, ADR 0021 P2).
  */
 export async function afterGuestInbound(
@@ -684,9 +713,11 @@ export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<
 		return { ok: true, conversation: drafted };
 	}
 	const shot = conv.oneShot;
-	const reply = takesFollowUpPath(conv)
-		? followUpTemplate(shot.language)
-		: draftReply(shot.language, shot.qualification);
+	const reply = replyTemplate(
+		shot.language,
+		shot.qualification,
+		await templateThread(runtime.store, conv),
+	);
 	const updated = await runtime.store.setDraft(conv.officeId, conv.id, {
 		reply,
 		answersMessageId: conv.unansweredInboundId,

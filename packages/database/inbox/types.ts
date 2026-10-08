@@ -471,6 +471,17 @@ export type InboxStore = {
 	setOneShot: (officeId: string, id: string, oneShot: OneShot) => Promise<Conversation | null>;
 	/** Replace the suggested reply without touching extraction or paperwork. */
 	setDraft: (officeId: string, id: string, draft: Draft) => Promise<Conversation | null>;
+	/**
+	 * Write the template suggested reply again with `reply` (ADR 0024), only while the stored
+	 * draft is still the template `read` was: a model draft or a newer guest message's template
+	 * that landed since is left as it is. Returns the thread as it now is; null when it is gone.
+	 */
+	rewriteTemplateDraft: (
+		officeId: string,
+		id: string,
+		read: Draft,
+		reply: string,
+	) => Promise<Conversation | null>;
 	/** Store one guest message's rendering in one operator language; clears its failures. */
 	setTranslation: (
 		officeId: string,

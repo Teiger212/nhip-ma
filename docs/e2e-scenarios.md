@@ -992,7 +992,10 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    un apartamento, está disponible?").
 5. **A manager turns the auto-reply off.**
    - In the office's settings, the manager switches the auto-reply off. A new guest then gets
-     no auto-reply, and the reply box holds today's first-reply template.
+     no auto-reply, and the reply box holds the template suggested reply (ADR 0024): with no
+     auto-reply before it, it names the office ("this is Saigon Prime Test") and thanks the
+     guest once ("Thanks for getting in touch"). It is not the old first-reply template's
+     "Thanks for writing".
    - Switched back on, the next new guest is greeted. A guest whose thread began while it was
      off writes again and is not greeted (S1).
    - An agent sees no switch, and its API refuses an agent (403) and a signed-out caller
@@ -1005,18 +1008,110 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - In a mock deployment the auto-reply's message id is deterministic,
      `mock-auto-reply-<thread id>`. The test reads the thread id as the manager, through
      `/api/conversations`.
-8. **After the greeting, the reply box doesn't greet again.** The manager opens a guest's
-   thread after its auto-reply. The reply box holds the follow-up template (E2E has no
-   model), never the first-reply template's "Thanks for writing". The guest writes again,
-   and the box still holds the follow-up template.
+8. **After the greeting, the reply box doesn't thank the guest again.** The manager opens a
+   guest's thread after its auto-reply. The reply box holds the template suggested reply
+   (ADR 0024; drafting is off in E2E): it names the office, and it never thanks the guest
+   again ("Thanks for writing", "Thanks for getting in touch", "Thanks for your message") or
+   promises "a colleague". The guest writes again, and the box still holds a template that
+   neither thanks them nor promises a colleague.
    - With a model configured, it would hold the model's follow-up draft. That case is
      covered by Vitest.
 
-   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 8; "the follow-up template" is
-   what the reply box holds, as the manager opens it, on another guest's thread who wrote the
-   same, was greeted, got a human reply and wrote the same again; the greeted guest's box must
-   hold exactly that, never text matching "Thanks for writing", on opening the thread and again,
-   reopened, after the guest's second message).
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 8; the manager opens the
+   Unassigned thread from All; "names the office" is "Saigon Prime Test" in the box's text;
+   "thanks" is "thank" in any form and "a colleague" is "colleague" anywhere in it; "holds the
+   template" is the label "Suggested reply · template" in the open thread, written in the spec,
+   not read from saas.json. The second look is the thread opened again once the guest's second
+   message is in it and the box holds a suggestion. It is no longer compared with the box of a
+   guest who got a human reply: the template differs before and after one).
+   First greeting 5's reply box is judged in the same spec: the text holds "this is Saigon Prime
+   Test" and "Thanks for getting in touch", exactly one "thank" in any form, and no "Thanks for
+   writing".
+
+## Suggested reply template (ADR 0024, #253)
+
+The template is the suggested reply with no model, in the agent's own voice: the first reply,
+and the fallback for every later one. It replaces the old first-reply template ("Thanks for
+writing … A colleague will reply here on this same chat") and the follow-up template ("Thanks
+for your message. A colleague will get back to you here shortly."). The auto-reply's own text
+is unchanged.
+
+**How these run.** As First greeting: guests write through signed Zalo webhooks (a Zalo guest
+has no profile name, so the template greets them without one) to an office of the test's own
+named "Saigon Prime Test", with a manager and an invited agent, the auto-reply on and
+`SEND_MODE=mock`. Drafting is off in E2E until the trigger ticket (#252), so before the office's
+first human reply the reply box holds the template in every order these tickets land. An
+agent's first name is the first word of their account name. The EN copy is the reference; the
+VI copy is pending a native read (#78), and JA, KO and RU have no native read planned yet.
+
+**The EN copy.** The template's parts, in order:
+
+- **The intro**, only while the office has no human reply yet (a sent reply, or one from the
+  office's own app; the auto-reply doesn't count). Assigned: "Hi, I'm ‹first name› from
+  ‹office›." Unassigned: "Hi, this is ‹office›." A guest with a profile name is greeted by it
+  ("Hi Minji, I'm …").
+- **The thanks**, only when the office has sent nothing at all, the auto-reply included:
+  "Thanks for getting in touch."
+- **What the agent will do**, while the office has no human reply yet: "I'll pull together a
+  few options to rent in Tây Hồ and send them here shortly." (to rent, to buy, an area, or
+  both), or "I'll help you find the right place." when the guest has said neither.
+- **On a later turn** (the office has replied): "Noted. I'll look into this and get back to you
+  here shortly." No intro, no thanks, no question.
+- **At most one question**, before the office's first human reply only: the first missing
+  detail that changes what the agent would send (rent or buy, area, budget, household; never
+  move-in), in the auto-reply's own words, and never one the office already asked. Nothing
+  missing, no question.
+
+1. **The suggested reply after the auto-reply is the agent's own.** A guest's first message,
+   "Hi, we're looking to rent an apartment in Tay Ho", gets the auto-reply. The manager assigns
+   the thread to an agent, who opens it. The reply box introduces the agent by first name and
+   the office ("Hi, I'm ‹first name› from Saigon Prime Test."), doesn't thank the guest again,
+   doesn't say "a colleague", and is labelled "Suggested reply · template".
+2. **An unassigned thread names the office only.** The manager opens an unassigned thread after
+   its auto-reply. The suggestion names the office ("Hi, this is Saigon Prime Test.") and no
+   person: neither the manager's nor any agent's first name.
+3. **Assigning writes it again in the owner's name.** The manager then assigns the thread to an
+   agent without typing. Without reloading, the suggestion now introduces that agent by first
+   name ("Hi, I'm ‹first name› from Saigon Prime Test."). Typed text is never overwritten: had
+   the manager typed into the box first, their text stays after the assignment.
+4. **No intro once the office has replied.** Before the agent replies, the suggestion
+   introduces them. The agent sends a reply. The guest writes again. The new suggestion
+   introduces no one: it names neither the agent nor the office. With the stub model's draft on
+   (#252) it is the "· AI" draft; the template's later-turn branch is proven in Vitest.
+5. **No repeated question.** The auto-reply asked for the budget (and move-in), and the guest
+   wrote back without one ("Thanks! 2 of us, we'd like a 2-bedroom"). The suggestion still
+   introduces the office, and doesn't ask for the budget again: no "What budget do you have in
+   mind?", and no "budget" at all.
+6. **The label in Vietnamese.** In a Vietnamese inbox the label reads "Gợi ý trả lời · mẫu"
+   (VI form of "Suggested reply · template", wording pending #78). Once the office language
+   (#256) lands, that is an office whose language is VI; before it, `/vi/inbox`.
+
+Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1–6; each test has an
+office of its own named "Saigon Prime Test" with one invited manager and one invited agent, who
+take the names "Minh Tran" and "Lan Pham" through the kit's user update, so their first names,
+"Minh" and "Lan", tell them apart (every invited account is otherwise "E2E Invitee"). Each guest
+is a nameless Zalo guest whose first message is "Hi, we're looking to rent an apartment in Tay
+Ho", judged once the auto-reply is in the thread. "Introduces" is the reply box's text starting
+with the intro exactly, "Hi, I'm Lan from Saigon Prime Test." or "Hi, this is Saigon Prime
+Test."; the rest of the template is not pinned. "Doesn't thank" is no "thank" in any form, and
+"doesn't say a colleague" no "colleague". The label is a text in the open thread reading
+"Suggested reply · template" (VI "Gợi ý trả lời · mẫu"), the spaces around "·" aside, written in
+the spec and never read from saas.json. "A first name" is that name as a word of its own.
+1: the manager assigns through the owner API and the agent opens the thread by its `?thread=`
+link. 2: the manager opens it by link; "no person" is neither "Minh" nor "Lan" in the text.
+3: the manager opens it from the All view (under Unassigned, assigning takes the thread out of
+the view and closes it), sees the office's intro, picks Lan in the thread's own Assign to…, and,
+once that control names her, the same box with no reload starts with her intro within three
+polls. Typed text not being overwritten is not tested. 4: the agent sends the suggestion as it
+stands with Approve and send; once the thread reads as answered, the guest writes "Great, how
+many options do you have?", the agent opens the thread again by link once that message is in
+it, and the box, once it holds a suggestion, holds neither "Lan" nor "Saigon Prime Test". The
+label is not judged there, so the check still holds once #252's AI draft takes that turn.
+5: the auto-reply is first checked to ask "What budget do you have in mind?"; the guest writes
+"Thanks! 2 of us, we'd like a 2-bedroom", and the manager, opening the thread by link once it is
+in, finds the box starting "Hi, this is Saigon Prime Test." with no "budget" in it. 6: the
+manager opens the thread at `/vi/inbox?thread=…`, and the label is judged once the box holds a
+suggestion).
 
 ## Guest language (ADR 0021 R4 as amended by #245, ADR 0025)
 
@@ -1043,8 +1138,8 @@ is built. The VI copy is pending a native read (#78).
      tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi thêm kiểu phỏng vấn".
    - **What the guest gets is English.** The auto-reply is the English template, label
      included ("Auto-reply from …: a colleague will continue with you right here."). The reply
-     box holds the English follow-up template ("Thanks for your message. A colleague will get
-     back to you here shortly.").
+     box holds the English template suggested reply (ADR 0024), naming the office: it starts
+     "Hi, this is ‹office›." and never promises "a colleague".
    - **A mixed second message** ("Oui, merci ! Photos please, and is a viewing possible this
      Saturday?") also shows the no-translation note: the thread's language decides, not each
      message.
@@ -1062,8 +1157,9 @@ is built. The VI copy is pending a native read (#78).
    operator note is the open thread's one paragraph labelled "Operator note" (VI "Ghi chú nội
    bộ"), reading exactly the scenario's line after that label. What the guest gets is checked
    first and stops the test: the auto-reply (read as the manager, through the API) starts "Thanks
-   for writing" and ends with the English label, marked Template, and the reply box holds the
-   English follow-up exactly. Home's entry is judged by its link's name: it holds "French" (VI
+   for writing" and ends with the English label, marked Template, and the reply box's text starts
+   "Hi, this is Saigon Prime Test." (the thread is Unassigned; the rest of the template is not
+   pinned) and holds no "colleague", in both interfaces. Home's entry is judged by its link's name: it holds "French" (VI
    "tiếng Pháp") and not "English" (VI "tiếng Anh")).
 
 2. **A guest writes in Korean: the thread reads as before.** A guest writes "안녕하세요, 서호에서
