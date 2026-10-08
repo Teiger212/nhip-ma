@@ -199,7 +199,7 @@ test("the two tasks count apart: drafts at their cap leave translations running"
 
 test("Regenerate counts: the 50th of the day is the model's, the 51st puts the template back", async () => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
