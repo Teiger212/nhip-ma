@@ -532,6 +532,22 @@ describe("assigning writes the untouched template again in the owner's name (ADR
 		expect(assigned.oneShot?.draft).toEqual(modelDraft);
 	});
 
+	test("a model draft that lands after the thread was read is not overwritten by its template", async () => {
+		await arrive(guest("a4", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const read = await thread("a4");
+		expect(await runtime.store.reassign(read.id, "agent-1", OFFICE)).not.toBeNull();
+		const modelDraft = {
+			reply: "Happy to help.",
+			answersMessageId: read.unansweredInboundId,
+			source: "model" as const,
+		};
+		await runtime.store.setDraft(OFFICE, read.id, modelDraft);
+		// The thread as read before the model's draft landed, with its new owner.
+		const stale = { ...read, owner: { id: "agent-1", name: "Lan Pham" } };
+		const after = await refreshTemplate(runtime.store, stale);
+		expect(after?.oneShot?.draft).toEqual(modelDraft);
+	});
+
 	test("once the office has replied, the later-turn template names no one, assigned or not", async () => {
 		await arrive(guest("a3", "Hi, we're looking to rent an apartment in Tay Ho"));
 		const first = await thread("a3");

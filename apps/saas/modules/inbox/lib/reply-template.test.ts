@@ -56,6 +56,15 @@ function greeted(qualification: Qualification, overrides: Partial<TemplateThread
 	return thread({ messages: [guestSays("Hi"), autoReply], ...overrides });
 }
 
+/** A word of thanks in each language, as a reader would spot it. */
+const THANKS: Record<GuestLanguage, string> = {
+	en: "Thanks",
+	vi: "Cảm ơn",
+	ja: "ありがとう",
+	ko: "감사",
+	ru: "Спасибо",
+};
+
 /** Any question mark, Western or full-width. */
 const QUESTION = /[?？]/u;
 
@@ -118,9 +127,8 @@ describe.each(LANGUAGES)("in %s", (language) => {
 	});
 
 	test("it thanks the guest only when the office has sent nothing, never after the auto-reply", () => {
-		const first = reply(RENT_IN_TAY_HO, thread());
-		const afterGreeting = reply(RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO));
-		expect(first.length).toBeGreaterThan(afterGreeting.length);
+		expect(reply(RENT_IN_TAY_HO, thread())).toContain(THANKS[language]);
+		expect(reply(RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO))).not.toContain(THANKS[language]);
 	});
 
 	test("it states no figure", () => {

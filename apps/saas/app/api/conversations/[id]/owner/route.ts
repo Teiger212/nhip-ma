@@ -43,10 +43,12 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 		);
 	}
 	try {
-		const moved = await store.getOfficeConversation(conv.officeId, conv.id);
-		if (moved) await refreshTemplate(store, moved);
-	} catch {
-		console.warn("inbox: template rewrite after reassign failed");
+		const reassigned = await store.getOfficeConversation(conv.officeId, conv.id);
+		if (reassigned) await refreshTemplate(store, reassigned);
+	} catch (error) {
+		console.warn("inbox: template rewrite after reassign failed", {
+			kind: error instanceof Error ? error.name : "unknown",
+		});
 	}
 	scheduleOwnerChangeAlert(runtime, conv, {
 		previousOwnerId: moved.previousOwnerId,

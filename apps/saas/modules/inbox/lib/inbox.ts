@@ -62,7 +62,7 @@ export async function refreshTemplate(
 	const thread = await templateThread(store, conversation, officeName);
 	const reply = replyTemplate(shot.language, shot.qualification, thread);
 	if (reply === shot.draft.reply) return conversation;
-	return store.setDraft(conversation.officeId, conversation.id, { ...shot.draft, reply });
+	return store.rewriteTemplateDraft(conversation.officeId, conversation.id, shot.draft, reply);
 }
 
 /**

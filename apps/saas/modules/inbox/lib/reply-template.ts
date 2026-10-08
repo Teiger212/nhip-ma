@@ -140,7 +140,7 @@ const COPY: Record<GuestLanguage, Copy> = {
 	},
 	ru: {
 		introAgent: (guest, agent, office) =>
-			`Здравствуйте${guest ? `, ${guest}` : ""}! Меня зовут ${agent}, я из ${office}.`,
+			`Здравствуйте${guest ? `, ${guest}` : ""}! Меня зовут ${agent}, агентство ${office}.`,
 		introOffice: (guest, office) =>
 			`Здравствуйте${guest ? `, ${guest}` : ""}! Вам пишет ${office}.`,
 		thanks: "Спасибо, что написали.",
