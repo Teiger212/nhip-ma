@@ -56,7 +56,8 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   (`DEFAULT_OFFICE_LANGUAGE`). It runs at ingest and when a thread is opened (the detail route
   reads the office language itself, never the client's), never from the list poll. After the
   manager changes the language, opening an older thread translates its guest messages into the
-  new one then, against the daily cap; translations in the old language are kept, not shown. A failed call is recorded per message and
+  new one then, against the daily cap; translations in the old language are kept, and shown, labelled with their language, until
+  the new one lands. A failed call is recorded per message and
   language (`inbox_translation_failure`) and retried no sooner than 10 minutes later, at most
   5 times (`translationRetryDue` in `translate.ts`), so an outage costs no repeated model calls.
 - **Inbox reads** come in three shapes (`modules/inbox/lib/inbox-queries.ts`): the list is

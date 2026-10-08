@@ -25,6 +25,7 @@ import {
 import { deletionRecords, holdReply, releaseReply } from "./deletion-state";
 import { writeZaloGuests } from "./guest-state";
 import { connectWhatsApp, connectZalo, releaseZalo } from "./pipe-state";
+import { setTranslateCalls } from "./translation-state";
 
 const ANSWER = "@@state ";
 
@@ -46,6 +47,7 @@ const COMMANDS: Record<string, (...args: string[]) => Promise<unknown>> = {
 	"pipes.connect": connectZalo,
 	"pipes.connect-whatsapp": connectWhatsApp,
 	"pipes.release": releaseZalo,
+	"translations.today": setTranslateCalls,
 };
 
 type Request = { id: number; command: string; args: string[] };

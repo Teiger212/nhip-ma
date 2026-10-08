@@ -15,6 +15,7 @@ import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
 import { appOrigin } from "./support/session";
+import { setTranslationsToday, TRANSLATE_DAILY_CAP } from "./support/translations";
 import { deliverZalo, signedZaloText } from "./support/zalo";
 
 /* ---------------------------------------------------------------- what the scenarios promise */
@@ -870,5 +871,122 @@ test.describe("Office language 8 — alerts follow the office", () => {
 			.soft(shown(GAVE_YOU_A_THREAD.vi), `the bell reads "${GAVE_YOU_A_THREAD.vi}"`)
 			.toHaveCount(1, WITHIN_A_POLL);
 		await expect.soft(shown(GAVE_YOU_A_THREAD.en), "not in the agent's own English").toHaveCount(0);
+	});
+});
+
+/* ---------------------------------------------------------------- the kept translation (Office language 10) */
+
+/**
+ * A kept translation's visible label, naming the language it is in (Office language 10, written
+ * out: it is the contract). The VI copy is pending a native read (#78).
+ */
+const KEPT_ENGLISH_LABEL = {
+	en: /Translation\s*·\s*English/,
+	vi: /Bản dịch\s*·\s*tiếng Anh/,
+} as const;
+
+/**
+ * Any labelled translation, in either interface: "Translation · …" or "Bản dịch · …". A
+ * translation in the office language has none; only its visually hidden "Translation" prefix,
+ * which no "·" follows.
+ */
+const ANY_VISIBLE_TRANSLATION_LABEL = /(Translation|Bản dịch)\s*·/;
+
+// scenario: docs/e2e-scenarios.md Office language 10
+test.describe("Office language 10 — until the new language's translation lands, the kept one shows, labelled", () => {
+	test('an English office\'s Korean thread reads "Stub translation, Korean to English." unlabelled; with the day\'s translations spent and the office switched to Vietnamese, it reads that line labelled "Bản dịch · tiếng Anh" and no line into Vietnamese, the Vietnamese guest\'s message no line; back under the cap, "Stub translation, Korean to Vietnamese." unlabelled and the English line gone', async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const { page } = manager;
+		const check = expect.configure({ soft: true });
+
+		const korean = office.newGuest(KOREAN_TEXT);
+		await korean.write();
+		const koreanThread = await threadIdOf(manager.api, korean);
+		const vietnamese = office.newGuest(VIETNAMESE_TEXT);
+		await vietnamese.write();
+		const vietnameseThread = await threadIdOf(manager.api, vietnamese);
+
+		await test.step("in the English office, both guests' messages read their translation into English, with no visible label", async () => {
+			await openThreadByLink(page, "en", koreanThread, korean);
+			await expectTranslation(page, korean, stubLine("Korean", "English"), "the Korean guest");
+			await expect(
+				guestBubble(page, korean),
+				"a translation in the office language has no visible label",
+			).not.toContainText(ANY_VISIBLE_TRANSLATION_LABEL);
+
+			await openThreadByLink(page, "en", vietnameseThread, vietnamese);
+			await expectTranslation(
+				page,
+				vietnamese,
+				stubLine("Vietnamese", "English"),
+				"the Vietnamese guest",
+			);
+		});
+
+		// Setup, once both lines have shown (no translation is still under way): the office's day
+		// has no translations left, then the manager switches the office to Vietnamese.
+		await setTranslationsToday(office.id, TRANSLATE_DAILY_CAP);
+		await managerSets(manager, "vi");
+
+		await test.step("past the cap, the Korean message keeps its English line, labelled, and gets no line into Vietnamese", async () => {
+			await page.goto("/vi/home");
+			await openThreadByLink(page, "vi", koreanThread, korean);
+			const bubble = guestBubble(page, korean);
+			// Both are reported: the kept line and its label, and no new line (no model call).
+			await check(bubble, "the guest's message keeps its English line").toContainText(
+				stubLine("Korean", "English"),
+				WITHIN_A_POLL,
+			);
+			await check(bubble, 'the English line is labelled "Bản dịch · tiếng Anh"').toContainText(
+				KEPT_ENGLISH_LABEL.vi,
+			);
+			await check(
+				openThread(page),
+				"no line into Vietnamese: past the cap, no model call",
+			).not.toContainText(stubLine("Korean", "Vietnamese"));
+		});
+
+		await test.step("the Vietnamese guest's message shows no line: it is in the office language now", async () => {
+			await openThreadByLink(page, "vi", vietnameseThread, vietnamese);
+			const bubble = guestBubble(page, vietnamese);
+			for (const locale of ["en", "vi"] as const) {
+				await check(
+					bubble,
+					`no translation label on the Vietnamese message ("${translationLabel(locale)}")`,
+				).not.toContainText(translationLabel(locale));
+			}
+			await check(bubble, "no stub translation line on the Vietnamese message").not.toContainText(
+				ANY_STUB_LINE,
+			);
+		});
+
+		await test.step("opened again, still past the cap, the Korean message still reads only its labelled English line", async () => {
+			// A second opening is a second chance for a translation: none comes past the cap.
+			await openThreadByLink(page, "vi", koreanThread, korean);
+			const bubble = guestBubble(page, korean);
+			await check(bubble, "still the labelled English line").toContainText(KEPT_ENGLISH_LABEL.vi);
+			await check(openThread(page), "still no line into Vietnamese").not.toContainText(
+				stubLine("Korean", "Vietnamese"),
+			);
+		});
+
+		// Every past-the-cap check above is reported; the day's translations come back regardless.
+		await setTranslationsToday(office.id, 0);
+
+		await test.step("back under the cap, opening the Korean thread reads its translation into Vietnamese, unlabelled, and the labelled English line is gone", async () => {
+			await page.goto("/vi/home");
+			await openThreadByLink(page, "vi", koreanThread, korean);
+			await expectTranslation(page, korean, stubLine("Korean", "Vietnamese"), "back under the cap");
+			const bubble = guestBubble(page, korean);
+			await expect(bubble, "the kept English line's label is gone").not.toContainText(
+				KEPT_ENGLISH_LABEL.vi,
+			);
+			await expect(
+				bubble,
+				"a translation in the office language has no visible label",
+			).not.toContainText(ANY_VISIBLE_TRANSLATION_LABEL);
+		});
 	});
 });

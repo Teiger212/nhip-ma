@@ -883,6 +883,7 @@
 		"quietHint": "The guest last wrote more than 48 hours ago. Still your turn.",
 		"onlyQuiet": "Nothing new. The quiet threads below are still your turn.",
 		"translation": "Translation",
+		"translationIn": "Translation · {language}",
 		"noTranslation": "{language} isn't supported: no translation",
 		"suggested": {
 			"template": "Suggested reply · template",
