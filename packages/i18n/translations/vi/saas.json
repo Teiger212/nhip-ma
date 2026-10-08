@@ -991,6 +991,7 @@
 			"unassigned": "Chưa giao",
 			"assignTo": "Giao cho…",
 			"mine": "Của bạn",
+			"assigned": "Đã giao cho {name}",
 			"failed": "Không chuyển được cuộc trò chuyện. Hãy thử lại.",
 			"filter": "Hiển thị",
 			"all": "Tất cả cuộc trò chuyện"
