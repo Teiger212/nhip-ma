@@ -23,6 +23,7 @@ import { seedRiverOffice, seedWalkOffice } from "./seed-walk-office";
 import {
 	seedRiverLogins,
 	seedWalkAdmin,
+	retireLegacyWalkLogins,
 	seedWalkAgent2,
 	seedWalkManager,
 	seedWalkUser,
@@ -54,14 +55,16 @@ export async function runSeed({
 	if (refusal) throw new SeedRefused(refusal);
 	const rich = !env.E2E?.trim();
 
+	const retired = await retireLegacyWalkLogins();
+	if (retired > 0) log(`Old walk logins renamed to the Hanoi Nest Seekers team (#264): ${retired}`);
 	const walkUser = await seedWalkUser();
 	const walkAdmin = await seedWalkAdmin();
 	const walkAgent2 = await seedWalkAgent2();
 	const walkManager = await seedWalkManager();
 	const logins: Array<[string, "created" | "exists", string]> = [
-		[WALK_USER_EMAIL, walkUser, "agent, walk office"],
-		[WALK_AGENT2_EMAIL, walkAgent2, "second agent, walk office"],
-		[WALK_MANAGER_EMAIL, walkManager, "manager, walk office: sees every thread, reassigns"],
+		[WALK_USER_EMAIL, walkUser, "agent, Hanoi Nest Seekers"],
+		[WALK_AGENT2_EMAIL, walkAgent2, "second agent, Hanoi Nest Seekers"],
+		[WALK_MANAGER_EMAIL, walkManager, "manager, Hanoi Nest Seekers: sees every thread, reassigns"],
 		[WALK_ADMIN_EMAIL, walkAdmin, "platform admin: its office memberships open nothing"],
 	];
 	if (rich) {

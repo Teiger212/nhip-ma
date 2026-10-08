@@ -19,8 +19,8 @@ const copy = ownerCopy("en");
 
 /** The seeded operators' names, as the manager sees them (walk-user.ts). */
 const NAME = {
-	agent: "Walk Operator",
-	agent2: "Walk Operator Two",
+	agent: "Trần Thị Linh",
+	agent2: "Phạm Minh Đức",
 } as const;
 
 /** A guest of this test, writing on Zalo to an OA of the test's own. */

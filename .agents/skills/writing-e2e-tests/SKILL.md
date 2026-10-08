@@ -93,7 +93,7 @@ test <file>` against your running dev server (no build).
   `pnpm --filter @repo/database push`, demo data via `pnpm seed --reset` (walk office, four
   demo threads). Specs must not depend on each other or on order.
 - Logins come from the seed (`apps/saas/modules/inbox/lib/walk-user.ts`): the agent
-  `walk@nhip.local` and the platform admin `admin@nhip.local`, password `walkthrough`.
+  `linh@nhip.local` and the platform admin `admin@nhip.local`, password `walkthrough`.
 - Starting signed in is setup: `signInContext(context, AGENT)` (`support/session-state.ts`),
   the `admin` fixture, or `apiAs(AGENT)`. They use sessions minted before the run
   (`tests/sessions.setup.ts`), never the sign-in endpoint. Drive the login page only when

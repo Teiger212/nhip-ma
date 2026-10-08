@@ -7,7 +7,7 @@ a scenario gets its test, link the spec file next to it.
 
 Seed: the E2E run seeds its own database with `E2E=1`, which writes only the walk logins and
 the walk office's four demo threads (Minji, Yuki, Alexei, Thảo); specs build their own offices
-for everything else. Logins: `walk@nhip.local` (agent), `admin@nhip.local` (platform admin),
+for everything else. Logins: `linh@nhip.local` (agent), `admin@nhip.local` (platform admin),
 password `walkthrough`. Without `E2E`, `pnpm seed -- --reset` writes the rich dev and demo
 dataset instead (#69, AGENTS.md "Environment"): about sixty guests in every Inbox, CRM and
 alert state, in the walk office (mock CRM) and a second office. A spec run against a dev
@@ -346,8 +346,8 @@ time: nothing in it can be trusted.
 
 ## Assigning leads (ADR 0022, spec #160)
 
-Seed: the walk office has two agents (`walk@nhip.local`, `walk2@nhip.local`) and a manager
-(`manager@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
+Seed: the walk office has two agents (`linh@nhip.local`, `duc@nhip.local`) and a manager
+(`ha@nhip.local`, kit role `admin`), password `walkthrough`. Demo threads: Minji is agent
 1's, Yuki is agent 2's, and Alexei and Thảo are Unassigned. "A second manager" is an invited
 kit `admin` of an office of the test's own. Every new guest also gets the auto-reply (ADR
 0021); nothing here depends on it.
