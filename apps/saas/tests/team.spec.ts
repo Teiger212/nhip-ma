@@ -11,8 +11,9 @@ import {
 	AGENT_2,
 	MANAGER,
 	PLATFORM_ADMIN,
-	WALK_OFFICE_ID,
-	WALK_OFFICE_SLUG,
+	DEMO_OFFICE_ID,
+	officeUrl,
+	officeUrlOf,
 } from "./support/seed";
 import type { Api } from "./support/session";
 import { apiAs, withOrigin } from "./support/session";
@@ -201,7 +202,7 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 		await expect(teamItem(page)).toBeVisible();
 		await teamItem(page).click();
 
-		await expect(page).toHaveURL(new RegExp(`/en/${WALK_OFFICE_SLUG}/settings/members$`));
+		await expect(page).toHaveURL(new RegExp(`${officeUrl("settings/members")}$`));
 		await expect(team(page).heading(COPY.en.team)).toBeVisible();
 	});
 
@@ -216,7 +217,7 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 		const asManager = admin.newEmail("team-manager");
 
 		try {
-			await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
+			await page.goto(officeUrl("settings/members"));
 			await expect(t.heading(COPY.en.team)).toBeVisible();
 
 			// The role offers exactly Agent and Manager, with Agent chosen; no Owner.
@@ -242,12 +243,12 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 			await expect(t.invitationRole(t.invitation(asManager))).toHaveText(COPY.en.manager);
 
 			// The words are Nhịp's; the office got an agent (the kit's member) and a manager (its admin).
-			const [agentInvite] = await pendingInvitationsTo(admin.api, WALK_OFFICE_ID, asAgent);
-			const [managerInvite] = await pendingInvitationsTo(admin.api, WALK_OFFICE_ID, asManager);
+			const [agentInvite] = await pendingInvitationsTo(admin.api, DEMO_OFFICE_ID, asAgent);
+			const [managerInvite] = await pendingInvitationsTo(admin.api, DEMO_OFFICE_ID, asManager);
 			expect.soft(agentInvite?.role, "Agent is the kit's member").toBe("member");
 			expect.soft(managerInvite?.role, "Manager is the kit's admin").toBe("admin");
 		} finally {
-			await cancelInvitationsTo(admin, WALK_OFFICE_ID, [asAgent, asManager]);
+			await cancelInvitationsTo(admin, DEMO_OFFICE_ID, [asAgent, asManager]);
 		}
 	});
 
@@ -269,7 +270,7 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 			await expect.soft(teamItem(page, "vi")).toBeVisible();
 			await page.keyboard.press("Escape");
 
-			await page.goto(`/vi/${await slugOf(admin.api, office.id)}/settings/members`);
+			await page.goto(officeUrlOf(await slugOf(admin.api, office.id), "settings/members", "vi"));
 			await expect.soft(t.heading(COPY.vi.team)).toBeVisible();
 			await expect(t.inviteRole).toHaveText(COPY.vi.agent);
 			await t.inviteRole.click();
@@ -297,7 +298,7 @@ test.describe("Team 2 — an agent has no Team", () => {
 		await expect.soft(teamItem(page), "no Team in the agent's menu").toHaveCount(0);
 		await page.keyboard.press("Escape");
 
-		const res = await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
+		const res = await page.goto(officeUrl("settings/members"));
 		expect.soft(res?.status(), "Team's address answers 404 for an agent").toBe(404);
 		await expect.soft(page.getByText("Page not found")).toBeVisible();
 		// No member list, no invite form.
@@ -391,7 +392,7 @@ test.describe("Team 3 — no owner, no Leave, no platform admin on Team", () => 
 		test.slow();
 		await signInContext(context, MANAGER);
 		const t = team(page);
-		await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
+		await page.goto(officeUrl("settings/members"));
 
 		// The list is rendered: the manager's own row, as Manager.
 		await expect(page.getByText(MANAGER.email)).toBeVisible();
@@ -465,7 +466,7 @@ test.describe("Team 3 — no owner, no Leave, no platform admin on Team", () => 
 				await expect.soft(teamItem(page)).toBeVisible();
 				await page.keyboard.press("Escape");
 
-				await page.goto(`/en/${await slugOf(admin.api, office.id)}/settings/members`);
+				await page.goto(officeUrlOf(await slugOf(admin.api, office.id), "settings/members"));
 				const own = t.member(manager.email);
 				await expect.soft(own).toBeVisible();
 				await expect.soft(t.memberRole(own)).toHaveText(COPY.en.manager);
@@ -531,7 +532,9 @@ async function officeWithTeam(
 		if (locale === "vi") {
 			await setOfficeLanguage(manager.page.request, "vi");
 		}
-		await manager.page.goto(`/${locale}/${await slugOf(admin.api, office.id)}/settings/members`);
+		await manager.page.goto(
+			officeUrlOf(await slugOf(admin.api, office.id), "settings/members", locale),
+		);
 		const t = team(manager.page);
 		await expect(t.memberRole(t.member(agent.email))).toHaveText(COPY[locale].agent);
 	} catch (error) {
@@ -763,7 +766,7 @@ test.describe("Team 6 — the platform admin never reaches a manager's browser",
 			);
 		});
 
-		await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
+		await page.goto(officeUrl("settings/members"));
 		// The list is rendered, so the answers it was made from have arrived.
 		const t = team(page);
 		await expect(t.memberRole(t.member(AGENT.email))).toHaveText(COPY.en.agent);
@@ -791,7 +794,7 @@ test.describe("Team 6 — the platform admin never reaches a manager's browser",
 		const api = withOrigin(page.request);
 
 		const full = await api.get("/api/auth/organization/get-full-organization", {
-			organizationId: WALK_OFFICE_ID,
+			organizationId: DEMO_OFFICE_ID,
 		});
 		expect(full.status(), "the manager reads the office").toBe(200);
 		const fullEmails = ((await full.json()) as { members: Member[] }).members.map(
@@ -803,7 +806,7 @@ test.describe("Team 6 — the platform admin never reaches a manager's browser",
 			.not.toContain(PLATFORM_ADMIN.email);
 
 		const listed = await api.get("/api/auth/organization/list-members", {
-			organizationId: WALK_OFFICE_ID,
+			organizationId: DEMO_OFFICE_ID,
 		});
 		expect(listed.status(), "the manager lists the office's members").toBe(200);
 		const { members, total } = (await listed.json()) as { members: Member[]; total: number };
@@ -821,7 +824,7 @@ test.describe("Team 6 — the platform admin never reaches a manager's browser",
 		const { page } = admin;
 		const t = team(page);
 		for (const locale of ["en", "vi"] as const) {
-			await page.goto(`/${locale}/admin/organizations/${WALK_OFFICE_ID}`);
+			await page.goto(`/${locale}/admin/organizations/${DEMO_OFFICE_ID}`);
 			const own = t.member(PLATFORM_ADMIN.email);
 			await expect(own, `(${locale}) the admin area lists the platform admin`).toBeVisible();
 			await expect
@@ -846,7 +849,7 @@ test.describe("Team 7 — no thread goes to the platform admin", () => {
 	test("the manager giving a thread to the platform admin answers 400, and the thread's owner is unchanged", async ({
 		admin,
 	}) => {
-		const self = (await membersOf(admin.api, WALK_OFFICE_ID)).find(
+		const self = (await membersOf(admin.api, DEMO_OFFICE_ID)).find(
 			(m) => m.user.email === PLATFORM_ADMIN.email,
 		);
 		expect(self?.userId, "the platform admin's view of the office lists them").toBeTruthy();

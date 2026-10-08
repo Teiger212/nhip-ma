@@ -30,7 +30,7 @@ import { mockInboxConfig } from "./config";
 import { type DraftAdapter, type DraftInput, noDraftAdapter } from "./drafts";
 import { NEW_THREAD, replyTemplate } from "./reply-template";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import { json, params, post, WALK_SESSION } from "./test-fixtures";
+import { json, params, post, DEMO_SESSION } from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
 
 /**
@@ -63,7 +63,7 @@ const followUps: string[] = [];
 
 beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	followUps.length = 0;
 	setRuntimeForTests({
 		store: createInboxStore(testDb),

@@ -26,7 +26,7 @@ import { mockInboxConfig } from "./config";
 import type { DraftAdapter, DraftInput } from "./drafts";
 import { greetingQuestion } from "./greeting";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import { json, params, post, WALK_SESSION } from "./test-fixtures";
+import { json, params, post, DEMO_SESSION } from "./test-fixtures";
 import type { Conversation } from "./types";
 
 /**
@@ -54,7 +54,7 @@ const adapter: DraftAdapter = {
 
 beforeEach(() => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	inputs.length = 0;
 	answer = () => null;
 	setRuntimeForTests({

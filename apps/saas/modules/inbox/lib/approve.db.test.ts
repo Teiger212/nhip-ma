@@ -36,7 +36,7 @@ import {
 	params,
 	post,
 	TEST_SECRETS_KEY,
-	WALK_SESSION,
+	DEMO_SESSION,
 } from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
 
@@ -85,7 +85,7 @@ async function approveReply(conv: Conversation, overrides: Body = {}) {
 
 beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ whatsapp: { verifyToken: "verify-me" } }),

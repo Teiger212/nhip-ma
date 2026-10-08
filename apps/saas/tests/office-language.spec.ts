@@ -13,6 +13,7 @@ import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
+import { officeUrlOf } from "./support/seed";
 import type { Api } from "./support/session";
 import { appOrigin } from "./support/session";
 import { setTranslationsToday, TRANSLATE_DAILY_CAP } from "./support/translations";
@@ -217,7 +218,7 @@ async function expectTranslation(page: Page, guest: Guest, line: string, where: 
 /* ---------------------------------------------------------------- the setting */
 
 function settingsAddress(locale: Locale, office: LanguageOffice) {
-	return `/${locale}/${office.slug}/settings/general`;
+	return officeUrlOf(office.slug, "settings/general", locale);
 }
 
 /** The "Office language" setting's select: a combobox named by its title, showing its value. */

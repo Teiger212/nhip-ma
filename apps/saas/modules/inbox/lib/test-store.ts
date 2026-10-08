@@ -6,7 +6,7 @@ import {
 } from "@repo/database/inbox/testing";
 
 import { settleBackgroundWork } from "./background";
-import { WALK_OFFICE_ID } from "./walk-user";
+import { DEMO_OFFICE_ID } from "./demo-user";
 
 // Unit files run in parallel; only the db project runs its files one at a time on the database.
 if (process.env.NHIP_DB_TESTS !== "1") {
@@ -30,7 +30,7 @@ export function useTestDatabaseForAppClient(): void {
 }
 
 /** The offices tests file threads under. Add to this list rather than inventing ids inline. */
-export const TEST_OFFICES = ["office-a", "office-b", WALK_OFFICE_ID];
+export const TEST_OFFICES = ["office-a", "office-b", DEMO_OFFICE_ID];
 
 /** The operators tests approve as. `walk-user` is the mocked session in the API tests. */
 export const TEST_OPERATORS = ["agent-1", "agent-2", "walk-user"];

@@ -9,7 +9,7 @@ import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
-import { AGENT, WALK_OFFICE_ID } from "./support/seed";
+import { AGENT, DEMO_OFFICE_ID } from "./support/seed";
 import { appOrigin, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
 
@@ -203,11 +203,11 @@ test.describe("Pipes 1 — the platform admin starts connecting a Zalo OA", () =
 
 // scenario: docs/e2e-scenarios.md Pipe connections 2
 test.describe("Pipes 2 — only the platform admin connects", () => {
-	const connectAddress = `/api/pipes/zalo/connect?officeId=${encodeURIComponent(WALK_OFFICE_ID)}`;
+	const connectAddress = `/api/pipes/zalo/connect?officeId=${encodeURIComponent(DEMO_OFFICE_ID)}`;
 
 	test("the agent sees no Connections for their own office", async ({ page, context }) => {
 		await signInContext(context, AGENT);
-		await page.goto(`/en/admin/organizations/${WALK_OFFICE_ID}`);
+		await page.goto(`/en/admin/organizations/${DEMO_OFFICE_ID}`);
 		// Judge on a rendered page, not an empty one.
 		await expect(page.getByRole("main")).toBeVisible();
 		await expect(page.getByTestId("office-connections")).toHaveCount(0);
@@ -254,9 +254,9 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		await signInContext(context, AGENT);
 		const agent = withOrigin(page.request);
 
-		await connectZaloOa(WALK_OFFICE_ID, brokenOa);
-		await connectZaloOa(WALK_OFFICE_ID, workingOa);
-		await connectWhatsAppNumber(WALK_OFFICE_ID);
+		await connectZaloOa(DEMO_OFFICE_ID, brokenOa);
+		await connectZaloOa(DEMO_OFFICE_ID, workingOa);
+		await connectWhatsAppNumber(DEMO_OFFICE_ID);
 		// The guests' threads exist while everything is connected; then one OA breaks.
 		await guestWritesOnZalo(request, brokenOa, guestId, first);
 		await guestWritesOnZalo(request, workingOa, otherGuestId, `Hello from ${otherGuestId}`);
@@ -271,7 +271,7 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		} finally {
 			await manager.dispose();
 		}
-		await connectZaloOa(WALK_OFFICE_ID, brokenOa, "disconnected");
+		await connectZaloOa(DEMO_OFFICE_ID, brokenOa, "disconnected");
 
 		await page.goto("/en/inbox");
 		await expect(page.getByTestId("pipe-disconnected-banner")).toHaveText(copy.banner(ZALO));
@@ -334,7 +334,7 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		}
 
 		// The platform admin sees which OA needs reconnecting, and that the other one is fine.
-		const connections = await openConnections(admin, WALK_OFFICE_ID);
+		const connections = await openConnections(admin, DEMO_OFFICE_ID);
 		const broken = connections.oa(brokenOa);
 		await expect(broken.getByTestId("connection-status")).toHaveText(copy.status.needsReconnect);
 		await expect(broken.getByTestId("reconnect-zalo")).toBeVisible();

@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
+import { DEMO_OFFICE_ID } from "./demo-user";
 import { oneShot } from "./draft";
 import { noDraftAdapter } from "./drafts";
 import { isQuiet } from "./queue";
@@ -10,7 +11,6 @@ import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { DEMO_THREADS, seedInbox } from "./seed";
 import { account, guestMessage, membership } from "./test-fixtures";
 import { testDb, useTestDatabaseForAppClient } from "./test-store";
-import { WALK_OFFICE_ID } from "./walk-user";
 
 // Web push stubbed at its boundary: the seed must never reach it (#134, Q3).
 const { sendNotification } = vi.hoisted(() => ({ sendNotification: vi.fn() }));
@@ -64,16 +64,16 @@ test("seed finds an existing thread by guest and does not write it twice", async
 	const earlier = (
 		await store.upsertInbound(
 			guestMessage("demo-vi-tayho", { guestName: "Thảo", text: "old message" }),
-			WALK_OFFICE_ID,
+			DEMO_OFFICE_ID,
 		)
 	).conversation;
-	const seeded = await seedInbox(WALK_OFFICE_ID);
+	const seeded = await seedInbox(DEMO_OFFICE_ID);
 	expect(seeded).toHaveLength(4);
 	const thao = seeded.find((conversation) => conversation.guestId === "demo-vi-tayho");
 	expect(thao?.id).toBe(earlier.id);
 	expect(thao?.messages.map((message) => message.text)).toEqual(["old message"]);
 	expect(
-		await store.listConversations({ userId: "seed", officeId: WALK_OFFICE_ID, role: "manager" }),
+		await store.listConversations({ userId: "seed", officeId: DEMO_OFFICE_ID, role: "manager" }),
 	).toHaveLength(4);
 });
 
@@ -83,9 +83,9 @@ test("seed writes invented threads once", async () => {
 		config: mockInboxConfig(),
 		drafts: noDraftAdapter,
 	});
-	const first = await seedInbox(WALK_OFFICE_ID);
+	const first = await seedInbox(DEMO_OFFICE_ID);
 	expect(first.length).toBe(4);
-	expect(first.every((conversation) => conversation.officeId === WALK_OFFICE_ID)).toBe(true);
+	expect(first.every((conversation) => conversation.officeId === DEMO_OFFICE_ID)).toBe(true);
 	expect(
 		first
 			.map((conversation) => conversation.guestName)
@@ -103,7 +103,7 @@ test("seed writes invented threads once", async () => {
 	expect(first.every((conversation) => conversation.messages.length === 1)).toBe(true);
 	const byId = (a: string, b: string) => a.localeCompare(b);
 	const firstIds = first.map((conversation) => conversation.id).sort(byId);
-	const again = await seedInbox(WALK_OFFICE_ID);
+	const again = await seedInbox(DEMO_OFFICE_ID);
 	expect(again.map((conversation) => conversation.id).sort(byId)).toEqual(firstIds);
 	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(4);
 });
@@ -115,7 +115,7 @@ test("the fresh pair lands in Your turn, the other two in Quiet", async () => {
 		drafts: noDraftAdapter,
 	});
 	const now = Date.now();
-	const seeded = await seedInbox(WALK_OFFICE_ID, { now });
+	const seeded = await seedInbox(DEMO_OFFICE_ID, { now });
 	const quiet = seeded
 		.filter((conversation) => isQuiet(conversation, now))
 		.map((conversation) => conversation.guestName)
@@ -130,9 +130,9 @@ test("reset rewrites the demo threads as of now", async () => {
 		drafts: noDraftAdapter,
 	});
 	const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-	await seedInbox(WALK_OFFICE_ID, { now: threeDaysAgo });
+	await seedInbox(DEMO_OFFICE_ID, { now: threeDaysAgo });
 	const now = Date.now();
-	const reseeded = await seedInbox(WALK_OFFICE_ID, { reset: true, now });
+	const reseeded = await seedInbox(DEMO_OFFICE_ID, { reset: true, now });
 	expect(reseeded).toHaveLength(4);
 	expect(reseeded.every((conversation) => conversation.messages.length === 1)).toBe(true);
 	const minji = reseeded.find((conversation) => conversation.guestName === "Minji");
@@ -146,7 +146,7 @@ test("seeding never pushes, even live with VAPID keys and a manager's device", a
 	// A manager of the walk office alone (a member of two offices is alerted by neither).
 	const manager = "seed-push-manager";
 	await account(manager);
-	await membership(WALK_OFFICE_ID, manager, "admin");
+	await membership(DEMO_OFFICE_ID, manager, "admin");
 	await testDb.pushSubscription.create({
 		data: {
 			userId: manager,
@@ -169,11 +169,11 @@ test("seeding never pushes, even live with VAPID keys and a manager's device", a
 		drafts: noDraftAdapter,
 	});
 
-	await seedInbox(WALK_OFFICE_ID, { reset: true });
+	await seedInbox(DEMO_OFFICE_ID, { reset: true });
 	await settleBackgroundWork();
 
 	expect(
-		await testDb.inboxAlert.count({ where: { officeId: WALK_OFFICE_ID, userId: manager } }),
+		await testDb.inboxAlert.count({ where: { officeId: DEMO_OFFICE_ID, userId: manager } }),
 	).toBe(DEMO_THREADS.length);
 	expect(sendNotification).not.toHaveBeenCalled();
 });

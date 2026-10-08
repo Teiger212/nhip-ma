@@ -4,6 +4,17 @@ import { afterEach, expect, test } from "vitest";
 import { settleBackgroundWork } from "../lib/background";
 import { mockInboxConfig } from "../lib/config";
 import { toE164 } from "../lib/crm/phone";
+import {
+	RIVER_AGENT_EMAIL,
+	RIVER_MANAGER_EMAIL,
+	RIVER_OFFICE_ID,
+	DEMO_AGENT2_EMAIL,
+	DEMO_MANAGER_EMAIL,
+	DEMO_OFFICE_ID,
+	DEMO_OFFICE_NAME,
+	DEMO_OFFICE_SLUG,
+	DEMO_AGENT_EMAIL,
+} from "../lib/demo-user";
 import { SeedRefused } from "../lib/dev-seed/guard";
 import { SEED_OFFICES } from "../lib/dev-seed/seed-offices";
 import { noDraftAdapter } from "../lib/drafts";
@@ -12,17 +23,6 @@ import { peekTestRuntime, setRuntimeForTests } from "../lib/runtime";
 import { DEMO_THREADS } from "../lib/seed";
 import { testDb, useTestDatabaseForAppClient } from "../lib/test-store";
 import { needsTranslation } from "../lib/translate";
-import {
-	RIVER_AGENT_EMAIL,
-	RIVER_MANAGER_EMAIL,
-	RIVER_OFFICE_ID,
-	WALK_AGENT2_EMAIL,
-	WALK_MANAGER_EMAIL,
-	WALK_OFFICE_ID,
-	WALK_OFFICE_NAME,
-	WALK_OFFICE_SLUG,
-	WALK_USER_EMAIL,
-} from "../lib/walk-user";
 import { runSeed } from "./run-seed";
 
 /**
@@ -93,7 +93,7 @@ test(
 		await runSeed({ env: localEnv(), reset: false, now, log: quiet });
 
 		// The walk office's manager: every tab has two-digit counts.
-		const manager = await viewOf(WALK_MANAGER_EMAIL, WALK_OFFICE_ID, "manager");
+		const manager = await viewOf(DEMO_MANAGER_EMAIL, DEMO_OFFICE_ID, "manager");
 		const walk = manager.threads;
 		expect(walk.length).toBeGreaterThanOrEqual(40);
 		expect(count(walk, (thread) => inView(thread, "unassigned"))).toBeGreaterThanOrEqual(10);
@@ -101,7 +101,7 @@ test(
 		expect(count(walk, (thread) => inView(thread, "sent"))).toBeGreaterThanOrEqual(10);
 		expect(count(walk, (thread) => isQuiet(thread, now))).toBeGreaterThanOrEqual(3);
 		// Owned by each agent and by the manager, each with something waiting and something sent.
-		for (const email of [WALK_USER_EMAIL, WALK_AGENT2_EMAIL, WALK_MANAGER_EMAIL]) {
+		for (const email of [DEMO_AGENT_EMAIL, DEMO_AGENT2_EMAIL, DEMO_MANAGER_EMAIL]) {
 			const owner = await userId(email);
 			const own = walk.filter((thread) => thread.owner?.id === owner);
 			expect(
@@ -113,8 +113,8 @@ test(
 				email,
 			).toBeGreaterThanOrEqual(1);
 		}
-		for (const email of [WALK_USER_EMAIL, WALK_AGENT2_EMAIL]) {
-			const agent = await viewOf(email, WALK_OFFICE_ID, "agent");
+		for (const email of [DEMO_AGENT_EMAIL, DEMO_AGENT2_EMAIL]) {
+			const agent = await viewOf(email, DEMO_OFFICE_ID, "agent");
 			expect(
 				count(agent.threads, (thread) => isQuiet(thread, now)),
 				email,
@@ -162,18 +162,18 @@ test(
 
 		// Greeted guests, with the greeting row, in the walk office only (the river office's is off).
 		expect(
-			await testDb.message.count({ where: { officeId: WALK_OFFICE_ID, source: "auto_reply" } }),
+			await testDb.message.count({ where: { officeId: DEMO_OFFICE_ID, source: "auto_reply" } }),
 		).toBeGreaterThanOrEqual(5);
 		expect(
 			await testDb.message.count({ where: { officeId: RIVER_OFFICE_ID, source: "auto_reply" } }),
 		).toBe(0);
-		expect((await store.officeAutoReply(WALK_OFFICE_ID))?.on).toBe(true);
+		expect((await store.officeAutoReply(DEMO_OFFICE_ID))?.on).toBe(true);
 		expect((await store.officeAutoReply(RIVER_OFFICE_ID))?.on).toBe(false);
 
 		// A deleted guest: its receipt, with its reason, and its lead tally.
-		const receipts = await testDb.guestDeletion.findMany({ where: { officeId: WALK_OFFICE_ID } });
+		const receipts = await testDb.guestDeletion.findMany({ where: { officeId: DEMO_OFFICE_ID } });
 		expect(receipts.map((receipt) => receipt.reason)).toEqual(["guest_request"]);
-		expect(await testDb.leadTally.count({ where: { officeId: WALK_OFFICE_ID } })).toBe(1);
+		expect(await testDb.leadTally.count({ where: { officeId: DEMO_OFFICE_ID } })).toBe(1);
 
 		// Bell rows (assigned, and moved away from the first agent) and the alert log.
 		expect(await testDb.notification.count({ where: { type: "THREAD_ASSIGNED" } })).toBeGreaterThan(
@@ -181,7 +181,7 @@ test(
 		);
 		expect(
 			await testDb.notification.count({
-				where: { type: "THREAD_MOVED", userId: await userId(WALK_USER_EMAIL) },
+				where: { type: "THREAD_MOVED", userId: await userId(DEMO_AGENT_EMAIL) },
 			}),
 		).toBeGreaterThan(0);
 		expect(await testDb.inboxAlert.count({ where: { kind: "guest" } })).toBeGreaterThan(0);
@@ -195,21 +195,21 @@ test(
 		const notInCrm = walk.filter((thread) => !thread.crm);
 		expect(notInCrm).toHaveLength(2);
 		for (const thread of notInCrm) {
-			expect(await store.crmWriteFailure(WALK_OFFICE_ID, thread.id), thread.guestId).not.toBeNull();
+			expect(await store.crmWriteFailure(DEMO_OFFICE_ID, thread.id), thread.guestId).not.toBeNull();
 		}
 		expect(count(walk, (thread) => threadStatus(thread) === "won")).toBeGreaterThanOrEqual(1);
 		expect(count(walk, (thread) => threadStatus(thread) === "lost")).toBeGreaterThanOrEqual(1);
 		expect(
 			count(walk, (thread) => thread.crm?.outcome === "lost" && inQueue(thread)),
 		).toBeGreaterThanOrEqual(1);
-		const sharedPhone = await store.findMockCrmLeads(WALK_OFFICE_ID, { phone: "+12025550104" });
+		const sharedPhone = await store.findMockCrmLeads(DEMO_OFFICE_ID, { phone: "+12025550104" });
 		expect(sharedPhone).toHaveLength(2);
 		expect(walk.some((thread) => toE164(thread.guestId) === "+12025550104" && !thread.crm)).toBe(
 			true,
 		);
-		const unmatched = await store.findMockCrmLeads(WALK_OFFICE_ID, { phone: "+12025550188" });
+		const unmatched = await store.findMockCrmLeads(DEMO_OFFICE_ID, { phone: "+12025550188" });
 		expect(unmatched).toHaveLength(1);
-		expect(await store.crmLinksForLeads(WALK_OFFICE_ID, [unmatched[0].id])).toEqual([]);
+		expect(await store.crmLinksForLeads(DEMO_OFFICE_ID, [unmatched[0].id])).toEqual([]);
 
 		// Home has shape: 30 days of leads, engaged and in conversation, response times spread.
 		const funnel = await store.funnel(manager.viewer, {
@@ -229,11 +229,11 @@ test(
 		const river = await viewOf(RIVER_MANAGER_EMAIL, RIVER_OFFICE_ID, "manager");
 		expect(river.threads.length).toBeGreaterThanOrEqual(10);
 		expect(river.threads.every((thread) => thread.officeId === RIVER_OFFICE_ID)).toBe(true);
-		expect(walk.every((thread) => thread.officeId === WALK_OFFICE_ID)).toBe(true);
+		expect(walk.every((thread) => thread.officeId === DEMO_OFFICE_ID)).toBe(true);
 		const riverAgent = await viewOf(RIVER_AGENT_EMAIL, RIVER_OFFICE_ID, "agent");
 		expect(riverAgent.threads.length).toBeGreaterThan(0);
 		// Members of their own office alone (a member of two offices opens nothing, ADR 0010).
-		for (const email of [RIVER_MANAGER_EMAIL, RIVER_AGENT_EMAIL, WALK_MANAGER_EMAIL]) {
+		for (const email of [RIVER_MANAGER_EMAIL, RIVER_AGENT_EMAIL, DEMO_MANAGER_EMAIL]) {
 			expect(await testDb.member.count({ where: { user: { email } } }), email).toBe(1);
 		}
 
@@ -269,11 +269,11 @@ test(
 				text: "Hello",
 				vendorMessageId: null,
 			},
-			WALK_OFFICE_ID,
+			DEMO_OFFICE_ID,
 		);
 		const bellRow = await testDb.notification.create({
 			data: {
-				userId: await userId(WALK_USER_EMAIL),
+				userId: await userId(DEMO_AGENT_EMAIL),
 				type: "THREAD_ASSIGNED",
 				link: "http://localhost:3010/en/inbox?alert=pruned-long-ago",
 			},
@@ -281,7 +281,7 @@ test(
 		const tally = await testDb.leadTally.create({
 			data: {
 				id: "not-a-seed-tally",
-				officeId: WALK_OFFICE_ID,
+				officeId: DEMO_OFFICE_ID,
 				pipe: "whatsapp",
 				language: "en",
 				firstInboundAt: new Date(firstRun - 9 * DAY - 2 * 60_000),
@@ -294,12 +294,12 @@ test(
 		await runSeed({ env: localEnv(), reset: true, now, log: quiet });
 		expect(await rowCounts()).toEqual(withOthers);
 		expect(
-			await store.getOfficeConversation(WALK_OFFICE_ID, elsewhere.conversation.id),
+			await store.getOfficeConversation(DEMO_OFFICE_ID, elsewhere.conversation.id),
 		).not.toBeNull();
 		expect(await testDb.notification.findUnique({ where: { id: bellRow.id } })).not.toBeNull();
 		expect(await testDb.leadTally.findUnique({ where: { id: tally.id } })).not.toBeNull();
 		// As of now: the guest who wrote 40 minutes before this run is fresh again.
-		const { threads } = await viewOf(WALK_MANAGER_EMAIL, WALK_OFFICE_ID, "manager");
+		const { threads } = await viewOf(DEMO_MANAGER_EMAIL, DEMO_OFFICE_ID, "manager");
 		const latest = Math.max(
 			...threads.map((thread) => Date.parse(thread.lastGuestInboundAt ?? "")),
 		);
@@ -338,7 +338,7 @@ test(
 		expect(threads.map((thread) => thread.guestId).sort()).toEqual(
 			DEMO_THREADS.map((thread) => thread.guestId).sort(),
 		);
-		expect(threads.every((thread) => thread.officeId === WALK_OFFICE_ID)).toBe(true);
+		expect(threads.every((thread) => thread.officeId === DEMO_OFFICE_ID)).toBe(true);
 		expect(await testDb.organization.findUnique({ where: { id: RIVER_OFFICE_ID } })).toBeNull();
 		expect(await testDb.user.count({ where: { email: RIVER_MANAGER_EMAIL } })).toBe(0);
 	},
@@ -354,8 +354,8 @@ test(
 			["manager@nhip.local", "Walk Manager", "admin"],
 		] as const;
 		await testDb.organization.upsert({
-			where: { id: WALK_OFFICE_ID },
-			create: { id: WALK_OFFICE_ID, name: "Walk Office", slug: "walk", createdAt: new Date() },
+			where: { id: DEMO_OFFICE_ID },
+			create: { id: DEMO_OFFICE_ID, name: "Walk Office", slug: "walk", createdAt: new Date() },
 			update: { name: "Walk Office", slug: "walk" },
 		});
 		const ids: string[] = [];
@@ -373,7 +373,7 @@ test(
 			});
 			ids.push(user.id);
 			await testDb.member.create({
-				data: { organizationId: WALK_OFFICE_ID, userId: user.id, role, createdAt: new Date() },
+				data: { organizationId: DEMO_OFFICE_ID, userId: user.id, role, createdAt: new Date() },
 			});
 		}
 
@@ -393,14 +393,14 @@ test(
 			["linh@nhip.local", "Trần Thị Linh"],
 		]);
 		const managerMember = await testDb.member.findUniqueOrThrow({
-			where: { organizationId_userId: { organizationId: WALK_OFFICE_ID, userId: ids[2] } },
+			where: { organizationId_userId: { organizationId: DEMO_OFFICE_ID, userId: ids[2] } },
 		});
 		expect(managerMember.role).toBe("admin");
-		const office = await testDb.organization.findUniqueOrThrow({ where: { id: WALK_OFFICE_ID } });
-		expect(office.name).toBe(WALK_OFFICE_NAME);
-		expect(office.slug).toBe(WALK_OFFICE_SLUG);
-		expect(WALK_OFFICE_SLUG).toBe("hanoi-nest-seekers");
-		expect(WALK_OFFICE_NAME).toBe("Hanoi Nest Seekers");
+		const office = await testDb.organization.findUniqueOrThrow({ where: { id: DEMO_OFFICE_ID } });
+		expect(office.name).toBe(DEMO_OFFICE_NAME);
+		expect(office.slug).toBe(DEMO_OFFICE_SLUG);
+		expect(DEMO_OFFICE_SLUG).toBe("hanoi-nest-seekers");
+		expect(DEMO_OFFICE_NAME).toBe("Hanoi Nest Seekers");
 		// A second run adds nothing.
 		const before = await rowCounts();
 		await runSeed({ env: { ...localEnv(), E2E: "1" }, reset: false, log: quiet });

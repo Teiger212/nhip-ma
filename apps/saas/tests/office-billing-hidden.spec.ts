@@ -5,7 +5,7 @@ import { expect, test } from "./support/fixtures";
 import { officeSlug, setOfficeLanguage } from "./support/office-language";
 import { joinOffice } from "./support/operators";
 import type { Login } from "./support/seed";
-import { AGENT, MANAGER, WALK_OFFICE_SLUG } from "./support/seed";
+import { AGENT, DEMO_OFFICE_SLUG, MANAGER, officeUrlOf } from "./support/seed";
 import { signInContext } from "./support/session-state";
 
 type Locale = "en" | "vi";
@@ -20,7 +20,8 @@ const NOT_FOUND = {
 const accountBilling = (locale: Locale) => `/${locale}/settings/billing`;
 
 /** The office's Billing page, hidden until ADR 0014's billing is built (#198). */
-const officeBilling = (locale: Locale, slug: string) => `/${locale}/${slug}/settings/billing`;
+const officeBilling = (locale: Locale, slug: string) =>
+	officeUrlOf(slug, "settings/billing", locale);
 
 /** Opens a page as a person would, by its address; answers the status the page came with. */
 async function open(page: Page, url: string): Promise<number> {
@@ -65,7 +66,7 @@ async function expectNotFound(page: Page, locale: Locale, what: string) {
 async function signedIn(browser: Browser, who: Login) {
 	const context = await browser.newContext();
 	await signInContext(context, who);
-	return { page: await context.newPage(), slug: WALK_OFFICE_SLUG, close: () => context.close() };
+	return { page: await context.newPage(), slug: DEMO_OFFICE_SLUG, close: () => context.close() };
 }
 
 /**

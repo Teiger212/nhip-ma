@@ -163,7 +163,7 @@ export const threadUrl = (id: string) =>
 /* ---------------------------------------------------------- calling the app's route handlers */
 
 /** The session the mocked `auth.api.getSession` returns in the route tests: the walk office's manager. */
-export const WALK_SESSION = {
+export const DEMO_SESSION = {
 	session: { id: "walk-session", activeOrganizationId: "walk-office" },
 	user: { id: "walk-user" },
 };
