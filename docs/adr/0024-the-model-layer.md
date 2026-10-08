@@ -119,9 +119,10 @@ greeting. Related: #242, #245, #246, #83.
   "a colleague" (prototype: branch `prototype/thread-layout`,
   `apps/saas/modules/inbox/components/prototype/suggest-reply.prototype.ts`).
   - It is the first reply, and the fallback for every later one.
-  - It introduces the agent (the thread owner's first name and the office) only when the
-    office has no human reply yet.
-  - On an unassigned thread it names the office only. Once the thread is assigned, it is
+  - It introduces the agent (the thread owner's name guests see, #266, and the office) only
+    when the office has no human reply yet.
+  - On an unassigned thread it names the office only, and so it does when the owner hasn't set
+    a name guests see (pending Eyal's nod, #266). Once the thread is assigned, it is
     written again with the owner's name. Only the template names anyone, so this rule is the
     template's alone.
   - It follows the model's no-repeat rule.
