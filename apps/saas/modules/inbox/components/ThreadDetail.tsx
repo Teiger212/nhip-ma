@@ -171,10 +171,15 @@ export function ThreadDetail({
 					<ChevronLeftIcon className="size-4" />
 					{t("back")}
 				</Button>
-				<GuestMark name={name} />
-				<p className="min-w-0 font-semibold tracking-tight font-heading truncate">{name}</p>
-				<ThreadFlags conversation={conversation} />
-				<div className={cn("gap-2 ml-auto flex items-center", !rail && "flex-wrap")}>
+				{/* Who it is, as one group: a long name truncates before the controls wrap. */}
+				<div className="gap-2 min-w-0 basis-40 flex flex-1 flex-wrap items-center">
+					<GuestMark name={name} />
+					<p className="min-w-0 font-semibold tracking-tight font-heading max-w-full truncate">
+						{name}
+					</p>
+					<ThreadFlags conversation={conversation} />
+				</div>
+				<div className={cn("gap-2 ml-auto flex shrink-0 items-center", !rail && "flex-wrap")}>
 					{rail ? null : (
 						<>
 							<CrmStatus conversation={conversation} />

@@ -490,7 +490,7 @@ The foot of the conversation column, always in view: card background tinted 40% 
 
 ### Owner Select
 
-Assign to, on the open thread, and the manager's Showing filter over the list are the kit's `Select` (Base UI), never a native `<select>`: a 36px field-shaped trigger showing the current choice, and a floating list of the office's operators, in the same order as a row's Assign to… menu. `nhip/no-native-select` refuses a JSX `<select>` outside `packages/ui`.
+Assign to, on the open thread, and the manager's Showing filter over the list are the kit's `Select` (Base UI), never a native `<select>`: a field-shaped trigger showing the current choice (36px and 1rem in the details rail; `size="sm"`, 32px and 0.875rem, in the thread header and over the list), and a floating list of the office's operators, in the same order as a row's Assign to… menu. `nhip/no-native-select` refuses a JSX `<select>` outside `packages/ui`.
 
 ### Waiting Now (Home)
 
