@@ -211,8 +211,9 @@ sidebar's disabled "CRM" item (#126, decided by Eyal 2026-10-08).
 - Afterwards: a PR touching auth, tenancy, the send path or webhooks gets a focused red-team
   run before release.
 
-**Done** (AGENTS.md, "What gets a test"): logic has Vitest tests; user flows have Playwright
-specs that run in CI; a Playwright smoke run passes on staging after each deploy; the release
+**Done** (AGENTS.md, "What gets a test"): tests where a bug is expensive (caps, redaction,
+tenancy, data written to the database or a CRM), mostly Vitest; one happy-path Playwright spec
+per demo-visible feature, run in CI; a Playwright smoke run passes on staging after each deploy; the release
 checklist includes a real round trip from a phone.
 
 ## Build order

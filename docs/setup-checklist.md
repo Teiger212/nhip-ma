@@ -52,7 +52,7 @@ paste the password in chat or a file.
       nothing either way). Type `rollback;` in the first terminal. The next green staging build
       shows the build side: `migrate deploy` connects with the option even with nothing pending.
 - [ ] **Restore window:** Neon console → project settings → Instant restore shows 6 hours (the
-      API said 21600s on 2026-10-04). AGENTS.md ("Rolling back after a migration") relies on it.
+      API said 21600s on 2026-10-04). The `cutting-a-release` skill ("Rolling back after a migration") relies on it.
 
 ### Zalo (ADR 0017)
 
