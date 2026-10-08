@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
 import type { DraftInput } from "./adapter";
-import { asData, followUpSystemPrompt, followUpUserPrompt, redactPhones } from "./prompts";
+import { asData, followUpSystemPrompt, followUpUserPrompt, redactContacts } from "./prompts";
 
 /**
  * The draft prompt (ADR 0024, #251): what the model reads, and the six rules it writes by.
@@ -69,19 +69,54 @@ test("no phone number from the thread reaches the prompt", () => {
 			{
 				direction: "in",
 				source: "guest",
-				text: "Or 0912-345-678, or (+84) 91 234 5678.",
+				text: "Or 0912-345-678, or (+84) 91 234 5678, or 0912.345.678, or claire@example.com.",
 				at: "2026-10-08T01:03:00.000Z",
+			},
+			{
+				direction: "out",
+				source: "oa-echo",
+				text: "Lan here, my Zalo is 0987 654 321.",
+				at: "2026-10-08T01:04:00.000Z",
 			},
 		],
 	});
 	expect(prompt).not.toMatch(/912/);
 	expect(prompt).not.toMatch(/345\D?678/);
-	expect(redactPhones("call +84 912 345 678 now")).toBe("call [phone] now");
+	expect(prompt).not.toMatch(/987/);
+	expect(prompt).not.toMatch(/claire@example\.com/);
 });
 
-test("a budget survives the phone redaction", () => {
-	for (const text of ["3.500.000.000 VND", "$2,800 a month", "20 triệu", "2,5 tỷ", "100m2"]) {
-		expect(redactPhones(text), text).toBe(text);
+test("every phone form the log scrubber catches is redacted, and so is an email", () => {
+	for (const [text, redacted] of [
+		["call +84 90 123 4567 now", "call [phone] now"],
+		["0901234567", "[phone]"],
+		["090-123-4567", "[phone]"],
+		["0901.234.567", "[phone]"],
+		["(028) 3826 1234", "[phone]"],
+		["landline 38261234", "landline [phone]"],
+		["zalo 1234567890123456789", "zalo [phone]"],
+		["mail claire.d+home@example.co.uk please", "mail [email] please"],
+	]) {
+		expect(redactContacts(text), text).toBe(redacted);
+	}
+});
+
+test("a budget or a date survives the redaction", () => {
+	for (const text of [
+		"15 triệu",
+		"$2,800",
+		"2500 USD/month",
+		"3.500.000.000 VND",
+		"15.000.000-20.000.000đ",
+		"25000000 VND",
+		"$2,800 a month",
+		"20 triệu",
+		"2,5 tỷ",
+		"100m2",
+		"move in 01.11.2026",
+		"from 2026-11-01",
+	]) {
+		expect(redactContacts(text), text).toBe(text);
 	}
 });
 

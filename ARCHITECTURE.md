@@ -46,7 +46,7 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   one retry, and one log line per call (task, model, officeId, tokens, latency, outcome; never
   text). Without a key no task runs: no translation, template drafts. In E2E, `MODEL_STUB`
   answers the tasks it names with fixed text (`drafts/stub.ts`); production refuses it. Guest
-  text is framed as data in the prompt, with no phone number. The model reads the last 10
+  text is framed as data in the prompt, with no phone number or email. The model reads the last 10
   messages and the auto-reply's open questions, and answers JSON: the reply in the guest's
   language and the same reply in the office language (`inbox_draft.officeReply`, #251).
   `drafts/guardrails.ts` drops a malformed answer, and a draft that states a price, an

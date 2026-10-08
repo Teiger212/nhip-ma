@@ -1,3 +1,5 @@
+import { EMAIL, PHONE } from "@shared/lib/scrub";
+
 import type { GuestLanguage, OperatorLanguage } from "../types";
 import type { DraftInput, TranslateInput } from "./adapter";
 
@@ -25,22 +27,47 @@ export function asData(text: string): string {
 	);
 }
 
-/**
- * A phone number as a thread holds one: nine digits or more, with an optional `+`, joined only
- * by spaces, dashes or parentheses. A dot or a comma ends it, so an amount such as
- * `3.500.000.000` or `$2,800` survives. Narrower than the log scrubber's (`scrub.ts`), which
- * would take a budget for a number.
- */
-const PHONE_IN_PROMPT = /\+?\(?\+?\d(?:[\s()-]{0,3}\d){8,}/gu;
+/** An amount written in thousands groups, never with a leading zero: "15.000.000", "2,800". */
+const THOUSANDS = /^[1-9]\d{0,2}(?:[.,]\d{3})+$/u;
+/** A date: "2026-11-01", "01.11.2026", "1-11-26". */
+const DATE = /^(?:\d{4}[-.]\d{1,2}[-.]\d{1,2}|\d{1,2}[-.]\d{1,2}[-.](?:\d{4}|\d{2}))$/u;
+/** A currency or an amount's unit right after a figure. */
+const UNIT_AFTER = /^\s*(?:đ|₫|vnd|vnđ|đồng|usd|\$|triệu|tr\b|tỷ|tỉ|k\b|million)/iu;
+/** A currency sign right before a figure. */
+const CURRENCY_BEFORE = /[$₫]\s*$/u;
 
-/** The thread's text with its phone numbers taken out: no phone number reaches the model (ADR 0024). */
-export function redactPhones(text: string): string {
-	return text.replace(PHONE_IN_PROMPT, "[phone]");
+/**
+ * Whether what the log scrubber's `PHONE` caught is an amount or a date, which the model needs:
+ * thousands groups (one or a range, "15.000.000-20.000.000"), a figure with its currency
+ * ("25000000 VND", "$ 2500000"), or a date ("01.11.2026"). Past a date, never one that starts
+ * with "+", a bracket or a 0, as Vietnamese and international phone numbers do.
+ */
+function amountOrDate(match: string, before: string, after: string): boolean {
+	if (DATE.test(match)) return true;
+	if (/^[+(0]/u.test(match)) return false;
+	if (match.split(/\s*[-–]\s*/u).every((part) => THOUSANDS.test(part))) return true;
+	return UNIT_AFTER.test(after) || CURRENCY_BEFORE.test(before);
 }
 
-/** Guest-controlled text as the draft prompt carries it: inside its frame, with no phone number. */
+/**
+ * The thread's text with its contact details taken out: no phone number or email reaches the
+ * model (ADR 0024). It catches every phone form the log scrubber does (`scrub.ts`: seven digits
+ * or more, with spaces, dots, dashes or brackets between them, a Zalo id too) and every email,
+ * and keeps a figure only when it reads as an amount or a date (`amountOrDate`).
+ */
+export function redactContacts(text: string): string {
+	return text
+		.replace(EMAIL, "[email]")
+		.replace(PHONE, (match: string, offset: number, whole: string) =>
+			amountOrDate(match, whole.slice(0, offset), whole.slice(offset + match.length))
+				? match
+				: "[phone]",
+		);
+}
+
+/** Thread text as the draft prompt carries it: inside its frame, with no contact details. */
 function guestData(text: string): string {
-	return redactPhones(asData(text));
+	return redactContacts(asData(text));
 }
 
 export function translationSystemPrompt(to: OperatorLanguage): string {

@@ -16,11 +16,11 @@ const LONG_ID = /\b[A-Za-z0-9_-]{32,}\b/g;
 // (threads, messages, #141) starts with any letter. Both are a lowercase letter, then 20+
 // lowercase letters and digits.
 const RECORD_ID = /\b[a-z][a-z0-9]{20,31}\b/g;
-const EMAIL = /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
+export const EMAIL = /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
 // Seven or more digits, allowing spaces, dots, dashes and brackets between them, with an
 // optional leading + or bracket: Vietnamese and international phone numbers (and, on
 // purpose, anything else that long and digit-shaped).
-const PHONE = /[(+]{0,3}\d[\d\s().-]{5,}\d/g;
+export const PHONE = /[(+]{0,3}\d[\d\s().-]{5,}\d/g;
 // Quoted spans: error messages quote the values they choke on (Prisma, Zod, JSON parsers).
 const QUOTED = /(["'`“”])(?:(?!\1).){1,500}\1/g;
 
