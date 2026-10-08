@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { runInBackground } from "../background";
 import type { Runtime } from "../runtime";
-import { alertLink, alertLocale } from "./content";
+import { alertLink } from "./content";
 import { inboxTranslator } from "./index";
 import { normalizePushEndpoint } from "./push";
 import { type AlertTransport, alertTransport } from "./transport";
@@ -55,13 +55,14 @@ export const TEST_ALERT_TAG = "nhip-test";
 export type TestAlertOutcome = "sent" | "no_device";
 
 /**
- * "Send test alert" (ADR 0019): a sounding `test` row for the operator, in their language, and
+ * "Send test alert" (ADR 0019): a sounding `test` row for the operator, in the office language
+ * (ADR 0025), and
  * in a live deployment a push to this sign-in's devices only, in the background. With no
  * device on this sign-in nothing is written.
  */
 export async function sendTestAlert(
 	runtime: Runtime,
-	who: { userId: string; officeId: string; sessionId: string; locale: string | null },
+	who: { userId: string; officeId: string; sessionId: string },
 	{
 		now = () => new Date(),
 		transport = alertTransport(runtime.config),
@@ -69,7 +70,7 @@ export async function sendTestAlert(
 ): Promise<TestAlertOutcome> {
 	const devices = await pushSubscriptionsForSession(who.userId, who.sessionId);
 	if (devices.length === 0) return "no_device";
-	const locale = alertLocale(who.locale);
+	const locale = await runtime.store.officeLanguage(who.officeId);
 	const t = await inboxTranslator(locale);
 	const alert = await runtime.store.recordAlert({
 		officeId: who.officeId,

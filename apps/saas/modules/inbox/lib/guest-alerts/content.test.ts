@@ -1,13 +1,13 @@
 import { expect, test } from "vitest";
 
 import { inboxEn as en, inboxVi as vi } from "../test-translate";
-import { alertLink, alertLocale, guestAlertContent } from "./content";
+import { alertLink, guestAlertContent } from "./content";
 
 /**
  * What an alert says (ADR 0019 "What an alert says", spec #84 "Content"): the guest's name,
  * pipe and language in the operator's language, Vietnamese when they have none set. A guest
  * with no name is "A guest", never their id. No message text. The link carries only the
- * alert's own id, in the operator's locale.
+ * alert's own id, in the office language.
  */
 const minji = { guestName: "Minji", pipe: "zalo" as const, guestLanguage: "ko" as const };
 
@@ -46,14 +46,7 @@ test("before the one-shot has detected the language, the body is the pipe alone"
 	expect(guestAlertContent({ ...minji, guestLanguage: null }, vi).body).toBe("Zalo");
 });
 
-test("the operator's locale, Vietnamese when none is set or it is not one Nhịp speaks", () => {
-	expect(alertLocale("en")).toBe("en");
-	expect(alertLocale("vi")).toBe("vi");
-	expect(alertLocale(null)).toBe("vi");
-	expect(alertLocale("fr")).toBe("vi");
-});
-
-test("the link opens the Inbox in the operator's locale with the alert's id only", () => {
+test("the link opens the Inbox in the office language with the alert's id only", () => {
 	expect(alertLink("en", "c0ffee")).toBe("/en/inbox?alert=c0ffee");
 	expect(alertLink("vi", "c0ffee")).toBe("/vi/inbox?alert=c0ffee");
 });

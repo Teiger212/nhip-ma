@@ -1347,7 +1347,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				select: {
 					role: true,
 					user: {
-						select: { id: true, role: true, locale: true, _count: { select: { members: true } } },
+						select: { id: true, role: true, _count: { select: { members: true } } },
 					},
 				},
 			});
@@ -1358,7 +1358,6 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				.map(({ role, user }) => ({
 					userId: user.id,
 					platformRole: user.role,
-					locale: user.locale,
 					// A manager is the office's kit owner or admin (ADR 0015), as `resolveOffice` reads it.
 					manager: role === "owner" || role === "admin",
 				}));

@@ -418,8 +418,19 @@ A05) are on PRODUCT.md's go-live gate. What Eyal sets by hand for PostHog is in
 
 ## Locale routing
 
-- Operator locales are `en` and `vi` only (`packages/i18n/config.ts`,
+- Interface locales are `en` and `vi` only (`packages/i18n/config.ts`,
   `modules/shared/lib/walk-locales.ts`). Guest languages (EN, VI, JA, KO, RU) are separate.
+- **An office member's locale is the office language** (ADR 0025), set by the manager on the
+  office's General tab (`inbox_office_setting.language`, English by default). The proxy reads no
+  database, so it only hands the request's path and query on (`x-nhip-path`,
+  `modules/i18n/lib/request-path.ts`); the authenticated layout reads the member's office
+  language (`officeLanguageFor`) and sends a member on the other prefix to the same page in it
+  (`followOfficeLanguage`, `modules/i18n/lib/office-locale.ts`). An open page follows a change
+  read while it is open (`OfficeLocaleSync`: the open thread's poll returns the office language).
+  Alerts, their links and the test alert are written in it too; the bell and the operator note
+  follow the interface. The platform admin keeps their own language and the EN/VI toggle;
+  members have neither the toggle nor the account settings' language select. Sign-in pages keep
+  the cookie and their own switch: no office is known there.
 - next-intl with `localePrefix: "always"` (`modules/i18n/routing.ts`). Pages live under
   `app/[locale]/…`; `/de/inbox` is not routable.
 - `apps/saas/proxy.ts` runs next-intl's middleware and skips `api`, `webhooks`, `dev`,
@@ -427,7 +438,8 @@ A05) are on PRODUCT.md's go-live gate. What Eyal sets by hand for PostHog is in
 - `/` is a static `next.config.ts` redirect to `/en/inbox` (before the proxy, so English by
   design); `/inbox` goes to `/{locale}/inbox`; `/{locale}` goes to `/{locale}/inbox`.
 - The `NEXT_LOCALE` cookie remembers the choice for unprefixed paths; cookie-only locale
-  without a path prefix was tried and rejected. The EN/VI toggle switches the path prefix.
+  without a path prefix was tried and rejected. The platform admin's EN/VI toggle and the
+  sign-in pages' switch change the path prefix.
 
 ## Testing
 

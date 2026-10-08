@@ -1,4 +1,5 @@
 import { getSession } from "@auth/lib/server";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { ChangeEmailForm } from "@settings/components/ChangeEmailForm";
 import { ChangeNameForm } from "@settings/components/ChangeNameForm";
 import { DeleteAccountForm } from "@settings/components/DeleteAccountForm";
@@ -32,7 +33,8 @@ export default async function AccountSettingsPage() {
 
 			<SettingsList>
 				<UserAvatarForm />
-				<UserLanguageForm />
+				{/* An office member's language is the office's (ADR 0025); the platform admin keeps theirs. */}
+				{isPlatformAdmin(session.user.role) ? <UserLanguageForm /> : null}
 				<ChangeNameForm />
 				<ChangeEmailForm />
 				<DeleteAccountForm />

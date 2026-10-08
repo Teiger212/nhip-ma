@@ -686,12 +686,16 @@ warning tone, DESIGN.md "In the inbox"). The VI copy is pending a native read (#
 2. **A guest who gave everything shows nothing missing.** A guest writes "I want to rent a 2
    bedroom in Tay Ho, budget $1500/month, moving in next month." The details show no "Missing"
    row, and no Paperwork, Nationality or "In Vietnam now" row, in the rail and in the strip.
-3. **A Vietnamese operator reads the missing row in Vietnamese.** The same guest as in 1, viewed
-   in `/vi/`: the row "Còn thiếu" reads "ngân sách, ngày vào". The names are the details' own field
-   labels, lower-cased; #244 proposed "thời gian dọn vào" (the auto-reply's VI wording) for
-   move-in, which differs from the field label "Ngày vào": left to #78.
+3. **A Vietnamese operator reads the missing row in Vietnamese.** The same guest as in 1, in a
+   Vietnamese office, viewed in `/vi/`: the row "Còn thiếu" reads "ngân sách, ngày vào". The names
+   are the details' own field labels, lower-cased; #244 proposed "thời gian dọn vào" (the
+   auto-reply's VI wording) for move-in, which differs from the field label "Ngày vào": left to
+   #78.
 
-Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1 to 3).
+Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1 to 3; each test has an office of
+its own; 1 and 2 leave it at English, and in 3 the manager sets it to Vietnamese (`PUT
+/api/office/language`) before the guest writes: a member reads Nhịp in the office language,
+Office language 6).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
@@ -1132,8 +1136,8 @@ VI copy is pending a native read (#78), and JA, KO and RU have no native read pl
    introduces the office, and doesn't ask for the budget again: no "What budget do you have in
    mind?", and no "budget" at all.
 6. **The label in Vietnamese.** In a Vietnamese inbox the label reads "Gợi ý trả lời · mẫu"
-   (VI form of "Suggested reply · template", wording pending #78). Once the office language
-   (#256) lands, that is an office whose language is VI; before it, `/vi/inbox`.
+   (VI form of "Suggested reply · template", wording pending #78): an office whose language is
+   VI (#256; a member reads Nhịp in the office language, Office language 6).
 
 Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1–6; each test has an
 office of its own named "Saigon Prime Test" with one invited manager and one invited agent, who
@@ -1159,8 +1163,9 @@ label is not judged there, so the check still holds once #252's AI draft takes t
 5: the auto-reply is first checked to ask "What budget do you have in mind?"; the guest writes
 "Thanks! 2 of us, we'd like a 2-bedroom", and the manager, opening the thread by link once it is
 in, finds the box starting "Hi, this is Saigon Prime Test." with no "budget" in it. 6: the
-manager opens the thread at `/vi/inbox?thread=…`, and the label is judged once the box holds a
-suggestion).
+manager sets the test's own office to Vietnamese (`PUT /api/office/language`) before the guest
+writes, opens the thread at `/vi/inbox?thread=…`, and the label is judged once the box holds a
+suggestion; 1 to 5 leave their offices at English).
 
 ## Guest language (ADR 0021 R4 as amended by #245, ADR 0025)
 

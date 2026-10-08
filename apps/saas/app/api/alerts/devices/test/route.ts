@@ -18,7 +18,6 @@ export async function POST(request: Request): Promise<Response> {
 		userId: gate.viewer.userId,
 		officeId: gate.viewer.officeId,
 		sessionId: gate.session.id,
-		locale: gate.session.locale,
 	});
 	if (outcome === "no_device") {
 		return NextResponse.json({ error: "no_device" }, { status: 409 });

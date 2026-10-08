@@ -192,8 +192,9 @@ test("one operator's failed alert never costs the others theirs", async () => {
 	await store.close();
 });
 
-test("each operator's alert is in their language, and the payload names no thread and no guest", async () => {
+test("every operator's alert is in the office language, whatever their own, and the payload names no thread and no guest (ADR 0025)", async () => {
 	const store = await testInboxStore();
+	await store.setOfficeLanguage(OFFICE, "vi");
 	// Managers, so an Unassigned guest alerts both (ADR 0022).
 	await member(OFFICE, "agent-1", "admin");
 	await member(OFFICE, "agent-2", "owner");
@@ -216,7 +217,8 @@ test("each operator's alert is in their language, and the payload names no threa
 	await alertGuestMessage(runtime, korean, { transport });
 
 	const byUser = Object.fromEntries(sent.map(({ userId, payload }) => [userId, payload]));
-	expect(byUser["agent-1"]).toMatchObject({ title: "Minji is waiting", body: "Zalo · Korean" });
+	// agent-1 set their own language to English; the office's is Vietnamese.
+	expect(byUser["agent-1"]).toMatchObject({ title: "Minji đang chờ", body: "Zalo · tiếng Hàn" });
 	expect(byUser["agent-2"]).toMatchObject({ title: "Minji đang chờ", body: "Zalo · tiếng Hàn" });
 	const rows = await testDb.inboxAlert.findMany({ where: { conversationId: conversation.id } });
 	for (const { userId, payload } of sent) {
@@ -237,7 +239,7 @@ test("each operator's alert is in their language, and the payload names no threa
 		expect(JSON.stringify(payload)).not.toContain(guestId);
 		expect(JSON.stringify(payload)).not.toContain("안녕하세요");
 	}
-	expect(byUser["agent-1"].url).toMatch(/^\/en\/inbox\?alert=/);
+	expect(byUser["agent-1"].url).toMatch(/^\/vi\/inbox\?alert=/);
 	expect(byUser["agent-2"].url).toMatch(/^\/vi\/inbox\?alert=/);
 	await store.close();
 });

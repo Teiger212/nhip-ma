@@ -373,8 +373,6 @@ export type AlertOperator = {
 	platformRole: string | null;
 	/** The office's kit `owner` or `admin` (ADR 0015): alerted for Unassigned guests (ADR 0022). */
 	manager: boolean;
-	/** `user.locale`; null means Vietnamese. */
-	locale: string | null;
 };
 
 export type NewAlert = {

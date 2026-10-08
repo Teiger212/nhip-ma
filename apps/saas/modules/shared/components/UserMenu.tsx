@@ -215,13 +215,17 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 					/>
 				) : null}
 
-				<div className="gap-4 px-2 py-1.5 text-sm flex items-center justify-between">
-					<span className="flex items-center">
-						<LanguagesIcon className="mr-2 size-4" />
-						<span className="whitespace-nowrap">{t("app.userMenu.language")}</span>
-					</span>
-					<WalkLocaleToggle />
-				</div>
+				{/* An office member reads Nhịp in the office language, set by the manager (ADR 0025);
+				    only the platform admin chooses their own. */}
+				{isPlatformAdmin(user.role) ? (
+					<div className="gap-4 px-2 py-1.5 text-sm flex items-center justify-between">
+						<span className="flex items-center">
+							<LanguagesIcon className="mr-2 size-4" />
+							<span className="whitespace-nowrap">{t("app.userMenu.language")}</span>
+						</span>
+						<WalkLocaleToggle />
+					</div>
+				) : null}
 
 				{KIT_SCREENS.docs && config.docsUrl && (
 					<DropdownMenuItem

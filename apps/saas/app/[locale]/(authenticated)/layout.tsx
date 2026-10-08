@@ -1,6 +1,8 @@
 import { SessionProvider } from "@auth/components/SessionProvider";
 import { sessionQueryKey } from "@auth/lib/api";
 import { getOrganizationList, getSession } from "@auth/lib/server";
+import { OfficeLocaleSync } from "@i18n/components/OfficeLocaleSync";
+import { followOfficeLanguage, officeLanguageFor } from "@i18n/lib/office-locale";
 import { localeRedirect } from "@i18n/routing";
 import { ActiveOrganizationProvider } from "@organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@organizations/lib/api";
@@ -29,6 +31,11 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 		localeRedirect({ href: "/login", locale });
 		return null;
 	}
+
+	// An office member reads Nhịp in the office language (ADR 0025): on the other language's path,
+	// the same page in it. The platform admin keeps their own.
+	const officeLanguage = await officeLanguageFor(session.user);
+	if (officeLanguage) await followOfficeLanguage(officeLanguage, locale);
 
 	let membershipRole: string | null = null;
 
@@ -74,7 +81,10 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 			<SessionProvider>
 				<PermixProvider state={permix.dehydrate()}>
 					<ActiveOrganizationProvider>
-						<ConfirmationAlertProvider>{children}</ConfirmationAlertProvider>
+						<ConfirmationAlertProvider>
+							{officeLanguage ? <OfficeLocaleSync /> : null}
+							{children}
+						</ConfirmationAlertProvider>
 					</ActiveOrganizationProvider>
 				</PermixProvider>
 			</SessionProvider>

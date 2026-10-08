@@ -233,7 +233,6 @@ test("a test alert with no device on this sign-in writes nothing", async () => {
 		userId: "agent-1",
 		officeId: "office-a",
 		sessionId: "session-here",
-		locale: "en",
 	});
 
 	expect(outcome).toBe("no_device");
@@ -247,10 +246,13 @@ test("a test alert writes one sounding `test` row and pushes to this sign-in's d
 	await register(here);
 	await register(registration("other-browser", { sessionId: "session-other" }));
 	const runtime = { store, config: mockInboxConfig(), drafts: noDraftAdapter };
+	// In the office language (ADR 0025), not the operator's own.
+	await store.setOfficeLanguage("office-a", "vi");
+	await testDb.user.update({ where: { id: "agent-1" }, data: { locale: "en" } });
 
 	const outcome = await sendTestAlert(
 		runtime,
-		{ userId: "agent-1", officeId: "office-a", sessionId: "session-here", locale: "vi" },
+		{ userId: "agent-1", officeId: "office-a", sessionId: "session-here" },
 		{ transport: webPushTransport(VAPID) },
 	);
 

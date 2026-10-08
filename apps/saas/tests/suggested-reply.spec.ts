@@ -7,6 +7,7 @@ import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { assignerAs } from "./support/assign";
 import type { Locale } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
+import { setOfficeLanguage } from "./support/office-language";
 import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
@@ -396,10 +397,13 @@ test.describe("Suggested reply template 5 — no repeated question", () => {
 
 // scenario: docs/e2e-scenarios.md Suggested reply template 6
 test.describe("Suggested reply template 6 — the label in Vietnamese", () => {
-	test(`in /vi/inbox the manager's greeted thread labels the reply box "${TEMPLATE_LABEL.vi}"`, async ({
+	test(`in a Vietnamese office, in /vi/inbox, the manager's greeted thread labels the reply box "${TEMPLATE_LABEL.vi}"`, async ({
 		office,
 	}) => {
 		const { manager } = office;
+		// A member reads Nhịp in the office language (ADR 0025): the manager sets their office, of
+		// this test's own, to Vietnamese before the guest writes.
+		await setOfficeLanguage(manager.page.request, "vi");
 		const { threadId } = await greetedGuest(office);
 
 		const { page } = manager;
