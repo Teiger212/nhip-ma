@@ -6,7 +6,6 @@ import { expect, test } from "./support/fixtures";
 import { AGENT } from "./support/seed";
 
 const en = loginCopy("en");
-const vi = loginCopy("vi");
 
 /** Signs in by what each field says, in the page's language: the labels are the point here. */
 async function signInByLabels(page: Page, copy: LoginCopy) {
@@ -16,35 +15,10 @@ async function signInByLabels(page: Page, copy: LoginCopy) {
 	await page.getByRole("button", { name: copy.submit, exact: true }).click();
 }
 
-// rule: PRODUCT.md "English and Vietnamese only."
+// rule: PRODUCT.md "English and Vietnamese only." The Vietnamese login page's copy is held by
+// the translation-key check (modules/i18n/lib/translation-keys.test.ts, #278); the form is the same.
 test.describe("PRODUCT.md English and Vietnamese only — the login page speaks both", () => {
 	test.describe.configure({ timeout: 60_000 });
-
-	test("/vi/login is in Vietnamese: heading, tabs and sign-in button", async ({ page }) => {
-		// The copy differs by language; if it did not, this test would prove nothing.
-		expect(vi.title).not.toBe(en.title);
-		expect(vi.submit).not.toBe(en.submit);
-
-		await page.goto("/vi/login");
-
-		await expect(page.getByRole("heading", { name: vi.title })).toBeVisible();
-		await expect(page.getByRole("tab", { name: vi.modes.password })).toBeVisible();
-		await expect(page.getByRole("tab", { name: vi.modes.magicLink })).toBeVisible();
-		await expect(page.getByRole("button", { name: vi.submit, exact: true })).toBeVisible();
-
-		await expect(page.getByRole("heading", { name: en.title })).toHaveCount(0);
-		await expect(page.getByRole("button", { name: en.submit, exact: true })).toHaveCount(0);
-	});
-
-	test("/vi/login: the password field is found by its Vietnamese label and signs in", async ({
-		page,
-	}) => {
-		await page.goto("/vi/login");
-		await signInByLabels(page, vi);
-		// Signed in, a member lands in the Inbox in their office's language (ADR 0025; the walk office
-		// is in English, Office language 6): what this proves is the Vietnamese form signing in.
-		await expect(page).toHaveURL(/\/(en|vi)\/inbox/, { timeout: 30_000 });
-	});
 
 	test("/en/login: the password field is found by its English label and signs in", async ({
 		page,

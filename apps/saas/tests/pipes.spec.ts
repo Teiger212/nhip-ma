@@ -146,9 +146,10 @@ function threadOf(page: Page, guestId: string) {
 
 /** The platform admin's Connections card for an office. */
 async function openConnections(admin: Admin, officeId: string) {
-	await admin.page.goto(`/en/admin/organizations/${officeId}`);
-	await expect(admin.page.getByTestId("office-connections")).toBeVisible();
-	const row = (pipe: "zalo" | "whatsapp") => admin.page.getByTestId(`connection-${pipe}`);
+	const page = await admin.openPage();
+	await page.goto(`/en/admin/organizations/${officeId}`);
+	await expect(page.getByTestId("office-connections")).toBeVisible();
+	const row = (pipe: "zalo" | "whatsapp") => page.getByTestId(`connection-${pipe}`);
 	return {
 		zalo: row("zalo"),
 		whatsapp: row("whatsapp"),
@@ -157,7 +158,7 @@ async function openConnections(admin: Admin, officeId: string) {
 		oa: (oaId: string) =>
 			row("zalo")
 				.getByTestId("connection-zalo-oa")
-				.and(admin.page.locator(`[data-oa-id="${oaId}"]`)),
+				.and(page.locator(`[data-oa-id="${oaId}"]`)),
 	};
 }
 
@@ -176,7 +177,7 @@ test.describe("Pipes 1 — the platform admin starts connecting a Zalo OA", () =
 		await expect(connections.status("whatsapp")).toHaveText(copy.status.none);
 
 		// Zalo's consent screen is Zalo's; the browser only has to get there.
-		const { page } = admin;
+		const page = await admin.openPage();
 		await page.route("https://oauth.zaloapp.com/**", (route) =>
 			route.fulfill({
 				status: 200,
@@ -205,29 +206,32 @@ test.describe("Pipes 1 — the platform admin starts connecting a Zalo OA", () =
 test.describe("Pipes 2 — only the platform admin connects", () => {
 	const connectAddress = `/api/pipes/zalo/connect?officeId=${encodeURIComponent(DEMO_OFFICE_ID)}`;
 
-	test("the agent sees no Connections for their own office", async ({ page, context }) => {
-		await signInContext(context, AGENT);
-		await page.goto(`/en/admin/organizations/${DEMO_OFFICE_ID}`);
-		// Judge on a rendered page, not an empty one.
-		await expect(page.getByRole("main")).toBeVisible();
-		await expect(page.getByTestId("office-connections")).toHaveCount(0);
-		await expect(page.getByTestId("connect-zalo")).toHaveCount(0);
-	});
-
-	test("asking for the connect address is refused: 403 as the agent, 401 signed out", async ({
+	test("the agent sees no Connections for their own office, and asking for the connect address is refused: 403 as the agent, 401 signed out", async ({
+		page,
 		context,
 		request,
 	}) => {
 		await signInContext(context, AGENT);
-		const asAgent = await context.request.get(connectAddress, {
-			maxRedirects: 0,
-		});
-		expect(asAgent.status(), "the agent is refused").toBe(403);
 
-		const signedOut = await request.get(connectAddress, {
-			maxRedirects: 0,
+		await test.step("the agent sees no Connections for their own office", async () => {
+			await page.goto(`/en/admin/organizations/${DEMO_OFFICE_ID}`);
+			// Judge on a rendered page, not an empty one.
+			await expect(page.getByRole("main")).toBeVisible();
+			await expect(page.getByTestId("office-connections")).toHaveCount(0);
+			await expect(page.getByTestId("connect-zalo")).toHaveCount(0);
 		});
-		expect(signedOut.status(), "nobody signed in is refused").toBe(401);
+
+		await test.step("asking for the connect address is refused: 403 as the agent, 401 signed out", async () => {
+			const asAgent = await context.request.get(connectAddress, {
+				maxRedirects: 0,
+			});
+			expect(asAgent.status(), "the agent is refused").toBe(403);
+
+			const signedOut = await request.get(connectAddress, {
+				maxRedirects: 0,
+			});
+			expect(signedOut.status(), "nobody signed in is refused").toBe(401);
+		});
 	});
 });
 
@@ -254,23 +258,31 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 		await signInContext(context, AGENT);
 		const agent = withOrigin(page.request);
 
-		await connectZaloOa(DEMO_OFFICE_ID, brokenOa);
-		await connectZaloOa(DEMO_OFFICE_ID, workingOa);
-		await connectWhatsAppNumber(DEMO_OFFICE_ID);
+		// Setup, each trio at once: distinct OAs, then distinct guests.
+		await Promise.all([
+			connectZaloOa(DEMO_OFFICE_ID, brokenOa),
+			connectZaloOa(DEMO_OFFICE_ID, workingOa),
+			connectWhatsAppNumber(DEMO_OFFICE_ID),
+		]);
 		// The guests' threads exist while everything is connected; then one OA breaks.
-		await guestWritesOnZalo(request, brokenOa, guestId, first);
-		await guestWritesOnZalo(request, workingOa, otherGuestId, `Hello from ${otherGuestId}`);
-		await guestWritesOnWhatsApp(request, whatsappGuest, `Hello from ${whatsappGuest.id}`);
+		await Promise.all([
+			guestWritesOnZalo(request, brokenOa, guestId, first),
+			guestWritesOnZalo(request, workingOa, otherGuestId, `Hello from ${otherGuestId}`),
+			guestWritesOnWhatsApp(request, whatsappGuest, `Hello from ${whatsappGuest.id}`),
+		]);
 		// The walk office's manager gives the three new guests to the agent (ADR 0022).
 		const manager = await walkManager();
 		try {
 			const agentId = await userIdOf(agent);
-			for (const guest of [guestId, otherGuestId, whatsappGuest.id]) {
-				await manager.assignGuestTo(guest, agentId);
-			}
+			await Promise.all(
+				[guestId, otherGuestId, whatsappGuest.id].map((guest) =>
+					manager.assignGuestTo(guest, agentId),
+				),
+			);
 		} finally {
 			await manager.dispose();
 		}
+		// Only after every write above.
 		await connectZaloOa(DEMO_OFFICE_ID, brokenOa, "disconnected");
 
 		await page.goto("/en/inbox");
@@ -330,7 +342,10 @@ test.describe("Pipes 3 — a disconnected pipe blocks its replies, and nothing e
 			// The thread is answered: it is under Sent, with the reply in it.
 			await queue("Sent").click();
 			await threadOf(page, name).click();
-			await expect(page.getByRole("article").getByText(reply)).toBeVisible();
+			// A sent message, not the reply box, which may still hold the text as it clears.
+			await expect(
+				page.getByRole("article").getByTestId("message").filter({ hasText: reply }),
+			).toBeVisible();
 		}
 
 		// The platform admin sees which OA needs reconnecting, and that the other one is fine.
@@ -374,7 +389,7 @@ test.describe("Pipes 4 — disconnecting", () => {
 			const oa = connections.oa(oaId);
 			await expect(oa.getByTestId("connection-status")).toHaveText(copy.status.connected);
 			await oa.getByTestId("disconnect-zalo").click();
-			const confirm = admin.page.getByRole("alertdialog", {
+			const confirm = (await admin.openPage()).getByRole("alertdialog", {
 				name: copy.disconnectTitle,
 			});
 			await expect(confirm, "the confirmation names the OA").toContainText(oaId);

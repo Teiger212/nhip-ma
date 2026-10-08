@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 
 import { request } from "@playwright/test";
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
 
 import { homeCopy } from "./support/copy";
-import { expect, test } from "./support/fixtures";
+import { expect, test as base } from "./support/fixtures";
 import { LoginPage } from "./support/login-page";
 import { joinOffice } from "./support/operators";
 import { AGENT, officeUrl } from "./support/seed";
@@ -37,8 +37,9 @@ function isPrefetch(headers: Record<string, string>): boolean {
  * Home in the nav. Every navigation request the client router made for Home is returned, with
  * only its `RSC` and `Next-*` headers (the rest are the browser's, not the router's).
  */
-async function captureMoveToHome(context: BrowserContext, page: Page): Promise<Navigation[]> {
+async function captureMoveToHome(context: BrowserContext): Promise<Navigation[]> {
 	await signInContext(context, AGENT);
+	const page = await context.newPage();
 	const moves: Navigation[] = [];
 	page.on("request", (req) => {
 		const headers = req.headers();
@@ -63,6 +64,35 @@ async function captureMoveToHome(context: BrowserContext, page: Page): Promise<N
 	).toBeGreaterThan(0);
 	return moves;
 }
+
+/**
+ * `movesToHome`: the agent's move to Home, captured once per worker (#278), in a browser context
+ * of its own, and only by a worker whose tests replay it. What is captured is the build's URL and
+ * router headers, not the session: every replay carries only its own cookie.
+ */
+const test = base.extend<object, { movesToHome: Navigation[] }>({
+	movesToHome: [
+		async ({ browser }, use, workerInfo) => {
+			// No test is running at worker scope, so the project's own address and a client IP of
+			// the worker's own (Better Auth's per-IP rate limit), not the per-test ones.
+			const { baseURL, ignoreHTTPSErrors } = workerInfo.project.use;
+			const n = workerInfo.workerIndex;
+			const context = await browser.newContext({
+				baseURL,
+				ignoreHTTPSErrors,
+				extraHTTPHeaders: { "x-forwarded-for": `10.253.${(n >> 8) & 255}.${n & 255}` },
+			});
+			let moves: Navigation[];
+			try {
+				moves = await captureMoveToHome(context);
+			} finally {
+				await context.close();
+			}
+			await use(moves);
+		},
+		{ scope: "worker" },
+	],
+});
 
 /**
  * Replays a captured navigation from a request context of its own, which holds no cookie: the
@@ -194,21 +224,17 @@ test.describe("Auth 8 — a signed-in page shows nothing to someone signed out, 
 	});
 
 	test("the app's own move to Home, replayed with no session cookie, is sent to login with none of Home", async ({
-		context,
-		page,
+		movesToHome: moves,
 	}) => {
-		const moves = await captureMoveToHome(context, page);
 		await expectSentToLogin(moves, undefined, "no session cookie");
 	});
 
 	test("the app's own move to Home, replayed with a session cookie that no longer opens a session (made up, or signed out), is sent to login with none of Home", async ({
 		admin,
 		browser,
-		context,
-		page,
+		movesToHome: moves,
 	}) => {
 		test.setTimeout(120_000);
-		const moves = await captureMoveToHome(context, page);
 		const name = sessionCookieName();
 
 		// Made up: the session cookie's name, a value no session ever had.
@@ -248,10 +274,8 @@ test.describe("Auth 8 — a signed-in page shows nothing to someone signed out, 
 	});
 
 	test("signed in, the same replayed move to Home does render Home: its header and its funnel", async ({
-		context,
-		page,
+		movesToHome: moves,
 	}) => {
-		const moves = await captureMoveToHome(context, page);
 		await expectHomeRendered(moves, agentCookie(), "the signed-in agent");
 
 		// The same move aimed at an address that sends a signed-in agent on, the office's own

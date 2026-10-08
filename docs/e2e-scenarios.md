@@ -29,17 +29,21 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    Spec: `apps/saas/tests/crm.spec.ts` (CRM 1; offices of the test's own with an invited agent
    and an invited manager (the kit's `admin`), who assigns each guest the agent opens to them;
    a nameless Zalo guest's name is their Zalo id, as the Inbox lists them; "no second lead" and
-   "no lead" are judged once a later guest's lead, on the mock CRM, has arrived).
+   "no lead" are judged once a later guest's lead, on the mock CRM, has arrived; the mock CRM
+   test also holds CRM 10's plain "In CRM", as a step, #278).
 2. **The admin sets an office's CRM** (#62). As the platform admin, the office's Connections
    card: choose Mock, and a new guest becomes a lead; choose None, and the thread's CRM status
    goes. A non-admin is refused.
-   Spec: `apps/saas/tests/crm.spec.ts` (CRM 2; offices of the test's own, put on the mock CRM
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 2; an office of the test's own, put on the mock CRM
    through the admin's setting, never `connectMockCrm`, whose invited manager assigns the guest to
    the agent; the choice is judged saved on a reloaded
    Connections card; "becomes a lead" is the agent's "In CRM" and one lead in the mock
-   CRM; "refused" is the office's own agent and manager seeing no CRM setting and getting 403 from
-   `GET`/`PUT /api/crm/connection`, 401 signed out, the office still on None afterwards, and the
-   admin's same `PUT` taken).
+   CRM; "choose None" is a step of the Mock test, on the same office and thread (#278): None
+   saved on a reloaded card, and the agent's thread, opened afresh, with no `crm-status`.
+   "Refused" is a step of CRM 8's refusal test (#278): the office's own agent and manager seeing
+   no Connections and no CRM setting and getting 403 from `GET`/`PUT /api/crm/connection`, 401
+   signed out, the office still on None afterwards on the API and the admin's card, and the
+   admin's same Mock `PUT` taken; the office then goes on to HubSpot for CRM 8's half).
 3. **Won or lost leaves the queue, and comes back** (#63). The lead is marked lost in the mock
    CRM, which tells Nhịp: the thread is under Sent with a neutral "Lost" where the turn was, not
    in Your turn, and the nav count drops. The guest writes again: back in Your turn. A won lead
@@ -48,8 +52,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    and a second waiting guest, both assigned to the agent, so the counts are exact; "neutral" is the tone of the row's pipe
    badge; the CRM telling Nhịp again that the lead is lost, after the guest wrote, keeps them in
    Your turn (the outcome is timed from when Nhịp first saw it, ADR 0003), judged once another
-   lead marked won after it has left Your turn; a notice signed with the wrong secret, or not
-   signed, answers 401).
+   lead marked won after it has left Your turn; "a won lead shows Won" is a step of the lost
+   test (#278) on that other lead: under Sent with a neutral "Won" where the turn was, in the
+   list and the thread header, the nav count having dropped; a notice signed with the wrong
+   secret, or not signed, answers 401).
 4. **A failed CRM write heals** (#64). With the mock CRM failing, a new guest's message still
    arrives and is in Your turn at once; the manager sees "Not in CRM yet". When the CRM
    recovers, the lead appears and the thread says "In CRM".
@@ -64,13 +70,18 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    the CRM holds exactly one lead for the guest, with the guest's name. An office with no CRM shows
    no CRM status on a new guest's thread, neither "Not in CRM yet" nor "In CRM", to the agent
    or the manager.
-   Spec: `apps/saas/tests/crm.spec.ts` (CRM 4a; offices of the test's own, as in CRM 1; the CRM
+   Spec: `apps/saas/tests/crm.spec.ts` (CRM 4a; one test, "once the CRM works again…", an office
+   of the test's own, as in CRM 1, whose first step is the CRM-down half (#278); the CRM
    is down from before the guest's first message (`takeMockCrmDown`) and back with
    `bringMockCrmBack`; the wait is made over with `passCrmRetryWait`, which retries nothing by
-   itself; "Not in CRM yet" is seen before the CRM comes back, so the heal is the opening's;
+   itself; "Not in CRM yet" is seen by the agent and the manager before the CRM comes back, and
+   the manager has left the thread before it does, so the heal is the agent's opening;
    "neutral" is the tone of the thread header's pipe badge; "no lead" is judged once the header
-   says "Not in CRM yet", "exactly one lead" once a later guest's lead has arrived; "no CRM
-   status" once the guest's second message shows in the open thread. Not judged: that Nhịp
+   says "Not in CRM yet", "exactly one lead" once a later guest's lead has arrived. "An office
+   with no CRM shows no CRM status": covered by CRM 1's spec (the agent's thread, "with no
+   CRM") and by Vitest `apps/saas/modules/inbox/lib/crm/missing-lead.db.test.ts` › a thread
+   already in the CRM, or in an office with no CRM, is not retried; no E2E test (lean testing,
+   #278) for the manager's view of it. Not judged: that Nhịp
    waits before trying again (no sign settles that a retry did not happen), so a build that
    retries on every poll passes).
 
@@ -91,9 +102,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    Home is read once both of the person's threads say Won and the second guest's says Lost. The Closings and Lost cells are
    `data-test="home-closings"` / `"home-lost"`: the cell's only digit-only text is its figure (1
    and 1, so a closing counted per thread reads 2), with a line beginning "As of ", and no "No
-   CRM". "CRM failing" is `takeMockCrmDown` after the won outcome was heard (the thread says
-   Won), then Home: it answers under 400 with Closings 1, the "As of" line and no error words in
-   either cell; the CRM is brought back afterwards. "No CRM" is each cell saying "No CRM" and the
+   CRM". "Loads with the CRM failing": no E2E test (lean testing, #278); Closings and Lost are
+   counted from the outcomes Nhịp keeps, never asked of the CRM on view, as Vitest
+   `apps/saas/modules/inbox/lib/crm/home-outcomes.db.test.ts` › Closings and Lost count distinct
+   won and lost leads of the cohort, as of the last word, holds. "No CRM" is each cell saying "No CRM" and the
    hint line, with no figure and no "As of"; "no call to connect" is no text, link or button
    matching "Connect your CRM" anywhere on Home. Not judged: that Home loads "at once" (the mock
    CRM fails fast, so a Home that asks it on view takes no longer), that the "As of" time is the
@@ -112,11 +124,16 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    the HubSpot adapter is held to its contract by Vitest on recorded HubSpot HTTP (spec #59
    stories 13 to 20), and the token's encryption at rest is ADR 0017's.
    Spec: `apps/saas/tests/crm.spec.ts` (CRM 8; offices of the test's own on no CRM, fake tokens
-   only; choosing HubSpot saves nothing until the token is saved, judged through the API; "never
-   the token" is the literal token absent from the reloaded page's HTML, from `GET`'s raw answer
-   and from the `PUT`'s; the token field is a password field and empty after a reload; "not
-   saved" with no token is the card asking for it and the office still on None, and `PUT` with
-   no token answering 400; "refused" is as in CRM 2, before and after the office has a token).
+   only; the card's "not saved with no token" and "saved with a token" are two steps of one test
+   on one office (#278); choosing HubSpot saves nothing until the token is saved, judged through
+   the API; "never the token" is the literal token absent from the reloaded page's HTML, from
+   `GET`'s raw answer and from the `PUT`'s; the token field is a password field and empty after a
+   reload; "not saved" with no token is the card asking for it and the office still on None, and
+   `PUT` with no token answering 400; "replaces it, still unseen" is the API test's (a second
+   `PUT`, neither token in `GET`'s answer) with Vitest
+   `apps/saas/modules/inbox/lib/crm/sync.db.test.ts` › a token is replaced only on the CRM kind it
+   was sealed for; no E2E test (lean testing, #278) for replacing the token from the card itself;
+   "refused" is CRM 2's refusal, as a step, then again after the office has a token).
 9. **Only CRMs Nhịp can connect are choosable** (#123). As the platform admin, the CRM
    selector lists the CRMs on the roadmap (the built-in CRM, Bitrix24, Getfly CRM, Zoho CRM)
    as disabled "coming soon" options that can't be saved. In production, the mock CRM isn't
@@ -129,9 +146,9 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
     external-link icon. Until Nhịp knows the account, "In CRM" is plain text. The mock CRM has no
     web app: on an office on the mock CRM, "In CRM" is plain text, no link and nothing to click
     through, and "Not in CRM yet" is plain text on every CRM.
-    Spec: `apps/saas/tests/crm.spec.ts` (CRM 10; the mock half: offices of the test's own on the
-    mock CRM, "In CRM" reached as in CRM 1 and "Not in CRM yet" as in CRM 4a (the CRM down when
-    the guest first writes); "no link" is no link role and no `a` element or `href` in or around
+    Spec: `apps/saas/tests/crm.spec.ts` (CRM 10; the mock half, as steps (#278): plain "In CRM"
+    in CRM 1's mock CRM test, and plain "Not in CRM yet" in CRM 4a's test, the CRM down when
+    the guest first writes; "no link" is no link role and no `a` element or `href` in or around
     the `crm-status` badge, which still reads exactly "In CRM" or "Not in CRM yet". The HubSpot
     half needs a deal Nhịp linked, which only real HubSpot makes, and no test writes Nhịp's own
     link to a lead, so Vitest holds it: the address built from the recorded account details
@@ -181,7 +198,9 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    answers with); a redirect anywhere else fails. "None of Home" is none of Home's own words
    (subtitle, funnel labels, response time, the no-office cards) in the answer. "Signed out" is
    an agent of an office of the test's own whose session opened Home until they signed out; the
-   positive control is the seeded agent's session cookie on the same replay. English only).
+   positive control is the seeded agent's session cookie on the same replay. The move is
+   captured once per worker, in a browser of its own, and replayed by each test that needs it
+   (#278). English only).
 
 ## Roles (ADR 0015, ADR 0018)
 
@@ -195,7 +214,10 @@ creates an office its owner). That membership must open nothing.
    `/inbox`, `/home` or `/` lands in the admin area, and the inbox's conversations API
    answers 403. The agent of the same office still lands in the Inbox and sees its threads.
    Spec: `apps/saas/tests/roles.spec.ts` (Roles 2; also a thread of the office,
-   `/api/conversations/:id`, answers 403).
+   `/api/conversations/:id`, answers 403. "The agent still lands in the Inbox" is covered by
+   `login-i18n.spec.ts` (the seeded agent signing in lands in `/en/inbox`), the Inbox specs, and
+   Vitest `apps/saas/modules/inbox/lib/require-session.test.ts` › the office is the operator's
+   one membership; no E2E test of its own (lean testing, #278)).
 
 ## Team (ADR 0015, #82)
 
@@ -270,12 +292,15 @@ are not here (the onboarding grill).
    a heading and no not-found page, its wording left to #214's rework).
 
 Spec: `apps/saas/tests/team.spec.ts` (Team 1–7; the agent's and the managers' API refusals run
-in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
-was taken costs no seeded login; "no invitation made" and "role unchanged" are read through the
-platform admin's view of the office. The Vietnamese halves of Team 1 and Team 4 run in an office
-of the test's own whose manager set it to Vietnamese (`PUT /api/office/language`), never the walk
-office: Team 1's with an invited manager, Team 4's once the newcomer manager has passed the
-first-run step).
+in offices of the test's own with joined agents and managers (invited, and accepted through the
+API: `support/operators.ts`; signing up through the link is Auth's), so a removal or owner grant
+that was taken costs no seeded login; "no invitation made" and "role unchanged" are read through
+the platform admin's view of the office. A manager who walks the first-run step joins before it.
+Team 1's menu and invite form are one test, the form reached through the menu. Team 3's list and
+Team 6's two checks of the walk office are one test as the seeded manager, Team 6's first, since
+it judges what the page's first load carried (#278). The Vietnamese copy of Team 1 and Team 4 is
+checked by the translation-key test (`apps/saas/modules/i18n/lib/translation-keys.test.ts`,
+#278).
 
 ## Pipe connections (ADR 0017)
 
@@ -288,7 +313,8 @@ not driven here; a test sets up a connected or disconnected OA directly, as setu
    Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 1; a new office, so nothing else connects to it).
 2. **Only the platform admin connects.** An agent sees no Connections; asking for the connect
    address as an agent is refused (403), and signed out it is refused too (401).
-   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 2).
+   Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 2; one test signed in as the agent, a step for
+   the page and one for the address, #278).
 3. **A disconnected pipe blocks its replies, and nothing else.** With one of the office's
    Zalo OAs disconnected, the agent's inbox says Zalo is disconnected. On a thread whose
    replies go out from that OA the send button is disabled with that reason, and approving
@@ -333,16 +359,17 @@ time: nothing in it can be trusted.
    as refused (bad signature). Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 1;
    each signed delivery goes to an OA id of its own and is known by that endpoint; a refused
    delivery carries no endpoint, so the spec knows its own by where it sits between two signed
-   ones).
+   ones; one test with Webhook deliveries 2, a step each, on the same deliveries and page, #278).
 2. **No guest data in the log.** The page never shows a message's text, the guest's id, or the
    vendor's message id (a WhatsApp message id can carry the guest's number; #141 stores only a
    keyed hash of it, which the page does not show). A delivery is known by its endpoint and
    outcome.
-   Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 2; the API's answer too; Zalo
+   Spec: `apps/saas/tests/webhooks.spec.ts` (Webhook deliveries 2, a step of Webhook deliveries
+   1's test, judged on that page with its deliveries on it; the API's answer too; Zalo
    message ids stand in for WhatsApp's, the rule being the same for every vendor id).
 3. **Only the platform admin sees it.** An agent sees no Webhooks page; its API refuses the
    agent (403) and a visitor who is signed out (401). Spec: `apps/saas/tests/webhooks.spec.ts`
-   (Webhook deliveries 3).
+   (Webhook deliveries 3; one test, the page and the API a step each, #278).
 
 ## Assigning leads (ADR 0022, spec #160)
 
@@ -384,10 +411,10 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
    - The thread is agent 2's: both managers see agent 2 as owner.
    - Agent 1 finds nothing (404).
 
-   Spec: `apps/saas/tests/assign.spec.ts` (Assign 3; an office of the test's own with two
-   invited managers, both through the owner API, one after the other within a second; agent 2
-   takes a name of their own through the kit's user update, so the managers' owner flag names
-   them).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/assign.db.test.ts` › two managers
+   assigning: the last setOwner wins, and the first-chosen agent loses the thread (also true
+   concurrency there). The owner route's 404 for an agent without the thread stays with Assign
+   1 and 2's specs (lean testing, #278).
 
 4. **The guest's next message goes to the owner.** The guest writes again on a thread assigned
    to agent 1: it is Your turn for agent 1 only; agent 2 still does not see it.
@@ -399,8 +426,12 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
      does.
    - Returning it to Unassigned takes it from agent 2, and neither agent sees it.
 
-   Spec: `apps/saas/tests/assign.spec.ts` (Assign 5; owners shown on the test's own threads
-   and, read only, on the seed's Minji and Yuki; through the header's "Assign to…").
+   No E2E test (lean testing, #278): every listed thread carrying its owner is Assign 7's
+   spec, the owner flag Assign 2's, and the header's "Assign to…" Assign 13's; who sees a
+   thread after a reassign or a return is Vitest, `apps/saas/modules/inbox/lib/assign.db.test.ts`
+   › two managers assigning: the last setOwner wins, and the first-chosen agent loses the
+   thread; › returned to Unassigned, a thread leaves its agent. Returning a thread through the
+   header's Unassigned choice is no longer driven in a browser.
 
 6. **A reply from the vendor's own app assigns nothing.** A reply the office sent from the
    WhatsApp or Zalo app itself shows in the thread, and the thread stays Unassigned: the
@@ -425,18 +456,18 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     manager's Inbox opens on the Unassigned view, which lists them oldest first with its
     count. "Assign to…" on the oldest row gives it to agent 1, and that row leaves the view:
     its count drops and the next guest heads the list.
-    Spec: `apps/saas/tests/assign.spec.ts` (Assign 10; an office of the test's own, each guest
-    filed before the next writes; "opens on" is `/en/inbox` with no view, the "Unassigned 3"
-    button pressed and first of the four views; "Assign to…" never selects its row: with the
-    newest guest's row selected, opening and closing the oldest row's menu leaves the oldest
-    unselected and its thread unopened; agent 1 then has the oldest guest, "Yours").
+    Covered by Vitest: `apps/saas/modules/inbox/lib/queue.test.ts` › Unassigned is a manager's
+    first and opening view; an agent has no such view; › Unassigned lists every thread with no
+    owner, whatever its turn, oldest guest message first; › the Unassigned count is the threads
+    with no owner, and follows the search. The row's "Assign to…" is Assign 2's spec (lean
+    testing, #278); that its menu never selects its row is no longer checked.
 11. **Waiting now lists Unassigned leads first for a manager.** Agent 1's guest has waited
     longer than a new Unassigned guest. The manager's Waiting now lists the Unassigned guest
     first, then agent 1's; agent 1's Waiting now lists only their own.
-    Spec: `apps/saas/tests/assign.spec.ts` (Assign 11; an office of the test's own, each guest
-    filed before the next writes: an Unassigned guest, then agent 1's, then a newer Unassigned
-    guest, so the manager's expected order (both Unassigned oldest first, then agent 1's) is
-    neither oldest-first nor newest-first overall; nameless Zalo guests are listed by their id).
+    Covered by Vitest: `apps/saas/modules/inbox/lib/queue.test.ts` › a manager's Waiting now:
+    Unassigned Your-turn leads first, then the rest, each in queue order; › an agent's Waiting
+    now is the queue's order, owner aside. That an agent sees only their own threads is
+    `apps/saas/modules/inbox/lib/assign.db.test.ts` (lean testing, #278).
 12. **A manager sees "Your turn" only on their own threads** (#212; ADR 0022, amended
     2026-10-06). Four guests wait (each wrote last, and no one has answered): one Unassigned,
     one on agent 1, one on a second manager, and one on the manager.
@@ -448,7 +479,8 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
 
     Spec: `apps/saas/tests/manager-chip.spec.ts` (Assign 12; an office of the test's own with one
     invited agent and two invited managers, nameless Zalo guests given out by the manager through
-    the owner API; each row is found under All by searching the guest's id, and its header is the
+    the owner API; each row is found under All, by the guest's id (the manager's four in one
+    Inbox load, agent 1's and the second manager's by searching it), and its header is the
     thread opened from that row. The chip is `data-test="thread-status"`: "Your turn" with
     `data-status="yourTurn"`, "Waiting" with `data-status="waiting"`, matched exactly, in English
     only (the Vietnamese "Đang chờ" waits on #78). Sent, Won and Lost are not checked here).
@@ -462,7 +494,8 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
 
     Spec: `apps/saas/tests/assign.spec.ts` (Assign 13; an office of the test's own, agent 1 with a
     name of their own, two guests filed one after the other; "stays open" is the guest's id in
-    the open thread and agent 1's name on its owner control, held across a few polls, with the
+    the open thread and agent 1's name on its owner control, held across the list's next two
+    polls, with the
     second guest's row still listed. The toast is English only. A send is not pinned: approving
     a reply still moves on to the next waiting guest. The pin rule is Vitest, `queue.test.ts`).
 
@@ -488,8 +521,8 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    once the manager has set it to Vietnamese (`PUT /api/office/language`; a member reads Nhịp in
    the office language, Office language 6). The guests are setup, written in bulk through the inbox
    store (#222): each wrote once to the office's Zalo OA, some were given to the agent, and the
-   agent answered some (a mock send). Two-digit counts: manager 12, 25, 14, 39; agent 13, 14, 27.
-   Three-digit counts, on every tab: manager 101, 203, 103, 306; agent 102, 103, 205.
+   agent answered some (a mock send). Three-digit counts, on every tab: manager 101, 203, 103,
+   306; agent 102, 103, 205 (the two-digit run is cut, #278: three digits are wider and prove more).
    "On one line" is every tab at the same top and height, with no text in a tab on two lines.
    "Nothing cut" is no tab, nor anything in it, holding more than it shows. "Inside the panel"
    is every word of every tab, and the first and last tab, between the panel's inner edges.
@@ -502,13 +535,14 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    agents' guests still waiting, not the answered ones. Its count is the same office-wide number
    as the nav badge, the tab title ("(N) Inbox", VI "(N) Hộp thư") and the list's count line. An
    agent in the same office still sees "Your turn N" (VI "Đến lượt bạn N"), and no "Waiting".
-   Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN and VI; an office of the test's
-   own, left at English for EN and set to Vietnamese by its manager for VI, with two Unassigned
-   guests, one waiting on the invited agent and one the agent answered.
+   Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN; an office of the test's
+   own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
    The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
    title, and the count line is #208's manager line on Unassigned, "2 unassigned · 3 waiting in the
-   office" (VI "2 khách chưa giao · 3 khách đang chờ văn phòng"). Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1, Sent 1, All 2,
-   their nav reads 1, and Your turn lists only their guest).
+   office". Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1,
+   Sent 1, All 2, their nav reads 1, and Your turn lists only their guest). The Vietnamese labels,
+   title and count line are checked by the translation-key test
+   (`apps/saas/modules/i18n/lib/translation-keys.test.ts`, #278).
 
 ## Hidden kit screens (#210)
 
@@ -538,10 +572,7 @@ is a WhatsApp guest whose profile name is 40 characters.
    → back to Unassigned. The view tabs and the search field stay where they were: neither moves
    up or down. (Before #208, the "Showing" filter appeared above the search field in every view
    but Unassigned, and the tabs jumped 44px.)
-   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 1; an office of the test's own with
-   an invited manager and three Unassigned guests, so no banner another spec raises in an office
-   moves the list while it is measured; at 1280×720; "where they were" is the top edge of the
-   Waiting tab and of the search field, the same to the pixel in every view as on Unassigned).
+   No E2E test (lean testing, #278): layout-jump polish, cheap to spot by eye.
 2. **A manager's "Assign to…" shows when it's wanted.** On a manager's Unassigned rows, from
    `md` (768px) up:
    - A row that is not selected, not hovered and has no keyboard focus hides its "Assign to…".
@@ -557,13 +588,9 @@ is a WhatsApp guest whose profile name is 40 characters.
    an invited manager and three Unassigned guests with long names, written one, two and three
    minutes ago, so they are listed oldest first. "Not selected" rows are those above a thread
    opened by its `?thread=` link, with the pointer at the window's corner and nothing focused.
-   Hover, selection and the name are checked at 1280 and at 768px; keyboard and the open menu
-   at 1280. "Focus" is Tab from the search field to the first row; after Assign to…, the next Tab
-   reaches the next row, which shows its own while the first hides it. "Selected" is by link and
-   by a click on the row, after which the pointer and focus move to the search field. "Never
-   covers" is the pill's box and the name's box not overlapping, on the hovered and the selected
-   row. The phone is 390×844, its pills at least 44px tall. Before #208 the phone already
-   passed: a guard).
+   Hover is checked at 1280 and at 768px. Keyboard focus, selection, the open menu, the name
+   never covered and the phone have no E2E test (lean testing, #278): variants of the hover
+   check; assigning through the menu is Assign's spec).
 
 3. **The count line under the tabs says what each view holds.** For a manager, per view:
    - Unassigned: "{u} unassigned · {w} waiting in the office"
@@ -583,9 +610,9 @@ is a WhatsApp guest whose profile name is 40 characters.
    Unassigned; agent A holds three guests and has answered one through the Inbox; agent B holds
    one, waiting. The office reads u 2, w 5, s 1, a 6, checked first on the view tabs; agent A
    reads 2 waiting, 1 sent, 3 threads, judged on Waiting, Sent and All; agent B is "1 thread · 1
-   waiting on <B>". The agents' lines are "2 guests are waiting on you" and "1 guest is waiting on
-   you" in each of their views. The wording is #208's, written out in `tests/support/copy.ts`,
-   not read from the app's strings).
+   waiting on <B>". The wording is #208's, written out in `tests/support/copy.ts`, not read from
+   the app's strings. The agent's line has no E2E test here (lean testing, #278): an agent's
+   waiting count is proven by `nav-count.spec.ts` and Inbox view tabs 2).
 
 ## Thread layout (#248)
 
@@ -607,7 +634,9 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    sidebar collapsed. The details are to the right of the conversation: their left edge is at or
    right of every message's right edge, and of the reply box's, and they start below the header.
    "In CRM" and Assign to… are in the details, not in the header.
-   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 1; an office of the test's own on
+   Covered by Thread layout 2's spec (#278): its collapse step, at 1366×768 with the sidebar
+   collapsed, is this wide pane; 1563×784 is a viewport variant. What every Thread layout test
+   shares (`apps/saas/tests/thread-layout.spec.ts`): an office of the test's own on
    the mock CRM with an invited manager and a Zalo guest who wrote once, opened from Unassigned
    once the lead is in the mock CRM and the thread says "In CRM"; "the conversation" is every
    `message`, the auto-reply included; "the header" is the first `header` in the `article`, and
@@ -627,7 +656,8 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    written ten messages. At 1366×768 with the sidebar open (narrow) and at 1563×784 (wide), the
    thread opens with the reply box and Approve and send wholly inside the window, the page not
    scrolled, and the guest's latest message in view.
-   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 3; the office as in 1, the guest's
+   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 3, at 1366×768 with the sidebar
+   open only: the wide pane is a viewport variant, #278; the office as in 1, the guest's
    ten Zalo messages written one after the other, the thread opened from Unassigned and nothing
    inside it touched before it is measured. "Wholly inside the window" is the element's box
    within the window, `window.scrollY` 0, and the point at its centre showing the element itself,
@@ -639,15 +669,8 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    its details under the header and above the conversation (the first message, scrolled into
    view, is below them), and the reply box and Approve and
    send wholly inside the window, with the latest message in view.
-   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 4; the office as in 1, opened
-   from the list at 390×844. "A strip too" is 2's strip: under the header and spanning the
-   messages' column, with the first message, once scrolled into view in its own pane, below it:
-   the thread opens at its latest message (3), so on a phone even a guest who wrote once has their
-   first message scrolled up under the strip next to the office's auto-reply. Judged on a guest
-   who wrote once; the reply box, Approve and send and the latest message are judged as in 3, on
-   a second guest who wrote ten messages. The "scrolled into view" step was added by the
-   implementer after the first green run, when the phone check found the first message scrolled
-   up under the strip; the test author's reading had been "above the first message" as it lies).
+   No E2E test (lean testing, #278): the phone's strip is Thread layout 2's and its reply box
+   Thread layout 3's, at a narrower window.
 
 5. **A new guest message doesn't pull an operator who is reading older ones** (decided by Eyal on
    2026-10-08, on PR #258). A manager has a guest's thread of ten messages open, at 1366×768 with
@@ -705,10 +728,11 @@ warning tone, DESIGN.md "In the inbox"). The VI copy is pending a native read (#
    auto-reply's VI wording) for move-in, which differs from the field label "Ngày vào": left to
    #78.
 
-Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1 to 3; each test has an office of
-its own; 1 and 2 leave it at English, and in 3 the manager sets it to Vietnamese (`PUT
-/api/office/language`) before the guest writes: a member reads Nhịp in the office language,
-Office language 6).
+Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1; an office of its own, left at
+English). 2: covered by Vitest: `apps/saas/modules/inbox/lib/extract-rows.test.ts` › a guest who
+gave everything has nothing missing and no unknown rows (#244); › nationality, In Vietnam now and
+paperwork are never missing. 3: checked by the translation-key test
+(`apps/saas/modules/i18n/lib/translation-keys.test.ts`); the row itself is 1's.
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
@@ -724,9 +748,7 @@ Office language 6).
 2. **Waiting now lists only what the operator can open.** A thread another agent owns is not
    in agent 1's Waiting now; the manager's lists it.
 3. **Nobody waiting.** With every guest answered, Waiting now says "No guest is waiting."
-   Spec: `apps/saas/tests/home.spec.ts` (Home 3; an office of the test's own with one invited
-   agent and two guests, assigned to the agent by an invited manager and answered one by one
-   through the Inbox: Waiting now lists both, then the one left and no empty text, then says "No guest is waiting." and lists no guest).
+   No E2E test (lean testing, #278): the empty state of Home 1's list, low risk.
 4. **The nav counts Your turn on every page.** The amber number beside Inbox in the sidebar
    equals the inbox's Your turn count, on Home, the Inbox and Settings alike. Approving a
    reply lowers it; a guest writing in raises it within the inbox's poll. The platform admin
@@ -739,14 +761,11 @@ Office language 6).
    new guest, and in the admin area).
 5. **Leads by day adds up.** The bars of Home's 30 days sum to Leads in; a guest who first
    wrote just after midnight in Vietnam (before midnight UTC) is counted on the Vietnamese day.
-   Spec: `apps/saas/tests/home.spec.ts` (Home 5; an office of the test's own with one invited
-   agent; WhatsApp guests with explicit write times: one at 17:30 UTC ten days back (00:30 in
-   Vietnam the next day) who writes again today, one today, one three days back, and two either
-   side of the window's first Vietnamese midnight; a bar is `data-test="leads-by-day-bar"` with
-   `data-day` and `data-leads`, a day with no bar has no lead. The bars must be exactly the
-   guests' first-write Vietnamese days inside Home's 30 days, worked out when Home loads, one lead
-   per guest: this per-day match catches a lead counted per message, a window a day short, and (at
-   most hours of the day) a rolling 30×24 hours. Leads in, read from the funnel, equals their sum).
+   Covered by Vitest (#278): `apps/saas/modules/inbox/lib/funnel.db.test.ts` › leads by day
+   count each lead on the office's local day of first contact, every day of the window listed
+   (ADR 0002); › leads by day over the 30-day window add up to leads in (ADR 0002); and
+   `apps/saas/modules/home/lib/window.test.ts` › ADR 0002's window starts at the office's local
+   midnight, in Ho Chi Minh City. The chart is still read in E2E by `guest-deletion.spec.ts`.
 
 ## Thread links (ADR 0010, #141)
 
@@ -773,8 +792,8 @@ id is stored once, on the thread, and travels in no address.
    nothing to answer).
 3. **A link to an answered thread opens that thread.** A link to a thread the agent already
    answered (in Sent, not Your turn) opens that thread, not the first guest waiting.
-   Spec: `apps/saas/tests/thread-links.spec.ts` (Thread links 3; the link is the one on the
-   answered guest's lead in the mock CRM; the thread shows the guest's message and the reply).
+   No E2E test (lean testing, #278): a variant of Thread links 1, whose linked guest is second
+   in the queue, so a link that fell back to the first waiting guest already fails there.
 
 ## Alerts (ADR 0019, spec #84)
 
@@ -815,7 +834,11 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 2. **An owned thread's guest alerts only its owner** (#132). The manager assigns a new guest to
    agent 1, and the guest writes again: one new `guest` alert, for agent 1. Agent 2 and the
    managers get none for that message.
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 2, rewritten).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/guest-alerts/recipients.test.ts` › an owned
+   thread's guest alerts only its owner, not the managers; and
+   `apps/saas/modules/inbox/lib/guest-alerts/alert-log.db.test.ts` › an Unassigned guest alerts
+   the office's managers and no agent; once assigned, only the owner (ADR 0022). The webhook to
+   alert wiring is Alerts 1's spec (lean testing, #278).
 3. **An assignment alerts the chosen agent, with a bell row** (#133).
    - The manager assigns an Unassigned guest to agent 1 through "Assign to…". The log holds
      one `assigned` alert, for agent 1 only. Agent 1's bell shows "A manager gave you a
@@ -830,14 +853,17 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    "Minji"; both agents set to English through the kit's user update and given names of their
    own, so the row's "Assign to…" menu names agent 1 and agent 2's name can be looked for in
    agent 1's bell. The first assignment is the manager's row "Assign to…" in Unassigned; the
-   reassignment and the manager taking a thread (Yuki) go through the owner API. The log is
-   judged per thread as an exact count of each person's alerts of each kind (the manager's
-   `guest` alert from before included), once a later guest's alerts have reached the managers;
-   the manager's own assignment is judged once a later assignment's alert has reached agent 1.
-   The bell is read on Settings loaded afresh, where no guest's thread is listed, so "no guest's
-   name" is no "Minji" on the page with the bell open; "opens the thread" is the row taking
-   agent 1 to the Inbox with Minji's message in the open thread; "not to whom" is agent 2's name
-   nowhere on agent 1's page).
+   reassignment goes through the owner API. The log is judged per thread as an exact count of
+   each person's alerts of each kind (the manager's `guest` alert from before included), once a
+   later guest's alerts have reached the managers. The bell is read on Settings loaded afresh,
+   where no guest's thread is listed, so "no guest's name" is no "Minji" on the page with the
+   bell open; "opens the thread" is the row taking agent 1 to the Inbox with Minji's message in
+   the open thread; "not to whom" is agent 2's name nowhere on agent 1's page).
+   A manager who gives a thread to themselves: covered by Vitest,
+   `apps/saas/modules/inbox/lib/guest-alerts/owner-change.db.test.ts` › a manager who takes an
+   Unassigned lead themselves: no alert, no push, no bell row; and
+   `apps/saas/modules/inbox/lib/guest-alerts/recipients.test.ts` › a manager who takes an
+   Unassigned lead themselves sets off nothing (lean testing, #278).
 
 4. **A thread returned to Unassigned alerts the other managers** (#133). Manager 1 returns
    agent 1's thread to Unassigned. The log holds one `returned` alert, for manager 2. There is
@@ -845,25 +871,35 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    agent, and none for the platform admin. Agent 1, who lost the thread, gets only the bell
    row naming the guest, with no push. This follows from recipients equalling visibility
    (ADR 0022, S2).
-   Spec: `apps/saas/tests/alerts-in-app.spec.ts` (Alerts 4; two managers; the guest is a
-   WhatsApp guest named "Minji", given to agent 1 and returned by manager 1 through the owner
-   API; the thread's alerts are exactly each manager's `guest` alert from before, agent 1's
-   `assigned` alert and manager 2's `returned` alert, judged once a later guest's alerts have
-   reached the managers, and the platform admin has none in the office; the office is set to
-   Vietnamese by manager 1 (`PUT /api/office/language`), so agent 1 reads the bell in Vietnamese:
-   "Minji đã được chuyển cho nhân viên khác").
+   Covered by Vitest: `apps/saas/modules/inbox/lib/guest-alerts/owner-change.db.test.ts` ›
+   agent 1's thread returned to Unassigned: one `returned` alert for the other manager, no bell
+   row for managers, and agent 1 the bell row only; and
+   `apps/saas/modules/inbox/lib/guest-alerts/recipients.test.ts` › a return to Unassigned alerts
+   the other managers: not the one who returned it, no agent, never the platform admin. The
+   bell row's Vietnamese is checked by the translation-key test
+   (modules/i18n/lib/translation-keys.test.ts) (lean testing, #278).
 5. **A vendor retry alerts no one** (#132). The same signed Zalo message is delivered
    twice: the thread holds that message once, and the log holds one alert per recipient, not two.
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 5; one signed body, same `msg_id`, posted twice).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/store.db.test.ts` › a vendor retry of one
+   message is stored once, even when both land at the same time; › the store says whether an
+   inbound was new: a vendor retry is not (ADR 0019). That ingest alerts only on a new inbound
+   is no longer driven end to end (lean testing, #278).
 6. **A burst makes one sounding alert** (#132). A new guest writes five messages within 20
    seconds, two of them at the same moment: each manager has exactly one sounding alert on
    that thread; the rest are silent replacements. (The 2-minute window itself is a Vitest rule
    with an explicit clock.)
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 6).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/guest-alerts/alert-log.db.test.ts` › ten
+   alerts for one operator on one thread at the same moment: exactly one sounds; and
+   `apps/saas/modules/inbox/lib/guest-alerts/burst.test.ts` › an alert at the same moment as the
+   last one is silent. A burst sent through the webhook is no longer driven end to end (lean
+   testing, #278).
 7. **The platform admin is never alerted** (#132). In an office of its own, a new guest writes.
    The manager assigns the thread to an agent, and the guest writes again. The manager and the
    agent have their rows; the platform admin, the office's kit `owner`, has none.
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 7).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/guest-alerts/recipients.test.ts` › an
+   Unassigned guest alerts the managers only: no agent, never the platform admin; › an office
+   whose only manager is its platform admin alerts no one for an Unassigned guest (lean
+   testing, #278).
 8. **An alert for a thread now someone else's shows a neutral notice** (#136).
    - Agent 1 holds a thread, and its guest writes, so agent 1 has a `guest` alert. The manager
      then reassigns the thread to agent 2.
@@ -897,23 +933,21 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - **On:** permission "granted" and a device added for this session: no panel.
    - Nothing on it is red.
 
-   Spec: `apps/saas/tests/alerts-device.spec.ts` (Alerts 9; each test is one invited agent of an
-   office of the test's own, on `/en/inbox`. The panel is `data-test="alerts-panel"`, whatever it
+   Spec: `apps/saas/tests/alerts-device.spec.ts` (Alerts 9, asking and Not now only; Blocked,
+   iPhone and On have no E2E test (lean testing, #278): permission-state variants of the same
+   panel. Each test is one new invited agent of its worker's office (one per worker, #278), on
+   `/en/inbox`. The panel is `data-test="alerts-panel"`, whatever it
    says. The permission stub sets `Notification.permission`, `requestPermission`, the Permissions
    API's and the push manager's permission state alike, and counts every `requestPermission` (and
    a `pushManager.subscribe` while not granted) as a prompt: zero on load and on reload, and at
    least one once "Turn on alerts" is tapped, which proves the count. The pill is one button,
    Dispatch Blue #2563eb, fully rounded. "Nothing red" is no painted colour (text, background,
    visible border, outline, SVG fill and stroke, each read back through a canvas so `oklch` counts)
-   within reach of #dc2626, #f87171 or the theme's `--destructive`, judged on the asking, alerts
-   stopped, blocked and iPhone panels. Not now: gone, gone after a reload, still gone with the
-   page's clock 6 days on, back 7 days and a minute on (`page.clock`); "another browser" is the
-   same agent signed in through the login page in a new context. iPhone: the iPhone 15 Safari user
-   agent on Chromium at a desktop size, once with no Notification API (as Safari has it outside
-   the Home Screen) and once with permission "default". On: with "granted" and no device the panel
-   says "Alerts stopped on this device." with the pill and Not now; after the device is added and
-   the page reloaded, no panel, none of its titles and no pill. An absence after a load is judged
-   once the Inbox's empty list has shown).
+   within reach of #dc2626, #f87171 or the theme's `--destructive`, judged on the asking panel.
+   Not now: gone, gone after a reload, still gone with the page's clock 6 days on, back 7 days
+   and a minute on (`page.clock`); "another browser" is the same agent in a new context with a
+   session of its own minted for them (setup: signing in is the Auth specs'), landing on the
+   Inbox. An absence after a load is judged once the Inbox's empty list has shown).
 
 10. **Signing out removes the device** (#134). An agent signs in with a login of the test's
     own (signing out ends the session it uses), adds a device as above, and adds a second one
@@ -921,8 +955,9 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     `alertState.devices` lists only the second. `DELETE /api/alerts/devices` answers 401 signed
     out.
     Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 10; an office of the test's own with one
-    invited agent, who accepted the invitation in the first browser and signed in
-    through the login page in the second; "only the second" is the second device's id alone,
+    invited agent, who accepted the invitation in the first browser and has a second session
+    minted for them in the second (setup), which lands on the Inbox; "only the second" is the
+    second device's id alone,
     so removing nothing and removing every device both fail; the signed-in second browser's
     same `DELETE` answering 204 is the positive control).
 11. **Send test alert** (#135). With permission "granted" and a device added for this
@@ -930,11 +965,11 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     writes one `test` alert for that operator and says it was sent. The same through the API:
     `POST /api/alerts/devices/test` → 202; signed out, 401; with no device on this session,
     409 and the row offers to turn alerts on instead.
-    Spec: `apps/saas/tests/alerts-device.spec.ts` (Alerts 11; one invited agent of an office of the
-    test's own, on `/en/settings/notifications`, permission "granted" by the same stub as Alerts 9.
+    Spec: `apps/saas/tests/alerts-device.spec.ts` (Alerts 11; one new invited agent of the worker's
+    office, as in Alerts 9, on `/en/settings/notifications`, permission "granted" by the same stub.
     "One `test` alert" is counted in the office's log for that agent: the anonymous 401, then the
     signed-in 202, after which there is one, then the button, after which there are two. "No device on
-    this session" is the same agent signed in again in a second browser while their first browser
+    this session" is the same agent with a second minted session in a second browser while their first browser
     has a device: that session's request answers 409, its row says "Alerts are off for this
     device." with "Turn on alerts" and no "Send test alert", the log still has no test alert, and
     the first browser's 202 then makes exactly one).
@@ -969,18 +1004,18 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     assigned to you".
     The title is "(n) " in front of the page's own title beside the nav's number on the Inbox,
     Home and Settings, in English in an office left at English, and after Settings → Inbox
-    through the nav; in Vietnamese in a test of its own, in an office its manager set to
-    Vietnamese (a member reads Nhịp in the office language, Office language 6); each
-    page's own title, read before any guest, is "<Page> – Nhịp" (an en dash), and with nobody
+    through the nav; the Vietnamese titles are checked by the translation-key test
+    (modules/i18n/lib/translation-keys.test.ts) (#278); each page's own title, read before any guest, is "<Page> – Nhịp" (an en dash), and with nobody
     waiting the title is that again. A toast is `data-test="guest-toast"`, a link named
     "<guest> is waiting", in the window's top-right quarter. Each absence is judged once a later
     toast has shown: one Minji toast after she wrote twice, none for agent 2's guest or a new
     Unassigned guest, and at most three, the fourth replacing the first. Toasts that outlive
     several polls show they don't auto-dismiss. Tapping one opens that thread with no thread id
     in the address, and leaves no toast. On the Inbox list, a guest answered and writing again
-    raises the title and no toast. The manager is on Home, with a guest of agent 1's (no toast),
-    a new Unassigned guest and a guest they hold (a toast each); their title follows their nav
-    number. Closing a toast and a guest's answer clearing it are not tested).
+    raises the title and no toast. "As the manager, a new guest raises the toast" has no E2E
+    test (lean testing, #278): covered by Vitest, `apps/saas/modules/inbox/lib/guest-toasts.test.ts`
+    › a manager's are the Unassigned threads and their own, not an agent's. Closing a toast and a
+    guest's answer clearing it are not tested).
 
 13. **Settings → Notifications says what it is for** (#212). An operator opens Settings →
     Notifications. Under the "Notifications" heading, the page's one intro line reads "Choose
@@ -989,8 +1024,8 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     stored; everything is enabled by default." (VI "Chọn cách bạn nhận thông báo. …") is nowhere
     on the page.
     Spec: `apps/saas/tests/notifications-intro.spec.ts` (Alerts 13; the seeded agent on
-    `/en/settings/notifications`, and an invited agent of an office of the test's own, set to
-    Vietnamese by its manager, on `/vi/settings/notifications`; "under the heading" is the
+    `/en/settings/notifications`; the Vietnamese line is checked by the translation-key test
+    (modules/i18n/lib/translation-keys.test.ts) (#278); "under the heading" is the
     line being the paragraph that follows the heading in the page's main area; "one intro line"
     is judged only as the kit's sentence being gone).
 
@@ -1036,6 +1071,13 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - A new guest's first two messages, delivered at the same moment, get one auto-reply.
    - A thread whose first message came from the office's own app (an `oa_send_text` echo)
      gets no auto-reply when the guest then writes.
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 2: the two messages delivered at
+   the same moment). The guest writing again, and the thread the office's app began: covered by
+   Vitest: `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › a new guest's first message gets
+   one auto-reply (G1) › the guest's second message gets no second one; › a thread the office
+   began from its own app is never greeted.
+
 3. **The greeting counts nowhere in the funnel.**
    - After the auto-reply, Home reads Leads in 1, Engaged 0, In conversation 0, and no
      answered leads under response time.
@@ -1044,13 +1086,10 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      first message to that reply.
    - The guest writes again: In conversation 1.
 
-   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 3; the guest writes on a
-   WhatsApp number of the office's own, since only WhatsApp takes a backdated message: their
-   first message is written 20 minutes before the manager's reply, approved through the API, so
-   "runs from the first message" is that answered lead in Home's 15–60 min band with none under
-   5 min, which a clock started at the guest's later message would not give; "no answered leads"
-   is Response time's "No lead was answered in this window yet."; the guest's last message is
-   written once the reply's second is over, WhatsApp timing messages in whole seconds).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › the funnel ignores
+   the auto-reply from first message to conversation (R10, First greeting 3) › Engaged, In
+   conversation and response time move only with the human reply. Home's rendering of the funnel
+   and response time is the Home specs'.
 
 4. **The guest's language picks the greeting.** Guests write in Vietnamese, Japanese, Korean
    and Russian. Each auto-reply, label included, is in the guest's language: a letter only
@@ -1067,14 +1106,31 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      off writes again and is not greeted (S1).
    - An agent sees no switch, and its API refuses an agent (403) and a signed-out caller
      (401).
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 5, two tests: the manager's
+   switch, and the API's refusals. The manager opens each guest's thread by its `?thread=` link.
+   The reply box is judged by its text holding "this is Saigon Prime Test" and "Thanks for getting
+   in touch", exactly one "thank" in any form, and no "Thanks for writing"). An agent seeing no
+   switch: no E2E test (lean testing, #278): UI hiding only; the API refusal test is the guard.
+
 6. **No greeting on a disconnected pipe.** With the office's Zalo OA disconnected, a new
    guest's first message arrives and is Your turn, with no auto-reply.
+
+   Covered by Vitest: `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › a disconnected OA
+   greets no one, and the guest is still Your turn; › a live deployment never greets from an OA
+   the office hasn't connected.
+
 7. **The greeting's echo is not a reply.** Zalo delivers the `oa_send_text` echo of the
    auto-reply, with the auto-reply's message id. The thread still holds one auto-reply and
    no app reply, stays Your turn, and Home's Engaged stays 0.
    - In a mock deployment the auto-reply's message id is deterministic,
-     `mock-auto-reply-<thread id>`. The test reads the thread id as the manager, through
-     `/api/conversations`.
+     `mock-auto-reply-<thread id>`.
+
+   Covered by Vitest: `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › the auto-reply is
+   not a reply (G5, R10) › its echo from Zalo is a duplicate, not a reply from the office's app
+   (the echo with `mock-auto-reply-<thread id>` through ingest: one auto-reply, still Your turn,
+   Engaged 0).
+
 8. **After the greeting, the reply box doesn't thank the guest again.** The manager opens a
    guest's thread after its auto-reply. The reply box holds the template suggested reply
    (ADR 0024: the office has no human reply yet, so the stub model doesn't draft): it names the office, and it never thanks the guest
@@ -1084,16 +1140,13 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    - A model doesn't change this: until the office's first human reply, a greeted thread
      holds the template, not a model draft (ADR 0024, amending ADR 0021's P2).
 
-   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 8; the manager opens the
-   Unassigned thread from All; "names the office" is "Saigon Prime Test" in the box's text;
-   "thanks" is "thank" in any form and "a colleague" is "colleague" anywhere in it; "holds the
-   template" is the label "Suggested reply · template" in the open thread, written in the spec,
-   not read from saas.json. The second look is the thread opened again once the guest's second
-   message is in it and the box holds a suggestion. It is no longer compared with the box of a
-   guest who got a human reply: the template differs before and after one).
-   First greeting 5's reply box is judged in the same spec: the text holds "this is Saigon Prime
-   Test" and "Thanks for getting in touch", exactly one "thank" in any form, and no "Thanks for
-   writing".
+   Covered by Suggested reply template 1's spec (the template label, no thanks, no "a colleague"
+   after the auto-reply) and Guest language 1's (an unassigned greeted thread's box starts "Hi,
+   this is Saigon Prime Test." with no "colleague"), and by Vitest:
+   `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › after the auto-reply, the reply box takes
+   the follow-up path (R11, P2) › without a model, the box holds the template written after the
+   greeting, for the first message and the next; `apps/saas/modules/inbox/lib/reply-template.test.ts`
+   › it thanks the guest only when the office has sent nothing, never after the auto-reply.
 
 ## Suggested reply template (ADR 0024, #253)
 
@@ -1155,7 +1208,7 @@ VI copy is pending a native read (#78), and JA, KO and RU have no native read pl
    (VI form of "Suggested reply · template", wording pending #78): an office whose language is
    VI (#256; a member reads Nhịp in the office language, Office language 6).
 
-Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1–6; each test has an
+Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1 and 3; each test has an
 office of its own named "Saigon Prime Test" with one invited manager and one invited agent, who
 take the names "Minh Tran" and "Lan Pham" through the kit's user update, and set their name
 guests see to "Minh" and "Lan" through `PUT /api/account/name-guests-see` (Name guests see, "How
@@ -1165,25 +1218,22 @@ Ho", judged once the auto-reply is in the thread. "Introduces" is the reply box'
 with the intro exactly, "Hi, I'm Lan from Saigon Prime Test." or "Hi, this is Saigon Prime
 Test."; the rest of the template is not pinned. "Doesn't thank" is no "thank" in any form, and
 "doesn't say a colleague" no "colleague". The label is a text in the open thread reading
-"Suggested reply · template" (VI "Gợi ý trả lời · mẫu"), the spaces around "·" aside, written in
-the spec and never read from saas.json. "Naming" someone is their name guests see as a word of
-its own.
-1: the manager assigns through the owner API and the agent opens the thread by its `?thread=`
-link. 2: the manager opens it by link; "no person" is neither "Minh" nor "Lan" in the text.
-3: the manager opens it from the All view (under Unassigned, assigning takes the thread out of
-the view and closes it), sees the office's intro, picks Lan in the thread's own Assign to…, and,
-once that control names her, the same box with no reload starts with her intro within three
-polls. Typed text not being overwritten is not tested. 4: the agent sends the suggestion as it
-stands with Approve and send; once the thread reads as answered, the guest writes "Great, how
-many options do you have?", the agent opens the thread again by link once that message is in
-it, and the box, once it holds a suggestion, holds neither "Lan" nor "Saigon Prime Test". The
-label is not judged there, so the check still holds once #252's AI draft takes that turn.
-5: the auto-reply is first checked to ask "What budget do you have in mind?"; the guest writes
-"Thanks! 2 of us, we'd like a 2-bedroom", and the manager, opening the thread by link once it is
-in, finds the box starting "Hi, this is Saigon Prime Test." with no "budget" in it. 6: the
-manager sets the test's own office to Vietnamese (`PUT /api/office/language`) before the guest
-writes, opens the thread at `/vi/inbox?thread=…`, and the label is judged once the box holds a
-suggestion; 1 to 5 leave their offices at English).
+"Suggested reply · template", the spaces around "·" aside, written in the spec and never read
+from saas.json. 1: the manager assigns through the owner API and the agent opens the thread by
+its `?thread=` link. 3: the manager opens it under Unassigned (where it stays open once assigned,
+#267), sees the office's intro, picks Lan in the thread's own Assign to…, and, once that control
+names her, the same box with no reload starts with her intro within three polls. Typed text not
+being overwritten is not tested. Both leave their offices at English).
+2: covered by 3's spec (its unassigned box starts "Hi, this is Saigon Prime Test.") and by Vitest:
+`apps/saas/modules/inbox/lib/reply-template.test.ts` › an Unassigned thread, or an owner with no
+name guests see, names the office only.
+4: covered by When the model drafts 5's spec (the later-turn template after the agent's first
+reply) and by Vitest: `apps/saas/modules/inbox/lib/reply-template.test.ts` › a later turn
+introduces no one and asks nothing; `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › once the
+office has replied, the later-turn template names no one, assigned or not.
+5: covered by Vitest: `apps/saas/modules/inbox/lib/reply-template.test.ts` › a question the
+auto-reply asked is not asked again.
+6: checked by the translation-key test (`apps/saas/modules/i18n/lib/translation-keys.test.ts`).
 
 ## Name guests see (#266)
 
@@ -1260,7 +1310,8 @@ open thread is drafted at once. The 30 s wait and the burst are proven in Vitest
    now holds the template for that message, labelled "Suggested reply · template", with no
    "Guest wrote again" note.
 
-Spec: `apps/saas/tests/model-draft.spec.ts` (When the model drafts 1–5; each test has an office
+Spec: `apps/saas/tests/model-draft.spec.ts` (When the model drafts 3 and 4, one test, and 5; 1's
+draft is the first half of each of them; each test has an office
 of its own, the guest a nameless Zalo guest whose first message is "Hi, we're looking to rent an
 apartment in Tay Ho", judged once the auto-reply is in the thread, and the thread given to the
 agent by the manager through the owner API. "The agent sends a reply" is Approve and send on the
@@ -1268,17 +1319,24 @@ template as it stands, the thread opened by its `?thread=` link, until `unanswer
 null; the agent then opens it again by link once "Could you send me some photos?" is in it, and
 keeps it open from there (never reloaded once typed into). The box is the textbox named "Reply";
 "holds the draft" is its value exactly the stub's text, and each label a text in the open thread,
-the spaces around "·" aside, written in the spec. 2: from the opened thread, the box, the labels
-and whether it holds the stub's text are read together after every Inbox poll for 5 s: no "· AI"
-label, the template label, and the same text throughout. 3: the agent's text is typed with
+the spaces around "·" aside, written in the spec. 3: the agent's text is typed with
 `fill`, and two polls pass before the guest writes "Also, do any of them have a balcony?"; once
 that shows in the open thread, the box's value and the exact note "Guest wrote again" are read
 together, Regenerate is visible, and the value holds for 5 s of polls. "Next to" is not measured.
-4: 3's setup, then Approve and send; through the agent's API, an office message with the typed
-text comes after the balcony message, and `unansweredInboundId` is null, while no
+4: in the same test, after 3's hold, Approve and send; through the agent's API, an office message
+with the typed text comes after the balcony message, and `unansweredInboundId` is null, while no
 "The guest wrote again" (any case) shows on the page. 5: once "Is the pink book ready?" shows in
 the open thread, the box is exactly "Noted. I'll look into this and get back to you here
 shortly.", with the template label, no AI label and no note).
+1: covered by the 3-and-4 and 5 specs, whose setup is 1's whole flow with its checks (the stub's
+draft in the box, "Suggested reply · AI"), and by Vitest:
+`apps/saas/modules/inbox/lib/model-draft.db.test.ts` › after a sent Answer, the guest's next
+message is drafted by the model.
+2: covered by Vitest: `apps/saas/modules/inbox/lib/model-draft.db.test.ts` › the model drafts only
+after the office's first human reply › before it, the model is never asked: not after the
+auto-reply, not when the guest writes again, not on opening the thread; Regenerate writes the
+template; `apps/saas/modules/inbox/lib/model-draft.test.ts` › before the office's first human
+reply, neither the wait nor opening the thread asks the model.
 
 ## Guest language (ADR 0021 R4 as amended by #245, ADR 0025)
 
@@ -1290,10 +1348,9 @@ English greeting and an English suggested reply. Their messages aren't translate
 the test's own, with a manager and an invited agent, the auto-reply on and `SEND_MODE=mock`.
 Translation runs against First greeting's stub model, so a supported language's message shows a
 stub translation line and an unsupported one must show none; no one replies, so the reply box
-holds a template (the stub model drafts only after the office's first human reply, #252). Each test's office is left at the default office language, English (ADR 0025,
-Office language), except Guest language 1's `/vi/` pass, whose manager sets its office to
-Vietnamese: a member reads Nhịp in the office language (Office language 6). The VI copy is
-pending a native read (#78).
+holds a template (the stub model drafts only after the office's first human reply, #252). The
+test's office is left at the default office language, English (ADR 0025, Office language). The
+VI copy is pending a native read (#78).
 
 1. **A guest writes in French: the thread names French and says it isn't supported.** A guest
    writes "Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget
@@ -1315,36 +1372,32 @@ pending a native read (#78).
    - **Home's Waiting now** names the guest's language as "French" (VI: "tiếng Pháp"), not
      "English".
 
-   Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 1; once in `/en/` and once in
-   `/vi/`, each with an office of its own and a manager, no agent: nothing here is an agent's. The
-   `/vi/` pass's office is set to Vietnamese by its manager (`PUT /api/office/language`) before
-   the guest writes.
+   Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 1; in `/en/`, with an office of
+   its own and a manager, no agent: nothing here is an agent's. The VI copy is checked by the
+   translation-key test (`apps/saas/modules/i18n/lib/translation-keys.test.ts`), and the VI
+   language name by Vitest: `apps/saas/modules/inbox/lib/language-name.test.ts` › an unsupported
+   language is named in the interface language, lowercase in Vietnamese.
    The manager opens the thread by its `?thread=` link. The Language row is the term "Language"
    and the value beside it in the guest's details (`data-test="thread-details"`), matched exactly
    on a wide pane (1563×784, the rail) and on a narrow one (1366×768, the strip). "Under the
    guest's text" is the guest's bubble (`data-test="message"`) reading their text, then the note;
    the note is in exactly two bubbles, the first message's and the mixed one's, never the
    auto-reply's, and neither guest bubble holds a translation (its "Translation" label). The
-   operator note is the open thread's one paragraph labelled "Operator note" (VI "Ghi chú nội
-   bộ"), reading exactly the scenario's line after that label. What the guest gets is checked
+   operator note is the open thread's one paragraph labelled "Operator note", reading exactly
+   the scenario's line after that label. What the guest gets is checked
    first and stops the test: the auto-reply (read as the manager, through the API) starts "Thanks
    for writing" and ends with the English label, marked Template, and the reply box's text starts
    "Hi, this is Saigon Prime Test." (the thread is Unassigned; the rest of the template is not
-   pinned) and holds no "colleague", in both interfaces. Home's entry is judged by its link's name: it holds "French" (VI
-   "tiếng Pháp") and not "English" (VI "tiếng Anh")).
+   pinned) and holds no "colleague". Home's entry is judged by its link's name: it holds "French"
+   and not "English").
 
 2. **A guest writes in Korean: the thread reads as before.** A guest writes "안녕하세요, 서호에서
    방 두 개짜리 아파트를 월세로 찾고 있어요." The Language row reads "Korean" with no note, no
    message shows a "isn't supported" note, the operator note reads "in Korean · don't interview",
    and the auto-reply is in Hangul. Home's Waiting now names "Korean".
-   Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 2; in `/en/` only. The Language
-   row in the guest's details reads exactly "Korean"; the operator note, read as in Guest
-   language 1, reads exactly "in Korean · don't interview"; "no note" is nothing in the open
-   thread reading "isn't supported", "not supported" or "chưa hỗ trợ", judged once the row and
-   the operator note have shown; the auto-reply and its label hold Hangul and the label isn't the
-   English one; Home's entry names Korean and not English. The stub translation is not checked.
-   It passed before Guest language 1 was built: a guard against the change reaching supported
-   languages).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/language-name.test.ts` › a supported language
+   keeps its own copy; › the operator note of a supported language reads as before; › a supported
+   guest's message is translated as before. The Hangul auto-reply is First greeting 4's spec.
 
 ## Office language (ADR 0025, #256)
 
@@ -1368,7 +1421,8 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    page's combobox named "Ngôn ngữ văn phòng" reads "Tiếng Việt" too. Choosing moves the page to
    `/vi/` (6), so from the choice on the toast is accepted as "Office language saved" or the app's
    VI "Đã lưu ngôn ngữ văn phòng", and the setting by either name. That there is no Save button is
-   not checked: the toast and the reload prove it saved on choice).
+   not checked: the toast and the reload prove it saved on choice. The same test checks 6's last
+   bullet, the page moving to `/vi/<office slug>/settings/general`, once the toast has shown).
 2. **An agent can't set it.** The agent's General tab doesn't exist for them (Team 8's
    not-found page). The office language API refuses the agent's change
    (`PUT /api/office/language` with `{ "language": "vi" }`, 403) and a signed-out caller's
@@ -1400,28 +1454,30 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    - In an office left at the default, a Korean message shows "Stub translation, Korean to
      English.", in `/vi/` too.
 
-   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 4, two tests, each with an
-   office of its own; the manager sets Vietnamese through `PUT /api/office/language` (setup: 1
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 4, the Vietnamese office's
+   bullets, with an office of its own; the manager sets Vietnamese through `PUT /api/office/language` (setup: 1
    proves the setting). The line is looked for in the guest's bubble (`data-test="message"`),
    within a poll; "no line into English" is no "Stub translation, … to English." anywhere in the
    open thread, the auto-reply's bubble included; the thread is opened by its `?thread=` link in
    `/vi/`, then in `/en/`. The Vietnamese guest writes first and their thread is opened once
    before the Korean line is awaited; "no translation line" is judged on reopening it in `/en/`
    after the Korean line has shown: neither the "Translation" label, in English or Vietnamese (the
-   page may be either), nor any "Stub translation" in their bubble. The default office's Korean
-   thread is opened by its `/vi/` link: the English line, and no line into Vietnamese).
+   page may be either), nor any "Stub translation" in their bubble). The office left at the
+   default: covered by 2's spec (the agent's Korean thread, opened by its `/vi/` link, shows the
+   English line and none into Vietnamese) and by Vitest:
+   `apps/saas/modules/inbox/lib/office-language.db.test.ts` › an office no manager has set reads
+   as English, and its Korean message is translated once, into English (ADR 0025).
 
 5. **After a change, an older thread is translated when it's opened.** In an English office, a
    guest writes in Korean, and the thread shows "Stub translation, Korean to English.". The
    manager switches the office to Vietnamese. Opening that thread again shows "Stub translation,
    Korean to Vietnamese." (a model call then, counted against the office's daily translation
    cap); the English line doesn't show.
-   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 5; read in `/en/` both times,
-   so an interface-led line can't pass the second read (until 6 holds: then the second `/en/` link
-   lands on `/vi/`, and the line is the office's either way); the switch is the manager's `PUT`, as in
-   4; "opening again" is leaving for Home and opening the thread by its link; the new line within
-   a poll, and no "… to English." line anywhere in the thread. Not judged: the daily cap's count,
-   which nothing a person sees shows).
+   Covered by 10's spec, which runs the same flow (the English line, the switch, then the
+   Vietnamese line with no English line) with the cap in between, and by Vitest:
+   `apps/saas/modules/inbox/lib/office-language.db.test.ts` › after the office switches to
+   Vietnamese, an English translation is kept and opening the thread adds the Vietnamese one
+   (Eyal, 2026-10-08).
 
 6. **Members read Nhịp in the office language.** In a Vietnamese office:
    - The agent opens `/en/inbox` and lands on `/vi/inbox`, in Vietnamese. A thread's link keeps
@@ -1434,21 +1490,21 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
      becomes `/vi/<office slug>/settings/general`, in Vietnamese ("Ngôn ngữ văn phòng" reads
      "Tiếng Việt").
 
-   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 6, one test per bullet, each
-   with an office of its own; "Vietnamese office" is the manager's `PUT /api/office/language`, as
-   in 4. "Lands on" is the address's path exactly, within a page load; "in Vietnamese" is the
-   agent's "Đến lượt bạn N" tab, the manager's "Đang chờ" heading on Home, and "in English" the
-   agent's "Your turn N" tab (the English office's agent holds a guest, and the tab is first seen
-   on `/en/inbox`, before `/vi/inbox`). "Keeps its thread" is that thread open, judged by the path and the
-   thread, not by `?thread=` in the address: the Inbox takes it out once the thread is open (seen on
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 6: the first two bullets in
+   one test, with an office of its own, the redirects first; the last bullet in Office language
+   1's test. "Vietnamese office" is the manager's `PUT /api/office/language`, as in 4. "Lands on"
+   is the address's path exactly, within a page load; "in Vietnamese" is the agent's "Đến lượt
+   bạn N" tab and the manager's "Đang chờ" heading on Home. "Keeps its thread" is that thread
+   open, judged by the path and the thread, not by `?thread=` in the address: the Inbox takes it out once the thread is open (seen on
    today's build, as after an alert's link, Alerts 8). The agent holds two guests the manager gave
    them, the linked one second in the queue: its message is in the open thread, the first guest's
    isn't. "No language toggle" is no "Ngôn ngữ" row and no button
    named "English" or "Tiếng Việt" in the user menu (the platform admin's row in 7 is the positive
    control), judged once the menu shows "Đăng xuất"; "no language select" is no "Ngôn ngữ của bạn"
    item and no combobox on `/vi/settings/general`, judged once its "Cài đặt tài khoản" title and
-   "Tên của bạn" item have shown. Every check in the first two tests is reported, not only the
-   first to fail).
+   "Tên của bạn" item have shown. Every check is reported, not only the first to fail). The third
+   bullet, an English office's `/vi/inbox` landing on `/en/inbox`: no E2E test (lean testing,
+   #278): the same redirect as the first bullet's, the other way.
 
 7. **The platform admin keeps their own language.** The platform admin's user menu still has
    the EN/VI toggle, and it still switches the path (`/en/admin/organizations` to
@@ -1464,10 +1520,12 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    a link starting with `/en/`. This replaces Alerts 1's per-person check. The bell follows the
    interface, so an agent of a Vietnamese office reads it in Vietnamese whatever their own
    setting.
-   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 8, three tests, each with an
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 8, two tests, each with an
    office of its own; the alert is the manager's `guest` row in the alert log, as in Alerts 1, and
-   its `link` is matched from its start, `/vi/inbox?alert=` or `/en/inbox?alert=`; "set to English"
-   is checked through the person's own session, and "no language set" is its `locale` being null.
+   its `link` is matched from its start, `/vi/inbox?alert=`; "set to English" is checked through
+   the person's own session. The English office's `/en/` link: covered by Vitest:
+   `apps/saas/modules/inbox/lib/guest-alerts/content.test.ts` › the link opens the Inbox in the
+   office language with the alert's id only.
    The bell: the agent, set to English, is given a guest's thread by the manager (judged once the
    agent's `assigned` alert is in the log) and opens their settings at `/en/settings/general`,
    their own language's address; the bell reads "Một quản lý đã giao cho bạn một cuộc trò chuyện"
@@ -1565,14 +1623,11 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    The manager deletes the guest who wrote back. Home, reloaded, shows every one of those numbers
    unchanged, for the agent and the manager alike. Waiting now no longer lists a deleted guest.
 
-   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 2; the numbers are first
-   checked to be 3 leads in, 2 engaged, 1 in conversation, 2 answered under 5 minutes, so a
-   deletion that shrank them would show; each day of leads by day is read from the chart's
-   tooltip, stepping through it from the keyboard, one reading per day of the window, adding up
-   to Leads in; Waiting now still lists the guest nobody answered. Not provable here: every reply
-   is sent within a minute of the guest's message, since Zalo's signature refuses a backdated
-   timestamp, so the median and 90th percentile read "0 min" with or without the deleted guest,
-   and every lead falls on today.)
+   Covered by Vitest: `apps/saas/modules/inbox/lib/guest-deletion.db.test.ts` › Home's numbers
+   are the same before and after every lead is deleted (countMock ${countMock}, ADR 0020): the
+   whole funnel, response time and leads by day included, after every deletion, in both
+   countMock modes. No E2E test (lean testing, #278) for "Waiting now no longer lists a deleted
+   guest".
 
 3. **An agent can't delete.** On the agent's own thread, the header offers
    no "Delete guest data". `POST /api/conversations/:id/deletion` as the agent answers 403, with
@@ -1582,7 +1637,8 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    with a full body (a reason given), and also with no reason or no body, since the agent is
    refused before the body is read; the manager's header
    on the agent's thread has Thread actions, the positive control; "unchanged" is the thread
-   still opening for both, with the guest's message and the agent's reply. An Unassigned thread
+   still opening for both, through the API, and the thread each opened after every refused
+   request still showing the guest's message and the agent's reply. An Unassigned thread
    is not checked: agents can't open one, ADR 0022).
 4. **The platform admin can't delete.** As the platform admin, owner of the office, the same
    `POST` answers 403 and the thread is unchanged. Signed out, it answers 401. As a manager of
@@ -1607,10 +1663,12 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - For a second such guest, ticking the box deletes the lead.
 7. **No CRM, no checkbox.** In an office with no CRM, the dialog has no CRM checkbox (as in 1),
    and the deletion API, given `deleteInCrm: true`, deletes the thread and touches no CRM.
-   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 7; the dialog says nothing
-   about a CRM, and Cancel deletes nothing; "touches no CRM" is the answer's `{ crm: null }`, no
-   lead in the mock CRM for the office, and a receipt with no CRM and no CRM result; the API's
-   reason, `test_data`, is on the receipt, with `note: null`).
+   No CRM box: covered by Guest deletion 1's spec. "Deletes the thread and touches no CRM":
+   covered by Vitest `apps/saas/modules/inbox/lib/guest-deletion.db.test.ts` › the
+   guest-deletion module deletes as the manager, under the deployment's countMock (ADR 0020)
+   (`crm: null`), and the receipt's null CRM by Guest deletion 10's spec. No E2E test (lean
+   testing, #278) for Cancel deleting nothing, or for the route answering exactly `{ crm: null }`
+   to `deleteInCrm: true`.
 8. **Not while a reply is sending.** `holdReplySending` holds the agent's approved reply in
    "sending":
    - The manager's "Delete guest data" is disabled with "A reply is still sending".
@@ -1618,9 +1676,10 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    - The thread is unchanged.
 
    Once the helper's release step marks the reply sent, deleting works.
-   Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 8; the reason is judged shown
-   while the menu is open; "deleting works" is the manager's dialog after the release, the thread
-   then 404 and gone from every view and owner filter).
+   Covered by Vitest: `apps/saas/modules/inbox/lib/guest-deletion.db.test.ts` › deletion is
+   refused while a reply is sending, and the thread is left whole (ADR 0020, Q8). No E2E test
+   (lean testing, #278) for the disabled menu item with its reason, the route's 409
+   `{ error: "reply_sending" }`, or deleting through the dialog once the reply is sent.
 
 9. **A guest who writes again is a new guest.** After the manager deletes a guest on the mock
    CRM with the box ticked, the same Zalo user writes again (a new message id). The thread is
@@ -1671,8 +1730,8 @@ makes the strip readable. Below `lg` the sidebar is a sheet behind a 56px top ba
 
 **How these run.** "Collapsed" and "open" are told by size, not by labels: on the strip the
 Home link is at most 48px wide, open it is at least 150px. The width animates, so it is polled.
-The shortcut a tooltip names follows the person's computer, so each test that reads it runs as a
-Mac and as Linux (CI's), every signal a page can read (user agent, `navigator.platform`,
+The shortcut a tooltip names follows the person's computer, so the test that reads it runs as a
+Mac, every signal a page can read (user agent, `navigator.platform`,
 `navigator.userAgentData.platform`) pinned to that computer: Playwright's desktop Chrome sends a
 Windows user agent while `navigator.platform` reports the host. A tooltip is read with the real
 pointer, after resting on the page's heading until no tooltip is open.
@@ -1683,24 +1742,29 @@ pointer, after resting on the page's heading until no tooltip is open.
    sidebar to the strip. The button stays, at the top of the strip, above Home, now "Expand
    sidebar", its tooltip "Expand sidebar (⌘B)" / "(Ctrl+B)". Pressing it again opens the sidebar.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 1; the seeded agent on Home, as a Mac at 1280
-   wide and as Linux at exactly 1024, `lg` itself; the button is `data-test="sidebar-toggle"`,
+   wide; the Ctrl+B label, Linux at `lg`'s 1024, has no E2E test (lean testing, #278): the same
+   code with the other key; the button is `data-test="sidebar-toggle"`,
    since the rail is a button with the same names; "on the bell's row" is the two vertical centres
    within 8px; "on the strip" is its right edge within 56px of the window's left).
 2. **⌘B / Ctrl+B still collapses and expands, and the button follows.** The shortcut collapses
    the sidebar to the strip, and the button now offers "Expand sidebar"; again, and it is open,
    the button offering "Collapse sidebar".
-   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 2; `ControlOrMeta+b`, the seeded agent at 1280. The shortcut itself already worked before #234: only the button's part is new).
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 2, the first step of Sidebar 3's test, #278;
+   `ControlOrMeta+b`, the seeded agent at 1280. The shortcut itself already worked before #234:
+   only the button's part is new).
 3. **The sidebar stays as it was left, across a reload.** Collapsed, then reloaded: still the
    strip, with the button offering "Expand sidebar". Expanded again with the button, then
    reloaded: open, the button offering "Collapse sidebar".
-   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 3; collapsed by the shortcut and expanded by
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 3, the test Sidebar 2 is the first step of,
+   so it starts open with the sidebar's cookie saying so; collapsed by the shortcut and expanded by
    the button, never by setting the cookie; "after the reload" is judged once the button's
    tooltip has opened, which needs the live page, so a server paint the page then undoes does not
    pass. Before #234 a collapsed sidebar already reloaded collapsed).
 4. **The strip keeps the Inbox's count.** With the sidebar collapsed, the agent's Your-turn
    number is still on the Inbox icon, as a small badge they can read.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 4; an office of the test's own with one
-   invited agent and two Zalo guests the invited manager gave them, so the number is exactly 2;
+   invited agent and two Zalo guests given to them, written as setup through the inbox store
+   (#222, #278), so the number is exactly 2;
    collapsed by the shortcut; one `nav-your-turn-count` in the Inbox link, reading "2", at least
    12×12px, overlapping the Inbox link's box and inside the strip (right edge within 56px).
    Before #234 the number was there only for screen readers, a 1×1px box).
@@ -1708,17 +1772,14 @@ pointer, after resting on the page's heading until no tooltip is open.
    "Inbox", at Paperwork "Paperwork" with "Coming soon", and at CRM (the built-in CRM, #126)
    "CRM" with "Coming soon". Paperwork and CRM stay disabled: neither is a link, and clicking
    either goes nowhere.
-   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 5; the seeded agent, collapsed by the
-   shortcut; tooltips are `role="tooltip"`; Paperwork is `data-test="nav-paperwork"` and CRM
-   `data-test="nav-crm"`, each pointed at with the mouse since it takes no pointer events; "no
-   link" for CRM is no link whose name starts with "CRM", so other wording that mentions a CRM
-   is not taken for the item; "goes nowhere" is still on `/en/home` once Home's tooltip has shown after the click).
+   No E2E test (lean testing, #278): the tooltips are polish. Covered by Vitest:
+   `apps/saas/modules/shared/lib/walk-nav.test.ts` › Paperwork is disabled, marked Coming soon,
+   links nowhere and is never active; › CRM, the built-in CRM (#126), is disabled, marked Coming
+   soon, links nowhere and is never active.
 6. **The button speaks Vietnamese.** On `/vi`, its tooltip reads "Thu gọn thanh bên (⌘B)" open
    and "Mở rộng thanh bên (⌘B)" collapsed; Ctrl+B off a Mac.
-   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 6; as a Mac and as Linux, as in 1; an invited
-   agent of an office of the test's own set to Vietnamese by its manager (a member reads Nhịp in
-   the office language, Office language 6), signed in in the pinned browser with their session's
-   cookies).
+   Checked by the translation-key test (`apps/saas/modules/i18n/lib/translation-keys.test.ts`,
+   #278).
 7. **A phone keeps its menu sheet.** Below `lg`, the top bar's menu opens the sheet with Home and
    Inbox, and #234's collapse button is in neither the sheet nor the top bar.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 7; 390×844; no visible `sidebar-toggle`. A

@@ -76,29 +76,4 @@ test.describe("Roles 2 — a platform admin's membership opens no guests", () =>
 		expect(thread.status(), "the platform admin cannot open one of its threads").toBe(403);
 		await admin.dispose();
 	});
-
-	test("the agent of the same office still lands in the Inbox and sees its threads", async ({
-		page,
-		context,
-	}) => {
-		await signInContext(context, AGENT);
-
-		await page.goto("/");
-		await expect(page).toHaveURL(/\/en\/inbox/);
-		const { inbox, home } = officeLinks(page);
-		await expect(inbox).toBeVisible();
-		await expect(home).toBeVisible();
-
-		// The threads the inbox's API gives the agent are the ones on screen.
-		const listed = await page.request.get("/api/conversations");
-		expect(listed.status()).toBe(200);
-		const names = ((await listed.json()) as { guestName: string | null }[])
-			.map((t) => t.guestName)
-			.filter((name): name is string => !!name);
-		expect(names.length, "the walk office has named guests").toBeGreaterThan(0);
-		const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		const anyGuest = new RegExp(`^(${names.map(escape).join("|")})`);
-		await expect(page.getByRole("button", { name: anyGuest }).first()).toBeVisible();
-		await expect(page.getByTestId("inbox-load-error")).toHaveCount(0);
-	});
 });

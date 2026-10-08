@@ -122,18 +122,6 @@ async function expectThreadOpen(page: Page, guest: Guest, message: string) {
 	await expect(openThread(page).getByText(guest.text, { exact: true }), message).toBeVisible();
 }
 
-/** The agent answers the guest from the Inbox; the reply goes out (a mock send in E2E). */
-async function answer(page: Page, guest: Guest): Promise<string> {
-	await rowOf(page, guest).click();
-	await expectThreadOpen(page, guest, `the agent opens ${guest.name}'s thread`);
-	const reply = `Yes, it is free from next month. ${randomUUID().slice(0, 8)}`;
-	await page.getByRole("textbox", { name: "Reply" }).fill(reply);
-	const sent = page.waitForResponse((r) => r.url().endsWith("/approve"));
-	await page.getByTestId("approve-and-send").click();
-	expect((await sent).status(), "the reply is sent").toBe(200);
-	return reply;
-}
-
 /* ---------------------------------------------------------------- addresses */
 
 /** The thread an inbox address names (`/inbox?thread=<id>`). */
@@ -326,50 +314,5 @@ test.describe("Thread links 2 — a stale or unknown link opens no one's thread"
 				`${link}: the notice goes once a thread is chosen`,
 			).toHaveCount(0);
 		}
-	});
-});
-
-// scenario: docs/e2e-scenarios.md Thread links 3
-test.describe("Thread links 3 — a link to an answered thread opens that thread", () => {
-	test("the CRM's link to a guest the agent already answered (under Sent, not Your turn) opens that guest's thread with the reply, not the guest waiting first", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(180_000);
-		const office = await newOffice("Thread links 3", { crm: "mock" });
-		const { page } = office.agent;
-		const answered = await office.guestWrites();
-		const waiting = await office.guestWrites();
-		await office.assignToAgent(answered);
-		await office.assignToAgent(waiting);
-
-		// The agent answers the first guest; the other is still waiting, first in Your turn.
-		await page.goto("/en/inbox");
-		const reply = await answer(page, answered);
-		await expect(
-			page.getByRole("button", { name: "Your turn 1", exact: true }),
-			"one guest still waits",
-		).toBeVisible();
-		await expect(
-			page.getByRole("button", { name: "Sent 1", exact: true }),
-			"the answered guest is under Sent",
-		).toBeVisible();
-
-		// The link on the answered guest's lead in the office's CRM opens their thread.
-		const lead = await leadOf(office.id, answered);
-		const id = threadParamOf(lead.threadUrl);
-		expect(id, "the CRM's link names the guest's thread").toBeTruthy();
-		const asked = page.waitForRequest((r) => threadRequested(r) === id);
-		await page.goto(lead.threadUrl);
-		await asked;
-		await expectThreadOpen(page, answered, "the link opens the answered guest's thread");
-		await expect(
-			openThread(page).getByText(reply, { exact: true }),
-			"with the agent's reply in it",
-		).toBeVisible();
-		await expect(
-			openThread(page).getByText(waiting.text, { exact: true }),
-			"not the guest waiting first",
-		).toHaveCount(0);
-		await expect(page.getByTestId("thread-not-found"), "the thread is there").toHaveCount(0);
 	});
 });

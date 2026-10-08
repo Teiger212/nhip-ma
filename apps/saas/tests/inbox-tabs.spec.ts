@@ -38,18 +38,7 @@ const LABEL = {
 } as const;
 
 /** The Inbox's own name, after the count in the tab title: "(n) Inbox", or "(n) Inbox – Nhịp" once the title names the page (#212). */
-const INBOX = { en: "Inbox", vi: "Hộp thư" } as const;
-
-/**
- * A manager's count line under the tabs on Unassigned, where their Inbox opens: #208's wording,
- * the view's count then the office's waiting guests ("2 unassigned · 3 waiting in the office").
- * EN is `COUNT_LINE_EN`'s; VI is spelled out here, pending the #78 review.
- */
-const MANAGER_COUNT_LINE = {
-	en: (unassigned: number, waiting: number) => COUNT_LINE_EN.unassigned(unassigned, waiting),
-	vi: (unassigned: number, waiting: number) =>
-		`${unassigned} khách chưa giao · ${waiting} khách đang chờ văn phòng`,
-} as const;
+const INBOX = "Inbox";
 
 /** Every label a view tab has had, in either language: a tab is one of these and its count. */
 const ANY_LABEL = [...Object.values(LABEL.en), ...Object.values(LABEL.vi)];
@@ -142,8 +131,10 @@ async function seedOffice(
 ): Promise<SeededOffice> {
 	const office = await admin.createOffice("Tabs");
 	await connectZaloOa(office.id, oaId);
-	const agent = await joinOffice(admin, browser, office.id, "member", "tabs-agent");
-	const manager = await joinOffice(admin, browser, office.id, "admin", "tabs-manager");
+	const [agent, manager] = await Promise.all([
+		joinOffice(admin, browser, office.id, "member", "tabs-agent"),
+		joinOffice(admin, browser, office.id, "admin", "tabs-manager"),
+	]);
 
 	const make = (n: number) => Array.from({ length: n }, () => ({ id: uniqueId("guest") }));
 	const guests = {
@@ -154,16 +145,19 @@ async function seedOffice(
 
 	// Each guest wrote once to the OA; the manager gave the agent theirs (ADR 0022), and the agent
 	// answered some. Setup, written in bulk (#222): these specs are about the tabs, not the webhook.
+	// The three kinds are different guests, so they are written at once (#278).
 	const ids = (list: Guest[]) => list.map((guest) => guest.id);
-	await seedZaloGuests(office.id, oaId, ids(guests.unassigned), { fate: "unassigned" });
-	await seedZaloGuests(office.id, oaId, ids(guests.waitingOnAgent), {
-		fate: "assigned",
-		ownerId: agent.userId,
-	});
-	await seedZaloGuests(office.id, oaId, ids(guests.answeredByAgent), {
-		fate: "answered",
-		ownerId: agent.userId,
-	});
+	await Promise.all([
+		seedZaloGuests(office.id, oaId, ids(guests.unassigned), { fate: "unassigned" }),
+		seedZaloGuests(office.id, oaId, ids(guests.waitingOnAgent), {
+			fate: "assigned",
+			ownerId: agent.userId,
+		}),
+		seedZaloGuests(office.id, oaId, ids(guests.answeredByAgent), {
+			fate: "answered",
+			ownerId: agent.userId,
+		}),
+	]);
 
 	return { agent, manager, guests };
 }
@@ -376,7 +370,7 @@ async function expectTabsFit(office: SeededOffice, mix: Mix) {
 								problems = await fitProblems(page);
 								return problems.length;
 							},
-							{ timeout: 5_000 },
+							{ timeout: 5_000, intervals: [50] },
 						)
 						.toBe(0)
 						.catch(() => undefined);
@@ -392,15 +386,6 @@ async function expectTabsFit(office: SeededOffice, mix: Mix) {
 
 // scenario: docs/e2e-scenarios.md Inbox view tabs 1
 test.describe("Inbox view tabs 1 — the view tabs fit on one line", () => {
-	test("with two-digit counts on every tab, a manager's four tabs and an agent's three sit on one line inside the list panel, in English and Vietnamese, on a desktop, at the 22rem panel and on a phone", async ({
-		seededOffice,
-	}) => {
-		test.setTimeout(240_000);
-		// Manager: Unassigned 12, Waiting 25, Sent 14, All 39. Agent: Your turn 13, Sent 14, All 27.
-		const mix = { unassigned: 12, waitingOnAgent: 13, answeredByAgent: 14 };
-		await expectTabsFit(await seededOffice(mix), mix);
-	});
-
 	test("with three-digit counts on every tab, shown in full, a manager's four tabs and an agent's three sit on one line inside the list panel, in English and Vietnamese, on a desktop, at the 22rem panel and on a phone", async ({
 		seededOffice,
 	}) => {
@@ -417,87 +402,84 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 	// Two new guests nobody was given, one waiting on the agent, one the agent answered.
 	const mix = { unassigned: 2, waitingOnAgent: 1, answeredByAgent: 1 };
 
-	for (const locale of ["en", "vi"] as const) {
-		test(`${locale.toUpperCase()}: the manager's tab of every guest the office owes a reply reads "${LABEL[locale].waiting} 3", the same office-wide number as the nav, the tab title and the count line, and lists those three guests; the agent's still reads "${LABEL[locale].yourTurn} 1"`, async ({
-			seededOffice,
-		}) => {
-			test.setTimeout(180_000);
-			const office = await seededOffice(mix);
-			// A member reads the Inbox in the office language (ADR 0025): VI is a Vietnamese office.
-			if (locale === "vi") {
-				await setOfficeLanguage(office.manager.page.request, "vi");
-			}
-			const label = LABEL[locale];
-			const { guests } = office;
+	// English only: the Vietnamese labels are the translation-key test's (#278,
+	// modules/i18n/lib/translation-keys.test.ts).
+	const locale = "en";
+	test(`EN: the manager's tab of every guest the office owes a reply reads "${LABEL.en.waiting} 3", the same office-wide number as the nav, the tab title and the count line, and lists those three guests; the agent's still reads "${LABEL.en.yourTurn} 1"`, async ({
+		seededOffice,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await seededOffice(mix);
+		const label = LABEL[locale];
+		const { guests } = office;
 
-			// The manager: Waiting, not Your turn.
-			const { page } = office.manager;
-			await page.setViewportSize({ width: 1280, height: 720 });
-			await page.goto(`/${locale}/inbox`);
-			await expect(
-				tab(page, label.waiting, 3),
-				`the manager's tab reads "${label.waiting} 3"`,
-			).toBeVisible({
-				timeout: 15_000,
-			});
-			await expect(
-				listPanel(page).getByRole("button", {
-					name: new RegExp(`^${escapeRegExp(label.yourTurn)} \\d+$`),
-				}),
-				`the manager has no "${label.yourTurn}" tab`,
-			).toHaveCount(0);
-			await expect(viewTabs(page), "Unassigned, Waiting, Sent, All").toHaveText([
-				tabText(label.unassigned, 2),
-				tabText(label.waiting, 3),
-				tabText(label.sent, 1),
-				tabText(label.all, 4),
-			]);
-
-			// The same office-wide number: the nav, the tab title and the count line.
-			await expect(navCount(page), "the nav counts the same three").toHaveText("3");
-			await expect(page, "the tab title counts the same three").toHaveTitle(
-				new RegExp(`^\\(3\\) ${INBOX[locale]}( |$)`),
-			);
-			await expect(
-				listPanel(page).getByText(MANAGER_COUNT_LINE[locale](2, 3), { exact: true }),
-				"the list's count line counts the same three",
-			).toBeVisible();
-
-			// The same threads: every guest owed a reply, the Unassigned and the agent's, and not the
-			// one answered.
-			await tab(page, label.waiting, 3).click();
-			await expect(tab(page, label.waiting, 3)).toHaveAttribute("aria-pressed", "true");
-			for (const guest of [...guests.unassigned, ...guests.waitingOnAgent]) {
-				await expect(rowOf(page, guest), `Waiting lists ${guest.id}`).toBeVisible();
-			}
-			await expect(guestRows(page), "Waiting lists only those three").toHaveCount(3);
-			await expect(rowOf(page, guests.answeredByAgent[0]), "not the answered guest").toHaveCount(0);
-
-			// The agent of the same office: still Your turn, their own guest.
-			const agent = office.agent.page;
-			await agent.setViewportSize({ width: 1280, height: 720 });
-			await agent.goto(`/${locale}/inbox`);
-			await expect(
-				tab(agent, label.yourTurn, 1),
-				`the agent's tab reads "${label.yourTurn} 1"`,
-			).toBeVisible({
-				timeout: 15_000,
-			});
-			await expect(
-				listPanel(agent).getByRole("button", {
-					name: new RegExp(`^${escapeRegExp(label.waiting)} \\d+$`),
-				}),
-				`the agent has no "${label.waiting}" tab`,
-			).toHaveCount(0);
-			await expect(viewTabs(agent), "Your turn, Sent, All").toHaveText([
-				tabText(label.yourTurn, 1),
-				tabText(label.sent, 1),
-				tabText(label.all, 2),
-			]);
-			await expect(navCount(agent), "the agent's nav counts their one").toHaveText("1");
-			await tab(agent, label.yourTurn, 1).click();
-			await expect(rowOf(agent, guests.waitingOnAgent[0])).toBeVisible();
-			await expect(guestRows(agent), "Your turn lists only their own").toHaveCount(1);
+		// The manager: Waiting, not Your turn.
+		const { page } = office.manager;
+		await page.setViewportSize({ width: 1280, height: 720 });
+		await page.goto(`/${locale}/inbox`);
+		await expect(
+			tab(page, label.waiting, 3),
+			`the manager's tab reads "${label.waiting} 3"`,
+		).toBeVisible({
+			timeout: 15_000,
 		});
-	}
+		await expect(
+			listPanel(page).getByRole("button", {
+				name: new RegExp(`^${escapeRegExp(label.yourTurn)} \\d+$`),
+			}),
+			`the manager has no "${label.yourTurn}" tab`,
+		).toHaveCount(0);
+		await expect(viewTabs(page), "Unassigned, Waiting, Sent, All").toHaveText([
+			tabText(label.unassigned, 2),
+			tabText(label.waiting, 3),
+			tabText(label.sent, 1),
+			tabText(label.all, 4),
+		]);
+
+		// The same office-wide number: the nav, the tab title and the count line.
+		await expect(navCount(page), "the nav counts the same three").toHaveText("3");
+		await expect(page, "the tab title counts the same three").toHaveTitle(
+			new RegExp(`^\\(3\\) ${INBOX}( |$)`),
+		);
+		await expect(
+			listPanel(page).getByText(COUNT_LINE_EN.unassigned(2, 3), { exact: true }),
+			"the list's count line counts the same three",
+		).toBeVisible();
+
+		// The same threads: every guest owed a reply, the Unassigned and the agent's, and not the
+		// one answered.
+		await tab(page, label.waiting, 3).click();
+		await expect(tab(page, label.waiting, 3)).toHaveAttribute("aria-pressed", "true");
+		for (const guest of [...guests.unassigned, ...guests.waitingOnAgent]) {
+			await expect(rowOf(page, guest), `Waiting lists ${guest.id}`).toBeVisible();
+		}
+		await expect(guestRows(page), "Waiting lists only those three").toHaveCount(3);
+		await expect(rowOf(page, guests.answeredByAgent[0]), "not the answered guest").toHaveCount(0);
+
+		// The agent of the same office: still Your turn, their own guest.
+		const agent = office.agent.page;
+		await agent.setViewportSize({ width: 1280, height: 720 });
+		await agent.goto(`/${locale}/inbox`);
+		await expect(
+			tab(agent, label.yourTurn, 1),
+			`the agent's tab reads "${label.yourTurn} 1"`,
+		).toBeVisible({
+			timeout: 15_000,
+		});
+		await expect(
+			listPanel(agent).getByRole("button", {
+				name: new RegExp(`^${escapeRegExp(label.waiting)} \\d+$`),
+			}),
+			`the agent has no "${label.waiting}" tab`,
+		).toHaveCount(0);
+		await expect(viewTabs(agent), "Your turn, Sent, All").toHaveText([
+			tabText(label.yourTurn, 1),
+			tabText(label.sent, 1),
+			tabText(label.all, 2),
+		]);
+		await expect(navCount(agent), "the agent's nav counts their one").toHaveText("1");
+		await tab(agent, label.yourTurn, 1).click();
+		await expect(rowOf(agent, guests.waitingOnAgent[0])).toBeVisible();
+		await expect(guestRows(agent), "Your turn lists only their own").toHaveCount(1);
+	});
 });

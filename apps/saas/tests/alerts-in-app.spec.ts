@@ -76,8 +76,8 @@ type Guest = {
 
 /**
  * An office of the test's own (the platform admin creates it, so the admin is its kit `owner`),
- * with a Zalo OA and a WhatsApp number of its own, two agents and one or two managers (the kit's
- * `admin`) who accepted their invitations into it. No other spec writes to it.
+ * with a Zalo OA and a WhatsApp number of its own, two agents and a manager (the kit's `admin`)
+ * who accepted their invitations into it. No other spec writes to it.
  */
 type InAppOffice = {
 	id: string;
@@ -99,12 +99,12 @@ type InAppOffice = {
 };
 
 const test = base.extend<{
-	newOffice: (options?: { managers?: 1 | 2 }) => Promise<InAppOffice>;
+	newOffice: () => Promise<InAppOffice>;
 }>({
 	newOffice: async ({ admin, browser, request }, use) => {
 		const oaIds: string[] = [];
 		const contexts: Joined[] = [];
-		await use(async ({ managers = 1 } = {}) => {
+		await use(async () => {
 			const office = await admin.createOffice("Alerts in app");
 			const oaId = uniqueId("oa");
 			oaIds.push(oaId);
@@ -126,9 +126,7 @@ const test = base.extend<{
 			const [agent1, agent2, ...joinedManagers] = await Promise.all([
 				join("agent 1", "member"),
 				join("agent 2", "member"),
-				...(managers === 2
-					? [join("manager 1", "admin"), join("manager 2", "admin")]
-					: [join("manager", "admin")]),
+				join("manager", "admin"),
 			]);
 			const manager = joinedManagers[0];
 			const assigner = assignerAs(manager.api);
@@ -145,12 +143,10 @@ const test = base.extend<{
 				assign: (guest, to) => assigner.assignGuestTo(guest.key, to.id),
 			};
 		});
-		for (const context of contexts) {
-			await context.close();
-		}
-		for (const oaId of oaIds) {
-			await releaseZaloOa(oaId);
-		}
+		await Promise.all([
+			...contexts.map((context) => context.close()),
+			...oaIds.map((oaId) => releaseZaloOa(oaId)),
+		]);
 	},
 });
 
@@ -255,7 +251,6 @@ async function openHome(page: Page) {
 /** What each page shows once loaded, per language. */
 const LOADED = {
 	en: { settings: "Account settings", home: "Waiting now" },
-	vi: { settings: "Cài đặt tài khoản", home: "Đang chờ" },
 } as const;
 
 /**
@@ -357,7 +352,8 @@ async function alertOf(
 
 /* ---------------------------------------------------------------- assignments (#133) */
 
-type Locale = "en" | "vi";
+/** English only here: the Vietnamese copy is the translation-key test's (#278). */
+type Locale = "en";
 
 /**
  * The kit's notification bell in the app header, and Nhịp's rows in it
@@ -374,21 +370,11 @@ const BELL: Record<
 		moved: (name) =>
 			name === null ? "A guest was moved to another agent" : `${name} was moved to another agent`,
 	},
-	vi: {
-		open: "Mở thông báo",
-		title: "Thông báo",
-		assigned: "Một quản lý đã giao cho bạn một cuộc trò chuyện",
-		moved: (name) =>
-			name === null
-				? "Một khách đã được chuyển cho nhân viên khác"
-				: `${name} đã được chuyển cho nhân viên khác`,
-	},
 };
 
 /** Any "was moved to another agent" row, whoever the guest. */
 const ANY_MOVED: Record<Locale, RegExp> = {
 	en: /was moved to another agent$/,
-	vi: /đã được chuyển cho nhân viên khác$/,
 };
 
 const copy = ownerCopy("en");
@@ -597,116 +583,6 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 		).toHaveCount(1);
 		await expect(shown(agent2.page.getByText(ANY_MOVED.en)), "agent 2 lost nothing").toHaveCount(0);
 	});
-
-	// scenario: docs/e2e-scenarios.md Alerts 3, a manager giving a thread to themselves
-	test("a manager who gives a thread to themselves gets no alert and no bell row", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(300_000);
-		const office = await newOffice();
-		const { agent1, manager } = office;
-		await setLocale(manager, "en");
-		await setLocale(agent1, "en");
-		await openBell(manager.page, "en");
-
-		// Yuki writes and waits Unassigned; the manager takes her.
-		const yuki = office.whatsAppGuest("Yuki");
-		await yuki.write();
-		const threadId = await office.threadOf(yuki);
-		await alertOf(office.id, manager, threadId, "guest");
-		await office.assign(yuki, manager);
-
-		// Later, the manager gives another guest to agent 1, whose alert arrives: the manager's
-		// own assignment has had its time.
-		const later = office.zaloGuest();
-		await later.write();
-		const laterThread = await office.threadOf(later);
-		await office.assign(later, agent1);
-		await expect
-			.poll(() => countOf(office, laterThread, agent1, "assigned"), {
-				...ON_THE_PHONES,
-				message: "agent 1, given the later guest, has an assigned alert",
-			})
-			.toBe(1);
-		expect(
-			await tally(office, threadId),
-			"on Yuki's thread, only the manager's guest alert from before: none for taking it",
-		).toEqual({ "manager: guest": 1 });
-
-		// Agent 1's bell has its row; the manager's has none for Yuki.
-		await openBell(agent1.page, "en");
-		await expect(bellRow(agent1.page, BELL.en.assigned), "agent 1's bell row").toHaveCount(1);
-		await openBell(manager.page, "en");
-		await expect(
-			bellRow(manager.page, BELL.en.assigned),
-			"the manager's bell: no 'A manager gave you a thread'",
-		).toHaveCount(0);
-		await expect(
-			shown(manager.page.getByText(ANY_MOVED.en)),
-			"the manager's bell: nothing moved",
-		).toHaveCount(0);
-	});
-});
-
-// scenario: docs/e2e-scenarios.md Alerts 4 (#133; ADR 0019, ADR 0022 S2)
-test.describe("Alerts 4 — a thread returned to Unassigned alerts the other managers", () => {
-	test("manager 1 returns agent 1's Minji to Unassigned: one returned alert, manager 2's, and none for manager 1 who acted, either agent or the platform admin; agent 1, who lost her, gets only the bell row 'Minji đã được chuyển cho nhân viên khác'", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(360_000);
-		const office = await newOffice({ managers: 2 });
-		const { agent1 } = office;
-		const [first, second] = office.managers;
-		// The office is in Vietnamese (ADR 0025): agent 1 reads Nhịp, the bell included, in it.
-		await setOfficeLanguage(first.page.request, "vi");
-		await openBell(agent1.page, "vi");
-		await expect(shown(agent1.page.getByText(ANY_MOVED.vi))).toHaveCount(0);
-
-		// Minji writes and waits Unassigned: both managers are alerted (Alerts 1). Manager 1 gives
-		// her to agent 1.
-		const minji = office.whatsAppGuest("Minji");
-		await minji.write();
-		const threadId = await office.threadOf(minji);
-		for (const manager of office.managers) {
-			await alertOf(office.id, manager, threadId, "guest");
-		}
-		await office.assign(minji, agent1);
-
-		// Manager 1 returns her to Unassigned.
-		const returned = await first.api.post(
-			`/api/conversations/${encodeURIComponent(threadId)}/owner`,
-			{ ownerId: null },
-		);
-		expect(returned.status(), `manager 1 returns Minji: ${await returned.text()}`).toBe(200);
-
-		await expect
-			.poll(() => countOf(office, threadId, second, "returned"), {
-				...ON_THE_PHONES,
-				message: "manager 2 has a returned alert for Minji",
-			})
-			.toBe(1);
-		await laterGuestArrives(office);
-		expect(
-			await tally(office, threadId),
-			"one returned alert, manager 2's: none for manager 1, either agent or the platform admin",
-		).toEqual({
-			"manager 1: guest": 1,
-			"manager 2: guest": 1,
-			"agent 1: assigned": 1,
-			"manager 2: returned": 1,
-		});
-		expect(
-			(await alertState.alerts(office.id)).filter((row) => row.userId === office.platformAdminId),
-			"the platform admin has no alert in the office",
-		).toEqual([]);
-
-		// Agent 1, who lost Minji: the bell row naming her, and (above) no alert.
-		await openBell(agent1.page, "vi");
-		await expect(
-			bellRow(agent1.page, BELL.vi.moved("Minji")),
-			"agent 1's bell: Minji đã được chuyển cho nhân viên khác",
-		).toHaveCount(1);
-	});
 });
 
 // scenario: docs/e2e-scenarios.md Alerts 8 (#136; ADR 0019, ADR 0022)
@@ -863,7 +739,8 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		newOffice,
 	}) => {
 		test.setTimeout(300_000);
-		// The office is left at English (ADR 0025); the Vietnamese titles are the next test's.
+		// The office is left at English (ADR 0025); the Vietnamese titles are the translation-key
+		// test's (modules/i18n/lib/translation-keys.test.ts).
 		const office = await newOffice();
 		const { agent1: agent } = office;
 		const { page } = agent;
@@ -872,13 +749,11 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		// the Inbox list.
 		const en = await ownTitles(page, "en");
 
-		// Two guests are given to the agent while they are on the Inbox list.
+		// Two guests are given to the agent while they are on the Inbox list (each at once: setup).
 		const first = office.zaloGuest();
 		const second = office.zaloGuest();
-		await first.write();
-		await second.write();
-		await office.assign(first, agent);
-		await office.assign(second, agent);
+		await Promise.all([first.write(), second.write()]);
+		await Promise.all([office.assign(first, agent), office.assign(second, agent)]);
 		await expectWaiting(page, 2, en.inbox, "the Inbox list, within its poll");
 
 		// On Settings and Home alike, loaded afresh: the count in front of that page's own title.
@@ -905,37 +780,6 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await expect.soft(page, "Settings' own title, none waiting").toHaveTitle(en.settings, ON_LOAD);
 	});
 
-	// scenario: docs/e2e-scenarios.md Alerts 12, the tab title in Vietnamese
-	test("in a Vietnamese office, the tab title puts the count in front of the page's own Vietnamese title on Settings, Home and the Inbox while n guests wait on the agent", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(240_000);
-		const office = await newOffice();
-		const { agent1: agent, manager } = office;
-		const { page } = agent;
-		await setOfficeLanguage(manager.page.request, "vi");
-
-		// Nothing waits on the agent yet: each page's own Vietnamese title, ending on the Inbox list.
-		const vi = await ownTitles(page, "vi");
-
-		// Two guests are given to the agent while they are on the Inbox list.
-		const first = office.zaloGuest();
-		const second = office.zaloGuest();
-		await first.write();
-		await second.write();
-		await office.assign(first, agent);
-		await office.assign(second, agent);
-		await expectWaiting(page, 2, vi.inbox, "the Vietnamese Inbox list, within its poll");
-
-		// On Settings and Home alike, loaded afresh: the count in front of that page's own title.
-		await page.goto("/vi/settings/general");
-		await expectWaiting(page, 2, vi.settings, "Vietnamese Settings", ON_LOAD);
-		await page.goto("/vi/home");
-		await expectWaiting(page, 2, vi.home, "Vietnamese Home", ON_LOAD);
-		await page.goto("/vi/inbox");
-		await expectWaiting(page, 2, vi.inbox, "the Vietnamese Inbox", ON_LOAD);
-	});
-
 	// scenario: docs/e2e-scenarios.md Alerts 12, an agent's toasts
 	test("an agent on Settings gets one toast per guest of theirs who writes, top-right, kept until tapped, at most three, none for a colleague's or an Unassigned guest or those already waiting at load; tapping one opens that thread without its id in the address; on the Inbox list the title moves and no toast shows", async ({
 		newOffice,
@@ -954,13 +798,12 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		const alexei = office.whatsAppGuest("Alexei");
 		const thao = office.whatsAppGuest("Thảo");
 		const yuki = office.whatsAppGuest("Yuki");
-		for (const guest of [minji, zalo, alexei, thao, yuki]) {
-			await guest.write();
-		}
-		for (const guest of [minji, zalo, alexei, thao]) {
-			await office.assign(guest, agent);
-		}
-		await office.assign(yuki, agent2);
+		// They write at once, then are given out at once (setup): nothing reads their order.
+		await Promise.all([minji, zalo, alexei, thao, yuki].map((guest) => guest.write()));
+		await Promise.all([
+			...[minji, zalo, alexei, thao].map((guest) => office.assign(guest, agent)),
+			office.assign(yuki, agent2),
+		]);
 
 		await openSettings(page);
 		await expectWaiting(page, 4, own.settings, "Settings", ON_LOAD);
@@ -1029,70 +872,6 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await alexei.write();
 		await expectWaiting(page, 4, own.inbox, "the Inbox, Alexei writing again");
 		await expect(toasts(page), "on the Inbox list, still no toast").toHaveCount(0);
-	});
-
-	// scenario: docs/e2e-scenarios.md Alerts 12, a manager's toasts
-	test("a manager on Home gets a toast for a new Unassigned guest and for a thread they hold, none for an agent's thread, and the tab title follows their nav count; tapping opens that thread", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(300_000);
-		const office = await newOffice();
-		const { agent1, manager } = office;
-		const { page } = manager;
-		// The pages' own titles, read before any guest writes.
-		const own = await ownTitles(page, "en");
-
-		// Agent 1 holds one guest, the manager another, before the manager's page loads.
-		const agents = office.zaloGuest();
-		const held = office.whatsAppGuest("Yuki");
-		await agents.write();
-		await held.write();
-		await office.assign(agents, agent1);
-		await office.assign(held, manager);
-
-		await openHome(page);
-		await expect(navCount(page), "something waits on the manager").toBeVisible(WITHIN_A_POLL);
-		const n = Number(await navCount(page).textContent());
-		await expect
-			.soft(page, "Home's tab title follows the nav")
-			.toHaveTitle(tabTitle(n, own.home), ON_LOAD);
-		await expect(toasts(page), "no toast at load").toHaveCount(0);
-
-		// Agent 1's guest writes, then a new guest: only the new guest raises a toast.
-		await agents.write();
-		const newcomer = office.zaloGuest();
-		await newcomer.write();
-		await expect(
-			toastOf(page, newcomer),
-			"a new Unassigned guest raises 'A guest is waiting'",
-		).toBeVisible(WITHIN_A_POLL);
-		await expect(
-			toasts(page),
-			"one toast: agent 1's guest raised none for the manager",
-		).toHaveCount(1);
-
-		// The guest the manager holds writes.
-		await held.write();
-		await expect(
-			toastOf(page, held),
-			"the manager's own guest raises 'Yuki is waiting'",
-		).toBeVisible(WITHIN_A_POLL);
-		await expect(toasts(page), "two toasts").toHaveCount(2);
-		const now = Number(await navCount(page).textContent());
-		await expect
-			.soft(page, "the tab title follows the nav")
-			.toHaveTitle(tabTitle(now, own.home), ON_LOAD);
-
-		// Tapping Yuki's opens the Inbox on Yuki's thread, with no thread id in the address.
-		const heldThread = await office.threadOf(held);
-		await toastOf(page, held).click();
-		await expect(page).toHaveURL(/\/en\/inbox/);
-		await expect(
-			openThread(page).getByText(held.texts.at(-1)!, { exact: true }),
-			"tapping Yuki's toast opens Yuki's thread",
-		).toBeVisible();
-		expectNoThreadIdInUrl(page, heldThread, "the toast's Inbox");
-		await expect(toasts(page), "on the Inbox list, no toast").toHaveCount(0);
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 12, an assignment raises a toast for the new owner

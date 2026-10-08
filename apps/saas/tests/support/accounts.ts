@@ -6,7 +6,7 @@
  * Setup only (#186; AGENTS.md, "Test quality"): a spec whose subject is not signing up starts
  * with its operators already signed up. The account is what the invitation sign-up page leaves
  * (Better Auth's own `createUser` and credential `linkAccount`, so its hooks run: the welcome
- * notification), past the first-run step, with no language of its own; the session is one
+ * notification), past the first-run step unless asked otherwise, with no language of its own; the session is one
  * Better Auth's testUtils mints, as for the seeded logins (test-auth.ts). Joining the office
  * stays the server's: the caller accepts the invitation through the API with this session.
  * The welcome notification (and its email, where the env sends mail) is made here, not by the
@@ -23,15 +23,19 @@ const testAuth = betterAuth({
 	plugins: [...authOptions.plugins, testUtils()],
 });
 
-/** The signed-up account for `email`, password NEW_PASSWORD, and a minted session's cookies. */
-export async function signedUp(email: string) {
+/**
+ * The signed-up account for `email`, password NEW_PASSWORD, and a minted session's cookies.
+ * `step` `"first-run"`: the account as the sign-up leaves it, before the kit's first-run step,
+ * for a spec that walks that step; otherwise past it. A string, as the state process's args are.
+ */
+export async function signedUp(email: string, step = "onboarded") {
 	const ctx = await testAuth.$context;
 	const user = await ctx.internalAdapter.createUser({
 		email: email.toLowerCase(),
 		name: "E2E Invitee",
 		// What the invitation sign-up leaves (invitation-only plugin) and the first-run step sets.
 		emailVerified: true,
-		onboardingComplete: true,
+		onboardingComplete: step !== "first-run",
 	});
 	await ctx.internalAdapter.linkAccount({
 		userId: user.id,
@@ -42,4 +46,15 @@ export async function signedUp(email: string) {
 	const domain = new URL(ctx.baseURL).hostname;
 	const cookies = await ctx.test.getCookies({ userId: user.id, domain });
 	return { userId: user.id, cookies };
+}
+
+/**
+ * Another session for an account that already exists, minted as `signedUp`'s is: a second
+ * browser of the same operator (#278). Better Auth's session hook gives it the account's last
+ * office, as signing in on the login page would. Setup only: signing in is the Auth specs'.
+ */
+export async function anotherSession(userId: string) {
+	const ctx = await testAuth.$context;
+	const domain = new URL(ctx.baseURL).hostname;
+	return ctx.test.getCookies({ userId, domain });
 }

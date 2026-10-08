@@ -6,7 +6,6 @@ import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { AGENT } from "./support/seed";
-import { apiAs } from "./support/session";
 import { signInContext } from "./support/session-state";
 
 /**
@@ -155,132 +154,121 @@ async function sendTheDeliveries(admin: Admin, request: APIRequestContext, newOa
 }
 
 // scenario: docs/e2e-scenarios.md Webhook deliveries 1
-test.describe("Webhook deliveries 1 — every delivery is on record", () => {
-	test("Admin → Webhooks lists a signed message to a held OA as filed to its office, one to an OA no office holds as dropped, an unsigned one as refused, newest first", async ({
-		admin,
-		request,
-		newOa,
-	}) => {
-		const { office, heldOa, dropped, last } = await sendTheDeliveries(admin, request, newOa);
-		const { page } = admin;
-
-		// Admin → Webhooks, through the admin menu.
-		await page.goto("/en/admin/organizations");
-		const menuItem = page.getByRole("link", { name: "Webhooks", exact: true });
-		await expect(menuItem, "the admin menu has Webhooks").toBeVisible();
-		await menuItem.click();
-		await expect(page).toHaveURL(/\/en\/admin\/webhooks/);
-		await expect(page.getByTestId("webhook-deliveries")).toBeVisible();
-
-		// Filed: on the OA the office holds, to that office.
-		const filedItem = deliveryTo(page, heldOa);
-		await expect(filedItem).toHaveCount(1);
-		await expect(filedItem).toHaveAttribute("data-outcome", "filed");
-		await expect(filedItem.getByTestId("webhook-delivery-outcome")).toHaveText(
-			OUTCOME.filed(office.name),
-		);
-
-		// Dropped: no office holds the OA it came to.
-		const droppedItem = deliveryTo(page, dropped.oaId);
-		await expect(droppedItem).toHaveCount(1);
-		await expect(droppedItem).toHaveAttribute("data-outcome", "dropped");
-		await expect(droppedItem.getByTestId("webhook-delivery-outcome")).toHaveText(OUTCOME.dropped);
-		await expect(deliveryTo(page, last.oaId)).toHaveCount(1);
-
-		// Newest first, and the unsigned one is on record as refused, where it came in.
-		await expect(async () => {
-			const listed = await listedDeliveries(page);
-			const at = (oaId: string) => listed.findIndex((d) => d.text.includes(endpointOf(oaId)));
-			const [lastAt, droppedAt, filedAt] = [at(last.oaId), at(dropped.oaId), at(heldOa)];
-			expect(lastAt, "the last delivery is listed").toBeGreaterThanOrEqual(0);
-			expect(lastAt, "the last delivery is above the dropped one").toBeLessThan(droppedAt);
-			expect(droppedAt, "the dropped delivery is above the filed one").toBeLessThan(filedAt);
-			const between = listed.slice(lastAt + 1, droppedAt);
-			expect(
-				between.filter((d) => d.outcome === "refused" && d.badge === OUTCOME.refused),
-				"the unsigned delivery, between the dropped one and the last, is refused (bad signature)",
-			).not.toHaveLength(0);
-		}).toPass({ timeout: 10_000 });
-	});
-});
-
 // scenario: docs/e2e-scenarios.md Webhook deliveries 2
-test.describe("Webhook deliveries 2 — no guest data in the log", () => {
-	test("neither the page nor its API shows a message's text, the guest's id or the vendor's message id, signed or not", async ({
+test.describe("Webhook deliveries 1 — every delivery is on record; Webhook deliveries 2 — no guest data in the log", () => {
+	test("Admin → Webhooks lists this test's deliveries, filed, dropped and refused, newest first, and neither the page nor its API shows any guest data", async ({
 		admin,
 		request,
 		newOa,
 	}) => {
-		const { heldOa, filed, dropped, refused, last } = await sendTheDeliveries(
+		const { office, heldOa, filed, dropped, refused, last } = await sendTheDeliveries(
 			admin,
 			request,
 			newOa,
 		);
-		const guestData = [filed, dropped, refused, last].flatMap((m) => [
-			["guest id", m.guestId],
-			["message text", m.text],
-			["vendor message id as sent", m.msgId],
-		]);
-		const { page } = admin;
+		const page = await admin.openPage();
 
-		await page.goto("/en/admin/webhooks");
-		// Judge the page with this test's deliveries on it, not an empty one.
-		await expect(deliveryTo(page, heldOa)).toHaveCount(1);
-		await expect(deliveryTo(page, dropped.oaId)).toHaveCount(1);
-		const html = await page.content();
-		for (const [what, value] of guestData) {
-			expect(html, `the page shows no ${what}`).not.toContain(value);
-			await expect(page.getByText(value)).toHaveCount(0);
-		}
+		await test.step("Admin → Webhooks lists a signed message to a held OA as filed to its office, one to an OA no office holds as dropped, an unsigned one as refused, newest first", async () => {
+			// Admin → Webhooks, through the admin menu.
+			await page.goto("/en/admin/organizations");
+			const menuItem = page.getByRole("link", { name: "Webhooks", exact: true });
+			await expect(menuItem, "the admin menu has Webhooks").toBeVisible();
+			await menuItem.click();
+			await expect(page).toHaveURL(/\/en\/admin\/webhooks/);
+			await expect(page.getByTestId("webhook-deliveries")).toBeVisible();
 
-		const res = await admin.api.get(DELIVERIES_API);
-		expect(res.status()).toBe(200);
-		const body = await res.text();
-		expect(body, "the API lists this test's delivery, by its endpoint").toContain(heldOa);
-		for (const [what, value] of guestData) {
-			expect(body, `the API gives no ${what}`).not.toContain(value);
-		}
+			// Filed: on the OA the office holds, to that office.
+			const filedItem = deliveryTo(page, heldOa);
+			await expect(filedItem).toHaveCount(1);
+			await expect(filedItem).toHaveAttribute("data-outcome", "filed");
+			await expect(filedItem.getByTestId("webhook-delivery-outcome")).toHaveText(
+				OUTCOME.filed(office.name),
+			);
+
+			// Dropped: no office holds the OA it came to.
+			const droppedItem = deliveryTo(page, dropped.oaId);
+			await expect(droppedItem).toHaveCount(1);
+			await expect(droppedItem).toHaveAttribute("data-outcome", "dropped");
+			await expect(droppedItem.getByTestId("webhook-delivery-outcome")).toHaveText(OUTCOME.dropped);
+			await expect(deliveryTo(page, last.oaId)).toHaveCount(1);
+
+			// Newest first, and the unsigned one is on record as refused, where it came in.
+			await expect(async () => {
+				const listed = await listedDeliveries(page);
+				const at = (oaId: string) => listed.findIndex((d) => d.text.includes(endpointOf(oaId)));
+				const [lastAt, droppedAt, filedAt] = [at(last.oaId), at(dropped.oaId), at(heldOa)];
+				expect(lastAt, "the last delivery is listed").toBeGreaterThanOrEqual(0);
+				expect(lastAt, "the last delivery is above the dropped one").toBeLessThan(droppedAt);
+				expect(droppedAt, "the dropped delivery is above the filed one").toBeLessThan(filedAt);
+				const between = listed.slice(lastAt + 1, droppedAt);
+				expect(
+					between.filter((d) => d.outcome === "refused" && d.badge === OUTCOME.refused),
+					"the unsigned delivery, between the dropped one and the last, is refused (bad signature)",
+				).not.toHaveLength(0);
+			}).toPass({ timeout: 10_000 });
+		});
+
+		await test.step("neither the page nor its API shows a message's text, the guest's id or the vendor's message id, signed or not", async () => {
+			const guestData = [filed, dropped, refused, last].flatMap((m) => [
+				["guest id", m.guestId],
+				["message text", m.text],
+				["vendor message id as sent", m.msgId],
+			]);
+
+			// The same page, with this test's deliveries on it, not an empty one.
+			await expect(deliveryTo(page, heldOa)).toHaveCount(1);
+			await expect(deliveryTo(page, dropped.oaId)).toHaveCount(1);
+			const html = await page.content();
+			for (const [what, value] of guestData) {
+				expect(html, `the page shows no ${what}`).not.toContain(value);
+				await expect(page.getByText(value)).toHaveCount(0);
+			}
+
+			const res = await admin.api.get(DELIVERIES_API);
+			expect(res.status()).toBe(200);
+			const body = await res.text();
+			expect(body, "the API lists this test's delivery, by its endpoint").toContain(heldOa);
+			for (const [what, value] of guestData) {
+				expect(body, `the API gives no ${what}`).not.toContain(value);
+			}
+		});
 	});
 });
 
 // scenario: docs/e2e-scenarios.md Webhook deliveries 3
 test.describe("Webhook deliveries 3 — only the platform admin sees it", () => {
-	test("the agent has no Webhooks page and no Webhooks menu item; the platform admin does", async ({
+	test("the agent has no Webhooks page, menu item or deliveries API (403), nor has anyone signed out (401); the platform admin has all three", async ({
 		page,
 		context,
+		request,
 		admin,
 	}) => {
-		// The platform admin: the page is there (so its absence below means something).
-		await admin.page.goto("/en/admin/webhooks");
-		await expect(admin.page.getByTestId("webhook-deliveries")).toBeVisible();
-		await expect(admin.page.getByRole("link", { name: "Webhooks", exact: true })).toBeVisible();
+		await test.step("the agent has no Webhooks page and no Webhooks menu item; the platform admin does", async () => {
+			// The platform admin: the page is there (so its absence below means something).
+			const adminPage = await admin.openPage();
+			await adminPage.goto("/en/admin/webhooks");
+			await expect(adminPage.getByTestId("webhook-deliveries")).toBeVisible();
+			await expect(adminPage.getByRole("link", { name: "Webhooks", exact: true })).toBeVisible();
 
-		await signInContext(context, AGENT);
-		await page.goto("/en/admin/webhooks");
-		// Judge on a rendered page, not an empty one.
-		await expect(page.getByRole("main")).toBeVisible();
-		await expect(page).not.toHaveURL(/\/admin\/webhooks/);
-		await expect(page.getByTestId("webhook-deliveries")).toHaveCount(0);
-		await expect(page.getByTestId("webhook-delivery")).toHaveCount(0);
-		await expect(page.getByRole("link", { name: "Webhooks", exact: true })).toHaveCount(0);
-	});
+			await signInContext(context, AGENT);
+			await page.goto("/en/admin/webhooks");
+			// Judge on a rendered page, not an empty one.
+			await expect(page.getByRole("main")).toBeVisible();
+			await expect(page).not.toHaveURL(/\/admin\/webhooks/);
+			await expect(page.getByTestId("webhook-deliveries")).toHaveCount(0);
+			await expect(page.getByTestId("webhook-delivery")).toHaveCount(0);
+			await expect(page.getByRole("link", { name: "Webhooks", exact: true })).toHaveCount(0);
+		});
 
-	test("the deliveries API refuses the agent (403) and a visitor signed out (401), and answers the platform admin", async ({
-		admin,
-	}) => {
-		const asAdmin = await admin.api.get(DELIVERIES_API);
-		expect(asAdmin.status(), "the platform admin reads the log").toBe(200);
+		await test.step("the deliveries API refuses the agent (403) and a visitor signed out (401), and answers the platform admin", async () => {
+			const asAdmin = await admin.api.get(DELIVERIES_API);
+			expect(asAdmin.status(), "the platform admin reads the log").toBe(200);
 
-		const agent = await apiAs(AGENT);
-		const signedOut = await apiAs();
-		try {
-			expect((await agent.get(DELIVERIES_API)).status(), "the agent is refused").toBe(403);
-			expect((await signedOut.get(DELIVERIES_API)).status(), "nobody signed in is refused").toBe(
-				401,
+			// The agent, signed in above, and the test's own requests, signed out.
+			expect((await context.request.get(DELIVERIES_API)).status(), "the agent is refused").toBe(
+				403,
 			);
-		} finally {
-			await agent.dispose();
-			await signedOut.dispose();
-		}
+			expect((await request.get(DELIVERIES_API)).status(), "nobody signed in is refused").toBe(401);
+		});
 	});
 });

@@ -68,10 +68,7 @@ const test = base.extend<{ office: ChipOffice }>({
 				assign: (guestId, to) => assigner.assignGuestTo(guestId, to.id),
 			});
 		} finally {
-			for (const context of contexts) {
-				await context.close();
-			}
-			await releaseZaloOa(oaId);
+			await Promise.all([...contexts.map((context) => context.close()), releaseZaloOa(oaId)]);
 		}
 	},
 });
@@ -93,12 +90,21 @@ function openThread(page: Page): Locator {
 	return page.getByRole("article");
 }
 
+/** The Inbox's All view button. */
+function allView(page: Page): Locator {
+	return page.getByRole("button", { name: /^All \d+$/ });
+}
+
+/** The operator's Inbox, under All. */
+async function openAll(page: Page) {
+	await page.goto("/en/inbox");
+	await allView(page).click();
+	await expect(allView(page)).toHaveAttribute("aria-pressed", "true");
+}
+
 /** The operator finds the guest's row: the Inbox under All, searched by the guest's id. */
 async function findRow(page: Page, guestId: string): Promise<Locator> {
-	await page.goto("/en/inbox");
-	const all = page.getByRole("button", { name: /^All \d+$/ });
-	await all.click();
-	await expect(all).toHaveAttribute("aria-pressed", "true");
+	await openAll(page);
 	await page.getByRole("textbox", { name: "Search threads" }).fill(guestId);
 	const row = rowOf(page, guestId);
 	await expect(row).toBeVisible();
@@ -114,8 +120,18 @@ async function expectChip(where: Locator, chip: Chip, message: string) {
 
 /** The operator sees the chip on the guest's row and, opened from it, on the thread's header. */
 async function expectChipFor(operator: Operator, guestId: string, chip: Chip, whose: string) {
+	await expectChipOn(operator, await findRow(operator.page, guestId), guestId, chip, whose);
+}
+
+/** The chip on this row of the operator's list, and on the thread's header once it is opened. */
+async function expectChipOn(
+	operator: Operator,
+	row: Locator,
+	guestId: string,
+	chip: Chip,
+	whose: string,
+) {
 	const { page } = operator;
-	const row = await findRow(page, guestId);
 	await expectChip(row, chip, `${operator.label}, ${whose}, on the row`);
 	await row.click();
 	await expect(openThread(page).getByText(`Hello from ${guestId}`, { exact: true })).toBeVisible();
@@ -133,19 +149,36 @@ test.describe("Assign 12 — a manager sees Your turn only on their own threads"
 		const { agent, manager, secondManager } = office;
 
 		// Four guests write, and no one answers: one stays Unassigned, the others are given out.
-		const unassigned = await office.newGuest();
-		const agents = await office.newGuest();
-		const secondManagers = await office.newGuest();
-		const managers = await office.newGuest();
-		await office.assign(agents, agent);
-		await office.assign(secondManagers, secondManager);
-		await office.assign(managers, manager);
+		// They write at once, then are given out at once (setup): nothing here reads their order.
+		const [unassigned, agents, secondManagers, managers] = await Promise.all([
+			office.newGuest(),
+			office.newGuest(),
+			office.newGuest(),
+			office.newGuest(),
+		]);
+		await Promise.all([
+			office.assign(agents, agent),
+			office.assign(secondManagers, secondManager),
+			office.assign(managers, manager),
+		]);
 
 		// The manager: Your turn on their own; Waiting on everyone else's, and on the Unassigned one.
-		await expectChipFor(manager, managers, "yourTurn", "their own thread");
-		await expectChipFor(manager, unassigned, "waiting", "the Unassigned thread");
-		await expectChipFor(manager, agents, "waiting", "agent 1's thread");
-		await expectChipFor(manager, secondManagers, "waiting", "the second manager's thread");
+		// One Inbox under All, each row told apart by its guest's own id.
+		await openAll(manager.page);
+		for (const [guestId, chip, whose] of [
+			[managers, "yourTurn", "their own thread"],
+			[unassigned, "waiting", "the Unassigned thread"],
+			[agents, "waiting", "agent 1's thread"],
+			[secondManagers, "waiting", "the second manager's thread"],
+		] as const) {
+			await expect(allView(manager.page), "still under All").toHaveAttribute(
+				"aria-pressed",
+				"true",
+			);
+			const row = rowOf(manager.page, guestId);
+			await expect(row).toBeVisible();
+			await expectChipOn(manager, row, guestId, chip, whose);
+		}
 
 		// Agent 1 and the second manager: Your turn on their own.
 		await expectChipFor(agent, agents, "yourTurn", "their own thread");

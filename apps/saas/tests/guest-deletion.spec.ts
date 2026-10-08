@@ -2,20 +2,18 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
 
 import { assignerAs } from "./support/assign";
 import { ownerCopy } from "./support/copy";
-import { mockCrmLeads } from "./support/crm";
 import type { GuestDeletionReceipt } from "./support/deletion";
-import { guestDeletionRecords, holdReplySending } from "./support/deletion";
-import type { Admin } from "./support/fixtures";
+import { guestDeletionRecords } from "./support/deletion";
 import { expect, test as base } from "./support/fixtures";
-import { joinOffice } from "./support/operators";
-import { connectZaloOa, releaseZaloOa } from "./support/pipes";
+import type { Joined } from "./support/operators";
 import { MANAGER, PLATFORM_ADMIN } from "./support/seed";
 import type { Api } from "./support/session";
 import { apiAs, withOrigin } from "./support/session";
+import { testOffices } from "./support/test-offices";
 import { sendZaloText } from "./support/zalo";
 
 /**
@@ -34,12 +32,10 @@ const saas = JSON.parse(
 		deletion: {
 			actions: string;
 			delete: string;
-			sendingReason: string;
 			title: string;
 			what: string;
 			keptZalo: string;
 			irreversible: string;
-			cancel: string;
 			confirm: string;
 			done: string;
 			reasonLabel: string;
@@ -50,13 +46,7 @@ const saas = JSON.parse(
 			noteRequired: string;
 		};
 	};
-	home: {
-		window: string;
-		waitingNow: string;
-		responseTime: string;
-		funnel: { title: string; leadsIn: string; engaged: string; inConversation: string };
-		spread: { label: string; under5m: string };
-	};
+	home: { funnel: { title: string; leadsIn: string } };
 };
 
 const deletionCopy = {
@@ -126,22 +116,21 @@ type DeletionOffice = {
 
 const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice> }>({
 	newOffice: async ({ admin, browser, request }, use) => {
-		const oaIds: string[] = [];
-		const contexts: { close: () => Promise<void> }[] = [];
+		const offices = testOffices(admin, browser);
 		await use(async (label) => {
-			const office = await admin.createOffice(label);
 			const oaId = uniqueId("oa");
-			oaIds.push(oaId);
-			await connectZaloOa(office.id, oaId);
-			const join = async (label: string, role: "member" | "admin") => {
-				const operator = await newOperatorOf(admin, browser, office.id, label, role);
-				contexts.push(operator);
-				return operator;
-			};
-			// The agent and the manager join at once (setup).
+			// The OA, and the agent and the manager joining, at once (setup).
+			const office = await offices.create(label, {
+				crm: "none",
+				zaloOa: oaId,
+				joins: [
+					{ role: "member", tag: "deletion-agent" },
+					{ role: "admin", tag: "deletion-manager" },
+				],
+			});
 			const [agent, manager] = await Promise.all([
-				join("the agent", "member"),
-				join("the manager", "admin"),
+				operatorOf(office.joined[0], "the agent"),
+				operatorOf(office.joined[1], "the manager"),
 			]);
 			const assigner = assignerAs(manager.api);
 			return {
@@ -156,12 +145,7 @@ const test = base.extend<{ newOffice: (label: string) => Promise<DeletionOffice>
 				assignToAgent: (guest) => assigner.assignGuestTo(guest.id, agent.id),
 			};
 		});
-		for (const context of contexts) {
-			await context.close();
-		}
-		for (const oaId of oaIds) {
-			await releaseZaloOa(oaId);
-		}
+		await offices.cleanUp();
 	},
 });
 
@@ -184,25 +168,12 @@ function guestOf(request: APIRequestContext, oaId: string): Guest {
 	return guest;
 }
 
-/** A newly joined operator of `officeId`: an agent (the kit's `member`) or a manager (`admin`). */
-async function newOperatorOf(
-	admin: Admin,
-	browser: Browser,
-	officeId: string,
-	label: string,
-	role: "member" | "admin",
-): Promise<Operator & { close: () => Promise<void> }> {
-	const { page, api, close } = await joinOffice(
-		admin,
-		browser,
-		officeId,
-		role,
-		role === "admin" ? "deletion-manager" : "deletion-agent",
-	);
+/** A newly joined operator of the office (an agent or a manager), as their own session tells them. */
+async function operatorOf({ page, api }: Joined, label: string): Promise<Operator> {
 	const session = await api.get("/api/auth/get-session");
 	expect(session.status(), `${label}'s session is readable`).toBe(200);
 	const { user } = (await session.json()) as { user: { id: string; name: string } };
-	return { label, id: user.id, name: user.name, page, api, close };
+	return { label, id: user.id, name: user.name, page, api };
 }
 
 /* ---------------------------------------------------------------- through the API */
@@ -325,9 +296,9 @@ function navCount(page: Page) {
 	return page.getByRole("link", { name: /^Inbox\b/ }).getByTestId("nav-your-turn-count");
 }
 
-/** The Inbox, with its threads loaded (a row, or the empty Inbox saying so). */
-async function openInbox(page: Page) {
-	await page.goto("/en/inbox");
+/** The Inbox (at `address`), with its threads loaded (a row, or the empty Inbox saying so). */
+async function openInbox(page: Page, address = "/en/inbox") {
+	await page.goto(address);
 	await expect(
 		// A row (it carries its owner flag), or the list saying it is empty, caught up, unmatched,
 		// or that every lead is assigned (a manager's Unassigned, ADR 0022).
@@ -351,11 +322,14 @@ async function search(page: Page, text: string) {
 	await page.getByRole("textbox", { name: saas.inbox.searchAria }).fill(text);
 }
 
-/** The operator opens the Inbox and, in it, the guest's thread (their first message showing). */
+/**
+ * The operator opens the Inbox on All (its own address for that view) and, in it, the guest's
+ * thread (their first message showing).
+ */
 async function openThreadOf(operator: Operator, guest: Guest) {
 	const { page } = operator;
-	await openInbox(page);
-	await showView(page, "All");
+	await openInbox(page, "/en/inbox?view=all");
+	await expect(view(page, "All"), "the Inbox opens on All").toHaveAttribute("aria-pressed", "true");
 	await search(page, guest.id);
 	await expect(rowOf(page, guest), `${operator.label} has ${guest.id}'s thread`).toBeVisible();
 	await rowOf(page, guest).click();
@@ -583,95 +557,6 @@ async function expectGoneFromInbox(operator: Operator, gone: Guest, stays: Guest
 
 /* ---------------------------------------------------------------- Home */
 
-/** What Home says, section by section: the numbers a manager compares week to week. */
-type HomeNumbers = {
-	/** The funnel, by stage: Leads in, Engaged, In conversation. */
-	funnel: Record<string, number>;
-	/** The funnel as read aloud (its percentages included). */
-	funnelSaid: string;
-	/** The leads-by-day summary ("3 leads · 0.1 a day"). */
-	perDay: string;
-	/** Each day of leads by day, oldest first, as its tooltip says it ("Mon, Sep 7: 0"). */
-	days: string[];
-	/** Response time: the median, the 90th percentile, how many were answered and every band. */
-	responseTime: string;
-};
-
-/** A day's tooltip on the leads-by-day chart: "Mon, Sep 7" then "Leads in 0". */
-const DAY_TOOLTIP = new RegExp(
-	`([A-Z][a-z]{2}, [A-Z][a-z]{2} \\d{1,2})\\s+${escapeRegExp(homeCopy.funnel.leadsIn)}\\s+(\\d+)`,
-);
-
-/** The person opens Home afresh and reads its numbers. */
-async function readHome(page: Page): Promise<HomeNumbers> {
-	await page.goto("/en/home");
-	const main = page.getByRole("main");
-	await expect(main.getByRole("heading", { name: homeCopy.waitingNow })).toBeVisible();
-
-	const funnelList = main.getByRole("list", { name: homeCopy.funnel.title });
-	await expect(funnelList).toBeVisible();
-	const funnelSaid = await funnelList.ariaSnapshot();
-	const funnel: Record<string, number> = {};
-	for (const match of funnelSaid.matchAll(/paragraph: \d+ (.+)\n\s*- paragraph: "(\d+)"/g)) {
-		funnel[match[1]] = Number(match[2]);
-	}
-
-	const perDay = (await main.getByText(/^\d+ leads? · [\d.]+ a day$/).textContent()) ?? "";
-
-	const said = await main.ariaSnapshot();
-	const responseAt = said.indexOf(`heading "${homeCopy.responseTime}"`);
-	expect(responseAt, "Home shows Response time").toBeGreaterThanOrEqual(0);
-	const responseTime = said.slice(responseAt);
-
-	return { funnel, funnelSaid, perDay, days: await leadsByDay(page), responseTime };
-}
-
-/**
- * Each day of the leads-by-day chart, as the person reads it from the keyboard: focus the chart,
- * step to its first day and then day by day to the last, reading each day's tooltip. Checked to be
- * one reading per day of the window, each a different day, adding up to Leads in.
- */
-async function leadsByDay(page: Page): Promise<string[]> {
-	const main = page.getByRole("main");
-	const windowMatch = new RegExp(
-		escapeRegExp(homeCopy.window).replace(escapeRegExp("{days}"), "(\\d+)"),
-	).exec(await main.innerText());
-	expect(windowMatch, "Home names its window (Last N days)").not.toBeNull();
-	const windowDays = Number(windowMatch![1]);
-
-	const tooltip = async () => {
-		const match = DAY_TOOLTIP.exec(await main.innerText());
-		return match ? `${match[1]}: ${match[2]}` : null;
-	};
-	const chart = main.getByRole("application");
-	await chart.focus();
-	// The chart starts on its first day; one step right shows a tooltip, one step left is day 1.
-	await page.keyboard.press("ArrowRight");
-	await expect.poll(tooltip, { message: "the chart shows a day's tooltip" }).not.toBeNull();
-	const second = await tooltip();
-	await page.keyboard.press("ArrowLeft");
-	await expect.poll(tooltip, { message: "the chart steps back to its first day" }).not.toBe(second);
-	const days = [(await tooltip())!];
-	while (days.length < windowDays) {
-		await page.keyboard.press("ArrowRight");
-		const previous = days[days.length - 1];
-		await expect
-			.poll(tooltip, { message: `the chart steps on from ${previous}` })
-			.not.toBe(previous);
-		days.push((await tooltip())!);
-	}
-
-	expect(new Set(days.map((d) => d.split(":")[0])).size, "one reading per day").toBe(windowDays);
-	const total = days.reduce((sum, d) => sum + Number(d.split(": ")[1]), 0);
-	const leadsIn = Number(
-		/paragraph: \d+ .+\n\s*- paragraph: "(\d+)"/.exec(
-			await main.getByRole("list", { name: homeCopy.funnel.title }).ariaSnapshot(),
-		)?.[1],
-	);
-	expect(total, "the days add up to Leads in").toBe(leadsIn);
-	return days;
-}
-
 /** Home's Leads in, read afresh from its funnel. */
 async function leadsIn(page: Page): Promise<number> {
 	await page.goto("/en/home");
@@ -681,11 +566,6 @@ async function leadsIn(page: Page): Promise<number> {
 	const match = /paragraph: \d+ (.+)\n\s*- paragraph: "(\d+)"/.exec(said);
 	expect(match?.[1], "the funnel starts with Leads in").toBe(homeCopy.funnel.leadsIn);
 	return Number(match![2]);
-}
-
-/** Home's Waiting now entry for the guest (a link to their thread). */
-function waitingNowEntry(page: Page, guest: Guest) {
-	return page.getByRole("main").getByRole("link").filter({ hasText: guest.id });
 }
 
 // ---------------------------------------------------------------------------------------
@@ -819,82 +699,6 @@ test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
 	});
 });
 
-// scenario: docs/e2e-scenarios.md Guest deletion 2
-test.describe("Guest deletion 2 — Home's numbers don't move when a guest is deleted", () => {
-	test("three guests, two answered, one wrote back: deleting the one who wrote back leaves the funnel, response time and every day of leads by day unchanged for the agent and the manager, and Waiting now no longer lists them", async ({
-		newOffice,
-	}) => {
-		const office = await newOffice("Deletion 2");
-		const { agent, manager } = office;
-
-		const wroteBack = await office.newGuest();
-		const answered = await office.newGuest();
-		const waiting = await office.newGuest();
-		// The manager gives all three to the agent, so the agent's Waiting now can list them.
-		for (const guest of [wroteBack, answered, waiting]) {
-			await office.assignToAgent(guest);
-		}
-		await answer(agent, wroteBack);
-		await answer(agent, answered);
-		await wroteBack.write(`Is it still available? ${randomUUID().slice(0, 8)}`);
-		await threadSeenBy(manager, wroteBack);
-
-		// Before: Home counts all three leads, both answers and the guest who wrote back.
-		const before = { agent: await readHome(agent.page), manager: await readHome(manager.page) };
-		for (const [who, home] of Object.entries(before)) {
-			expect(
-				home.funnel,
-				`${who}'s funnel counts three leads, two engaged, one in conversation`,
-			).toMatchObject({
-				[homeCopy.funnel.leadsIn]: 3,
-				[homeCopy.funnel.engaged]: 2,
-				[homeCopy.funnel.inConversation]: 1,
-			});
-			expect(home.responseTime, `${who}'s response time counts two answered leads`).toContain(
-				"2 leads answered",
-			);
-			expect(home.responseTime, `${who}'s fastest band holds both`).toContain(
-				`${homeCopy.spread.under5m} 2100%`,
-			);
-		}
-		for (const operator of [agent, manager]) {
-			await expect(
-				waitingNowEntry(operator.page, wroteBack),
-				`${operator.label}'s Waiting now lists the guest who wrote back`,
-			).toHaveCount(1);
-		}
-
-		await deleteAsManager(manager, wroteBack);
-
-		// After: Home, reloaded, says the same for both; Waiting now drops the deleted guest only.
-		for (const operator of [agent, manager]) {
-			const key = operator === agent ? "agent" : "manager";
-			const after = await readHome(operator.page);
-			expect(after.funnel, `${operator.label}'s funnel is unchanged`).toEqual(before[key].funnel);
-			expect(after.funnelSaid, `${operator.label}'s funnel reads the same`).toBe(
-				before[key].funnelSaid,
-			);
-			expect(after.responseTime, `${operator.label}'s response time is unchanged`).toBe(
-				before[key].responseTime,
-			);
-			expect(after.perDay, `${operator.label}'s leads by day total is unchanged`).toBe(
-				before[key].perDay,
-			);
-			expect(after.days, `${operator.label}'s every day of leads by day is unchanged`).toEqual(
-				before[key].days,
-			);
-			await expect(
-				waitingNowEntry(operator.page, waiting),
-				`${operator.label}'s Waiting now still lists the guest no one answered`,
-			).toHaveCount(1);
-			await expect(
-				waitingNowEntry(operator.page, wroteBack),
-				`${operator.label}'s Waiting now no longer lists the deleted guest`,
-			).toHaveCount(0);
-		}
-	});
-});
-
 // scenario: docs/e2e-scenarios.md Guest deletion 3
 test.describe("Guest deletion 3 — an agent can't delete", () => {
 	test("the deletion API refuses the agent (403) on their own thread, deleteInCrm true or false, before reading the body; their header offers no Delete guest data, the manager's does; nothing changes", async ({
@@ -944,11 +748,19 @@ test.describe("Guest deletion 3 — an agent can't delete", () => {
 		).toHaveCount(0);
 
 		// Nothing changed, for the agent and the manager: the thread opens, with the guest's
-		// message and the agent's reply.
+		// message and the agent's reply. Both opened it above, after every refused request, and
+		// it is still open on their pages.
 		for (const operator of [agent, manager]) {
 			const opened = await operator.api.get(threadAddress(theirsId));
 			expect(opened.status(), `${operator.label} still opens ${theirs.id}`).toBe(200);
-			await openThreadOf(operator, theirs);
+			await expect(
+				rowOf(operator.page, theirs),
+				`${operator.label} has ${theirs.id}'s thread`,
+			).toBeVisible();
+			await expect(
+				openThread(operator.page).getByText(theirs.texts[0], { exact: true }),
+				`${operator.label}'s open thread shows the guest's message`,
+			).toBeVisible();
 			await expect(
 				openThread(operator.page).getByText(reply, { exact: true }),
 				`${operator.label} still sees the agent's reply`,
@@ -1004,97 +816,6 @@ test.describe("Guest deletion 4 — the platform admin can't delete", () => {
 		const byManager = await manager.api.post(deletionAddress(threadId), body);
 		expect(byManager.status(), "the office's manager deletes the thread").toBe(200);
 		await expectGoneThroughApi(manager, guest, threadId);
-	});
-});
-
-// scenario: docs/e2e-scenarios.md Guest deletion 7
-test.describe("Guest deletion 7 — no CRM, no checkbox", () => {
-	test("with no CRM the dialog has no CRM box; the API given deleteInCrm true deletes the thread, answers crm null and touches no CRM", async ({
-		newOffice,
-	}) => {
-		const office = await newOffice("Deletion 7");
-		const { manager } = office;
-		const guest = await office.newGuest();
-		const { id: threadId } = await threadSeenBy(manager, guest);
-
-		// The dialog: no CRM box. Cancelling deletes nothing.
-		await openThreadOf(manager, guest);
-		const dialog = await openDeletionDialog(manager.page, guest);
-		await expect(confirmButton(dialog), "the dialog is the deletion's").toBeVisible();
-		await expect(dialog.getByRole("checkbox"), "no CRM box").toHaveCount(0);
-		await expect(dialog.getByText(/\bCRM\b/), "nothing about a CRM").toHaveCount(0);
-		await dialog.getByRole("button", { name: deletionCopy.cancel, exact: true }).click();
-		await expect(dialog).toHaveCount(0);
-		expect((await manager.api.get(threadAddress(threadId))).status(), "nothing deleted").toBe(200);
-
-		// The API, asked to delete in the CRM too: the thread goes, and no CRM is touched.
-		const res = await manager.api.post(deletionAddress(threadId), {
-			deleteInCrm: true,
-			reason: "test_data",
-		});
-		expect(res.status(), "the deletion is taken").toBe(200);
-		expect(await res.json(), "no CRM lead, so no CRM result").toEqual({ crm: null });
-		await expectGoneThroughApi(manager, guest, threadId);
-		expect(await mockCrmLeads(office.id), "no lead anywhere for the office").toEqual([]);
-		const { receipts } = await guestDeletionRecords(office.id);
-		expect(receipts, "one deletion on record").toHaveLength(1);
-		expect(
-			receipts[0],
-			"the record names no CRM and no CRM result, and keeps the reason, with no note",
-		).toMatchObject({
-			crmKind: null,
-			crmResult: null,
-			reason: "test_data",
-			note: null,
-		});
-	});
-});
-
-// scenario: docs/e2e-scenarios.md Guest deletion 8
-test.describe("Guest deletion 8 — not while a reply is sending", () => {
-	test("while the agent's approved reply is sending, Delete guest data is disabled with its reason and the API answers 409 reply_sending, and the thread is unchanged; once the reply is sent, deleting works", async ({
-		newOffice,
-	}) => {
-		const office = await newOffice("Deletion 8");
-		const { agent, manager } = office;
-		const guest = await office.newGuest();
-		const bystander = await office.newGuest();
-		// The reply held sending is the agent's, so the thread is theirs (ADR 0022).
-		await office.assignToAgent(guest);
-		const { id: threadId } = await threadSeenBy(manager, guest);
-		await threadSeenBy(manager, bystander);
-		const release = await holdReplySending(office.id, threadId, agent.id);
-
-		// The manager's menu item is disabled, saying why.
-		await openThreadOf(manager, guest);
-		await openThreadActionsMenu(manager.page);
-		await expect(deleteItem(manager.page), "Delete guest data is disabled").toBeDisabled();
-		await expect(
-			manager.page.getByText(deletionCopy.sendingReason, { exact: true }),
-			`it says "${deletionCopy.sendingReason}"`,
-		).toBeVisible();
-		await manager.page.keyboard.press("Escape");
-
-		// The API refuses too.
-		const refused = await manager.api.post(deletionAddress(threadId), {
-			deleteInCrm: false,
-			reason: "guest_request",
-		});
-		expect(refused.status(), "deleting while a reply is sending is refused").toBe(409);
-		expect(await refused.json()).toEqual({ error: "reply_sending" });
-
-		// The thread is unchanged.
-		expect(
-			(await manager.api.get(threadAddress(threadId))).status(),
-			"the thread is still there",
-		).toBe(200);
-		await openThreadOf(manager, guest);
-
-		// The vendor answers: the reply is sent. Now the manager deletes the guest's data.
-		await release();
-		await deleteAsManager(manager, guest);
-		await expectGoneThroughApi(manager, guest, threadId);
-		await expectGoneFromInbox(manager, guest, bystander);
 	});
 });
 

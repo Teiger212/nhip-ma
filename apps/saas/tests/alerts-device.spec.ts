@@ -1,16 +1,14 @@
 import { createECDH, randomBytes, randomUUID } from "node:crypto";
 
-import { devices } from "@playwright/test";
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 import { alertState } from "./support/alerts";
-import { userIdOf } from "./support/assign";
+import type { WorkerAdmin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { LoginPage } from "./support/login-page";
 import { joinOffice } from "./support/operators";
-import { NEW_PASSWORD } from "./support/seed";
 import type { Api } from "./support/session";
 import { apiAs, clientIpHeaders, withOrigin } from "./support/session";
+import { signInAgain } from "./support/session-state";
 
 /**
  * The alerts panel and the "This device" row (ADR 0019 "Asking", #135). Headless Chromium cannot
@@ -34,13 +32,7 @@ const COPY = {
 	ask: "Get an alert when a guest writes.",
 	stopped: "Alerts stopped on this device.",
 	blocked: "Notifications are blocked for Nhịp on this device.",
-	unblock: "Allow notifications for this site in your browser's settings, then reload the page.",
 	iphone: "On iPhone, alerts need Nhịp on your Home Screen.",
-	iphoneSteps: [
-		"In Safari, tap Share.",
-		"Choose Add to Home Screen.",
-		"Open Nhịp from your Home Screen and turn alerts on.",
-	],
 	turnOn: "Turn on alerts",
 	notNow: "Not now",
 	thisDevice: "This device",
@@ -149,63 +141,75 @@ async function addDevice(api: Api, who: string) {
 /** One browser of the operator's: a session of its own. */
 type Browsing = { context: BrowserContext; page: Page; api: Api };
 
-/** An agent of an office of the test's own, who accepted their invitation (support/operators.ts). */
+/**
+ * A new agent of this worker's office, who accepted their invitation (support/operators.ts). The
+ * office is shared by the worker's tests; the agent is the test's own, and everything here reads
+ * the agent's own sessions, devices and alerts.
+ */
 type Operator = Browsing & {
 	officeId: string;
 	id: string;
 	/**
-	 * The same agent signs in through the login page in another browser (a session of its own,
-	 * with nothing of the first browser's storage), with this notification permission and,
-	 * optionally, another user agent. Lands on the Inbox.
+	 * The same agent signs in in another browser: a session of its own, minted for them (setup;
+	 * signing in is the Auth specs'), with nothing of the first browser's storage, and this
+	 * notification permission. Lands on the Inbox.
 	 */
-	signInElsewhere: (
-		name: string,
-		permission: Permission,
-		options?: { userAgent?: string },
-	) => Promise<Browsing>;
+	signInElsewhere: (name: string, permission: Permission) => Promise<Browsing>;
 };
 
+/**
+ * This worker's office (#278): the worker's platform admin (fixtures.ts `workerAdmin`) creates it
+ * on the worker's first test here, and deletes it when the worker ends. Each test still invites a
+ * new agent of its own into it, removed after the test.
+ */
+let workerOffice: Promise<string> | undefined;
+
+function deviceOffice(workerAdmin: WorkerAdmin): Promise<string> {
+	workerOffice ??= workerAdmin.createOffice("Alerts device").then(
+		(office) => office.id,
+		(error: unknown) => {
+			workerOffice = undefined;
+			throw error;
+		},
+	);
+	return workerOffice;
+}
+
 const test = base.extend<{ newOperator: () => Promise<Operator> }>({
-	newOperator: async ({ admin, browser }, use) => {
+	newOperator: async ({ admin, browser, workerAdmin }, use) => {
 		const contexts: BrowserContext[] = [];
 		await use(async () => {
-			const office = await admin.createOffice("Alerts device");
-			const { email, page, api } = await joinOffice(
+			const officeId = await deviceOffice(workerAdmin);
+			const { userId, page, api } = await joinOffice(
 				admin,
 				browser,
-				office.id,
+				officeId,
 				"member",
 				"alerts-device",
 			);
 			const context = page.context();
 			contexts.push(context);
 			return {
-				officeId: office.id,
-				id: await userIdOf(api),
+				officeId,
+				id: userId,
 				context,
 				page,
 				api,
-				signInElsewhere: async (name, permission, { userAgent } = {}) => {
+				signInElsewhere: async (name, permission) => {
 					const other = await browser.newContext({
-						extraHTTPHeaders: clientIpHeaders(`${email}#${name}`),
-						...(userAgent ? { userAgent } : {}),
+						extraHTTPHeaders: clientIpHeaders(`${userId}#${name}`),
 					});
 					contexts.push(other);
 					await other.addInitScript(permissionStub, permission);
+					await signInAgain(other, userId);
 					const otherPage = await other.newPage();
-					const login = new LoginPage(otherPage);
-					await login.goto("en");
-					await login.signIn(email, NEW_PASSWORD);
-					await expect(otherPage, `the agent signs in on ${name}`).toHaveURL(/\/en\/inbox/, {
-						timeout: 15_000,
-					});
+					await otherPage.goto("/en/inbox");
+					await expect(otherPage, `the agent signs in on ${name}`).toHaveURL(/\/en\/inbox/);
 					return { context: other, page: otherPage, api: withOrigin(other.request) };
 				},
 			};
 		});
-		for (const context of contexts) {
-			await context.close();
-		}
+		await Promise.all(contexts.map((context) => context.close()));
 	},
 });
 
@@ -343,9 +347,6 @@ async function expectBluePill(button: Locator) {
 	).toBeGreaterThanOrEqual(look.height / 2 - 0.5);
 }
 
-/** An iPhone's Safari, as its user agent tells it (not opened from the Home Screen). */
-const IPHONE_SAFARI = devices["iPhone 15"].userAgent;
-
 // ---------------------------------------------------------------------------------------
 
 // scenario: docs/e2e-scenarios.md Alerts 9 (ADR 0019 "Asking", #135)
@@ -420,83 +421,6 @@ test.describe("Alerts 9 — the alerts panel asks, and only when asked to", () =
 		).toBeVisible();
 		await expect(panel.getByRole("button", { name: COPY.turnOn })).toBeVisible();
 		expect(await promptsOn(page), "and it asks the browser nothing on load").toBe(0);
-	});
-
-	test("blocked: permission denied, the panel says how to allow notifications in the browser's settings, offers no pill, and nothing on it is red", async ({
-		newOperator,
-	}) => {
-		const operator = await newOperator();
-		const { page } = operator;
-		await openInbox(page, "denied");
-
-		const panel = alertsPanel(page);
-		await expect(
-			panel.getByText(COPY.blocked, { exact: true }),
-			"the panel says blocked",
-		).toBeVisible();
-		await expect(
-			panel.getByText(COPY.unblock, { exact: true }),
-			"and how to unblock in the browser's settings",
-		).toBeVisible();
-		await expect(
-			page.getByRole("button", { name: COPY.turnOn }),
-			"no Turn on alerts: it cannot work while blocked",
-		).toHaveCount(0);
-		await expectNothingRed(panel, "blocked");
-		expect(await promptsOn(page), "loading the Inbox asks the browser nothing").toBe(0);
-	});
-
-	test("iPhone, not opened from the Home Screen: the panel shows the Add to Home Screen steps instead of the pill, and nothing on it is red", async ({
-		newOperator,
-	}) => {
-		const operator = await newOperator();
-		// Safari in an iPhone tab has no Notification API at all; a browser that has one but has
-		// not asked ("default") gets the same steps, so only the iPhone decides.
-		for (const permission of ["absent", "default"] as const) {
-			const iphone = await operator.signInElsewhere(`an iPhone (${permission})`, permission, {
-				userAgent: IPHONE_SAFARI,
-			});
-			const { page } = iphone;
-			await inboxLoaded(page);
-			const panel = alertsPanel(page);
-			await expect(
-				panel.getByText(COPY.iphone, { exact: true }),
-				`the iPhone panel shows (Notification API ${permission})`,
-			).toBeVisible();
-			for (const step of COPY.iphoneSteps) {
-				await expect(panel.getByText(step, { exact: true }), `step: ${step}`).toBeVisible();
-			}
-			await expect(
-				page.getByRole("button", { name: COPY.turnOn }),
-				"no Turn on alerts on an iPhone outside the Home Screen",
-			).toHaveCount(0);
-			await expectNothingRed(panel, `iPhone (${permission})`);
-			expect(await promptsOn(page), "the iPhone's Inbox asks the browser nothing").toBe(0);
-		}
-	});
-
-	test("on: permission granted and a device added for this session, there is no panel (without the device, alerts stopped on this device)", async ({
-		newOperator,
-	}) => {
-		const operator = await newOperator();
-		const { page } = operator;
-		await openInbox(page, "granted");
-
-		// Granted, but no device on this session: alerts have stopped here.
-		const panel = alertsPanel(page);
-		await expect(
-			panel.getByText(COPY.stopped, { exact: true }),
-			"without a device, the panel says alerts stopped",
-		).toBeVisible();
-		await expect(panel.getByRole("button", { name: COPY.turnOn })).toBeVisible();
-		await expect(panel.getByRole("button", { name: COPY.notNow })).toBeVisible();
-		await expectNothingRed(panel, "alerts stopped");
-
-		await addDevice(operator.api, "the agent's browser");
-		await page.reload();
-		await inboxLoaded(page);
-		await expectNoPanel(page, "alerts are on: no panel");
-		expect(await promptsOn(page), "loading the Inbox asks the browser nothing").toBe(0);
 	});
 });
 

@@ -23,26 +23,31 @@ async function rememberVietnamese(context: BrowserContext) {
 test.describe("ARCHITECTURE.md locale routing — signed-out inbox entry", () => {
 	// rule: `/inbox` → `/{locale}/inbox`, the cookie remembering the preference for unprefixed
 	// paths; signed out, the inbox asks for a login (AGENTS.md: there is no auth bypass route).
-	test("unprefixed inbox sends the operator to login in their language", async ({
+	// rule (first step): locale prefixes are required and kept.
+	test("locale-prefixed inbox routes keep their prefix on login, and unprefixed inbox sends the operator to login in their language", async ({
 		page,
 		context,
 	}) => {
-		await page.goto("/inbox");
-		await expect(page).toHaveURL(/\/en\/login/);
-		await expectLoginForm(page, "en");
+		await test.step("locale-prefixed inbox routes keep their prefix on login", async () => {
+			await page.goto("/en/inbox");
+			await expect(page).toHaveURL(/\/en\/login/);
+			await page.goto("/vi/inbox");
+			await expect(page).toHaveURL(/\/vi\/login/);
+		});
 
-		await rememberVietnamese(context);
-		await page.goto("/inbox");
-		await expect(page).toHaveURL(/\/vi\/login/);
-		await expectLoginForm(page, "vi");
-	});
+		// The prefixed visits may have remembered a language: start with none remembered.
+		await context.clearCookies();
 
-	// rule: locale prefixes are required and kept.
-	test("locale-prefixed inbox routes keep their prefix on login", async ({ page }) => {
-		await page.goto("/en/inbox");
-		await expect(page).toHaveURL(/\/en\/login/);
-		await page.goto("/vi/inbox");
-		await expect(page).toHaveURL(/\/vi\/login/);
+		await test.step("unprefixed inbox sends the operator to login in their language", async () => {
+			await page.goto("/inbox");
+			await expect(page).toHaveURL(/\/en\/login/);
+			await expectLoginForm(page, "en");
+
+			await rememberVietnamese(context);
+			await page.goto("/inbox");
+			await expect(page).toHaveURL(/\/vi\/login/);
+			await expectLoginForm(page, "vi");
+		});
 	});
 
 	// rule: bare `/` redirects to `/en/inbox`; it runs before the proxy, so it is English by
