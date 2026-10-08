@@ -1115,12 +1115,14 @@ pointer, after resting on the page's heading until no tooltip is open.
    12×12px, overlapping the Inbox link's box and inside the strip (right edge within 56px).
    Before #234 the number was there only for screen readers, a 1×1px box).
 5. **The strip names its items on hover.** Collapsed, pointing at Home shows "Home", at Inbox
-   "Inbox", at Paperwork "Paperwork" with "Coming soon". Paperwork stays disabled:
-   it is no link, and clicking it goes nowhere.
+   "Inbox", at Paperwork "Paperwork" with "Coming soon", and at CRM (the built-in CRM, #126)
+   "CRM" with "Coming soon". Paperwork and CRM stay disabled: neither is a link, and clicking
+   either goes nowhere.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 5; the seeded agent, collapsed by the
-   shortcut; tooltips are `role="tooltip"`; Paperwork is `data-test="nav-paperwork"`,
-   pointed at with the mouse since it takes no pointer events; "goes nowhere" is still on
-   `/en/home` once Home's tooltip has shown after the click).
+   shortcut; tooltips are `role="tooltip"`; Paperwork is `data-test="nav-paperwork"` and CRM
+   `data-test="nav-crm"`, each pointed at with the mouse since it takes no pointer events; "no
+   link" for CRM is no link whose name starts with "CRM", so other wording that mentions a CRM
+   is not taken for the item; "goes nowhere" is still on `/en/home` once Home's tooltip has shown after the click).
 6. **The button speaks Vietnamese.** On `/vi`, its tooltip reads "Thu gọn thanh bên (⌘B)" open
    and "Mở rộng thanh bên (⌘B)" collapsed; Ctrl+B off a Mac.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 6; as a Mac and as Linux, as in 1).

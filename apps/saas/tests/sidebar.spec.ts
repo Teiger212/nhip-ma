@@ -146,7 +146,7 @@ async function loaded(page: Page) {
 }
 
 /**
- * Points at `target` with the real mouse (the disabled Paperwork item takes no pointer
+ * Points at `target` with the real mouse (the disabled Coming soon items take no pointer
  * events, so `hover()` would wait forever), after first resting on the page's heading until no
  * tooltip is open, so the tooltip read next is the target's own.
  */
@@ -402,7 +402,7 @@ test.describe("Sidebar 4 — the strip keeps the Inbox's Your-turn count", () =>
 test.describe("Sidebar 5 — the strip names its items on hover", () => {
 	test.use({ viewport: DESKTOP });
 
-	test("collapsed, pointing at Home, Inbox and Paperwork shows each one's name; Paperwork says Coming soon and still goes nowhere", async ({
+	test("collapsed, pointing at Home, Inbox, Paperwork and CRM shows each one's name; Paperwork and CRM say Coming soon and still go nowhere", async ({
 		context,
 		page,
 	}) => {
@@ -431,6 +431,20 @@ test.describe("Sidebar 5 — the strip names its items on hover", () => {
 		await pointAt(page, homeLink(page));
 		await expect(tooltip(page).first()).toHaveText("Home");
 		await expect(page, "Paperwork took the agent nowhere").toHaveURL(/\/en\/home$/);
+
+		const crm = page.getByTestId("nav-crm");
+		await pointAt(page, crm);
+		await expect(tooltip(page).first()).toContainText("CRM");
+		await expect(tooltip(page).first()).toContainText("Coming soon");
+
+		// Still disabled: no link named CRM (anchored, so other wording that mentions a CRM is not
+		// it), and a click on it goes nowhere.
+		await expect(page.getByRole("link", { name: /^CRM\b/ })).toHaveCount(0);
+		const crmBox = await crm.boundingBox();
+		await page.mouse.click(crmBox!.x + crmBox!.width / 2, crmBox!.y + crmBox!.height / 2);
+		await pointAt(page, homeLink(page));
+		await expect(tooltip(page).first()).toHaveText("Home");
+		await expect(page, "CRM took the agent nowhere").toHaveURL(/\/en\/home$/);
 	});
 });
 
