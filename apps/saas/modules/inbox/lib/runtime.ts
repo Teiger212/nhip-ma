@@ -7,7 +7,7 @@ import { type DraftAdapter, draftAdapterFromConfig } from "./drafts";
 export type Runtime = {
 	store: InboxStore;
 	config: InboxConfig;
-	/** The model seam for translation and follow-up drafts (ADR 0005). */
+	/** The model layer for translation and drafts (ADR 0005, ADR 0024). */
 	drafts: DraftAdapter;
 };
 
@@ -39,10 +39,11 @@ export function getRuntime(): Runtime {
 	const g = globalThis as GlobalRuntime;
 	if (!g.__nhipRuntime) {
 		const config = resolveConfig();
+		const store = createInboxStore(db);
 		g.__nhipRuntime = {
-			store: createInboxStore(db),
+			store,
 			config,
-			drafts: draftAdapterFromConfig(config),
+			drafts: draftAdapterFromConfig(config, { claim: store.claimModelCall }),
 		};
 	}
 	return g.__nhipRuntime;

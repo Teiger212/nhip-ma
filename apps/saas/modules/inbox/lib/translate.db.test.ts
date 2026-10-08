@@ -45,12 +45,12 @@ const calls: string[] = [];
 let answer: (to: string, text: string) => string | null = () => null;
 
 const countingAdapter: DraftAdapter = {
-	provider: "openai-compatible",
+	serves: () => true,
 	translate: async ({ text, to }) => {
 		calls.push(to);
 		return answer(to, text);
 	},
-	followUp: async () => null,
+	draft: async () => null,
 };
 
 beforeEach(async () => {

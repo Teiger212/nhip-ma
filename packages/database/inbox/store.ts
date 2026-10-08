@@ -1055,6 +1055,21 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			`;
 		},
 
+		async claimModelCall({ officeId, task, day, cap }) {
+			if (cap <= 0) return false;
+			// One statement: Postgres re-reads the row under its lock, so two calls at once can't
+			// both take the last one under the cap.
+			const rows = await db.$queryRaw<Array<{ calls: number }>>`
+				INSERT INTO "inbox_model_usage" ("officeId", "day", "task", "calls")
+				VALUES (${officeId}, ${day}::date, ${task}, 1)
+				ON CONFLICT ("officeId", "day", "task") DO UPDATE SET
+					"calls" = "inbox_model_usage"."calls" + 1
+					WHERE "inbox_model_usage"."calls" < ${cap}
+				RETURNING "calls"
+			`;
+			return rows.length > 0;
+		},
+
 		async claimAutoReply(officeId, id) {
 			// One conditional update: Postgres re-reads the row under its lock, so of two first
 			// messages at once only one sees `autoReplyAt` still null (ADR 0021).

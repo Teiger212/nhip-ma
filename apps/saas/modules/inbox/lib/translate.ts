@@ -1,4 +1,5 @@
 import { runInBackground } from "./background";
+import { CAPPED, type Capped } from "./drafts";
 import { detectLanguage } from "./language";
 import type { Runtime } from "./runtime";
 import {
@@ -9,10 +10,12 @@ import {
 } from "./types";
 
 /**
- * Guest message translation (ADR 0007). Runs once per message per operator language,
- * through the draft adapter, in the background; the UI shows the original at once and
- * the translation when it lands. A message already in the operator's language is not
- * translated, and nothing runs at all without a model behind the adapter.
+ * Guest message translation (ADR 0007). Runs once per message per operator language, as the
+ * model layer's `translate` task (ADR 0024), in the background; the UI shows the original at
+ * once and the translation when it lands. A message already in the operator's language is not
+ * translated, and nothing runs at all without a model behind the task. A call past the office's
+ * daily cap is not a failure: it spends none of the message's attempts, and the thread's next open
+ * asks again (still capped that day, the layer declines it with one statement and no model call).
  */
 const inFlight = new Map<string, Promise<void>>();
 
@@ -54,7 +57,7 @@ export function scheduleTranslation(
 	message: Message,
 	locale: OperatorLanguage,
 ): Promise<void> | null {
-	if (runtime.drafts.provider === "none" || !needsTranslation(message, locale)) {
+	if (!runtime.drafts.serves("translate") || !needsTranslation(message, locale)) {
 		return null;
 	}
 	const id = key(message.id, locale);
@@ -63,9 +66,10 @@ export function scheduleTranslation(
 		return existing;
 	}
 	const job = runInBackground("translate", async () => {
-		let text: string | null;
+		let text: string | null | Capped;
 		try {
 			text = await runtime.drafts.translate({
+				officeId,
 				text: message.text,
 				from: detectLanguage(message.text),
 				to: locale,
@@ -73,6 +77,11 @@ export function scheduleTranslation(
 		} catch (error) {
 			await runtime.store.recordTranslationFailure(officeId, message.id, locale, new Date());
 			throw error;
+		}
+		if (text === CAPPED) {
+			// The office's daily cap, not a failure (ADR 0024): no attempt spent and no backoff, so
+			// the next open of the thread after the office's day turns translates it.
+			return;
 		}
 		if (text) {
 			await runtime.store.setTranslation(officeId, message.id, locale, text);
@@ -104,7 +113,7 @@ export function scheduleMissingTranslations(
 	conversation: Pick<Conversation, "id" | "officeId" | "messages">,
 	locale: OperatorLanguage,
 ): void {
-	if (runtime.drafts.provider === "none") {
+	if (!runtime.drafts.serves("translate")) {
 		return;
 	}
 	const missing = conversation.messages.filter(

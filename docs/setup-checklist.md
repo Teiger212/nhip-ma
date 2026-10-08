@@ -138,17 +138,21 @@ Until `DRAFT_*` is set, every automatic greeting is the fixed template, so nothi
 go-live.
 
 - [ ] **Choose a model that neither trains on nor keeps guests' text.** WhatsApp's Business
-      Solution Terms 4.7 apply. On OpenRouter, every model call (greeting, translation,
-      follow-up) asks for zero-retention endpoints only, with
-      `provider: { zdr: true, data_collection: "deny" }`. In OpenRouter's model list, filter
-      to models with a ZDR endpoint. Another provider needs a written zero-retention or
-      no-training term.
+      Solution Terms 4.7 apply. OpenRouter is the only provider (ADR 0024), and every model
+      call (translation and suggested replies today, the greeting with #168) asks it for
+      zero-retention endpoints only, with `provider: { zdr: true, data_collection: "deny" }`;
+      a production deployment refuses a `DRAFT_BASE_URL` other than OpenRouter. The defaults
+      in code, Haiku 5.5 (`anthropic/claude-haiku-5.5`), have ZDR endpoints. Before switching a
+      task's model, check it has one (https://openrouter.ai/api/v1/endpoints/zdr).
 - [ ] **Run the greeting test set** (first messages in EN, VI, JA, KO, RU, from the
       greeting ticket) on the cheapest candidates. Keep the cheapest one whose replies all
       pass the post-check and read well to you. If none passes, tell Claude before relaxing
       to `data_collection: "deny"` alone.
-- [ ] **Vercel, staging:** `DRAFT_API_KEY` (Sensitive) and `DRAFT_MODEL`. Then redeploy. This
-      also turns on the model's translations and follow-ups (ADR 0005, ADR 0007).
+- [ ] **Vercel, staging:** `DRAFT_API_KEY` (Sensitive). Then redeploy. A key alone is enough:
+      `DRAFT_MODEL` and `TRANSLATE_MODEL` default to Haiku 5.5 in code, and are set only to
+      switch a task's model; `DRAFT_DAILY_CAP` (50) and `TRANSLATE_DAILY_CAP` (1000) only to
+      change an office's daily cap. This also turns on the model's translations and suggested
+      replies (ADR 0005, ADR 0007, ADR 0024).
 - [ ] **Verify from your second Zalo account:** a first message gets the auto-reply within
       seconds, with the label naming the office, and its badge says "Model".
 
@@ -190,8 +194,11 @@ go-live.
       environment, a new `BETTER_AUTH_SECRET` and `PIPE_SECRETS_KEY`, a new VAPID key pair
       with its `VAPID_SUBJECT`). `DATABASE_URL` is prod's
       pooled Neon URL as the app role `nhip_app` (#98); `DIRECT_DATABASE_URL` is its direct URL
-      as `neondb_owner`. `DRAFT_API_KEY` and `DRAFT_MODEL`, set on neither staging nor prod
-      yet. Never set `MOCK_CRM_WEBHOOK_SECRET` or `AUTH_TRUSTED_ORIGINS` in production.
+      as `neondb_owner`. `DRAFT_API_KEY`, set on neither staging nor prod yet;
+      `DRAFT_MODEL` and `TRANSLATE_MODEL` only to override their defaults (Haiku 5.5), and
+      `DRAFT_DAILY_CAP` and `TRANSLATE_DAILY_CAP` only to change 50 and 1,000. Never set
+      `MOCK_CRM_WEBHOOK_SECRET`, `MODEL_STUB` or `AUTH_TRUSTED_ORIGINS` in production, nor a
+      `DRAFT_BASE_URL` other than OpenRouter: startup refuses each.
 - [ ] **Production's app role** (#98): the staging steps under "The app's database role", on
       branch `production` and with a new password, before the first release. Run
       `app-role.sql` again after the first release has migrated the empty branch: that run

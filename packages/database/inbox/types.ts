@@ -511,6 +511,17 @@ export type InboxStore = {
 	 */
 	setOfficeAutoReply: (officeId: string, on: boolean) => Promise<void>;
 	/**
+	 * Count one model call against the office's daily cap for the task (ADR 0024): true, and
+	 * counted, while the office's calls that day are under `cap`; false, and nothing counted,
+	 * once they reach it. `day` is the office's calendar day, `YYYY-MM-DD`.
+	 */
+	claimModelCall: (call: {
+		officeId: string;
+		task: string;
+		day: string;
+		cap: number;
+	}) => Promise<boolean>;
+	/**
 	 * Claim the thread's one auto-reply (ADR 0021): true for exactly one caller, and only while
 	 * the thread has no office message, no Answer and no claim. A claim is never given back.
 	 */

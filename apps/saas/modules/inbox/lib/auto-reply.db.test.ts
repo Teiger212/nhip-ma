@@ -8,7 +8,7 @@ useTestDatabaseForAppClient();
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import { followUpTemplate } from "./draft";
-import { type DraftAdapter, type FollowUpInput, noDraftAdapter } from "./drafts";
+import { type DraftAdapter, type DraftInput, noDraftAdapter } from "./drafts";
 import { greetingLabel } from "./greeting";
 import {
 	applyOneShot,
@@ -304,11 +304,11 @@ describe("the claim (ADR 0021: at most one greeting per thread, held by the data
 });
 
 describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)", () => {
-	const followUps: FollowUpInput[] = [];
+	const followUps: DraftInput[] = [];
 	const model: DraftAdapter = {
-		provider: "openai-compatible",
+		serves: () => true,
 		translate: async () => null,
-		followUp: async (input) => {
+		draft: async (input) => {
 			followUps.push(input);
 			return "Happy to help with your search. Which budget did you have in mind?";
 		},

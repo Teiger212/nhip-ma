@@ -24,26 +24,26 @@ saas test`. Do not commit untracked local scripts.
 
 ## Key paths
 
-| Path                                                                     | Why                                                |
-| ------------------------------------------------------------------------ | -------------------------------------------------- |
-| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                                        |
-| `apps/saas/modules/inbox/components/Inbox.tsx`                           | Inbox client module (renders, does not decide)     |
-| `apps/saas/modules/inbox/lib/queue.ts`                                   | Queue rules: Your turn, quiet, order, counts       |
-| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/home/page.tsx`  | Home route                                         |
-| `apps/saas/modules/home/`                                                | Home: funnel over Answers, response time, CRM gap  |
-| `apps/saas/modules/inbox/lib/{extract,draft,crib}.ts`                    | One-shot: extract, template reply, operator note   |
-| `apps/saas/modules/inbox/lib/inbox.ts`                                   | Ingest, approve-and-send, regenerate draft         |
-| `apps/saas/modules/inbox/lib/drafts/`                                    | Draft adapter (OpenAI-compatible or none), prompts |
-| `apps/saas/modules/inbox/lib/{translate,background}.ts`                  | Per-message translation, background jobs           |
-| `apps/saas/modules/inbox/lib/pipes/`                                     | Pipe adapters (WhatsApp, Zalo), mock/live seam     |
-| `apps/saas/modules/inbox/lib/{config,runtime}.ts`                        | Validated config, runtime singleton                |
-| `apps/saas/app/api/conversations/`                                       | List, detail, approve, draft (session-gated)       |
-| `apps/saas/app/webhooks/{whatsapp,zalo}/route.ts`                        | Inbound (signature-verified, fail closed)          |
-| `packages/database/inbox/`                                               | Prisma inbox store, zod vocabulary, test helpers   |
-| `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                                     |
-| `apps/saas/modules/shared/lib/walk-nav.ts`                               | Sidebar rows                                       |
-| `apps/saas/proxy.ts`, `apps/saas/modules/i18n/routing.ts`                | Locale routing (`en`, `vi`)                        |
-| `tooling/tailwind/theme.css`                                             | Palette (Flat: blue action, amber pending)         |
+| Path                                                                     | Why                                                        |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/inbox/page.tsx` | Inbox route                                                |
+| `apps/saas/modules/inbox/components/Inbox.tsx`                           | Inbox client module (renders, does not decide)             |
+| `apps/saas/modules/inbox/lib/queue.ts`                                   | Queue rules: Your turn, quiet, order, counts               |
+| `apps/saas/app/[locale]/(authenticated)/(main)/(account)/home/page.tsx`  | Home route                                                 |
+| `apps/saas/modules/home/`                                                | Home: funnel over Answers, response time, CRM gap          |
+| `apps/saas/modules/inbox/lib/{extract,draft,crib}.ts`                    | One-shot: extract, template reply, operator note           |
+| `apps/saas/modules/inbox/lib/inbox.ts`                                   | Ingest, approve-and-send, regenerate draft                 |
+| `apps/saas/modules/inbox/lib/drafts/`                                    | Model layer (OpenRouter, E2E stub, or none), caps, prompts |
+| `apps/saas/modules/inbox/lib/{translate,background}.ts`                  | Per-message translation, background jobs                   |
+| `apps/saas/modules/inbox/lib/pipes/`                                     | Pipe adapters (WhatsApp, Zalo), mock/live seam             |
+| `apps/saas/modules/inbox/lib/{config,runtime}.ts`                        | Validated config, runtime singleton                        |
+| `apps/saas/app/api/conversations/`                                       | List, detail, approve, draft (session-gated)               |
+| `apps/saas/app/webhooks/{whatsapp,zalo}/route.ts`                        | Inbound (signature-verified, fail closed)                  |
+| `packages/database/inbox/`                                               | Prisma inbox store, zod vocabulary, test helpers           |
+| `packages/i18n/translations/{en,vi}/saas.json`                           | `inbox.*` copy                                             |
+| `apps/saas/modules/shared/lib/walk-nav.ts`                               | Sidebar rows                                               |
+| `apps/saas/proxy.ts`, `apps/saas/modules/i18n/routing.ts`                | Locale routing (`en`, `vi`)                                |
+| `tooling/tailwind/theme.css`                                             | Palette (Flat: blue action, amber pending)                 |
 
 ## Rules that hold
 
@@ -56,9 +56,12 @@ saas test`. Do not commit untracked local scripts.
   `sent` Answer, and the stages, response time and the 30-day window are defined in
   CONTEXT.md. Closings and lost only
   ever come from the CRM adapter (ADR 0003); until one is connected they say so.
-- Translation and AI follow-up drafts run behind the draft adapter (ADRs 0005, 0007).
-  Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model
-  draft that touches paperwork is dropped by the post-check and the template stands.
+- Translation and AI suggested replies run through the model layer (ADRs 0005, 0007, 0024):
+  OpenRouter only, zero-retention routing on every request, a model per task (`DRAFT_MODEL`,
+  `TRANSLATE_MODEL`, both defaulting to Haiku 5.5), daily caps per office, 20 s and one retry.
+  Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model draft
+  that touches paperwork is dropped by the post-check and the template stands. E2E translates
+  with the stub model (`MODEL_STUB=translate` in `.env.e2e`).
 - The office is the tenant (ADR 0008) and Nhịp assigns it (ADR 0010): one operator, one
   office, read from the membership table on every request, never from the session's
   active organization. Threads are one per guest per
@@ -83,14 +86,14 @@ saas test`. Do not commit untracked local scripts.
 Better Auth is a library and needs no account. These do; start the two that require the
 company entity first.
 
-| Service                                                | Used for                                                            | Needs the company entity                               |
-| ------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
-| Meta developer app + WhatsApp Business                 | inbound webhook, outbound send (`WHATSAPP_*`)                       | Yes: Business Verification before real traffic         |
-| Zalo Official Account + developer app                  | same for Zalo (`ZALO_OA_*`)                                         | Yes: OA verification requires a registered VN business |
-| The agency's own CRM access, if any (intake, #128)     | CRM adapter, closings and lost (ADR 0003)                           | No                                                     |
-| OpenRouter account (or any OpenAI-compatible endpoint) | draft adapter: translation, follow-ups (`DRAFT_*`, ADRs 0005, 0007) | No; prepaid balance is the budget                      |
-| Resend (or the mail provider in `.env.local.example`)  | magic link and verification emails                                  | No, but a verified sending domain                      |
-| Google / GitHub OAuth apps                             | only if social login stays enabled                                  | No                                                     |
+| Service                                               | Used for                                                                         | Needs the company entity                               |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Meta developer app + WhatsApp Business                | inbound webhook, outbound send (`WHATSAPP_*`)                                    | Yes: Business Verification before real traffic         |
+| Zalo Official Account + developer app                 | same for Zalo (`ZALO_OA_*`)                                                      | Yes: OA verification requires a registered VN business |
+| The agency's own CRM access, if any (intake, #128)    | CRM adapter, closings and lost (ADR 0003)                                        | No                                                     |
+| OpenRouter account                                    | model layer: translation, suggested replies (`DRAFT_*`, `TRANSLATE_*`, ADR 0024) | No; prepaid balance is the budget                      |
+| Resend (or the mail provider in `.env.local.example`) | magic link and verification emails                                               | No, but a verified sending domain                      |
+| Google / GitHub OAuth apps                            | only if social login stays enabled                                               | No                                                     |
 
 The office itself (ADR 0008) is created in the admin area (sign-up is closed, ADR 0010), not with any vendor.
 
