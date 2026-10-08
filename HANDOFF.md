@@ -15,7 +15,8 @@ things are.
 
 Setup, the four seeded logins (`linh@nhip.local` and `duc@nhip.local`, the agents;
 `ha@nhip.local`, the office's manager; `admin@nhip.local`, the platform admin) and the
-test database are in [AGENTS.md](./AGENTS.md). `POST /dev/inbound`
+test database are in [AGENTS.md](./AGENTS.md) and
+[apps/saas/AGENTS.md](./apps/saas/AGENTS.md). `POST /dev/inbound`
 injects an inbound locally (404 in production). Only the exact `SEND_MODE` value `live`
 talks to a vendor, and live needs the webhook secrets set or inbound is refused.
 

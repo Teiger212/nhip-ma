@@ -7,7 +7,7 @@ description: "Use when adding Playwright coverage for a user-visible Nhịp work
 
 ## The rule this serves
 
-AGENTS.md, "What gets a test" and "Test quality": anything a person does is tested end to end
+AGENTS.md, "What gets a test" (and `apps/saas/tests/AGENTS.md` for how E2E runs): anything a person does is tested end to end
 with Playwright; Vitest covers logic with no user in it (utilities, store queries, queue and
 funnel rules, background work). Do not use Playwright for pure functions or single handlers.
 
