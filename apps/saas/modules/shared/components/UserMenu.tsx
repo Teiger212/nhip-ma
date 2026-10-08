@@ -20,6 +20,7 @@ import {
 } from "@repo/ui";
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { WalkLocaleToggle } from "@shared/components/WalkLocaleToggle";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import {
 	BookIcon,
 	Building2Icon,
@@ -222,7 +223,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 					<WalkLocaleToggle />
 				</div>
 
-				{config.docsUrl && (
+				{KIT_SCREENS.docs && config.docsUrl && (
 					<DropdownMenuItem
 						nativeButton={false}
 						render={(props) => (

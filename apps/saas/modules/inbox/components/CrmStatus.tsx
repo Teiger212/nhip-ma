@@ -20,7 +20,7 @@ export function CrmStatus({
 	if (conversation.crm) {
 		return (
 			<Badge status="neutral" data-test="crm-status">
-				{t("inCrm", { name: conversation.crm.leadName })}
+				{t("inCrm")}
 			</Badge>
 		);
 	}

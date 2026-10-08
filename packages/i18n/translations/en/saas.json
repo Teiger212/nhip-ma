@@ -170,7 +170,7 @@
 			"start": "Start",
 			"home": "Home",
 			"inbox": "Inbox",
-			"international": "International",
+			"paperwork": "Paperwork",
 			"comingSoon": "Coming soon",
 			"groupWorkspace": "Workspace",
 			"groupAccount": "Account"
@@ -855,7 +855,7 @@
 		"brand": "Nhịp",
 		"navItem": "Inbox",
 		"navReports": "Reports",
-		"navInternational": "International",
+		"navPaperwork": "Paperwork",
 		"footer": "Guests see the agency number. Never auto-send.",
 		"missing": "(missing)",
 		"yes": "Yes",
@@ -985,7 +985,7 @@
 			"template": "Template"
 		},
 		"crm": {
-			"inCrm": "In CRM: {name}",
+			"inCrm": "In CRM",
 			"notInCrmYet": "Not in CRM yet",
 			"won": "Won",
 			"lost": "Lost"

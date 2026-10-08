@@ -22,7 +22,7 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 
 1. **A new guest becomes a lead in the CRM** (#61). An office on the mock CRM: a new guest
    writes on Zalo. The manager assigns the thread to the agent, who opens it, and its header
-   says "In CRM: <the guest's name>" (read-only); the office's manager sees the same on that thread.
+   says "In CRM" (read-only); the office's manager sees the same on that thread.
    The mock CRM holds one lead for that guest, with their Zalo user id, pipe and a link to the
    thread, and no message text. The guest writes again: still one lead. An office with no CRM:
    the header says nothing about a CRM, and no lead is made.
@@ -36,7 +36,7 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    Spec: `apps/saas/tests/crm.spec.ts` (CRM 2; offices of the test's own, put on the mock CRM
    through the admin's setting, never `connectMockCrm`, whose invited manager assigns the guest to
    the agent; the choice is judged saved on a reloaded
-   Connections card; "becomes a lead" is the agent's "In CRM: <name>" and one lead in the mock
+   Connections card; "becomes a lead" is the agent's "In CRM" and one lead in the mock
    CRM; "refused" is the office's own agent and manager seeing no CRM setting and getting 403 from
    `GET`/`PUT /api/crm/connection`, 401 signed out, the office still on None afterwards, and the
    admin's same `PUT` taken).
@@ -60,8 +60,8 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    Your turn. The manager assigns it to the agent, who opens it: its header says "Not in CRM
    yet", neutral like the pipe badge beside it, never red; the manager sees the same on that
    thread. No lead is in the CRM. Once the CRM works again and Nhịp's wait before trying again
-   has passed, opening the thread writes the lead: within a poll the header says "In CRM: <the
-   guest's name>", and the CRM holds exactly one lead for the guest. An office with no CRM shows
+   has passed, opening the thread writes the lead: within a poll the header says "In CRM", and
+   the CRM holds exactly one lead for the guest, with the guest's name. An office with no CRM shows
    no CRM status on a new guest's thread, neither "Not in CRM yet" nor "In CRM", to the agent
    or the manager.
    Spec: `apps/saas/tests/crm.spec.ts` (CRM 4a; offices of the test's own, as in CRM 1; the CRM
@@ -86,9 +86,8 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
    threads on one lead" is one person on two pipes (spec #59 story 31): they write on WhatsApp
    first and become a lead with their phone; in the mock CRM itself the manager adds their Zalo
    user id to that lead (`addZaloIdInMockCrm`, the CRM's data only, never Nhịp's link), and they
-   then write on Zalo with that id. Both threads, opened by their `?thread=` links, say "In CRM"
-   (the name after it is not judged: the person goes by another name on each pipe), and the CRM
-   holds that one lead and no other. A second guest's lead is marked lost, then the person's won;
+   then write on Zalo with that id. Both threads, opened by their `?thread=` links, say "In CRM",
+   and the CRM holds that one lead and no other. A second guest's lead is marked lost, then the person's won;
    Home is read once both of the person's threads say Won and the second guest's says Lost. The Closings and Lost cells are
    `data-test="home-closings"` / `"home-lost"`: the cell's only digit-only text is its figure (1
    and 1, so a closing counted per thread reads 2), with a line beginning "As of ", and no "No
@@ -985,7 +984,7 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    office" is the walk office's manager; every request carries a reason, and the office's own
    manager's same request then deletes the thread, so the refusals were about who asked).
 5. **The CRM box is ticked when Nhịp created the lead.** The office is on the mock CRM. A new
-   guest writes, and the thread says "In CRM: <guest>"; the mock CRM holds the lead Nhịp made.
+   guest writes, and the thread says "In CRM"; the mock CRM holds the lead Nhịp made.
    - The manager's dialog has "Also delete <guest> in Mock CRM", ticked. Confirming leaves no
      lead for that guest in the mock CRM, and the toast says "Guest data deleted. Also deleted in
      Mock CRM."
@@ -994,7 +993,8 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
      Mock CRM."
 6. **The CRM box is unticked when Nhịp found the lead.** The office is on the mock CRM, and
    `addMockCrmLead` puts a lead with the guest's Zalo id in it first. The guest writes, and the
-   thread says "In CRM: <that lead's name>".
+   thread says "In CRM", and the mock CRM still holds only that lead for the Zalo id (Nhịp
+   found it and made none).
    - The manager's dialog has the box unticked. Confirming keeps the lead in the mock CRM
      unchanged, while the thread is gone.
    - For a second such guest, ticking the box deletes the lead.
@@ -1098,10 +1098,10 @@ pointer, after resting on the page's heading until no tooltip is open.
    12×12px, overlapping the Inbox link's box and inside the strip (right edge within 56px).
    Before #234 the number was there only for screen readers, a 1×1px box).
 5. **The strip names its items on hover.** Collapsed, pointing at Home shows "Home", at Inbox
-   "Inbox", at International "International" with "Coming soon". International stays disabled:
+   "Inbox", at Paperwork "Paperwork" with "Coming soon". Paperwork stays disabled:
    it is no link, and clicking it goes nowhere.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 5; the seeded agent, collapsed by the
-   shortcut; tooltips are `role="tooltip"`; International is `data-test="nav-international"`,
+   shortcut; tooltips are `role="tooltip"`; Paperwork is `data-test="nav-paperwork"`,
    pointed at with the mouse since it takes no pointer events; "goes nowhere" is still on
    `/en/home` once Home's tooltip has shown after the click).
 6. **The button speaks Vietnamese.** On `/vi`, its tooltip reads "Thu gọn thanh bên (⌘B)" open
