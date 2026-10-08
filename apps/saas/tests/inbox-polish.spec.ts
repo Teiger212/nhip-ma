@@ -162,13 +162,16 @@ async function expectListLoaded(page: Page) {
 	).toBeVisible();
 }
 
-/** Picks an option of a select by what it reads, once the select offers it. */
+/**
+ * Picks an option of a Select (the kit's Base UI Select, not a native one: #248) by what it
+ * reads, once its list offers it; the list closes on the choice.
+ */
 async function choose(select: Locator, label: string) {
-	await expect(
-		select.locator("option").filter({ hasText: new RegExp(`^${escapeRegExp(label)}$`) }),
-		`the control offers "${label}"`,
-	).toHaveCount(1);
-	await select.selectOption({ label });
+	await select.click();
+	const option = select.page().getByRole("option", { name: label, exact: true });
+	await expect(option, `the control offers "${label}"`).toBeVisible();
+	await option.click();
+	await expect(option, "the list closes").toBeHidden();
 }
 
 /** Opens a view and waits for its threads. */

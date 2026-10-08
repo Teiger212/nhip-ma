@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { formatCribNotes } from "./crib";
+import { formatCribNote } from "./crib";
 import { oneShot } from "./draft";
 import { extractFromInbound, PAPERWORK_FLAG } from "./extract";
 import { inboxEn as en, inboxVi as vi } from "./test-translate";
@@ -79,26 +79,27 @@ test("paperwork flag does not invent Vietnamese law", () => {
 	expect(shot.paperwork.flag ?? "").toMatch(/Do not invent Vietnamese law/);
 	expect(shot.draft.reply).not.toMatch(/tomorrow/i);
 	expect(shot.draft.reply).not.toMatch(/you (can|will) (get|receive) a pink book/i);
-	expect(formatCribNotes(shot, en)).toMatch(/Do not invent Vietnamese law/);
-	expect(formatCribNotes(shot, en)).not.toMatch(/sổ hồng ngày mai/i);
+	// The operator sees the flag in the guest details (#248), in their language.
+	expect(en("paperworkFlag")).toMatch(/Do not invent Vietnamese law/);
+	expect(formatCribNote(shot, en)).not.toMatch(/sổ hồng ngày mai/i);
 });
 
 test("draft follows guest language; the operator note follows the operator's language", () => {
 	const enGuest = oneShot("Looking to rent in Ba Dinh, I am French");
 	expect(enGuest.language).toBe("en");
 	expect(enGuest.draft.reply).toMatch(/Ba Đình|renting/i);
-	expect(formatCribNotes(enGuest, vi)).toMatch(/French|Ba Đình|thuê/i);
-	expect(formatCribNotes(enGuest, en)).toMatch(/French|Ba Đình|rent/i);
+	expect(formatCribNote(enGuest, vi)).toMatch(/tiếng Anh/);
+	expect(formatCribNote(enGuest, en)).toMatch(/English/);
 
 	const viGuest = oneShot("Tôi muốn mua nhà ở Ba Đình");
 	expect(viGuest.language).toBe("vi");
 	expect(viGuest.draft.reply).toMatch(/mua|Ba Đình/);
-	expect(formatCribNotes(viGuest, en)).toMatch(/Vietnamese/);
+	expect(formatCribNote(viGuest, en)).toMatch(/Vietnamese/);
 
 	const jaGuest = oneShot("ハノイにいます。Tay Hoで賃貸を探しています。");
 	expect(jaGuest.language).toBe("ja");
 	expect(jaGuest.draft.reply).toMatch(/チャット/);
-	expect(formatCribNotes(jaGuest, vi)).toMatch(/tiếng Nhật/);
+	expect(formatCribNote(jaGuest, vi)).toMatch(/tiếng Nhật/);
 });
 
 test("one-shot is not an interviewer", () => {

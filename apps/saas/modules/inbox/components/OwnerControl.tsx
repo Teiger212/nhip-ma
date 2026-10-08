@@ -6,6 +6,11 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 	toast,
 } from "@repo/ui";
 import { useTranslations } from "next-intl";
@@ -55,39 +60,70 @@ export function AssignFromRow({ conversationId }: { conversationId: string }) {
 const UNASSIGNED = "__unassigned__";
 
 /**
- * "Assign to…": a manager gives the thread to an operator of the office, or back to Unassigned
- * (ADR 0022). It acts at once, and the last assignment wins. Agents see nothing here: who holds
- * a thread is shown on its flags.
+ * The open thread's owner (ADR 0022). A manager's is "Assign to…", the kit's Select showing who
+ * holds the thread: Unassigned, then the office's operators in the order a row's "Assign to…"
+ * lists them. Choosing acts at once, and the last assignment wins. In the details rail it fills
+ * the Owner section; in a narrow pane's header (#248) it sits there, a smaller field. An
+ * agent can't assign: the rail names the owner, read-only, and the header has nothing more (the
+ * owner badge in its flags already says whose it is).
  */
-export function OwnerControl({ conversation }: { conversation: Conversation }) {
+export function OwnerControl({
+	conversation,
+	placement,
+}: {
+	conversation: Conversation;
+	placement: "rail" | "header";
+}) {
 	const t = useTranslations("inbox.owner");
-	const { role } = useOfficeRole();
+	const { role, userId } = useOfficeRole();
 	const agents = useOfficeAgents(role === "manager");
 	const setOwner = useSetOwner();
-	if (role !== "manager") return null;
+	const owner = conversation.owner;
+	if (role !== "manager") {
+		if (placement === "header") return null;
+		return (
+			<p className="text-sm font-medium">
+				{!owner ? t("unassigned") : owner.id === userId ? t("mine") : owner.name}
+			</p>
+		);
+	}
+	const items = [
+		{ value: UNASSIGNED, label: t("unassigned") },
+		...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
+	];
+	// An owner the list doesn't hold (yet) still shows by name, never as an id.
+	if (owner && !items.some((item) => item.value === owner.id)) {
+		items.push({ value: owner.id, label: owner.name });
+	}
 	return (
-		<label className="gap-2 text-xs ml-auto flex items-center text-muted-foreground">
-			{t("assignTo")}
-			<select
+		<Select
+			items={items}
+			value={owner?.id ?? UNASSIGNED}
+			disabled={setOwner.isPending || !agents.data}
+			onValueChange={(value) => {
+				if (!value) return;
+				setOwner.mutate(
+					{ id: conversation.id, ownerId: value === UNASSIGNED ? null : value },
+					{ onError: () => toast.add({ title: t("failed"), type: "error" }) },
+				);
+			}}
+		>
+			<SelectTrigger
 				data-test="thread-owner-select"
-				className="h-8 px-2 text-sm rounded-md border bg-background text-foreground"
-				value={conversation.owner?.id ?? UNASSIGNED}
-				disabled={setOwner.isPending || !agents.data}
-				onChange={(event) => {
-					const ownerId = event.target.value === UNASSIGNED ? null : event.target.value;
-					setOwner.mutate(
-						{ id: conversation.id, ownerId },
-						{ onError: () => toast.add({ title: t("failed"), type: "error" }) },
-					);
-				}}
+				aria-label={t("assignTo")}
+				title={t("assignTo")}
+				size={placement === "header" ? "sm" : "md"}
+				className={placement === "header" ? "w-44" : "w-full"}
 			>
-				<option value={UNASSIGNED}>{t("unassigned")}</option>
-				{agents.data?.map((agent) => (
-					<option key={agent.id} value={agent.id}>
-						{agent.name}
-					</option>
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent>
+				{items.map((item) => (
+					<SelectItem key={item.value} value={item.value}>
+						{item.label}
+					</SelectItem>
 				))}
-			</select>
-		</label>
+			</SelectContent>
+		</Select>
 	);
 }

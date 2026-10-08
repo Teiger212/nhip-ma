@@ -8,6 +8,7 @@
 	"jsPlugins": ["@shadcn/lint", "./tooling/oxlint/nhip.mjs"],
 	"rules": {
 		"nhip/background-label-is-literal": "error",
+		"nhip/no-native-select": "error",
 		"react/set-state-in-effect": "off",
 		"react/purity": "off",
 		"react/immutability": "off",
@@ -57,6 +58,12 @@
 				"shadcn/no-unknown-classes": "off",
 				"shadcn/no-restyle": "off",
 				"shadcn/require-static-classes": "off"
+			}
+		},
+		{
+			"files": ["packages/ui/**"],
+			"rules": {
+				"nhip/no-native-select": "off"
 			}
 		},
 		{

@@ -565,6 +565,64 @@ is a WhatsApp guest whose profile name is 40 characters.
    you" in each of their views. The wording is #208's, written out in `tests/support/copy.ts`,
    not read from the app's strings).
 
+## Thread layout (#248)
+
+Decided by Eyal on 2026-10-08 (variant D of the thread-layout prototype): an open thread is the
+conversation, with the reply box docked under it, and the guest's details beside it. Whether the
+details fit beside it depends on the thread's own pane, not the window: the pane is "wide" from
+896px (56rem), so the sidebar counts. At 1563 wide with the sidebar open, and at 1366 wide with it
+collapsed, the pane is wide; at 1366 with the sidebar open, and on a phone, it is narrow.
+
+**How these run.** The open thread is the page's `article`, its header the `header` inside it.
+The guest's details are `data-test="thread-details"`, exactly one wherever they sit; each message
+is `data-test="message"`. The CRM status is `crm-status` ("In CRM"); a manager's owner control is
+`thread-owner-select`, a combobox named "Assign to…". The reply box is the textbox named "Reply",
+and the send button `approve-and-send`. The sidebar is collapsed and expanded with its button
+(`sidebar-toggle`, Sidebar 1).
+
+1. **On a wide pane the details sit beside the conversation.** A manager of an office on the mock
+   CRM opens a guest's thread at 1563×784 with the sidebar open, and again at 1366×768 with the
+   sidebar collapsed. The details are to the right of the conversation: their left edge is at or
+   right of every message's right edge, and of the reply box's, and they start below the header.
+   "In CRM" and Assign to… are in the details, not in the header.
+   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 1; an office of the test's own on
+   the mock CRM with an invited manager and a Zalo guest who wrote once, opened from Unassigned
+   once the lead is in the mock CRM and the thread says "In CRM"; "the conversation" is every
+   `message`, the auto-reply included; "the header" is the first `header` in the `article`, and
+   the details are looked for on the whole page, not only inside the `article`; "in / not in" is
+   what a person sees: a copy hidden by CSS counts as absent; the sidebar's state is told by the
+   Home link's width, as in Sidebar 1, and collapsed with `sidebar-toggle` before the thread opens).
+2. **On a narrow pane the details fold into a strip under the header, and the CRM status and the
+   owner move into the header.** The same thread at 1366×768 with the sidebar open: the details
+   are under the header and above the first message, at least as wide as the messages' column
+   (left edge at or left of each message's, right edge at or right of each's). "In CRM" and Assign
+   to… are inside the header, not in the details. Collapsing the sidebar in the same window
+   brings the details back beside the conversation, with "In CRM" and Assign to… in them;
+   expanding it folds them into the strip again.
+   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 2; set up as in 1; each layout
+   after a sidebar change is polled until it holds, the sidebar's width animating).
+3. **The reply box is in view without scrolling, on a thread of ten messages.** A guest has
+   written ten messages. At 1366×768 with the sidebar open (narrow) and at 1563×784 (wide), the
+   thread opens with the reply box and Approve and send wholly inside the window, the page not
+   scrolled, and the guest's latest message in view.
+   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 3; the office as in 1, the guest's
+   ten Zalo messages written one after the other, the thread opened from Unassigned and nothing
+   inside it touched before it is measured. "Wholly inside the window" is the element's box
+   within the window, `window.scrollY` 0, and the point at its centre showing the element itself,
+   so a pane's scrolling or something docked over it hides it; "the latest message" is found by
+   its text, and "in view" adds that it is wholly visible through its scrolling pane (an
+   IntersectionObserver ratio of 0.98, a pixel's give) and ends above the reply box. Approve and send already sat in
+   the window before #248: the reply box is what was pushed out).
+4. **On a phone the details are a strip too.** At 390×844 the thread, opened from the list, has
+   its details under the header and above the first message, and the reply box and Approve and
+   send wholly inside the window, with the latest message in view.
+   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 4; the office as in 1, opened
+   from the list at 390×844. "A strip too" is 2's strip: under the header, above the first
+   message and spanning the messages' column, judged on a guest who wrote once, since a ten-message
+   thread opened at its latest message has its first message scrolled up past a strip that stays
+   put; the reply box, Approve and send and the latest message are judged as in 3, on a second
+   guest who wrote ten messages).
+
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
 1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,

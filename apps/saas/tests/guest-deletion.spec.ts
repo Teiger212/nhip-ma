@@ -513,6 +513,31 @@ async function redPartsOf(root: Locator): Promise<string[]> {
 }
 
 /**
+ * How many choices the manager's owner filter offers (All threads, then each operator): its
+ * list opened and closed again. It is the kit's Base UI Select, not a native one (#248).
+ */
+async function ownerFilterOptions(filter: Locator): Promise<number> {
+	const page = filter.page();
+	await filter.click();
+	const options = page.getByRole("option");
+	await expect(options.first(), "the owner filter's list is open").toBeVisible();
+	const count = await options.count();
+	await page.keyboard.press("Escape");
+	await expect(options, "the owner filter's list is closed").toHaveCount(0);
+	return count;
+}
+
+/** Chooses the owner filter's choice at `index`, in the order its list offers them. */
+async function chooseOwnerFilter(filter: Locator, index: number) {
+	const page = filter.page();
+	await filter.click();
+	const option = page.getByRole("option").nth(index);
+	await expect(option, "the owner filter's list is open").toBeVisible();
+	await option.click();
+	await expect(page.getByRole("option"), "the owner filter's list is closed").toHaveCount(0);
+}
+
+/**
  * The person's Inbox no longer has the guest, under every view (and, for a manager, every owner
  * filter); searching the guest counts nothing. The other guest is still there, so the absences are
  * judged on a loaded Inbox.
@@ -525,10 +550,10 @@ async function expectGoneFromInbox(operator: Operator, gone: Guest, stays: Guest
 	await showView(page, "All");
 	const filter = page.getByTestId("owner-filter");
 	// Only a manager filters by owner; an agent has the one list.
-	const owners = (await filter.count()) > 0 ? await filter.locator("option").count() : 1;
+	const owners = (await filter.count()) > 0 ? await ownerFilterOptions(filter) : 1;
 	for (let owner = 0; owner < owners; owner++) {
 		if (owners > 1) {
-			await filter.selectOption({ index: owner });
+			await chooseOwnerFilter(filter, owner);
 		}
 		// Ends on All, where the filter shows again for the next owner.
 		for (const name of views) {
@@ -540,7 +565,7 @@ async function expectGoneFromInbox(operator: Operator, gone: Guest, stays: Guest
 		}
 	}
 	if (owners > 1) {
-		await filter.selectOption({ index: 0 });
+		await chooseOwnerFilter(filter, 0);
 	}
 	await showView(page, "All");
 	await expect(rowOf(page, stays), `${operator.label} still has the other guest`).toBeVisible();
