@@ -31,7 +31,7 @@ import {
 
 type Proto = ReturnType<typeof useProtoThread>;
 
-function TurnBadge({ conversation }: { conversation: Conversation }) {
+export function TurnBadge({ conversation }: { conversation: Conversation }) {
 	const t = useTranslations("inbox");
 	const { userId, role } = useOfficeRole();
 	const status = threadStatus(conversation);
@@ -89,7 +89,7 @@ function MessageCard({ message, proto }: { message: Message; proto: Proto }) {
 	);
 }
 
-function RailSection({ title, children }: { title: string; children: React.ReactNode }) {
+export function RailSection({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
 		<section className="gap-2.5 px-4 py-4 flex flex-col">
 			<h3 className="font-semibold tracking-tight text-xs font-heading text-muted-foreground uppercase">
@@ -100,7 +100,14 @@ function RailSection({ title, children }: { title: string; children: React.React
 	);
 }
 
-function OwnerPicker({ conversation }: { conversation: Conversation }) {
+export function OwnerPicker({
+	conversation,
+	compact = false,
+}: {
+	conversation: Conversation;
+	/** In a header row: a small select sized to its label. */
+	compact?: boolean;
+}) {
 	const t = useTranslations("inbox.owner");
 	const { role, userId } = useOfficeRole();
 	const agents = useOfficeAgents(role === "manager");
@@ -119,7 +126,11 @@ function OwnerPicker({ conversation }: { conversation: Conversation }) {
 	}
 	return (
 		<select
-			className="h-9 px-2 text-sm w-full rounded-xl border border-input bg-card text-foreground"
+			className={cn(
+				"px-2 text-sm border border-input bg-card text-foreground",
+				compact ? "h-8 rounded-md" : "h-9 w-full rounded-xl",
+			)}
+			aria-label={t("assignTo")}
 			value={owner}
 			onChange={(event) => {
 				setOwner(event.target.value);

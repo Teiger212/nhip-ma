@@ -28,7 +28,7 @@ import {
 
 type Proto = ReturnType<typeof useProtoThread>;
 
-function Bubble({ message, proto }: { message: Message; proto: Proto }) {
+export function Bubble({ message, proto }: { message: Message; proto: Proto }) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
 	const source = useMessageSource()(message);
@@ -77,7 +77,7 @@ function Bubble({ message, proto }: { message: Message; proto: Proto }) {
 }
 
 /** The guest details as one line of facts: what we know, then what we don't. */
-function SummaryStrip({ proto }: { proto: Proto }) {
+export function SummaryStrip({ proto }: { proto: Proto }) {
 	const facts = proto.facts.filter((f) => f.id !== "language" && f.id !== "paperwork");
 	const paperwork = proto.facts.some((f) => f.id === "paperwork");
 	return (

@@ -13,12 +13,14 @@ import { ThreadDetail } from "../ThreadDetail";
 import { ThreadLayoutA } from "./ThreadLayoutA.prototype";
 import { ThreadLayoutB } from "./ThreadLayoutB.prototype";
 import { ThreadLayoutC } from "./ThreadLayoutC.prototype";
+import { ThreadLayoutD } from "./ThreadLayoutD.prototype";
 
 export const THREAD_VARIANTS = [
 	{ key: "0", name: "Today" },
 	{ key: "A", name: "Workbench" },
 	{ key: "B", name: "Chat + summary strip" },
 	{ key: "C", name: "Parallel text" },
+	{ key: "D", name: "Workbench + bubbles" },
 ] as const;
 
 export function useThreadVariant(): string {
@@ -33,5 +35,6 @@ export function ThreadVariant(props: ComponentProps<typeof ThreadDetail>) {
 	if (variant === "A") return <ThreadLayoutA {...props} />;
 	if (variant === "B") return <ThreadLayoutB {...props} />;
 	if (variant === "C") return <ThreadLayoutC {...props} />;
+	if (variant === "D") return <ThreadLayoutD {...props} />;
 	return <ThreadDetail {...props} />;
 }
