@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { buildSettingsSections, buildWalkNav, isNavSubItemActive } from "./walk-nav";
 
 describe("buildWalkNav", () => {
-	it("is Home, Inbox, then Paperwork, coming soon (PRODUCT.md, the Coming soon rule)", () => {
+	it("is Home, Inbox, then Paperwork and CRM, coming soon (PRODUCT.md, the Coming soon rule)", () => {
 		const items = buildWalkNav("/inbox");
-		expect(items.map((item) => item.id)).toEqual(["home", "inbox", "paperwork"]);
+		expect(items.map((item) => item.id)).toEqual(["home", "inbox", "paperwork", "crm"]);
 		expect(items.find((item) => item.id === "inbox")?.isActive).toBe(true);
 		expect(items.find((item) => item.id === "home")?.isActive).toBe(false);
 	});
@@ -20,7 +20,19 @@ describe("buildWalkNav", () => {
 				comingSoon: true,
 			});
 		}
-		expect(buildWalkNav("/inbox").filter((item) => item.comingSoon)).toHaveLength(1);
+	});
+
+	it("CRM, the built-in CRM (#126), is disabled, marked Coming soon, links nowhere and is never active", () => {
+		for (const pathname of ["/inbox", "/home", "/crm", "/settings/general"]) {
+			expect(buildWalkNav(pathname).find((item) => item.id === "crm")).toEqual({
+				id: "crm",
+				href: null,
+				iconName: "contact",
+				isActive: false,
+				comingSoon: true,
+			});
+		}
+		expect(buildWalkNav("/inbox").filter((item) => item.comingSoon)).toHaveLength(2);
 	});
 
 	it("the platform admin sees the admin area only; operators never see it", () => {
@@ -28,6 +40,7 @@ describe("buildWalkNav", () => {
 			"home",
 			"inbox",
 			"paperwork",
+			"crm",
 		]);
 		const admin = buildWalkNav("/admin/organizations", { isAdmin: true });
 		expect(admin).toEqual([
