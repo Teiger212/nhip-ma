@@ -54,7 +54,7 @@ const crmCopy = (() => {
 		};
 	};
 	return {
-		inCrm: (name: string) => saas.inbox.crm.inCrm.replaceAll("{name}", name),
+		inCrm: saas.inbox.crm.inCrm,
 		notInCrmYet: saas.inbox.crm.notInCrmYet,
 		won: saas.inbox.crm.won,
 		lost: saas.inbox.crm.lost,
@@ -334,7 +334,8 @@ function expectNoticeTaken(status: number, what: string) {
 }
 
 /**
- * The operator opens the guest's thread, and its header says the guest is in the CRM, by name.
+ * The operator opens the guest's thread, and its header says the guest is in the CRM ("In CRM",
+ * no name: which lead it is, is judged in the CRM itself).
  * The lead is written in the background, after the guest's message is taken: wait for the
  * office's CRM to hold it, then open the thread once; the open thread shows the link on its next
  * poll.
@@ -342,10 +343,10 @@ function expectNoticeTaken(status: number, what: string) {
 async function expectInCrmOnThread(page: Page, officeId: string, guest: Guest) {
 	await expectLeadAppears(officeId, guest, `${guest.id} becomes a lead in the CRM`);
 	await openThreadOf(page, guest);
-	await expect(
-		openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
-		"the thread header says In CRM: <the guest's name>",
-	).toBeVisible(WITHIN_A_POLL);
+	await expect(crmStatus(page), "the thread header says In CRM").toHaveText(
+		crmCopy.inCrm,
+		WITHIN_A_POLL,
+	);
 }
 
 /** The open thread's header. */
@@ -353,7 +354,7 @@ function threadHeader(page: Page) {
 	return openThread(page).locator("header");
 }
 
-/** The CRM status in the open thread's header: "In CRM: <name>" or "Not in CRM yet". */
+/** The CRM status in the open thread's header: "In CRM" or "Not in CRM yet". */
 function crmStatus(page: Page) {
 	return openThread(page).getByTestId("crm-status");
 }
@@ -376,14 +377,14 @@ async function expectNotInCrmYet(page: Page, who: string) {
 }
 
 /** The open thread says nothing about a CRM: no status, neither Not in CRM yet nor In CRM. */
-async function expectNoCrmStatus(page: Page, who: string, guest: Guest) {
+async function expectNoCrmStatus(page: Page, who: string) {
 	await expect(crmStatus(page), `${who} sees no CRM status`).toHaveCount(0);
 	await expect(
 		openThread(page).getByText(crmCopy.notInCrmYet, { exact: true }),
 		`${who} sees no Not in CRM yet`,
 	).toHaveCount(0);
 	await expect(
-		openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+		openThread(page).getByText(crmCopy.inCrm, { exact: true }),
 		`${who} sees no In CRM`,
 	).toHaveCount(0);
 }
@@ -537,7 +538,7 @@ async function expectCardShowsTokenSetNeverToken(admin: Admin, officeId: string,
 
 // scenario: docs/e2e-scenarios.md CRM 1
 test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
-	test("on the mock CRM: the thread header says In CRM with the guest's name to the agent and the manager, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again", async ({
+	test("on the mock CRM: the thread header says In CRM to the agent and the manager, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(150_000);
@@ -547,7 +548,7 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
 
-		// The agent opens the thread: its header says the guest is in the CRM, by name.
+		// The agent opens the thread: its header says the guest is in the CRM.
 		await expectInCrmOnThread(page, office.id, guest);
 
 		// The manager sees it too, on the same thread.
@@ -558,9 +559,9 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 			"they are the office's manager (only a manager filters by owner, Assign 9)",
 		).toBeVisible();
 		await expect(
-			openThread(manager).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+			crmStatus(manager),
 			"the manager's thread header says the guest is in the CRM",
-		).toBeVisible();
+		).toHaveText(crmCopy.inCrm);
 
 		// In the CRM: exactly one lead for the guest, theirs, linked to the thread, with no
 		// message text in it.
@@ -681,7 +682,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		// The agent opens the thread afresh: nothing about a CRM in it any more.
 		await openThreadOf(page, guest);
 		await expect(
-			openThread(page).getByText(crmCopy.inCrm(nameOf(guest)), { exact: true }),
+			openThread(page).getByText(crmCopy.inCrm, { exact: true }),
 			"the thread no longer says the guest is in the CRM",
 		).toHaveCount(0);
 		await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(0);
@@ -932,7 +933,7 @@ test.describe("CRM 4a — a missing lead says so, and heals when the thread is o
 		expect(await leadsOf(office.id, guest), "no lead is in the CRM").toEqual([]);
 	});
 
-	test("once the CRM works again and the wait before trying again has passed, opening the thread makes it In CRM with the guest's name, and the CRM holds exactly one lead for the guest", async ({
+	test("once the CRM works again and the wait before trying again has passed, opening the thread makes it In CRM, and the CRM holds exactly one lead for the guest", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
@@ -961,8 +962,8 @@ test.describe("CRM 4a — a missing lead says so, and heals when the thread is o
 		await openThreadOf(page, guest);
 		await expect(
 			crmStatus(page),
-			"opening the thread writes the lead: the header says In CRM: <the guest's name>",
-		).toHaveText(crmCopy.inCrm(nameOf(guest)), WITHIN_A_POLL);
+			"opening the thread writes the lead: the header says In CRM",
+		).toHaveText(crmCopy.inCrm, WITHIN_A_POLL);
 
 		// Exactly one lead for the guest, judged once a later guest's lead has arrived.
 		const later = await office.newGuest();
@@ -992,7 +993,7 @@ test.describe("CRM 4a — a missing lead says so, and heals when the thread is o
 				openThread(page).getByText(again, { exact: true }),
 				`${who}'s open thread shows the guest's new message`,
 			).toBeVisible(WITHIN_A_POLL);
-			await expectNoCrmStatus(page, who, guest);
+			await expectNoCrmStatus(page, who);
 		}
 	});
 });

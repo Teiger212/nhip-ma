@@ -174,9 +174,8 @@ async function openThreadById(page: Page, threadId: string, text: string) {
 }
 
 /**
- * The open thread's header says the guest is in the CRM: the thread is on a lead. Judged by "In
- * CRM" only, not the name after it: the person goes by another name on each pipe, and which one
- * the header shows is not the point here.
+ * The open thread's header says the guest is in the CRM: the thread is on a lead. Which lead is
+ * judged in the CRM itself.
  */
 async function expectInCrm(page: Page, which: string) {
 	await expect(openThread(page).getByTestId("crm-status"), `${which} says In CRM`).toHaveText(

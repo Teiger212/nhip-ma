@@ -3,15 +3,15 @@ import { isAdminPath, isHomePath, isInboxPath } from "@i18n/lib/locale-path";
 /**
  * The sidebar, stated directly. Inbox is the agent's job and Home the numbers screen
  * (ADR 0001). A later feature appears only under PRODUCT.md's "Coming soon" rule, where it will
- * live: International (foreigners' documents in Vietnam) sits under Inbox, disabled, and links
+ * live: Documentation (foreigners' paperwork in Vietnam) sits under Inbox, disabled, and links
  * nowhere (#208). Admin is the kit's admin area, where Nhịp creates offices and invites agents
  * (ADR 0010), and it is only listed for a platform admin. Account settings is reached from the
  * user row in the footer, and its sections appear there while a settings page is active.
  */
-export type WalkNavId = "home" | "inbox" | "international" | "admin";
+export type WalkNavId = "home" | "inbox" | "documentation" | "admin";
 
 export type WalkNavLink = {
-	id: Exclude<WalkNavId, "international">;
+	id: Exclude<WalkNavId, "documentation">;
 	href: string;
 	iconName: "home" | "inbox" | "shield";
 	isActive: boolean;
@@ -20,9 +20,9 @@ export type WalkNavLink = {
 
 /** A later feature shown where it will live, disabled: no link, never active. */
 export type WalkNavComingSoon = {
-	id: "international";
+	id: "documentation";
 	href: null;
-	iconName: "globe";
+	iconName: "fileText";
 	isActive: false;
 	comingSoon: true;
 };
@@ -67,7 +67,7 @@ export function buildWalkNav(
 			iconName: "inbox",
 			isActive: isInboxPath(pathname),
 		},
-		{ id: "international", href: null, iconName: "globe", isActive: false, comingSoon: true },
+		{ id: "documentation", href: null, iconName: "fileText", isActive: false, comingSoon: true },
 	];
 }
 

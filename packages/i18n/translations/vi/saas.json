@@ -170,7 +170,7 @@
 			"start": "Bắt đầu",
 			"home": "Trang chủ",
 			"inbox": "Hộp thư",
-			"international": "Quốc tế",
+			"documentation": "Giấy tờ",
 			"comingSoon": "Sắp ra mắt",
 			"groupWorkspace": "Không gian làm việc",
 			"groupAccount": "Tài khoản"
@@ -855,7 +855,7 @@
 		"brand": "Nhịp",
 		"navItem": "Hộp thư",
 		"navReports": "Báo cáo",
-		"navInternational": "Quốc tế",
+		"navDocumentation": "Giấy tờ",
 		"footer": "Khách thấy số của môi giới. Không bao giờ gửi tự động.",
 		"missing": "(thiếu)",
 		"yes": "Có",
@@ -985,7 +985,7 @@
 			"template": "Mẫu"
 		},
 		"crm": {
-			"inCrm": "Trong CRM: {name}",
+			"inCrm": "Trong CRM",
 			"notInCrmYet": "Chưa có trong CRM",
 			"won": "Chốt",
 			"lost": "Mất"

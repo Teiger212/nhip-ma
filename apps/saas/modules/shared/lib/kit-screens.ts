@@ -9,6 +9,8 @@
  *   ADR 0022, 2026-10-06, #210).
  * - start: the kit's start page with sample stats. PRODUCT.md: no claimed metrics.
  * - chatbot: the kit's AI chat demo. Not in PRODUCT.md.
+ * - docs: the user menu's Documentation link to the kit's docs site; Nhịp's own operator wiki
+ *   is #238. Turn on with it.
  *
  * An office's own URL redirects to the Inbox instead (its kit start page shows sample
  * revenue and churn): see app/[locale]/(authenticated)/(main)/(organizations)/[organizationSlug].
@@ -18,4 +20,5 @@ export const KIT_SCREENS = {
 	officeBilling: false,
 	start: false,
 	chatbot: false,
+	docs: false,
 } as const;
