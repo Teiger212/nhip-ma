@@ -46,6 +46,8 @@ const DRAFT_INPUT: DraftInput = {
 	officeId: "office-a",
 	guestName: "Minji",
 	guestLanguage: "ko",
+	officeLanguage: "vi",
+	openQuestions: [],
 	messages: [
 		{ direction: "in", source: "guest", text: "Tay Ho 임대", at: "2026-09-18T00:00:00.000Z" },
 		{ direction: "out", source: "nhip", text: "Thanks!", at: "2026-09-18T00:01:00.000Z" },
@@ -138,13 +140,19 @@ test("translate speaks the chat-completions protocol and frames guest text as da
 
 test("draft sends the facts and the transcript with a smaller output budget", async () => {
 	vi.spyOn(console, "info").mockImplementation(() => {});
-	const calls = stubFetch(() => completion("Friday works. What time suits you?"));
+	// The layer returns the model's text as it is; `generateModelDraft` reads its JSON (#251).
+	const answer = JSON.stringify({
+		reply: "확인 후 연락드리겠습니다.",
+		office_reply: "Em sẽ kiểm tra ạ.",
+	});
+	const calls = stubFetch(() => completion(answer));
 	const layer = layerFor({ DRAFT_API_KEY: "sk-test" });
-	expect(await layer.draft(DRAFT_INPUT)).toBe("Friday works. What time suits you?");
+	expect(await layer.draft(DRAFT_INPUT)).toBe(answer);
 	const [call] = calls;
-	expect(call.body.max_tokens).toBe(512);
+	expect(call.body.max_tokens).toBe(768);
 	const messages = call.body.messages as Array<{ role: string; content: string }>;
-	expect(messages[0].content).toMatch(/Write in Korean/);
+	expect(messages[0].content).toMatch(/reply in Korean, the guest's language/);
+	expect(messages[0].content).toMatch(/same reply in Vietnamese/);
 	expect(messages[0].content).toMatch(/Never state a price/);
 	expect(messages[1].content).toContain("nationality: Korean");
 	expect(messages[1].content).toContain('<agent at="2026-09-18T00:01:00.000Z">');

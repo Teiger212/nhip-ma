@@ -41,11 +41,23 @@ import type { Conversation, ConversationSummary } from "./types";
  * first message's auto-reply (ADR 0021).
  */
 
+/**
+ * A model that answers the draft prompt's JSON (#251): `followUp`'s reply, and the same tagged
+ * with the office language as its second text. A null reply is a malformed answer.
+ */
 const fakeAdapter = (followUp: (input: DraftInput) => string | null): DraftAdapter => ({
 	serves: () => true,
 	translate: async ({ text, to }) => `[${to}] ${text}`,
-	draft: async (input) => followUp(input),
+	draft: async (input) => {
+		const reply = followUp(input);
+		return reply === null
+			? null
+			: JSON.stringify({ reply, office_reply: `[${input.officeLanguage}] ${reply}` });
+	},
 });
+
+/** "one", "two": the post-check drops a number the guest didn't write. */
+const COUNT = ["none", "one", "two", "three"];
 
 const followUps: string[] = [];
 
@@ -58,7 +70,7 @@ beforeEach(async () => {
 		config: mockInboxConfig(),
 		drafts: fakeAdapter((input) => {
 			const guest = input.messages.filter((message) => message.direction === "in");
-			const reply = `Follow-up ${guest.length}: about "${guest.at(-1)?.text}"`;
+			const reply = `Follow-up ${COUNT[guest.length]}: about "${guest.at(-1)?.text}"`;
 			followUps.push(reply);
 			return reply;
 		}),
@@ -111,7 +123,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	// drafts for the first message from the conversation, greeting included.
 	expect(conv.messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
 	expect(followUps).toEqual([
-		'Follow-up 1: about "안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요."',
+		'Follow-up one: about "안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요."',
 	]);
 	expect(conv.oneShot?.draft).toMatchObject({ answersMessageId: firstInbound, source: "model" });
 
@@ -161,7 +173,9 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 		en: "[en] 금요일에 볼 수 있을까요?",
 	});
 	expect(conv.oneShot?.draft).toEqual({
-		reply: 'Follow-up 2: about "금요일에 볼 수 있을까요?"',
+		reply: 'Follow-up two: about "금요일에 볼 수 있을까요?"',
+		// The office's language is English (ADR 0025): the reply's second text is in it.
+		officeReply: '[en] Follow-up two: about "금요일에 볼 수 있을까요?"',
 		answersMessageId: secondInbound,
 		source: "model",
 	});
@@ -192,7 +206,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.unansweredInboundId).toBeNull();
 	const office = conv.messages.filter((message) => message.source === "nhip");
 	expect(office).toHaveLength(2);
-	expect(office[1].text).toBe('Follow-up 2: about "금요일에 볼 수 있을까요?"');
+	expect(office[1].text).toBe('Follow-up two: about "금요일에 볼 수 있을까요?"');
 	expect(conv.answers.map((answer) => answer.status)).toEqual(["sent", "sent"]);
 	expect(conv.lastAnswer).toMatchObject({
 		inboundId: secondInbound,
@@ -251,7 +265,7 @@ test("regenerate asks the model even for a first reply and keeps the operator in
 	conv = regenerated.body.conversation as Conversation;
 	expect(conv.oneShot?.draft.source).toBe("model");
 	expect(conv.oneShot?.draft.reply).toBe(
-		'Follow-up 1: about "Is the Ciputra flat still available?"',
+		'Follow-up one: about "Is the Ciputra flat still available?"',
 	);
 	// Nothing was sent by asking for a draft.
 	expect(conv.messages.filter((message) => message.source === "nhip")).toHaveLength(0);

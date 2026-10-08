@@ -289,6 +289,19 @@ function mapAnswer(row: AnswerRecord): Answer {
  * it. Message order alone does not decide, so a guest message that lands mid-send is not
  * hidden by the outbound that answers an earlier one.
  */
+/**
+ * A draft's row. `officeReply` is written null when the draft has none, so a template written
+ * over a model draft never keeps the model's office-language text (ADR 0024).
+ */
+function draftRow(draft: Draft) {
+	return {
+		reply: draft.reply,
+		answersMessageId: draft.answersMessageId,
+		source: draft.source,
+		officeReply: draft.officeReply ?? null,
+	};
+}
+
 function mapConversation(record: ConversationRecord): Conversation {
 	const messages = record.messages.map(mapMessage);
 	const answers = record.answers.map(mapAnswer);
@@ -324,6 +337,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 						reply: record.draft.reply,
 						answersMessageId: record.draft.answersMessageId,
 						source: record.draft.source,
+						...(record.draft.officeReply ? { officeReply: record.draft.officeReply } : {}),
 					},
 				}
 			: null;
@@ -830,8 +844,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					}),
 					db.draft.upsert({
 						where: threadKey,
-						create: { conversationId: id, officeId, ...shot.draft },
-						update: { ...shot.draft },
+						create: { conversationId: id, officeId, ...draftRow(shot.draft) },
+						update: draftRow(shot.draft),
 					}),
 					db.paperwork.upsert({
 						where: threadKey,
@@ -853,8 +867,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 			await db.draft.upsert({
 				where: { conversationId_officeId: { conversationId: id, officeId } },
-				create: { conversationId: id, officeId, ...draft },
-				update: { ...draft },
+				create: { conversationId: id, officeId, ...draftRow(draft) },
+				update: draftRow(draft),
 			});
 			return load(officeId, id);
 		},
@@ -868,7 +882,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					reply: read.reply,
 					answersMessageId: read.answersMessageId,
 				},
-				data: { reply },
+				data: { reply, officeReply: null },
 			});
 			return load(officeId, id);
 		},

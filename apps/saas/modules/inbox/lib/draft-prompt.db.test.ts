@@ -135,8 +135,7 @@ test("a JSON reply stores both texts, the second in the office's language", asyn
 	expect(inputs.at(-1)?.officeLanguage).toBe("vi");
 	expect(conv.oneShot?.draft).toEqual({
 		reply: "Noted, I'll pull together a few options in Tây Hồ and send them here.",
-		officeReply:
-			"Dạ em ghi nhận, em sẽ chọn vài căn ở Tây Hồ và gửi anh/chị ngay trên chat này ạ.",
+		officeReply: "Dạ em ghi nhận, em sẽ chọn vài căn ở Tây Hồ và gửi anh/chị ngay trên chat này ạ.",
 		answersMessageId: conv.unansweredInboundId,
 		source: "model",
 	});

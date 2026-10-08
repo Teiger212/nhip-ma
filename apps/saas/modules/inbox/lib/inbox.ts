@@ -4,16 +4,25 @@ import { runInBackground } from "./background";
 import { crmFailureKind } from "./crm/retry";
 import { createCrmSync, logAccountLookupFailure } from "./crm/sync";
 import { oneShot } from "./draft";
-import { CAPPED } from "./drafts";
-import { checkFollowUp } from "./drafts/guardrails";
-import { greetingTemplate } from "./greeting";
+import { CAPPED, DRAFT_MESSAGES } from "./drafts";
+import { checkFollowUp, parseModelDraft } from "./drafts/guardrails";
+import { askedIn, greetingQuestion, greetingTemplate, missingQualifiers } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
 import type { AlertTransport } from "./guest-alerts/transport";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
 import { replyTemplate, type TemplateThread } from "./reply-template";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
-import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
+import type {
+	Conversation,
+	GuestLanguage,
+	InboundEvent,
+	InboxViewer,
+	Pipe,
+	Qualification,
+	SendResult,
+	Store,
+} from "./types";
 
 /**
  * Whether the model drafts the suggested reply (ADR 0005; ADR 0021, R11 and P2): once a human
@@ -89,9 +98,31 @@ export async function applyOneShot(
 }
 
 /**
- * Ask the model for a follow-up from the whole conversation and store it as the suggested
- * reply, unless the guest message was answered in the meantime (a stale draft must never
- * overwrite the next inbound's). Returns null when the template stands.
+ * The auto-reply's questions the guest hasn't answered yet (ADR 0024): what it asked, as it
+ * was sent, less the details the guest has given since. Worded in the reply's language.
+ */
+export function autoReplyOpenQuestions(
+	messages: Conversation["messages"],
+	language: GuestLanguage,
+	qualification: Qualification,
+): string[] {
+	const asked = new Set(
+		messages
+			.filter((message) => message.source === "auto-reply")
+			.flatMap((message) => askedIn(message.text)),
+	);
+	return missingQualifiers(qualification)
+		.filter((qualifier) => asked.has(qualifier))
+		.map((qualifier) => greetingQuestion(language, qualifier));
+}
+
+/**
+ * Ask the model for a follow-up (ADR 0024, #251) and store it as the suggested reply, unless
+ * the guest message was answered in the meantime (a stale draft must never overwrite the next
+ * inbound's). The model reads the last 10 messages and the auto-reply's open questions, and
+ * answers JSON with the reply and the same reply in the office language. Both texts pass the
+ * post-check against the guest's own messages, or the template stands: so does a malformed
+ * answer. Returns null when the template stands.
  */
 export async function generateModelDraft(
 	runtime: Runtime,
@@ -102,17 +133,25 @@ export async function generateModelDraft(
 	if (!inboundId || !shot) {
 		return null;
 	}
+	const officeLanguage = await runtime.store.officeLanguage(conversation.officeId);
 	const raw = await runtime.drafts.draft({
 		officeId: conversation.officeId,
 		guestName: conversation.guestName,
 		guestLanguage: shot.language,
-		messages: conversation.messages,
+		officeLanguage,
+		openQuestions: autoReplyOpenQuestions(conversation.messages, shot.language, shot.qualification),
+		messages: conversation.messages.slice(-DRAFT_MESSAGES),
 		qualification: shot.qualification,
 		paperwork: shot.paperwork,
 	});
 	// Past the office's daily cap the template stands; a draft keeps no attempts to spare.
-	const reply = checkFollowUp(raw === CAPPED ? null : raw);
-	if (!reply) {
+	const drafted = parseModelDraft(raw === CAPPED ? null : raw);
+	const guestTexts = conversation.messages
+		.filter((message) => message.direction === "in")
+		.map((message) => message.text);
+	const reply = checkFollowUp(drafted?.reply, guestTexts);
+	const officeReply = checkFollowUp(drafted?.officeReply, guestTexts);
+	if (!reply || !officeReply) {
 		return null;
 	}
 	const current = await runtime.store.getOfficeConversation(conversation.officeId, conversation.id);
@@ -123,6 +162,9 @@ export async function generateModelDraft(
 		reply,
 		answersMessageId: inboundId,
 		source: "model",
+		// A reply already in the office language needs no second text, as a guest message in it
+		// gets no translation (ADR 0025).
+		...(shot.language === officeLanguage ? {} : { officeReply }),
 	});
 }
 

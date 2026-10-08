@@ -145,9 +145,9 @@ test("an empty or overlong draft is dropped", () => {
 
 describe("the model's JSON", () => {
 	test("both texts are read from strict JSON", () => {
-		expect(parseModelDraft('{"reply":"Dạ em sẽ kiểm tra ạ.","office_reply":"I\'ll check."}')).toEqual(
-			{ reply: "Dạ em sẽ kiểm tra ạ.", officeReply: "I'll check." },
-		);
+		expect(
+			parseModelDraft('{"reply":"Dạ em sẽ kiểm tra ạ.","office_reply":"I\'ll check."}'),
+		).toEqual({ reply: "Dạ em sẽ kiểm tra ạ.", officeReply: "I'll check." });
 		// One code fence around the object is how models often send JSON: it's read through.
 		expect(parseModelDraft('```json\n{"reply":"A.","office_reply":"B."}\n```')).toEqual({
 			reply: "A.",
