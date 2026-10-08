@@ -88,7 +88,7 @@ export async function runSeed({
 	if (rich) {
 		await seedRich({ reset, now, log });
 	} else {
-		await seedDemoDemo({ reset, log });
+		await seedDemoThreads({ reset, log });
 	}
 
 	log("\nLogins (password for all: walkthrough):");
@@ -99,7 +99,7 @@ export async function runSeed({
 }
 
 /** The E2E seed, unchanged: the walk's four demo threads, Minji agent 1's, Yuki agent 2's. */
-async function seedDemoDemo({
+async function seedDemoThreads({
 	reset,
 	log,
 }: {
