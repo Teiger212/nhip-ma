@@ -156,6 +156,11 @@ const EXACT: Record<string, Stub> = {
 
 export type StubTranslation = { text: string; stub: boolean } | null;
 
+/** Rough script sniffing, good enough for the seed: Cyrillic, CJK, Hangul. */
+const NON_LATIN = /[Ѐ-ӿ぀-ヿ一-鿿가-힯]/;
+/** Vietnamese-only letters (đ, ơ, ư and the stacked tone marks). */
+const VIETNAMESE = /[đĐơƠưƯạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/;
+
 /**
  * An office message (or the reply being drafted) in the operator's language. `null` when it is
  * already in that language; a visibly marked placeholder when the table doesn't know the text
@@ -166,22 +171,26 @@ export function stubTranslate(
 	operator: OperatorLanguage,
 	guestLanguage: string | null | undefined,
 ): StubTranslation {
-	if (!text.trim()) return null;
-	const exact = EXACT[text.trim()];
-	if (exact) return exact[operator] ? { text: exact[operator], stub: false } : null;
+	const key = text.trim();
+	if (!key) return null;
+	const exact = EXACT[key];
+	if (exact?.[operator]) return { text: exact[operator], stub: false };
 	for (const { re, to } of PATTERNS) {
-		const m = text.trim().match(re);
-		if (m) {
-			const hit = to(m)[operator];
-			return hit ? { text: hit, stub: false } : null;
-		}
+		const m = key.match(re);
+		if (!m) continue;
+		const hit = to(m)[operator];
+		if (hit) return { text: hit, stub: false };
+		break;
 	}
+	// Already in the operator's language: nothing to translate.
+	if (operator === "vi" && VIETNAMESE.test(key)) return null;
+	if (operator === "en" && !NON_LATIN.test(key) && !VIETNAMESE.test(key)) return null;
 	if (guestLanguage === operator) return null;
 	return {
 		text:
 			operator === "vi"
-				? "Bản dịch sẽ hiện ở đây khi bạn sửa xong (stub)."
-				: "The translation updates here as you edit (stub).",
+				? "(stub) Không có trong bảng dịch của bản thử; bản dịch thật sẽ hiện ở đây."
+				: "(stub) Not in the prototype's translation table; the real translation shows here.",
 		stub: true,
 	};
 }
