@@ -233,12 +233,15 @@ the five reads as English".
 - **Any language is classified, locally.** The guest language is detected with no model call
   (the owner rule: local before LLM).
   - The five keep today's script and letter rules as the fast path, unchanged.
-  - Han with no kana reads as Chinese, and Thai script as Thai.
+  - A script that names one language does: Han with no kana is Chinese; Thai, Lao, Khmer,
+    Arabic, Hebrew, Devanagari (Hindi) and Greek are named from theirs.
   - Latin text is read by a local language-ID library (eld, Nito-ELD, its smallest n-gram
     set), limited to English, French, Spanish, Portuguese, German, Italian and Dutch. A
     reading counts only when the library calls it reliable.
   - A thread is read line by line across all the guest's messages, and the language most of
-    the letters are in wins.
+    the letters are in wins. Place names are left out first ("Villa in Tay Ho" isn't Italian),
+    a line with fewer than 20 letters left doesn't vote, and neither does unaccented
+    Vietnamese ("chi oi can ho nay con trong khong"), which the library can't read.
   - A lone greeting the library can't read ("Bonjour", "Hola") names its language.
   - When unsure, it is English, as before.
 - **What the guest gets is unchanged.** An unsupported language is greeted, and its suggested

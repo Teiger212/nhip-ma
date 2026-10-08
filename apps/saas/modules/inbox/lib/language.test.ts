@@ -118,12 +118,42 @@ test.each([
 	"Can I see it this Saturday?",
 	"Hello, I'm Daniel. Looking to rent a 1 bedroom in Hoan Kiem, under $800.",
 	"Danke, but I need something bigger",
+	// Place and person names are no language: the library alone read these as it, nl, de or es.
+	"Studio in Tay Ho",
+	"Villa in Tay Ho",
+	"Any studio in Tay Ho?",
+	"Rent in Tay Ho",
+	"Studio in Ba Dinh?",
+	"Villa in Ciputra, 4 bedrooms",
+	"Hi, villa in Ciputra?",
+	"Studio Ciputra 700",
+	"Lotte area",
+	"2BR in Ba Dinh",
+	"Flat in Hoan Kiem",
+	"My name is Jan de Vries",
+	"Hai Ba Trung",
+	"Villa Ecopark",
+	"Hello from Juan Carlos",
 ])("short English stays English: %s", (text) => {
 	expect(identifyLanguage(text)).toBe("en");
 });
 
-test("unaccented Vietnamese is still unsure, so English, as before", () => {
-	expect(identifyLanguage("toi muon thue can ho 2 phong ngu o Tay Ho")).toBe("en");
+test.each([
+	"toi muon thue can ho 2 phong ngu o Tay Ho",
+	"cho em hoi gia thue bao nhieu a",
+	"chi oi can ho nay con trong khong",
+])("unaccented Vietnamese is still unsure, so English, as before: %s", (text) => {
+	expect(identifyLanguage(text)).toBe("en");
+});
+
+test.each([
+	["Arabic", "ar", "مرحبا، أبحث عن شقة في هانوي"],
+	["Hebrew", "he", "שלום, אני מחפש דירה בהאנוי"],
+	["Hindi", "hi", "नमस्ते, मुझे हनोई में एक अपार्टमेंट चाहिए"],
+	["Greek", "el", "Γεια σας, ψάχνω διαμέρισμα στο Ανόι"],
+	["Thai", "th", "สวัสดีครับ กำลังหาคอนโดที่ฮานอย"],
+])("%s is named from its script", (_, code, text) => {
+	expect(identifyLanguage(text)).toBe(code);
 });
 
 test("an unsupported language still writes back in English", () => {

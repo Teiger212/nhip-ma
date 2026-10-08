@@ -1,26 +1,7 @@
+import { AREAS, bounded } from "./areas";
 import { identifyLanguage } from "./language";
 import { isSupportedLanguage } from "./language-name";
 import type { GuestLanguage, Qualification } from "./types";
-
-function bounded(source: string): RegExp {
-	return new RegExp(`(?<![A-Za-z])(?:${source})(?![A-Za-z])`, "iu");
-}
-
-const AREAS: Array<{ id: string; re: RegExp }> = [
-	{ id: "Tây Hồ", re: bounded("tay\\s*ho|tây\\s*hồ|west\\s*lake") },
-	{ id: "Ba Đình", re: bounded("ba\\s*dinh|ba\\s*đình") },
-	{ id: "Hoàn Kiếm", re: bounded("hoan\\s*kiem|hoàn\\s*kiếm|old\\s*quarter") },
-	{ id: "Cầu Giấy", re: bounded("cau\\s*giay|cầu\\s*giấy") },
-	{ id: "Đống Đa", re: bounded("dong\\s*da|đống\\s*đa") },
-	{ id: "Hai Bà Trưng", re: bounded("hai\\s*ba\\s*trung|hai\\s*bà\\s*trưng") },
-	{ id: "Long Biên", re: bounded("long\\s*bien|long\\s*biên") },
-	{ id: "Ciputra", re: bounded("ciputra") },
-	{ id: "Vinhomes", re: bounded("vinhomes|vinhom") },
-	{ id: "Times City", re: bounded("times\\s*city") },
-	{ id: "Landmark", re: bounded("landmark\\s*\\d*") },
-	{ id: "Ecopark", re: bounded("ecopark") },
-	{ id: "Hà Nội", re: bounded("ha\\s*noi|hà\\s*nội|hanoi") },
-];
 
 const NATIONALITIES: Array<{ id: string; re: RegExp }> = [
 	{ id: "Japanese", re: /日本人|(?<!\p{L})(?:japanese|japan|người\s*nhật|nhật\s*bản)(?!\p{L})/iu },
