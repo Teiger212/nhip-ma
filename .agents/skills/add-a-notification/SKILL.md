@@ -12,7 +12,7 @@ Use for typed notification events, delivered in-app (the bell). Nhịp sends no 
 ## Procedure
 
 1. Add the type to `NotificationType` in `packages/database/prisma/schema.prisma`.
-2. Generate, and write the migration (an added enum value is one deploy, AGENTS.md "Migrations"):
+2. Generate, and write the migration (an added enum value is one deploy, `packages/database/AGENTS.md`, "Schema changes are expand/contract"):
    ```bash
    pnpm --filter @repo/database generate
    pnpm --filter @repo/database push

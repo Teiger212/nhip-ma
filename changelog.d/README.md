@@ -29,4 +29,5 @@ On every push to main that adds fragments, `.github/workflows/changelog.yml` run
 `scripts/changelog/fold.mjs`. It folds them into `CHANGELOG.md` below `# Changelog`, newest on
 top, in the order they reached main (never by filename), deletes them, and commits the result as
 github-actions[bot]. `node scripts/changelog/fold.mjs --check` checks the fragments' shape
-locally; the format check runs it on every PR.
+locally; the format check runs it on every PR. The fold's own tests:
+`node --test scripts/changelog/fold.test.mjs`.

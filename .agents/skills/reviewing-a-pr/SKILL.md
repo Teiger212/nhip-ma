@@ -21,7 +21,7 @@ Use to identify correctness, security, data, compatibility, and test gaps. Do no
 4. Compare with nearby canonical implementations. Examples include `packages/api/modules/organizations/procedures/`, `apps/saas/modules/auth/components/LoginForm.tsx`, and `apps/marketing/modules/home/components/ContactForm.tsx`.
 5. Check schema edits against `packages/database/prisma/schema.prisma`, PostgreSQL/MySQL/SQLite Drizzle schemas, both query layers, and a Prisma migration when persistence changes. Reject manual edits under `packages/database/prisma/generated` or `packages/database/prisma/zod`.
 6. Check tests against `.github/workflows/validate-prs.yml`: unit filters are `@repo/api`, `saas`, and `marketing`; E2E suites are app-local.
-7. If the PR changes commands, paths, ports, environment names, routing, package ownership, schema/query strategy, or another documented convention, require matching updates to `AGENTS.md` and the relevant files under `.agents/skills`; do not leave the skills pointing at the old structure.
+7. If the PR changes commands, paths, ports, environment names, routing, package ownership, schema/query strategy, or another documented convention, require matching updates to the `AGENTS.md` that owns the rule (root or the area's) and the relevant files under `.agents/skills`; do not leave the skills pointing at the old structure.
 8. Run focused read-only verification when useful. Report findings by severity with a concrete failure scenario and exact file/symbol; separate blockers from optional suggestions.
 
 ## Canonical reference

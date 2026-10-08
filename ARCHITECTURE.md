@@ -2,7 +2,8 @@
 
 How Nhịp is built today, on `main`. The product is [PRODUCT.md](./PRODUCT.md), the words
 are [CONTEXT.md](./CONTEXT.md), and the reasons are the ADRs in [docs/adr](./docs/adr).
-Setup, commands, aliases and gates are in [AGENTS.md](./AGENTS.md). Where something here is
+Setup, commands and gates are in [AGENTS.md](./AGENTS.md); each area's rules are in the
+`AGENTS.md` next to its code. Where something here is
 planned rather than built, it says so and names the ADR or PRODUCT line.
 
 ## The system in one picture
@@ -213,7 +214,7 @@ Nhịp's own code in `apps/saas`:
 
 The inbox and pipe routes are plain route handlers outside oRPC and outside the
 `(authenticated)` layout, so each checks the session itself. Path aliases (`@inbox/*`,
-`@home/*`, `@shared/*`, ...) are listed in [AGENTS.md](./AGENTS.md).
+`@home/*`, `@shared/*`, ...) are listed in [apps/saas/AGENTS.md](./apps/saas/AGENTS.md).
 
 ## Tenancy and roles
 
@@ -275,7 +276,7 @@ Better Auth 1.6 in `packages/auth/auth.ts`, Prisma adapter, same database.
   production.
 - **Rate limits**: Better Auth's, with `storage: "database"` (the `rateLimit` table, shared
   across serverless instances), keyed on `x-forwarded-for`; plus a Vercel Firewall rule of
-  300 requests/min per IP on `/api/` and `/webhooks/` (project setting, see AGENTS.md).
+  300 requests/min per IP on `/api/` and `/webhooks/` (project setting, see the `cutting-a-release` skill).
 - **testUtils** exist only in the E2E suite's own auth instance
   (`apps/saas/tests/support/test-auth.ts`), built from the exported `authOptions`; the app
   never loads it.
@@ -353,13 +354,13 @@ pipe_credential, webhook_delivery.
   the direct (non-pooled) URL before building, with a 5s lock timeout
   (`packages/database/scripts/migrate-deploy.sh`), and a failed migration fails the build, so
   the previous deployment keeps serving. CI lints the migrations a PR adds with Squawk (#98). Migrations are additive and stay compatible with the
-  release before (ADR 0016), so applying one ahead of its code is safe; AGENTS.md
-  ("Migrations") has the expand/contract rule and its one recorded exception (#95), and
+  release before (ADR 0016), so applying one ahead of its code is safe;
+  [packages/database/AGENTS.md](./packages/database/AGENTS.md) has the expand/contract rule and its one recorded exception (#95), and
   `migrate:baseline` for giving a pushed dev database a migration history.
 - **Connections** (#98): `packages/database/prisma/client.ts` builds the app's `pg` pool
   (10s connect timeout, attached to Vercel's Fluid compute with `attachDatabasePool`) and hands
   it to Prisma's adapter. Hosted, the app connects through Neon's pooler as `nhip_app`, whose
-  role carries the server timeouts; migrations run as the owner (AGENTS.md, "Neon").
+  role carries the server timeouts; migrations run as the owner (`packages/database/AGENTS.md`, "Neon").
 - **Tests** use `supastarter_test` (Vitest) and `supastarter_e2e` (Playwright) on the same
   server as dev.
 
@@ -451,7 +452,8 @@ A05) are on PRODUCT.md's go-live gate. What Eyal sets by hand for PostHog is in
 
 ## Testing
 
-AGENTS.md, "What gets a test" and "Test quality", is the rule; in short:
+AGENTS.md, "What gets a test", is the rule, and `apps/saas/tests/AGENTS.md` how E2E runs; in
+short:
 
 - **E2E first**: what a person does is a scenario in
   [docs/e2e-scenarios.md](./docs/e2e-scenarios.md) and a Playwright spec in

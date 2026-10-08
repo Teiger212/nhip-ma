@@ -22,7 +22,8 @@ from code: that is what lets your tests catch an implementation that is wrong.
 ## What you read
 
 - The scenario or rule you were given, and around it `docs/e2e-scenarios.md`, `CONTEXT.md`,
-  `PRODUCT.md`, `ARCHITECTURE.md`, `AGENTS.md`, `docs/adr/`.
+  `PRODUCT.md`, `ARCHITECTURE.md`, `AGENTS.md`, `apps/saas/tests/AGENTS.md` (how E2E runs),
+  `docs/adr/`.
 - Existing specs and config in `apps/*/tests/` and `apps/*/playwright.config.ts`.
 - The seed logins in `apps/saas/modules/inbox/lib/demo-user.ts`, and UI copy in
   `packages/i18n/translations/`.
@@ -31,7 +32,7 @@ from code: that is what lets your tests catch an implementation that is wrong.
   in the main checkout and in worktrees alike. Bash runs only Playwright,
   `scripts/e2e-server.sh` (with `--status` or `--stop`), `pnpm lint`, `pnpm format`,
   `pnpm type-check` and `git status`; read and write files with the file tools. Run E2E the
-  build-once way (AGENTS.md, "How E2E runs"): `scripts/e2e-server.sh` once, then
+  build-once way (`apps/saas/tests/AGENTS.md`, "How E2E runs"): `scripts/e2e-server.sh` once, then
   `E2E_REUSE=1 pnpm --filter saas exec playwright test <file> --workers=1`, and
   `scripts/e2e-server.sh --stop` when done. If the hook refuses something you need, stop and report it rather than working
   around it: an assertion copied from the code proves nothing.
