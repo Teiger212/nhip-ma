@@ -20,6 +20,7 @@ vi.mock("@repo/database", () => ({
 
 import { auth } from "@repo/auth";
 
+import { POST as approve } from "../../../app/api/conversations/[id]/approve/route";
 import { POST as regenerate } from "../../../app/api/conversations/[id]/draft/route";
 import { GET as getConversation } from "../../../app/api/conversations/[id]/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
@@ -133,7 +134,11 @@ const TASKS = [
 
 /** The office's calls that day so far, as if it had made them. */
 async function used(officeId: string, task: string, day: string, calls: number): Promise<void> {
-	await testDb.modelUsage.create({ data: { officeId, task, day: new Date(day), calls } });
+	await testDb.modelUsage.upsert({
+		where: { officeId_day_task: { officeId, task, day: new Date(day) } },
+		create: { officeId, task, day: new Date(day), calls },
+		update: { calls },
+	});
 }
 
 async function callsOn(officeId: string, task: string, day: string): Promise<number | null> {
@@ -195,12 +200,12 @@ test("the two tasks count apart: drafts at their cap leave translations running"
 test("Regenerate counts: the 50th of the day is the model's, the 51st puts the template back", async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
-	// With the auto-reply off, nothing drafts on its own: only Regenerate calls the draft model.
 	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
 	setRuntimeForTests({
 		store: createInboxStore(testDb),
 		config: mockInboxConfig(),
 		drafts: layerAt(MORNING),
+		draftDebounceMs: 0,
 	});
 	const injected = await json(
 		await inject(
@@ -212,7 +217,24 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 		),
 	);
 	const conv = injected.body.conversation as Conversation;
+	// The model drafts only after the office's first human reply (ADR 0024): the office replies,
+	// the guest writes again, and that message's draft is the model's.
+	await approve(
+		post(`http://localhost/api/conversations/${conv.id}/approve`, {
+			inboundId: conv.unansweredInboundId,
+			reply: "Hello! Let me check.",
+		}),
+		params(conv.id),
+	);
+	await inject(
+		post("http://localhost/dev/inbound", {
+			pipe: "whatsapp",
+			guestId: "regen-cap",
+			text: "Any news?",
+		}),
+	);
 	await settleBackgroundWork();
+	expect(requested.filter((model) => model === DRAFTER)).toHaveLength(1);
 	const today = officeDay(MORNING);
 	await used("walk-office", "draft", today, 49);
 
@@ -237,7 +259,7 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 	);
 	expect(second.status).toBe(200);
 	expect((second.body.conversation as Conversation).oneShot?.draft.source).toBe("template");
-	expect(requested.filter((model) => model === DRAFTER)).toHaveLength(1);
+	expect(requested.filter((model) => model === DRAFTER)).toHaveLength(2);
 	expect(await callsOn("walk-office", "draft", today)).toBe(50);
 });
 

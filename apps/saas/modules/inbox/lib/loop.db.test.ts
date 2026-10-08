@@ -38,7 +38,8 @@ import type { Conversation, ConversationSummary } from "./types";
  * writes back after an approved send returns to Your turn with their message translated
  * under the original and an AI-suggested follow-up in the reply box; the manager approves it
  * and it sends; a third approve with no new inbound is 409. Nothing is sent on its own but the
- * first message's auto-reply (ADR 0021).
+ * first message's auto-reply (ADR 0021), and the model drafts only after the office's first
+ * human reply (ADR 0024, #252).
  */
 
 /**
@@ -74,6 +75,8 @@ beforeEach(async () => {
 			followUps.push(reply);
 			return reply;
 		}),
+		// The wait before a draft is proven in `model-draft.test.ts`; here it holds nothing up.
+		draftDebounceMs: 0,
 	});
 });
 
@@ -119,13 +122,11 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.messages[0].translations).toEqual({
 		en: "[en] 안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
 	});
-	// The auto-reply went out, so the box takes the follow-up path (ADR 0021, P2): the model
-	// drafts for the first message from the conversation, greeting included.
+	// The auto-reply went out, and the first reply keeps the template: the office has no human
+	// reply yet, so the model isn't asked (ADR 0024).
 	expect(conv.messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
-	expect(followUps).toEqual([
-		'Follow-up one: about "안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요."',
-	]);
-	expect(conv.oneShot?.draft).toMatchObject({ answersMessageId: firstInbound, source: "model" });
+	expect(followUps).toEqual([]);
+	expect(conv.oneShot?.draft).toMatchObject({ answersMessageId: firstInbound, source: "template" });
 
 	// 2. The manager approves the first reply, naming the message it answers.
 	const sentFirst = await json(
@@ -180,7 +181,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 		source: "model",
 	});
 	// The model saw the whole conversation, office message included.
-	expect(followUps).toHaveLength(2);
+	expect(followUps).toHaveLength(1);
 
 	// The list puts the thread back in Your turn: the guest spoke last.
 	const listed = await json(
@@ -239,10 +240,10 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.messages.filter((message) => message.source === "auto-reply")).toHaveLength(1);
 	expect(conv.messages.filter((message) => message.direction === "out")).toHaveLength(3);
 	expect(conv.answers).toHaveLength(2);
-	expect(followUps).toHaveLength(2);
+	expect(followUps).toHaveLength(1);
 });
 
-test("regenerate asks the model even for a first reply and keeps the operator in charge", async () => {
+test("Regenerate writes the template again before the office's first human reply, asks the model after it, and never sends", async () => {
 	// With the auto-reply off, the first message keeps the template, which thanks the guest (ADR 0021 G6, ADR 0024).
 	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
 	const injected = await json(
@@ -258,18 +259,44 @@ test("regenerate asks the model even for a first reply and keeps the operator in
 	await settleBackgroundWork();
 	expect(followUps).toEqual([]);
 
-	const regenerated = await json(
+	const template = conv.oneShot?.draft;
+	let regenerated = await json(
 		await draft(post(`http://localhost/api/conversations/${conv.id}/draft`, {}), params(conv.id)),
 	);
 	expect(regenerated.status).toBe(200);
 	conv = regenerated.body.conversation as Conversation;
-	expect(conv.oneShot?.draft.source).toBe("model");
-	expect(conv.oneShot?.draft.reply).toBe(
-		'Follow-up one: about "Is the Ciputra flat still available?"',
+	expect(conv.oneShot?.draft).toEqual(template);
+	expect(followUps).toEqual([]);
+
+	// The office replies, the guest writes again, and its draft is the model's. Asked again, the
+	// model drafts again.
+	await approve(
+		post(`http://localhost/api/conversations/${conv.id}/approve`, {
+			inboundId: conv.unansweredInboundId,
+			reply: "Hello! Let me check.",
+		}),
+		params(conv.id),
 	);
+	await inject(
+		post("http://localhost/dev/inbound", { pipe: "whatsapp", guestId: "regen", text: "Any news?" }),
+	);
+	await settleBackgroundWork();
+	expect(followUps).toHaveLength(1);
+	conv = await get(conv.id);
+	regenerated = await json(
+		await draft(post(`http://localhost/api/conversations/${conv.id}/draft`, {}), params(conv.id)),
+	);
+	expect(regenerated.status).toBe(200);
+	conv = regenerated.body.conversation as Conversation;
+	expect(followUps).toHaveLength(2);
+	expect(conv.oneShot?.draft).toMatchObject({
+		reply: 'Follow-up two: about "Any news?"',
+		answersMessageId: conv.unansweredInboundId,
+		source: "model",
+	});
 	// Nothing was sent by asking for a draft.
-	expect(conv.messages.filter((message) => message.source === "nhip")).toHaveLength(0);
-	expect(conv.unansweredInboundId).toBe(conv.messages[0].id);
+	expect(conv.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
+	expect(conv.unansweredInboundId).toBe(conv.messages.at(-1)?.id);
 });
 
 test("a model draft that states a paperwork answer never reaches the reply box", async () => {
@@ -289,6 +316,24 @@ test("a model draft that states a paperwork answer never reaches the reply box",
 		),
 	);
 	let conv = injected.body.conversation as Conversation;
+	// The model drafts only after the office's first human reply (ADR 0024).
+	await approve(
+		post(`http://localhost/api/conversations/${conv.id}/approve`, {
+			inboundId: conv.unansweredInboundId,
+			reply: "Hello! Let me check.",
+		}),
+		params(conv.id),
+	);
+	await inject(
+		post("http://localhost/dev/inbound", {
+			pipe: "whatsapp",
+			guestId: "paperwork",
+			text: "And the pink book itself?",
+		}),
+	);
+	await settleBackgroundWork();
+	conv = await get(conv.id);
+	expect(conv.oneShot?.draft.source).toBe("template");
 	const regenerated = await json(
 		await draft(post(`http://localhost/api/conversations/${conv.id}/draft`, {}), params(conv.id)),
 	);

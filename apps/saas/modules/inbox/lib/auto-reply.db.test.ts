@@ -372,26 +372,39 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 		expect(result.ok && result.conversation.oneShot?.draft).toEqual(conversation.oneShot?.draft);
 	});
 
-	test("with a model, the first message gets the model's follow-up, written from the conversation with the greeting in it", async () => {
+	test("with a model, the greeted thread keeps the template until the office's first human reply; the model's follow-up then reads the conversation with the greeting in it", async () => {
 		runtime.drafts = model;
+		runtime.draftDebounceMs = 0;
 		await arrive(guest("p3", "Hi, we're looking to rent an apartment in Tay Ho"));
-		const conversation = await thread("p3");
-		expect(conversation.oneShot?.draft).toEqual({
-			reply: "Happy to help with your search. Which budget did you have in mind?",
-			answersMessageId: conversation.messages[0].id,
-			source: "model",
-		});
-		expect(followUps).toHaveLength(1);
-		expect(followUps[0].messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
-		expect(followUps[0].messages[1].text).toBe(autoReplies(conversation)[0].text);
+		let conversation = await thread("p3");
+		// ADR 0024, amending P2: no model draft after the greeting alone.
+		expectTemplateAfterGreeting(conversation, conversation.messages[0].id);
 
-		// The guest writes again before any human reply: the model drafts for that message.
+		// The guest writes again before any human reply: still the template, still no model.
 		await arrive(guest("p3", "Two bedrooms, please"));
+		conversation = await thread("p3");
+		expect(conversation.oneShot?.draft).toMatchObject({
+			answersMessageId: conversation.messages[2].id,
+			source: "template",
+		});
+		expect(followUps).toHaveLength(0);
+
+		// The office replies from its own app, and the guest writes again: the model drafts.
+		await arrive(oaEcho("p3", "oa-reply-p3"));
+		await arrive(guest("p3", "Is Saturday possible?"));
 		const later = await thread("p3");
-		expect(followUps).toHaveLength(2);
+		expect(followUps).toHaveLength(1);
+		expect(followUps[0].messages.map((message) => message.source)).toEqual([
+			"guest",
+			"auto-reply",
+			"guest",
+			"oa-echo",
+			"guest",
+		]);
+		expect(followUps[0].messages[1].text).toBe(autoReplies(later)[0].text);
 		expect(later.oneShot?.draft).toEqual({
 			reply: "Happy to help with your search. Which budget did you have in mind?",
-			answersMessageId: later.messages[2].id,
+			answersMessageId: later.messages[4].id,
 			source: "model",
 		});
 	});

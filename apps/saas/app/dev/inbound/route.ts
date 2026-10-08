@@ -8,6 +8,12 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 /**
+ * A guest message's model draft waits about 30 s inside `after()`, then calls the model (20 s,
+ * one retry): the function is kept alive that long (ADR 0024, #252). A literal, as Next.js reads it.
+ */
+export const maxDuration = 120;
+
+/**
  * `at` reaches `nowIso()`, which calls `new Date(at).toISOString()`. An unparsable value
  * throws `RangeError` there, which surfaced as a 500; this checks exactly the precondition
  * `nowIso` needs so a bad `at` is a 400 instead. It stays permissive on purpose: any date

@@ -312,7 +312,11 @@ UPDATE` and writes the new pair in the same transaction. **WhatsApp** is not yet
   The `Answer` row is written in `sending` before the vendor call (unique on `inboundId`);
   a vendor refusal is `failed` and may be approved again, anything uncertain is `unknown`
   and refused (`409 delivery_unknown`) until a person reconciles it. Other refusals:
-  `409 stale_target`, `400 inbound_required`, `400 empty_reply`.
+  `409 stale_target`, `400 inbound_required`, `400 empty_reply`. The one exception to
+  `stale_target` (ADR 0024, #252): a request with `edited: true` naming an earlier guest message
+  of the open turn (no Answer of its own, no human reply after it), with `seenInboundId` naming the
+  latest guest message (the "Guest wrote again" note was on screen), is the agent's kept edit,
+  and answers the latest guest message.
 - **Webhook delivery log** (ADR 0017): `pipes/webhook.ts` records every incoming webhook
   (`recordWebhookDelivery`: pipe, outcome `processed`, `refused` or `failed`, the endpoints
   and offices it touched, how many messages were filed or dropped, the vendor's message

@@ -46,6 +46,7 @@ beforeEach(async () => {
 		store: createInboxStore(testDb),
 		config: mockInboxConfig({ pipeSecretsKey: TEST_SECRETS_KEY }),
 		drafts: failingModel,
+		draftDebounceMs: 0,
 	};
 	setRuntimeForTests(runtime);
 	await runtime.store.claimPipe({ pipe: "zalo", externalId: OA, officeId: OFFICE });
@@ -60,8 +61,24 @@ test("a failing background job logs its kind and the error's kind, never a threa
 	const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 	const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-	// A new guest's first message, through the webhook path: the greeting goes out, then the
-	// follow-up draft and the translation run in the background, and the model fails both.
+	// A guest's message through the webhook path, on a thread the office has replied on from its
+	// own app: the follow-up draft (ADR 0024: only after a human reply) and the translation run
+	// in the background, and the model fails both.
+	await ingestEvents(runtime, [
+		guestMessage(GUEST_ID, {
+			guestName: GUEST_NAME,
+			text: "Chào anh",
+			vendorMessageId: "zalo-msg-0",
+			pipeExternalId: OA,
+		}),
+		guestMessage(GUEST_ID, {
+			source: "oa-echo",
+			text: "Chào chị, em nghe ạ",
+			vendorMessageId: "zalo-echo-0",
+			pipeExternalId: OA,
+		}),
+	]);
+	await settleBackgroundWork();
 	await ingestEvents(runtime, [
 		guestMessage(GUEST_ID, {
 			guestName: GUEST_NAME,

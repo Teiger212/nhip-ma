@@ -30,6 +30,8 @@ import { GuestMark, ThreadFlags } from "./ThreadParts";
 export type ReplyState = {
 	reply: string;
 	edited: boolean;
+	/** The operator's edit was kept after the guest wrote again (ADR 0024). */
+	guestWroteAgain: boolean;
 	draftSource: DraftSource;
 	canApprove: boolean;
 	onReplyChange: (reply: string) => void;
@@ -262,6 +264,7 @@ export function ThreadDetail({
 							reply={reply.reply}
 							onReplyChange={reply.onReplyChange}
 							edited={reply.edited}
+							guestWroteAgain={reply.guestWroteAgain}
 							draftSource={reply.draftSource}
 							canApprove={reply.canApprove}
 							regenerating={reply.regenerating}
