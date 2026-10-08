@@ -60,7 +60,9 @@ saas test`. Do not commit untracked local scripts.
   OpenRouter only, zero-retention routing on every request, a model per task (`DRAFT_MODEL`,
   `TRANSLATE_MODEL`, both defaulting to Haiku 5.5), daily caps per office, 20 s and one retry.
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model draft
-  that touches paperwork is dropped by the post-check and the template stands. E2E translates
+  is JSON with the reply and the same reply in the office language (#251); one that states a
+  price, an availability, a viewing time or a legal answer, or a number the guest didn't write,
+  is dropped by the post-check and the template stands. E2E translates
   with the stub model (`MODEL_STUB=translate` in `.env.e2e`).
 - The office is the tenant (ADR 0008) and Nhịp assigns it (ADR 0010): one operator, one
   office, read from the membership table on every request, never from the session's

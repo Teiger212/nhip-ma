@@ -29,6 +29,8 @@ const DRAFT_INPUT: DraftInput = {
 	officeId: "office-a",
 	guestName: "Claire Dubois",
 	guestLanguage: "en",
+	officeLanguage: "vi",
+	openQuestions: [],
 	messages: [
 		{ direction: "in", source: "guest", text: GUEST_TEXT, at: "2026-10-08T01:00:00.000Z" },
 		{ direction: "out", source: "nhip", text: AGENT_TEXT, at: "2026-10-08T01:01:00.000Z" },

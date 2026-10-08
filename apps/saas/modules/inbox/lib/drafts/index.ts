@@ -39,6 +39,7 @@ export function draftAdapterFromConfig(
 export {
 	CAPPED,
 	type Capped,
+	DRAFT_MESSAGES,
 	noDraftAdapter,
 	type DraftAdapter,
 	type DraftInput,

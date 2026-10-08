@@ -330,7 +330,9 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 		translate: async () => null,
 		draft: async (input) => {
 			followUps.push(input);
-			return "Happy to help with your search. Which budget did you have in mind?";
+			// The model's JSON (#251); the office's language is the guest's, English.
+			const reply = "Happy to help with your search. Which budget did you have in mind?";
+			return JSON.stringify({ reply, office_reply: reply });
 		},
 	};
 

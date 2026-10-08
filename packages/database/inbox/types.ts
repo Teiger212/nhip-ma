@@ -55,6 +55,11 @@ export type Draft = {
 	/** The guest message this reply answers. `null` only on files written before ADR 0006. */
 	answersMessageId: string | null;
 	source: DraftSource;
+	/**
+	 * A model draft's reply in the office language (ADR 0024, ADR 0025), for the agent to read.
+	 * Absent on a template, and on a model draft already in the office language.
+	 */
+	officeReply?: string;
 };
 
 export type OneShot = {
@@ -467,7 +472,10 @@ export type InboxStore = {
 		},
 	) => Promise<GuestDeletionResult>;
 	setOneShot: (officeId: string, id: string, oneShot: OneShot) => Promise<Conversation | null>;
-	/** Replace the suggested reply without touching extraction or paperwork. */
+	/**
+	 * Replace the suggested reply without touching extraction or paperwork. A draft with no
+	 * `officeReply` clears the stored one, as `setOneShot` does.
+	 */
 	setDraft: (officeId: string, id: string, draft: Draft) => Promise<Conversation | null>;
 	/**
 	 * Write the template suggested reply again with `reply` (ADR 0024), only while the stored

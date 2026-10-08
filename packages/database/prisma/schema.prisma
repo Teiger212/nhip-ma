@@ -451,6 +451,9 @@ model Draft {
   answersMessageId String?
   answersMessage   Message?     @relation(fields: [answersMessageId], references: [id], onDelete: SetNull)
   source           DraftSource  @default(template)
+  /// The model draft's reply in the office language (ADR 0024, ADR 0025): null on a template,
+  /// and on a model draft already in the office language.
+  officeReply      String?
 
   /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
   @@unique([conversationId, officeId])

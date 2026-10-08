@@ -19,10 +19,11 @@ import {
  * (openrouter.ai/docs/guides/features/zdr): guests' words aren't kept by the model's provider.
  *
  * Both tasks are short, one-turn completions, so `max_tokens` is deliberately small: a
- * translation of a chat message or a three-sentence reply never needs more.
+ * translation of a chat message, or a reply of up to four sentences in two languages, never
+ * needs more.
  */
 const TRANSLATION_MAX_TOKENS = 1024;
-const DRAFT_MAX_TOKENS = 512;
+const DRAFT_MAX_TOKENS = 768;
 
 /** OpenRouter's provider routing: zero-retention endpoints only, and no training on the text. */
 export const ZERO_RETENTION = { zdr: true, data_collection: "deny" } as const;
@@ -114,7 +115,7 @@ export function createOpenRouterBackends(input: {
 				complete(
 					input.models.draft,
 					{
-						system: followUpSystemPrompt(request.guestLanguage),
+						system: followUpSystemPrompt(request.guestLanguage, request.officeLanguage),
 						user: followUpUserPrompt(request),
 						maxTokens: DRAFT_MAX_TOKENS,
 					},

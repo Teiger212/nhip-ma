@@ -120,7 +120,7 @@ export type QualificationScalarFieldEnum = z.infer<typeof QualificationScalarFie
 
 // File: DraftScalarFieldEnum.schema.ts
 
-export const DraftScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'reply', 'answersMessageId', 'source'])
+export const DraftScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'reply', 'answersMessageId', 'source', 'officeReply'])
 
 export type DraftScalarFieldEnum = z.infer<typeof DraftScalarFieldEnumSchema>;
 
@@ -643,6 +643,7 @@ export const DraftSchema = z.object({
   reply: z.string(),
   answersMessageId: z.string().nullish(),
   source: DraftSourceSchema.default("template"),
+  officeReply: z.string().nullish(),
 });
 
 export type DraftType = z.infer<typeof DraftSchema>;

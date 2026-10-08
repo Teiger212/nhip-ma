@@ -16,16 +16,32 @@ export type TranslateInput = {
 	to: OperatorLanguage;
 };
 
+/**
+ * What the model reads for a suggested reply (ADR 0024, #251). No field names the agent or the
+ * office: the model never introduces anyone, and the messages pass as they are.
+ */
 export type DraftInput = {
 	/** The office whose daily cap the call counts against (ADR 0024). */
 	officeId: string;
 	guestName: string | null;
+	/** The language the reply is written in: the guest's, or English for one Nhịp doesn't support. */
 	guestLanguage: GuestLanguage;
-	/** The whole conversation, oldest first. Office messages are the agent's own words. */
+	/** The language of the reply's second text, the office's (ADR 0025). */
+	officeLanguage: OperatorLanguage;
+	/**
+	 * The auto-reply's questions the guest hasn't answered yet, as the auto-reply words them in
+	 * the reply's language: the model never asks them again (rule 5). Read from the whole thread,
+	 * so they still reach the model once the auto-reply has left `messages`.
+	 */
+	openQuestions: string[];
+	/** The last messages, at most `DRAFT_MESSAGES`, oldest first, the auto-reply included. */
 	messages: Array<Pick<Message, "direction" | "source" | "text" | "at">>;
 	qualification: Qualification;
 	paperwork: Paperwork;
 };
+
+/** How many of the thread's latest messages the model reads (ADR 0024). */
+export const DRAFT_MESSAGES = 10;
 
 /**
  * The office has spent its daily cap for the task (ADR 0024): the model wasn't called. The

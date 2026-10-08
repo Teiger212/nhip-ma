@@ -39,6 +39,8 @@ import type { Conversation } from "./types";
 
 const DRAFTER = "test/drafter";
 const TRANSLATOR = "test/translator";
+/** The drafter answers the draft prompt's JSON (#251); the translator, plain text. */
+const DRAFT_ANSWER = JSON.stringify({ reply: "Happy to help.", office_reply: "Happy to help." });
 
 /** The models the stubbed OpenRouter was asked for, one entry per request. */
 const requested: string[] = [];
@@ -51,9 +53,11 @@ beforeEach(() => {
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async (_url: string, init: RequestInit) => {
-			requested.push((JSON.parse(init.body as string) as { model: string }).model);
+			const { model } = JSON.parse(init.body as string) as { model: string };
+			requested.push(model);
+			const content = model === DRAFTER ? DRAFT_ANSWER : "Happy to help.";
 			return Response.json({
-				choices: [{ message: { content: "Happy to help." }, finish_reason: "stop" }],
+				choices: [{ message: { content }, finish_reason: "stop" }],
 				usage: { prompt_tokens: 100, completion_tokens: 10 },
 			});
 		}),
@@ -93,6 +97,8 @@ function draftInput(officeId: string): DraftInput {
 		officeId,
 		guestName: null,
 		guestLanguage: "en",
+		officeLanguage: "en",
+		openQuestions: [],
 		messages: [{ direction: "in", source: "guest", text: "Hello", at: "2026-10-08T01:00:00.000Z" }],
 		qualification: {
 			areaOfInterest: null,
@@ -112,12 +118,14 @@ const TASKS = [
 		task: "draft",
 		cap: 50,
 		model: DRAFTER,
+		answer: DRAFT_ANSWER,
 		call: (layer: DraftAdapter, officeId: string) => layer.draft(draftInput(officeId)),
 	},
 	{
 		task: "translate",
 		cap: 1000,
 		model: TRANSLATOR,
+		answer: "Happy to help.",
 		call: (layer: DraftAdapter, officeId: string) =>
 			layer.translate({ officeId, text: "Xin chào", from: "vi", to: "en" }),
 	},
@@ -137,12 +145,12 @@ async function callsOn(officeId: string, task: string, day: string): Promise<num
 
 const MORNING = new Date("2026-10-08T03:00:00.000Z"); // 10:00 in Hà Nội
 
-describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call }) => {
+describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, answer, call }) => {
 	test(`the ${cap}th call of the office's day goes to the model, the next doesn't`, async () => {
 		await used("office-a", task, "2026-10-08", cap - 1);
 		const layer = layerAt(MORNING);
 
-		expect(await call(layer, "office-a")).toBe("Happy to help.");
+		expect(await call(layer, "office-a")).toBe(answer);
 		expect(requested).toEqual([model]);
 		expect(await callsOn("office-a", task, "2026-10-08")).toBe(cap);
 
@@ -157,9 +165,7 @@ describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call })
 		expect(await call(layerAt(new Date("2026-10-08T16:59:59.000Z")), "office-a")).toBe(CAPPED);
 		expect(requested).toEqual([]);
 
-		expect(await call(layerAt(new Date("2026-10-08T17:00:00.000Z")), "office-a")).toBe(
-			"Happy to help.",
-		);
+		expect(await call(layerAt(new Date("2026-10-08T17:00:00.000Z")), "office-a")).toBe(answer);
 		expect(requested).toEqual([model]);
 		expect(await callsOn("office-a", task, "2026-10-09")).toBe(1);
 	});
@@ -169,7 +175,7 @@ describe.each(TASKS)("the $task cap of $cap a day", ({ task, cap, model, call })
 		const layer = layerAt(MORNING);
 
 		expect(await call(layer, "office-a")).toBe(CAPPED);
-		expect(await call(layer, "office-b")).toBe("Happy to help.");
+		expect(await call(layer, "office-b")).toBe(answer);
 		expect(requested).toEqual([model]);
 		expect(await callsOn("office-b", task, "2026-10-08")).toBe(1);
 		expect(await callsOn("office-a", task, "2026-10-08")).toBe(cap);
