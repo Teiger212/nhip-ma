@@ -253,10 +253,11 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 	test.describe.configure({ timeout: 180_000 });
 
 	// scenario: docs/e2e-scenarios.md Alerts 1
-	test("a new guest alerts the managers only, each in their own language, and no agent or anyone else", async ({
+	test("a new guest alerts the managers only, and no agent or anyone else; in an office left at English each link starts /en/, whatever each manager's own setting", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(240_000);
+		// The office is left at the default office language, English (ADR 0025, Office language 8).
 		const office = await newOffice({ managers: 2 });
 		const [first, second] = office.managers;
 		// Manager 1 is in English; manager 2 never chose a language.
@@ -287,9 +288,8 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 			const who = whose(office, row.userId);
 			expect(row.kind, `${who}'s alert is a guest's message`).toBe("guest");
 			expect(row.sounded, `${who}'s alert sounds`).toBe(true);
-			const locale = who === first.label ? "en" : "vi";
-			expect(row.link, `${who}'s alert opens the Inbox in their language`).toMatch(
-				new RegExp(`^/${locale}/inbox\\?alert=`),
+			expect(row.link, `${who}'s alert opens the Inbox in the office language`).toMatch(
+				/^\/en\/inbox\?alert=/,
 			);
 			expect(row.link.endsWith(row.id), `${who}'s link carries the alert's own id`).toBe(true);
 			expect(row.link, `${who}'s link carries no thread id`).not.toContain(threadId);

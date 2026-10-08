@@ -212,9 +212,9 @@ are not here (the onboarding grill).
    whose page title is "Team". The invite form's role offers exactly "Agent" and "Manager",
    with "Agent" chosen; there is no "Owner". The manager invites a new email as Agent: a toast
    says "Invitation sent", and under "Pending invitations" the email shows with role "Agent".
-   Inviting another email as Manager shows it with role "Manager". In Vietnamese
-   (`/vi/walk/settings/members`) the menu item is "Nhóm", the page title "Nhóm", and the role
-   options "Nhân viên" and "Quản lý".
+   Inviting another email as Manager shows it with role "Manager". In a Vietnamese office
+   (`/vi/<office slug>/settings/members`; ADR 0025, a member reads Nhịp in the office language)
+   the menu item is "Nhóm", the page title "Nhóm", and the role options "Nhân viên" and "Quản lý".
 2. **An agent has no Team.** As an agent of the walk office, the user menu has no "Team", and
    opening `/en/walk/settings/members` shows the not-found page (404) with no member list and
    no invite form. The kit's API refuses the agent too: inviting into the office
@@ -272,7 +272,10 @@ are not here (the onboarding grill).
 Spec: `apps/saas/tests/team.spec.ts` (Team 1–7; the agent's and the managers' API refusals run
 in offices of the test's own with newcomer agents and managers, so a removal or owner grant that
 was taken costs no seeded login; "no invitation made" and "role unchanged" are read through the
-platform admin's view of the office).
+platform admin's view of the office. The Vietnamese halves of Team 1 and Team 4 run in an office
+of the test's own whose manager set it to Vietnamese (`PUT /api/office/language`), never the walk
+office: Team 1's with an invited manager, Team 4's once the newcomer manager has passed the
+first-run step).
 
 ## Pipe connections (ADR 0017)
 
@@ -468,7 +471,9 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    the 22rem panel (768 wide) and on a phone (390 wide). The worst case is a manager in Vietnamese
    at the 22rem panel.
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 1; an office of the test's own with one
-   invited agent and one invited manager. The guests are setup, written in bulk through the inbox
+   invited agent and one invited manager, read in English while left at English, then in Vietnamese
+   once the manager has set it to Vietnamese (`PUT /api/office/language`; a member reads Nhịp in
+   the office language, Office language 6). The guests are setup, written in bulk through the inbox
    store (#222): each wrote once to the office's Zalo OA, some were given to the agent, and the
    agent answered some (a mock send). Two-digit counts: manager 12, 25, 14, 39; agent 13, 14, 27.
    Three-digit counts, on every tab: manager 101, 203, 103, 306; agent 102, 103, 205.
@@ -485,7 +490,8 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    as the nav badge, the tab title ("(N) Inbox", VI "(N) Hộp thư") and the list's count line. An
    agent in the same office still sees "Your turn N" (VI "Đến lượt bạn N"), and no "Waiting".
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN and VI; an office of the test's
-   own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
+   own, left at English for EN and set to Vietnamese by its manager for VI, with two Unassigned
+   guests, one waiting on the invited agent and one the agent answered.
    The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
    title, and the count line is #208's manager line on Unassigned, "2 unassigned · 3 waiting in the
    office" (VI "2 khách chưa giao · 3 khách đang chờ văn phòng"). Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1, Sent 1, All 2,
@@ -497,13 +503,16 @@ A kit screen Nhịp doesn't use yet is hidden (`kit-screens.ts`), not deleted: o
 gives the not-found page. The account's Billing page is hidden already.
 
 1. **The office's Billing page is hidden** (ADR 0022 amendment, Q16, docs PR #213; until #198
-   builds ADR 0014's billing). The walk office's manager opening `/<locale>/walk/settings/billing` gets what
+   builds ADR 0014's billing). The walk office's manager opening `/en/walk/settings/billing` (in
+   Vietnamese, a Vietnamese office's manager opening `/vi/<office slug>/settings/billing`) gets what
    the account's hidden Billing page (`/<locale>/settings/billing`) gives: the same status (404)
    and the same not-found page ("404", "Page not found", "Go to dashboard"; VI "Không tìm thấy
    trang", "Về bảng điều khiển"). No plan or Billing heading shows. An agent of the office gets
    the same.
-   Spec: `apps/saas/tests/office-billing-hidden.spec.ts` (Hidden kit screens 1; the manager in EN
-   and VI, the agent in EN. The account's page is read first, as the reference, and must itself
+   Spec: `apps/saas/tests/office-billing-hidden.spec.ts` (Hidden kit screens 1; the walk office's
+   manager and agent in EN; in VI, the invited manager of an office of the test's own set to
+   Vietnamese, at its own slug (a member reads Nhịp in the office language, Office language 6).
+   The account's page is read first, as the reference, and must itself
    be the 404 not-found page. The comparison is of the not-found content, not the page's
    surroundings: the account's settings carry their own menu).
 
@@ -746,10 +755,12 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 
 1. **A new guest alerts the managers only** (#132; ADR 0022). A new guest writes: the log
    holds one sounding `guest` alert for each manager, and none for either agent or anyone
-   else. Each alert's link starts with its manager's locale and carries no thread id: `/en/`
-   for a manager set to English, `/vi/` for one with no locale set.
-   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 1, rewritten; two managers, the first set to
-   English through the kit's user update).
+   else. Each alert's link starts with the office language (ADR 0025, Office language 8) and
+   carries no thread id: `/en/` in an office left at English, whatever each manager's own
+   setting.
+   Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 1, rewritten; an office left at English, two
+   managers, the first set to English through the kit's user update and the second with no
+   language set: both links start `/en/inbox?alert=`).
 2. **An owned thread's guest alerts only its owner** (#132). The manager assigns a new guest to
    agent 1, and the guest writes again: one new `guest` alert, for agent 1. Agent 2 and the
    managers get none for that message.
@@ -787,8 +798,9 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    WhatsApp guest named "Minji", given to agent 1 and returned by manager 1 through the owner
    API; the thread's alerts are exactly each manager's `guest` alert from before, agent 1's
    `assigned` alert and manager 2's `returned` alert, judged once a later guest's alerts have
-   reached the managers, and the platform admin has none in the office; agent 1, with no
-   language set, reads the bell in Vietnamese: "Minji đã được chuyển cho nhân viên khác").
+   reached the managers, and the platform admin has none in the office; the office is set to
+   Vietnamese by manager 1 (`PUT /api/office/language`), so agent 1 reads the bell in Vietnamese:
+   "Minji đã được chuyển cho nhân viên khác").
 5. **A vendor retry alerts no one** (#132). The same signed Zalo message is delivered
    twice: the thread holds that message once, and the log holds one alert per recipient, not two.
    Spec: `apps/saas/tests/alerts.spec.ts` (Alerts 5; one signed body, same `msg_id`, posted twice).
@@ -814,8 +826,8 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    Spec: `apps/saas/tests/alerts-in-app.spec.ts` (Alerts 8; the guest is a WhatsApp guest named
    "Minji", so a name can be missing; agent 1 also holds an older Zalo guest who heads their
    queue, so an Inbox that opens the first guest can't pass the positive control; each link is
-   the one in the log, followed as logged (Vietnamese: invited operators chose no language), and
-   the made-up id is followed at `/en/`. "Nothing of the thread" for agent 1 is no visible guest
+   the one in the log, followed as logged (Vietnamese: the office's manager set it to Vietnamese),
+   and the made-up id is followed at `/vi/`. "Nothing of the thread" for agent 1 is no visible guest
    name, message text or "WhatsApp" anywhere on the page; for agent 2, who now holds the thread
    and lists it, it is the notice with the thread not opened and nothing to send. "Usable" is
    the older guest's row opening their thread beside the notice. Agent 1's own link opened while
@@ -905,7 +917,9 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     1 exactly one, once agent 1, given a nameless Zalo guest after the return, shows "A guest was
     assigned to you".
     The title is "(n) " in front of the page's own title beside the nav's number on the Inbox,
-    Home and Settings, in English and Vietnamese, and after Settings → Inbox through the nav; each
+    Home and Settings, in English in an office left at English, and after Settings → Inbox
+    through the nav; in Vietnamese in a test of its own, in an office its manager set to
+    Vietnamese (a member reads Nhịp in the office language, Office language 6); each
     page's own title, read before any guest, is "<Page> – Nhịp" (an en dash), and with nobody
     waiting the title is that again. A toast is `data-test="guest-toast"`, a link named
     "<guest> is waiting", in the window's top-right quarter. Each absence is judged once a later
@@ -924,7 +938,8 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     stored; everything is enabled by default." (VI "Chọn cách bạn nhận thông báo. …") is nowhere
     on the page.
     Spec: `apps/saas/tests/notifications-intro.spec.ts` (Alerts 13; the seeded agent on
-    `/en/settings/notifications` and `/vi/settings/notifications`; "under the heading" is the
+    `/en/settings/notifications`, and an invited agent of an office of the test's own, set to
+    Vietnamese by its manager, on `/vi/settings/notifications`; "under the heading" is the
     line being the paragraph that follows the heading in the page's main area; "one intro line"
     is judged only as the kit's sentence being gone).
 
@@ -1029,7 +1044,9 @@ the test's own, with a manager and an invited agent, the auto-reply on and `SEND
 Translation runs against First greeting's stub model, so a supported language's message shows a
 stub translation line and an unsupported one must show none; drafting is off, so the reply box
 holds a template. Each test's office is left at the default office language, English (ADR 0025,
-Office language). The VI copy is pending a native read (#78).
+Office language), except Guest language 1's `/vi/` pass, whose manager sets its office to
+Vietnamese: a member reads Nhịp in the office language (Office language 6). The VI copy is
+pending a native read (#78).
 
 1. **A guest writes in French: the thread names French and says it isn't supported.** A guest
    writes "Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget
@@ -1052,7 +1069,9 @@ Office language). The VI copy is pending a native read (#78).
      "English".
 
    Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 1; once in `/en/` and once in
-   `/vi/`, each with an office of its own and a manager, no agent: nothing here is an agent's.
+   `/vi/`, each with an office of its own and a manager, no agent: nothing here is an agent's. The
+   `/vi/` pass's office is set to Vietnamese by its manager (`PUT /api/office/language`) before
+   the guest writes.
    The manager opens the thread by its `?thread=` link. The Language row is the term "Language"
    and the value beside it in the guest's details (`data-test="thread-details"`), matched exactly
    on a wide pane (1563×784, the rail) and on a narrow one (1366×768, the strip). "Under the
@@ -1098,8 +1117,10 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    General tab's combobox named "Office language", its value read within the trigger's text (the
    trigger also holds its arrow) as "English" and not "Tiếng Việt", then the reverse; both options
    are offered; the toast is the exact text "Office language saved"; after the reload, the `/vi/`
-   page's combobox named "Ngôn ngữ văn phòng" reads "Tiếng Việt" too. The VI toast is not
-   checked, nor that there is no Save button: the toast and the reload prove it saved on choice).
+   page's combobox named "Ngôn ngữ văn phòng" reads "Tiếng Việt" too. Choosing moves the page to
+   `/vi/` (6), so from the choice on the toast is accepted as "Office language saved" or the app's
+   VI "Đã lưu ngôn ngữ văn phòng", and the setting by either name. That there is no Save button is
+   not checked: the toast and the reload prove it saved on choice).
 2. **An agent can't set it.** The agent's General tab doesn't exist for them (Team 8's
    not-found page). The office language API refuses the agent's change
    (`PUT /api/office/language` with `{ "language": "vi" }`, 403) and a signed-out caller's
@@ -1110,9 +1131,9 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    Team 8's: 404, "Page not found", no "Office language" on it; the PUTs carry the app's Origin
    and follow no redirect; "unchanged" is the manager's and the agent's `GET` both answering
    `{ "language": "en" }` after the refusals; "their open thread" is a Korean guest the manager
-   gave the agent, opened by its link in `/vi/`, so the line into English, and none into
-   Vietnamese, shows the office deciding rather than the agent's interface. The agent's
-   not-found half held before #256: a guard).
+   gave the agent, opened by its link in `/vi/` (which lands on `/en/` for a member once 6 holds),
+   so the line into English, and none into Vietnamese, shows the office deciding rather than the
+   agent's interface. The agent's not-found half held before #256: a guard).
 3. **The platform admin's page for an office doesn't show it.** As the platform admin, Admin →
    Organizations → the office shows no "Office language" (VI "Ngôn ngữ văn phòng") anywhere on
    the page, and the office language API refuses the platform admin (403), as the inbox does.
@@ -1124,8 +1145,9 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    The page half held before #256: a guard).
 4. **One translation, in the office language.** The manager sets the office to Vietnamese.
    - A guest writes in Korean: the open thread shows the translation line "Stub translation,
-     Korean to Vietnamese.", and no line into English. It reads so in `/en/` too: the
-     translation follows the office, not the reader's interface.
+     Korean to Vietnamese.", and no line into English. It reads so when opened by an `/en/` link
+     too (which lands on `/vi/`, 6): the translation follows the office, not the reader's
+     interface.
    - A guest writes in Vietnamese: their message shows no translation line.
    - In an office left at the default, a Korean message shows "Stub translation, Korean to
      English.", in `/vi/` too.
@@ -1137,9 +1159,9 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    open thread, the auto-reply's bubble included; the thread is opened by its `?thread=` link in
    `/vi/`, then in `/en/`. The Vietnamese guest writes first and their thread is opened once
    before the Korean line is awaited; "no translation line" is judged on reopening it in `/en/`
-   after the Korean line has shown: neither the "Translation" label nor any "Stub translation" in
-   their bubble. The default office's Korean thread is read in `/vi/`: the English line, and no
-   line into Vietnamese).
+   after the Korean line has shown: neither the "Translation" label, in English or Vietnamese (the
+   page may be either), nor any "Stub translation" in their bubble. The default office's Korean
+   thread is opened by its `/vi/` link: the English line, and no line into Vietnamese).
 
 5. **After a change, an older thread is translated when it's opened.** In an English office, a
    guest writes in Korean, and the thread shows "Stub translation, Korean to English.". The
@@ -1147,10 +1169,66 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    Korean to Vietnamese." (a model call then, counted against the office's daily translation
    cap); the English line doesn't show.
    Spec: `apps/saas/tests/office-language.spec.ts` (Office language 5; read in `/en/` both times,
-   so an interface-led line can't pass the second read; the switch is the manager's `PUT`, as in
+   so an interface-led line can't pass the second read (until 6 holds: then the second `/en/` link
+   lands on `/vi/`, and the line is the office's either way); the switch is the manager's `PUT`, as in
    4; "opening again" is leaving for Home and opening the thread by its link; the new line within
    a poll, and no "… to English." line anywhere in the thread. Not judged: the daily cap's count,
    which nothing a person sees shows).
+
+6. **Members read Nhịp in the office language.** In a Vietnamese office:
+   - The agent opens `/en/inbox` and lands on `/vi/inbox`, in Vietnamese. A thread's link keeps
+     its thread: `/en/inbox?thread=<id>` lands on `/vi/inbox` with that thread open.
+     The manager's `/en/home` lands on `/vi/home`.
+   - The agent's user menu has no language toggle, and their account settings
+     (`/vi/settings/general`) have no language select. The manager's have neither.
+   - In an office left at English, the agent's `/vi/inbox` lands on `/en/inbox`.
+   - The manager switches the office from English to Vietnamese on the General tab: their page
+     becomes `/vi/<office slug>/settings/general`, in Vietnamese ("Ngôn ngữ văn phòng" reads
+     "Tiếng Việt").
+
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 6, one test per bullet, each
+   with an office of its own; "Vietnamese office" is the manager's `PUT /api/office/language`, as
+   in 4. "Lands on" is the address's path exactly, within a page load; "in Vietnamese" is the
+   agent's "Đến lượt bạn N" tab, the manager's "Đang chờ" heading on Home, and "in English" the
+   agent's "Your turn N" tab (the English office's agent holds a guest, and the tab is first seen
+   on `/en/inbox`, before `/vi/inbox`). "Keeps its thread" is that thread open, judged by the path and the
+   thread, not by `?thread=` in the address: the Inbox takes it out once the thread is open (seen on
+   today's build, as after an alert's link, Alerts 8). The agent holds two guests the manager gave
+   them, the linked one second in the queue: its message is in the open thread, the first guest's
+   isn't. "No language toggle" is no "Ngôn ngữ" row and no button
+   named "English" or "Tiếng Việt" in the user menu (the platform admin's row in 7 is the positive
+   control), judged once the menu shows "Đăng xuất"; "no language select" is no "Ngôn ngữ của bạn"
+   item and no combobox on `/vi/settings/general`, judged once its "Cài đặt tài khoản" title and
+   "Tên của bạn" item have shown. Every check in the first two tests is reported, not only the
+   first to fail).
+
+7. **The platform admin keeps their own language.** The platform admin's user menu still has
+   the EN/VI toggle, and it still switches the path (`/en/admin/organizations` to
+   `/vi/admin/organizations`); their account settings still have the language select.
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 7; the menu's "Language" row
+   with English pressed; "Tiếng Việt" moves the page to `/vi/admin/organizations`, and the VI
+   menu's "English" moves it back; the account settings' "Your language" / "Ngôn ngữ của bạn"
+   item with its select, in `/en/` and `/vi/`. It held before #256: a guard that B takes the toggle
+   and the select from office members only).
+8. **Alerts follow the office.** A new guest writes to a Vietnamese office whose manager is set
+   to English (the kit's user update, `locale: "en"`): the manager's alert link starts with
+   `/vi/`, and its text is Vietnamese. In an English office, a manager with no language set gets
+   a link starting with `/en/`. This replaces Alerts 1's per-person check. The bell follows the
+   interface, so an agent of a Vietnamese office reads it in Vietnamese whatever their own
+   setting.
+   Spec: `apps/saas/tests/office-language.spec.ts` (Office language 8, three tests, each with an
+   office of its own; the alert is the manager's `guest` row in the alert log, as in Alerts 1, and
+   its `link` is matched from its start, `/vi/inbox?alert=` or `/en/inbox?alert=`; "set to English"
+   is checked through the person's own session, and "no language set" is its `locale` being null.
+   The bell: the agent, set to English, is given a guest's thread by the manager (judged once the
+   agent's `assigned` alert is in the log) and opens their settings at `/en/settings/general`,
+   their own language's address; the bell reads "Một quản lý đã giao cho bạn một cuộc trò chuyện"
+   and not "A manager gave you a thread". Not tested: the alert's text, which the alert log
+   doesn't hold and a mock deployment pushes nowhere).
+9. **Sign-in keeps its own switch.** Signed out, the login page still offers English and Tiếng
+   Việt, and choosing Tiếng Việt goes to `/vi/login`: no office is known there yet.
+   Spec: `apps/saas/tests/login.spec.ts` ("language switcher offers only English and
+   Vietnamese", unchanged).
 
 ## Guest deletion (ADR 0020, spec #85)
 
@@ -1357,7 +1435,10 @@ pointer, after resting on the page's heading until no tooltip is open.
    is not taken for the item; "goes nowhere" is still on `/en/home` once Home's tooltip has shown after the click).
 6. **The button speaks Vietnamese.** On `/vi`, its tooltip reads "Thu gọn thanh bên (⌘B)" open
    and "Mở rộng thanh bên (⌘B)" collapsed; Ctrl+B off a Mac.
-   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 6; as a Mac and as Linux, as in 1).
+   Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 6; as a Mac and as Linux, as in 1; an invited
+   agent of an office of the test's own set to Vietnamese by its manager (a member reads Nhịp in
+   the office language, Office language 6), signed in in the pinned browser with their session's
+   cookies).
 7. **A phone keeps its menu sheet.** Below `lg`, the top bar's menu opens the sheet with Home and
    Inbox, and #234's collapse button is in neither the sheet nor the top bar.
    Spec: `apps/saas/tests/sidebar.spec.ts` (Sidebar 7; 390×844; no visible `sidebar-toggle`. A

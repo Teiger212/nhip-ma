@@ -6,6 +6,7 @@ import type { APIRequestContext, Page } from "@playwright/test";
 
 import type { Locale } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
+import { setOfficeLanguage } from "./support/office-language";
 import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
@@ -313,6 +314,10 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 			// What the guest gets is unchanged, so it is checked first and stops the test; every check
 			// of what the thread says about French is reported, not only the first to fail.
 			const check = expect.configure({ soft: true });
+			// A member reads Nhịp in the office language (ADR 0025): the VI pass is a Vietnamese office.
+			if (locale === "vi") {
+				await setOfficeLanguage(page.request, "vi");
+			}
 
 			const guest = office.newGuest();
 			await guest.write(FRENCH_FIRST);

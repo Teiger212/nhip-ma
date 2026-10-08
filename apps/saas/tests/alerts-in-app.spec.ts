@@ -7,6 +7,7 @@ import { alertState } from "./support/alerts";
 import { assignerAs, userIdOf } from "./support/assign";
 import { ownerCopy } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
+import { setOfficeLanguage } from "./support/office-language";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
@@ -656,7 +657,8 @@ test.describe("Alerts 4 — a thread returned to Unassigned alerts the other man
 		const office = await newOffice({ managers: 2 });
 		const { agent1 } = office;
 		const [first, second] = office.managers;
-		// Invited operators chose no language: agent 1 reads Nhịp in Vietnamese.
+		// The office is in Vietnamese (ADR 0025): agent 1 reads Nhịp, the bell included, in it.
+		await setOfficeLanguage(first.page.request, "vi");
 		await openBell(agent1.page, "vi");
 		await expect(shown(agent1.page.getByText(ANY_MOVED.vi))).toHaveCount(0);
 
@@ -715,6 +717,8 @@ test.describe("Alerts 8 — an alert for a thread now someone else's shows a neu
 		test.setTimeout(300_000);
 		const office = await newOffice();
 		const { agent1, agent2, manager } = office;
+		// The office is in Vietnamese (ADR 0025): every link and notice here is read in it.
+		await setOfficeLanguage(manager.page.request, "vi");
 
 		// H, agent 1's older guest, heads agent 1's queue: an Inbox that opens the first guest
 		// in the queue does not open G by accident.
@@ -731,7 +735,7 @@ test.describe("Alerts 8 — an alert for a thread now someone else's shows a neu
 		await office.assign(g, agent1);
 		await g.write(`Can I see it on Saturday? ${randomUUID().slice(0, 8)}`);
 		const agent1sAlert = await alertOf(office.id, agent1, threadId, "guest");
-		// Invited operators chose no language, so their links are Vietnamese (Alerts 1).
+		// The office is in Vietnamese, so its alerts' links are (Office language 8).
 		expect(agent1sAlert.link, "agent 1's alert link").toMatch(/^\/vi\/inbox\?alert=/);
 
 		// While agent 1 holds G, their own alert opens G's thread, not H's.
@@ -804,16 +808,17 @@ test.describe("Alerts 8 — an alert for a thread now someone else's shows a neu
 			.toHaveCount(0);
 		expectNoThreadIdInUrl(agent2.page, threadId, "agent 2 on agent 1's link");
 
-		// An alert id that never existed, in English: the notice, with the queue usable beside it.
-		await agent1.page.goto(`/en/inbox?alert=${randomUUID()}`);
+		// An alert id that never existed, in the office's Vietnamese: the notice, with the queue
+		// usable beside it.
+		await agent1.page.goto(`/vi/inbox?alert=${randomUUID()}`);
 		await expect(rowOf(agent1.page, h), "agent 1's queue lists H").toBeVisible();
 		await expect(
-			agent1.page.getByRole("button", { name: "Your turn 1", exact: true }),
-			"agent 1's Your turn view, with H",
+			agent1.page.getByRole("button", { name: "Đến lượt bạn 1", exact: true }),
+			"agent 1's Your turn view (Đến lượt bạn), with H",
 		).toBeVisible();
 		await expect
 			.soft(
-				agent1.page.getByText(COLLEAGUE_IS_ANSWERING.en, { exact: true }),
+				agent1.page.getByText(COLLEAGUE_IS_ANSWERING.vi, { exact: true }),
 				"an alert id that never existed reads that a colleague is answering",
 			)
 			.toBeVisible(ON_LOAD);
@@ -827,7 +832,7 @@ test.describe("Alerts 8 — an alert for a thread now someone else's shows a neu
 		).toBeVisible();
 		await expect
 			.soft(
-				agent1.page.getByText(COLLEAGUE_IS_ANSWERING.en, { exact: true }),
+				agent1.page.getByText(COLLEAGUE_IS_ANSWERING.vi, { exact: true }),
 				"the notice goes once a thread is chosen",
 			)
 			.toHaveCount(0);
@@ -854,17 +859,17 @@ test.describe("Alerts 8 — an alert for a thread now someone else's shows a neu
 // scenario: docs/e2e-scenarios.md Alerts 12 (#136; ADR 0019, ADR 0022)
 test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", () => {
 	// scenario: docs/e2e-scenarios.md Alerts 12, the tab title
-	test("the tab title puts the count in front of the page's own title, (n) <Page> – Nhịp, on Settings, Home and the Inbox while n guests wait on the agent, as the nav counts them, in English and Vietnamese and after moving to the Inbox through the nav; with none waiting it is the page's own title", async ({
+	test("the tab title puts the count in front of the page's own title, (n) <Page> – Nhịp, on Settings, Home and the Inbox while n guests wait on the agent, as the nav counts them, in an English office and after moving to the Inbox through the nav; with none waiting it is the page's own title", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(300_000);
+		// The office is left at English (ADR 0025); the Vietnamese titles are the next test's.
 		const office = await newOffice();
 		const { agent1: agent } = office;
 		const { page } = agent;
 
-		// Nothing waits on the agent yet: each page has its own title, "<Page> – Nhịp". Read in
-		// Vietnamese, then in English, ending on the English Inbox list.
-		const vi = await ownTitles(page, "vi");
+		// Nothing waits on the agent yet: each page has its own title, "<Page> – Nhịp", ending on
+		// the Inbox list.
 		const en = await ownTitles(page, "en");
 
 		// Two guests are given to the agent while they are on the Inbox list.
@@ -882,14 +887,6 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await openHome(page);
 		await expectWaiting(page, 2, en.home, "Home", ON_LOAD);
 
-		// And in Vietnamese.
-		await page.goto("/vi/settings/general");
-		await expectWaiting(page, 2, vi.settings, "Vietnamese Settings", ON_LOAD);
-		await page.goto("/vi/home");
-		await expectWaiting(page, 2, vi.home, "Vietnamese Home", ON_LOAD);
-		await page.goto("/vi/inbox");
-		await expectWaiting(page, 2, vi.inbox, "the Vietnamese Inbox", ON_LOAD);
-
 		// Settings → Inbox through the nav, without loading a page.
 		await openSettings(page);
 		await expectWaiting(page, 2, en.settings, "Settings", ON_LOAD);
@@ -906,6 +903,37 @@ test.describe("Alerts 12 — while Nhịp is open, the tab and a toast say so", 
 		await expect.soft(page, "the Inbox's own title, none waiting").toHaveTitle(en.inbox, ON_LOAD);
 		await openSettings(page);
 		await expect.soft(page, "Settings' own title, none waiting").toHaveTitle(en.settings, ON_LOAD);
+	});
+
+	// scenario: docs/e2e-scenarios.md Alerts 12, the tab title in Vietnamese
+	test("in a Vietnamese office, the tab title puts the count in front of the page's own Vietnamese title on Settings, Home and the Inbox while n guests wait on the agent", async ({
+		newOffice,
+	}) => {
+		test.setTimeout(240_000);
+		const office = await newOffice();
+		const { agent1: agent, manager } = office;
+		const { page } = agent;
+		await setOfficeLanguage(manager.page.request, "vi");
+
+		// Nothing waits on the agent yet: each page's own Vietnamese title, ending on the Inbox list.
+		const vi = await ownTitles(page, "vi");
+
+		// Two guests are given to the agent while they are on the Inbox list.
+		const first = office.zaloGuest();
+		const second = office.zaloGuest();
+		await first.write();
+		await second.write();
+		await office.assign(first, agent);
+		await office.assign(second, agent);
+		await expectWaiting(page, 2, vi.inbox, "the Vietnamese Inbox list, within its poll");
+
+		// On Settings and Home alike, loaded afresh: the count in front of that page's own title.
+		await page.goto("/vi/settings/general");
+		await expectWaiting(page, 2, vi.settings, "Vietnamese Settings", ON_LOAD);
+		await page.goto("/vi/home");
+		await expectWaiting(page, 2, vi.home, "Vietnamese Home", ON_LOAD);
+		await page.goto("/vi/inbox");
+		await expectWaiting(page, 2, vi.inbox, "the Vietnamese Inbox", ON_LOAD);
 	});
 
 	// scenario: docs/e2e-scenarios.md Alerts 12, an agent's toasts

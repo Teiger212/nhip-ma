@@ -6,6 +6,7 @@ import { COUNT_LINE_EN } from "./support/copy";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import { seedZaloGuests } from "./support/guests";
+import { setOfficeLanguage } from "./support/office-language";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
@@ -355,9 +356,14 @@ async function openInboxAt(
  */
 async function expectTabsFit(office: SeededOffice, mix: Mix) {
 	const misfits: Record<string, string[]> = {};
-	for (const role of ["manager", "agent"] as const) {
-		const { page } = office[role];
-		for (const locale of ["en", "vi"] as const) {
+	// A member reads the Inbox in the office language (ADR 0025): every English read in the office
+	// left at English, then the manager switches it to Vietnamese for the Vietnamese ones.
+	for (const locale of ["en", "vi"] as const) {
+		if (locale === "vi") {
+			await setOfficeLanguage(office.manager.page.request, "vi");
+		}
+		for (const role of ["manager", "agent"] as const) {
+			const { page } = office[role];
 			for (const viewport of VIEWPORTS) {
 				const where = `${role}, ${locale.toUpperCase()}, ${viewport.name}`;
 				await test.step(where, async () => {
@@ -417,6 +423,10 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 		}) => {
 			test.setTimeout(180_000);
 			const office = await seededOffice(mix);
+			// A member reads the Inbox in the office language (ADR 0025): VI is a Vietnamese office.
+			if (locale === "vi") {
+				await setOfficeLanguage(office.manager.page.request, "vi");
+			}
 			const label = LABEL[locale];
 			const { guests } = office;
 
