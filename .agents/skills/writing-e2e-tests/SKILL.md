@@ -45,8 +45,7 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 ## Running
 
 - Default: `pnpm --filter saas exec playwright test` builds production on `:3000` with
-  `.env.e2e` and its own `supastarter_e2e` database, pushed and seeded fresh. Use it for CI and
-  the before-merge `--repeat-each=3` check. If port 3000 is taken, set `E2E_PORT` (e.g. `E2E_PORT=3100`); the
+  `.env.e2e` and its own `supastarter_e2e` database, pushed and seeded fresh. Use it for CI. If port 3000 is taken, set `E2E_PORT` (e.g. `E2E_PORT=3100`); the
   app URL follows it.
 - Many spec files, one build (#205): the default mode builds afresh for every run, so don't pay
   for it once per file.
@@ -127,10 +126,9 @@ contacts: [{ wa_id: guest, profile: { name } }], messages: [{ from: guest, id, t
 ## Done
 
 - The spec names its scenario or rule.
-- It **fails first**: run it against the code with the behaviour missing (or the rule
-  broken) and see it red, then green.
-- It passes three times in a row headlessly:
-  `pnpm --filter saas exec playwright test <file> --repeat-each=3`.
+- It covers one happy path of a demo-visible feature (lean testing, AGENTS.md); no variant
+  scenarios, no Vietnamese copy of an English scenario.
+- It passes once headlessly; CI's single green run is the gate.
 - `pnpm format`, `pnpm lint`, `pnpm type-check` pass.
 
 ## Common mistakes

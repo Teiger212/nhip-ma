@@ -137,15 +137,21 @@ sounds once, and signing out stops the alerts.
 
 - Every test names what it proves: a scenario in `docs/e2e-scenarios.md`, or a rule in
   `CONTEXT.md` / an ADR. A test with no source behind it is not merged.
-- Every new test is seen failing for the right reason first: against the code without the
-  behaviour, or with the rule broken. A test that was never red proves nothing.
+- **Lean testing (2026-10-08).** Tests go where a bug is expensive: money and caps, security
+  and redaction, data written to the database or a CRM, tenancy. Mostly fast Vitest. UI and copy
+  changes need no new test. There is no red-first rule.
+- E2E: one happy-path scenario per demo-visible feature, not every variant. i18n is tested
+  smartly, not by copying an English scenario in Vietnamese to re-check labels: a translation-key
+  check, and a Vietnamese assertion only where Vietnamese behaviour differs.
+- Locally, run only the spec files you touched; never the full suite. One green CI run is the gate.
+- Reviewer sub-agents only for security-sensitive changes. Hardening (more tests, flakes, edge
+  cases) is one later pass.
 - Assert what a person sees or what the rule promises; never internal calls, and never mock
   the thing under test.
-- E2E specs are written by the `test-author` agent (`.claude/agents/test-author.md`), which
-  preloads `writing-e2e-tests` (this repo's conventions) and `playwright-best-practices`, and
-  may not read application source; a hook enforces it.
-- No retries. A new spec passes `--repeat-each=3` before merge; a flaky spec is fixed or
-  deleted.
+- The `test-author` agent (`.claude/agents/test-author.md`) can write E2E specs from intent,
+  without reading application source (a hook enforces it); using it is optional. The building
+  agent may write specs itself, following `writing-e2e-tests`.
+- No retries and no `--repeat-each`; a flaky spec is fixed after merge.
 - Setup is not the flow under test. Seeded logins start signed in from sessions minted once
   per run by Better Auth's `testUtils` in a test-only auth instance
   (`apps/saas/tests/support/test-auth.ts`, run by `tests/sessions.setup.ts`); it never ships
@@ -602,13 +608,12 @@ workspace package that imports them.
    ([docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)).
 2. **One worktree per ticket**: `git worktree add -b <branch> .claude/worktrees/<name> origin/main`,
    then `scripts/worktree-db.sh` run from the main checkout with the worktree's path.
-3. **Red first**: the `test-author` agent writes the E2E spec and sees it fail; no behaviour
-   code before that.
-4. **Implement.**
-5. **Code review on two axes**: the repo's standards and the ticket's spec.
-6. **The PR.** One green CI run is the merge gate; there's no `--repeat-each` and no re-runs, and a
+3. **Implement**, with tests where a bug would be expensive (see Testing: lean testing).
+4. **Review** only security-sensitive changes with a fresh reviewer; the automatic security
+   review runs on every commit.
+5. **The PR.** One green CI run is the merge gate; there's no `--repeat-each` and no re-runs, and a
    flaky spec is fixed after merge.
-7. **Before every push, merge main**: `git fetch origin`, and if `origin/main` moved,
+6. **Before every push, merge main**: `git fetch origin`, and if `origin/main` moved,
    `git merge origin/main`, resolve any conflict, re-run the gates the conflict touched, then
    push. The PR's changelog entry is a fragment of its own in `changelog.d/` (see "Change
    management"), so two PRs never conflict over `CHANGELOG.md`.
