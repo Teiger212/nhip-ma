@@ -6,6 +6,7 @@ import { guestMessage, TEST_SECRETS_KEY, threadUrl } from "../test-fixtures";
 import { testInboxStore } from "../test-store";
 import { mockCrmAdapter } from "./mock";
 import { createCrmSync } from "./sync";
+import type { CrmAccount } from "./types";
 
 const OFFICE = "office-a";
 
@@ -368,16 +369,20 @@ test("without the deployment's secrets key, HubSpot is not saved", async () => {
 
 /**
  * The sync with an adapter factory that answers as the mock CRM and says which CRM account each
- * token reaches, as HubSpot's account details name the portal a token was installed on.
+ * token reaches, as HubSpot's account details name the portal a token was installed on (and,
+ * where given, the address its leads open at in the CRM's web app).
  */
-function syncOnAccounts(accounts: Record<string, string>) {
+function syncOnAccounts(accounts: Record<string, string | CrmAccount>) {
 	return createCrmSync({
 		store,
 		threadUrl,
 		secretsKey: TEST_SECRETS_KEY,
 		adapterFor: (connection, deps) => ({
 			...mockCrmAdapter(deps.store, deps.officeId),
-			accountId: async () => accounts[connection.token ?? ""] ?? "unknown",
+			account: async () => {
+				const account = accounts[connection.token ?? ""] ?? "unknown";
+				return typeof account === "string" ? { id: account, leadUrlPrefix: null } : account;
+			},
 		}),
 	});
 }
@@ -464,4 +469,78 @@ test("a mock CRM notice names its office, and changes nothing for an office on a
 
 	await sync.noticesReceived("mock", [{ account: OFFICE, leadIds: [ours.leadId] }], new Date());
 	expect((await leadOf(ours)).outcome).toBe("won");
+});
+
+/* ------------------------------------------- In CRM opens the lead in the CRM's web app (CRM 10) */
+
+const EU_PORTAL: CrmAccount = {
+	id: "149475500",
+	leadUrlPrefix: "https://app-eu1.hubspot.com/contacts/149475500/record/0-3/",
+};
+
+/** The address the thread's lead opens at in the CRM's web app, as the open thread reads it. */
+async function leadUrlOf(thread: { id: string; officeId: string }) {
+	return (await leadOf(thread)).leadUrl;
+}
+
+// CRM 10: once Nhịp knows the office's CRM account, a linked thread carries its lead's address
+// there (the account's own domain: an EU portal's is app-eu1.hubspot.com). Until then, none.
+test("a linked thread carries its lead's address in the CRM once the office's account is known, and none before", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({ "pat-eu": EU_PORTAL });
+	await sync.connectOffice(OFFICE, "hubspot", "pat-eu");
+	const thread = await wonThread(sync, OFFICE, "zalo-user-40", "Mai");
+	expect(await leadUrlOf(thread)).toBeNull();
+
+	await sync.resolveAccount(OFFICE);
+
+	expect(await leadUrlOf(thread)).toBe(
+		`https://app-eu1.hubspot.com/contacts/149475500/record/0-3/${thread.leadId}`,
+	);
+});
+
+// CRM 10, ADR 0008: a new token may reach another account, so its leads' address is forgotten too.
+test("a new token on the office's CRM forgets its leads' address with its account", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({ "pat-eu": EU_PORTAL, "pat-new": "333" });
+	await sync.connectOffice(OFFICE, "hubspot", "pat-eu");
+	await sync.resolveAccount(OFFICE);
+	const thread = await wonThread(sync, OFFICE, "zalo-user-41", "Lan");
+	expect(await leadUrlOf(thread)).not.toBeNull();
+
+	await sync.connectOffice(OFFICE, "hubspot", "pat-new");
+
+	expect(await leadUrlOf(thread)).toBeNull();
+});
+
+// CRM 10: an office whose account was learned before Nhịp kept its leads' address (#66 stored the
+// account alone) learns the address when its account is asked again.
+test("an office whose account is known without its leads' address learns it when asked again", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({ "pat-eu": EU_PORTAL });
+	await sync.connectOffice(OFFICE, "hubspot", "pat-eu");
+	const sealed = await store.getCrmAccessToken(OFFICE);
+	await store.setCrmAccountId(
+		OFFICE,
+		{ kind: "hubspot", accessToken: sealed },
+		{ id: "149475500", leadUrlPrefix: null },
+	);
+	const thread = await wonThread(sync, OFFICE, "zalo-user-42", "Hà");
+	expect(await leadUrlOf(thread)).toBeNull();
+
+	await sync.resolveAccount(OFFICE);
+
+	expect(await leadUrlOf(thread)).toBe(`${EU_PORTAL.leadUrlPrefix}${thread.leadId}`);
+});
+
+// CRM 10: the mock CRM has no web app; its threads say In CRM with nothing to open.
+test("a thread on the mock CRM carries no lead address", async () => {
+	store = await testInboxStore();
+	const sync = syncOnAccounts({});
+	await sync.connectOffice(OFFICE, "mock");
+	const thread = await wonThread(sync, OFFICE, "zalo-user-43", "Minh");
+
+	await sync.resolveAccount(OFFICE);
+
+	expect(await leadUrlOf(thread)).toBeNull();
 });

@@ -35,8 +35,9 @@ export function mockCrmAdapter(store: InboxStore, officeId: string): CrmAdapter 
 			const lead = await store.createMockCrmLead({ officeId, ...guest });
 			return { id: lead.id, name: lead.name };
 		},
-		async accountId() {
-			return officeId;
+		/** The office itself; the mock CRM has no web app, so its leads open nowhere. */
+		async account() {
+			return { id: officeId, leadUrlPrefix: null };
 		},
 	};
 }

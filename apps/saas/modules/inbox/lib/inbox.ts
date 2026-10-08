@@ -2,7 +2,7 @@ import { getBaseUrl } from "@shared/lib/base-url";
 
 import { runInBackground } from "./background";
 import { crmFailureKind } from "./crm/retry";
-import { createCrmSync } from "./crm/sync";
+import { createCrmSync, logAccountLookupFailure } from "./crm/sync";
 import { draftReply, followUpTemplate, oneShot } from "./draft";
 import { checkFollowUp } from "./drafts/guardrails";
 import { greetingTemplate } from "./greeting";
@@ -146,6 +146,40 @@ export function scheduleMissingLeadRetry(
 	}).finally(() => {
 		leadRetries.delete(id);
 	});
+}
+
+/** How long an instance waits before asking an office's CRM about its account again (CRM 10). */
+const ACCOUNT_LOOKUP_EVERY_MS = 10 * 60 * 1000;
+/** When this instance last asked each office's CRM about its account, from a thread's opening. */
+const accountLookups = new Map<string, number>();
+
+/**
+ * On opening a linked thread whose lead has no address in the CRM's web app (CRM 10): ask the
+ * office's CRM, in the background, which account it is on, so "In CRM" opens the lead from the
+ * next poll. This catches an office whose account was not learned when it connected (the CRM
+ * slow or down then) or was learned before Nhịp kept the address. A CRM with no web app (the
+ * mock) is never asked: `resolveAccount` reads the office's connection and stops. Once per office
+ * per instance every ten minutes at most, whatever the answer, so a refused token is not asked on
+ * every poll.
+ */
+export function scheduleMissingLeadAddress(
+	runtime: Runtime,
+	conversation: Pick<Conversation, "officeId" | "crm">,
+	now = Date.now(),
+): void {
+	if (!conversation.crm || conversation.crm.leadUrl) return;
+	const { officeId } = conversation;
+	const last = accountLookups.get(officeId);
+	if (last !== undefined && now - last < ACCOUNT_LOOKUP_EVERY_MS) return;
+	accountLookups.set(officeId, now);
+	// The label names the job only (#220); the failure's own line names the office.
+	void runInBackground("crm account", () =>
+		crmSyncFor(runtime)
+			.resolveAccount(officeId)
+			.catch((error: unknown) => {
+				logAccountLookupFailure(officeId, error);
+			}),
+	);
 }
 
 /** The id a mock auto-reply reports, so a test can send its echo (ADR 0021, First greeting 7). */

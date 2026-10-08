@@ -985,7 +985,7 @@
 			"template": "Template"
 		},
 		"crm": {
-			"inCrm": "In CRM: {name}",
+			"inCrm": "In CRM",
 			"notInCrmYet": "Not in CRM yet",
 			"won": "Won",
 			"lost": "Lost"

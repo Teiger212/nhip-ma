@@ -44,3 +44,33 @@ export const Badge = ({ children, className, status, size, numeric, ...props }: 
 );
 
 Badge.displayName = "Badge";
+
+export type BadgeLinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> &
+	VariantProps<typeof badge>;
+
+/**
+ * A badge that opens something elsewhere (DESIGN.md, Badges): still squared metadata, not a pill,
+ * with a small trailing icon the caller passes. Hover darkens its text to ink; keyboard focus
+ * shows the ring.
+ */
+export const BadgeLink = ({
+	children,
+	className,
+	status,
+	size,
+	numeric,
+	...props
+}: BadgeLinkProps) => (
+	<a
+		className={cn(
+			badge({ status, size, numeric }),
+			"gap-1 ease-out [&>svg]:size-3 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none [&>svg]:shrink-0",
+			className,
+		)}
+		{...props}
+	>
+		{children}
+	</a>
+);
+
+BadgeLink.displayName = "BadgeLink";

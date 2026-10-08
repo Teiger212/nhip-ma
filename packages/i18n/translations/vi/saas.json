@@ -985,7 +985,7 @@
 			"template": "Mẫu"
 		},
 		"crm": {
-			"inCrm": "Trong CRM: {name}",
+			"inCrm": "Trong CRM",
 			"notInCrmYet": "Chưa có trong CRM",
 			"won": "Chốt",
 			"lost": "Mất"

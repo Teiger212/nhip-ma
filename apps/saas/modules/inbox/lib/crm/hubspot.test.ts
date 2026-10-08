@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { expect, test } from "vitest";
@@ -321,6 +321,78 @@ test("the account a token reaches is its portal id", async () => {
 	const recording = recorded("account-details");
 	const { adapter, allUsed } = replay(recording.exchanges);
 
-	expect(await adapter.accountId()).toBe(recording.expected);
+	expect((await adapter.account()).id).toBe(recording.expected);
 	allUsed();
+});
+
+/** Every deal HubSpot answered with in the recordings, with the address HubSpot itself gave it. */
+function recordedDealAddresses(): Array<{ id: string; url: string }> {
+	const dir = path.join(import.meta.dirname, "recordings/hubspot");
+	const found = new Map<string, string>();
+	const walk = (value: unknown): void => {
+		if (Array.isArray(value)) {
+			for (const item of value) walk(item);
+			return;
+		}
+		if (!value || typeof value !== "object") return;
+		const { id, url } = value as { id?: unknown; url?: unknown };
+		if (typeof id === "string" && typeof url === "string" && url.includes("/record/0-3/")) {
+			found.set(id, url);
+		}
+		for (const item of Object.values(value)) walk(item);
+	};
+	for (const file of readdirSync(dir)) {
+		const { exchanges } = recorded(path.basename(file, ".json"));
+		for (const exchange of exchanges) walk(exchange.response.body);
+	}
+	return [...found].map(([id, url]) => ({ id, url }));
+}
+
+/** The recorded account details, with HubSpot's answer changed as `change` says. */
+function accountDetailsWith(change: (body: Record<string, unknown>) => void): Exchange[] {
+	const [exchange] = recorded("account-details").exchanges;
+	const body = structuredClone(exchange.response.body) as Record<string, unknown>;
+	change(body);
+	return [{ ...exchange, response: { ...exchange.response, body } }];
+}
+
+// CRM 10 (e2e-scenarios.md): In CRM opens the deal in HubSpot, on the account's own address. The
+// recordings are of an EU-hosted portal, whose web app is app-eu1.hubspot.com, not app.hubspot.com.
+test("a deal's address in HubSpot is the one HubSpot itself gives that deal, on the account's own domain", async () => {
+	const { adapter, allUsed } = replay(recorded("account-details").exchanges);
+	const { leadUrlPrefix } = await adapter.account();
+	allUsed();
+
+	const deals = recordedDealAddresses();
+	expect(deals.length).toBeGreaterThan(0);
+	for (const deal of deals) expect(`${leadUrlPrefix}${deal.id}`).toBe(deal.url);
+	expect(leadUrlPrefix).toMatch(/^https:\/\/app-eu1\.hubspot\.com\//);
+});
+
+// CRM 10: an account hosted elsewhere answers with its own web domain, and the address follows it.
+test("an account on another HubSpot data centre gets its deals' address on that centre's domain", async () => {
+	const { adapter } = replay(
+		accountDetailsWith((body) => {
+			body.uiDomain = "app.hubspot.com";
+			body.dataHostingLocation = "na1";
+		}),
+	);
+
+	expect((await adapter.account()).leadUrlPrefix).toBe(
+		"https://app.hubspot.com/contacts/149475500/record/0-3/",
+	);
+});
+
+// CRM 10: the link only ever goes to HubSpot. A web domain that is not HubSpot's, or none, leaves
+// the chip plain text; the portal id is still learned, since webhooks need it (#66).
+test("a web domain that is not HubSpot's, or none, gives no deal address but still the portal id", async () => {
+	for (const uiDomain of ["evil.example.com", "app.hubspot.com.evil.example", "", undefined]) {
+		const { adapter } = replay(
+			accountDetailsWith((body) => {
+				if (uiDomain === undefined) delete body.uiDomain;
+				else body.uiDomain = uiDomain;
+			}),
+		);
+		expect(await adapter.account()).toEqual({ id: "149475500", leadUrlPrefix: null });
+	}
 });

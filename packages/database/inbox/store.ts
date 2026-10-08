@@ -23,6 +23,7 @@ import type {
 	ConversationCrm,
 	ConversationSummary,
 	Draft,
+	OpenThreadCrm,
 	GuestDeletionResult,
 	InboundEvent,
 	InboxStore,
@@ -60,7 +61,7 @@ const CONVERSATION_INCLUDE = {
 	answers: { orderBy: [{ approvedAt: "asc" }, { seq: "asc" }] },
 	owner: { select: { id: true, name: true, email: true } },
 	crmLink: true,
-	office: { select: { crmConnection: { select: { kind: true } } } },
+	office: { select: { crmConnection: { select: { kind: true, leadUrlPrefix: true } } } },
 } satisfies Prisma.ConversationInclude;
 
 /**
@@ -168,6 +169,22 @@ function mapCrmLink(row: CrmLinkRow | null | undefined): ConversationCrm | null 
 		outcomeReason: row.outcomeReason,
 		outcomeObservedAt: isoOrNull(row.outcomeObservedAt),
 	};
+}
+
+/**
+ * The open thread's lead with its address in the CRM's web app (CRM 10): the prefix the CRM's
+ * account was learned with, then the lead's id. Only an https prefix makes one: nothing else is
+ * ever a link.
+ */
+function openThreadCrm(
+	link: ConversationCrm | null,
+	leadUrlPrefix: string | null,
+): OpenThreadCrm | null {
+	if (!link) return null;
+	const leadUrl = leadUrlPrefix?.startsWith("https://")
+		? `${leadUrlPrefix}${encodeURIComponent(link.leadId)}`
+		: null;
+	return { ...link, leadUrl };
 }
 
 /**
@@ -321,7 +338,10 @@ function mapConversation(record: ConversationRecord): Conversation {
 		guestName: record.guestName,
 		officeId: record.officeId,
 		owner: record.owner ? { id: record.owner.id, name: operatorNameOf(record.owner) } : null,
-		crm: mapCrmLink(record.crmLink),
+		crm: openThreadCrm(
+			mapCrmLink(record.crmLink),
+			record.office.crmConnection?.leadUrlPrefix ?? null,
+		),
 		officeHasCrm: record.office.crmConnection !== null,
 		autoReplyAt: isoOrNull(record.autoReplyAt),
 		messages,
@@ -1478,7 +1498,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 		async replaceCrmAccessToken(officeId, kind, accessToken) {
 			const { count } = await db.crmConnection.updateMany({
 				where: { officeId, kind },
-				data: { accessToken, accountId: null },
+				data: { accessToken, accountId: null, leadUrlPrefix: null },
 			});
 			return count === 1;
 		},
@@ -1501,10 +1521,10 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return rows.map((row) => row.officeId);
 		},
 
-		async setCrmAccountId(officeId, learnedWith, accountId) {
+		async setCrmAccountId(officeId, learnedWith, account) {
 			const { count } = await db.crmConnection.updateMany({
 				where: { officeId, kind: learnedWith.kind, accessToken: learnedWith.accessToken },
-				data: { accountId },
+				data: { accountId: account.id, leadUrlPrefix: account.leadUrlPrefix },
 			});
 			return count > 0;
 		},
