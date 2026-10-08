@@ -327,7 +327,12 @@ model Conversation {
   guestName          String?
   officeId           String
   office             Organization     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  /// The language Nhịp writes to the guest in: one of the five it supports, English for any
+  /// other (ADR 0021 R4).
   language           String?
+  /// The guest language, named whatever it is (an ISO 639-1 code; #245). Null on a thread whose
+  /// one-shot ran before it: read `language`.
+  guestLanguage      String?
   lastGuestInboundAt DateTime?
   sentAt             DateTime?
   /// The operator the thread is assigned to (ADR 0022); null = Unassigned. An owner whose

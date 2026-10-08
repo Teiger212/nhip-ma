@@ -13,6 +13,7 @@ export type GuestIdentity = { phone: string | null; zaloUserId: string | null };
 export type NewGuestLead = GuestIdentity & {
 	name: string;
 	pipe: Pipe;
+	/** The guest language, named (#245): "fr" for a French guest, never the reply's English. */
 	language: string | null;
 	fields: Qualification | null;
 	threadUrl: string;

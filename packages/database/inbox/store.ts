@@ -11,6 +11,7 @@ import {
 	DbMessageSource,
 	type Funnel,
 	GuestLanguage,
+	LanguageCode,
 	MessageSource,
 	OperatorLanguage,
 	Pipe,
@@ -129,6 +130,7 @@ type SummaryRow = {
 	guestName: string | null;
 	officeId: string;
 	language: string | null;
+	guestLanguage: string | null;
 	lastGuestInboundAt: Date | null;
 	sentAt: Date | null;
 	updatedAt: Date;
@@ -294,6 +296,15 @@ function mapConversation(record: ConversationRecord): Conversation {
 		record.language && record.qualification && record.draft && record.paperwork
 			? {
 					language: vocab(GuestLanguage, record.language, "Conversation.language"),
+					...(record.guestLanguage
+						? {
+								guestLanguage: vocab(
+									LanguageCode,
+									record.guestLanguage,
+									"Conversation.guestLanguage",
+								),
+							}
+						: {}),
 					qualification: {
 						areaOfInterest: record.qualification.areaOfInterest,
 						nationality: record.qualification.nationality,
@@ -373,9 +384,12 @@ function mapSummary(row: SummaryRow): ConversationSummary {
 		sentAt: isoOrNull(row.sentAt),
 		unansweredInboundId: row.unansweredInboundId,
 		updatedAt: iso(row.updatedAt),
-		guestLanguage: row.language
-			? vocab(GuestLanguage, row.language, "Conversation.language")
-			: null,
+		// The named language (#245); a thread whose one-shot ran before it names the reply's.
+		guestLanguage: row.guestLanguage
+			? vocab(LanguageCode, row.guestLanguage, "Conversation.guestLanguage")
+			: row.language
+				? vocab(GuestLanguage, row.language, "Conversation.language")
+				: null,
 		lastInboundText: row.lastInboundText ?? "",
 		crm: mapCrmLink({
 			leadId: row.crmLeadId,
@@ -580,7 +594,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			// lookup per thread (`inbox_message (conversationId, direction, at)`).
 			const rows = await db.$queryRaw<SummaryRow[]>`
 				SELECT "c"."id", "c"."pipe"::text AS "pipe", "c"."guestId", "c"."guestName",
-					"c"."officeId", "c"."language", "c"."lastGuestInboundAt", "c"."sentAt",
+					"c"."officeId", "c"."language", "c"."guestLanguage", "c"."lastGuestInboundAt",
+					"c"."sentAt",
 					"c"."updatedAt",
 					"owner"."id" AS "ownerId", "owner"."name" AS "ownerName",
 					"owner"."email" AS "ownerEmail",
@@ -801,7 +816,11 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 				await db.$transaction([
 					db.conversation.update({
 						where: { id_officeId: { id, officeId } },
-						data: { language: shot.language, updatedAt: new Date() },
+						data: {
+							language: shot.language,
+							guestLanguage: shot.guestLanguage ?? shot.language,
+							updatedAt: new Date(),
+						},
 					}),
 					db.qualification.upsert({
 						where: threadKey,

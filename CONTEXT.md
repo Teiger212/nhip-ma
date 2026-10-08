@@ -200,11 +200,16 @@ is renamed.
   is the interface language of every member of the office, the target of translations, the
   language of the operator note, and the second text of an AI suggested reply. The platform
   admin keeps their own interface language. _Avoid_: operator language, operator locale.
-- **Guest language**: detected per conversation; EN, VI, JA, KO, RU are first-class. Any
-  other language reads as EN. VI is read only from letters Vietnamese alone uses (ă, â, đ, ơ,
-  ư, a hook above or a dot below, ẽ ĩ ũ ỹ, any tone on ă â ê ô ơ ư) or its common words, so
-  French, Spanish and Portuguese read as EN (ADR 0021). An unsupported language is greeted in
-  English, and its translation is from English.
+- **Guest language**: the language the guest writes in, detected per conversation from all
+  their messages, locally, with no model call, and named whatever it is (ADR 0021 R4, as
+  amended by #245). EN, VI, JA, KO, RU are **supported**: the greeting, the suggested reply
+  and translation work in them. VI is read only from letters Vietnamese alone uses (ă, â, đ,
+  ơ, ư, a hook above or a dot below, ẽ ĩ ũ ỹ, any tone on ă â ê ô ơ ư) or its common words
+  (ADR 0021). Any other language is **unsupported**: the thread names it with a note ("French
+  · not supported, replies in English"), the guest is greeted and answered in English, and
+  their messages are not translated (each shows "French isn't supported: no translation"
+  instead). English is only the reply fallback; when detection is unsure, the guest language
+  is English.
 
 ## Integrations
 

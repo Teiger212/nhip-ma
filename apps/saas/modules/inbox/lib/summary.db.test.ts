@@ -77,6 +77,12 @@ beforeEach(async () => {
 		fresh.id,
 		oneShot("Looking to rent in Tay Ho", fresh.unansweredInboundId),
 	);
+	// A guest language Nhịp doesn't support is named on both, not as the reply's English (#245).
+	const french = "Bonjour, je cherche un appartement de deux chambres à Tay Ho.";
+	const claire = await write("french", "guest", french, 0);
+	await store.setOneShot(claire.officeId, claire.id, oneShot(french, claire.unansweredInboundId));
+	// Answered from the app, so the queue cases below stay as they are.
+	await write("french", "oa-echo", "Bonjour Claire!", 5);
 	// Each approval claims the thread for its approver (ADR 0015).
 	await guestThenApproval("sent", "agent-1", "sent");
 	await guestThenApproval("failed", "agent-1", "failed");

@@ -232,7 +232,11 @@ export function ThreadDetail({
 						<div ref={scroller} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
 							<div className="gap-4 px-3 py-4 md:px-5 md:py-5 flex flex-col">
 								{conversation.messages.map((message) => (
-									<ThreadMessage key={message.id} message={message} />
+									<ThreadMessage
+										key={message.id}
+										message={message}
+										guestLanguage={conversation.oneShot?.guestLanguage ?? null}
+									/>
 								))}
 							</div>
 						</div>

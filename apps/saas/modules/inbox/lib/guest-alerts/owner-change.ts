@@ -1,6 +1,7 @@
 import { createNotification, NOTIFICATION_TYPES } from "@repo/notifications";
 
 import { runInBackground } from "../background";
+import { namedLanguage } from "../language-name";
 import type { Runtime } from "../runtime";
 import type { Conversation } from "../types";
 import { alertSounds } from "./burst";
@@ -77,9 +78,10 @@ export async function alertOwnerChange(
 					{
 						guestName,
 						pipe: conversation.pipe,
-						guestLanguage: conversation.oneShot?.language ?? null,
+						guestLanguage: conversation.oneShot ? namedLanguage(conversation.oneShot) : null,
 					},
 					t,
+					locale,
 				);
 				const title =
 					alert.kind === "assigned"

@@ -877,6 +877,7 @@
 		"quietHint": "The guest last wrote more than 48 hours ago. Still your turn.",
 		"onlyQuiet": "Nothing new. The quiet threads below are still your turn.",
 		"translation": "Translation",
+		"noTranslation": "{language} isn't supported: no translation",
 		"suggested": {
 			"template": "Suggested reply",
 			"model": "AI suggestion from the conversation"
@@ -918,12 +919,14 @@
 			"ko": "Korean",
 			"ru": "Russian"
 		},
+		"languageUnsupported": "{language} · not supported, replies in English",
 		"intent": {
 			"rent": "Rent",
 			"buy": "Buy"
 		},
 		"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
 		"crib": {
+			"noteUnsupported": "in English · {language} isn't supported · don't interview",
 			"note": "in {language} · don't interview"
 		},
 		"details": {

@@ -127,6 +127,8 @@ tell a name.
   - The Vietnamese word list stays as it is.
 - **When unsure, the greeting is in English.** Detection is shared, so translation and
   drafting follow the same reading. Any language other than the five reads as English.
+  _Amended 2026-10-08 (#245): another language is named, not read as English; English stays
+  only the reply's fallback. See the amendment at the end._
 - **â stays in the decided set, though French also uses it** ("château"). The test set
   watches it.
 
@@ -221,3 +223,46 @@ Decided in the grill of 2026-10-06 (Q6). It answers the open question above.
 - **The office's settings page, General tab, managers only.** The auto-reply switch is a row
   there.
 - **The way in:** the user menu's "Office settings", next to Team.
+
+## Amendment (2026-10-08, #245): an unsupported language is named
+
+Decided by Eyal on 2026-10-08, after the demo walk: Claire wrote French and her thread read
+"English" (`reports/demo-walk-2026-10-08.md`, row 4). It amends R4's "any language other than
+the five reads as English".
+
+- **Any language is classified, locally.** The guest language is detected with no model call
+  (the owner rule: local before LLM).
+  - The five keep today's script and letter rules as the fast path, unchanged.
+  - A script that names one language does: Han with no kana is Chinese; Thai, Lao, Khmer,
+    Arabic, Hebrew, Devanagari (Hindi) and Greek are named from theirs.
+  - Latin text is read by a local language-ID library (eld, Nito-ELD, its smallest n-gram
+    set), limited to English, French, Spanish, Portuguese, German, Italian and Dutch. A
+    reading counts only when the library calls it reliable.
+  - A thread is read line by line across all the guest's messages, and the language most of
+    the letters are in wins. Place names are left out first ("Villa in Tay Ho" isn't Italian),
+    a line with fewer than 20 letters left doesn't vote, and neither does unaccented
+    Vietnamese ("chi oi can ho nay con trong khong"), which the library can't read.
+  - A lone greeting the library can't read ("Bonjour", "Hola") names its language.
+  - When unsure, it is English, as before.
+- **What the guest gets is unchanged.** An unsupported language is greeted, and its suggested
+  reply written, in English: the fallback R4 and G3 already give. Nothing new reaches the
+  guest.
+- **The thread says it.** The details' Language row names the language with a note ("French
+  · not supported, replies in English"). The one-line operator note says the reply is in
+  English and names French ("in English · French isn't supported · don't interview"). Home's Waiting now and the alerts name the real language. So does
+  the guest's new lead in the office's CRM (ADR 0003): its language is the named one ("fr"),
+  never the reply's English.
+- **No translation; a note instead.**
+  - A guest message on a thread in an unsupported language is not translated, even where a
+    model is configured.
+  - The thread's language decides, not each message: a French guest's mostly English line
+    isn't translated either.
+  - Where the translation line would be, the message shows "French isn't supported: no
+    translation", in the office language (ADR 0025). No model call for it.
+  - A translation stored before this stays and is shown.
+- **The post-check (R2, rule 2)** compares the model's text with the language Nhịp writes in,
+  which for an unsupported guest is English.
+- **Copy.** The VI copy is pending a native read (#78).
+- **Data.** The named language is a new nullable column on the thread, next to the language
+  Nhịp writes in (expand only). A thread from before it reads as it did until the guest
+  writes again.

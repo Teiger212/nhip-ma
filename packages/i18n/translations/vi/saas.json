@@ -877,6 +877,7 @@
 		"quietHint": "Khách nhắn lần cuối hơn 48 giờ trước. Vẫn đến lượt bạn.",
 		"onlyQuiet": "Không có gì mới. Các cuộc đã lắng bên dưới vẫn đến lượt bạn.",
 		"translation": "Bản dịch",
+		"noTranslation": "Chưa hỗ trợ {language}: không dịch",
 		"suggested": {
 			"template": "Trả lời gợi ý",
 			"model": "AI gợi ý từ cuộc hội thoại"
@@ -918,12 +919,14 @@
 			"ko": "tiếng Hàn",
 			"ru": "tiếng Nga"
 		},
+		"languageUnsupported": "{language} · chưa hỗ trợ, trả lời bằng tiếng Anh",
 		"intent": {
 			"rent": "thuê",
 			"buy": "mua"
 		},
 		"paperworkFlag": "Khách có nhắc giấy tờ hoặc sở hữu. Không bịa luật Việt Nam. Không hứa sổ hồng.",
 		"crib": {
+			"noteUnsupported": "bằng tiếng Anh · chưa hỗ trợ {language} · đừng hỏi thêm kiểu phỏng vấn",
 			"note": "bằng {language} · đừng hỏi thêm kiểu phỏng vấn"
 		},
 		"details": {

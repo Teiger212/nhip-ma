@@ -357,7 +357,7 @@ export async function afterGuestInbound(
 	}
 	const inbound = updated.messages.find((message) => message.id === updated.unansweredInboundId);
 	if (inbound) {
-		scheduleTranslations(runtime, updated.officeId, inbound);
+		scheduleTranslations(runtime, updated.officeId, inbound, updated.oneShot?.guestLanguage);
 		if (takesFollowUpPath(updated) && updated.oneShot && runtime.drafts.serves("draft")) {
 			void runInBackground("follow-up draft", async () => {
 				await generateModelDraft(runtime, updated);

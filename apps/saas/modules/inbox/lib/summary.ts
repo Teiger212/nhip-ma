@@ -1,3 +1,4 @@
+import { namedLanguage } from "./language-name";
 import type { Conversation, ConversationSummary } from "./types";
 
 /** The text of the guest's latest message, or "" when the guest has not written. */
@@ -27,7 +28,7 @@ export function summarize(conversation: Conversation): ConversationSummary {
 		sentAt: conversation.sentAt,
 		unansweredInboundId: conversation.unansweredInboundId,
 		updatedAt: conversation.updatedAt,
-		guestLanguage: conversation.oneShot?.language ?? null,
+		guestLanguage: conversation.oneShot ? namedLanguage(conversation.oneShot) : null,
 		lastInboundText: latestGuestText(conversation),
 		crm: conversation.crm,
 	};

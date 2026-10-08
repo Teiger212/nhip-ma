@@ -282,7 +282,7 @@ async function guestWrites(
 	const message = updated.messages.find((each) => each.id === updated.unansweredInboundId);
 	if (!message) throw new Error(`dev seed: ${guest.guestId}'s message did not land`);
 	for (const locale of ["en", "vi"] as const) {
-		if (!needsTranslation(message, locale)) continue;
+		if (!needsTranslation(message, locale, updated.oneShot?.guestLanguage)) continue;
 		const text = step.translations[locale];
 		if (!text)
 			throw new Error(`dev seed: ${guest.guestId}'s message needs its ${locale} translation`);

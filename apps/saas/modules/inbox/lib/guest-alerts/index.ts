@@ -2,6 +2,7 @@ import { getMessagesForLocale } from "@repo/i18n";
 import { createTranslator } from "next-intl";
 
 import { runInBackground } from "../background";
+import { namedLanguage } from "../language-name";
 import type { Runtime } from "../runtime";
 import type { Conversation } from "../types";
 import { alertSounds } from "./burst";
@@ -75,9 +76,10 @@ export async function alertGuestMessage(
 				{
 					guestName: conversation.guestName,
 					pipe: conversation.pipe,
-					guestLanguage: conversation.oneShot?.language ?? null,
+					guestLanguage: conversation.oneShot ? namedLanguage(conversation.oneShot) : null,
 				},
 				t,
+				locale,
 			);
 			const alert = await store.recordAlert({
 				officeId: conversation.officeId,

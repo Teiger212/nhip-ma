@@ -2,6 +2,7 @@ import type { InboxStore } from "@repo/database/inbox";
 import { errorKind } from "@shared/lib/scrub";
 
 import { displayName } from "../display-name";
+import { namedLanguage } from "../language-name";
 import { crmTokenContext, decryptSecret, encryptSecret } from "../pipes/secrets";
 import type { Conversation, CrmKind } from "../types";
 import {
@@ -303,7 +304,7 @@ export function createCrmSync(deps: {
 						...identity,
 						name: displayName(conversation),
 						pipe: conversation.pipe,
-						language: conversation.oneShot?.language ?? null,
+						language: conversation.oneShot ? namedLanguage(conversation.oneShot) : null,
 						fields: conversation.oneShot?.qualification ?? null,
 						threadUrl: deps.threadUrl(conversation.id),
 					});

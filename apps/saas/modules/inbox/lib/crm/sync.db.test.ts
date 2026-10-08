@@ -23,6 +23,26 @@ async function guestWrites(pipe: "zalo" | "whatsapp", guestId: string, guestName
 	return conversation;
 }
 
+// #245 (Eyal, 2026-10-08: "the CRM lead should reflect the truth"): a guest whose language Nhịp
+// doesn't support is on the lead in that language, not in English, the language of the reply.
+test("a French guest's new lead carries French, not English", async () => {
+	store = await testInboxStore();
+	await store.setCrmConnection(OFFICE, "mock");
+	const { conversation: written } = await store.upsertInbound(
+		guestMessage("33612345678", {
+			pipe: "whatsapp",
+			guestName: "Claire",
+			text: "Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget $3000/month.",
+		}),
+		OFFICE,
+	);
+	const conversation = (await applyOneShot(store, written)) ?? written;
+
+	await createCrmSync({ store, threadUrl }).newGuest(conversation);
+
+	expect(await store.findMockCrmLeads(OFFICE)).toMatchObject([{ name: "Claire", language: "fr" }]);
+});
+
 // Spec #59 stories 13, 14, 18 (#61): a new guest becomes a lead, Zalo id and thread link on it, no text.
 test("a new Zalo guest becomes one lead in the office's CRM, linked to the thread", async () => {
 	store = await testInboxStore();
