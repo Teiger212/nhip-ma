@@ -272,7 +272,7 @@ test("regenerate asks the model even for a first reply and keeps the operator in
 	expect(conv.unansweredInboundId).toBe(conv.messages[0].id);
 });
 
-test("a model draft that touches paperwork never reaches the reply box", async () => {
+test("a model draft that states a paperwork answer never reaches the reply box", async () => {
 	const runtime = peekTestRuntime();
 	if (!runtime) throw new Error("runtime missing");
 	setRuntimeForTests({
