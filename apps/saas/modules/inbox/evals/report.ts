@@ -155,11 +155,11 @@ export function draftReport(input: {
 				? []
 				: [`Local checks: ${passed} of ${rows.length} drafts pass every check`]),
 		]),
-		"Local checks (#254): JSON shape, only numbers the guest wrote, no repeated open question, no intro, at most 4 sentences. Each runs on both texts. **App post-check** is the app's own `checkFollowUp` (ADR 0024): where it blocks, the app shows the template instead.",
+		"Local checks (#254): JSON shape, only numbers the guest wrote, asks nothing again (the office's open questions, or a detail the guest gave), no intro, at most 4 sentences. Each runs on both texts. **App post-check** is the app's own `checkFollowUp` (ADR 0024): where it blocks, the app shows the template instead.",
 		"",
 		"## Summary",
 		"",
-		"| # | Thread | Guest language | JSON | Numbers | Open question | Intro | ≤ 4 sentences | App post-check |",
+		"| # | Thread | Guest language | JSON | Numbers | Asks nothing again | Intro | ≤ 4 sentences | App post-check |",
 		"| - | - | - | - | - | - | - | - | - |",
 		...rows.map((row, index) => {
 			const verdicts = row.check?.verdicts ?? [];
