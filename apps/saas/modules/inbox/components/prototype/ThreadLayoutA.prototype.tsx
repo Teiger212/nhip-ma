@@ -21,7 +21,13 @@ import type { Conversation, Message } from "../../lib/types";
 import { CrmStatus } from "../CrmStatus";
 import type { ReplyState } from "../ThreadDetail";
 import { GuestMark, useOperatorLanguage } from "../ThreadParts";
-import { prototypeOnly, useMessageSource, useProtoThread, useScrollToEnd } from "./shared.prototype";
+import {
+	prototypeOnly,
+	useMessageSource,
+	useProtoThread,
+	useStubReply,
+	useScrollToEnd,
+} from "./shared.prototype";
 
 type Proto = ReturnType<typeof useProtoThread>;
 
@@ -144,7 +150,8 @@ export function ThreadLayoutA({
 	const t = useTranslations("inbox");
 	const proto = useProtoThread(conversation);
 	const scrollRef = useScrollToEnd(conversation.id);
-	const draftTr = proto.tr(reply.reply);
+	const stubReply = useStubReply(conversation, reply.reply);
+	const draftTr = stubReply.translation;
 	const name = displayName(conversation);
 	return (
 		<>
@@ -198,9 +205,9 @@ export function ThreadLayoutA({
 							{proto.guestLanguageName ? (
 								<span className="text-xs text-muted-foreground">in {proto.guestLanguageName}</span>
 							) : null}
-							{reply.canApprove && !reply.edited ? (
+							{!stubReply.edited ? (
 								<Badge status="neutral" size="sm">
-									{reply.draftSource === "model" ? t("suggested.model") : t("suggested.template")}
+									{stubReply.sourceLabel}
 								</Badge>
 							) : null}
 							<Button
@@ -216,8 +223,8 @@ export function ThreadLayoutA({
 						</div>
 						<Textarea
 							id="proto-reply-a"
-							value={reply.reply}
-							onChange={(event) => reply.onReplyChange(event.target.value)}
+							value={stubReply.value}
+							onChange={(event) => stubReply.onChange(event.target.value)}
 							className="min-h-20"
 						/>
 						{draftTr ? (
@@ -242,7 +249,7 @@ export function ThreadLayoutA({
 					</div>
 				</section>
 				{/* The rail: everything about the guest, in the operator's language. */}
-				<aside className="min-h-0 w-88 divide-y flex shrink-0 flex-col overflow-y-auto border-l">
+				<aside className="min-h-0 w-88 flex shrink-0 flex-col divide-y overflow-y-auto border-l">
 					<RailSection title="Guest details">
 						<dl className="gap-x-3 gap-y-2 text-sm grid-cols-fields grid">
 							{proto.facts.map((fact) => (

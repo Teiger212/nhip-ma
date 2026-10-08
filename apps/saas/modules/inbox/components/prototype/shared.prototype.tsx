@@ -4,14 +4,22 @@
  * PROTOTYPE (throwaway, branch prototype/thread-layout): the data helpers the layout variants
  * share. Layout is never shared: each variant owns its own structure.
  */
+import { useSession } from "@auth/hooks/use-session";
+import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
 import { toast } from "@repo/ui";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { arrangeExtractRows, type ExtractFieldId } from "../../lib/extract-rows";
 import type { Conversation, Message } from "../../lib/types";
 import { useOperatorLanguage } from "../ThreadParts";
-import { missingFieldIds, normaliseFact, stubTranslate } from "./stubs.prototype";
+import {
+	missingFieldIds,
+	normaliseFact,
+	type StubTranslation,
+	stubTranslate,
+} from "./stubs.prototype";
+import { suggestReply } from "./suggest-reply.prototype";
 
 export type ProtoFactRow = {
 	id: ExtractFieldId;
@@ -75,6 +83,49 @@ export function useProtoThread(conversation: Conversation) {
 	}, [conversation, operator, guestLanguage, t]);
 }
 
+/**
+ * The reply box's text in the variants: the no-model suggestion in the agent's own voice
+ * (suggest-reply.prototype.ts) instead of the server's follow-up template, edited locally only.
+ * Its line under the box is the same suggestion composed in the operator's language; once the
+ * operator edits, it falls back to the stub table.
+ */
+export function useStubReply(conversation: Conversation, serverReply: string) {
+	const operator = useOperatorLanguage();
+	const { user } = useSession();
+	const { activeOrganization } = useActiveOrganization();
+	const firstName = user?.name?.trim().split(/\s+/)[0] || "your agent";
+	const office = activeOrganization?.name || "the office";
+	const guestLanguage = conversation.oneShot?.language ?? null;
+	const suggestion = useMemo(() => {
+		if (!guestLanguage) return null;
+		const who = { firstName, office };
+		const text = suggestReply(conversation, guestLanguage, who);
+		if (!text) return null;
+		return {
+			text,
+			tr: guestLanguage === operator ? null : suggestReply(conversation, operator, who),
+		};
+	}, [conversation, guestLanguage, operator, firstName, office]);
+	const [edit, setEdit] = useState<{ id: string; text: string } | null>(null);
+	const initial = suggestion?.text ?? serverReply;
+	const value = edit?.id === conversation.id ? edit.text : initial;
+	const edited = value !== initial;
+	const translation: StubTranslation =
+		!edited && suggestion
+			? suggestion.tr
+				? { text: suggestion.tr, stub: false }
+				: null
+			: stubTranslate(value, operator, guestLanguage);
+	return {
+		value,
+		onChange: (text: string) => setEdit({ id: conversation.id, text }),
+		translation,
+		edited,
+		/** Honest about who wrote it: no model, a template filled from the extracted details. */
+		sourceLabel: "Suggested reply · template",
+	};
+}
+
 /** Who a message came from, as a person reads it, plus who wrote an auto-reply. */
 export function useMessageSource() {
 	const t = useTranslations("inbox");
@@ -109,7 +160,9 @@ export function prototypeOnly(what: string) {
 
 /** "move-in, budget and nationality" from the missing labels. */
 export function listPhrase(labels: string[]): string {
-	const lower = labels.map((l) => (l === l.toUpperCase() ? l : l.charAt(0).toLowerCase() + l.slice(1)));
+	const lower = labels.map((l) =>
+		l === l.toUpperCase() ? l : l.charAt(0).toLowerCase() + l.slice(1),
+	);
 	if (lower.length <= 1) return lower.join("");
 	return `${lower.slice(0, -1).join(", ")} and ${lower.at(-1)}`;
 }

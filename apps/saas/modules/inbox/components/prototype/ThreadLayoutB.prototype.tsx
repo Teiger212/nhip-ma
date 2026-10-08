@@ -22,6 +22,7 @@ import {
 	prototypeOnly,
 	useMessageSource,
 	useProtoThread,
+	useStubReply,
 	useScrollToEnd,
 } from "./shared.prototype";
 
@@ -82,7 +83,11 @@ function SummaryStrip({ proto }: { proto: Proto }) {
 	return (
 		<div className="gap-x-5 gap-y-1.5 px-4 py-2 text-xs flex shrink-0 flex-wrap items-baseline border-b bg-muted/40">
 			{facts.map((fact) => (
-				<span key={fact.id} className="gap-1.5 inline-flex items-baseline" title={fact.foreign ? `“${fact.raw}”` : undefined}>
+				<span
+					key={fact.id}
+					className="gap-1.5 inline-flex items-baseline"
+					title={fact.foreign ? `“${fact.raw}”` : undefined}
+				>
 					<span className="text-muted-foreground">{fact.label}</span>
 					<span className="font-medium text-foreground">{fact.value}</span>
 				</span>
@@ -114,7 +119,8 @@ export function ThreadLayoutB({
 	const t = useTranslations("inbox");
 	const proto = useProtoThread(conversation);
 	const scrollRef = useScrollToEnd(conversation.id);
-	const draftTr = proto.tr(reply.reply);
+	const stubReply = useStubReply(conversation, reply.reply);
+	const draftTr = stubReply.translation;
 	const name = displayName(conversation);
 	return (
 		<>
@@ -159,21 +165,30 @@ export function ThreadLayoutB({
 				</div>
 			</div>
 			<div className="gap-2 px-4 pt-2.5 pb-3 flex shrink-0 flex-col border-t">
-				{cribNotes ? (
-					<p className="gap-1.5 text-xs leading-relaxed flex items-start text-muted-foreground">
-						<InfoIcon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-touch" />
-						<span>
-							<span className="font-medium text-foreground/80">{t("forYou")}: </span>
-							{cribNotes}
-						</span>
-					</p>
-				) : null}
+				<div className="gap-3 flex items-start">
+					{cribNotes ? (
+						<p className="gap-1.5 text-xs leading-relaxed min-w-0 flex flex-1 items-start text-muted-foreground">
+							<InfoIcon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-touch" />
+							<span>
+								<span className="font-medium text-foreground/80">{t("forYou")}: </span>
+								{cribNotes}
+							</span>
+						</p>
+					) : (
+						<span className="flex-1" />
+					)}
+					{!stubReply.edited ? (
+						<Badge status="neutral" size="sm" className="shrink-0">
+							{stubReply.sourceLabel}
+						</Badge>
+					) : null}
+				</div>
 				<div className="gap-3 flex items-end">
 					<div className="min-w-0 gap-1.5 flex flex-1 flex-col">
 						<Textarea
 							aria-label={t("reply")}
-							value={reply.reply}
-							onChange={(event) => reply.onReplyChange(event.target.value)}
+							value={stubReply.value}
+							onChange={(event) => stubReply.onChange(event.target.value)}
 							className="min-h-16"
 						/>
 						{draftTr ? (

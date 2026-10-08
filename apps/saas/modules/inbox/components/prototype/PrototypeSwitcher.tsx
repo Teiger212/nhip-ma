@@ -25,7 +25,8 @@ export function PrototypeSwitcher() {
 
 	const go = useCallback(
 		(step: number) => {
-			const next = THREAD_VARIANTS[(index + step + THREAD_VARIANTS.length) % THREAD_VARIANTS.length];
+			const next =
+				THREAD_VARIANTS[(index + step + THREAD_VARIANTS.length) % THREAD_VARIANTS.length];
 			const search = new URLSearchParams(params.toString());
 			if (next.key === "0") search.delete("variant");
 			else search.set("variant", next.key);
@@ -42,7 +43,9 @@ export function PrototypeSwitcher() {
 			const target = event.target as HTMLElement | null;
 			if (
 				target &&
-				(target.closest("input, textarea, select, [contenteditable='true'], [contenteditable='']") ||
+				(target.closest(
+					"input, textarea, select, [contenteditable='true'], [contenteditable='']",
+				) ||
 					target.isContentEditable)
 			) {
 				return;
@@ -57,7 +60,7 @@ export function PrototypeSwitcher() {
 	if (process.env.NODE_ENV === "production") return null;
 	const variant = THREAD_VARIANTS[index];
 	return (
-		<div className="bottom-16 left-3 gap-1 p-1 text-xs fixed z-50 flex items-center rounded-full bg-foreground text-background shadow-lg">
+		<div className="bottom-16 left-3 gap-1 p-1 text-xs shadow-lg fixed z-50 flex items-center rounded-full bg-foreground text-background">
 			<button
 				type="button"
 				aria-label="Previous variant"

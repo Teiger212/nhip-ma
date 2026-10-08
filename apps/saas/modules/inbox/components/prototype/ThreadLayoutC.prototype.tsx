@@ -19,7 +19,13 @@ import { CrmStatus } from "../CrmStatus";
 import { SendBar } from "../SendBar";
 import type { ReplyState } from "../ThreadDetail";
 import { GuestMark, ThreadFlags, useOperatorLanguage } from "../ThreadParts";
-import { listPhrase, prototypeOnly, useMessageSource, useProtoThread } from "./shared.prototype";
+import {
+	listPhrase,
+	prototypeOnly,
+	useMessageSource,
+	useProtoThread,
+	useStubReply,
+} from "./shared.prototype";
 
 type Proto = ReturnType<typeof useProtoThread>;
 
@@ -58,11 +64,18 @@ function ParallelRow({ message, proto }: { message: Message; proto: Proto }) {
 			<div className="gap-6 text-sm leading-relaxed grid grid-cols-2">
 				<p className="whitespace-pre-wrap text-foreground/80">{message.text}</p>
 				{tr ? (
-					<p className={cn("whitespace-pre-wrap text-foreground", tr.stub && "italic text-muted-foreground")}>
+					<p
+						className={cn(
+							"whitespace-pre-wrap text-foreground",
+							tr.stub && "text-muted-foreground italic",
+						)}
+					>
 						{tr.text}
 					</p>
 				) : (
-					<p className="text-xs self-center text-muted-foreground">Already in {proto.operatorLanguageName}</p>
+					<p className="text-xs self-center text-muted-foreground">
+						Already in {proto.operatorLanguageName}
+					</p>
 				)}
 			</div>
 		</div>
@@ -82,7 +95,8 @@ export function ThreadLayoutC({
 }) {
 	const t = useTranslations("inbox");
 	const proto = useProtoThread(conversation);
-	const draftTr = proto.tr(reply.reply);
+	const stubReply = useStubReply(conversation, reply.reply);
+	const draftTr = stubReply.translation;
 	const name = displayName(conversation);
 	const guestLang = proto.guestLanguageName ?? "Guest's language";
 	return (
@@ -144,9 +158,9 @@ export function ThreadLayoutC({
 				<section className="gap-2 px-5 pt-4 pb-5 flex flex-col">
 					<div className="gap-2 flex items-center">
 						<h2 className="font-semibold tracking-tight text-sm font-heading">{t("reply")}</h2>
-						{reply.canApprove && !reply.edited ? (
+						{!stubReply.edited ? (
 							<Badge status="neutral" size="sm">
-								{reply.draftSource === "model" ? t("suggested.model") : t("suggested.template")}
+								{stubReply.sourceLabel}
 							</Badge>
 						) : null}
 						<Button
@@ -175,18 +189,20 @@ export function ThreadLayoutC({
 							</label>
 							<Textarea
 								id="proto-reply-c"
-								value={reply.reply}
-								onChange={(event) => reply.onReplyChange(event.target.value)}
+								value={stubReply.value}
+								onChange={(event) => stubReply.onChange(event.target.value)}
 								className="min-h-28"
 							/>
 						</div>
 						<div className="gap-1.5 flex flex-col">
 							<ColumnHead>It says · {proto.operatorLanguageName}</ColumnHead>
-							<div className="min-h-28 px-3 py-2 text-sm leading-relaxed flex-1 rounded-xl whitespace-pre-wrap bg-muted/60">
+							<div className="min-h-28 px-3 py-2 text-sm leading-relaxed flex-1 rounded-xl bg-muted/60 whitespace-pre-wrap">
 								{draftTr ? (
-									<span className={cn(draftTr.stub && "italic text-muted-foreground")}>{draftTr.text}</span>
+									<span className={cn(draftTr.stub && "text-muted-foreground italic")}>
+										{draftTr.text}
+									</span>
 								) : (
-									<span className="text-muted-foreground">{reply.reply || "—"}</span>
+									<span className="text-muted-foreground">{stubReply.value || "—"}</span>
 								)}
 							</div>
 						</div>

@@ -246,7 +246,9 @@ function normaliseBeds(raw: string, operator: OperatorLanguage): string | null {
 			.replace(/(\d+) people/, "$1 người")
 			.replace("couple", "cặp đôi");
 	}
-	return raw.replace(/(\d+) bed\b/, (_, n) => `${n} bedroom${n === "1" ? "" : "s"}`).replace(", ", " · ");
+	return raw
+		.replace(/(\d+) bed\b/, (_, n) => `${n} bedroom${n === "1" ? "" : "s"}`)
+		.replace(", ", " · ");
 }
 
 export type ProtoFact = {
@@ -266,7 +268,11 @@ export function normaliseFact(
 	operator: OperatorLanguage,
 ): { value: string; raw: string | null } {
 	let value: string | null = null;
-	if (id === "moveIn") value = TIMEFRAMES[raw.trim()]?.[operator] ?? TIMEFRAMES[raw.trim().toLowerCase()]?.[operator] ?? null;
+	if (id === "moveIn")
+		value =
+			TIMEFRAMES[raw.trim()]?.[operator] ??
+			TIMEFRAMES[raw.trim().toLowerCase()]?.[operator] ??
+			null;
 	if (id === "budget") value = normaliseBudget(raw, operator);
 	if (id === "beds") value = normaliseBeds(raw, operator);
 	if (!value || value === raw) return { value: raw, raw: null };
