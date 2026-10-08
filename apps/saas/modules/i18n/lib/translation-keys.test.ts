@@ -77,11 +77,15 @@ describe("translation keys (saas, shared, mail)", () => {
 	});
 
 	it("a Vietnamese value the same as the English one is on the allowlist", () => {
-		const same = [...en].filter(([key, text]) => text.trim() && vi.get(key) === text).map(([key]) => key);
+		const same = [...en]
+			.filter(([key, text]) => text.trim() && vi.get(key) === text)
+			.map(([key]) => key);
 		expect(same.filter((key) => !SAME_IN_BOTH.has(key))).toEqual([]);
 	});
 
 	it("the allowlist names only keys that are still the same in both", () => {
-		expect([...SAME_IN_BOTH].filter((key) => !en.has(key) || en.get(key) !== vi.get(key))).toEqual([]);
+		expect([...SAME_IN_BOTH].filter((key) => !en.has(key) || en.get(key) !== vi.get(key))).toEqual(
+			[],
+		);
 	});
 });

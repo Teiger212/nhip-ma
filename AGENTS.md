@@ -144,6 +144,9 @@ sounds once, and signing out stops the alerts.
   smartly, not by copying an English scenario in Vietnamese to re-check labels: a translation-key
   check, and a Vietnamese assertion only where Vietnamese behaviour differs.
 - Locally, run only the spec files you touched; never the full suite. One green CI run is the gate.
+  The local check is `pnpm e2e:changed` (the spec files changed since `origin/main`, against the
+  build `scripts/e2e-server.sh` started). CI splits the suite over two runners by measured seconds
+  (`scripts/e2e-shard-lists.mjs`, `apps/saas/tests/e2e-timings.json`).
 - Reviewer sub-agents only for security-sensitive changes. Hardening (more tests, flakes, edge
   cases) is one later pass.
 - Assert what a person sees or what the rule promises; never internal calls, and never mock

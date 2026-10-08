@@ -11,6 +11,7 @@
 		"pipe:connect": "tsx --tsconfig tsconfig.json modules/inbox/scripts/connect-pipe.ts",
 		"e2e": "pnpm exec playwright test --ui",
 		"e2e:ci": "pnpm exec playwright install && pnpm exec playwright test",
+		"e2e:changed": "E2E_REUSE=1 playwright test --only-changed=origin/main",
 		"start": "next start",
 		"test": "vitest run",
 		"test:watch": "vitest",
