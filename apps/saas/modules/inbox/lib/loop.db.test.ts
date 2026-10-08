@@ -103,9 +103,9 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 
 	await settleBackgroundWork();
 	conv = await get(conv.id);
+	// Once, into the office language: the walk office's is the default, English (ADR 0025).
 	expect(conv.messages[0].translations).toEqual({
 		en: "[en] 안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
-		vi: "[vi] 안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
 	});
 	// The auto-reply went out, so the box takes the follow-up path (ADR 0021, P2): the model
 	// drafts for the first message from the conversation, greeting included.
@@ -159,7 +159,6 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	conv = await get(conv.id);
 	expect(conv.messages[3].translations).toEqual({
 		en: "[en] 금요일에 볼 수 있을까요?",
-		vi: "[vi] 금요일에 볼 수 있을까요?",
 	});
 	expect(conv.oneShot?.draft).toEqual({
 		reply: 'Follow-up 2: about "금요일에 볼 수 있을까요?"',

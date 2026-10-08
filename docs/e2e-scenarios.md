@@ -1028,8 +1028,8 @@ English greeting and an English suggested reply. Their messages aren't translate
 the test's own, with a manager and an invited agent, the auto-reply on and `SEND_MODE=mock`.
 Translation runs against First greeting's stub model, so a supported language's message shows a
 stub translation line and an unsupported one must show none; drafting is off, so the reply box
-holds a template. The interface language (EN or VI) stands for the office language (ADR 0025) until that setting
-is built. The VI copy is pending a native read (#78).
+holds a template. Each test's office is left at the default office language, English (ADR 0025,
+Office language). The VI copy is pending a native read (#78).
 
 1. **A guest writes in French: the thread names French and says it isn't supported.** A guest
    writes "Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget

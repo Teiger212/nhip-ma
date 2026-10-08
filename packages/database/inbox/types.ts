@@ -521,6 +521,13 @@ export type InboxStore = {
 	 */
 	setOfficeAutoReply: (officeId: string, on: boolean) => Promise<void>;
 	/**
+	 * The office language (ADR 0025): what the manager set, or `DEFAULT_OFFICE_LANGUAGE` when no
+	 * one has (no setting row, or no value in it). Translation and the draft prompt (#251) read it.
+	 */
+	officeLanguage: (officeId: string) => Promise<OperatorLanguage>;
+	/** A manager sets the office language (ADR 0025). The other settings are left as they are. */
+	setOfficeLanguage: (officeId: string, language: OperatorLanguage) => Promise<void>;
+	/**
 	 * Count one model call against the office's daily cap for the task (ADR 0024): true, and
 	 * counted, while the office's calls that day are under `cap`; false, and nothing counted,
 	 * once they reach it. `day` is the office's calendar day, `YYYY-MM-DD`.

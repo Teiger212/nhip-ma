@@ -64,7 +64,10 @@ each operator's). Replaces CONTEXT's "operator language".
 - **Sign-in pages** keep today's cookie and their own switch: no office is known there yet.
 - **CONTEXT.md:** "Operator language" becomes "Office language".
 
-## Open
+## Decided after (Eyal, 2026-10-08, on #256)
 
-- **The default** for an office whose manager hasn't set one, including every office today.
-  Pending Eyal.
+- **The default is English** for an office whose manager hasn't set one, including every office
+  today. It is one constant in code (`DEFAULT_OFFICE_LANGUAGE`), so it can change later.
+- **After a language change,** opening an older thread translates its guest messages into the
+  new language then, each a model call counted against the office's daily translation cap.
+  Translations already stored in the old language are kept.

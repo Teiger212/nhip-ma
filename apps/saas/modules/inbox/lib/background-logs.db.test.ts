@@ -78,7 +78,7 @@ test("a failing background job logs its kind and the error's kind, never a threa
 	vi.spyOn(runtime.store, "translationFailures").mockRejectedValue(
 		new Error(`no translation failures for thread ${id}, message ${conversation.messages[0].id}`),
 	);
-	scheduleMissingTranslations(runtime, conversation, "en");
+	scheduleMissingTranslations(runtime, conversation);
 	await settleBackgroundWork();
 
 	const logged = JSON.stringify([...warn.mock.calls, ...error.mock.calls]);

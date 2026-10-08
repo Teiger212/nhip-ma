@@ -1,4 +1,5 @@
 import { AutoReplySetting } from "@inbox/components/AutoReplySetting";
+import { OfficeLanguageSetting } from "@inbox/components/OfficeLanguageSetting";
 import { ChangeOrganizationNameForm } from "@organizations/components/ChangeOrganizationNameForm";
 import { DeleteOrganizationForm } from "@organizations/components/DeleteOrganizationForm";
 import { OrganizationLogoForm } from "@organizations/components/OrganizationLogoForm";
@@ -36,9 +37,10 @@ export default async function OrganizationSettingsPage({
 			<SettingsList>
 				<OrganizationLogoForm />
 				<ChangeOrganizationNameForm />
-				{/* The auto-reply switch is the managers' (ADR 0021 G6, #167); the guard above already
-				    turned everyone else away. */}
+				{/* The auto-reply switch and the office language are the managers' (ADR 0021 G6, #167;
+				    ADR 0025); the guard above already turned everyone else away. */}
 				<AutoReplySetting />
+				<OfficeLanguageSetting />
 				{canManageDeletion && <DeleteOrganizationForm />}
 			</SettingsList>
 		</>

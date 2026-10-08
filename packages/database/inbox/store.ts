@@ -9,6 +9,7 @@ import {
 	CrmLinkMethod,
 	CrmOutcomeStatus,
 	DbMessageSource,
+	DEFAULT_OFFICE_LANGUAGE,
 	type Funnel,
 	GuestLanguage,
 	LanguageCode,
@@ -1072,6 +1073,23 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					END,
 					"autoReply" = EXCLUDED."autoReply"
 			`;
+		},
+
+		async officeLanguage(officeId) {
+			const setting = await db.officeSetting.findUnique({
+				where: { officeId },
+				select: { language: true },
+			});
+			if (!setting?.language) return DEFAULT_OFFICE_LANGUAGE;
+			return vocab(OperatorLanguage, setting.language, "OfficeSetting.language");
+		},
+
+		async setOfficeLanguage(officeId, language) {
+			await db.officeSetting.upsert({
+				where: { officeId },
+				create: { officeId, language },
+				update: { language },
+			});
 		},
 
 		async claimModelCall({ officeId, task, day, cap }) {

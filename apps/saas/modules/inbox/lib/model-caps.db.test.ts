@@ -239,7 +239,10 @@ test("Regenerate counts: the 50th of the day is the model's, the 51st puts the t
 test("a translation past the office's cap uses none of its attempts, and lands once the office's day turns", async () => {
 	vi.mocked(auth.api.getSession).mockReset();
 	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
-	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
+	// A Vietnamese office (ADR 0025): its guest messages are translated into Vietnamese.
+	await testDb.officeSetting.create({
+		data: { officeId: "walk-office", autoReply: false, language: "vi" },
+	});
 	// Late evening in Hà Nội, with the office's 1,000 translations of the day spent.
 	let clock = new Date("2026-10-08T15:30:00.000Z");
 	await used("walk-office", "translate", "2026-10-08", 1000);
@@ -262,10 +265,10 @@ test("a translation past the office's cap uses none of its attempts, and lands o
 	const messageId = conv.messages[0].id;
 	await settleBackgroundWork();
 
-	/** One open of the thread in Vietnamese, as the agent does. */
+	/** One open of the thread, as the agent does. */
 	async function open(): Promise<Conversation> {
 		const res = await getConversation(
-			new Request(`http://localhost/api/conversations/${encodeURIComponent(conv.id)}?locale=vi`),
+			new Request(`http://localhost/api/conversations/${encodeURIComponent(conv.id)}`),
 			params(conv.id),
 		);
 		expect(res.status).toBe(200);
