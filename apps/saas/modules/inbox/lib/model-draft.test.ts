@@ -186,6 +186,25 @@ test("a draft the post-check blocked isn't asked for again on every poll of the 
 	expect(asked).toHaveLength(1);
 });
 
+test("a thread read before its new message's one-shot landed isn't drafted from, so the one-shot's template can't replace the draft; the next read drafts it", async () => {
+	const previous = thread.oneShot?.draft;
+	guestWrites("Could you send some photos?");
+	// The message's row is on file, its one-shot not yet: the stored draft answers the last one.
+	const beforeOneShot = {
+		...thread,
+		oneShot: thread.oneShot && previous ? { ...thread.oneShot, draft: previous } : null,
+	};
+	draftOnOpen(runtime, beforeOneShot);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(asked).toHaveLength(0);
+
+	// The next poll reads the thread with its one-shot: drafted at once.
+	draftOnOpen(runtime, thread);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(asked).toHaveLength(1);
+	expect(thread.oneShot?.draft.source).toBe("model");
+});
+
 test("before the office's first human reply, neither the wait nor opening the thread asks the model", async () => {
 	thread = {
 		...thread,

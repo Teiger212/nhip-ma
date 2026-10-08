@@ -114,14 +114,16 @@ function markAsked(inboundId: string): void {
 
 /**
  * The guest message the model should draft for now, or null: the thread takes the model's path,
- * the model serves drafts, no model draft for that message is stored, and this instance hasn't
- * asked for one.
+ * the model serves drafts, that message's one-shot is on file, no model draft for it is stored,
+ * and this instance hasn't asked for one. A thread read between a new message's row and its
+ * one-shot isn't drafted from: the one-shot writes the template for that message when it lands,
+ * which would replace a model draft stored first. The next read drafts it.
  */
 function waitingForDraft(runtime: Runtime, conversation: Conversation): string | null {
 	const inboundId = conversation.unansweredInboundId;
 	if (!inboundId || !modelDrafts(conversation) || !runtime.drafts.serves("draft")) return null;
 	const draft = conversation.oneShot?.draft;
-	if (draft?.source === "model" && draft.answersMessageId === inboundId) return null;
+	if (draft?.answersMessageId !== inboundId || draft.source === "model") return null;
 	return asked.has(inboundId) ? null : inboundId;
 }
 
