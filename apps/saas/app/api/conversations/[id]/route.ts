@@ -11,7 +11,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 /**
  * One thread, whole. Any guest message on it that lacks a translation into the office language
  * is translated in the background (ADR 0007, ADR 0025); the office language is read here, never
- * taken from the client, so a `?locale=` is ignored. A thread of an office
+ * taken from the client, so a `?locale=` is ignored, and it comes back with the thread
+ * (`officeLanguage`), so the open thread shows translations in it as of this read. A thread of an office
  * with a CRM and no lead yet tries its lead write again in the background, once its wait is over
  * (#211); a linked one whose lead has no address in the CRM's web app yet asks the CRM which
  * account the office is on (CRM 10). The thread returned now is what exists now.
@@ -27,8 +28,9 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
 	if (!conv) {
 		return NextResponse.json({ error: "not_found" }, { status: 404 });
 	}
-	scheduleMissingTranslations(runtime, conv);
+	const officeLanguage = await runtime.store.officeLanguage(conv.officeId);
+	scheduleMissingTranslations(runtime, conv, officeLanguage);
 	scheduleMissingLeadRetry(runtime, conv);
 	scheduleMissingLeadAddress(runtime, conv);
-	return NextResponse.json(conv);
+	return NextResponse.json({ ...conv, officeLanguage });
 }

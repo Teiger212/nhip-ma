@@ -128,36 +128,28 @@ export function scheduleTranslations(
 }
 
 /**
- * On opening a thread: whatever the office language is missing. This is how messages written
- * before translation existed, or before the office changed its language, get theirs, and how a
- * failed translation is retried once its backoff has passed. The office language is read in the
- * background, after the thread has been answered; failures only when a message is missing its
- * translation.
+ * On opening a thread: whatever the office language (`locale`, read by the caller) is missing.
+ * This is how messages written before translation existed, or before the office changed its
+ * language, get theirs, and how a failed translation is retried once its backoff has passed.
+ * Nothing is read from the database unless a message is actually missing its translation.
  */
 export function scheduleMissingTranslations(
 	runtime: Runtime,
 	conversation: Pick<Conversation, "id" | "officeId" | "messages" | "oneShot">,
+	locale: OperatorLanguage,
 ): void {
 	if (!runtime.drafts.serves("translate")) {
 		return;
 	}
 	const guestLanguage = conversation.oneShot?.guestLanguage;
-	// Nothing to read when no guest message lacks a translation it could need.
-	const candidates = conversation.messages.filter((message) =>
-		OperatorLanguage.options.some((language) => needsTranslation(message, language, guestLanguage)),
+	const missing = conversation.messages.filter(
+		(message) =>
+			needsTranslation(message, locale, guestLanguage) && !inFlight.has(key(message.id, locale)),
 	);
-	if (candidates.length === 0) {
+	if (missing.length === 0) {
 		return;
 	}
 	void runInBackground("translations", async () => {
-		const locale = await runtime.store.officeLanguage(conversation.officeId);
-		const missing = candidates.filter(
-			(message) =>
-				needsTranslation(message, locale, guestLanguage) && !inFlight.has(key(message.id, locale)),
-		);
-		if (missing.length === 0) {
-			return;
-		}
 		const failures = await runtime.store.translationFailures(
 			conversation.officeId,
 			missing.map((message) => message.id),

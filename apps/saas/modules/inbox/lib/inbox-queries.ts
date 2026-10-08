@@ -75,6 +75,8 @@ export function useConversations({ enabled = true }: { enabled?: boolean } = {})
 	return useQuery({ ...conversationListQuery, enabled });
 }
 
+const officeLanguageQueryKey = ["inbox", "office-language"] as const;
+
 /**
  * The open thread, whole: messages, translations, the one-shot and the Answers. Polled like
  * the list while it is open. Opening it is also what has the server fill any translation into
@@ -87,9 +89,12 @@ export function useConversation(id: string | null) {
 	return useQuery({
 		queryKey: detailQueryKey(id ?? ""),
 		queryFn: async () => {
-			const conversation = await api<Conversation>(
-				`/api/conversations/${encodeURIComponent(id ?? "")}`,
-			);
+			const { officeLanguage, ...conversation } = await api<
+				Conversation & { officeLanguage: OperatorLanguage }
+			>(`/api/conversations/${encodeURIComponent(id ?? "")}`);
+			// Each poll of the open thread keeps the office language fresh for its translations,
+			// so a manager's change shows within a poll.
+			queryClient.setQueryData(officeLanguageQueryKey, officeLanguage);
 			putSummary(queryClient, conversation);
 			return conversation;
 		},
@@ -218,8 +223,6 @@ export function useSetOfficeAutoReply() {
 		onSettled: () => queryClient.invalidateQueries({ queryKey: autoReplyQueryKey }),
 	});
 }
-
-const officeLanguageQueryKey = ["inbox", "office-language"] as const;
 
 /**
  * The office language (ADR 0025): what the open thread shows translations in, and the manager's
