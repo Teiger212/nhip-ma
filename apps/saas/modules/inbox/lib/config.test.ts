@@ -25,46 +25,99 @@ function errorsOf(env: NodeJS.ProcessEnv): string[] {
 	return result.ok ? [] : result.errors;
 }
 
-test("no draft key means no model, whatever else is set", () => {
-	const result = validateInboxEnv({ ...BASE, DRAFT_MODEL: "vendor/model" });
-	expect(result.ok).toBe(true);
-	if (!result.ok) return;
-	expect(result.config.drafts).toEqual({ baseUrl: DEFAULT_DRAFT_BASE_URL, model: "vendor/model" });
-	expect(draftAdapterFromConfig(result.config).provider).toBe("none");
-});
+/** The model layer's cap counter, never reached by these tests. */
+const claim = async () => true;
 
-test("a draft key needs a model id: there is no default that can go stale", () => {
-	expect(errorsOf({ ...BASE, DRAFT_API_KEY: "sk" })).toEqual([
-		"DRAFT_MODEL must be set when DRAFT_API_KEY is set",
-	]);
-	const result = validateInboxEnv({ ...BASE, DRAFT_API_KEY: "sk", DRAFT_MODEL: "vendor/model" });
-	expect(result.ok).toBe(true);
-	if (!result.ok) return;
-	expect(result.config.drafts).toEqual({
+function configOf(env: NodeJS.ProcessEnv) {
+	const result = validateInboxEnv(env);
+	if (!result.ok) throw new Error(result.errors.join("\n"));
+	return result.config;
+}
+
+// ADR 0024: a model per task, defaulted in code; an env var overrides either; a key alone starts it.
+test("a key alone is enough: both tasks get their default model and cap", () => {
+	expect(errorsOf({ ...BASE, DRAFT_API_KEY: "sk" })).toEqual([]);
+	const config = configOf({ ...BASE, DRAFT_API_KEY: "sk" });
+	expect(config.models).toEqual({
 		apiKey: "sk",
 		baseUrl: DEFAULT_DRAFT_BASE_URL,
-		model: "vendor/model",
+		draft: { model: "anthropic/claude-haiku-5.5", dailyCap: 50 },
+		translate: { model: "anthropic/claude-haiku-5.5", dailyCap: 1000 },
+		stub: [],
 	});
-	expect(draftAdapterFromConfig(result.config).provider).toBe("openai-compatible");
+	const layer = draftAdapterFromConfig(config, { claim });
+	expect(layer.serves("draft")).toBe(true);
+	expect(layer.serves("translate")).toBe(true);
 });
 
-test("the base URL is any absolute http(s) endpoint, trimmed", () => {
+test("each task's model and cap is overridden by its own env var", () => {
+	const config = configOf({
+		...BASE,
+		DRAFT_API_KEY: "sk",
+		DRAFT_MODEL: " vendor/drafter ",
+		TRANSLATE_MODEL: "google/gemini-3.1-flash-lite",
+		DRAFT_DAILY_CAP: "20",
+		TRANSLATE_DAILY_CAP: "0",
+	});
+	expect(config.models.draft).toEqual({ model: "vendor/drafter", dailyCap: 20 });
+	expect(config.models.translate).toEqual({ model: "google/gemini-3.1-flash-lite", dailyCap: 0 });
+	expect(errorsOf({ ...BASE, DRAFT_DAILY_CAP: "fifty", TRANSLATE_DAILY_CAP: "-1" })).toEqual([
+		'DRAFT_DAILY_CAP must be a whole number of model calls a day, got "fifty"',
+		'TRANSLATE_DAILY_CAP must be a whole number of model calls a day, got "-1"',
+	]);
+});
+
+test("no key means no model, whatever else is set", () => {
+	const config = configOf({ ...BASE, DRAFT_MODEL: "vendor/model", TRANSLATE_MODEL: "vendor/t" });
+	const layer = draftAdapterFromConfig(config, { claim });
+	expect(layer.serves("draft")).toBe(false);
+	expect(layer.serves("translate")).toBe(false);
+	expect(draftAdapterFromConfig(mockInboxConfig(), { claim }).serves("translate")).toBe(false);
+});
+
+test("the base URL may be any absolute http(s) endpoint in development, trimmed", () => {
 	expect(errorsOf({ ...BASE, DRAFT_BASE_URL: "openrouter.ai" })).toEqual([
 		'DRAFT_BASE_URL must be an absolute http(s) URL, got "openrouter.ai"',
 	]);
-	const result = validateInboxEnv({
+	const config = configOf({
 		...BASE,
 		DRAFT_API_KEY: "ollama",
-		DRAFT_MODEL: "qwen",
 		DRAFT_BASE_URL: " http://localhost:11434/v1 ",
 	});
-	expect(result.ok).toBe(true);
-	if (!result.ok) return;
-	expect(result.config.drafts.baseUrl).toBe("http://localhost:11434/v1");
+	expect(config.models.baseUrl).toBe("http://localhost:11434/v1");
 });
 
-test("the test config has no model behind it", () => {
-	expect(draftAdapterFromConfig(mockInboxConfig()).provider).toBe("none");
+// ADR 0024: OpenRouter with zero-retention routing is the only production provider.
+test("production calls OpenRouter only", () => {
+	const production = { ...BASE, VERCEL_ENV: "production", DRAFT_API_KEY: "sk" };
+	expect(errorsOf({ ...production, DRAFT_BASE_URL: "https://api.openai.com/v1" })).toEqual([
+		`DRAFT_BASE_URL must be OpenRouter (${DEFAULT_DRAFT_BASE_URL}) in production`,
+	]);
+	expect(errorsOf({ ...production, DRAFT_BASE_URL: "https://openrouter.ai/api/v1" })).toEqual([]);
+	expect(errorsOf(production)).toEqual([]);
+	expect(
+		errorsOf({ ...BASE, VERCEL_ENV: "preview", DRAFT_BASE_URL: "http://localhost:1/v1" }),
+	).toEqual([]);
+});
+
+// ADR 0024: E2E runs against a deterministic stub, refused in production as the mock CRM's secret is.
+test("the stub model answers the tasks MODEL_STUB names, needs no key, and production refuses it", () => {
+	const config = configOf({ ...BASE, MODEL_STUB: "translate" });
+	expect(config.models.stub).toEqual(["translate"]);
+	const layer = draftAdapterFromConfig(config, { claim });
+	expect(layer.serves("translate")).toBe(true);
+	expect(layer.serves("draft")).toBe(false);
+	expect(configOf({ ...BASE, MODEL_STUB: "draft, translate" }).models.stub).toEqual([
+		"draft",
+		"translate",
+	]);
+
+	expect(errorsOf({ ...BASE, MODEL_STUB: "translate", VERCEL_ENV: "production" })).toEqual([
+		"MODEL_STUB must not be set in production: the stub model's fixed text is for E2E",
+	]);
+	expect(errorsOf({ ...BASE, MODEL_STUB: "translate,greet" })).toEqual([
+		'MODEL_STUB lists the tasks the stub model answers (draft, translate), got "greet"',
+	]);
 });
 
 /** A production-shaped env that passes except for the URL under test. */

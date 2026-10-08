@@ -70,6 +70,7 @@ const EMPTY_INBOX_TABLES = `DO $$ BEGIN
 	DELETE FROM "inbox_guest_deletion";
 	DELETE FROM "push_subscription";
 	DELETE FROM "inbox_office_setting";
+	DELETE FROM "inbox_model_usage";
 END $$`;
 
 /**

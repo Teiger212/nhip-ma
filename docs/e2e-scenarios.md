@@ -850,8 +850,21 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 - E2E runs with `SEND_MODE=mock` and no `DRAFT_*` key, so every auto-reply is the fixed
   template, sent as a mock send. Reading the thread as the manager is looking at the guest's
   phone.
-- The model's path is proven in Vitest (the post-check, the cap, the request's zero-retention
-  routing), by the greeting test set run by hand, and on staging (`docs/setup-checklist.md`).
+- E2E runs the model layer (ADR 0024) against a deterministic stub model, not a real one
+  (`MODEL_STUB` in `.env.e2e`; production refuses it). The stub answers through the same
+  layer, so the office's daily caps and the log line apply.
+  - **Translation is on** (`MODEL_STUB=translate`). A guest message's translation line reads
+    "Stub translation, ‹guest language› to ‹operator language›.", for example "Stub
+    translation, Korean to Vietnamese.", and never repeats the guest's words.
+  - **Drafting is built but off** until the trigger ticket (#252) moves the model's draft to
+    after the office's first human reply (`MODEL_STUB=draft,translate` then). Until then every
+    suggested reply in E2E is a template. Once on, the stub's suggested reply reads "Thanks
+    for your message. I'll look into it and come back to you here." ("Suggested reply · AI");
+    a guest whose last message asks about the pink book (or sổ hồng) gets one the post-check
+    blocks, so the template stands ("Suggested reply · template").
+- The model's path is proven in Vitest (the post-check, the caps, the timeout and retry, the
+  log line, the request's zero-retention routing and each task's model), by the greeting test
+  set run by hand, and on staging (`docs/setup-checklist.md`).
 - Guests write through signed Zalo webhooks to an office of the test's own, named "Saigon
   Prime Test", with a manager and an invited agent. The auto-reply is on, because that is the
   default.

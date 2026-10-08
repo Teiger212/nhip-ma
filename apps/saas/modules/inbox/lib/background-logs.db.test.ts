@@ -30,11 +30,11 @@ const GUEST_TEXT = "Chào anh, em muốn thuê căn hộ 2 phòng ngủ ở Tây
 
 /** A model that fails, quoting what it was sent, as a provider's error can. */
 const failingModel: DraftAdapter = {
-	provider: "openai-compatible",
+	serves: () => true,
 	translate: async ({ text }) => {
 		throw new Error(`model refused to translate: ${text}`);
 	},
-	followUp: async ({ guestName, messages }) => {
+	draft: async ({ guestName, messages }) => {
 		throw new Error(`model refused ${guestName}: ${messages.map((m) => m.text).join(" | ")}`);
 	},
 };

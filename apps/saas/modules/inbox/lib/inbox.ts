@@ -73,7 +73,8 @@ export async function generateModelDraft(
 	if (!inboundId || !shot) {
 		return null;
 	}
-	const raw = await runtime.drafts.followUp({
+	const raw = await runtime.drafts.draft({
+		officeId: conversation.officeId,
 		guestName: conversation.guestName,
 		guestLanguage: shot.language,
 		messages: conversation.messages,
@@ -298,7 +299,7 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
  */
 async function redraftAfterGreeting(runtime: Runtime, greeted: Conversation): Promise<void> {
 	const updated = await applyOneShot(runtime.store, greeted);
-	if (updated?.oneShot && updated.unansweredInboundId && runtime.drafts.provider !== "none") {
+	if (updated?.oneShot && updated.unansweredInboundId && runtime.drafts.serves("draft")) {
 		await runInBackground("follow-up draft", async () => {
 			await generateModelDraft(runtime, updated);
 		});
@@ -355,7 +356,7 @@ export async function afterGuestInbound(
 	const inbound = updated.messages.find((message) => message.id === updated.unansweredInboundId);
 	if (inbound) {
 		scheduleTranslations(runtime, updated.officeId, inbound);
-		if (takesFollowUpPath(updated) && updated.oneShot && runtime.drafts.provider !== "none") {
+		if (takesFollowUpPath(updated) && updated.oneShot && runtime.drafts.serves("draft")) {
 			void runInBackground("follow-up draft", async () => {
 				await generateModelDraft(runtime, updated);
 			});

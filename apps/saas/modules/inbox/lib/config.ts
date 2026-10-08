@@ -54,6 +54,10 @@ const envSchema = z
 		DRAFT_API_KEY: trimmed,
 		DRAFT_BASE_URL: trimmed,
 		DRAFT_MODEL: trimmed,
+		TRANSLATE_MODEL: trimmed,
+		DRAFT_DAILY_CAP: trimmed,
+		TRANSLATE_DAILY_CAP: trimmed,
+		MODEL_STUB: trimmed,
 		VAPID_PUBLIC_KEY: trimmed,
 		VAPID_PRIVATE_KEY: trimmed,
 		VAPID_SUBJECT: trimmed,
@@ -203,21 +207,56 @@ const envSchema = z
 				message: "PIPE_SECRETS_KEY must be 32 random bytes, base64-encoded",
 			});
 		}
-		// A model id is never defaulted in code, where it would go stale; a key alone is a
-		// misconfiguration, not "no model".
-		if (env.DRAFT_API_KEY && !env.DRAFT_MODEL) {
-			ctx.addIssue({
-				code: "custom",
-				path: ["DRAFT_MODEL"],
-				message: "DRAFT_MODEL must be set when DRAFT_API_KEY is set",
-			});
-		}
+		// The model layer (ADR 0024). Each task's model is defaulted in code, so a key alone starts it.
 		if (env.DRAFT_BASE_URL && !isAbsoluteUrl(env.DRAFT_BASE_URL)) {
 			ctx.addIssue({
 				code: "custom",
 				path: ["DRAFT_BASE_URL"],
 				message: `DRAFT_BASE_URL must be an absolute http(s) URL, got "${env.DRAFT_BASE_URL}"`,
 			});
+		} else if (
+			env.VERCEL_ENV === "production" &&
+			env.DRAFT_BASE_URL &&
+			!isOpenRouter(env.DRAFT_BASE_URL)
+		) {
+			// OpenRouter with zero-retention routing is the only production provider; another
+			// endpoint is for development.
+			ctx.addIssue({
+				code: "custom",
+				path: ["DRAFT_BASE_URL"],
+				message: `DRAFT_BASE_URL must be OpenRouter (${DEFAULT_DRAFT_BASE_URL}) in production`,
+			});
+		}
+		for (const key of ["DRAFT_DAILY_CAP", "TRANSLATE_DAILY_CAP"] as const) {
+			const value = env[key];
+			if (value !== undefined && !/^\d+$/.test(value)) {
+				ctx.addIssue({
+					code: "custom",
+					path: [key],
+					message: `${key} must be a whole number of model calls a day, got "${value}"`,
+				});
+			}
+		}
+		if (env.MODEL_STUB) {
+			const unknown = splitList(env.MODEL_STUB).filter(
+				(task) => !(MODEL_TASKS as readonly string[]).includes(task),
+			);
+			if (unknown.length > 0) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["MODEL_STUB"],
+					message: `MODEL_STUB lists the tasks the stub model answers (${MODEL_TASKS.join(", ")}), got "${unknown.join(", ")}"`,
+				});
+			}
+			// The stub model is for E2E, as the mock CRM is: production never takes its fixed text.
+			if (env.VERCEL_ENV === "production") {
+				ctx.addIssue({
+					code: "custom",
+					path: ["MODEL_STUB"],
+					message:
+						"MODEL_STUB must not be set in production: the stub model's fixed text is for E2E",
+				});
+			}
 		}
 		// Better Auth's baseURL is set explicitly from NEXT_PUBLIC_SAAS_URL and wins over
 		// BETTER_AUTH_URL, so the two must agree or one of them is silently ignored.
@@ -326,15 +365,11 @@ export type InboxConfig = {
 	hubspotAppClientSecret?: string;
 	hubspotWebhookUrl?: string;
 	/**
-	 * The draft adapter (ADR 0005, ADR 0007): any OpenAI-compatible chat endpoint. Without
-	 * a key there is no model: no translation is shown and every suggested reply is a
-	 * template. The model id is whatever the office chose; nothing here names a vendor.
+	 * The model layer (ADR 0024): OpenRouter, a model and a daily cap per office for each task.
+	 * Without a key there is no model: no translation is shown and every suggested reply is a
+	 * template. A task the stub answers (E2E only) needs no key.
 	 */
-	drafts: {
-		apiKey?: string;
-		baseUrl: string;
-		model?: string;
-	};
+	models: ModelsConfig;
 	/**
 	 * Web push's VAPID key pair and subject (ADR 0019), read as a set: null until all three are
 	 * set, and then a live deployment logs alerts and pushes nothing ("push not configured").
@@ -345,8 +380,62 @@ export type InboxConfig = {
 /** Web push's VAPID key pair and its subject (a `mailto:` or `https:` address). */
 export type Vapid = { publicKey: string; privateKey: string; subject: string };
 
+/** Every model call is one of these (ADR 0024): each has its own model and daily cap. */
+export const MODEL_TASKS = ["draft", "translate"] as const;
+export type ModelTask = (typeof MODEL_TASKS)[number];
+
+export type ModelsConfig = {
+	/** The OpenRouter key; unset, no task calls a model. */
+	apiKey?: string;
+	baseUrl: string;
+	draft: { model: string; dailyCap: number };
+	translate: { model: string; dailyCap: number };
+	/** The tasks the deterministic stub answers instead of a model (`MODEL_STUB`, E2E only). */
+	stub: ModelTask[];
+};
+
 /** OpenRouter fronts every vendor behind one prepaid balance, which doubles as the budget. */
 export const DEFAULT_DRAFT_BASE_URL = "https://openrouter.ai/api/v1";
+
+/** Each task's model and cap when its env var is unset (ADR 0024). */
+export const MODEL_DEFAULTS = {
+	draft: { model: "anthropic/claude-haiku-5.5", dailyCap: 50 },
+	// Until the translation eval (#254) picks its model.
+	translate: { model: "anthropic/claude-haiku-5.5", dailyCap: 1000 },
+} as const satisfies Record<ModelTask, { model: string; dailyCap: number }>;
+
+function isOpenRouter(value: string): boolean {
+	return new URL(value).hostname === "openrouter.ai";
+}
+
+function splitList(value: string): string[] {
+	return value
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
+function modelsFromEnv(env: Record<string, string | undefined>): ModelsConfig {
+	const clean = (value: string | undefined) => value?.trim() || undefined;
+	const cap = (value: string | undefined, fallback: number) => {
+		const text = clean(value);
+		return text && /^\d+$/.test(text) ? Number(text) : fallback;
+	};
+	const stub = clean(env.MODEL_STUB);
+	return {
+		apiKey: clean(env.DRAFT_API_KEY),
+		baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,
+		draft: {
+			model: clean(env.DRAFT_MODEL) ?? MODEL_DEFAULTS.draft.model,
+			dailyCap: cap(env.DRAFT_DAILY_CAP, MODEL_DEFAULTS.draft.dailyCap),
+		},
+		translate: {
+			model: clean(env.TRANSLATE_MODEL) ?? MODEL_DEFAULTS.translate.model,
+			dailyCap: cap(env.TRANSLATE_DAILY_CAP, MODEL_DEFAULTS.translate.dailyCap),
+		},
+		stub: stub ? MODEL_TASKS.filter((task) => splitList(stub).includes(task)) : [],
+	};
+}
 
 export function resolveSendMode(value: string | undefined): SendMode {
 	return value === "live" ? "live" : "mock";
@@ -372,11 +461,7 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 		mockCrmWebhookSecret: clean(env.MOCK_CRM_WEBHOOK_SECRET),
 		hubspotAppClientSecret: clean(env.HUBSPOT_APP_CLIENT_SECRET),
 		hubspotWebhookUrl: clean(env.HUBSPOT_WEBHOOK_URL),
-		drafts: {
-			apiKey: clean(env.DRAFT_API_KEY),
-			baseUrl: clean(env.DRAFT_BASE_URL) ?? DEFAULT_DRAFT_BASE_URL,
-			model: clean(env.DRAFT_MODEL),
-		},
+		models: modelsFromEnv(env),
 		vapid: vapidFromEnv(
 			clean(env.VAPID_PUBLIC_KEY),
 			clean(env.VAPID_PRIVATE_KEY),
@@ -417,7 +502,7 @@ export function mockInboxConfig(overrides: Partial<InboxConfig> = {}): InboxConf
 		sendMode: "mock",
 		whatsapp: {},
 		zalo: {},
-		drafts: { baseUrl: DEFAULT_DRAFT_BASE_URL },
+		models: modelsFromEnv({}),
 		vapid: null,
 		...overrides,
 	};

@@ -1,0 +1,125 @@
+import { z } from "zod";
+
+import type { DraftInput, TranslateInput } from "./adapter";
+import type { Attempt, TaskBackend } from "./layer";
+import {
+	followUpSystemPrompt,
+	followUpUserPrompt,
+	translationSystemPrompt,
+	translationUserPrompt,
+} from "./prompts";
+
+/**
+ * OpenRouter, the only production provider (ADR 0024), over its OpenAI-compatible
+ * chat-completions protocol. The base URL may point elsewhere in development; a production
+ * deployment refuses anything but OpenRouter (`config.ts`). No SDK: the protocol is one POST,
+ * and a hand-written client cannot drift with a vendor's package.
+ *
+ * Every request asks for zero-retention endpoints that never train on the text
+ * (openrouter.ai/docs/guides/features/zdr): guests' words aren't kept by the model's provider.
+ *
+ * Both tasks are short, one-turn completions, so `max_tokens` is deliberately small: a
+ * translation of a chat message or a three-sentence reply never needs more.
+ */
+const TRANSLATION_MAX_TOKENS = 1024;
+const DRAFT_MAX_TOKENS = 512;
+
+/** OpenRouter's provider routing: zero-retention endpoints only, and no training on the text. */
+export const ZERO_RETENTION = { zdr: true, data_collection: "deny" } as const;
+
+/** The slice of a chat-completions response this client reads. Everything else is ignored. */
+const completion = z.object({
+	choices: z
+		.array(
+			z.object({
+				message: z.object({ content: z.string().nullable() }),
+				finish_reason: z.string().nullable().optional(),
+			}),
+		)
+		.min(1),
+	usage: z
+		.object({
+			prompt_tokens: z.number().optional(),
+			completion_tokens: z.number().optional(),
+		})
+		.nullish(),
+});
+
+type Prompt = { system: string; user: string; maxTokens: number };
+
+export function createOpenRouterBackends(input: {
+	apiKey: string;
+	baseUrl: string;
+	models: { draft: string; translate: string };
+}): { draft: TaskBackend<DraftInput>; translate: TaskBackend<TranslateInput> } {
+	const endpoint = `${input.baseUrl.replace(/\/+$/, "")}/chat/completions`;
+
+	async function complete(model: string, prompt: Prompt, signal: AbortSignal): Promise<Attempt> {
+		const response = await fetch(endpoint, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${input.apiKey}`,
+			},
+			body: JSON.stringify({
+				model,
+				max_tokens: prompt.maxTokens,
+				temperature: 0.2,
+				provider: ZERO_RETENTION,
+				messages: [
+					{ role: "system", content: prompt.system },
+					{ role: "user", content: prompt.user },
+				],
+			}),
+			signal,
+		});
+		if (!response.ok) {
+			return { outcome: "error", status: response.status };
+		}
+		// A body that isn't JSON throws a SyntaxError quoting its start, which can be the guest's
+		// words: the layer logs its kind only (#220).
+		const parsed = completion.safeParse(await response.json());
+		if (!parsed.success) {
+			return { outcome: "error", status: response.status, kind: "unexpected response shape" };
+		}
+		const [choice] = parsed.data.choices;
+		const tokens = {
+			inputTokens: parsed.data.usage?.prompt_tokens ?? null,
+			outputTokens: parsed.data.usage?.completion_tokens ?? null,
+		};
+		if (choice.finish_reason === "content_filter") {
+			return { outcome: "filtered", ...tokens };
+		}
+		const text = choice.message.content?.trim();
+		return text ? { outcome: "ok", text, ...tokens } : { outcome: "empty", ...tokens };
+	}
+
+	return {
+		translate: {
+			model: input.models.translate,
+			run: (request, signal) =>
+				complete(
+					input.models.translate,
+					{
+						system: translationSystemPrompt(request.to),
+						user: translationUserPrompt(request),
+						maxTokens: TRANSLATION_MAX_TOKENS,
+					},
+					signal,
+				),
+		},
+		draft: {
+			model: input.models.draft,
+			run: (request, signal) =>
+				complete(
+					input.models.draft,
+					{
+						system: followUpSystemPrompt(request.guestLanguage),
+						user: followUpUserPrompt(request),
+						maxTokens: DRAFT_MAX_TOKENS,
+					},
+					signal,
+				),
+		},
+	};
+}

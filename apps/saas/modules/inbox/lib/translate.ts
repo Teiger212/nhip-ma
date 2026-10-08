@@ -9,10 +9,11 @@ import {
 } from "./types";
 
 /**
- * Guest message translation (ADR 0007). Runs once per message per operator language,
- * through the draft adapter, in the background; the UI shows the original at once and
- * the translation when it lands. A message already in the operator's language is not
- * translated, and nothing runs at all without a model behind the adapter.
+ * Guest message translation (ADR 0007). Runs once per message per operator language, as the
+ * model layer's `translate` task (ADR 0024), in the background; the UI shows the original at
+ * once and the translation when it lands. A message already in the operator's language is not
+ * translated, and nothing runs at all without a model behind the task. A call past the office's
+ * daily cap is recorded as a failure, so it waits out the same backoff.
  */
 const inFlight = new Map<string, Promise<void>>();
 
@@ -54,7 +55,7 @@ export function scheduleTranslation(
 	message: Message,
 	locale: OperatorLanguage,
 ): Promise<void> | null {
-	if (runtime.drafts.provider === "none" || !needsTranslation(message, locale)) {
+	if (!runtime.drafts.serves("translate") || !needsTranslation(message, locale)) {
 		return null;
 	}
 	const id = key(message.id, locale);
@@ -66,6 +67,7 @@ export function scheduleTranslation(
 		let text: string | null;
 		try {
 			text = await runtime.drafts.translate({
+				officeId,
 				text: message.text,
 				from: detectLanguage(message.text),
 				to: locale,
@@ -104,7 +106,7 @@ export function scheduleMissingTranslations(
 	conversation: Pick<Conversation, "id" | "officeId" | "messages">,
 	locale: OperatorLanguage,
 ): void {
-	if (runtime.drafts.provider === "none") {
+	if (!runtime.drafts.serves("translate")) {
 		return;
 	}
 	const missing = conversation.messages.filter(
