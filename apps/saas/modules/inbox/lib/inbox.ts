@@ -462,6 +462,11 @@ export type ApproveInput = {
 	 * guest wrote again names the message it was typed for (ADR 0024).
 	 */
 	edited?: boolean;
+	/**
+	 * The latest guest message the operator's screen showed. A kept edit is sent to the latest
+	 * message only if it is this one: the "Guest wrote again" note was on screen (ADR 0024).
+	 */
+	seenInboundId?: string;
 };
 
 /**
@@ -491,8 +496,9 @@ function keptEditFor(conversation: Conversation, named: string): boolean {
  * against the same inbound is refused. An approval naming an older guest message is refused
  * as out of date (`stale_target`, ADR 0011), with one exception (ADR 0024): the operator's own
  * edit, kept after the guest wrote again, answers the latest guest message. The request says it
- * is an edit (`edited`), and the message it names must still be in the open turn
- * (`keptEditFor`): the suggestion as it stood is never sent to a message it wasn't written for. The Answer (ADR 0011) is on record before any
+ * is an edit (`edited`), it saw the latest guest message (`seenInboundId`), and the message it
+ * names must still be in the open turn (`keptEditFor`): the suggestion as it stood, or an edit
+ * sent before the new message showed, is never sent to a message it wasn't written for. The Answer (ADR 0011) is on record before any
  * vendor is called, so nothing that happens between approval and acknowledgement can
  * send the wrong text, send twice, or hide a guest message that lands in between.
  */
@@ -520,7 +526,11 @@ export async function approveAndSend(
 			message: "An approval must name the guest message it answers.",
 		};
 	}
-	if (input.inboundId !== inboundId && !(input.edited && keptEditFor(conv, input.inboundId))) {
+	const keptEdit =
+		input.edited === true &&
+		input.seenInboundId === inboundId &&
+		keptEditFor(conv, input.inboundId);
+	if (input.inboundId !== inboundId && !keptEdit) {
 		return {
 			ok: false,
 			status: 409,

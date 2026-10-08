@@ -182,7 +182,7 @@ describe("a kept edit answers the latest guest message (ADR 0024 amending ADR 00
 		const { older, latest, id } = await wroteTwice("kept");
 		const sent = await approveAndSend(
 			id,
-			{ inboundId: older, text: "My own words for you.", edited: true },
+			{ inboundId: older, text: "My own words for you.", edited: true, seenInboundId: latest },
 			MANAGER,
 		);
 		expect(sent.ok).toBe(true);
@@ -202,16 +202,32 @@ describe("a kept edit answers the latest guest message (ADR 0024 amending ADR 00
 	});
 
 	test("an untouched suggestion that names an older guest message gets 409 stale_target, and nothing is sent", async () => {
-		const { older, id } = await wroteTwice("untouched");
+		const { older, latest, id } = await wroteTwice("untouched");
 		const refused = await approveAndSend(
 			id,
-			{ inboundId: older, text: "The old suggestion." },
+			{ inboundId: older, text: "The old suggestion.", seenInboundId: latest },
 			MANAGER,
 		);
 		expect(refused).toMatchObject({ ok: false, status: 409, error: "stale_target" });
 		const conversation = await thread("untouched");
 		expect(conversation.answers).toHaveLength(0);
 		expect(conversation.messages.filter((message) => message.source === "nhip")).toHaveLength(0);
+	});
+
+	test("an edit sent before the guest's new message showed on the operator's screen gets 409 stale_target", async () => {
+		const { older, id } = await wroteTwice("unseen");
+		const refused = await approveAndSend(
+			id,
+			{
+				inboundId: older,
+				text: "Typed for the first message.",
+				edited: true,
+				seenInboundId: older,
+			},
+			MANAGER,
+		);
+		expect(refused).toMatchObject({ ok: false, status: 409, error: "stale_target" });
+		expect((await thread("unseen")).answers).toHaveLength(0);
 	});
 
 	test("a kept edit for a message the office has answered since is still refused with 409 stale_target", async () => {
@@ -222,7 +238,12 @@ describe("a kept edit answers the latest guest message (ADR 0024 amending ADR 00
 		const conversation = await thread("answered-since");
 		const refused = await approveAndSend(
 			conversation.id,
-			{ inboundId: first ?? undefined, text: "Words typed before the reply.", edited: true },
+			{
+				inboundId: first ?? undefined,
+				text: "Words typed before the reply.",
+				edited: true,
+				seenInboundId: conversation.unansweredInboundId ?? undefined,
+			},
 			MANAGER,
 		);
 		expect(refused).toMatchObject({ ok: false, status: 409, error: "stale_target" });
@@ -231,10 +252,10 @@ describe("a kept edit answers the latest guest message (ADR 0024 amending ADR 00
 
 	test("a kept edit naming a message of another thread is refused with 409 stale_target", async () => {
 		const other = await wroteTwice("elsewhere");
-		const { id } = await wroteTwice("here");
+		const { id, latest } = await wroteTwice("here");
 		const refused = await approveAndSend(
 			id,
-			{ inboundId: other.older, text: "Wrong thread.", edited: true },
+			{ inboundId: other.older, text: "Wrong thread.", edited: true, seenInboundId: latest },
 			MANAGER,
 		);
 		expect(refused).toMatchObject({ ok: false, status: 409, error: "stale_target" });

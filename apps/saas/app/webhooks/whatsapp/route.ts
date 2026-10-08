@@ -4,6 +4,12 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * A guest message's model draft waits about 30 s inside `after()`, then calls the model (20 s,
+ * one retry): the function is kept alive that long (ADR 0024, #252). A literal, as Next.js reads it.
+ */
+export const maxDuration = 120;
+
 /** Meta's one-time subscription handshake. */
 export async function GET(request: Request): Promise<Response> {
 	const url = new URL(request.url);

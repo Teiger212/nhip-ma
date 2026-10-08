@@ -331,13 +331,16 @@ export function useApproveAndSend() {
 			inboundId,
 			reply,
 			edited,
+			seenInboundId,
 		}: {
 			id: string;
 			inboundId: string;
 			reply: string;
 			/** The reply is the operator's own edit (ADR 0024): kept after the guest wrote again, it answers their latest message. */
 			edited: boolean;
-		}) => mutation.mutateAsync({ id, body: { inboundId, reply, edited } }),
+			/** The latest guest message on the operator's screen. */
+			seenInboundId: string;
+		}) => mutation.mutateAsync({ id, body: { inboundId, reply, edited, seenInboundId } }),
 	};
 }
 

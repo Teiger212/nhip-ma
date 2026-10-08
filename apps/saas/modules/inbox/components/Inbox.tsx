@@ -234,7 +234,8 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			void refetchDetail();
 		}
 	}, [rowState, detailState, detailFetching, refetchDetail]);
-	const { reply, edited, guestWroteAgain, target, setReply, dropEdit } = useReplyDraft(selected);
+	const { reply, edited, guestWroteAgain, target, setReply, dropEdit, retarget } =
+		useReplyDraft(selected);
 	const cribNotes = selected
 		? formatConversationCrib(selected, (key, values) => t(key, values), locale)
 		: null;
@@ -251,6 +252,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 				inboundId: target,
 				reply,
 				edited,
+				seenInboundId: selected.unansweredInboundId,
 			});
 			dropEdit(selected.id);
 			toast.add({
@@ -262,6 +264,10 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			if (view === "sent" || view === "all") setSelectedId(result.conversation.id);
 		} catch (error) {
 			setSendError(error instanceof Error ? error.message : t("sendFailed"));
+			// The edit's message was answered since: keep the text, for the message waiting now.
+			if (error instanceof InboxApiError && error.code === "stale_target") {
+				retarget(selected.id, selected.unansweredInboundId);
+			}
 		}
 	}
 

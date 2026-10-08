@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
  * Approve and send. The body names the guest message being answered and the exact text;
  * a missing target, a stale target, or an empty reply is refused (ADR 0011). `edited: true`
  * says the text is the operator's own edit: one kept after the guest wrote again answers their
- * latest message (ADR 0024).
+ * latest message, when `seenInboundId` says the operator's screen showed it (ADR 0024).
  */
 export async function POST(request: Request, context: RouteContext): Promise<Response> {
 	const gate = await requireInboxSession(request);
@@ -22,11 +22,13 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	let inboundId: string | undefined;
 	let text: string | undefined;
 	let edited = false;
+	let seenInboundId: string | undefined;
 	try {
 		const body = (await request.json()) as {
 			inboundId?: unknown;
 			reply?: unknown;
 			edited?: unknown;
+			seenInboundId?: unknown;
 		};
 		if (typeof body.inboundId === "string") {
 			inboundId = body.inboundId;
@@ -35,12 +37,15 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 			text = body.reply;
 		}
 		edited = body.edited === true;
+		if (typeof body.seenInboundId === "string") {
+			seenInboundId = body.seenInboundId;
+		}
 	} catch {
 		// A malformed body is an approval of nothing; the checks below refuse it.
 	}
 	const result = await approveAndSend(
 		decodeURIComponent(id),
-		{ inboundId, text, edited },
+		{ inboundId, text, edited, seenInboundId },
 		gate.viewer,
 	);
 	if (!result.ok) {
