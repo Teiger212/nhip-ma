@@ -7,18 +7,24 @@ useTestDatabaseForAppClient();
 
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
-import { followUpTemplate } from "./draft";
 import { type DraftAdapter, type DraftInput, noDraftAdapter } from "./drafts";
-import { greetingLabel } from "./greeting";
+import { greetingAsks, greetingLabel, greetingQuestion } from "./greeting";
 import {
 	applyOneShot,
 	approveAndSend,
+	refreshTemplate,
 	ingestEvents,
 	injectDevInbound,
 	regenerateDraft,
 } from "./inbox";
 import { type Runtime, setRuntimeForTests } from "./runtime";
-import { connectZaloOa, guestMessage, TEST_SECRETS_KEY, threadOf } from "./test-fixtures";
+import {
+	connectZaloOa,
+	guestMessage,
+	membership,
+	TEST_SECRETS_KEY,
+	threadOf,
+} from "./test-fixtures";
 import type { Conversation, InboundEvent, Message } from "./types";
 
 /**
@@ -76,6 +82,20 @@ async function thread(guestId: string): Promise<Conversation> {
 	const { id } = await threadOf(OFFICE, guestId);
 	return (await runtime.store.getOfficeConversation(OFFICE, id)) as Conversation;
 }
+
+/** The template's office intro on an Unassigned thread (ADR 0024). */
+const INTRO = new RegExp(`^Hi, this is ${OFFICE}\\.`);
+
+/** What "Hi, we're looking to rent an apartment in Tay Ho" gives. */
+const RENT_IN_TAY_HO = {
+	areaOfInterest: "Tây Hồ",
+	nationality: null,
+	inVietnamNow: null,
+	rentOrBuy: "rent" as const,
+	timeframe: null,
+	budgetBand: null,
+	bedsOrHousehold: null,
+};
 
 function autoReplies(conversation: Conversation): Message[] {
 	return conversation.messages.filter((message) => message.source === "auto-reply");
@@ -318,30 +338,36 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 		followUps.length = 0;
 	});
 
-	test("without a model, the box holds the follow-up template, for the first message and the next", async () => {
+	/** The template after the greeting (ADR 0024): the office named, no second thanks, no repeat. */
+	function expectTemplateAfterGreeting(conversation: Conversation, answers: string) {
+		const draft = conversation.oneShot?.draft;
+		expect(draft).toMatchObject({ answersMessageId: answers, source: "template" });
+		expect(draft?.reply).toMatch(INTRO);
+		expect(draft?.reply).not.toMatch(/thank|colleague/i);
+		const asked = greetingAsks(RENT_IN_TAY_HO);
+		expect(asked.length).toBeGreaterThan(0);
+		for (const qualifier of asked) {
+			expect(draft?.reply).not.toContain(greetingQuestion("en", qualifier));
+		}
+	}
+
+	test("without a model, the box holds the template written after the greeting, for the first message and the next", async () => {
 		await arrive(guest("p1", "Hi, we're looking to rent an apartment in Tay Ho"));
 		let conversation = await thread("p1");
 		expect(autoReplies(conversation)).toHaveLength(1);
-		expect(conversation.oneShot?.draft).toEqual({
-			reply: followUpTemplate("en"),
-			answersMessageId: conversation.messages[0].id,
-			source: "template",
-		});
+		expectTemplateAfterGreeting(conversation, conversation.messages[0].id);
 
 		await arrive(guest("p1", "Is anyone there?"));
 		conversation = await thread("p1");
-		expect(conversation.oneShot?.draft).toEqual({
-			reply: followUpTemplate("en"),
-			answersMessageId: conversation.messages[2].id,
-			source: "template",
-		});
+		expectTemplateAfterGreeting(conversation, conversation.messages[2].id);
 	});
 
-	test("asking for a new suggestion without a model puts back the follow-up template", async () => {
+	test("asking for a new suggestion without a model puts back the template", async () => {
 		await arrive(guest("p2", "Hello, renting in Tay Ho"));
 		const conversation = await thread("p2");
+		expect(conversation.oneShot?.draft.reply).toMatch(INTRO);
 		const result = await regenerateDraft(conversation.id, MANAGER);
-		expect(result.ok && result.conversation.oneShot?.draft.reply).toBe(followUpTemplate("en"));
+		expect(result.ok && result.conversation.oneShot?.draft).toEqual(conversation.oneShot?.draft);
 	});
 
 	test("with a model, the first message gets the model's follow-up, written from the conversation with the greeting in it", async () => {
@@ -368,7 +394,7 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 		});
 	});
 
-	test("a guest message read before the greeting was filed still ends on the follow-up template", async () => {
+	test("a guest message read before the greeting was filed still ends on the template written after it", async () => {
 		await arrive(guest("p5", "Hello"));
 		const greeted = await thread("p5");
 		expect(autoReplies(greeted)).toHaveLength(1);
@@ -383,19 +409,23 @@ describe("after the auto-reply, the reply box takes the follow-up path (R11, P2)
 			messages: stale.messages.filter((message) => message.source !== "auto-reply"),
 		};
 		const result = await applyOneShot(runtime.store, before);
-		expect(result?.oneShot?.draft).toEqual({
-			reply: followUpTemplate("en"),
+		expect(result?.oneShot?.draft).toMatchObject({
 			answersMessageId: result?.messages.at(-1)?.id,
 			source: "template",
 		});
+		// The greeting thanked the guest; the template written for the stored thread doesn't.
+		expect(result?.oneShot?.draft.reply).toMatch(INTRO);
+		expect(result?.oneShot?.draft.reply).not.toMatch(/thank/i);
 	});
 
-	test("with no greeting sent, the box keeps the first-reply template", async () => {
+	test("with no greeting sent, the template thanks the guest itself", async () => {
 		await connectZaloOa(runtime.store, OA, { disconnected: true });
 		await arrive(guest("p4", "Hi, we're looking to rent an apartment in Tay Ho"));
 		const conversation = await thread("p4");
 		expect(autoReplies(conversation)).toHaveLength(0);
-		expect(conversation.oneShot?.draft.reply).toMatch(/^Thanks for writing/);
+		expect(conversation.oneShot?.draft.reply).toBe(
+			`Hi, this is ${OFFICE}. Thanks for getting in touch. I'll pull together a few options to rent in Tây Hồ and send them here shortly. What budget do you have in mind?`,
+		);
 	});
 });
 
@@ -454,5 +484,84 @@ describe("the funnel ignores the auto-reply from first message to conversation (
 
 		await arrive(guest("n1", "Great, thanks"));
 		expect(await funnel()).toMatchObject({ leadsIn: 1, engaged: 1, inConversation: 1 });
+	});
+});
+
+describe("assigning writes the untouched template again in the owner's name (ADR 0024)", () => {
+	beforeEach(async () => {
+		await membership(OFFICE, "agent-1", "member");
+		await testDb.user.update({ where: { id: "agent-1" }, data: { name: "Lan Pham" } });
+	});
+
+	/** As the owner route does: move the thread, then write its template again. */
+	async function assign(conversation: Conversation, ownerId: string | null) {
+		expect(await runtime.store.reassign(conversation.id, ownerId, OFFICE)).not.toBeNull();
+		const moved = await runtime.store.getOfficeConversation(OFFICE, conversation.id);
+		if (!moved) throw new Error("thread gone");
+		return (await refreshTemplate(runtime.store, moved)) as Conversation;
+	}
+
+	test("an Unassigned thread's template names the office; assigned, it introduces the owner by first name; back to Unassigned, the office again", async () => {
+		await arrive(guest("a1", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const unassigned = await thread("a1");
+		expect(unassigned.owner).toBeNull();
+		expect(unassigned.oneShot?.draft.reply).toMatch(INTRO);
+
+		const assigned = await assign(unassigned, "agent-1");
+		expect(assigned.oneShot?.draft).toMatchObject({
+			answersMessageId: unassigned.oneShot?.draft.answersMessageId,
+			source: "template",
+		});
+		expect(assigned.oneShot?.draft.reply).toMatch(new RegExp(`^Hi, I'm Lan from ${OFFICE}\\.`));
+		expect(assigned.oneShot?.draft.reply).not.toContain("Pham");
+
+		const returned = await assign(assigned, null);
+		expect(returned.oneShot?.draft.reply).toBe(unassigned.oneShot?.draft.reply);
+	});
+
+	test("a model's draft is left as it is", async () => {
+		await arrive(guest("a2", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const conversation = await thread("a2");
+		const modelDraft = {
+			reply: "Happy to help.",
+			answersMessageId: conversation.unansweredInboundId,
+			source: "model" as const,
+		};
+		await runtime.store.setDraft(OFFICE, conversation.id, modelDraft);
+		const assigned = await assign(conversation, "agent-1");
+		expect(assigned.oneShot?.draft).toEqual(modelDraft);
+	});
+
+	test("a model draft that lands after the thread was read is not overwritten by its template", async () => {
+		await arrive(guest("a4", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const read = await thread("a4");
+		expect(await runtime.store.reassign(read.id, "agent-1", OFFICE)).not.toBeNull();
+		const modelDraft = {
+			reply: "Happy to help.",
+			answersMessageId: read.unansweredInboundId,
+			source: "model" as const,
+		};
+		await runtime.store.setDraft(OFFICE, read.id, modelDraft);
+		// The thread as read before the model's draft landed, with its new owner.
+		const stale = { ...read, owner: { id: "agent-1", name: "Lan Pham" } };
+		const after = await refreshTemplate(runtime.store, stale);
+		expect(after?.oneShot?.draft).toEqual(modelDraft);
+	});
+
+	test("once the office has replied, the later-turn template names no one, assigned or not", async () => {
+		await arrive(guest("a3", "Hi, we're looking to rent an apartment in Tay Ho"));
+		const first = await thread("a3");
+		const sent = await approveAndSend(
+			first.id,
+			{ inboundId: first.unansweredInboundId ?? undefined, text: "Hello! Happy to help." },
+			MANAGER,
+		);
+		expect(sent.ok).toBe(true);
+		await arrive(guest("a3", "Great, how many options do you have?"));
+		const later = await thread("a3");
+		const assigned = await assign(later, "agent-1");
+		expect(assigned.oneShot?.draft.reply).toBe(later.oneShot?.draft.reply);
+		expect(assigned.oneShot?.draft.reply).not.toContain("Lan");
+		expect(assigned.oneShot?.draft.reply).not.toContain(OFFICE);
 	});
 });

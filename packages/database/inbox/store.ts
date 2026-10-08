@@ -859,6 +859,20 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return load(officeId, id);
 		},
 
+		async rewriteTemplateDraft(officeId, id, read: Draft, reply: string) {
+			await db.draft.updateMany({
+				where: {
+					conversationId: id,
+					officeId,
+					source: "template",
+					reply: read.reply,
+					answersMessageId: read.answersMessageId,
+				},
+				data: { reply },
+			});
+			return load(officeId, id);
+		},
+
 		// The translation rows below are keyed by message. Scoped by office in the where, a
 		// message of another office matches nothing; the create that follows is then refused
 		// by the database (its key exists, or its office is not its message's): it throws.

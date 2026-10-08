@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-10-08 (Guest details name what's missing)
+
+### Changed
+
+- **The guest details name what's still to ask** (#244, ADR 0021 R3). In the rail and in the narrow pane's strip, the "N missing" fold is replaced by one more row of the details: "Missing" (VI "Còn thiếu", pending #78) with the names as its value, "budget, move-in", in the amber Waiting tone. It counts only what the auto-reply asks for, in the same order: rent or buy, area, budget, move-in, beds / household. Nationality and In Vietnam now show only when known, and paperwork only when mentioned. When nothing is missing, there's no row.
+
+## 2026-10-08 (one office language, set by the manager)
+
+### Added
+
+- **The manager sets the office language, English or Vietnamese** (#256, ADR 0025). It sits on
+  the office's settings, General tab, beside the auto-reply switch, for managers only: the API
+  (`/api/office/language`) refuses an agent's change (403) and a signed-out caller (401). The
+  platform admin's page for an office doesn't show it. An office whose manager hasn't set one,
+  every office today, is in English.
+
+### Changed
+
+- **A guest message is translated once, into the office language** (#256, ADR 0025 amending
+  ADR 0007). It was translated into both English and Vietnamese, so a Korean, Japanese or Russian
+  message cost two model calls; now it costs one, and a message already in the office language
+  costs none. The open thread shows the translation in the office language whatever the reader's
+  interface language, and the server, not the browser, decides which language opening a thread
+  fills. After the manager changes the language, opening an older thread translates its guest
+  messages into the new one then, against the office's daily translation cap; translations in
+  the old language are kept.
+
+## 2026-10-08 (the template suggested reply in the agent's own voice)
+
+### Changed
+
+- **The template suggested reply speaks as the agent** (#253, ADR 0024). One template in EN, VI,
+  JA, KO and RU replaces the first-reply and follow-up templates, which thanked the guest a
+  second time after the auto-reply and promised "a colleague". Until the office's first human
+  reply it introduces the thread's owner by first name and the office ("Hi, I'm Lan from Saigon
+  Prime."), or the office alone while the thread is Unassigned, says what the agent will do, and
+  asks at most one missing detail that changes what the agent would send, never one the
+  auto-reply or the office already asked. It thanks the guest only when the office has sent
+  nothing at all. On a later turn it introduces no one and asks nothing. Assigning a thread
+  writes its untouched template again in the new owner's name; typed text is never overwritten.
+  The VI wording is pending a native read (#78); JA, KO and RU have none planned yet.
+- **The reply box says who wrote the suggestion**: "Suggested reply · AI" or "Suggested reply ·
+  template" (VI "Gợi ý trả lời · AI" / "Gợi ý trả lời · mẫu", pending #78).
+
 ## 2026-10-08 (an unsupported guest language is named)
 
 ### Changed

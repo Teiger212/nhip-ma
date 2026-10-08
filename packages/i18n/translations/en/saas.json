@@ -865,7 +865,6 @@
 		"navReports": "Reports",
 		"navPaperwork": "Paperwork",
 		"footer": "Guests see the agency number. Never auto-send.",
-		"missing": "(missing)",
 		"yes": "Yes",
 		"no": "No",
 		"searchPlaceholder": "Search name or last message",
@@ -886,8 +885,8 @@
 		"translation": "Translation",
 		"noTranslation": "{language} isn't supported: no translation",
 		"suggested": {
-			"template": "Suggested reply",
-			"model": "AI suggestion from the conversation"
+			"template": "Suggested reply · template",
+			"model": "Suggested reply · AI"
 		},
 		"regenerate": "Regenerate",
 		"regenerating": "Regenerating…",
@@ -904,7 +903,7 @@
 		"language": "Language",
 		"back": "Back",
 		"backAria": "Back to thread list",
-		"missingFields": "{count} missing",
+		"missingLabel": "Missing",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
@@ -950,8 +949,7 @@
 			"moveIn": "Move-in",
 			"budget": "Budget",
 			"beds": "Beds / household",
-			"paperwork": "Paperwork",
-			"noneMentioned": "none mentioned"
+			"paperwork": "Paperwork"
 		},
 		"views": {
 			"aria": "Filter threads",

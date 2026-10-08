@@ -27,8 +27,8 @@ import { GET as listConversations } from "../../../app/api/conversations/route";
 import { POST as inject } from "../../../app/dev/inbound/route";
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
-import { followUpTemplate } from "./draft";
 import { type DraftAdapter, type DraftInput, noDraftAdapter } from "./drafts";
+import { NEW_THREAD, replyTemplate } from "./reply-template";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { json, params, post, WALK_SESSION } from "./test-fixtures";
 import type { Conversation, ConversationSummary } from "./types";
@@ -131,7 +131,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.unansweredInboundId).toBeNull();
 	expect(conv.messages.filter((message) => message.source === "nhip")).toHaveLength(1);
 
-	// 3. The guest writes back. Your turn again: the follow-up template is there at once, the
+	// 3. The guest writes back. Your turn again: the later-turn template is there at once, the
 	//    translation and the model draft follow.
 	const second = await json(
 		await inject(
@@ -150,7 +150,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(secondInbound).not.toBe(firstInbound);
 	expect(conv.sentAt).toBeTruthy();
 	expect(conv.oneShot?.draft).toEqual({
-		reply: followUpTemplate("ko"),
+		reply: laterTurn("ko", conv),
 		answersMessageId: secondInbound,
 		source: "template",
 	});
@@ -229,7 +229,7 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 });
 
 test("regenerate asks the model even for a first reply and keeps the operator in charge", async () => {
-	// With the auto-reply off, the first message keeps the first-reply template (ADR 0021, G6).
+	// With the auto-reply off, the first message keeps the template, which thanks the guest (ADR 0021 G6, ADR 0024).
 	await testDb.officeSetting.create({ data: { officeId: "walk-office", autoReply: false } });
 	const injected = await json(
 		await inject(
@@ -313,10 +313,20 @@ test("without a model there is no translation and every suggestion is a template
 	);
 	await settleBackgroundWork();
 	conv = await get(conv.id);
-	expect(conv.oneShot?.draft).toMatchObject({ reply: followUpTemplate("ru"), source: "template" });
+	expect(conv.oneShot?.draft).toMatchObject({ reply: laterTurn("ru", conv), source: "template" });
 	const regenerated = await json(
 		await draft(post(`http://localhost/api/conversations/${conv.id}/draft`, {}), params(conv.id)),
 	);
 	expect(regenerated.status).toBe(200);
 	expect((regenerated.body.conversation as Conversation).oneShot?.draft.source).toBe("template");
 });
+
+/**
+ * The template once the office has replied (ADR 0024): it introduces no one and asks nothing,
+ * whatever the thread holds.
+ */
+function laterTurn(language: "ko" | "ru", conv: Conversation): string {
+	const qualification = conv.oneShot?.qualification;
+	if (!qualification) throw new Error("no one-shot");
+	return replyTemplate(language, qualification, { ...NEW_THREAD, sentAt: conv.sentAt });
+}

@@ -3,6 +3,7 @@ import { createInboxStore } from "@repo/database/inbox";
 
 import { type SeedEnv, SeedRefused, seedRefusal } from "../lib/dev-seed/guard";
 import { SEED_OFFICES, seedDevOffices } from "../lib/dev-seed/seed-offices";
+import { refreshTemplate } from "../lib/inbox";
 import { inView, isQuiet, threadStatus } from "../lib/queue";
 import { getRuntime } from "../lib/runtime";
 import { DEMO_THREADS, seedInbox } from "../lib/seed";
@@ -127,6 +128,9 @@ async function seedWalkDemo({
 	};
 	for (const conv of conversations) {
 		await store.setOwner(conv.id, owners[conv.guestId] ?? null, WALK_OFFICE_ID);
+		// The template introduces the owner it now has (ADR 0024).
+		const reassigned = await store.getOfficeConversation(WALK_OFFICE_ID, conv.id);
+		if (reassigned) await refreshTemplate(store, reassigned);
 	}
 	const created = conversations.length - existing;
 	log(

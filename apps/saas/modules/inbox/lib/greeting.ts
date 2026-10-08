@@ -16,8 +16,12 @@ export type Qualifier = "rentOrBuy" | "area" | "budget" | "timeframe" | "househo
 /** At most this many questions in an auto-reply (G2). */
 export const MAX_GREETING_QUESTIONS = 2;
 
-/** R3's first missing details, in its order: rent or buy, area, budget, timeframe, household. */
-export function greetingAsks(qualification: Qualification): Qualifier[] {
+/**
+ * Every detail the guest hasn't given that the auto-reply would ask for, in R3's order: rent or
+ * buy, area, budget, timeframe, household. The guest details' missing line names this same list
+ * (#244), so the card and the auto-reply never disagree.
+ */
+export function missingQualifiers(qualification: Partial<Qualification>): Qualifier[] {
 	const missing: Record<Qualifier, boolean> = {
 		rentOrBuy: !qualification.rentOrBuy,
 		area: !qualification.areaOfInterest,
@@ -26,7 +30,12 @@ export function greetingAsks(qualification: Qualification): Qualifier[] {
 		household: !qualification.bedsOrHousehold,
 	};
 	const order: Qualifier[] = ["rentOrBuy", "area", "budget", "timeframe", "household"];
-	return order.filter((qualifier) => missing[qualifier]).slice(0, MAX_GREETING_QUESTIONS);
+	return order.filter((qualifier) => missing[qualifier]);
+}
+
+/** R3's first missing details, at most two (G2). */
+export function greetingAsks(qualification: Qualification): Qualifier[] {
+	return missingQualifiers(qualification).slice(0, MAX_GREETING_QUESTIONS);
 }
 
 type Copy = {
@@ -138,6 +147,30 @@ const COPY: Record<GuestLanguage, Copy> = {
 		label: (office) => `Автоответ от ${office}: коллега продолжит общение с вами прямо здесь.`,
 	},
 };
+
+/**
+ * The auto-reply's question for `qualifier`, in `language`. The template suggested reply asks in
+ * the same words (ADR 0024), so a question either one sent is recognised by `askedIn`.
+ */
+export function greetingQuestion(language: GuestLanguage, qualifier: Qualifier): string {
+	return COPY[language].questions[qualifier];
+}
+
+/**
+ * The details an office message asks for, by these questions in any language: what the
+ * auto-reply asked as it was sent, not as today's details would ask it. A question the agent
+ * reworded before sending is not recognised.
+ */
+export function askedIn(text: string): Qualifier[] {
+	const normalized = text.normalize("NFC");
+	const asked = new Set<Qualifier>();
+	for (const copy of Object.values(COPY)) {
+		for (const [qualifier, question] of Object.entries(copy.questions) as [Qualifier, string][]) {
+			if (normalized.includes(question.normalize("NFC"))) asked.add(qualifier);
+		}
+	}
+	return [...asked];
+}
 
 /**
  * The always-on disclosure (R7), in the guest's language. It names the office, so it is also
