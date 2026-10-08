@@ -40,7 +40,9 @@ import { replyKey, useReplyDraft } from "../lib/use-reply-draft";
 import { AlertsPanel } from "./AlertsPanel";
 import { InboxToolbar } from "./InboxToolbar";
 import { AssignFromRow } from "./OwnerControl";
-import { ThreadDetail, ThreadDetailSkeleton } from "./ThreadDetail";
+import { ThreadDetailSkeleton } from "./ThreadDetail";
+import { PrototypeSwitcher } from "./prototype/PrototypeSwitcher";
+import { ThreadVariant } from "./prototype/ThreadVariant.prototype";
 import { ThreadList } from "./ThreadList";
 import { ThreadListState } from "./ThreadParts";
 
@@ -394,7 +396,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							<ThreadDetailSkeleton />
 						)
 					) : (
-						<ThreadDetail
+						<ThreadVariant
 							conversation={selected}
 							cribNotes={cribNotes}
 							onBack={() => setDetailOpen(false)}
@@ -426,6 +428,8 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			>
 				{t("footer")}
 			</footer>
+			{/* PROTOTYPE (prototype/thread-layout): the open-thread layout switcher. */}
+			<PrototypeSwitcher />
 		</div>
 	);
 }
