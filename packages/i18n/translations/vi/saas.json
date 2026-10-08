@@ -506,7 +506,7 @@
 			},
 			"officeLanguage": {
 				"error": "Không lưu được ngôn ngữ văn phòng. Hãy thử lại.",
-				"hint": "Tin nhắn của khách được dịch sang ngôn ngữ này, một lần.",
+				"hint": "Mọi người trong văn phòng dùng Nhịp bằng ngôn ngữ này, và tin nhắn của khách được dịch sang ngôn ngữ này, một lần.",
 				"loadError": "Không tải được ngôn ngữ văn phòng. Hãy tải lại trang để thử lại.",
 				"saved": "Đã lưu ngôn ngữ văn phòng",
 				"title": "Ngôn ngữ văn phòng"

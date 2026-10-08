@@ -3,7 +3,9 @@ import type { Browser, Locator, Page } from "@playwright/test";
 import type { Admin } from "./support/fixtures";
 import { expect, test } from "./support/fixtures";
 import { newcomer, openInboxAsNewAccount } from "./support/invitee";
+import { setOfficeLanguage } from "./support/office-language";
 import type { Office } from "./support/offices";
+import { joinOffice } from "./support/operators";
 import { AGENT, AGENT_2, MANAGER, PLATFORM_ADMIN, WALK_OFFICE_ID } from "./support/seed";
 import type { Api } from "./support/session";
 import { apiAs, withOrigin } from "./support/session";
@@ -242,23 +244,32 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 		}
 	});
 
-	test("in Vietnamese the menu item, the title and the roles are Nhóm, Nhân viên and Quản lý", async ({
-		page,
-		context,
+	test("in a Vietnamese office the menu item, the title and the roles are Nhóm, Nhân viên and Quản lý", async ({
+		browser,
+		admin,
 	}) => {
-		await signInContext(context, MANAGER);
-		const t = team(page);
+		// A member reads Nhịp in the office language (ADR 0025): a Vietnamese office of the test's
+		// own with a manager of its own, never the walk office.
+		const office = await admin.createOffice("Team 1 vi");
+		const manager = await joinOffice(admin, browser, office.id, "admin", "team1-vi-manager");
+		try {
+			await setOfficeLanguage(manager.page.request, "vi");
+			const { page } = manager;
+			const t = team(page);
 
-		await page.goto("/vi/inbox");
-		await openUserMenu(page);
-		await expect.soft(teamItem(page, "vi")).toBeVisible();
-		await page.keyboard.press("Escape");
+			await page.goto("/vi/inbox");
+			await openUserMenu(page);
+			await expect.soft(teamItem(page, "vi")).toBeVisible();
+			await page.keyboard.press("Escape");
 
-		await page.goto("/vi/walk/settings/members");
-		await expect.soft(t.heading(COPY.vi.team)).toBeVisible();
-		await expect(t.inviteRole).toHaveText(COPY.vi.agent);
-		await t.inviteRole.click();
-		await expect(t.options).toHaveText([COPY.vi.agent, COPY.vi.manager]);
+			await page.goto(`/vi/${await slugOf(admin.api, office.id)}/settings/members`);
+			await expect.soft(t.heading(COPY.vi.team)).toBeVisible();
+			await expect(t.inviteRole).toHaveText(COPY.vi.agent);
+			await t.inviteRole.click();
+			await expect(t.options).toHaveText([COPY.vi.agent, COPY.vi.manager]);
+		} finally {
+			await manager.close();
+		}
 	});
 });
 
@@ -508,6 +519,11 @@ async function officeWithTeam(
 	};
 	try {
 		await openInboxAsNewAccount(manager.page);
+		// A member reads Nhịp in the office language (ADR 0025): Vietnamese is a Vietnamese office,
+		// set once the newcomer has passed the first-run step.
+		if (locale === "vi") {
+			await setOfficeLanguage(manager.page.request, "vi");
+		}
 		await manager.page.goto(`/${locale}/${await slugOf(admin.api, office.id)}/settings/members`);
 		const t = team(manager.page);
 		await expect(t.memberRole(t.member(agent.email))).toHaveText(COPY[locale].agent);

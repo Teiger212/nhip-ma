@@ -1,4 +1,5 @@
 import { loginRedirectPath } from "@auth/lib/session-cookie-gate";
+import { REQUEST_PATH_HEADER } from "@i18n/lib/request-path";
 import { routing } from "@i18n/routing";
 import { getSessionCookie } from "better-auth/cookies";
 import createMiddleware from "next-intl/middleware";
@@ -15,6 +16,10 @@ export default function proxy(req: NextRequest) {
 		return NextResponse.redirect(new URL(login, req.url));
 	}
 
+	// The authenticated layout sends an office member to this page in the office language (ADR
+	// 0025), and a layout can't read its own path: hand it on. next-intl forwards the request's
+	// headers, and this overwrites anything a client sent under the name.
+	req.headers.set(REQUEST_PATH_HEADER, `${req.nextUrl.pathname}${req.nextUrl.search}`);
 	return intlMiddleware(req);
 }
 

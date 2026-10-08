@@ -6,6 +6,7 @@ import type { APIRequestContext, Locator, Page } from "@playwright/test";
 
 import type { Locale } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
+import { setOfficeLanguage } from "./support/office-language";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
@@ -357,12 +358,15 @@ test.describe("Guest details 2 — a guest who gave everything shows nothing mis
 
 // scenario: docs/e2e-scenarios.md Guest details 3
 test.describe("Guest details 3 — a Vietnamese operator reads the missing row in Vietnamese", () => {
-	test(`the guest of 1, viewed in /vi/: the row "${MISSING_ROW.vi.term}" reads "${MISSING_ROW.vi.value}", in the Waiting tone, among the other rows, in the rail and in the strip, with no "N trường còn thiếu" count`, async ({
+	test(`the guest of 1, in a Vietnamese office, viewed in /vi/: the row "${MISSING_ROW.vi.term}" reads "${MISSING_ROW.vi.value}", in the Waiting tone, among the other rows, in the rail and in the strip, with no "N trường còn thiếu" count`, async ({
 		office,
 	}) => {
 		const { manager } = office;
 		const { page } = manager;
 		const check = expect.configure({ soft: true });
+		// A member reads Nhịp in the office language (ADR 0025): the manager sets their office, of
+		// this test's own, to Vietnamese before the guest writes.
+		await setOfficeLanguage(page.request, "vi");
 
 		const guest = office.newGuest();
 		await guest.write(ASKS_BUDGET_AND_MOVE_IN);

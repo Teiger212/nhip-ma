@@ -4,6 +4,8 @@ import path from "node:path";
 
 import type { APIRequestContext, Page } from "@playwright/test";
 
+import type { AlertRow } from "./support/alerts";
+import { alertState } from "./support/alerts";
 import { assignerAs } from "./support/assign";
 import type { Locale } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
@@ -25,7 +27,8 @@ const SETTING = {
 	title: { en: "Office language", vi: "Ngôn ngữ văn phòng" },
 	english: "English",
 	vietnamese: "Tiếng Việt",
-	saved: "Office language saved",
+	/** The VI toast is the app's own (saas.json), accepted only because the page may move to /vi/. */
+	saved: { en: "Office language saved", vi: "Đã lưu ngôn ngữ văn phòng" },
 } as const;
 
 /** The stub model's translation line (MODEL_STUB=translate, First greeting "How these run"). */
@@ -221,9 +224,23 @@ function languageSelect(page: Page, locale: Locale) {
 	return page.getByRole("combobox", { name: SETTING.title[locale] });
 }
 
+/**
+ * The setting's select in whichever language the page is in: choosing a language moves the
+ * manager's page to it (Office language 6), so after a choice the page may be either.
+ */
+function languageSelectInEither(page: Page) {
+	return page.getByRole("combobox", {
+		name: new RegExp(`^(${SETTING.title.en}|${SETTING.title.vi})$`),
+	});
+}
+
 /** The select shows this language as the office's, and not the other one. */
-async function expectSettingReads(page: Page, locale: Locale, language: "English" | "Tiếng Việt") {
-	const select = languageSelect(page, locale);
+async function expectSettingReads(
+	page: Page,
+	locale: Locale | "either",
+	language: "English" | "Tiếng Việt",
+) {
+	const select = locale === "either" ? languageSelectInEither(page) : languageSelect(page, locale);
 	const other = language === SETTING.english ? SETTING.vietnamese : SETTING.english;
 	await expect(select, `the Office language setting reads "${language}"`).toContainText(language);
 	await expect(select, `the Office language setting doesn't read "${other}"`).not.toContainText(
@@ -257,15 +274,17 @@ test.describe("Office language 1 — the manager sets the office language", () =
 			'the setting offers "English"',
 		).toBeVisible();
 		await option.click();
+		// The page may move to /vi/ on choosing (Office language 6): the toast and the setting are
+		// read in either language from here.
 		await expect(
-			page.getByText(SETTING.saved, { exact: true }),
-			'choosing saves it at once: "Office language saved"',
+			page.getByText(new RegExp(`^(${SETTING.saved.en}|${SETTING.saved.vi})$`)),
+			'choosing saves it at once: "Office language saved" (VI "Đã lưu ngôn ngữ văn phòng")',
 		).toBeVisible();
-		await expectSettingReads(page, "en", SETTING.vietnamese);
+		await expectSettingReads(page, "either", SETTING.vietnamese);
 
 		await page.reload();
-		await expect(languageSelect(page, "en")).toBeVisible();
-		await expectSettingReads(page, "en", SETTING.vietnamese);
+		await expect(languageSelectInEither(page)).toBeVisible();
+		await expectSettingReads(page, "either", SETTING.vietnamese);
 
 		await page.goto(settingsAddress("vi", office));
 		await expect(
@@ -414,9 +433,13 @@ test.describe("Office language 4 — one translation, in the office language", (
 		await test.step("a Vietnamese message shows no translation line (judged after the Korean line has shown)", async () => {
 			await openThreadByLink(page, "en", vietnameseThread, vietnamese);
 			const bubble = guestBubble(page, vietnamese);
-			await expect(bubble, "no translation label on the Vietnamese message").not.toContainText(
-				translationLabel("en"),
-			);
+			// The /en/ link lands on /vi/ for a member (6): the label is looked for in both languages.
+			for (const locale of ["en", "vi"] as const) {
+				await expect(
+					bubble,
+					`no translation label on the Vietnamese message ("${translationLabel(locale)}")`,
+				).not.toContainText(translationLabel(locale));
+			}
 			await expect(bubble, "no stub translation line on the Vietnamese message").not.toContainText(
 				ANY_STUB_LINE,
 			);
@@ -463,5 +486,389 @@ test.describe("Office language 5 — after a change, an older thread is translat
 			await openThreadByLink(page, "en", threadId, korean);
 			await expectTranslation(page, korean, stubLine("Korean", "Vietnamese"), "after the change");
 		});
+	});
+});
+
+/* ---------------------------------------------------------------- the user menu and account settings */
+
+/**
+ * The interface's own words, which are how a person finds things (saas.json `app.userMenu`,
+ * `settings.account`, `inbox.views`, `home`): the user menu's Language row and Log out, the account
+ * settings' title, its "Your name" and "Your language" items, the agent's Your turn tab and Home's
+ * Waiting now.
+ */
+const UI = {
+	en: {
+		language: "Language",
+		logOut: "Log out",
+		accountSettings: "Account settings",
+		yourName: "Your name",
+		yourLanguage: "Your language",
+		yourTurn: "Your turn",
+		waitingNow: "Waiting now",
+	},
+	vi: {
+		language: "Ngôn ngữ",
+		logOut: "Đăng xuất",
+		accountSettings: "Cài đặt tài khoản",
+		yourName: "Tên của bạn",
+		yourLanguage: "Ngôn ngữ của bạn",
+		yourTurn: "Đến lượt bạn",
+		waitingNow: "Đang chờ",
+	},
+} as const;
+
+/** The user menu's EN/VI toggle: its two buttons, named by the language each chooses. */
+const TOGGLE = { en: "English", vi: "Tiếng Việt" } as const;
+
+/** Opens the user menu: the ⋯ beside the person's name in the expanded desktop sidebar (Team 1). */
+async function openUserMenu(page: Page, locale: Locale) {
+	await page.getByRole("button", { name: "User menu" }).click();
+	// Whatever the menu holds is judged once it has opened: Log out is in every person's.
+	await expect(
+		page.getByRole("menuitem", { name: UI[locale].logOut, exact: true }),
+		"the user menu is open",
+	).toBeVisible();
+}
+
+function userMenu(page: Page) {
+	return page.getByRole("menu", { name: "User menu" });
+}
+
+/** The menu's Language row: its label, and the toggle's two buttons. */
+function languageRow(page: Page, locale: Locale) {
+	const menu = userMenu(page);
+	return {
+		label: menu.getByText(UI[locale].language, { exact: true }),
+		english: menu.getByRole("button", { name: TOGGLE.en, exact: true }),
+		vietnamese: menu.getByRole("button", { name: TOGGLE.vi, exact: true }),
+	};
+}
+
+/** Account settings, General, loaded: its title and the "Your name" item have shown. */
+async function openAccountSettings(page: Page, locale: Locale) {
+	await page.goto(`/${locale}/settings/general`);
+	const main = page.getByRole("main");
+	await expect(
+		main.getByRole("heading", { name: UI[locale].accountSettings, exact: true }),
+		"account settings open",
+	).toBeVisible();
+	await expect(
+		main.getByRole("heading", { name: UI[locale].yourName, exact: true }),
+		'account settings show "Your name"',
+	).toBeVisible();
+}
+
+/** The account settings' language item: its title, and the select under it. */
+function languageSetting(page: Page, locale: Locale) {
+	const main = page.getByRole("main");
+	return {
+		title: main.getByRole("heading", { name: UI[locale].yourLanguage, exact: true }),
+		select: main.getByRole("combobox"),
+	};
+}
+
+/** The page's address is exactly this path. */
+function isAt(path: string) {
+	return (url: URL) => url.pathname === path;
+}
+
+/** The agent's Your turn tab, in the Inbox's list: "Your turn N" (VI "Đến lượt bạn N"). */
+function yourTurnTab(page: Page, locale: Locale) {
+	return page
+		.getByRole("complementary")
+		.getByRole("button", { name: new RegExp(`^${UI[locale].yourTurn} \\d+$`) });
+}
+
+/** A redirect lands within a page load; the build under load gets a margin. */
+const ON_LOAD = { timeout: 15_000 };
+
+// scenario: docs/e2e-scenarios.md Office language 6
+test.describe("Office language 6 — members read Nhịp in the office language", () => {
+	test("in a Vietnamese office, the agent's /en/inbox lands on /vi/inbox, in Vietnamese; /en/inbox?thread=<id> lands on /vi/inbox with that thread open; the manager's /en/home lands on /vi/home", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const agent = await office.agent();
+		const check = expect.configure({ soft: true });
+		await managerSets(manager, "vi");
+
+		// Setup: two guests the manager gave the agent. The older heads the agent's queue, so an
+		// Inbox that opens the first guest can't pass for the link keeping its thread (the newer).
+		const older = office.newGuest(KOREAN_TEXT);
+		await older.write();
+		const assigner = assignerAs(manager.api);
+		await assigner.assignTo(await threadIdOf(manager.api, older), agent.userId);
+		const guest = office.newGuest(VIETNAMESE_TEXT);
+		await guest.write();
+		const threadId = await threadIdOf(manager.api, guest);
+		await assigner.assignTo(threadId, agent.userId);
+
+		await test.step("the agent's /en/inbox lands on /vi/inbox, in Vietnamese", async () => {
+			await agent.page.goto("/en/inbox");
+			await check(agent.page, "the agent lands on /vi/inbox").toHaveURL(isAt("/vi/inbox"), ON_LOAD);
+			await check(
+				yourTurnTab(agent.page, "vi"),
+				`the Inbox is in Vietnamese: "${UI.vi.yourTurn}"`,
+			).toBeVisible();
+		});
+
+		await test.step("a thread's /en/ link lands on /vi/ with that thread open", async () => {
+			await agent.page.goto(`/en/inbox?thread=${encodeURIComponent(threadId)}`);
+			// "Keeps its thread" is the thread open: the Inbox takes `?thread=` out of the address once
+			// it has opened it (as after an alert's link, Alerts 8), so the address is judged by its path.
+			await check(agent.page, "the link lands on /vi/inbox").toHaveURL(isAt("/vi/inbox"), ON_LOAD);
+			await check(
+				guestBubble(agent.page, guest),
+				"the linked thread is open, the guest's message in it",
+			).toHaveCount(1);
+			await check(guestBubble(agent.page, older), "not the guest heading the queue").toHaveCount(0);
+		});
+
+		await test.step("the manager's /en/home lands on /vi/home", async () => {
+			await manager.page.goto("/en/home");
+			await check(manager.page, "the manager lands on /vi/home").toHaveURL(
+				isAt("/vi/home"),
+				ON_LOAD,
+			);
+			await check(
+				manager.page.getByRole("main").getByRole("heading", { name: UI.vi.waitingNow }),
+				`Home is in Vietnamese: "${UI.vi.waitingNow}"`,
+			).toBeVisible();
+		});
+	});
+
+	test("in a Vietnamese office, the agent's user menu has no language toggle and their account settings no language select; nor do the manager's", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const agent = await office.agent();
+		const check = expect.configure({ soft: true });
+		await managerSets(manager, "vi");
+
+		for (const [who, { page }] of [
+			["the agent", agent],
+			["the manager", manager],
+		] as const) {
+			await test.step(`${who}'s user menu has no Language row`, async () => {
+				await page.goto("/vi/inbox");
+				await openUserMenu(page, "vi");
+				const row = languageRow(page, "vi");
+				await check(row.label, `${who}'s menu has no "${UI.vi.language}"`).toHaveCount(0);
+				await check(row.english, `${who}'s menu has no "${TOGGLE.en}" button`).toHaveCount(0);
+				await check(row.vietnamese, `${who}'s menu has no "${TOGGLE.vi}" button`).toHaveCount(0);
+				await page.keyboard.press("Escape");
+			});
+
+			await test.step(`${who}'s account settings have no language select`, async () => {
+				await openAccountSettings(page, "vi");
+				const setting = languageSetting(page, "vi");
+				await check(setting.title, `no "${UI.vi.yourLanguage}" in ${who}'s settings`).toHaveCount(
+					0,
+				);
+				await check(setting.select, `no select in ${who}'s account settings`).toHaveCount(0);
+			});
+		}
+	});
+
+	test("in an office left at English, the agent's /vi/inbox lands on /en/inbox", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const agent = await office.agent();
+		// Setup: a guest the manager gave the agent, so their Inbox has its Your turn tab to read.
+		const guest = office.newGuest(KOREAN_TEXT);
+		await guest.write();
+		await assignerAs(manager.api).assignTo(await threadIdOf(manager.api, guest), agent.userId);
+		// The positive control: the English Inbox shows the tab this test reads.
+		await agent.page.goto("/en/inbox");
+		await expect(yourTurnTab(agent.page, "en"), "the English Inbox's Your turn tab").toBeVisible();
+
+		await agent.page.goto("/vi/inbox");
+		await expect(agent.page, "the agent lands on /en/inbox").toHaveURL(isAt("/en/inbox"), ON_LOAD);
+		await expect(
+			yourTurnTab(agent.page, "en"),
+			`the Inbox is in English: "${UI.en.yourTurn}"`,
+		).toBeVisible();
+	});
+
+	test('the manager switches the office from English to Vietnamese on the General tab: their page becomes /vi/<office slug>/settings/general, where "Ngôn ngữ văn phòng" reads "Tiếng Việt"', async ({
+		office,
+	}) => {
+		const { page } = office.manager;
+		await page.goto(settingsAddress("en", office));
+		await expectSettingReads(page, "en", SETTING.english);
+
+		await languageSelect(page, "en").click();
+		await page.getByRole("option", { name: SETTING.vietnamese, exact: true }).click();
+
+		await expect(page, "the manager's page moves to the Vietnamese prefix, same page").toHaveURL(
+			isAt(settingsAddress("vi", office)),
+			ON_LOAD,
+		);
+		await expect(
+			languageSelect(page, "vi"),
+			'the page is in Vietnamese: "Ngôn ngữ văn phòng"',
+		).toBeVisible();
+		await expectSettingReads(page, "vi", SETTING.vietnamese);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Office language 7
+test.describe("Office language 7 — the platform admin keeps their own language", () => {
+	test("the platform admin's user menu still has the EN/VI toggle, which moves /en/admin/organizations to /vi/admin/organizations and back; their account settings still have the language select", async ({
+		admin,
+	}) => {
+		const { page } = admin;
+		await page.goto("/en/admin/organizations");
+		await expect(page.getByTestId("admin-organizations-search")).toBeVisible();
+
+		await openUserMenu(page, "en");
+		const row = languageRow(page, "en");
+		await expect(row.label, `the menu has its "${UI.en.language}" row`).toBeVisible();
+		await expect(row.english, "with English chosen").toHaveAttribute("aria-pressed", "true");
+		await row.vietnamese.click();
+		await expect(page, "Tiếng Việt moves the page to /vi/").toHaveURL(
+			isAt("/vi/admin/organizations"),
+			ON_LOAD,
+		);
+		await expect(page.getByTestId("admin-organizations-search")).toBeVisible();
+
+		await openUserMenu(page, "vi");
+		const vi = languageRow(page, "vi");
+		await expect(vi.label, `in Vietnamese the row is "${UI.vi.language}"`).toBeVisible();
+		await vi.english.click();
+		await expect(page, "English moves it back to /en/").toHaveURL(
+			isAt("/en/admin/organizations"),
+			ON_LOAD,
+		);
+
+		for (const locale of ["en", "vi"] as const) {
+			await openAccountSettings(page, locale);
+			const setting = languageSetting(page, locale);
+			await expect(
+				setting.title,
+				`(${locale}) the account settings have "${UI[locale].yourLanguage}"`,
+			).toBeVisible();
+			await expect(setting.select, `(${locale}) with its select`).toBeVisible();
+		}
+	});
+});
+
+/* ---------------------------------------------------------------- alerts (Office language 8) */
+
+/** The kit's session, as the signed-in person's own browser reads it. */
+async function ownLocale(person: Joined): Promise<string | null> {
+	const res = await person.api.get("/api/auth/get-session");
+	expect(res.status(), "the session is readable").toBe(200);
+	return ((await res.json()) as { user: { locale?: string | null } }).user.locale ?? null;
+}
+
+/** The person sets their own language, through the kit's user update (setup). */
+async function setOwnLocale(person: Joined, locale: Locale) {
+	const res = await person.api.post("/api/auth/update-user", { locale });
+	expect(res.ok(), `the person sets their own language (${res.status()})`).toBe(true);
+	expect(await ownLocale(person), `their own language is "${locale}"`).toBe(locale);
+}
+
+/** Alerts are decided in the background (ADR 0019): the log is polled. */
+const ON_THE_PHONES = { timeout: 30_000 };
+
+/** The person's alert of this kind on the thread, once the log holds it (Alerts 1's log). */
+async function alertFor(
+	office: LanguageOffice,
+	person: Joined,
+	threadId: string,
+	kind: AlertRow["kind"],
+): Promise<AlertRow> {
+	const mine = async () =>
+		(await alertState.alerts(office.id)).filter(
+			(r) => r.userId === person.userId && r.conversationId === threadId && r.kind === kind,
+		);
+	await expect
+		.poll(async () => (await mine()).length, {
+			...ON_THE_PHONES,
+			message: `the log holds the person's ${kind} alert on the thread`,
+		})
+		.toBeGreaterThanOrEqual(1);
+	return (await mine())[0]!;
+}
+
+/** The bell's row for a thread a manager gave the person (saas.json `app.notifications`). */
+const GAVE_YOU_A_THREAD = {
+	en: "A manager gave you a thread",
+	vi: "Một quản lý đã giao cho bạn một cuộc trò chuyện",
+} as const;
+
+const OPEN_BELL = { en: "Open notifications", vi: "Mở thông báo" } as const;
+const BELL_TITLE = { en: "Notifications", vi: "Thông báo" } as const;
+
+// scenario: docs/e2e-scenarios.md Office language 8
+test.describe("Office language 8 — alerts follow the office", () => {
+	test("a new guest writes to a Vietnamese office whose manager is set to English: the manager's alert link starts with /vi/", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		await managerSets(manager, "vi");
+		await setOwnLocale(manager, "en");
+
+		const guest = office.newGuest(VIETNAMESE_TEXT);
+		await guest.write();
+		const threadId = await threadIdOf(manager.api, guest);
+
+		const alert = await alertFor(office, manager, threadId, "guest");
+		expect(alert.link, "the manager's alert opens the Inbox in the office language").toMatch(
+			/^\/vi\/inbox\?alert=/,
+		);
+	});
+
+	test("in an English office, a manager with no language set gets an alert link starting with /en/", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		expect(await ownLocale(manager), "the manager has no language set").toBeNull();
+
+		const guest = office.newGuest(KOREAN_TEXT);
+		await guest.write();
+		const threadId = await threadIdOf(manager.api, guest);
+
+		const alert = await alertFor(office, manager, threadId, "guest");
+		expect(alert.link, "the manager's alert opens the Inbox in the office language").toMatch(
+			/^\/en\/inbox\?alert=/,
+		);
+	});
+
+	test(`the bell follows the office: an agent of a Vietnamese office, set to English, reads "${GAVE_YOU_A_THREAD.vi}" when the manager gives them a thread`, async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const agent = await office.agent();
+		await managerSets(manager, "vi");
+		await setOwnLocale(agent, "en");
+
+		const guest = office.newGuest(VIETNAMESE_TEXT);
+		await guest.write();
+		const threadId = await threadIdOf(manager.api, guest);
+		await assignerAs(manager.api).assignTo(threadId, agent.userId);
+		// The assignment has been decided: its alert is in the log (Alerts 3).
+		await alertFor(office, agent, threadId, "assigned");
+
+		// The agent opens their settings as their own English would have it: the office decides.
+		const { page } = agent;
+		await page.goto("/en/settings/general");
+		await page
+			.getByRole("button", { name: new RegExp(`^(${OPEN_BELL.en}|${OPEN_BELL.vi})$`) })
+			.click();
+		const shown = (text: string | RegExp) =>
+			page.getByText(text, { exact: true }).locator("visible=true");
+		await expect(
+			shown(new RegExp(`^(${BELL_TITLE.en}|${BELL_TITLE.vi})$`)).first(),
+			"the bell opens",
+		).toBeVisible();
+		// Both are reported: the row in the office's Vietnamese, and none in the agent's English.
+		await expect
+			.soft(shown(GAVE_YOU_A_THREAD.vi), `the bell reads "${GAVE_YOU_A_THREAD.vi}"`)
+			.toHaveCount(1, WITHIN_A_POLL);
+		await expect.soft(shown(GAVE_YOU_A_THREAD.en), "not in the agent's own English").toHaveCount(0);
 	});
 });

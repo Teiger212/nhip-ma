@@ -5,13 +5,7 @@ import { namedLanguage } from "../language-name";
 import type { Runtime } from "../runtime";
 import type { Conversation } from "../types";
 import { alertSounds } from "./burst";
-import {
-	type AlertLocale,
-	type AlertTranslate,
-	alertLink,
-	alertLocale,
-	guestAlertContent,
-} from "./content";
+import { alertLink, guestAlertContent } from "./content";
 import { inboxTranslator, RecipientsFailed } from "./index";
 import { type OwnerChange, ownerChangeEffects } from "./recipients";
 import { alertTag } from "./tag";
@@ -64,16 +58,12 @@ export async function alertOwnerChange(
 
 	if (alert) {
 		const tag = alertTag(conversation.id);
-		const translators = new Map<AlertLocale, AlertTranslate>();
+		// In the office language (ADR 0025), whatever each recipient's own.
+		const locale = await store.officeLanguage(conversation.officeId);
+		const t = await inboxTranslator(locale);
 		const deliveries: AlertDelivery[] = [];
 		for (const recipient of alert.recipients) {
 			try {
-				const locale = alertLocale(recipient.locale);
-				let t = translators.get(locale);
-				if (!t) {
-					t = await inboxTranslator(locale);
-					translators.set(locale, t);
-				}
 				const content = guestAlertContent(
 					{
 						guestName,

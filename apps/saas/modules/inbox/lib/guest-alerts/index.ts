@@ -6,13 +6,7 @@ import { namedLanguage } from "../language-name";
 import type { Runtime } from "../runtime";
 import type { Conversation } from "../types";
 import { alertSounds } from "./burst";
-import {
-	type AlertLocale,
-	type AlertTranslate,
-	alertLink,
-	alertLocale,
-	guestAlertContent,
-} from "./content";
+import { type AlertLocale, type AlertTranslate, alertLink, guestAlertContent } from "./content";
 import { guestAlertRecipients } from "./recipients";
 import { alertTag } from "./tag";
 import { type AlertDelivery, type AlertTransport, alertTransport } from "./transport";
@@ -43,7 +37,7 @@ export async function inboxTranslator(locale: AlertLocale): Promise<AlertTransla
 /**
  * A guest's new message alerts the operators who can open the thread (ADR 0019, 0022): an
  * Unassigned thread's managers, or the owner. Each gets one row in the log, decided by the burst rule under the
- * store's lock, in their own language. Rows are written one after another, so one message's
+ * store's lock, in the office language (ADR 0025). Rows are written one after another, so one message's
  * alerts never compete with each other for connections; one operator's failure never costs
  * the others theirs. Then the transport sends them all at once (nothing in a mock
  * deployment), so a slow push service delays no one (#134, Q4).
@@ -60,18 +54,13 @@ export async function alertGuestMessage(
 	const operators = await store.officeOperators(conversation.officeId);
 	const recipients = guestAlertRecipients({ ownerId: conversation.owner?.id ?? null }, operators);
 	const tag = recipients.length > 0 ? alertTag(conversation.id) : "";
-	const translators = new Map<AlertLocale, AlertTranslate>();
+	const locale = await store.officeLanguage(conversation.officeId);
+	const t = await inboxTranslator(locale);
 	// Error kinds only: an error's text can carry guest data (PDPL).
 	const failures: string[] = [];
 	const deliveries: AlertDelivery[] = [];
 	for (const recipient of recipients) {
 		try {
-			const locale = alertLocale(recipient.locale);
-			let t = translators.get(locale);
-			if (!t) {
-				t = await inboxTranslator(locale);
-				translators.set(locale, t);
-			}
 			const { title, body } = guestAlertContent(
 				{
 					guestName: conversation.guestName,

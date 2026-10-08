@@ -4,6 +4,7 @@ import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 import { assignerAs } from "./support/assign";
 import { expect, test } from "./support/fixtures";
+import { setOfficeLanguage } from "./support/office-language";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
@@ -235,24 +236,39 @@ for (const computer of [MAC, LINUX]) {
 	test.describe(`Sidebar 6 — the button speaks Vietnamese (${computer.name})`, () => {
 		test.use({ userAgent: computer.userAgent, viewport: computer.viewport });
 
-		test.beforeEach(async ({ context }) => {
-			await pinComputer(context, computer);
-			await signInContext(context, AGENT);
-		});
-
-		test(`on /vi, its tooltip reads "${COPY.vi.collapse} (${computer.key})", then "${COPY.vi.expand} (${computer.key})"`, async ({
+		test(`on /vi, an agent of a Vietnamese office: its tooltip reads "${COPY.vi.collapse} (${computer.key})", then "${COPY.vi.expand} (${computer.key})"`, async ({
+			admin,
+			browser,
+			context,
 			page,
 		}) => {
-			await open(page, "/vi/home");
-			await expectPinned(page, computer);
-			await expectExpanded(page);
-			await pointAt(page, toggle(page));
-			await expect(tooltip(page).first()).toHaveText(withKey(COPY.vi.collapse, computer.key));
+			// A member reads Nhịp in the office language (ADR 0025): a Vietnamese office of the test's
+			// own, never the walk office. Its agent is signed in in this test's pinned browser, by the
+			// joined account's own session cookies.
+			const office = await admin.createOffice("Sidebar VI");
+			const [manager, agent] = await Promise.all([
+				joinOffice(admin, browser, office.id, "admin", "sidebar-vi-manager"),
+				joinOffice(admin, browser, office.id, "member", "sidebar-vi-agent"),
+			]);
+			try {
+				await setOfficeLanguage(manager.page.request, "vi");
+				await context.addCookies(await agent.page.context().cookies());
+				await pinComputer(context, computer);
 
-			await toggle(page).click();
-			await expectCollapsed(page);
-			await pointAt(page, toggle(page));
-			await expect(tooltip(page).first()).toHaveText(withKey(COPY.vi.expand, computer.key));
+				await open(page, "/vi/home");
+				await expectPinned(page, computer);
+				await expectExpanded(page);
+				await pointAt(page, toggle(page));
+				await expect(tooltip(page).first()).toHaveText(withKey(COPY.vi.collapse, computer.key));
+
+				await toggle(page).click();
+				await expectCollapsed(page);
+				await pointAt(page, toggle(page));
+				await expect(tooltip(page).first()).toHaveText(withKey(COPY.vi.expand, computer.key));
+			} finally {
+				await manager.close();
+				await agent.close();
+			}
 		});
 	});
 }

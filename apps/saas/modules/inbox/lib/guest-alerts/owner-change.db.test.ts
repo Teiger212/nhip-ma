@@ -82,13 +82,15 @@ const bell = (type: "THREAD_ASSIGNED" | "THREAD_MOVED") =>
 		select: { userId: true, data: true, link: true },
 	});
 
-test("an Unassigned lead given to agent 1: one sounding `assigned` alert, pushed in their language, and a bell row naming no guest that opens the alert", async () => {
+test("an Unassigned lead given to agent 1: one sounding `assigned` alert, pushed in the office language whatever their own, and a bell row naming no guest that opens the alert", async () => {
+	// agent-1 set their own language to English; the office's is Vietnamese (ADR 0025).
+	await store.setOfficeLanguage(OFFICE, "vi");
 	await move(null, "agent-1");
 
 	const logged = await alerts();
 	expect(logged).toMatchObject([{ userId: "agent-1", kind: "assigned", sounded: true }]);
 	const [alert] = logged;
-	expect(alert.link).toBe(`/en/inbox?alert=${alert.id}`);
+	expect(alert.link).toBe(`/vi/inbox?alert=${alert.id}`);
 
 	expect(pushed).toHaveLength(1);
 	expect(pushed[0]).toMatchObject({
@@ -97,7 +99,7 @@ test("an Unassigned lead given to agent 1: one sounding `assigned` alert, pushed
 			alertId: alert.id,
 			url: alert.link,
 			sound: true,
-			title: "Minji Kim was assigned to you",
+			title: "Minji Kim đã được giao cho bạn",
 		},
 	});
 	expect(JSON.stringify(pushed[0].payload)).not.toContain(conversation.id);
@@ -166,8 +168,8 @@ test("agent 1's thread returned to Unassigned: one `returned` alert for the othe
 
 	const logged = await alerts();
 	expect(logged).toMatchObject([{ userId: "manager-2", kind: "returned" }]);
-	// manager-2 never chose a language: Vietnamese.
-	expect(logged[0].link).toBe(`/vi/inbox?alert=${logged[0].id}`);
+	// manager-2 never chose a language; the office's is the default, English (ADR 0025).
+	expect(logged[0].link).toBe(`/en/inbox?alert=${logged[0].id}`);
 	expect(pushed.map((delivery) => delivery.userId)).toEqual(["manager-2"]);
 	expect(await bell("THREAD_ASSIGNED")).toEqual([]);
 	expect((await bell("THREAD_MOVED")).map((row) => row.userId)).toEqual(["agent-1"]);

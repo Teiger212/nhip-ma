@@ -11,39 +11,33 @@ import { guestAlertRecipients, ownerChangeEffects } from "./recipients";
 const agent1: AlertOperator = {
 	userId: "agent-1",
 	platformRole: "user",
-	locale: "en",
 	manager: false,
 };
 const agent2: AlertOperator = {
 	userId: "agent-2",
 	platformRole: null,
-	locale: null,
 	manager: false,
 };
 const manager: AlertOperator = {
 	userId: "manager",
 	platformRole: "user",
-	locale: "vi",
 	manager: true,
 };
 const manager2: AlertOperator = {
 	userId: "manager-2",
 	platformRole: null,
-	locale: null,
 	manager: true,
 };
 /** The office's creator, its kit `owner` (a manager by member role): their membership opens nothing. */
 const platformAdmin: AlertOperator = {
 	userId: "admin",
 	platformRole: "admin",
-	locale: "en",
 	manager: true,
 };
 /** A platform admin whose role is a comma list (`packages/auth/lib/roles.ts`). */
 const listedAdmin: AlertOperator = {
 	userId: "admin-2",
 	platformRole: "user,admin",
-	locale: null,
 	manager: true,
 };
 

@@ -41,7 +41,9 @@ test.describe("PRODUCT.md English and Vietnamese only — the login page speaks 
 	}) => {
 		await page.goto("/vi/login");
 		await signInByLabels(page, vi);
-		await expect(page).toHaveURL(/\/vi\/inbox/, { timeout: 30_000 });
+		// Signed in, a member lands in the Inbox in their office's language (ADR 0025; the walk office
+		// is in English, Office language 6): what this proves is the Vietnamese form signing in.
+		await expect(page).toHaveURL(/\/(en|vi)\/inbox/, { timeout: 30_000 });
 	});
 
 	test("/en/login: the password field is found by its English label and signs in", async ({

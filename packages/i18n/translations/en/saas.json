@@ -506,7 +506,7 @@
 			},
 			"officeLanguage": {
 				"error": "Couldn't save the office language. Try again.",
-				"hint": "Guest messages are translated into this language, once.",
+				"hint": "Everyone in the office uses Nhịp in this language, and guest messages are translated into it, once.",
 				"loadError": "Couldn't load the office language. Reload the page to try again.",
 				"saved": "Office language saved",
 				"title": "Office language"

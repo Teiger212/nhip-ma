@@ -73,7 +73,8 @@ saas test`. Do not commit untracked local scripts.
   data on a public link.
 - The operator note never invents Vietnamese law.
 - SaaS routes are locale-prefixed (`/en/...`, `/vi/...`); cookie-only locale was tried
-  and rejected. The operator language switch offers `en` and `vi` only.
+  and rejected. An office member's prefix is the office language, which the manager sets
+  (`en` or `vi`, ADR 0025); only the platform admin has the EN/VI toggle.
 - User-facing strings need translations under `inbox.*`.
 - `apps/marketing`, `apps/docs` and billing are unused kit scaffolding; leave them unless
   asked. The admin area is the platform admin's (offices, pipe connections, webhooks). The kit organization is in use as the office, its switcher hidden
