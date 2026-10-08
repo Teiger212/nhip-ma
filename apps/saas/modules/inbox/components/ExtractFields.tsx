@@ -1,22 +1,18 @@
 "use client";
 
-import { ChevronRightIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-import { arrangeExtractRows, type ExtractRow } from "../lib/extract-rows";
+import { arrangeExtractRows, type ExtractFieldId, type ExtractRow } from "../lib/extract-rows";
 import { isSupportedLanguage, languageName } from "../lib/language-name";
 import type { Conversation } from "../lib/types";
 
-/** Translate one extract row for display. Presence was decided upstream from the value. */
+/** Translate one extract row for display. Every row is a known fact, decided upstream. */
 function useExtractRowText() {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
 	return (row: ExtractRow): { label: string; value: string } => {
 		const label = t(`fields.${row.id}`);
-		if (!row.present) {
-			return { label, value: row.id === "paperwork" ? t("fields.noneMentioned") : t("missing") };
-		}
 		switch (row.id) {
 			case "language": {
 				// An unsupported guest language is named, with the note that replies are English (#245).
@@ -49,15 +45,7 @@ function RowGrid({ rows }: { rows: ExtractRow[] }) {
 				return (
 					<div key={row.id} className="contents">
 						<dt className="text-muted-foreground">{label}</dt>
-						<dd
-							className={
-								row.present
-									? "min-w-0 font-medium text-foreground"
-									: "min-w-0 text-muted-foreground"
-							}
-						>
-							{value}
-						</dd>
+						<dd className="min-w-0 font-medium text-foreground">{value}</dd>
 					</div>
 				);
 			})}
@@ -75,9 +63,7 @@ function RowLine({ rows }: { rows: ExtractRow[] }) {
 				return (
 					<div key={row.id} className="gap-1.5 min-w-0 flex items-baseline">
 						<dt className="shrink-0 text-muted-foreground">{label}</dt>
-						<dd className={row.present ? "font-medium text-foreground" : "text-muted-foreground"}>
-							{value}
-						</dd>
+						<dd className="font-medium text-foreground">{value}</dd>
 					</div>
 				);
 			})}
@@ -86,9 +72,21 @@ function RowLine({ rows }: { rows: ExtractRow[] }) {
 }
 
 /**
- * The one-shot extraction (Qualification, paperwork): present rows first, missing ones folded
- * under "N missing". In the details rail a label/value grid; in the narrow pane's strip under the
- * header (#248), the present rows on one line and the disclosure on the next.
+ * What the agent should still ask for, named: "Missing: budget, move-in" (#244). Plain text, not a
+ * control (DESIGN.md, The Pill Acts Rule); nothing missing, no line.
+ */
+function MissingLine({ missing }: { missing: ExtractFieldId[] }) {
+	const t = useTranslations("inbox");
+	const locale = useLocale();
+	if (missing.length === 0) return null;
+	const fields = missing.map((id) => t(`fields.${id}`).toLocaleLowerCase(locale)).join(", ");
+	return <p className="text-xs text-muted-foreground">{t("missingLine", { fields })}</p>;
+}
+
+/**
+ * The one-shot extraction (Qualification, paperwork): the known facts, then the line naming what
+ * is still to ask. In the details rail a label/value grid; in the narrow pane's strip under the
+ * header (#248), the facts on one line and the missing line on the next.
  */
 export function ExtractFields({
 	conversation,
@@ -97,29 +95,15 @@ export function ExtractFields({
 	conversation: Conversation;
 	layout: "rail" | "strip";
 }) {
-	const t = useTranslations("inbox");
-	const arranged = useMemo(() => arrangeExtractRows(conversation.oneShot), [conversation.oneShot]);
-	const Rows = layout === "rail" ? RowGrid : RowLine;
-	const missing =
-		arranged.collapsed.length > 0 ? (
-			<details className="group">
-				<summary className="gap-1 text-xs md:min-h-6 min-h-11 flex w-fit cursor-pointer items-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-reduce:transition-none">
-					<ChevronRightIcon
-						aria-hidden="true"
-						className="size-3.5 transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none"
-					/>
-					{t("missingFields", { count: arranged.collapsed.length })}
-				</summary>
-				<div className="mt-1.5">
-					<Rows rows={arranged.collapsed} />
-				</div>
-			</details>
-		) : null;
+	const { rows, missing } = useMemo(
+		() => arrangeExtractRows(conversation.oneShot),
+		[conversation.oneShot],
+	);
 	if (layout === "rail") {
 		return (
 			<div className="gap-2 flex flex-col">
-				<RowGrid rows={arranged.visible} />
-				{missing}
+				<RowGrid rows={rows} />
+				<MissingLine missing={missing} />
 			</div>
 		);
 	}
@@ -128,8 +112,8 @@ export function ExtractFields({
 			data-test="thread-details"
 			className="gap-0.5 px-3 py-2 text-xs md:px-4 flex shrink-0 flex-col border-b bg-muted/40"
 		>
-			<RowLine rows={arranged.visible} />
-			{missing}
+			<RowLine rows={rows} />
+			<MissingLine missing={missing} />
 		</div>
 	);
 }

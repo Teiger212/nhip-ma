@@ -858,7 +858,6 @@
 		"navReports": "Báo cáo",
 		"navPaperwork": "Giấy tờ",
 		"footer": "Khách thấy số của môi giới. Không bao giờ gửi tự động.",
-		"missing": "(thiếu)",
 		"yes": "Có",
 		"no": "Không",
 		"searchPlaceholder": "Tìm tên hoặc tin nhắn gần nhất",
@@ -897,7 +896,7 @@
 		"language": "Ngôn ngữ",
 		"back": "Quay lại",
 		"backAria": "Quay lại danh sách hội thoại",
-		"missingFields": "{count} trường còn thiếu",
+		"missingLine": "Còn thiếu: {fields}",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
@@ -943,8 +942,7 @@
 			"moveIn": "Ngày vào",
 			"budget": "Ngân sách",
 			"beds": "Phòng ngủ / hộ",
-			"paperwork": "Giấy tờ",
-			"noneMentioned": "không nhắc đến"
+			"paperwork": "Giấy tờ"
 		},
 		"views": {
 			"aria": "Lọc cuộc hội thoại",

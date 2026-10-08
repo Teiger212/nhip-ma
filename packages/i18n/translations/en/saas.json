@@ -858,7 +858,6 @@
 		"navReports": "Reports",
 		"navPaperwork": "Paperwork",
 		"footer": "Guests see the agency number. Never auto-send.",
-		"missing": "(missing)",
 		"yes": "Yes",
 		"no": "No",
 		"searchPlaceholder": "Search name or last message",
@@ -897,7 +896,7 @@
 		"language": "Language",
 		"back": "Back",
 		"backAria": "Back to thread list",
-		"missingFields": "{count} missing",
+		"missingLine": "Missing: {fields}",
 		"pipes": {
 			"zalo": "Zalo",
 			"whatsapp": "WhatsApp"
@@ -943,8 +942,7 @@
 			"moveIn": "Move-in",
 			"budget": "Budget",
 			"beds": "Beds / household",
-			"paperwork": "Paperwork",
-			"noneMentioned": "none mentioned"
+			"paperwork": "Paperwork"
 		},
 		"views": {
 			"aria": "Filter threads",
