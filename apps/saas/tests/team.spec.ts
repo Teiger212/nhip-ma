@@ -6,7 +6,14 @@ import { newcomer, openInboxAsNewAccount } from "./support/invitee";
 import { setOfficeLanguage } from "./support/office-language";
 import type { Office } from "./support/offices";
 import { joinOffice } from "./support/operators";
-import { AGENT, AGENT_2, MANAGER, PLATFORM_ADMIN, WALK_OFFICE_ID } from "./support/seed";
+import {
+	AGENT,
+	AGENT_2,
+	MANAGER,
+	PLATFORM_ADMIN,
+	WALK_OFFICE_ID,
+	WALK_OFFICE_SLUG,
+} from "./support/seed";
 import type { Api } from "./support/session";
 import { apiAs, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
@@ -194,7 +201,7 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 		await expect(teamItem(page)).toBeVisible();
 		await teamItem(page).click();
 
-		await expect(page).toHaveURL(/\/en\/walk\/settings\/members$/);
+		await expect(page).toHaveURL(new RegExp(`/en/${WALK_OFFICE_SLUG}/settings/members$`));
 		await expect(team(page).heading(COPY.en.team)).toBeVisible();
 	});
 
@@ -209,7 +216,7 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 		const asManager = admin.newEmail("team-manager");
 
 		try {
-			await page.goto("/en/walk/settings/members");
+			await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
 			await expect(t.heading(COPY.en.team)).toBeVisible();
 
 			// The role offers exactly Agent and Manager, with Agent chosen; no Owner.
@@ -290,7 +297,7 @@ test.describe("Team 2 — an agent has no Team", () => {
 		await expect.soft(teamItem(page), "no Team in the agent's menu").toHaveCount(0);
 		await page.keyboard.press("Escape");
 
-		const res = await page.goto("/en/walk/settings/members");
+		const res = await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
 		expect.soft(res?.status(), "Team's address answers 404 for an agent").toBe(404);
 		await expect.soft(page.getByText("Page not found")).toBeVisible();
 		// No member list, no invite form.
@@ -384,7 +391,7 @@ test.describe("Team 3 — no owner, no Leave, no platform admin on Team", () => 
 		test.slow();
 		await signInContext(context, MANAGER);
 		const t = team(page);
-		await page.goto("/en/walk/settings/members");
+		await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
 
 		// The list is rendered: the manager's own row, as Manager.
 		await expect(page.getByText(MANAGER.email)).toBeVisible();
@@ -756,7 +763,7 @@ test.describe("Team 6 — the platform admin never reaches a manager's browser",
 			);
 		});
 
-		await page.goto("/en/walk/settings/members");
+		await page.goto(`/en/${WALK_OFFICE_SLUG}/settings/members`);
 		// The list is rendered, so the answers it was made from have arrived.
 		const t = team(page);
 		await expect(t.memberRole(t.member(AGENT.email))).toHaveText(COPY.en.agent);

@@ -32,7 +32,7 @@ export const LEGACY_WALK_LOGINS: ReadonlyArray<{ from: string; to: string; name:
  */
 export const WALK_OFFICE_ID = "walk-office";
 export const WALK_OFFICE_NAME = "Hanoi Nest Seekers";
-export const WALK_OFFICE_SLUG = "walk";
+export const WALK_OFFICE_SLUG = "hanoi-nest-seekers";
 
 /**
  * A second office (#69), seeded for local dev and the demo only (never in E2E): its own manager

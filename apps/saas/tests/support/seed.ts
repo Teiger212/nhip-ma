@@ -4,6 +4,7 @@ import {
 	WALK_AGENT2_EMAIL,
 	WALK_MANAGER_EMAIL,
 	WALK_OFFICE_ID,
+	WALK_OFFICE_SLUG,
 	WALK_USER_EMAIL,
 	WALK_USER_PASSWORD,
 } from "../../modules/inbox/lib/walk-user";
@@ -22,7 +23,7 @@ export const MANAGER: Login = { email: WALK_MANAGER_EMAIL, password: WALK_USER_P
 /** The platform admin: owner of the walk office; the seed gives both logins the same password. */
 export const PLATFORM_ADMIN: Login = { email: WALK_ADMIN_EMAIL, password: WALK_USER_PASSWORD };
 
-export { WALK_OFFICE_ID };
+export { WALK_OFFICE_ID, WALK_OFFICE_SLUG };
 
 /** A password that passes the sign-up form's rules, so a refusal is never about the password. */
 export const NEW_PASSWORD = "Str0ng!Passw0rd-e2e";

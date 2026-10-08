@@ -43,9 +43,16 @@ export async function seedWalkOffice(): Promise<WalkOfficeSeedResult> {
 	await ensureOrganizationMembership({ organization, userId: agent2.id, role: "member" });
 	// The office's manager is kit `admin`; kit `owner` is the platform admin's inert membership.
 	await ensureOrganizationMembership({ organization, userId: manager.id, role: "admin" });
-	// An office seeded before #264 is still called "Walk Office": rename it, keeping its id.
-	if (owner.organization.name !== WALK_OFFICE_NAME) {
-		await updateOrganization({ id: WALK_OFFICE_ID, name: WALK_OFFICE_NAME });
+	// An office seeded before #264 is still "Walk Office" at /walk: rename it, keeping its id.
+	if (
+		owner.organization.name !== WALK_OFFICE_NAME ||
+		owner.organization.slug !== WALK_OFFICE_SLUG
+	) {
+		await updateOrganization({
+			id: WALK_OFFICE_ID,
+			name: WALK_OFFICE_NAME,
+			slug: WALK_OFFICE_SLUG,
+		});
 	}
 	return owner.created ? "created" : "exists";
 }

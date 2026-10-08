@@ -20,6 +20,7 @@ import {
 	WALK_MANAGER_EMAIL,
 	WALK_OFFICE_ID,
 	WALK_OFFICE_NAME,
+	WALK_OFFICE_SLUG,
 	WALK_USER_EMAIL,
 } from "../lib/walk-user";
 import { runSeed } from "./run-seed";
@@ -344,7 +345,7 @@ test(
 );
 
 test(
-	"a database seeded before #264 loses walk@, walk2@ and manager@: they become Linh, Đức and Hà, the office Hanoi Nest Seekers (#264)",
+	"a database seeded before #264 loses walk@, walk2@ and manager@: they become Linh, Đức and Hà, the office Hanoi Nest Seekers at /hanoi-nest-seekers (#264)",
 	SEEDING,
 	async () => {
 		const old = [
@@ -355,7 +356,7 @@ test(
 		await testDb.organization.upsert({
 			where: { id: WALK_OFFICE_ID },
 			create: { id: WALK_OFFICE_ID, name: "Walk Office", slug: "walk", createdAt: new Date() },
-			update: { name: "Walk Office" },
+			update: { name: "Walk Office", slug: "walk" },
 		});
 		const ids: string[] = [];
 		for (const [email, name, role] of old) {
@@ -397,6 +398,8 @@ test(
 		expect(managerMember.role).toBe("admin");
 		const office = await testDb.organization.findUniqueOrThrow({ where: { id: WALK_OFFICE_ID } });
 		expect(office.name).toBe(WALK_OFFICE_NAME);
+		expect(office.slug).toBe(WALK_OFFICE_SLUG);
+		expect(WALK_OFFICE_SLUG).toBe("hanoi-nest-seekers");
 		expect(WALK_OFFICE_NAME).toBe("Hanoi Nest Seekers");
 		// A second run adds nothing.
 		const before = await rowCounts();
