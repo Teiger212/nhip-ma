@@ -25,6 +25,8 @@ const PHONE = { width: 390, height: 844 };
 
 /** Geometry is compared to the pixel, give or take one for rounding. */
 const PX = 1;
+/** "Has not moved": a message's top edge, before and after, give or take two pixels. */
+const STILL_PX = 2;
 
 /** The Inbox asks again every second in the E2E build (#222); three production polls of margin. */
 const WITHIN_A_POLL = { timeout: 30_000 };
@@ -46,6 +48,8 @@ type LayoutOffice = {
 	manager: Joined;
 	/** A new guest writes `count` messages, one after the other. */
 	newGuest: (count?: number) => Promise<Guest>;
+	/** The guest writes one more message, added to their texts; returns its text. */
+	write: (guest: Guest) => Promise<string>;
 };
 
 /**
@@ -74,6 +78,12 @@ const test = base.extend<{ layoutOffice: LayoutOffice }>({
 						guest.texts.push(text);
 					}
 					return guest;
+				},
+				write: async (guest) => {
+					const text = `Another message from the guest, ${randomUUID().slice(0, 8)}`;
+					await sendZaloText(request, { guestId: guest.id, oaId, text });
+					guest.texts.push(text);
+					return text;
 				},
 			});
 		} finally {
@@ -324,6 +334,60 @@ async function expectReplyReady(page: Page, guest: Guest) {
 	}).toPass(SETTLED);
 }
 
+/** The pill that says a new message came in below what the operator is reading. */
+function newMessagePill(page: Page) {
+	return page.getByTestId("new-message-pill");
+}
+
+/**
+ * The element's top edge once it has stopped moving: read every 50ms until six readings in a row
+ * (300ms) agree, so a scroll the page is still making (smooth, or a frame after a render) is
+ * waited out. Gives the last reading after 5s, so a pane that never rests fails on the number.
+ */
+async function restingTop(locator: Locator): Promise<number> {
+	return locator.evaluate(
+		(element) =>
+			new Promise<number>((resolve) => {
+				const started = Date.now();
+				let last = element.getBoundingClientRect().top;
+				let same = 0;
+				const read = () => {
+					const top = element.getBoundingClientRect().top;
+					same = Math.abs(top - last) < 0.5 ? same + 1 : 0;
+					last = top;
+					if (same >= 6 || Date.now() - started > 5_000) resolve(top);
+					else setTimeout(read, 50);
+				};
+				setTimeout(read, 50);
+			}),
+	);
+}
+
+/**
+ * The operator scrolls the conversation with the mouse wheel, the pointer over a message in view,
+ * until `target` is in view: up (negative) or down (positive).
+ */
+async function wheelUntilInView(page: Page, target: Locator, deltaY: number, what: string) {
+	await expect(async () => {
+		// A message whose centre the person sees (not clipped by the pane, nor under the header).
+		let anchor: { x: number; y: number } | null = null;
+		for (const message of await messages(page).all()) {
+			anchor = await message.evaluate((element) => {
+				const r = element.getBoundingClientRect();
+				const x = r.left + r.width / 2;
+				const y = r.top + r.height / 2;
+				const top = document.elementFromPoint(x, y);
+				return top !== null && (element === top || element.contains(top)) ? { x, y } : null;
+			});
+			if (anchor) break;
+		}
+		expect(anchor, "a message in view to scroll over").not.toBeNull();
+		await page.mouse.move(anchor!.x, anchor!.y);
+		await page.mouse.wheel(0, deltaY);
+		await expect(target).toBeInViewport({ timeout: 500 });
+	}, what).toPass(SETTLED);
+}
+
 /* ---------------------------------------------------------------- the scenarios */
 
 // scenario: docs/e2e-scenarios.md Thread layout 1
@@ -436,5 +500,100 @@ test.describe("Thread layout 4 — on a phone the details are a strip too", () =
 
 		await openThreadOf(page, guest);
 		await expectReplyReady(page, guest);
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Thread layout 5
+test.describe("Thread layout 5 — a new guest message doesn't pull an operator who is reading older ones", () => {
+	test("at 1366×768 with the sidebar open, on a thread of ten messages", async ({
+		layoutOffice,
+	}) => {
+		const page = layoutOffice.manager.page;
+		const guest = await layoutOffice.newGuest(10);
+
+		await page.setViewportSize(LAPTOP);
+		await openThreadOf(page, guest);
+		await expectSidebarOpen(page);
+		// The thread has opened at its latest message (Thread layout 3) and rests there.
+		await expectReplyReady(page, guest);
+
+		const first = messageSaying(page, guest.texts[0]);
+		const pill = newMessagePill(page);
+
+		// The manager scrolls up to the guest's first message, reading older ones.
+		await wheelUntilInView(page, first, -2_000, "the manager scrolls up to the first message");
+		await expect(
+			messageSaying(page, guest.texts.at(-1)!),
+			"scrolled up, the latest message is out of view (else nothing could pull the reader)",
+		).not.toBeInViewport();
+		const before = await restingTop(first);
+
+		// The guest writes again.
+		const second = await layoutOffice.write(guest);
+		const arrived = messageSaying(page, second);
+		await expect(arrived, "the guest's new message is in the thread").toHaveCount(1, WITHIN_A_POLL);
+		const after = await restingTop(first);
+		expect(
+			Math.abs(after - before),
+			`the conversation stays where it was: the first message's top was ${before}, is ${after}`,
+		).toBeLessThanOrEqual(STILL_PX);
+		await expect(arrived, "the new message is not pulled into view").not.toBeInViewport();
+
+		// A "New message" pill shows above the reply box.
+		await expect(pill, "the New message pill shows").toBeVisible();
+		await expect(pill).toHaveRole("button");
+		await expect(pill).toHaveAccessibleName("New message");
+		await expectWhollyInView(page, pill, "the New message pill");
+		const pillBox = await boxOf(pill, "the New message pill");
+		const replyBefore = await boxOf(replyBox(page), "the reply box");
+		expect(pillBox.y + pillBox.height, "the pill is above the reply box").toBeLessThanOrEqual(
+			replyBefore.y + PX,
+		);
+
+		// Pressing it brings the new message into view, and the pill goes.
+		await pill.click();
+		await expect(async () => {
+			await expect(arrived, "the new message, in view").toBeInViewport({
+				ratio: 0.98,
+				timeout: 1_000,
+			});
+			const message = await boxOf(arrived, "the new message");
+			const reply = await boxOf(replyBox(page), "the reply box");
+			expect(
+				message.y + message.height,
+				"the new message ends above the reply box",
+			).toBeLessThanOrEqual(reply.y + PX);
+		}, "pressing the pill brings the new message into view").toPass(SETTLED);
+		await expect(pill, "the pill goes once pressed").toBeHidden();
+
+		// Scrolled up again, another message from the guest shows the pill again.
+		await wheelUntilInView(page, first, -2_000, "the manager scrolls up again");
+		const beforeThird = await restingTop(first);
+		const third = await layoutOffice.write(guest);
+		await expect(messageSaying(page, third), "the guest's third new message").toHaveCount(
+			1,
+			WITHIN_A_POLL,
+		);
+		const afterThird = await restingTop(first);
+		expect(
+			Math.abs(afterThird - beforeThird),
+			`scrolled up again, the conversation stays: the first message's top was ${beforeThird}, is ${afterThird}`,
+		).toBeLessThanOrEqual(STILL_PX);
+		await expect(pill, "the pill shows again").toBeVisible();
+
+		// The manager scrolls back down to the latest message themselves, and the pill goes.
+		const latest = messageSaying(page, third);
+		await wheelUntilInView(page, latest, 2_000, "the manager scrolls back down");
+		await restingTop(latest);
+		await expect(latest, "the latest message, wholly in view").toBeInViewport({ ratio: 0.98 });
+		await expect(pill, "the pill goes once the manager is at the latest message").toBeHidden();
+
+		// At the latest message, a new message from the guest comes into view on its own, no pill.
+		const fourth = await layoutOffice.write(guest);
+		await expect(
+			messageSaying(page, fourth),
+			"at the latest message, the new one comes into view on its own",
+		).toBeInViewport({ ratio: 0.98, ...WITHIN_A_POLL });
+		await expect(pill, "no pill when the manager was at the latest message").toBeHidden();
 	});
 });

@@ -888,6 +888,7 @@
 		"forYou": "Operator note",
 		"forYouHint": "Not shown to the guest.",
 		"reply": "Reply",
+		"newMessage": "New message",
 		"approveAndSend": "Approve and send",
 		"notSent": "Not sent",
 		"alreadySent": "Sent {at}",

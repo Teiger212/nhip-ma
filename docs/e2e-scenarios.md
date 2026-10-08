@@ -627,6 +627,29 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    implementer after the first green run, when the phone check found the first message scrolled
    up under the strip; the test author's reading had been "above the first message" as it lies).
 
+5. **A new guest message doesn't pull an operator who is reading older ones** (decided by Eyal on
+   2026-10-08, on PR #258). A manager has a guest's thread of ten messages open, at 1366×768 with
+   the sidebar open, and scrolls the conversation up to the guest's first message. The guest
+   writes again: the conversation stays where it was (the first message has not moved), and a
+   "New message" pill (`data-test="new-message-pill"`, a button named "New message"; "Tin nhắn
+   mới" in Vietnamese) shows above the reply box. Pressing it brings the new message into view,
+   and the pill goes. Scrolled up again, another message from the guest shows the pill again;
+   the operator scrolls back down to the latest message themselves, and the pill goes. At the
+   latest message, a new message from the guest comes into view on its own, with no pill.
+   Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 5; the office as in 1, the guest's
+   ten Zalo messages written one after the other, the thread opened from Unassigned and judged at
+   its latest message as in 3 before anything is scrolled. Every scroll is the mouse wheel, the
+   pointer over a message the person sees, repeated until the target message is in view; scrolled
+   up, the latest message must be out of view first, so there is something to pull. "Stays where it
+   was" is the first message's top edge, read once it has stopped moving (six readings 50ms apart
+   agreeing), within 2px of where it was before the guest wrote, judged after the new message is in
+   the thread, and the new message not in view. The pill is looked for on the whole page: visible,
+   wholly in the window, a button named "New message", its bottom at or above the reply box's top.
+   Pressed, the new message is wholly in view (ratio 0.98) and ends above the reply box, and the
+   pill is hidden. "Scrolls back down themselves" is wheeling down until the latest message is in
+   view, then the pill hidden. "No pill" at the latest message is judged once the new message has
+   come into view. The Vietnamese name "Tin nhắn mới" is not tested.)
+
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 
 1. **Waiting now opens the thread.** As the agent, Home lists the guests whose turn it is,

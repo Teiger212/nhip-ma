@@ -1,11 +1,12 @@
 "use client";
 
 import { Button, cn, Skeleton } from "@repo/ui";
-import { ChevronLeftIcon } from "lucide-react";
+import { ArrowDownIcon, ChevronLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
 	type ReactNode,
 	type RefObject,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useRef,
@@ -64,25 +65,52 @@ function usePaneFitsRail(pane: RefObject<HTMLElement | null>): boolean {
 	return fits;
 }
 
+/** How close to the latest message still counts as reading it: the conversation follows from here. */
+const NEAR_LATEST_PX = 80;
+
 /**
- * The conversation opens on its latest message, and follows a new one in. While the operator is
- * at the latest message it stays there when the column resizes: a phone shows the thread only
- * after it has loaded out of sight, and the details fold and unfold as the pane changes width.
+ * Where the conversation sits (#248, PR #258). It opens on its latest message. While the operator
+ * is at (or within 80px of) the latest message, it follows: a new message comes into view, and it
+ * stays at the bottom when the column resizes (a phone shows the thread only after it loaded out
+ * of sight; the details fold and unfold as the pane changes width). Scrolled up to read older
+ * messages, it stays put when the guest writes, and `unseen` says a new message is below, until
+ * the operator goes down to it (`toLatest`, or scrolling there). The operator's own send always
+ * goes to the latest.
  */
-function useScrolledToLatest(threadId: string, messageCount: number) {
+function useConversationScroll(threadId: string, messages: Conversation["messages"]) {
 	const scroller = useRef<HTMLDivElement>(null);
 	const atLatest = useRef(true);
-	useLayoutEffect(() => {
+	const [unseen, setUnseen] = useState(false);
+	const count = messages.length;
+	const latest = messages.at(-1);
+	const latestIsOwnSend = latest?.direction === "out" && latest.source === "nhip";
+	const shown = useRef({ threadId, count });
+
+	const toLatest = useCallback(() => {
 		const element = scroller.current;
-		if (!element) return;
 		atLatest.current = true;
-		element.scrollTop = element.scrollHeight;
-	}, [threadId, messageCount]);
+		setUnseen(false);
+		if (element) element.scrollTop = element.scrollHeight;
+	}, []);
+
+	useLayoutEffect(() => {
+		const before = shown.current;
+		shown.current = { threadId, count };
+		const opened = before.threadId !== threadId;
+		if (opened || atLatest.current || latestIsOwnSend) {
+			toLatest();
+		} else if (count > before.count) {
+			setUnseen(true);
+		}
+	}, [threadId, count, latestIsOwnSend, toLatest]);
+
 	useEffect(() => {
 		const element = scroller.current;
 		if (!element) return;
 		const onScroll = () => {
-			atLatest.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24;
+			atLatest.current =
+				element.scrollHeight - element.scrollTop - element.clientHeight <= NEAR_LATEST_PX;
+			if (atLatest.current) setUnseen(false);
 		};
 		const observer = new ResizeObserver(() => {
 			if (atLatest.current) element.scrollTop = element.scrollHeight;
@@ -95,7 +123,7 @@ function useScrolledToLatest(threadId: string, messageCount: number) {
 			element.removeEventListener("scroll", onScroll);
 		};
 	}, []);
-	return scroller;
+	return { scroller, unseen, toLatest };
 }
 
 /** The open thread's place while it loads: a header and a few bubble-shaped bars. */
@@ -149,7 +177,10 @@ export function ThreadDetail({
 	const t = useTranslations("inbox");
 	const pane = useRef<HTMLDivElement>(null);
 	const rail = usePaneFitsRail(pane);
-	const scroller = useScrolledToLatest(conversation.id, conversation.messages.length);
+	const { scroller, unseen, toLatest } = useConversationScroll(
+		conversation.id,
+		conversation.messages,
+	);
 	const disconnected = useDisconnectedEndpoints();
 	const endpoint = replyEndpoint(conversation);
 	const blocked = disconnected.some(
@@ -197,12 +228,30 @@ export function ThreadDetail({
 			{rail ? null : <ExtractFields conversation={conversation} layout="strip" />}
 			<div className="min-h-0 flex flex-1">
 				<div className="min-h-0 min-w-0 flex flex-1 flex-col">
-					<div ref={scroller} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-						<div className="gap-4 px-3 py-4 md:px-5 md:py-5 flex flex-col">
-							{conversation.messages.map((message) => (
-								<ThreadMessage key={message.id} message={message} />
-							))}
+					<div className="min-h-0 relative flex flex-1 flex-col">
+						<div ref={scroller} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+							<div className="gap-4 px-3 py-4 md:px-5 md:py-5 flex flex-col">
+								{conversation.messages.map((message) => (
+									<ThreadMessage key={message.id} message={message} />
+								))}
+							</div>
 						</div>
+						{unseen ? (
+							// A floating layer over the conversation, so it lifts (DESIGN.md, The Flat Desk Rule).
+							<div className="bottom-3 shadow-md absolute left-1/2 -translate-x-1/2 rounded-full">
+								<Button
+									type="button"
+									variant="primary"
+									size="sm"
+									className="min-h-11 md:min-h-0"
+									onClick={toLatest}
+									data-test="new-message-pill"
+								>
+									<ArrowDownIcon aria-hidden="true" className="size-3.5" />
+									{t("newMessage")}
+								</Button>
+							</div>
+						) : null}
 					</div>
 					<div className="gap-2 px-3 py-3 md:px-5 flex shrink-0 flex-col border-t bg-muted/40">
 						<ReplyBox
