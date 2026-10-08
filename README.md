@@ -10,7 +10,7 @@ Local development uses invented threads only; nothing here is a real guest. Prod
 
 SaaS listens on **port 3010**, and auth sessions and inbox threads live in the same local Postgres. Setup, environment, commands and the seeded logins are in [AGENTS.md](./AGENTS.md); locale routing is in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-Sign in as `walk@nhip.local` / `walkthrough` at http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send). There is no auth bypass; every route behind `(authenticated)` requires a real session.
+Sign in as `linh@nhip.local` / `walkthrough` at http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send). There is no auth bypass; every route behind `(authenticated)` requires a real session.
 
 The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) returns 401 without a signed-in session. Approve records one Answer per guest message before anything is sent (ADR 0011), so a double tap sends once.
 

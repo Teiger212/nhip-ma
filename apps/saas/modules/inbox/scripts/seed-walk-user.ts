@@ -1,7 +1,8 @@
 import { hashPassword } from "@repo/auth/lib/password";
-import { createUser, createUserAccount, getUserByEmail } from "@repo/database";
+import { createUser, createUserAccount, db, getUserByEmail, updateUser } from "@repo/database";
 
 import {
+	LEGACY_WALK_LOGINS,
 	RIVER_AGENT2_EMAIL,
 	RIVER_AGENT2_NAME,
 	RIVER_AGENT_EMAIL,
@@ -52,6 +53,27 @@ async function seedLogin(login: {
 	});
 
 	return "created";
+}
+
+/**
+ * Retires the walk logins from before #264 (`walk@`, `walk2@`, `manager@`): each is renamed in
+ * place to its successor, keeping its user id (and so its sessions, office membership and thread
+ * ownership). If the successor already exists, the old login is deleted instead. Idempotent;
+ * returns how many it retired. Run before the logins are seeded.
+ */
+export async function retireLegacyWalkLogins(): Promise<number> {
+	let retired = 0;
+	for (const { from, to, name } of LEGACY_WALK_LOGINS) {
+		const legacy = await getUserByEmail(from);
+		if (!legacy) continue;
+		if (await getUserByEmail(to)) {
+			await db.user.delete({ where: { id: legacy.id } });
+		} else {
+			await updateUser({ id: legacy.id, email: to, name });
+		}
+		retired += 1;
+	}
+	return retired;
 }
 
 /** The agent login. */
