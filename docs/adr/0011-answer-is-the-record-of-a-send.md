@@ -2,6 +2,9 @@
 
 Date: 2026-09-20. Status: accepted. Refines ADR 0006.
 
+**Amended by ADR 0024 (2026-10-08).** An edited reply stays when the guest writes again; it is
+no longer emptied.
+
 ## Context
 
 Under ADR 0006 a send was four separate things: the approval request, an atomic claim

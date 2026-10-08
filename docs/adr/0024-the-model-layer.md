@@ -1,7 +1,8 @@
 # 0024. The model layer: one seam, a model per task, and the model writes the suggested reply
 
 Date: 2026-10-08. Status: accepted. Decided by Eyal in the grill of 2026-10-08. Amends ADR 0005
-(the suggested reply). Builds on ADR 0007 (translation). Takes over #168's "zero-retention
+(the suggested reply), ADR 0011's "a new message empties" the edit, and ADR 0021's 30 s for
+translations and follow-ups. Builds on ADR 0007 (translation). Takes over #168's "zero-retention
 routing on every model call"; #168 keeps the model greeting. Related: #242, #245, #246, #83.
 
 ## Context
@@ -25,7 +26,8 @@ routing on every model call"; #168 keeps the model greeting. Related: #242, #245
   - No model id is defaulted in code, and a key without `DRAFT_MODEL` is a startup error
     (`config.ts`).
   - `DRAFT_BASE_URL` accepts any OpenAI-compatible endpoint.
-  - A failed call logs the model and an error kind, nothing else.
+  - A failed call logs the model and an HTTP status or error kind. A success, and a reply
+    the provider filtered, log nothing.
 
 ## Decision
 
@@ -129,16 +131,20 @@ routing on every model call"; #168 keeps the model greeting. Related: #242, #245
   - "For the pilot it is unmetered": drafts and translations are now capped per office and
     day.
   - The fallback template is new copy in the agent's voice.
+- **What this changes in ADR 0011.** The reply box keyed the edit by the guest message, so a
+  new message emptied it. Now an edited reply stays when the guest writes again.
+- **What this changes in ADR 0021.** Translations and follow-ups time out after 20 s, with one
+  retry, not 30 s.
 - **ADR 0007 keeps its decision.** Translation runs through the same seam, as the `translate`
   task, with its own model and cap.
-- **ADR 0021's greeting is unchanged.** Its 10 s timeout and its monthly cap of about 2,000
+- **ADR 0021's greeting is otherwise unchanged.** Its 10 s timeout and its monthly cap of about 2,000
   model greetings belong to #168.
 - **Data.** The daily count needs a place in the database. The draft's operator-language text
   needs one too. Both are additive.
 - **Testing.** E2E can't call a real model. E2E covers the template path; the model path is
   covered by Vitest with a stubbed adapter, and by the two evals, run by hand.
 - **Docs that describe `DRAFT_*` change:** `.env.local.example`, `ARCHITECTURE.md`,
-  `HANDOFF.md` and `docs/setup-checklist.md`.
+  `HANDOFF.md` and `docs/setup-checklist.md` (its staging steps and its production env list).
 
 ## Open
 
@@ -151,7 +157,15 @@ routing on every model call"; #168 keeps the model greeting. Related: #242, #245
 - **Rule 4 and the post-check.** Rule 4 has the draft acknowledge a legal question. Today's
   post-check drops any draft with words like visa, ownership or sổ hồng
   (`drafts/guardrails.ts`). Pending Eyal.
-- **Two translations per guest message.** A guest message is translated into both operator
-  languages, EN and VI (`translate.ts`), so it can cost two calls. Whether the 1,000 cap and
-  the cost estimate count one call or two is pending Eyal.
+- **Two translations for some guest messages.** A guest message is translated into each
+  operator language it isn't already in (`translate.ts`). An EN or VI message costs one call;
+  a JA, KO or RU message costs two. Whether the 1,000 cap and the cost estimate count calls or
+  messages is pending Eyal.
+- **Approving a kept edit.** Today a send whose guest message is no longer the latest is
+  refused (`409 stale_target`, ADR 0011). What approving an edit kept after the guest wrote
+  again answers is pending Eyal.
+- **A draft that names the viewer.** A draft is one stored row per thread. On an unassigned
+  thread it names the viewer, so a second viewer sees the first one's name. Pending Eyal.
+- **The 50 translation pairs.** The seed holds 41 guest messages in VI, JA, KO and RU. Counting
+  JA, KO and RU into both EN and VI gives 62 pairs. How the 50 are drawn is pending Eyal.
 - **The Vietnamese copy** of the template and the labels. Pending a native read (#78).
