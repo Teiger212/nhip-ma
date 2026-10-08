@@ -3,7 +3,14 @@
 import { Button, cn, Skeleton } from "@repo/ui";
 import { ChevronLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	type RefObject,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
 import { displayName } from "../lib/display-name";
 import { replyEndpoint, useDisconnectedEndpoints } from "../lib/inbox-queries";
@@ -57,13 +64,37 @@ function usePaneFitsRail(pane: RefObject<HTMLElement | null>): boolean {
 	return fits;
 }
 
-/** The conversation opens on its latest message, and follows a new one in. */
+/**
+ * The conversation opens on its latest message, and follows a new one in. While the operator is
+ * at the latest message it stays there when the column resizes: a phone shows the thread only
+ * after it has loaded out of sight, and the details fold and unfold as the pane changes width.
+ */
 function useScrolledToLatest(threadId: string, messageCount: number) {
 	const scroller = useRef<HTMLDivElement>(null);
+	const atLatest = useRef(true);
 	useLayoutEffect(() => {
 		const element = scroller.current;
-		if (element) element.scrollTop = element.scrollHeight;
+		if (!element) return;
+		atLatest.current = true;
+		element.scrollTop = element.scrollHeight;
 	}, [threadId, messageCount]);
+	useEffect(() => {
+		const element = scroller.current;
+		if (!element) return;
+		const onScroll = () => {
+			atLatest.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24;
+		};
+		const observer = new ResizeObserver(() => {
+			if (atLatest.current) element.scrollTop = element.scrollHeight;
+		});
+		observer.observe(element);
+		if (element.firstElementChild) observer.observe(element.firstElementChild);
+		element.addEventListener("scroll", onScroll, { passive: true });
+		return () => {
+			observer.disconnect();
+			element.removeEventListener("scroll", onScroll);
+		};
+	}, []);
 	return scroller;
 }
 

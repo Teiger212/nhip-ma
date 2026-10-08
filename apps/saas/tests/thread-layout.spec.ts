@@ -247,6 +247,9 @@ async function expectDetailsAsStrip(page: Page) {
 	);
 	const all = await messages(page).all();
 	expect(all.length, "the thread shows messages").toBeGreaterThan(0);
+	// The thread opens at its latest message (Thread layout 3), so on a short pane the first one
+	// can sit scrolled up under the strip: brought into view in its own pane, it is below it.
+	await all[0].scrollIntoViewIfNeeded();
 	const first = await boxOf(all[0], "the first message");
 	expect(panel.y + panel.height, "the details are above the first message").toBeLessThanOrEqual(
 		first.y + PX,
