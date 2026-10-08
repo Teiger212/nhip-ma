@@ -691,6 +691,10 @@ export async function approveAndSend(
 		};
 	}
 
+	// What the reply keeps of its suggestion (#242), read before the Answer is on record, so no
+	// read runs while it is sending.
+	const suggested = await suggestedReplyLine(store, conv, inboundId, text);
+
 	// The Answer is written before the vendor call. Its unique inbound is the guard against
 	// a concurrent approval; its status is what decides whether a retry is ever allowed.
 	const begun = await store.beginAnswer({
@@ -719,7 +723,6 @@ export async function approveAndSend(
 		}
 	}
 	const answerId = begun.answer.id;
-	const suggested = await suggestedReplyLine(store, conv, inboundId, text);
 
 	let result: SendResult;
 	try {

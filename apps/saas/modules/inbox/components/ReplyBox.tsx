@@ -89,7 +89,9 @@ export function ReplyBox({
 				className="min-h-20 max-h-48"
 				aria-label={t("reply")}
 			/>
-			{officeLine ? <OfficeLine line={officeLine} className="px-1" /> : null}
+			{officeLine ? (
+				<OfficeLine line={officeLine} className="px-1 max-h-24 overflow-y-auto" />
+			) : null}
 		</section>
 	);
 }
