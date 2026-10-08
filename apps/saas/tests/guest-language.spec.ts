@@ -62,8 +62,11 @@ const EN_LABEL = `Auto-reply from ${OFFICE_NAME}: a colleague will continue with
 /** The English first-reply template's opening (ADR 0021, Context). */
 const EN_GREETING_START = /^Thanks for writing\b/;
 
-/** The English follow-up template, as the reply box holds it after the greeting (no draft in E2E). */
-const EN_FOLLOW_UP = "Thanks for your message. A colleague will get back to you here shortly.";
+/**
+ * The English template suggested reply's opening on an unassigned thread (ADR 0024; docs/e2e-scenarios.md,
+ * Suggested reply template): it names the office, and a Zalo guest has no name to greet.
+ */
+const EN_TEMPLATE_START = `Hi, this is ${OFFICE_NAME}.`;
 
 /** Any "isn't supported" note or row, in either interface language. */
 const NOT_SUPPORTED = /isn't supported|not supported|chưa hỗ trợ/i;
@@ -303,7 +306,7 @@ test.describe.configure({ timeout: 120_000 });
 // scenario: docs/e2e-scenarios.md Guest language 1
 test.describe("Guest language 1 — a guest writes in French: the thread names French and says it isn't supported", () => {
 	for (const locale of ["en", "vi"] as const) {
-		test(`${locale.toUpperCase()} interface: the Language row reads "${FRENCH[locale].languageRow}" (never English alone) in the rail and the strip; each of the guest's messages, the mixed second one included, has "${FRENCH[locale].noTranslation}" under its text and no translation, and the auto-reply has no note; the operator note reads "${FRENCH[locale].operatorNote}"; the guest gets the English greeting and the reply box the English follow-up; Home's Waiting now names ${FRENCH[locale].name}, not ${FRENCH[locale].english}`, async ({
+		test(`${locale.toUpperCase()} interface: the Language row reads "${FRENCH[locale].languageRow}" (never English alone) in the rail and the strip; each of the guest's messages, the mixed second one included, has "${FRENCH[locale].noTranslation}" under its text and no translation, and the auto-reply has no note; the operator note reads "${FRENCH[locale].operatorNote}"; the guest gets the English greeting and the reply box the English template, starting "${EN_TEMPLATE_START}" with no "a colleague"; Home's Waiting now names ${FRENCH[locale].name}, not ${FRENCH[locale].english}`, async ({
 			office,
 		}) => {
 			const { manager } = office;
@@ -329,7 +332,7 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 			await page.setViewportSize(PANES[0].size);
 			await openThreadByLink(page, locale, threadId, FRENCH_FIRST);
 
-			await test.step("the auto-reply shows as the template, and the reply box holds the English follow-up", async () => {
+			await test.step("the auto-reply shows as the template, and the reply box holds the English template suggested reply", async () => {
 				await expect(bubbleSaying(page, EN_LABEL), "the English label shows").toHaveCount(1);
 				await expect(
 					openThread(page).getByText(ui.inbox.autoReply.template, { exact: true }),
@@ -337,8 +340,12 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 				).toHaveCount(1);
 				await expect(
 					replyBox(page, locale),
-					"the reply box holds the English follow-up",
-				).toHaveValue(EN_FOLLOW_UP, WITHIN_SECONDS);
+					`the reply box holds the English template, starting "${EN_TEMPLATE_START}"`,
+				).toHaveValue(new RegExp(`^${literal(EN_TEMPLATE_START)}`), WITHIN_SECONDS);
+				expect(
+					await replyBox(page, locale).inputValue(),
+					'it never promises "a colleague"',
+				).not.toMatch(/colleague/i);
 			});
 
 			await test.step("the operator note is one line: the reply is in English, French isn't supported", async () => {

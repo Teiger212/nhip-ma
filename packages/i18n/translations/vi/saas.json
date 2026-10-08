@@ -878,8 +878,8 @@
 		"translation": "Bản dịch",
 		"noTranslation": "Chưa hỗ trợ {language}: không dịch",
 		"suggested": {
-			"template": "Trả lời gợi ý",
-			"model": "AI gợi ý từ cuộc hội thoại"
+			"template": "Gợi ý trả lời · mẫu",
+			"model": "Gợi ý trả lời · AI"
 		},
 		"regenerate": "Tạo lại",
 		"regenerating": "Đang tạo lại…",

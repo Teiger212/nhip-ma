@@ -43,11 +43,17 @@ const saas = JSON.parse(
 	};
 };
 
-/** The first-reply template's opening (ADR 0021, Context): "Thanks for writing …". */
-const FIRST_REPLY_TEMPLATE = /Thanks for writing/i;
-
 /** The office every greeting here signs as (ADR 0021, R7: the label names the office). */
 const OFFICE_NAME = "Saigon Prime Test";
+
+/**
+ * The template suggested reply's label (ADR 0024, "The label"), written out rather than read from
+ * saas.json: the wording is the contract (docs/e2e-scenarios.md, Suggested reply template).
+ */
+const TEMPLATE_LABEL = /^\s*Suggested reply\s*·\s*template\s*$/;
+
+/** Any thanks to the guest: "Thanks for writing", "Thanks for getting in touch", "Thank you"… */
+const THANKS = /\bthank/i;
 
 /** The English label: the greeting's last line (ADR 0021, R7). */
 const EN_LABEL = `Auto-reply from ${OFFICE_NAME}: a colleague will continue with you right here.`;
@@ -641,8 +647,15 @@ const OFFICE_SETTINGS = "Office settings";
 /** The switch's label on the office's settings, General tab (#167). */
 const AUTO_REPLY_SWITCH = "Auto-reply to a new guest's first message";
 
-/** Today's first-reply template, as the reply box holds it for a thread with no auto-reply. */
-const FIRST_REPLY_TEMPLATE_START = /^Thanks for writing\b/;
+/**
+ * The template suggested reply on a thread the office has sent nothing to (ADR 0024; First
+ * greeting 5): it names the office and thanks the guest, once, in these words.
+ */
+const NAMES_THE_OFFICE = `this is ${OFFICE_NAME}`;
+const THANKS_ONCE = "Thanks for getting in touch";
+
+/** The old first-reply template's opening (ADR 0021, Context), which the template replaces. */
+const OLD_FIRST_REPLY = /Thanks for writing/i;
 
 /** The office's settings, General tab, where a manager finds the switch. */
 function settingsAddress(office: GreetingOffice) {
@@ -700,7 +713,7 @@ function putAutoReply(request: APIRequestContext, on: boolean) {
 
 // scenario: docs/e2e-scenarios.md First greeting 5
 test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
-	test("the manager switches the auto-reply off from Office settings: a new guest gets no auto-reply and the reply box holds the first-reply template; switched back on, the next new guest is greeted, and the guest who wrote while it was off writes again and is still not greeted (S1)", async ({
+	test(`the manager switches the auto-reply off from Office settings: a new guest gets no auto-reply and the reply box holds the template suggested reply, which names the office ("${NAMES_THE_OFFICE}") and thanks once ("${THANKS_ONCE}"), never "Thanks for writing"; switched back on, the next new guest is greeted, and the guest who wrote while it was off writes again and is still not greeted (S1)`, async ({
 		office,
 	}) => {
 		const { manager } = office;
@@ -718,13 +731,22 @@ test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
 		await test.step("switched off", () => switchAutoReply(page, false));
 
 		const offGuest = office.newGuest();
-		await test.step("a new guest writes while it is off: the reply box holds the first-reply template", async () => {
+		await test.step("a new guest writes while it is off: the reply box holds the template, which names the office and thanks the guest once", async () => {
 			await offGuest.write("Hi, we're looking to rent an apartment in Tay Ho");
 			await threadOf(manager.api, offGuest);
 			await openThreadOf(page, offGuest);
-			await expect(replyBoxOnPage(page), "the reply box holds today's first reply").toHaveValue(
-				FIRST_REPLY_TEMPLATE_START,
+			const box = replyBoxOnPage(page);
+			await expect(box, `the reply box names the office ("${NAMES_THE_OFFICE}")`).toHaveValue(
+				new RegExp(NAMES_THE_OFFICE),
+				WITHIN_SECONDS,
 			);
+			const text = await box.inputValue();
+			expect(text, `it thanks the guest: "${THANKS_ONCE}"`).toContain(THANKS_ONCE);
+			expect(
+				text.match(new RegExp(THANKS.source, "gi")) ?? [],
+				"it thanks the guest once",
+			).toHaveLength(1);
+			expect(text, 'not the old first reply\'s "Thanks for writing"').not.toMatch(OLD_FIRST_REPLY);
 		});
 
 		await test.step("switched back on", async () => {
@@ -901,63 +923,53 @@ test.describe("First greeting 7 — the greeting's echo is not a reply", () => {
 });
 
 // scenario: docs/e2e-scenarios.md First greeting 8
-test.describe("First greeting 8 — after the greeting, the reply box doesn't greet again", () => {
-	test("the manager opens a greeted guest's thread: the reply box holds the follow-up template (as on a thread a human already answered), never the first-reply template's \"Thanks for writing\"; the guest writes again and the box still holds the follow-up template", async ({
+test.describe("First greeting 8 — after the greeting, the reply box doesn't thank the guest again", () => {
+	test(`the manager opens a greeted guest's thread: the reply box holds the template ("Suggested reply · template"), names ${OFFICE_NAME}, and neither thanks the guest again nor promises "a colleague"; the guest writes again before anyone answers, and the box still holds a template that neither thanks them nor promises a colleague`, async ({
 		office,
 	}) => {
-		test.setTimeout(180_000);
 		const { manager } = office;
 		const { page } = manager;
-		const first = "Hi, we're looking to rent an apartment in Tay Ho";
 		const again = "Are you there?";
 
-		// The follow-up template, as the reply box shows it where nobody disputes it is a follow-up:
-		// a guest who wrote the same, was greeted, got a human reply and wrote the same again.
-		const answered = office.newGuest();
-		await answered.write(first);
-		await greetingOf(manager.api, answered);
-		await approveAsManager(manager.api, answered, "A colleague will be with you shortly.");
-		const { id: answeredThread } = await threadOf(manager.api, answered);
-		await answered.write(again);
-		await guestMessagesArrived(manager.api, answeredThread, 2);
-		await openThreadOf(page, answered);
-		await expect(
-			replyBox(page),
-			"the answered guest's reply box holds a suggestion",
-		).not.toHaveValue("");
-		const followUpTemplate = await replyBox(page).inputValue();
-		expect(followUpTemplate, "the follow-up template is not the first-reply template").not.toMatch(
-			FIRST_REPLY_TEMPLATE,
-		);
-
-		// A new guest, greeted: the reply box takes the follow-up path at once.
 		const guest = office.newGuest();
-		await guest.write(first);
+		await guest.write("Hi, we're looking to rent an apartment in Tay Ho");
 		await greetingOf(manager.api, guest);
 		const { id: threadId } = await threadOf(manager.api, guest);
-		await openThreadOf(page, guest);
-		await expect(
-			replyBox(page),
-			"after the greeting, the box holds the follow-up template",
-		).toHaveValue(followUpTemplate, WITHIN_SECONDS);
-		await expect(replyBox(page), "after the greeting, the box doesn't greet again").not.toHaveValue(
-			FIRST_REPLY_TEMPLATE,
-		);
 
-		// The guest writes again before anyone answers: still the follow-up template.
-		await guest.write(again);
-		await guestMessagesArrived(manager.api, threadId, 2);
-		await openThreadOf(page, guest);
-		await expect(
-			openThread(page).getByText(again, { exact: true }),
-			"the guest's second message is in the thread",
-		).toBeVisible();
-		await expect(replyBox(page), "the box still holds the follow-up template").toHaveValue(
-			followUpTemplate,
-			WITHIN_SECONDS,
-		);
-		await expect(replyBox(page), "the box still doesn't greet").not.toHaveValue(
-			FIRST_REPLY_TEMPLATE,
-		);
+		await test.step("after the greeting: the template, naming the office, with no second thanks", async () => {
+			await openThreadOf(page, guest);
+			await expect(replyBox(page), `the box names ${OFFICE_NAME}`).toHaveValue(
+				new RegExp(OFFICE_NAME),
+				WITHIN_SECONDS,
+			);
+			const text = await replyBox(page).inputValue();
+			expect(text, "it doesn't thank the guest again").not.toMatch(THANKS);
+			expect(text, 'it doesn\'t promise "a colleague"').not.toMatch(/colleague/i);
+			await expect(
+				openThread(page).getByText(TEMPLATE_LABEL),
+				'it is labelled "Suggested reply · template"',
+			).toBeVisible();
+		});
+
+		await test.step("the guest writes again before anyone answers: still a template, no thanks, no colleague", async () => {
+			await guest.write(again);
+			await guestMessagesArrived(manager.api, threadId, 2);
+			await openThreadOf(page, guest);
+			await expect(
+				openThread(page).getByText(again, { exact: true }),
+				"the guest's second message is in the thread",
+			).toBeVisible();
+			await expect(replyBox(page), "the box holds a suggestion").not.toHaveValue(
+				"",
+				WITHIN_SECONDS,
+			);
+			const text = await replyBox(page).inputValue();
+			expect(text, "it doesn't thank the guest").not.toMatch(THANKS);
+			expect(text, 'it doesn\'t promise "a colleague"').not.toMatch(/colleague/i);
+			await expect(
+				openThread(page).getByText(TEMPLATE_LABEL),
+				'still labelled "Suggested reply · template"',
+			).toBeVisible();
+		});
 	});
 });
