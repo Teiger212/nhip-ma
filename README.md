@@ -1,26 +1,51 @@
 # Nhịp
 
-Working name only: pulse of the first reply. Not a brand lock.
+Working name only (pulse of the first reply). Not a brand lock.
 
-Nhịp is for Hà Nội real-estate agents on expat and luxury inbound. A lead writes the agency. Nhịp drafts a useful first reply in the guest’s language (EN, JP, KO, RU, and others), does not promise deals Vietnamese law will not allow, flags foreigner paperwork, and waits. A human taps **Approve and send**, and the reply goes out on the same pipe; the guest still sees the agency number. Never auto-send. Nhịp is all-hours first reply, not night-only.
+Nhịp is a speed-to-lead product for high-end apartments in Vietnam. A lead writes an agency on WhatsApp or Zalo, often in Japanese, Korean, Russian or English. Nhịp turns that inbound into a reply in the guest's language within minutes, at any hour. A new guest gets a labelled automatic greeting within seconds, and a human agent approves every message after it. The guest only ever sees the agency's own number. Everything in the repo is invented data; nothing here is a real guest.
 
-Local development uses invented threads only; nothing here is a real guest. Product intention: [PRODUCT.md](./PRODUCT.md); vocabulary: [CONTEXT.md](./CONTEXT.md).
+Product intention: [PRODUCT.md](./PRODUCT.md). Vocabulary: [CONTEXT.md](./CONTEXT.md).
+
+## How it works
+
+- A Next.js SaaS app (`apps/saas`) on one Postgres database. The office is the tenant.
+- Guests arrive through pipes (Zalo, WhatsApp): a vendor webhook, verified, then stored as a thread in that office's Inbox.
+- A new guest's first message gets an automatic reply (ADR 0021). The suggested reply is a template in the agent's own voice for the first reply; the model drafts later turns (ADR 0024).
+- The agent reads the thread translated into the office language, edits the suggestion, and taps **Approve and send**: one guest message, one send, on the same pipe. Nhịp never sends a draft on its own.
+- The model layer runs on OpenRouter with zero-retention routing and a daily cap per office; past a cap, templates and untranslated text (ADR 0024).
+- The CRM seam keeps leads in the office's CRM through one adapter: a mock, or HubSpot (ADR 0003).
+- One office language, English or Vietnamese, set by the manager for the whole office (ADR 0025).
+
+The rest is in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Run it locally
 
-SaaS listens on **port 3010**, and auth sessions and inbox threads live in the same local Postgres. Setup, environment, commands and the seeded logins are in [AGENTS.md](./AGENTS.md); locale routing is in [ARCHITECTURE.md](./ARCHITECTURE.md).
+Setup, environment and commands are in [AGENTS.md](./AGENTS.md). In short: local Postgres, `.env.local`, `pnpm install`, `pnpm seed`, `pnpm --filter saas dev`. The app listens on **port 3010**: http://localhost:3010/en/inbox (or `/vi/`, when the manager has set the office to Vietnamese).
 
-Sign in as `linh@nhip.local` / `walkthrough` at http://localhost:3010/en/inbox or http://localhost:3010/vi/inbox. You should see Inbox with four invented threads (Minji, Yuki, Alexei, Thảo), extract fields, an **Operator note**, a reply, and **Approve and send** (mock send). There is no auth bypass; every route behind `(authenticated)` requires a real session.
+`pnpm seed -- --reset` rewrites the seed's invented guests as of now (needed after 48 hours). All logins use the password `walkthrough`:
 
-The inbox API (`/api/conversations`, `/api/conversations/{id}`, `/api/conversations/{id}/approve`) returns 401 without a signed-in session. Approve records one Answer per guest message before anything is sent (ADR 0011), so a double tap sends once.
+| Login                                               | Who                                                     |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| `ha@nhip.local`                                     | Manager, Hanoi Nest Seekers: sees every thread, assigns |
+| `linh@nhip.local`, `duc@nhip.local`                 | Agents, Hanoi Nest Seekers                              |
+| `admin@nhip.local`                                  | Platform admin: offices, pipe connections, invitations  |
+| `river-manager@nhip.local`                          | Manager, the river office                               |
+| `river-agent@nhip.local`, `river-agent2@nhip.local` | Agents, the river office                                |
 
-The kit organization is the office and the kit admin area is the platform admin's; marketing, docs and billing are unused kit scaffolding, left alone unless asked.
+## What you'll see
+
+Sign in as an agent: the Inbox, a list of threads, and an open thread with the guest's messages translated, the suggested reply and **Approve and send** (mock send). Both roles also see Home, the funnel counted from Answers. The manager sees every thread and assigns the new ones. Hanoi Nest Seekers holds about forty invented guests in every state; the river office holds its own, and nothing crosses offices. There is no auth bypass and sign-up is closed.
 
 ## Docs
 
-| File                                 | What it is                                       |
-| ------------------------------------ | ------------------------------------------------ |
-| [PRODUCT.md](./PRODUCT.md)           | Locked product intention                         |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | System shape: tenancy, pipes, data, environments |
-| [HANDOFF.md](./HANDOFF.md)           | Cold start for any other agent or LLM            |
-| [AGENTS.md](./AGENTS.md)             | Setup, gates, conventions                        |
+| File                                             | What it is                                       |
+| ------------------------------------------------ | ------------------------------------------------ |
+| [PRODUCT.md](./PRODUCT.md)                       | Locked product intention                         |
+| [CONTEXT.md](./CONTEXT.md)                       | The glossary: what each word means               |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)             | System shape: tenancy, pipes, data, environments |
+| [DESIGN.md](./DESIGN.md)                         | The visual system                                |
+| [HANDOFF.md](./HANDOFF.md)                       | Cold start for any other agent or LLM            |
+| [AGENTS.md](./AGENTS.md)                         | Setup, gates, conventions                        |
+| [docs/adr](./docs/adr)                           | The decisions and their reasons                  |
+| [docs/e2e-scenarios.md](./docs/e2e-scenarios.md) | The user-driven flows the E2E suite checks       |
+| [CHANGELOG.md](./CHANGELOG.md)                   | What changed, newest first                       |

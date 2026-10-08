@@ -19,7 +19,7 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
                         ▼
                      inbox store (Postgres) ◀──── one-shot: language, extract, template
                         │                    ◀──── model adapter, in after(): translation
-                        │                          into en + vi, follow-up draft
+                        │                          into the office language, follow-up draft
                         │                    ◀──── auto-reply, in after(): a new guest's first
                         │                          message, claimed once, sent (ADR 0021)
                         ▼
