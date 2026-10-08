@@ -178,12 +178,15 @@ export function buildQueueView(
  * operator can see, active then quiet. Keeps the current selection when it is still
  * there; otherwise the first thread; otherwise nothing. After a send in the queue view
  * the sent thread has left the list, so this is also what advances to the next waiting
- * guest.
+ * guest. A thread the manager just assigned is `pinnedId`: it stays selected though it left
+ * the view (#267); a send is never pinned.
  */
 export function nextSelection(
 	ordered: ConversationSummary[],
 	selectedId: string | null,
+	pinnedId: string | null = null,
 ): string | null {
+	if (selectedId && selectedId === pinnedId) return selectedId;
 	if (selectedId && ordered.some((conversation) => conversation.id === selectedId)) {
 		return selectedId;
 	}

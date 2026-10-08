@@ -453,6 +453,19 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     `data-status="yourTurn"`, "Waiting" with `data-status="waiting"`, matched exactly, in English
     only (the Vietnamese "Đang chờ" waits on #78). Sent, Won and Lost are not checked here).
 
+13. **The thread a manager assigns stays open** (#267). The manager opens a new guest's thread
+    in Unassigned, with a second Unassigned guest listed, and gives it to agent 1 from the
+    thread's header.
+    - A toast says "Assigned to" and agent 1's name.
+    - The thread leaves Unassigned (its row gone, the count down) but stays open in the panel,
+      now agent 1's, and does not give way to the second guest.
+
+    Spec: `apps/saas/tests/assign.spec.ts` (Assign 13; an office of the test's own, agent 1 with a
+    name of their own, two guests filed one after the other; "stays open" is the guest's id in
+    the open thread and agent 1's name on its owner control, held across a few polls, with the
+    second guest's row still listed. The toast is English only. A send is not pinned: approving
+    a reply still moves on to the next waiting guest. The pin rule is Vitest, `queue.test.ts`).
+
 ## Inbox view tabs (#210; DESIGN.md "View Tabs", ADR 0022)
 
 The Inbox's views are a row of tabs above the thread list, each a label and its count: an agent's

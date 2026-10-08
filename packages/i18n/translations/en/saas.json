@@ -982,6 +982,7 @@
 			"unassigned": "Unassigned",
 			"assignTo": "Assign to…",
 			"mine": "Yours",
+			"assigned": "Assigned to {name}",
 			"failed": "Could not reassign the thread. Try again.",
 			"filter": "Showing",
 			"all": "All threads"

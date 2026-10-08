@@ -169,12 +169,15 @@ export function ThreadDetail({
 	cribNotes,
 	reply,
 	onBack,
+	onAssigned,
 }: {
 	conversation: Conversation;
 	cribNotes: string | null;
 	reply: ReplyState;
 	/** Phone only: close the thread and show the list again. */
 	onBack: () => void;
+	/** The manager gave this thread to an operator (#267): the Inbox keeps it open. */
+	onAssigned: (id: string) => void;
 }) {
 	const t = useTranslations("inbox");
 	const pane = useRef<HTMLDivElement>(null);
@@ -216,7 +219,11 @@ export function ThreadDetail({
 					{rail ? null : (
 						<>
 							<CrmStatus conversation={conversation} />
-							<OwnerControl conversation={conversation} placement="header" />
+							<OwnerControl
+								conversation={conversation}
+								placement="header"
+								onAssigned={onAssigned}
+							/>
 						</>
 					)}
 					{/* Keyed: a dialog left open never carries over to the next thread (deletion is irreversible). */}
@@ -298,7 +305,7 @@ export function ThreadDetail({
 							</RailSection>
 						) : null}
 						<RailSection title={t("details.owner")}>
-							<OwnerControl conversation={conversation} placement="rail" />
+							<OwnerControl conversation={conversation} placement="rail" onAssigned={onAssigned} />
 						</RailSection>
 					</div>
 				) : null}

@@ -116,6 +116,10 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const handedOff = useHandedOffThread();
 	const [linkedThread, setLinkedThread] = useState<string | null>(alertLink?.threadId ?? handedOff);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	// The thread a manager just assigned stays open though it left the view (#267). Cleared when
+	// they pick another thread, switch view, search or filter, or the thread is gone; never set
+	// by a send, which moves on to the next waiting guest.
+	const [pinnedId, setPinnedId] = useState<string | null>(null);
 	const [detailOpen, setDetailOpen] = useState(
 		threadParam !== null || alertLink !== undefined || handedOff !== null,
 	);
@@ -191,7 +195,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			return;
 		}
 		if (listPending || notice) return;
-		const next = nextSelection(ordered, selectedId);
+		const next = nextSelection(ordered, selectedId, pinnedId);
 		if (next !== selectedId) setSelectedId(next);
 	}, [
 		listPending,
@@ -200,6 +204,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		conversationsQuery.data,
 		ordered,
 		selectedId,
+		pinnedId,
 		threadParam,
 		setThreadParam,
 		linkedThread,
@@ -210,8 +215,18 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		views,
 	]);
 
+	// A pin outlives anything but a new selection: the thread selected is no longer the pinned one.
+	useEffect(() => {
+		if (pinnedId !== null && selectedId !== pinnedId) setPinnedId(null);
+	}, [pinnedId, selectedId]);
+
 	const detailQuery = useConversation(selectedId);
-	const row = conversations.find((conversation) => conversation.id === selectedId) ?? null;
+	// A pinned thread may have left the owner filter's list too, so it is found in the whole one.
+	const row =
+		conversations.find((conversation) => conversation.id === selectedId) ??
+		(selectedId !== null && selectedId === pinnedId
+			? (conversationsQuery.data?.find((conversation) => conversation.id === selectedId) ?? null)
+			: null);
 	const listed = row !== null;
 	// Gone for this operator (reassigned, deleted): the list catches up and selection moves on.
 	const detailGone =
@@ -220,7 +235,9 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		listed && !detailGone && detailQuery.data?.id === selectedId ? detailQuery.data : null;
 	const refetchList = conversationsQuery.refetch;
 	useEffect(() => {
-		if (detailGone) void refetchList();
+		if (!detailGone) return;
+		setPinnedId(null);
+		void refetchList();
 	}, [detailGone, refetchList]);
 	// The list's poll saw the open thread change (the guest wrote, a send settled, it was
 	// reassigned): fetch the thread now rather than on its own next poll. Each detail fetch
@@ -255,6 +272,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 				seenInboundId: selected.unansweredInboundId,
 			});
 			dropEdit(selected.id);
+			setPinnedId(null);
 			toast.add({
 				title: t("sentTo", { name: displayName(result.conversation) }),
 				type: "success",
@@ -284,7 +302,13 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		}
 	}
 
+	/** The manager gave the open thread to an operator: keep it open (#267). */
+	function onAssigned(id: string) {
+		if (id === selectedId) setPinnedId(id);
+	}
+
 	function openThread(id: string) {
+		setPinnedId(null);
 		setNotice(null);
 		setSelectedId(id);
 		setDetailOpen(true);
@@ -325,6 +349,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 									disabled={view === "unassigned"}
 									onValueChange={(value) => {
 										if (value === null) return;
+										setPinnedId(null);
 										void setOwnerFilter(value === "all" ? null : value);
 									}}
 								>
@@ -348,11 +373,15 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 						) : null}
 						<InboxToolbar
 							query={query}
-							onQueryChange={(value) => void setQuery(value || null)}
+							onQueryChange={(value) => {
+								setPinnedId(null);
+								void setQuery(value || null);
+							}}
 							views={views}
 							// No view is pressed until the role says which one this Inbox opens on.
 							view={rolePending ? null : view}
 							onViewChange={(next) => {
+								setPinnedId(null);
 								setNotice(null);
 								void setView(next);
 							}}
@@ -376,7 +405,9 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								emptyTitle={manager ? undefined : t("emptyAssigned")}
 								rowAction={
 									manager && view === "unassigned"
-										? (conversation) => <AssignFromRow conversationId={conversation.id} />
+										? (conversation) => (
+												<AssignFromRow conversationId={conversation.id} onAssigned={onAssigned} />
+											)
 										: undefined
 								}
 							/>
@@ -433,6 +464,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							conversation={selected}
 							cribNotes={cribNotes}
 							onBack={() => setDetailOpen(false)}
+							onAssigned={onAssigned}
 							reply={{
 								reply,
 								edited,

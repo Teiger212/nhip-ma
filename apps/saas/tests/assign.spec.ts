@@ -962,3 +962,55 @@ test.describe("Assign 11 — Waiting now lists Unassigned leads first for a mana
 		).toHaveText([olderUnassigned, newerUnassigned, onesGuest].map(naming));
 	});
 });
+
+/** The toast after an assignment: English only, the Vietnamese waits on #78. */
+function assignedToast(page: Page, name: string) {
+	return page.getByText(`Assigned to ${name}`, { exact: true }).first();
+}
+
+/** The panel holds the guest's thread, now the operator's. */
+async function expectOpenThreadIs(page: Page, guest: Guest, ownerName: string) {
+	await expect(openThread(page).getByText(guest.id).first(), "the thread is open").toBeVisible();
+	await expect(assignControl(page), "and now the operator's").toContainText(ownerName);
+}
+
+// scenario: docs/e2e-scenarios.md Assigning leads 13
+test.describe("Assign 13 — the thread a manager assigns stays open", () => {
+	test('assigning the open thread from the header, with a second guest listed, toasts "Assigned to" agent 1\'s name and leaves it open though it left Unassigned; opening the other thread follows the list again', async ({
+		newOffice,
+	}) => {
+		test.setTimeout(180_000);
+		const office = await newOffice();
+		const [one] = office.agents;
+		const [manager] = office.managers;
+		const oneName = await rename(one);
+		const assigner = assignerAs(manager.api);
+		const first = await office.newGuest();
+		await assigner.threadOf(first.id);
+		const second = await office.newGuest();
+		await assigner.threadOf(second.id);
+
+		const { page } = manager;
+		await openInbox(page);
+		await expect(view(page, "Unassigned", 2)).toHaveAttribute("aria-pressed", "true");
+		await rowOf(page, first).click();
+		await expect(openThread(page).getByText(first.id).first()).toBeVisible();
+		await choose(assignControl(page), oneName);
+
+		await expect(assignedToast(page, oneName), "a toast names who got it").toBeVisible();
+		await expect(rowOf(page, first), "the thread leaves Unassigned").toHaveCount(0);
+		await expect(view(page, "Unassigned", 1)).toBeVisible();
+		await expect(rowOf(page, second), "the other guest is still listed").toBeVisible();
+		await expectOpenThreadIs(page, first, oneName);
+		// It holds across the list's next polls (the E2E Inbox polls every second).
+		await page.waitForTimeout(3_000);
+		await expectOpenThreadIs(page, first, oneName);
+
+		// Opening the other thread ends it.
+		await rowOf(page, second).click();
+		await expect(openThread(page).getByText(second.id).first()).toBeVisible();
+		await expect(openThread(page).getByText(first.id), "the first is no longer open").toHaveCount(
+			0,
+		);
+	});
+});

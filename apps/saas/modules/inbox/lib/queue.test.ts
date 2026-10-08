@@ -146,6 +146,17 @@ test("selection stays when listed, otherwise advances to the first active thread
 	expect(nextSelection([...onlyQuiet.visible, ...onlyQuiet.quiet], null)).toBe("zalo:thao");
 });
 
+// #267: a thread the manager just assigned stays open though it left the view; a send doesn't pin.
+test("a pinned selection stays though it left the view, and only it", () => {
+	const q = buildQueueView(all, "yourTurn", "", NOW);
+	const ordered = [...q.visible, ...q.quiet];
+	expect(nextSelection(ordered, "gone", "gone")).toBe("gone");
+	expect(nextSelection([], "gone", "gone")).toBe("gone");
+	expect(nextSelection(ordered, "gone", null)).toBe("wa:yuki");
+	expect(nextSelection(ordered, "gone", "another")).toBe("wa:yuki");
+	expect(nextSelection(ordered, null, "gone")).toBe("wa:yuki");
+});
+
 test("view parsing", () => {
 	expect(isInboxView("sent")).toBe(true);
 	expect(isInboxView("yourTurn")).toBe(true);
