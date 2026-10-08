@@ -3,7 +3,7 @@ import {
 	RIVER_AGENT_EMAIL,
 	RIVER_MANAGER_EMAIL,
 	RIVER_OFFICE_ID,
-} from "../walk-user";
+} from "../demo-user";
 import {
 	assigns,
 	daysAgo,

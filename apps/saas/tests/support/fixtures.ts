@@ -4,7 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import { uniqueEmail, uniqueName } from "./data";
 import type { Office } from "./offices";
 import { deleteOffice, tryCreateOffice } from "./offices";
-import { PLATFORM_ADMIN, WALK_OFFICE_ID } from "./seed";
+import { PLATFORM_ADMIN, DEMO_OFFICE_ID } from "./seed";
 import type { Api } from "./session";
 import { clientIpHeaders, withOrigin } from "./session";
 import { signInContext } from "./session-state";
@@ -77,7 +77,7 @@ export const test = base.extend<{ admin: Admin }>({
 				offices.push(id);
 				return { id, name };
 			},
-			invite: async (email, officeId = WALK_OFFICE_ID, role = "member") => {
+			invite: async (email, officeId = DEMO_OFFICE_ID, role = "member") => {
 				const res = await api.post("/api/auth/organization/invite-member", {
 					email,
 					role,

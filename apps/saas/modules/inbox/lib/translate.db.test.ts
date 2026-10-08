@@ -27,7 +27,7 @@ import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import type { DraftAdapter } from "./drafts";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
-import { json, params, post, WALK_SESSION } from "./test-fixtures";
+import { json, params, post, DEMO_SESSION } from "./test-fixtures";
 import { TRANSLATION_MAX_ATTEMPTS, TRANSLATION_RETRY_AFTER_MS } from "./translate";
 import type { Conversation } from "./types";
 
@@ -56,7 +56,7 @@ const countingAdapter: DraftAdapter = {
 
 beforeEach(async () => {
 	vi.mocked(auth.api.getSession).mockReset();
-	vi.mocked(auth.api.getSession).mockResolvedValue(WALK_SESSION as never);
+	vi.mocked(auth.api.getSession).mockResolvedValue(DEMO_SESSION as never);
 	calls.length = 0;
 	answer = () => null;
 	setRuntimeForTests({

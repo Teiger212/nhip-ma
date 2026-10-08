@@ -9,7 +9,14 @@ import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Login } from "./support/seed";
-import { AGENT, AGENT_2, MANAGER, WALK_OFFICE_ID } from "./support/seed";
+import {
+	AGENT,
+	AGENT_2,
+	DEMO_AGENT2_NAME,
+	DEMO_AGENT_NAME,
+	DEMO_OFFICE_ID,
+	MANAGER,
+} from "./support/seed";
 import type { Api } from "./support/session";
 import { clientIpHeaders, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
@@ -17,10 +24,10 @@ import { sendZaloText } from "./support/zalo";
 
 const copy = ownerCopy("en");
 
-/** The seeded operators' names, as the manager sees them (walk-user.ts). */
+/** The seeded operators' names, as the manager sees them (demo-user.ts). */
 const NAME = {
-	agent: "Trần Thị Linh",
-	agent2: "Phạm Minh Đức",
+	agent: DEMO_AGENT_NAME,
+	agent2: DEMO_AGENT2_NAME,
 } as const;
 
 /** A guest of this test, writing on Zalo to an OA of the test's own. */
@@ -64,7 +71,7 @@ const test = base.extend<{
 		await use(async () => {
 			if (!oaId) {
 				oaId = uniqueId("oa");
-				await connectZaloOa(WALK_OFFICE_ID, oaId);
+				await connectZaloOa(DEMO_OFFICE_ID, oaId);
 			}
 			return firstWordOf(request, oaId);
 		});
@@ -756,7 +763,7 @@ test.describe("Assign 8 — a new agent's first day", () => {
 		test.setTimeout(120_000);
 		// A guest of the test's own waits in Unassigned, beside the seed's Alexei and Thảo.
 		const unassigned = await newGuest();
-		const newcomer = await joinOffice(admin, browser, WALK_OFFICE_ID, "member", "assign-newcomer");
+		const newcomer = await joinOffice(admin, browser, DEMO_OFFICE_ID, "member", "assign-newcomer");
 		try {
 			const { page, api } = newcomer;
 			await openInbox(page);
