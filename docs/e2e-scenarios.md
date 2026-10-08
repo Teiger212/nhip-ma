@@ -1025,9 +1025,10 @@ that it isn't supported, instead of reading as English. What the guest gets is u
 English greeting and an English suggested reply. Their messages aren't translated.
 
 **How these run.** As First greeting: guests write through signed Zalo webhooks to an office of
-the test's own, with a manager and an invited agent, the auto-reply on, `SEND_MODE=mock` and no
-`DRAFT_*` key, so no thread shows a translation line at all and the reply box holds a template.
-The interface language (EN or VI) stands for the office language (ADR 0025) until that setting
+the test's own, with a manager and an invited agent, the auto-reply on and `SEND_MODE=mock`.
+Translation runs against First greeting's stub model, so a supported language's message shows a
+stub translation line and an unsupported one must show none; drafting is off, so the reply box
+holds a template. The interface language (EN or VI) stands for the office language (ADR 0025) until that setting
 is built. The VI copy is pending a native read (#78).
 
 1. **A guest writes in French: the thread names French and says it isn't supported.** A guest
@@ -1052,26 +1053,31 @@ is built. The VI copy is pending a native read (#78).
 
    Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 1; once in `/en/` and once in
    `/vi/`, each with an office of its own and a manager, no agent: nothing here is an agent's.
-   The manager opens the thread by its `?thread=` link. The Language row is the details' term
-   "Language" and the value beside it, matched exactly. "Under each message" is the open thread's
-   text, read top to bottom: the guest's first message, the note, the auto-reply's label, the mixed
-   message, the note; the note shows exactly twice, so not on the auto-reply. The operator note is
-   a paragraph of the open thread that opens with the scenario's sentence. What the guest gets is
-   checked first and stops the test: the auto-reply (read as the manager, through the API) starts
-   "Thanks for writing" and ends with the English label, marked Template, and the reply box holds
-   the English follow-up exactly. Home's entry is judged by its link's name: it holds "French"
-   (VI "tiếng Pháp") and not "English" (VI "tiếng Anh")).
+   The manager opens the thread by its `?thread=` link. The Language row is the term "Language"
+   and the value beside it in the guest's details (`data-test="thread-details"`), matched exactly
+   on a wide pane (1563×784, the rail) and on a narrow one (1366×768, the strip). "Under the
+   guest's text" is the guest's bubble (`data-test="message"`) reading their text, then the note;
+   the note is in exactly two bubbles, the first message's and the mixed one's, never the
+   auto-reply's, and neither guest bubble holds a translation (its "Translation" label). The
+   operator note is the open thread's one paragraph labelled "Operator note" (VI "Ghi chú nội
+   bộ"), reading exactly the scenario's line after that label. What the guest gets is checked
+   first and stops the test: the auto-reply (read as the manager, through the API) starts "Thanks
+   for writing" and ends with the English label, marked Template, and the reply box holds the
+   English follow-up exactly. Home's entry is judged by its link's name: it holds "French" (VI
+   "tiếng Pháp") and not "English" (VI "tiếng Anh")).
 
 2. **A guest writes in Korean: the thread reads as before.** A guest writes "안녕하세요, 서호에서
    방 두 개짜리 아파트를 월세로 찾고 있어요." The Language row reads "Korean" with no note, no
    message shows a "isn't supported" note, the operator note reads "in Korean · don't interview",
    and the auto-reply is in Hangul. Home's Waiting now names "Korean".
    Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 2; in `/en/` only. The Language
-   row reads exactly "Korean"; "no note" is nothing in the open thread reading "isn't supported",
-   "not supported" or "chưa hỗ trợ", judged once the row reads Korean; the operator note opens
-   "Reply is in Korean."; the auto-reply and its label hold Hangul and the label isn't the English
-   one; Home's entry names Korean and not English. It passed before Guest language 1 was built: a
-   guard against the change reaching supported languages).
+   row in the guest's details reads exactly "Korean"; the operator note, read as in Guest
+   language 1, reads exactly "in Korean · don't interview"; "no note" is nothing in the open
+   thread reading "isn't supported", "not supported" or "chưa hỗ trợ", judged once the row and
+   the operator note have shown; the auto-reply and its label hold Hangul and the label isn't the
+   English one; Home's entry names Korean and not English. The stub translation is not checked.
+   It passed before Guest language 1 was built: a guard against the change reaching supported
+   languages).
 
 ## Guest deletion (ADR 0020, spec #85)
 

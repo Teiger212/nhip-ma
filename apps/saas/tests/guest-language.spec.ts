@@ -30,17 +30,20 @@ const FRENCH = {
 		languageRow: "French · not supported, replies in English",
 		/** Under each of the guest's messages, where a translation would sit. */
 		noTranslation: "French isn't supported: no translation",
-		/** How the operator note opens. */
-		operatorNote: "Guest writes French, not supported: reply is in English.",
+		/** The operator note, one line beside the reply box (#248). */
+		operatorNote: "in English · French isn't supported · don't interview",
 	},
 	vi: {
 		name: "tiếng Pháp",
 		english: "tiếng Anh",
 		languageRow: "tiếng Pháp · chưa hỗ trợ, trả lời bằng tiếng Anh",
 		noTranslation: "Chưa hỗ trợ tiếng Pháp: không dịch",
-		operatorNote: "Khách viết tiếng Pháp, chưa hỗ trợ: trả lời bằng tiếng Anh.",
+		operatorNote: "bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi thêm kiểu phỏng vấn",
 	},
 } as const;
+
+/** The Korean guest's operator note (Guest language 2). */
+const KOREAN_OPERATOR_NOTE = "in Korean · don't interview";
 
 /** The French guest's two messages: the second mixes French and English. */
 const FRENCH_FIRST =
@@ -59,7 +62,7 @@ const EN_LABEL = `Auto-reply from ${OFFICE_NAME}: a colleague will continue with
 /** The English first-reply template's opening (ADR 0021, Context). */
 const EN_GREETING_START = /^Thanks for writing\b/;
 
-/** The English follow-up template, as the reply box holds it after the greeting (no model in E2E). */
+/** The English follow-up template, as the reply box holds it after the greeting (no draft in E2E). */
 const EN_FOLLOW_UP = "Thanks for your message. A colleague will get back to you here shortly.";
 
 /** Any "isn't supported" note or row, in either interface language. */
@@ -68,16 +71,25 @@ const NOT_SUPPORTED = /isn't supported|not supported|chưa hỗ trợ/i;
 const HANGUL = /\p{Script=Hangul}/u;
 
 /**
+ * A wide thread pane, where the guest's details sit in a rail beside the conversation, and a
+ * narrow one, where they fold into a strip under the header (#248; Thread layout 1 and 2).
+ */
+const PANES = [
+	{ pane: "wide", size: { width: 1563, height: 784 } },
+	{ pane: "narrow", size: { width: 1366, height: 768 } },
+] as const;
+
+/**
  * The interface's own labels, which are how a person finds things and not what the scenario
  * promises (packages/i18n/translations/<locale>/saas.json): the details' Language term, the
- * operator note's heading, the reply box, the auto-reply's meta line.
+ * operator note's label, a translation's label, the reply box, the auto-reply's meta line.
  */
 type Labels = {
 	inbox: {
 		reply: string;
 		forYou: string;
+		translation: string;
 		fields: { language: string };
-		source: { autoReply: string };
 		autoReply: { template: string };
 	};
 	home: { waitingNow: string };
@@ -188,20 +200,36 @@ function openThread(page: Page) {
 	return page.getByRole("article");
 }
 
+/** The open thread's messages, top to bottom: each is one bubble. */
+function bubbles(page: Page) {
+	return openThread(page).getByTestId("message");
+}
+
+/** The bubble holding this text. */
+function bubbleSaying(page: Page, text: string) {
+	return bubbles(page).filter({ hasText: text });
+}
+
+/** The guest's details, wherever they sit: the rail beside the conversation, or the strip. */
+function details(page: Page) {
+	return page.getByTestId("thread-details");
+}
+
 /** The manager opens the thread by its link, in the given interface language. */
-async function openThreadByLink(page: Page, locale: Locale, threadId: string, firstText: string) {
+async function openThreadByLink(page: Page, locale: Locale, threadId: string, latestText: string) {
 	await page.goto(`/${locale}/inbox?thread=${encodeURIComponent(threadId)}`);
-	await expect(openThread(page).getByText(firstText, { exact: true })).toBeVisible();
+	await expect(bubbleSaying(page, latestText), "the thread holds the guest's message").toHaveCount(
+		1,
+	);
 }
 
 /**
- * A row of the thread's details, as read: the value beside the term (each detail is a term and
+ * A row of the guest's details, as read: the value beside the term (each detail is a term and
  * its value). Undefined while the term isn't shown.
  */
 async function detailRow(page: Page, term: string): Promise<string | undefined> {
-	const thread = openThread(page);
-	const terms = (await thread.getByRole("term").allInnerTexts()).map(collapse);
-	const values = (await thread.getByRole("definition").allInnerTexts()).map(collapse);
+	const terms = (await details(page).getByRole("term").allInnerTexts()).map(collapse);
+	const values = (await details(page).getByRole("definition").allInnerTexts()).map(collapse);
 	if (terms.length !== values.length) {
 		return `(${terms.length} details but ${values.length} values)`;
 	}
@@ -213,9 +241,9 @@ function collapse(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
 
-/** The open thread's text, top to bottom, as read. */
-async function threadText(page: Page): Promise<string> {
-	return collapse(await openThread(page).innerText());
+/** A bubble's text, top to bottom, as read. */
+async function bubbleText(page: Page, text: string): Promise<string> {
+	return collapse(await bubbleSaying(page, text).innerText());
 }
 
 /** Which of `marks` the text holds in this order, each after the one before (as far as it goes). */
@@ -231,15 +259,22 @@ function inOrder(text: string, marks: string[]): string[] {
 	return found;
 }
 
-function occurrences(text: string, mark: string): number {
-	return text.split(mark).length - 1;
+/**
+ * The operator note: the open thread's one line labelled as it ("Operator note"), however its
+ * label is shown.
+ */
+function operatorNote(page: Page, locale: Locale) {
+	return (
+		openThread(page)
+			.getByRole("paragraph")
+			// Not `\b`: it never falls after a Vietnamese letter such as the "ộ" of "Ghi chú nội bộ".
+			.filter({ hasText: new RegExp(`^${literal(labels(locale).inbox.forYou)}(?:[:\\s]|$)`) })
+	);
 }
 
-/** The operator note's sentence, among the open thread's paragraphs, that opens with `start`. */
-function operatorNote(page: Page, start: string) {
-	return openThread(page)
-		.getByRole("paragraph")
-		.filter({ hasText: new RegExp(`^${literal(start)}`) });
+/** The operator note reads exactly `note`, after its label. */
+function noteReading(locale: Locale, note: string): RegExp {
+	return new RegExp(`^${literal(labels(locale).inbox.forYou)}:?\\s*${literal(note)}$`);
 }
 
 function literal(text: string): string {
@@ -268,7 +303,7 @@ test.describe.configure({ timeout: 120_000 });
 // scenario: docs/e2e-scenarios.md Guest language 1
 test.describe("Guest language 1 — a guest writes in French: the thread names French and says it isn't supported", () => {
 	for (const locale of ["en", "vi"] as const) {
-		test(`${locale.toUpperCase()} interface: the Language row reads "${FRENCH[locale].languageRow}" (never English alone); each of the guest's messages, the mixed second one included, has "${FRENCH[locale].noTranslation}" under it and the auto-reply has none; the operator note opens "${FRENCH[locale].operatorNote}"; the guest gets the English greeting and the reply box the English follow-up; Home's Waiting now names ${FRENCH[locale].name}, not ${FRENCH[locale].english}`, async ({
+		test(`${locale.toUpperCase()} interface: the Language row reads "${FRENCH[locale].languageRow}" (never English alone) in the rail and the strip; each of the guest's messages, the mixed second one included, has "${FRENCH[locale].noTranslation}" under its text and no translation, and the auto-reply has no note; the operator note reads "${FRENCH[locale].operatorNote}"; the guest gets the English greeting and the reply box the English follow-up; Home's Waiting now names ${FRENCH[locale].name}, not ${FRENCH[locale].english}`, async ({
 			office,
 		}) => {
 			const { manager } = office;
@@ -291,10 +326,11 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 				expect(lastLine(greeting), "its label is the English one").toBe(EN_LABEL);
 			});
 
+			await page.setViewportSize(PANES[0].size);
 			await openThreadByLink(page, locale, threadId, FRENCH_FIRST);
 
 			await test.step("the auto-reply shows as the template, and the reply box holds the English follow-up", async () => {
-				await expect(openThread(page).getByText(EN_LABEL), "the English label shows").toBeVisible();
+				await expect(bubbleSaying(page, EN_LABEL), "the English label shows").toHaveCount(1);
 				await expect(
 					openThread(page).getByText(ui.inbox.autoReply.template, { exact: true }),
 					"the auto-reply is marked Template",
@@ -303,60 +339,67 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 					replyBox(page, locale),
 					"the reply box holds the English follow-up",
 				).toHaveValue(EN_FOLLOW_UP, WITHIN_SECONDS);
-				await expect(
-					openThread(page).getByRole("heading", { name: ui.inbox.forYou }),
-					"the operator note shows",
-				).toBeVisible();
 			});
 
-			await test.step("the details' Language row names French and says it isn't supported", async () => {
-				await check
-					.poll(() => detailRow(page, ui.inbox.fields.language), {
-						message: `the Language row reads "${copy.languageRow}"`,
-					})
-					.toBe(copy.languageRow);
+			await test.step("the operator note is one line: the reply is in English, French isn't supported", async () => {
+				await check(operatorNote(page, locale), "one operator note").toHaveCount(1);
+				await check(operatorNote(page, locale), "the operator note's line").toHaveText(
+					noteReading(locale, copy.operatorNote),
+				);
 			});
 
-			await test.step("the message says French isn't supported, where a translation would sit", async () => {
+			await test.step("the message says French isn't supported, under its text, and isn't translated", async () => {
 				await check
 					.poll(
 						async () =>
-							inOrder(await threadText(page), [FRENCH_FIRST, copy.noTranslation, EN_LABEL]),
+							inOrder(await bubbleText(page, FRENCH_FIRST), [FRENCH_FIRST, copy.noTranslation]),
 						{
-							message: "the note sits under the guest's message, before the auto-reply",
+							message: "the note sits in the guest's bubble, under their text",
 						},
 					)
-					.toEqual([FRENCH_FIRST, copy.noTranslation, EN_LABEL]);
-			});
-
-			await test.step("the operator note names French and says the reply is in English", async () => {
+					.toEqual([FRENCH_FIRST, copy.noTranslation]);
 				await check(
-					operatorNote(page, copy.operatorNote),
-					"the operator note's opening",
-				).toBeVisible();
+					bubbleSaying(page, FRENCH_FIRST),
+					"the guest's message is not translated",
+				).not.toContainText(ui.inbox.translation);
+				await check(
+					bubbleSaying(page, EN_LABEL),
+					"the auto-reply carries no note",
+				).not.toContainText(copy.noTranslation);
 			});
 
 			await test.step("a mixed second message has the note too: the thread's language decides", async () => {
 				await guest.write(FRENCH_MIXED);
-				await expect(openThread(page).getByText(FRENCH_MIXED, { exact: true })).toBeVisible();
+				await expect(bubbleSaying(page, FRENCH_MIXED), "the mixed message arrives").toHaveCount(1);
 				await check
 					.poll(
 						async () =>
-							inOrder(await threadText(page), [
-								FRENCH_FIRST,
-								copy.noTranslation,
-								EN_LABEL,
-								FRENCH_MIXED,
-								copy.noTranslation,
-							]),
-						{ message: "a note under each of the guest's two messages, in thread order" },
+							inOrder(await bubbleText(page, FRENCH_MIXED), [FRENCH_MIXED, copy.noTranslation]),
+						{
+							message: "the note sits in the mixed message's bubble, under its text",
+						},
 					)
-					.toEqual([FRENCH_FIRST, copy.noTranslation, EN_LABEL, FRENCH_MIXED, copy.noTranslation]);
-				check(
-					occurrences(await threadText(page), copy.noTranslation),
-					"one note per guest message, none on the auto-reply",
-				).toBe(2);
+					.toEqual([FRENCH_MIXED, copy.noTranslation]);
+				await check(
+					bubbleSaying(page, FRENCH_MIXED),
+					"the mixed message is not translated",
+				).not.toContainText(ui.inbox.translation);
+				await check(
+					bubbles(page).filter({ hasText: copy.noTranslation }),
+					"one note per guest message: the first and the mixed one",
+				).toHaveCount(2);
 			});
+
+			for (const { pane, size } of PANES) {
+				await test.step(`the Language row names French and says it isn't supported (${pane} pane)`, async () => {
+					await page.setViewportSize(size);
+					await check
+						.poll(() => detailRow(page, ui.inbox.fields.language), {
+							message: `the Language row reads "${copy.languageRow}" on a ${pane} pane`,
+						})
+						.toBe(copy.languageRow);
+				});
+			}
 
 			await test.step("Home's Waiting now names French, not English", async () => {
 				const entry = await waitingNowEntry(page, locale, guest);
@@ -373,7 +416,7 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 
 // scenario: docs/e2e-scenarios.md Guest language 2
 test.describe("Guest language 2 — a guest writes in Korean: the thread reads as before", () => {
-	test('the Language row reads "Korean" with no note, no message says "isn\'t supported", the operator note opens "Reply is in Korean.", the auto-reply is in Hangul and Home\'s Waiting now names Korean', async ({
+	test(`the Language row reads "Korean" with no note, no message says "isn't supported", the operator note reads "${KOREAN_OPERATOR_NOTE}", the auto-reply is in Hangul and Home's Waiting now names Korean`, async ({
 		office,
 	}) => {
 		const { manager } = office;
@@ -396,14 +439,14 @@ test.describe("Guest language 2 — a guest writes in Korean: the thread reads a
 				message: 'the Language row reads "Korean", with no note',
 			})
 			.toBe("Korean");
-		// Judged once the row has read Korean and the guest's message shows.
-		check(await threadText(page), 'nothing in the thread says "isn\'t supported"').not.toMatch(
-			NOT_SUPPORTED,
+		await check(operatorNote(page, "en"), "the operator note's line").toHaveText(
+			noteReading("en", KOREAN_OPERATOR_NOTE),
 		);
-		await check(
-			operatorNote(page, "Reply is in Korean."),
-			"the operator note's opening",
-		).toBeVisible();
+		// Judged once the row has read Korean and the operator note has shown.
+		check(
+			collapse(await openThread(page).innerText()),
+			'nothing in the thread says "isn\'t supported"',
+		).not.toMatch(NOT_SUPPORTED);
 
 		const entry = await waitingNowEntry(page, "en", guest);
 		await check(entry, "the entry names Korean").toHaveAccessibleName(/\bKorean\b/);
