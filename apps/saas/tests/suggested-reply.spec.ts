@@ -185,14 +185,15 @@ async function openByLink(page: Page, locale: Locale, threadId: string, latestTe
 }
 
 /**
- * The manager opens the guest's thread from the All view, where it stays listed whoever owns it
- * (under Unassigned, assigning it takes it out of the view, and the open thread with it).
+ * The manager opens the guest's thread from Unassigned, where their Inbox opens and where the
+ * thread stays open once assigned (#267).
  */
-async function openUnderAll(page: Page, guest: Guest, latestText: string) {
+async function openUnderUnassigned(page: Page, guest: Guest, latestText: string) {
 	await page.goto("/en/inbox");
-	const all = page.getByRole("button", { name: /^All \d+$/ });
-	await all.click();
-	await expect(all).toHaveAttribute("aria-pressed", "true");
+	await expect(page.getByRole("button", { name: /^Unassigned \d+$/ })).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
 	await page.getByRole("textbox", { name: "Search threads" }).fill(guest.id);
 	const row = page
 		.getByRole("complementary")
@@ -309,7 +310,7 @@ test.describe("Suggested reply template 3 — assigning writes it again in the o
 		const { guest } = await greetedGuest(office);
 
 		const { page } = manager;
-		await openUnderAll(page, guest, FIRST_MESSAGE);
+		await openUnderUnassigned(page, guest, FIRST_MESSAGE);
 		const box = replyBox(page);
 		await expect(box, "unassigned, the box names the office only").toHaveValue(
 			startingWith(OFFICE_INTRO),

@@ -251,8 +251,11 @@ export function useSetOfficeLanguage() {
 	});
 }
 
-/** A manager gives a thread to an operator, or back to Unassigned (null). */
-export function useSetOwner() {
+/**
+ * A manager gives a thread to an operator, or back to Unassigned (null). `onSaved` runs once it
+ * is saved, even if the control that asked has gone from the page with the row it sat on.
+ */
+export function useSetOwner(onSaved?: (conversation: Conversation) => void) {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: ({ id, ownerId }: { id: string; ownerId: string | null }) =>
@@ -263,7 +266,10 @@ export function useSetOwner() {
 			}),
 		// Before a poll can show the new owner: giving a thread to yourself raises no toast.
 		onMutate: ({ id, ownerId }) => noteOwnAction(id, ownerId),
-		onSuccess: (conversation) => putConversation(queryClient, conversation),
+		onSuccess: (conversation) => {
+			putConversation(queryClient, conversation);
+			onSaved?.(conversation);
+		},
 		onSettled: () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
 	});
 }

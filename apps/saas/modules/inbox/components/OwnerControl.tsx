@@ -19,14 +19,33 @@ import { useOfficeAgents, useOfficeRole, useSetOwner } from "../lib/inbox-querie
 import type { Conversation } from "../lib/types";
 
 /**
+ * The manager's assign mutation with its toast: "Assigned to <name>" once saved (nothing for a
+ * return to Unassigned). It shows even when the control has gone with the row it sat on.
+ */
+function useAssign() {
+	const t = useTranslations("inbox.owner");
+	return useSetOwner((conversation) => {
+		if (!conversation.owner) return;
+		toast.add({ title: t("assigned", { name: conversation.owner.name }), type: "success" });
+	});
+}
+
+/**
  * "Assign to…" on a manager's Unassigned row (ADR 0022, DESIGN.md Thread Row): a ghost pill that
  * opens the office's operators. It sits beside the row, never in it, so it never selects the
  * row; choosing someone assigns at once, and the row leaves Unassigned.
  */
-export function AssignFromRow({ conversationId }: { conversationId: string }) {
+export function AssignFromRow({
+	conversationId,
+	onAssigned,
+}: {
+	conversationId: string;
+	/** Told as the choice is made, before the thread leaves the list (#267). */
+	onAssigned: (id: string) => void;
+}) {
 	const t = useTranslations("inbox.owner");
 	const agents = useOfficeAgents(true);
-	const setOwner = useSetOwner();
+	const setOwner = useAssign();
 	return (
 		<DropdownMenu modal={false}>
 			<DropdownMenuTrigger
@@ -42,12 +61,13 @@ export function AssignFromRow({ conversationId }: { conversationId: string }) {
 				{agents.data?.map((agent) => (
 					<DropdownMenuItem
 						key={agent.id}
-						onClick={() =>
+						onClick={() => {
+							onAssigned(conversationId);
 							setOwner.mutate(
 								{ id: conversationId, ownerId: agent.id },
 								{ onError: () => toast.add({ title: t("failed"), type: "error" }) },
-							)
-						}
+							);
+						}}
 					>
 						{agent.name}
 					</DropdownMenuItem>
@@ -70,14 +90,17 @@ const UNASSIGNED = "__unassigned__";
 export function OwnerControl({
 	conversation,
 	placement,
+	onAssigned,
 }: {
 	conversation: Conversation;
 	placement: "rail" | "header";
+	/** Told as an operator is chosen, before the thread leaves the list (#267). */
+	onAssigned: (id: string) => void;
 }) {
 	const t = useTranslations("inbox.owner");
 	const { role, userId } = useOfficeRole();
 	const agents = useOfficeAgents(role === "manager");
-	const setOwner = useSetOwner();
+	const setOwner = useAssign();
 	const owner = conversation.owner;
 	if (role !== "manager") {
 		if (placement === "header") return null;
@@ -102,6 +125,7 @@ export function OwnerControl({
 			disabled={setOwner.isPending || !agents.data}
 			onValueChange={(value) => {
 				if (!value) return;
+				if (value !== UNASSIGNED) onAssigned(conversation.id);
 				setOwner.mutate(
 					{ id: conversation.id, ownerId: value === UNASSIGNED ? null : value },
 					{ onError: () => toast.add({ title: t("failed"), type: "error" }) },
