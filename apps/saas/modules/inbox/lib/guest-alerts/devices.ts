@@ -56,8 +56,7 @@ export type TestAlertOutcome = "sent" | "no_device";
 
 /**
  * "Send test alert" (ADR 0019): a sounding `test` row for the operator, in the office language
- * (ADR 0025), and
- * in a live deployment a push to this sign-in's devices only, in the background. With no
+ * (ADR 0025), and in a live deployment a push to this sign-in's devices only, in the background. With no
  * device on this sign-in nothing is written.
  */
 export async function sendTestAlert(

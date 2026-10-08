@@ -82,7 +82,7 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 				<PermixProvider state={permix.dehydrate()}>
 					<ActiveOrganizationProvider>
 						<ConfirmationAlertProvider>
-							{officeLanguage ? <OfficeLocaleSync /> : null}
+							{officeLanguage ? <OfficeLocaleSync language={officeLanguage} /> : null}
 							{children}
 						</ConfirmationAlertProvider>
 					</ActiveOrganizationProvider>

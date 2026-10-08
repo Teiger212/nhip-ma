@@ -31,9 +31,10 @@ export async function followOfficeLanguage(
 	locale: string,
 ): Promise<void> {
 	if (language === locale) return;
-	const requested = (await headers()).get(REQUEST_PATH_HEADER) ?? "/";
-	const queryAt = requested.indexOf("?");
-	const pathname = queryAt === -1 ? requested : requested.slice(0, queryAt);
-	const query = queryAt === -1 ? "" : requested.slice(queryAt);
-	redirect(`${localePrefixedPath(withoutLocalePrefix(pathname), language)}${query}`);
+	const requested = new URL((await headers()).get(REQUEST_PATH_HEADER) ?? "/", "http://nhip.local");
+	// The router's own flight marker is not part of the page's address.
+	requested.searchParams.delete("_rsc");
+	redirect(
+		`${localePrefixedPath(withoutLocalePrefix(requested.pathname), language)}${requested.search}`,
+	);
 }
