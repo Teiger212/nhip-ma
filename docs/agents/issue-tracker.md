@@ -21,7 +21,7 @@ The board is the GitHub project **Nhịp** (https://github.com/users/Teiger212/p
   - Its body says the job, lists the PRs it **shipped**, and says what's open.
   - Once specced, its body is the spec, as #59's is.
   - Every issue, done or not, sits under exactly one epic, as a GitHub **sub-issue**: `gh api -X POST repos/Teiger212/nhip-ma/issues/<epic>/sub_issues -F sub_issue_id=<child-db-id>`, where `<child-db-id>` comes from `gh api repos/Teiger212/nhip-ma/issues/<n> --jq .id`.
-- **Ticket**: one sub-issue = one PR = one agent session, independently testable (red first). Size S or M; an L is split.
+- **Ticket**: one sub-issue = one PR = one agent session, independently shippable. Size S or M; an L is split.
 - **Task**: a checklist inside a ticket, never its own issue.
 - **Milestone** says _when_: `First client · 2026-10-18` or `After first client`. Every open ticket has one; epics don't, since they span milestones.
 - **Labels** stay the triage state (`needs-triage` … `ready-for-agent`); the board adds views, not a second status.
