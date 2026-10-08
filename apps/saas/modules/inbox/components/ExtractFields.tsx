@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { arrangeExtractRows, type ExtractFieldId, type ExtractRow } from "../lib/extract-rows";
+import { formatGuestDetail } from "../lib/guest-details-format";
 import { isSupportedLanguage, languageName } from "../lib/language-name";
 import type { Conversation } from "../lib/types";
 
@@ -39,7 +40,13 @@ function useDetails(rows: ExtractRow[], missing: ExtractFieldId[]): Detail[] {
 			case "paperwork":
 				return t("paperworkFlag");
 			default:
-				return String(row.value);
+				// Move-in, budget, nationality and household in words; anything else as stored (#243).
+				// They read in the office language (ADR 0025): a member's interface locale is the office
+				// language, as the authenticated layout redirects them to it, and the inbox refuses
+				// anyone who isn't a member.
+				return formatGuestDetail(row.id, String(row.value), locale, (key, values) =>
+					t(key, values),
+				);
 		}
 	};
 	const details: Detail[] = rows.map((row) => ({

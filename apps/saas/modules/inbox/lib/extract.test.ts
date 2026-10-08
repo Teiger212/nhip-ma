@@ -102,6 +102,70 @@ test("draft follows guest language; the operator note follows the operator's lan
 	expect(formatCribNote(jaGuest, vi)).toMatch(/tiếng Nhật/);
 });
 
+/* The extraction slips found on the demo walk, 2026-10-08 (#243). */
+
+test("a budget at the end of a sentence keeps no full stop (#243)", () => {
+	const q = extractFromInbound(
+		"Need a 3 bedroom house to rent in Tay Ho, budget $3500.",
+	).qualification;
+	expect(q.budgetBand).toBe("$3500");
+	expect(extractFromInbound("Budget 15 triệu, tuần sau.").qualification.budgetBand).toBe(
+		"15 triệu",
+	);
+	expect(extractFromInbound("Budget $3,000/month.").qualification.budgetBand).toBe("$3,000/month");
+});
+
+test("“in December” and “from March” are read as the move-in (#243)", () => {
+	const arjun = extractFromInbound(
+		"Hello, I'm moving to Hanoi with my family of 4 in December. Need a 3 bedroom house to rent in Tay Ho, budget $3500.",
+	);
+	expect(arjun.qualification.timeframe).toBe("in December");
+	expect(extractFromInbound("We'd lease from March.").qualification.timeframe).toBe("from March");
+	// A day of the month is still the more precise read.
+	expect(extractFromInbound("Lease from 1 Dec, budget $2000.").qualification.timeframe).toBe(
+		"1 Dec",
+	);
+	// A word that starts like a month is not one.
+	expect(
+		extractFromInbound("A flat in decent condition, in market areas.").qualification.timeframe,
+	).toBeNull();
+});
+
+test("a day the guest wants to view on is not the move-in (#243)", () => {
+	const claire = extractFromInbound(
+		"Bonjour, je suis française. Je cherche un 3 bedroom to rent à Ba Dinh, budget $3000/month.\nOui, merci ! Photos please, and is a viewing possible this Saturday?",
+	);
+	expect(claire.qualification.timeframe).toBeNull();
+	const olga = extractFromInbound(
+		"Добрый день! Мы семья из России, family of 4, ищем аренду в Ecopark, 3 bedroom, на этой неделе хотим посмотреть.",
+	);
+	expect(olga.qualification.timeframe).toBeNull();
+	expect(extractFromInbound("Có thể xem nhà tuần sau không?").qualification.timeframe).toBeNull();
+	expect(extractFromInbound("来週見学できますか？").qualification.timeframe).toBeNull();
+});
+
+test("a viewing in another clause doesn't hide the real move-in (#243)", () => {
+	expect(
+		extractFromInbound("Moving in December, can we view next week?").qualification.timeframe,
+	).toBe("in December");
+	expect(
+		extractFromInbound("Can I visit this Saturday? We move in next month.").qualification.timeframe,
+	).toBe("next month");
+	expect(
+		extractFromInbound("Is a viewing possible this Saturday?\nWe'd move in next Saturday.")
+			.qualification.timeframe,
+	).toBe("next Saturday");
+});
+
+test("“française” reads as French (#243)", () => {
+	expect(extractFromInbound("Bonjour, je suis française.").qualification.nationality).toBe(
+		"French",
+	);
+	expect(extractFromInbound("Je suis français.").qualification.nationality).toBe("French");
+	// A Korean company doesn't make the guest Korean (left as it is).
+	expect(extractFromInbound("한국 회사 주재원입니다.").qualification.nationality).toBeNull();
+});
+
 test("one-shot is not an interviewer", () => {
 	const shot = oneShot("Hello");
 	expect(shot.draft.reply).not.toMatch(/what is your budget/i);

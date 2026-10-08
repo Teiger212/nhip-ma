@@ -962,6 +962,68 @@
 			"beds": "Phòng ngủ / hộ",
 			"paperwork": "Giấy tờ"
 		},
+		"detailValues": {
+			"moveIn": {
+				"thisWeek": "Tuần này",
+				"nextWeek": "Tuần sau",
+				"thisMonth": "Tháng này",
+				"nextMonth": "Tháng sau",
+				"thisWeekend": "Cuối tuần này",
+				"nextWeekend": "Cuối tuần sau",
+				"today": "Hôm nay",
+				"tomorrow": "Ngày mai",
+				"tonight": "Tối nay",
+				"thisWeekday": "{weekday} này",
+				"nextWeekday": "{weekday} tuần sau",
+				"inDays": "{count} ngày nữa",
+				"inDaysOne": "{count} ngày nữa",
+				"inWeeks": "{count} tuần nữa",
+				"inWeeksOne": "{count} tuần nữa",
+				"inMonths": "{count} tháng nữa",
+				"inMonthsOne": "{count} tháng nữa",
+				"earlyMonth": "Đầu {month}",
+				"midMonth": "Giữa {month}",
+				"lateMonth": "Cuối {month}",
+				"endOfMonth": "Cuối {month}",
+				"earlyInMonth": "Đầu tháng",
+				"midInMonth": "Giữa tháng",
+				"lateInMonth": "Cuối tháng",
+				"dayMonth": "Ngày {day} {month}",
+				"inMonth": "Vào {month}",
+				"fromMonth": "Từ {month}",
+				"dayOfMonth": "Ngày {day}"
+			},
+			"budget": {
+				"usd": "{amount} USD",
+				"vndMillion": "{amount} triệu đồng",
+				"vndBillion": "{amount} tỷ đồng",
+				"million": "{amount} triệu",
+				"perMonth": "{amount} / tháng"
+			},
+			"nationality": {
+				"Japanese": "Người Nhật",
+				"Korean": "Người Hàn",
+				"Russian": "Người Nga",
+				"American": "Người Mỹ",
+				"British": "Người Anh",
+				"French": "Người Pháp",
+				"German": "Người Đức",
+				"Chinese": "Người Trung Quốc",
+				"Singaporean": "Người Singapore",
+				"Australian": "Người Úc",
+				"Canadian": "Người Canada"
+			},
+			"household": {
+				"beds": "{count} phòng ngủ",
+				"studio": "căn studio",
+				"couple": "cặp đôi",
+				"family": "gia đình {count} người",
+				"people": "{count} người",
+				"peopleOne": "{count} người",
+				"kids": "{count} con",
+				"kidsOne": "{count} con"
+			}
+		},
 		"views": {
 			"aria": "Lọc cuộc hội thoại",
 			"unassigned": "Chưa giao",

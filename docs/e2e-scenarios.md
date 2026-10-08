@@ -728,11 +728,29 @@ warning tone, DESIGN.md "In the inbox"). The VI copy is pending a native read (#
    auto-reply's VI wording) for move-in, which differs from the field label "Ngày vào": left to
    #78.
 
-Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1; an office of its own, left at
-English). 2: covered by Vitest: `apps/saas/modules/inbox/lib/extract-rows.test.ts` › a guest who
+The values read in the office language too (#243, #96; ADR 0025), whatever language the guest
+wrote in: the move-in as a phrase ("Next week", not a date), the budget as an amount and a
+currency, the nationality and the beds / household in words. They are put in words when shown,
+from what was stored, so older threads read the same way. A value Nhịp doesn't recognise shows
+as the guest wrote it, never empty. The VI wording is pending #78.
+
+4. **An English office reads a Russian guest's details in English.** A guest writes "3 bedroom,
+   на этой неделе, бюджет $2000/month". The details read Move-in "This week" and Budget
+   "$2,000 / month". In a Vietnamese office they read "Tuần này" and "2.000 USD / tháng".
+5. **A Vietnamese budget reads as an amount.** A guest writes "ngân sách 15 triệu, tuần sau". An
+   English office reads Budget "15 million VND" and Move-in "Next week".
+6. **A budget at the end of a sentence has no full stop.** A guest writes "budget $3500." The
+   details read "$3,500".
+
+Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1 and 4, the English half; an
+office of its own, left at English). 2: covered by Vitest: `apps/saas/modules/inbox/lib/extract-rows.test.ts` › a guest who
 gave everything has nothing missing and no unknown rows (#244); › nationality, In Vietnam now and
 paperwork are never missing. 3: checked by the translation-key test
-(`apps/saas/modules/i18n/lib/translation-keys.test.ts`); the row itself is 1's.
+(`apps/saas/modules/i18n/lib/translation-keys.test.ts`); the row itself is 1's. 4's Vietnamese
+half, 5 and 6: covered by Vitest, `apps/saas/modules/inbox/lib/guest-details-format.test.ts` ›
+move-in reads as a phrase, not a date; › budget reads as an amount and a currency; and
+`apps/saas/modules/inbox/lib/extract.test.ts` › a budget at the end of a sentence keeps no full
+stop (#243).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 

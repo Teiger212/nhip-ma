@@ -962,6 +962,68 @@
 			"beds": "Beds / household",
 			"paperwork": "Paperwork"
 		},
+		"detailValues": {
+			"moveIn": {
+				"thisWeek": "This week",
+				"nextWeek": "Next week",
+				"thisMonth": "This month",
+				"nextMonth": "Next month",
+				"thisWeekend": "This weekend",
+				"nextWeekend": "Next weekend",
+				"today": "Today",
+				"tomorrow": "Tomorrow",
+				"tonight": "Tonight",
+				"thisWeekday": "This {weekday}",
+				"nextWeekday": "Next {weekday}",
+				"inDays": "In {count} days",
+				"inDaysOne": "In {count} day",
+				"inWeeks": "In {count} weeks",
+				"inWeeksOne": "In {count} week",
+				"inMonths": "In {count} months",
+				"inMonthsOne": "In {count} month",
+				"earlyMonth": "Early {month}",
+				"midMonth": "Mid-{month}",
+				"lateMonth": "Late {month}",
+				"endOfMonth": "End of {month}",
+				"earlyInMonth": "Early in the month",
+				"midInMonth": "Mid-month",
+				"lateInMonth": "Late in the month",
+				"dayMonth": "{day} {month}",
+				"inMonth": "In {month}",
+				"fromMonth": "From {month}",
+				"dayOfMonth": "On the {ordinal}"
+			},
+			"budget": {
+				"usd": "${amount}",
+				"vndMillion": "{amount} million VND",
+				"vndBillion": "{amount} billion VND",
+				"million": "{amount} million",
+				"perMonth": "{amount} / month"
+			},
+			"nationality": {
+				"Japanese": "Japanese",
+				"Korean": "Korean",
+				"Russian": "Russian",
+				"American": "American",
+				"British": "British",
+				"French": "French",
+				"German": "German",
+				"Chinese": "Chinese",
+				"Singaporean": "Singaporean",
+				"Australian": "Australian",
+				"Canadian": "Canadian"
+			},
+			"household": {
+				"beds": "{count} bed",
+				"studio": "studio",
+				"couple": "couple",
+				"family": "family of {count}",
+				"people": "{count} people",
+				"peopleOne": "{count} person",
+				"kids": "{count} kids",
+				"kidsOne": "{count} kid"
+			}
+		},
 		"views": {
 			"aria": "Filter threads",
 			"unassigned": "Unassigned",
