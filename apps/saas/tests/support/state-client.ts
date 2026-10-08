@@ -44,7 +44,10 @@ type StateProcess = {
 	end: (reason: string) => void;
 };
 
-/** This worker's state process, started on first use, and again if it died. */
+/**
+ * This worker's state process: started as the worker starts (`startStateProcess`), or else on
+ * first use, and again if it died.
+ */
 let current: StateProcess | undefined;
 
 function stateProcess(): StateProcess {
@@ -108,6 +111,16 @@ function stateProcess(): StateProcess {
 	child.unref();
 	current = proc;
 	return proc;
+}
+
+/**
+ * Starts this worker's state process without waiting for it to load (fixtures.ts's worker
+ * fixture, #278): its boot, about 2 s, overlaps the browser's launch and the first test's setup
+ * instead of landing inside that test's first `askState`. A boot that fails still fails the first
+ * call that needs the process, as it does when the call starts it.
+ */
+export function startStateProcess(): void {
+	stateProcess();
 }
 
 /** Waits for `promise`, or rejects with `message` after `ms`. */

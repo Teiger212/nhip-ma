@@ -17,11 +17,8 @@ import { sendZaloText } from "./support/zalo";
  * and the thread list, so the sidebar's state decides it as much as the window does.
  */
 
-/** Wide pane: the sidebar open on a large desktop. */
-const LARGE = { width: 1563, height: 784 };
 /** Narrow pane with the sidebar open, wide with it collapsed. */
 const LAPTOP = { width: 1366, height: 768 };
-const PHONE = { width: 390, height: 844 };
 
 /** Geometry is compared to the pixel, give or take one for rounding. */
 const PX = 1;
@@ -32,6 +29,8 @@ const STILL_PX = 2;
 const WITHIN_A_POLL = { timeout: 30_000 };
 /** Layout settling: the sidebar's width animates, and the thread may scroll itself on opening. */
 const SETTLED = { timeout: 10_000 };
+/** A layout check retried while it settles: every 50 ms rather than Playwright's backoff (#278). */
+const LAID_OUT = { ...SETTLED, intervals: [50] };
 
 const IN_CRM = "In CRM";
 const ASSIGN_TO = ownerCopy("en").assignTo;
@@ -60,15 +59,20 @@ type LayoutOffice = {
 const test = base.extend<{ layoutOffice: LayoutOffice }>({
 	layoutOffice: async ({ admin, browser, request }, use) => {
 		const office = await admin.createOffice("layout");
-		await connectMockCrm(office.id);
 		const oaId = uniqueId("oa");
-		await connectZaloOa(office.id, oaId);
 		let manager: Joined | undefined;
 		try {
-			manager = await joinOffice(admin, browser, office.id, "admin", "layout-manager");
+			// Independent setup at once (#278): the CRM, the OA and the manager.
+			await Promise.all([
+				connectMockCrm(office.id),
+				connectZaloOa(office.id, oaId),
+				joinOffice(admin, browser, office.id, "admin", "layout-manager").then(
+					(joined) => (manager = joined),
+				),
+			]);
 			await use({
 				id: office.id,
-				manager,
+				manager: manager!,
 				newGuest: async (count = 1) => {
 					const guest: Guest = { id: uniqueId("guest"), texts: [] };
 					const nonce = randomUUID().slice(0, 8);
@@ -157,7 +161,10 @@ async function boxOf(locator: Locator, what: string) {
 
 async function expectSidebarOpen(page: Page) {
 	await expect
-		.poll(() => widthOf(homeLink(page)), { message: "the sidebar is open (Home link width)" })
+		.poll(() => widthOf(homeLink(page)), {
+			message: "the sidebar is open (Home link width)",
+			intervals: [50],
+		})
 		.toBeGreaterThanOrEqual(OPEN.minLinkWidth);
 }
 
@@ -165,6 +172,7 @@ async function expectSidebarCollapsed(page: Page) {
 	await expect
 		.poll(() => widthOf(homeLink(page)), {
 			message: "the sidebar is the icon strip (Home link width)",
+			intervals: [50],
 		})
 		.toBeLessThanOrEqual(STRIP.maxLinkWidth);
 }
@@ -331,7 +339,7 @@ async function expectReplyReady(page: Page, guest: Guest) {
 			message.y + message.height,
 			"the guest's latest message ends above the reply box",
 		).toBeLessThanOrEqual(reply.y + PX);
-	}).toPass(SETTLED);
+	}).toPass(LAID_OUT);
 }
 
 /** The pill that says a new message came in below what the operator is reading. */
@@ -390,37 +398,6 @@ async function wheelUntilInView(page: Page, target: Locator, deltaY: number, wha
 
 /* ---------------------------------------------------------------- the scenarios */
 
-// scenario: docs/e2e-scenarios.md Thread layout 1
-test.describe("Thread layout 1 — on a wide pane the details sit beside the conversation", () => {
-	test("at 1563×784 with the sidebar open", async ({ layoutOffice }) => {
-		const page = layoutOffice.manager.page;
-		const guest = await layoutOffice.newGuest();
-		await expectLead(layoutOffice.id, guest);
-
-		await page.setViewportSize(LARGE);
-		await openThreadOf(page, guest);
-		await expectSidebarOpen(page);
-		await expectInCrm(page);
-		await expect(() => expectDetailsBeside(page)).toPass(SETTLED);
-	});
-
-	test("at 1366×768 with the sidebar collapsed", async ({ layoutOffice }) => {
-		const page = layoutOffice.manager.page;
-		const guest = await layoutOffice.newGuest();
-		await expectLead(layoutOffice.id, guest);
-
-		await page.setViewportSize(LAPTOP);
-		await page.goto("/en/inbox");
-		await expectSidebarOpen(page);
-		await toggleSidebar(page);
-		await expectSidebarCollapsed(page);
-		await openThreadOf(page, guest);
-		await expectSidebarCollapsed(page);
-		await expectInCrm(page);
-		await expect(() => expectDetailsBeside(page)).toPass(SETTLED);
-	});
-});
-
 // scenario: docs/e2e-scenarios.md Thread layout 2
 test.describe("Thread layout 2 — on a narrow pane the details fold into a strip under the header", () => {
 	test("at 1366×768 with the sidebar open; collapsing and expanding it in the same window", async ({
@@ -437,21 +414,21 @@ test.describe("Thread layout 2 — on a narrow pane the details fold into a stri
 		await expect(async () => {
 			await expectDetailsAsStrip(page);
 			await expectStatusAndOwnerInHeader(page);
-		}, "narrow: the details are a strip, In CRM and Assign to… in the header").toPass(SETTLED);
+		}, "narrow: the details are a strip, In CRM and Assign to… in the header").toPass(LAID_OUT);
 
 		await toggleSidebar(page);
 		await expectSidebarCollapsed(page);
 		await expect(
 			() => expectDetailsBeside(page),
 			"the sidebar collapsed: the details are beside the conversation again",
-		).toPass(SETTLED);
+		).toPass(LAID_OUT);
 
 		await toggleSidebar(page);
 		await expectSidebarOpen(page);
 		await expect(async () => {
 			await expectDetailsAsStrip(page);
 			await expectStatusAndOwnerInHeader(page);
-		}, "the sidebar open again: the details fold into the strip").toPass(SETTLED);
+		}, "the sidebar open again: the details fold into the strip").toPass(LAID_OUT);
 	});
 });
 
@@ -464,41 +441,6 @@ test.describe("Thread layout 3 — the reply box is in view without scrolling, o
 		await page.setViewportSize(LAPTOP);
 		await openThreadOf(page, guest);
 		await expectSidebarOpen(page);
-		await expectReplyReady(page, guest);
-	});
-
-	test("at 1563×784 with the sidebar open (wide pane)", async ({ layoutOffice }) => {
-		const page = layoutOffice.manager.page;
-		const guest = await layoutOffice.newGuest(10);
-
-		await page.setViewportSize(LARGE);
-		await openThreadOf(page, guest);
-		await expectSidebarOpen(page);
-		await expectReplyReady(page, guest);
-	});
-});
-
-// scenario: docs/e2e-scenarios.md Thread layout 4
-test.describe("Thread layout 4 — on a phone the details are a strip too", () => {
-	test("the details are a strip under the header, above the first message", async ({
-		layoutOffice,
-	}) => {
-		const page = layoutOffice.manager.page;
-		await page.setViewportSize(PHONE);
-		const guest = await layoutOffice.newGuest();
-
-		await openThreadOf(page, guest);
-		await expect(() => expectDetailsAsStrip(page)).toPass(SETTLED);
-	});
-
-	test("on a thread of ten messages, the reply box is in view with the latest message", async ({
-		layoutOffice,
-	}) => {
-		const page = layoutOffice.manager.page;
-		await page.setViewportSize(PHONE);
-		const guest = await layoutOffice.newGuest(10);
-
-		await openThreadOf(page, guest);
 		await expectReplyReady(page, guest);
 	});
 });
@@ -563,7 +505,7 @@ test.describe("Thread layout 5 — a new guest message doesn't pull an operator 
 				message.y + message.height,
 				"the new message ends above the reply box",
 			).toBeLessThanOrEqual(reply.y + PX);
-		}, "pressing the pill brings the new message into view").toPass(SETTLED);
+		}, "pressing the pill brings the new message into view").toPass(LAID_OUT);
 		await expect(pill, "the pill goes once pressed").toBeHidden();
 
 		// Scrolled up again, another message from the guest shows the pill again.

@@ -123,14 +123,18 @@ test.describe("Home 4 — the nav counts Your turn on every page", () => {
 		ownOffice,
 	}) => {
 		test.setTimeout(180_000);
-		const first = await ownOffice.guestWrites();
-		const second = await ownOffice.guestWrites();
-		const third = await ownOffice.guestWrites();
+		// Three guests write at once (setup): nothing here reads their order.
+		const [first, second, third] = await Promise.all([
+			ownOffice.guestWrites(),
+			ownOffice.guestWrites(),
+			ownOffice.guestWrites(),
+		]);
 
 		// The platform admin owns this office, with guests waiting in it. Their Settings page is
 		// opened before the agent's and judged only after the agent's has shown a new guest, so
 		// it has had at least as long to show a number.
-		await openSettings(admin.page);
+		const adminPage = await admin.openPage();
+		await openSettings(adminPage);
 
 		// The office's only agent, and its manager, who gives each new guest to the agent (ADR 0022).
 		let agent: Joined | undefined;
@@ -149,9 +153,7 @@ test.describe("Home 4 — the nav counts Your turn on every page", () => {
 			const assignToAgent = (guest: { id: string }) => assigner.assignGuestTo(guest.id, agentId);
 			const guestWritesToAgent = async () => assignToAgent(await ownOffice.guestWrites());
 			const { page } = agent;
-			for (const guest of [first, second, third]) {
-				await assignToAgent(guest);
-			}
+			await Promise.all([first, second, third].map(assignToAgent));
 
 			// Three guests are waiting on the office's only agent.
 			await page.goto("/en/inbox");
@@ -180,11 +182,11 @@ test.describe("Home 4 — the nav counts Your turn on every page", () => {
 
 			// The platform admin sees no number: not on their Settings page, open all this time,
 			// nor in the admin area.
-			await expect(admin.page.getByRole("heading", { name: "Account settings" })).toBeVisible();
-			await expect(anyYourTurnCount(admin.page), "the platform admin's Settings").toHaveCount(0);
-			await admin.page.goto("/en/admin/organizations");
-			await expect(admin.page.getByTestId("admin-organizations-search")).toBeVisible();
-			await expect(anyYourTurnCount(admin.page), "the admin area").toHaveCount(0);
+			await expect(adminPage.getByRole("heading", { name: "Account settings" })).toBeVisible();
+			await expect(anyYourTurnCount(adminPage), "the platform admin's Settings").toHaveCount(0);
+			await adminPage.goto("/en/admin/organizations");
+			await expect(adminPage.getByTestId("admin-organizations-search")).toBeVisible();
+			await expect(anyYourTurnCount(adminPage), "the admin area").toHaveCount(0);
 
 			// Back on the Inbox, its Your turn says the same three.
 			await page.goto("/en/inbox");

@@ -12,7 +12,7 @@
  */
 import readline from "node:readline";
 
-import { signedUp } from "./accounts";
+import { anotherSession, signedUp } from "./accounts";
 import { officeAlerts, operatorDevices } from "./alert-state";
 import {
 	connectOfficeToMockCrm,
@@ -47,6 +47,7 @@ const COMMANDS: Record<string, (...args: string[]) => Promise<unknown>> = {
 	"pipes.connect": connectZalo,
 	"pipes.connect-whatsapp": connectWhatsApp,
 	"pipes.release": releaseZalo,
+	session: anotherSession,
 	"translations.today": setTranslateCalls,
 };
 
@@ -65,6 +66,13 @@ function answer(body: { id?: number; result?: unknown; error?: string; ready?: t
 	}
 	process.stdout.write(`${ANSWER}${line}\n`);
 }
+
+// A worker that ends before this process has loaded (it starts with the worker, #278) closes the
+// pipe under the ready line: nobody is listening any more, so exit quietly rather than print EPIPE.
+process.stdout.on("error", (error: NodeJS.ErrnoException) => {
+	if (error.code === "EPIPE") process.exit(0);
+	throw error;
+});
 
 const lines = readline.createInterface({ input: process.stdin });
 lines.on("line", (line) => {

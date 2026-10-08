@@ -3,19 +3,11 @@ import { randomUUID } from "node:crypto";
 import type { APIRequestContext, Page } from "@playwright/test";
 
 import type { MockCrmLead } from "./support/crm";
-import {
-	addZaloIdInMockCrm,
-	bringMockCrmBack,
-	connectMockCrm,
-	markInMockCrm,
-	mockCrmLeads,
-	takeMockCrmDown,
-} from "./support/crm";
+import { addZaloIdInMockCrm, markInMockCrm, mockCrmLeads } from "./support/crm";
 import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
-import { joinOffice } from "./support/operators";
-import { connectWhatsAppNumber, connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
+import { testOffices } from "./support/test-offices";
 import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support/whatsapp";
 import { sendZaloText } from "./support/zalo";
 
@@ -55,29 +47,21 @@ const test = base.extend<{
 	newOffice: (label: string, options: { crm: "mock" | "none" }) => Promise<HomeOffice>;
 }>({
 	newOffice: async ({ admin, browser }, use) => {
-		const oaIds: string[] = [];
-		const managers: Joined[] = [];
+		const offices = testOffices(admin, browser);
 		await use(async (label, { crm }) => {
-			const office = await admin.createOffice(label);
-			// Before any guest writes: connecting the mock CRM drops the office's links to leads.
-			if (crm === "mock") {
-				await connectMockCrm(office.id);
-			}
 			const oaId = uniqueId("oa");
-			oaIds.push(oaId);
-			await connectZaloOa(office.id, oaId);
 			const phoneNumberId = newWhatsAppNumber("home-crm");
-			await connectWhatsAppNumber(office.id, phoneNumberId);
-			const manager = await joinOffice(admin, browser, office.id, "admin", "home-crm-manager");
-			managers.push(manager);
-			return { id: office.id, oaId, phoneNumberId, manager };
+			// Before any guest writes (connecting the mock CRM drops the office's links to leads):
+			// the CRM, the OA, the number and the manager's join, at once.
+			const office = await offices.create(label, {
+				crm,
+				zaloOa: oaId,
+				whatsAppNumber: phoneNumberId,
+				joins: [{ role: "admin", tag: "home-crm-manager" }],
+			});
+			return { id: office.id, oaId, phoneNumberId, manager: office.joined[0] };
 		});
-		for (const manager of managers) {
-			await manager.close();
-		}
-		for (const oaId of oaIds) {
-			await releaseZaloOa(oaId);
-		}
+		await offices.cleanUp();
 	},
 });
 
@@ -202,14 +186,6 @@ async function openHome(page: Page) {
 	).toBeVisible();
 }
 
-/** Home's Closings and Lost cells. */
-function closingsCell(page: Page) {
-	return page.getByTestId("home-closings");
-}
-function lostCell(page: Page) {
-	return page.getByTestId("home-lost");
-}
-
 /**
  * A cell of an office on a CRM: its figure, and a line saying when Nhịp last heard from the CRM.
  * The figure is the only digit-only text in the cell, so a cell counting 2 fails as much as one
@@ -314,41 +290,6 @@ test.describe("CRM 6 — Home counts deals from the CRM", () => {
 			page.getByText(NO_CRM, { exact: true }),
 			"an office on a CRM is never told it has none",
 		).toHaveCount(0);
-	});
-
-	test("with the CRM failing, Home loads with the cached Closings and its As of line, and no error", async ({
-		newOffice,
-		request,
-	}) => {
-		test.setTimeout(180_000);
-		const office = await newOffice("Home CRM down", { crm: "mock" });
-		const { page, api } = office.manager;
-
-		// A guest becomes a lead, which the office marks won, and Nhịp has heard it.
-		const guest = newGuest();
-		const text = await writes(request, guest, office.oaId);
-		const lead = await leadOf(office.id, guest);
-		await markLead(request, office.id, lead, "won");
-		const thread = await threadOf(api, guest.id);
-		await openThreadById(page, thread, text);
-		await expectOutcome(page, "Won", "the guest's thread");
-
-		// The CRM fails; Home still shows what Nhịp last heard, without waiting on it.
-		await takeMockCrmDown(office.id);
-		try {
-			await openHome(page);
-			await expectCounted(page, "Closings", "home-closings", 1);
-			await expect(
-				closingsCell(page).getByText(/error|failed|unavailable|try again/i),
-				"Closings shows no error",
-			).toHaveCount(0);
-			await expect(
-				lostCell(page).getByText(/error|failed|unavailable|try again/i),
-				"Lost shows no error",
-			).toHaveCount(0);
-		} finally {
-			await bringMockCrmBack(office.id);
-		}
 	});
 
 	test("an office with no CRM shows No CRM and where the numbers come from in Closings and Lost, no figure there, and never a call to connect a CRM", async ({

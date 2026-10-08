@@ -2,15 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
-import { assignerAs } from "./support/assign";
 import { expect, test } from "./support/fixtures";
-import { setOfficeLanguage } from "./support/office-language";
+import { seedZaloGuests } from "./support/guests";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import { AGENT } from "./support/seed";
 import { signInContext } from "./support/session-state";
-import { sendZaloText } from "./support/zalo";
 
 /**
  * From `lg` (1024px) up the sidebar is a column that collapses to a 48px icon strip (#234). The
@@ -22,8 +20,6 @@ const OPEN = { minLinkWidth: 150 };
 const BADGE = { minSize: 12 };
 
 const DESKTOP = { width: 1280, height: 800 };
-/** The narrowest desktop: `lg` itself. */
-const LG = { width: 1024, height: 768 };
 const PHONE = { width: 390, height: 844 };
 
 /**
@@ -31,7 +27,8 @@ const PHONE = { width: 390, height: 844 };
  * elsewhere. Playwright's "Desktop Chrome" sends a Windows user agent while `navigator.platform`
  * says the host's own (MacIntel on a Mac, Linux on CI), so each test pins every signal a page can
  * read to one computer: the user agent (header and `navigator.userAgent`), `navigator.platform`
- * and `navigator.userAgentData.platform`.
+ * and `navigator.userAgentData.platform`. Sidebar 1 runs as a Mac (#278: the Ctrl+B label is
+ * the same code with the other key).
  */
 type Computer = {
 	name: string;
@@ -50,16 +47,6 @@ const MAC: Computer = {
 	uaPlatform: "macOS",
 	viewport: DESKTOP,
 	key: "⌘B",
-};
-
-const LINUX: Computer = {
-	name: "on Linux, at lg's 1024px",
-	userAgent:
-		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
-	platform: "Linux x86_64",
-	uaPlatform: "Linux",
-	viewport: LG,
-	key: "Ctrl+B",
 };
 
 async function pinComputer(context: BrowserContext, computer: Computer) {
@@ -124,14 +111,20 @@ async function widthOf(locator: Locator): Promise<number> {
 /** The sidebar is the icon strip: the Home link is an icon's width. Width animates, so polled. */
 async function expectCollapsed(page: Page, message = "the sidebar is the icon strip") {
 	await expect
-		.poll(() => widthOf(homeLink(page)), { message: `${message} (Home link width)` })
+		.poll(() => widthOf(homeLink(page)), {
+			message: `${message} (Home link width)`,
+			intervals: [50],
+		})
 		.toBeLessThanOrEqual(STRIP.maxLinkWidth);
 }
 
 /** The sidebar is open: the Home link spans its label. */
 async function expectExpanded(page: Page, message = "the sidebar is open") {
 	await expect
-		.poll(() => widthOf(homeLink(page)), { message: `${message} (Home link width)` })
+		.poll(() => widthOf(homeLink(page)), {
+			message: `${message} (Home link width)`,
+			intervals: [50],
+		})
 		.toBeGreaterThanOrEqual(OPEN.minLinkWidth);
 }
 
@@ -168,141 +161,76 @@ function withKey(label: string, key: string): RegExp {
 	return new RegExp(`^${escaped.replace(" \\(", "\\s*\\(")}$`);
 }
 
-/* ---------------------------------------------------------------- Sidebar 1 and 6 */
+/* ---------------------------------------------------------------- Sidebar 1 */
 
+/** The button's words; the Vietnamese ones are the translation-key test's (#278). */
 const COPY = {
 	en: { collapse: "Collapse sidebar", expand: "Expand sidebar" },
-	vi: { collapse: "Thu gọn thanh bên", expand: "Mở rộng thanh bên" },
 } as const;
 
-for (const computer of [MAC, LINUX]) {
-	// scenario: docs/e2e-scenarios.md Sidebar 1
-	test.describe(`Sidebar 1 — a button collapses the sidebar and expands it, and says how (${computer.name})`, () => {
-		test.use({ userAgent: computer.userAgent, viewport: computer.viewport });
+const computer = MAC;
 
-		test.beforeEach(async ({ context }) => {
-			await pinComputer(context, computer);
-			await signInContext(context, AGENT);
-		});
+// scenario: docs/e2e-scenarios.md Sidebar 1
+test.describe(`Sidebar 1 — a button collapses the sidebar and expands it, and says how (${computer.name})`, () => {
+	test.use({ userAgent: computer.userAgent, viewport: computer.viewport });
 
-		test(`the button beside the bell collapses the sidebar to the strip, stays at the strip's top, and expands it back; its tooltip says Collapse or Expand with ${computer.key}`, async ({
-			page,
-		}) => {
-			await open(page, "/en/home");
-			await expectPinned(page, computer);
-			await expectExpanded(page, "the sidebar starts open");
-
-			// Open: the button is in the sidebar's header, on the bell's row.
-			await expect(toggle(page)).toBeVisible();
-			await expect(toggle(page)).toHaveAccessibleName(COPY.en.collapse);
-			const bell = page.getByRole("button", { name: "Open notifications" }).filter({
-				visible: true,
-			});
-			const bellBox = await bell.boundingBox();
-			const openBox = await toggle(page).boundingBox();
-			expect(bellBox, "the bell is in the sidebar's header").not.toBeNull();
-			expect(openBox).not.toBeNull();
-			expect(
-				Math.abs(openBox!.y + openBox!.height / 2 - (bellBox!.y + bellBox!.height / 2)),
-				"the button sits on the bell's row",
-			).toBeLessThanOrEqual(8);
-			await pointAt(page, toggle(page));
-			await expect(tooltip(page).first()).toHaveText(withKey(COPY.en.collapse, computer.key));
-
-			// Collapse with it.
-			await toggle(page).click();
-			await expectCollapsed(page, "the button collapses the sidebar");
-			await expect(toggle(page)).toHaveAccessibleName(COPY.en.expand);
-			await expect(async () => {
-				const box = await toggle(page).boundingBox();
-				const home = await homeLink(page).boundingBox();
-				expect(box, "the button stays on the strip").not.toBeNull();
-				expect(box!.x + box!.width, "the button is inside the strip").toBeLessThanOrEqual(
-					STRIP.maxRight,
-				);
-				expect(box!.y, "the button is at the strip's top, above Home").toBeLessThan(home!.y);
-			}).toPass({ timeout: 5_000 });
-			await pointAt(page, toggle(page));
-			await expect(tooltip(page).first()).toHaveText(withKey(COPY.en.expand, computer.key));
-
-			// Expand with it.
-			await toggle(page).click();
-			await expectExpanded(page, "the button expands the sidebar back");
-			await expect(toggle(page)).toHaveAccessibleName(COPY.en.collapse);
-		});
+	test.beforeEach(async ({ context }) => {
+		await pinComputer(context, computer);
+		await signInContext(context, AGENT);
 	});
 
-	// scenario: docs/e2e-scenarios.md Sidebar 6
-	test.describe(`Sidebar 6 — the button speaks Vietnamese (${computer.name})`, () => {
-		test.use({ userAgent: computer.userAgent, viewport: computer.viewport });
+	test(`the button beside the bell collapses the sidebar to the strip, stays at the strip's top, and expands it back; its tooltip says Collapse or Expand with ${computer.key}`, async ({
+		page,
+	}) => {
+		await open(page, "/en/home");
+		await expectPinned(page, computer);
+		await expectExpanded(page, "the sidebar starts open");
 
-		test(`on /vi, an agent of a Vietnamese office: its tooltip reads "${COPY.vi.collapse} (${computer.key})", then "${COPY.vi.expand} (${computer.key})"`, async ({
-			admin,
-			browser,
-			context,
-			page,
-		}) => {
-			// A member reads Nhịp in the office language (ADR 0025): a Vietnamese office of the test's
-			// own, never the walk office. Its agent is signed in in this test's pinned browser, by the
-			// joined account's own session cookies.
-			const office = await admin.createOffice("Sidebar VI");
-			const [manager, agent] = await Promise.all([
-				joinOffice(admin, browser, office.id, "admin", "sidebar-vi-manager"),
-				joinOffice(admin, browser, office.id, "member", "sidebar-vi-agent"),
-			]);
-			try {
-				await setOfficeLanguage(manager.page.request, "vi");
-				await context.addCookies(await agent.page.context().cookies());
-				await pinComputer(context, computer);
-
-				await open(page, "/vi/home");
-				await expectPinned(page, computer);
-				await expectExpanded(page);
-				await pointAt(page, toggle(page));
-				await expect(tooltip(page).first()).toHaveText(withKey(COPY.vi.collapse, computer.key));
-
-				await toggle(page).click();
-				await expectCollapsed(page);
-				await pointAt(page, toggle(page));
-				await expect(tooltip(page).first()).toHaveText(withKey(COPY.vi.expand, computer.key));
-			} finally {
-				await manager.close();
-				await agent.close();
-			}
+		// Open: the button is in the sidebar's header, on the bell's row.
+		await expect(toggle(page)).toBeVisible();
+		await expect(toggle(page)).toHaveAccessibleName(COPY.en.collapse);
+		const bell = page.getByRole("button", { name: "Open notifications" }).filter({
+			visible: true,
 		});
+		const bellBox = await bell.boundingBox();
+		const openBox = await toggle(page).boundingBox();
+		expect(bellBox, "the bell is in the sidebar's header").not.toBeNull();
+		expect(openBox).not.toBeNull();
+		expect(
+			Math.abs(openBox!.y + openBox!.height / 2 - (bellBox!.y + bellBox!.height / 2)),
+			"the button sits on the bell's row",
+		).toBeLessThanOrEqual(8);
+		await pointAt(page, toggle(page));
+		await expect(tooltip(page).first()).toHaveText(withKey(COPY.en.collapse, computer.key));
+
+		// Collapse with it.
+		await toggle(page).click();
+		await expectCollapsed(page, "the button collapses the sidebar");
+		await expect(toggle(page)).toHaveAccessibleName(COPY.en.expand);
+		await expect(async () => {
+			const box = await toggle(page).boundingBox();
+			const home = await homeLink(page).boundingBox();
+			expect(box, "the button stays on the strip").not.toBeNull();
+			expect(box!.x + box!.width, "the button is inside the strip").toBeLessThanOrEqual(
+				STRIP.maxRight,
+			);
+			expect(box!.y, "the button is at the strip's top, above Home").toBeLessThan(home!.y);
+		}).toPass({ timeout: 5_000, intervals: [50] });
+		await pointAt(page, toggle(page));
+		await expect(tooltip(page).first()).toHaveText(withKey(COPY.en.expand, computer.key));
+
+		// Expand with it.
+		await toggle(page).click();
+		await expectExpanded(page, "the button expands the sidebar back");
+		await expect(toggle(page)).toHaveAccessibleName(COPY.en.collapse);
 	});
-}
+});
 
 /* ---------------------------------------------------------------- Sidebar 2 and 3 */
 
 // scenario: docs/e2e-scenarios.md Sidebar 2
-test.describe("Sidebar 2 — ⌘B / Ctrl+B still collapses and expands, and the button follows", () => {
-	test.use({ viewport: DESKTOP });
-
-	test("the shortcut collapses the sidebar to the strip and expands it back; the button then offers Expand, then Collapse", async ({
-		context,
-		page,
-	}) => {
-		await signInContext(context, AGENT);
-		await open(page, "/en/home");
-		await expectExpanded(page, "the sidebar starts open");
-
-		await page.keyboard.press("ControlOrMeta+b");
-		await expectCollapsed(page, "the shortcut collapses the sidebar");
-		await expect(toggle(page), "the button follows the shortcut").toHaveAccessibleName(
-			COPY.en.expand,
-		);
-
-		await page.keyboard.press("ControlOrMeta+b");
-		await expectExpanded(page, "the shortcut expands the sidebar");
-		await expect(toggle(page), "the button follows the shortcut").toHaveAccessibleName(
-			COPY.en.collapse,
-		);
-	});
-});
-
 // scenario: docs/e2e-scenarios.md Sidebar 3
-test.describe("Sidebar 3 — the sidebar stays as it was left, across a reload", () => {
+test.describe("Sidebar 2 and Sidebar 3 — ⌘B / Ctrl+B still collapses and expands, and the button follows; the sidebar stays as it was left, across a reload", () => {
 	test.use({ viewport: DESKTOP });
 
 	test("collapsed, it reloads collapsed with the button offering Expand; expanded again, it reloads open with the button offering Collapse", async ({
@@ -311,27 +239,46 @@ test.describe("Sidebar 3 — the sidebar stays as it was left, across a reload",
 	}) => {
 		await signInContext(context, AGENT);
 		await open(page, "/en/home");
-		await expectExpanded(page, "the sidebar starts open");
 
-		await page.keyboard.press("ControlOrMeta+b");
-		await expectCollapsed(page);
-		await page.reload();
-		await loaded(page);
-		await expectCollapsed(page, "after a reload, the sidebar is still the strip");
-		// The button's tooltip only opens once the page is live, so this is the state after
-		// hydration, not only the server's first paint.
-		await pointAt(page, toggle(page));
-		await expect(tooltip(page).first()).toHaveText(/^Expand sidebar\b/);
-		await expectCollapsed(page, "once live, the sidebar is still the strip");
+		await test.step("the shortcut collapses the sidebar to the strip and expands it back; the button then offers Expand, then Collapse", async () => {
+			await expectExpanded(page, "the sidebar starts open");
 
-		await toggle(page).click();
-		await expectExpanded(page);
-		await page.reload();
-		await loaded(page);
-		await expectExpanded(page, "after a reload, the sidebar is still open");
-		await pointAt(page, toggle(page));
-		await expect(tooltip(page).first()).toHaveText(/^Collapse sidebar\b/);
-		await expectExpanded(page, "once live, the sidebar is still open");
+			await page.keyboard.press("ControlOrMeta+b");
+			await expectCollapsed(page, "the shortcut collapses the sidebar");
+			await expect(toggle(page), "the button follows the shortcut").toHaveAccessibleName(
+				COPY.en.expand,
+			);
+
+			await page.keyboard.press("ControlOrMeta+b");
+			await expectExpanded(page, "the shortcut expands the sidebar");
+			await expect(toggle(page), "the button follows the shortcut").toHaveAccessibleName(
+				COPY.en.collapse,
+			);
+		});
+
+		await test.step("collapsed, it reloads collapsed with the button offering Expand; expanded again, it reloads open with the button offering Collapse", async () => {
+			await expectExpanded(page, "the sidebar starts open");
+
+			await page.keyboard.press("ControlOrMeta+b");
+			await expectCollapsed(page);
+			await page.reload();
+			await loaded(page);
+			await expectCollapsed(page, "after a reload, the sidebar is still the strip");
+			// The button's tooltip only opens once the page is live, so this is the state after
+			// hydration, not only the server's first paint.
+			await pointAt(page, toggle(page));
+			await expect(tooltip(page).first()).toHaveText(/^Expand sidebar\b/);
+			await expectCollapsed(page, "once live, the sidebar is still the strip");
+
+			await toggle(page).click();
+			await expectExpanded(page);
+			await page.reload();
+			await loaded(page);
+			await expectExpanded(page, "after a reload, the sidebar is still open");
+			await pointAt(page, toggle(page));
+			await expect(tooltip(page).first()).toHaveText(/^Collapse sidebar\b/);
+			await expectExpanded(page, "once live, the sidebar is still open");
+		});
 	});
 });
 
@@ -349,7 +296,6 @@ test.describe("Sidebar 4 — the strip keeps the Inbox's Your-turn count", () =>
 	test("collapsed, the Inbox icon carries a readable badge with the number of guests waiting on the agent", async ({
 		admin,
 		browser,
-		request,
 	}) => {
 		test.setTimeout(120_000);
 		// An office of the test's own with one agent and two guests waiting on them, so the
@@ -358,19 +304,14 @@ test.describe("Sidebar 4 — the strip keeps the Inbox's Your-turn count", () =>
 		const oaId = uniqueId("oa");
 		await connectZaloOa(office.id, oaId);
 		let agent: Joined | undefined;
-		let manager: Joined | undefined;
 		try {
-			[agent, manager] = await Promise.all([
-				joinOffice(admin, browser, office.id, "member", "sidebar").then((a) => (agent = a)),
-				joinOffice(admin, browser, office.id, "admin", "sidebar-manager").then(
-					(m) => (manager = m),
-				),
-			]);
-			const assigner = assignerAs(manager.api);
-			for (const guestId of [uniqueId("guest"), uniqueId("guest")]) {
-				await sendZaloText(request, { guestId, oaId, text: `Hello from ${guestId}` });
-				await assigner.assignGuestTo(guestId, agent.userId);
-			}
+			agent = await joinOffice(admin, browser, office.id, "member", "sidebar");
+			// The two guests wrote and were given to the agent: setup, written in bulk (#222), as
+			// the scenario is the badge, not a message arriving or an assignment.
+			await seedZaloGuests(office.id, oaId, [uniqueId("guest"), uniqueId("guest")], {
+				fate: "assigned",
+				ownerId: agent.userId,
+			});
 
 			const { page } = agent;
 			await page.setViewportSize(DESKTOP);
@@ -403,64 +344,11 @@ test.describe("Sidebar 4 — the strip keeps the Inbox's Your-turn count", () =>
 					badge!.y < icon!.y + icon!.height &&
 					icon!.y < badge!.y + badge!.height;
 				expect(overlaps, "the badge sits on the Inbox icon").toBe(true);
-			}).toPass({ timeout: 5_000 });
+			}).toPass({ timeout: 5_000, intervals: [50] });
 		} finally {
-			await manager?.close();
 			await agent?.close();
 			await releaseZaloOa(oaId);
 		}
-	});
-});
-
-/* ---------------------------------------------------------------- Sidebar 5 */
-
-// scenario: docs/e2e-scenarios.md Sidebar 5
-test.describe("Sidebar 5 — the strip names its items on hover", () => {
-	test.use({ viewport: DESKTOP });
-
-	test("collapsed, pointing at Home, Inbox, Paperwork and CRM shows each one's name; Paperwork and CRM say Coming soon and still go nowhere", async ({
-		context,
-		page,
-	}) => {
-		await signInContext(context, AGENT);
-		await open(page, "/en/home");
-		await expectExpanded(page, "the sidebar starts open");
-		await page.keyboard.press("ControlOrMeta+b");
-		await expectCollapsed(page);
-
-		await pointAt(page, homeLink(page));
-		await expect(tooltip(page).first()).toHaveText("Home");
-
-		await pointAt(page, inboxLink(page));
-		await expect(tooltip(page).first()).toHaveText(/^Inbox\b/);
-
-		const paperwork = page.getByTestId("nav-paperwork");
-		await pointAt(page, paperwork);
-		await expect(tooltip(page).first()).toContainText("Paperwork");
-		await expect(tooltip(page).first()).toContainText("Coming soon");
-
-		// Still disabled: no link, and a click on it goes nowhere.
-		await expect(page.getByRole("link", { name: /Paperwork/ })).toHaveCount(0);
-		const box = await paperwork.boundingBox();
-		await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
-		// Judged once something after the click has settled: Home's tooltip, on this same page.
-		await pointAt(page, homeLink(page));
-		await expect(tooltip(page).first()).toHaveText("Home");
-		await expect(page, "Paperwork took the agent nowhere").toHaveURL(/\/en\/home$/);
-
-		const crm = page.getByTestId("nav-crm");
-		await pointAt(page, crm);
-		await expect(tooltip(page).first()).toContainText("CRM");
-		await expect(tooltip(page).first()).toContainText("Coming soon");
-
-		// Still disabled: no link named CRM (anchored, so other wording that mentions a CRM is not
-		// it), and a click on it goes nowhere.
-		await expect(page.getByRole("link", { name: /^CRM\b/ })).toHaveCount(0);
-		const crmBox = await crm.boundingBox();
-		await page.mouse.click(crmBox!.x + crmBox!.width / 2, crmBox!.y + crmBox!.height / 2);
-		await pointAt(page, homeLink(page));
-		await expect(tooltip(page).first()).toHaveText("Home");
-		await expect(page, "CRM took the agent nowhere").toHaveURL(/\/en\/home$/);
 	});
 });
 

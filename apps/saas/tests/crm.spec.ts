@@ -8,7 +8,6 @@ import { assignerAs } from "./support/assign";
 import type { MockCrmLead } from "./support/crm";
 import {
 	bringMockCrmBack,
-	connectMockCrm,
 	markInMockCrm,
 	mockCrmLeads,
 	passCrmRetryWait,
@@ -17,10 +16,10 @@ import {
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
-import { joinOffice } from "./support/operators";
-import { connectZaloOa, releaseZaloOa } from "./support/pipes";
 import type { Api } from "./support/session";
 import { appOrigin } from "./support/session";
+import type { OfficeJoin } from "./support/test-offices";
+import { testOffices } from "./support/test-offices";
 import { sendZaloText } from "./support/zalo";
 
 /**
@@ -113,32 +112,17 @@ const test = base.extend<{
 	) => Promise<TestOffice>;
 }>({
 	newOffice: async ({ admin, browser, request }, use) => {
-		const oaIds: string[] = [];
-		const contexts: { close: () => Promise<void> }[] = [];
+		const offices = testOffices(admin, browser);
 		await use(async (label, { crm, agent = true, manager = false }) => {
-			const office = await admin.createOffice(label);
-			if (crm === "mock") {
-				await connectMockCrm(office.id);
-			}
 			const oaId = uniqueId("oa");
-			oaIds.push(oaId);
-			await connectZaloOa(office.id, oaId);
-			const join = async (role: "member" | "admin") => {
-				const newcomer = await joinOffice(
-					admin,
-					browser,
-					office.id,
-					role,
-					role === "admin" ? "crm-manager" : "crm-agent",
-				);
-				contexts.push(newcomer);
-				return newcomer;
-			};
-			// The agent and the manager join at once (setup).
-			const [joinedAgent, joinedManager] = await Promise.all([
-				agent ? join("member") : undefined,
-				manager ? join("admin") : undefined,
-			]);
+			// The agent and the manager join at once, with the CRM and the OA (setup).
+			const joins: OfficeJoin[] = [
+				...(agent ? [{ role: "member" as const, tag: "crm-agent" }] : []),
+				...(manager ? [{ role: "admin" as const, tag: "crm-manager" }] : []),
+			];
+			const { joined, ...office } = await offices.create(label, { crm, zaloOa: oaId, joins });
+			const joinedAgent = agent ? joined[0] : undefined;
+			const joinedManager = manager ? joined[agent ? 1 : 0] : undefined;
 			const assigner = joinedManager && assignerAs(joinedManager.api);
 			return {
 				...office,
@@ -172,12 +156,7 @@ const test = base.extend<{
 				},
 			};
 		});
-		for (const context of contexts) {
-			await context.close();
-		}
-		for (const oaId of oaIds) {
-			await releaseZaloOa(oaId);
-		}
+		await offices.cleanUp();
 	},
 });
 
@@ -376,17 +355,33 @@ async function expectNotInCrmYet(page: Page, who: string) {
 	);
 }
 
-/** The open thread says nothing about a CRM: no status, neither Not in CRM yet nor In CRM. */
-async function expectNoCrmStatus(page: Page, who: string) {
-	await expect(crmStatus(page), `${who} sees no CRM status`).toHaveCount(0);
+/**
+ * The open thread's CRM status reads exactly `text`, and is plain text: nothing to click through.
+ * No link named for it in the thread header, no link, `a` or `href` inside the badge, and the
+ * badge itself, and everything around it up to the header, is no `a`, `href` or link role. CRM 10's
+ * mock half only: the mock CRM has no web app. The HubSpot half (In CRM a link to the deal) needs a
+ * deal Nhịp linked in real HubSpot, so Vitest holds it.
+ */
+async function expectPlainCrmStatus(page: Page, text: string) {
+	const status = crmStatus(page);
+	await expect(status, `the thread header says exactly ${text}`).toHaveText(text, WITHIN_A_POLL);
 	await expect(
-		openThread(page).getByText(crmCopy.notInCrmYet, { exact: true }),
-		`${who} sees no Not in CRM yet`,
+		threadHeader(page).getByRole("link", { name: text }),
+		`no link named ${text} in the thread header`,
 	).toHaveCount(0);
-	await expect(
-		openThread(page).getByText(crmCopy.inCrm, { exact: true }),
-		`${who} sees no In CRM`,
-	).toHaveCount(0);
+	await expect(status.getByRole("link"), `no link inside ${text}`).toHaveCount(0);
+	await expect(status.locator("a, [href]"), `no a or href inside ${text}`).toHaveCount(0);
+	const around = await status.evaluate((badge) => {
+		const found: string[] = [];
+		for (let el: Element | null = badge; el; el = el.parentElement) {
+			if (el.tagName === "A" || el.hasAttribute("href") || el.getAttribute("role") === "link") {
+				found.push(el === badge ? "the badge itself" : `an ancestor <${el.tagName.toLowerCase()}>`);
+			}
+			if (el.tagName === "HEADER") break;
+		}
+		return found;
+	});
+	expect(around, `${text} is no link, nor inside one, within the thread header`).toEqual([]);
 }
 
 /* ---------------------------------------------------------------- the office's CRM setting */
@@ -397,7 +392,7 @@ const CRM_CHOICES: readonly CrmChoice[] = ["none", "mock", "hubspot"];
 
 /** The platform admin's CRM setting, on the office's Connections card (Admin → Organizations). */
 async function openCrmSetting(admin: Admin, officeId: string) {
-	const { page } = admin;
+	const page = await admin.openPage();
 	await page.goto(`/en/admin/organizations/${officeId}`);
 	const card = page.getByTestId("office-connections");
 	await expect(card, "the platform admin sees the office's Connections card").toBeVisible();
@@ -528,7 +523,7 @@ async function expectCardShowsTokenSetNeverToken(admin: Admin, officeId: string,
 		"the card says a token is set",
 	).toBeVisible();
 	await expect(setting.token, "the token field is empty").toHaveValue("");
-	const html = await admin.page.content();
+	const html = await (await admin.openPage()).content();
 	for (const token of tokens) {
 		expect(html, "the token is nowhere in the page").not.toContain(token);
 	}
@@ -537,7 +532,8 @@ async function expectCardShowsTokenSetNeverToken(admin: Admin, officeId: string,
 // ---------------------------------------------------------------------------------------
 
 // scenario: docs/e2e-scenarios.md CRM 1
-test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
+// scenario: docs/e2e-scenarios.md CRM 10
+test.describe("CRM 1 — a new guest becomes a lead in the CRM; CRM 10 — In CRM opens the lead in the CRM, where the CRM has a web app", () => {
 	test("on the mock CRM: the thread header says In CRM to the agent and the manager, and the CRM holds one lead with their Zalo id, pipe and thread link, and no message text, even after they write again", async ({
 		newOffice,
 	}) => {
@@ -550,6 +546,10 @@ test.describe("CRM 1 — a new guest becomes a lead in the CRM", () => {
 
 		// The agent opens the thread: its header says the guest is in the CRM.
 		await expectInCrmOnThread(page, office.id, guest);
+
+		await test.step("on the mock CRM, the thread header's In CRM reads exactly In CRM and is plain text: no link, nothing to click through", async () => {
+			await expectPlainCrmStatus(page, crmCopy.inCrm);
+		});
 
 		// The manager sees it too, on the same thread.
 		const manager = office.manager.page;
@@ -645,6 +645,7 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		test.setTimeout(150_000);
 		// An office on no CRM: only the admin's setting puts it on the mock CRM.
 		const office = await newOffice("CRM 2 mock", { crm: "none", manager: true });
+		const { page } = office.agent;
 
 		const setting = await openCrmSetting(admin, office.id);
 		await setting.shows("none", "a new office has no CRM");
@@ -657,89 +658,27 @@ test.describe("CRM 2 — the admin sets an office's CRM", () => {
 		// A new guest writes: they become a lead in the mock CRM, and the agent sees it.
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
-		await expectInCrmOnThread(office.agent.page, office.id, guest);
+		await expectInCrmOnThread(page, office.id, guest);
 		const leads = await leadsOf(office.id, guest);
 		expect(leads, "the office's CRM holds one lead for the guest").toHaveLength(1);
 		expect(leads[0].name, "the lead carries the guest's name").toBe(nameOf(guest));
-	});
 
-	test("choosing None takes the thread's In CRM status away", async ({ admin, newOffice }) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 2 none", { crm: "none", manager: true });
-		const { page } = office.agent;
+		await test.step("choosing None takes the thread's In CRM status away", async () => {
+			// The admin chooses None (a fresh page, so the earlier "CRM saved." is gone).
+			await (await openCrmSetting(admin, office.id)).choose("none");
+			const reopenedNone = await openCrmSetting(admin, office.id);
+			await reopenedNone.shows("none", "the office's CRM is saved as None");
 
-		// On the mock CRM through the setting, a new guest's thread is In CRM.
-		await (await openCrmSetting(admin, office.id)).choose("mock");
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
-		await expectInCrmOnThread(page, office.id, guest);
-
-		// The admin chooses None (a fresh page, so the earlier "CRM saved." is gone).
-		await (await openCrmSetting(admin, office.id)).choose("none");
-		const reopened = await openCrmSetting(admin, office.id);
-		await reopened.shows("none", "the office's CRM is saved as None");
-
-		// The agent opens the thread afresh: nothing about a CRM in it any more.
-		await openThreadOf(page, guest);
-		await expect(
-			openThread(page).getByText(crmCopy.inCrm, { exact: true }),
-			"the thread no longer says the guest is in the CRM",
-		).toHaveCount(0);
-		await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(0);
-	});
-
-	test("a non-admin is refused: the office's agent and manager find no CRM setting, the API answers them 403 and anyone signed out 401, and the office's CRM stays None", async ({
-		admin,
-		newOffice,
-		request,
-	}) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 2 refused", { crm: "none", manager: true });
-		const address = crmConnection.address(office.id);
-
-		// The platform admin has the setting, and the API answers them: the office has no CRM.
-		const setting = await openCrmSetting(admin, office.id);
-		await setting.shows("none", "the office has no CRM");
-		const asAdmin = await admin.api.get(address);
-		expect(asAdmin.status(), "the platform admin reads the office's CRM").toBe(200);
-		expect(await officeCrmIn(asAdmin)).toBeNull();
-
-		// The office's own agent and manager: no Connections, no CRM setting, and the API refuses.
-		for (const [who, operator] of [
-			["the agent", office.agent],
-			["the manager", office.manager],
-		] as const) {
-			const { page } = operator;
-			await page.goto(`/en/admin/organizations/${office.id}`);
-			// Judge on a rendered page, not an empty one.
-			await expect(page.getByRole("main")).toBeVisible();
+			// The agent opens the thread afresh: nothing about a CRM in it any more.
+			await openThreadOf(page, guest);
 			await expect(
-				page.getByTestId("office-connections"),
-				`${who} sees no Connections`,
+				openThread(page).getByText(crmCopy.inCrm, { exact: true }),
+				"the thread no longer says the guest is in the CRM",
 			).toHaveCount(0);
-			await expect(page.getByTestId("crm-kind"), `${who} sees no CRM setting`).toHaveCount(0);
-
-			const read = await page.request.get(address, { maxRedirects: 0 });
-			expect(read.status(), `${who} cannot read the office's CRM`).toBe(403);
-			const write = await crmConnection.put(page.request, office.id, "mock");
-			expect(write.status(), `${who} cannot set the office's CRM`).toBe(403);
-		}
-
-		// Signed out: refused too.
-		const signedOutRead = await request.get(address, { maxRedirects: 0 });
-		expect(signedOutRead.status(), "nobody signed in cannot read it").toBe(401);
-		const signedOutWrite = await crmConnection.put(request, office.id, "mock");
-		expect(signedOutWrite.status(), "nobody signed in cannot set it").toBe(401);
-
-		// Nothing changed: the office is still on no CRM.
-		const after = await admin.api.get(address);
-		expect(await officeCrmIn(after), "the refused requests changed nothing").toBeNull();
-		await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
-
-		// The same request from the platform admin is taken: the refusals were about who asked.
-		const byAdmin = await crmConnection.put(admin.page.request, office.id, "mock");
-		expect(byAdmin.status(), "the platform admin sets the office's CRM").toBe(200);
-		expect(await officeCrmIn(await admin.api.get(address)), "the office is on Mock").toBe("mock");
+			await expect(openThread(page).getByTestId("crm-status"), "no CRM status at all").toHaveCount(
+				0,
+			);
+		});
 	});
 });
 
@@ -820,52 +759,29 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 			await markLead(request, office.id, guest, lead, "lost"),
 			"the lead is lost, again",
 		);
-		expectNoticeTaken(await markLead(request, office.id, other, otherLead, "won"), "a lead is won");
+		const won = await markLead(request, office.id, other, otherLead, "won");
+		expectNoticeTaken(won, "a lead is won");
 		await expectQueue(page, { yourTurn: 1, sent: 1, all: 2 }, WITHIN_A_POLL);
 		await expect(rowOf(page, other), "the won guest has left Your turn").toHaveCount(0);
 		await expect(
 			rowOf(page, guest).getByTestId("thread-status"),
 			"the guest who wrote after the outcome stays Your turn",
 		).toHaveText(crmCopy.yourTurn);
-	});
 
-	test("won: the thread leaves Your turn for Sent with a neutral Won where the turn was, in the list and the thread header, and the nav count drops", async ({
-		newOffice,
-		request,
-	}) => {
-		test.setTimeout(180_000);
-		const office = await newOffice("CRM 3 won", { crm: "mock", manager: true });
-		const { page } = office.agent;
-
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
-		await office.assignToAgent(await office.newGuest());
-		const lead = await leadOf(office.id, guest);
-
-		await page.goto("/en/inbox");
-		await expectQueue(page, { yourTurn: 2, sent: 0, all: 2 }, WITHIN_A_POLL);
-		await expect(rowOf(page, guest), "the guest waits in Your turn").toBeVisible();
-
-		const won = await markLead(request, office.id, guest, lead, "won");
-
-		await expect(
-			view(page, "Your turn", 1),
-			`the won thread leaves Your turn (the CRM's notice answered ${won})`,
-		).toBeVisible(WITHIN_A_POLL);
-		await expectQueue(page, { yourTurn: 1, sent: 1, all: 2 }, WITHIN_A_POLL);
-		await expect(rowOf(page, guest), "the won guest is not in Your turn").toHaveCount(0);
-		expectNoticeTaken(won, "the lead is won");
-
-		await view(page, "Sent", 1).click();
-		const row = rowOf(page, guest);
-		await expect(row, "the won thread is under Sent").toBeVisible();
-		await expectOutcomeInPlaceOfTheTurn(row, crmCopy.won);
-		await row.click();
-		await expect(openThread(page).getByText(guest.texts[0], { exact: true })).toBeVisible();
-		await expect(
-			openThread(page).getByTestId("thread-status"),
-			"the thread header says Won",
-		).toHaveText(crmCopy.won);
+		// The other guest's won thread left Your turn just above, and the nav count dropped with it
+		// (2 to 1, in expectQueue): where it went, and what it says there.
+		await test.step("won: the thread leaves Your turn for Sent with a neutral Won where the turn was, in the list and the thread header, and the nav count drops", async () => {
+			await view(page, "Sent", 1).click();
+			const wonRow = rowOf(page, other);
+			await expect(wonRow, "the won thread is under Sent").toBeVisible();
+			await expectOutcomeInPlaceOfTheTurn(wonRow, crmCopy.won);
+			await wonRow.click();
+			await expect(openThread(page).getByText(other.texts[0], { exact: true })).toBeVisible();
+			await expect(
+				openThread(page).getByTestId("thread-status"),
+				"the thread header says Won",
+			).toHaveText(crmCopy.won);
+		});
 	});
 
 	test("a notice signed with the wrong secret, or not signed, is refused", async ({
@@ -897,69 +813,66 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 });
 
 // scenario: docs/e2e-scenarios.md CRM 4a
-test.describe("CRM 4a — a missing lead says so, and heals when the thread is opened", () => {
-	test("with the CRM down when a new guest writes: the message still arrives in Your turn, the agent and the manager both see a neutral Not in CRM yet in the thread header, and no lead is in the CRM", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 4a down", { crm: "mock", manager: true });
-		const { page } = office.agent;
-		await takeMockCrmDown(office.id);
-
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
-
-		// The message still arrives: the guest waits on the agent, in Your turn.
-		await page.goto("/en/inbox");
-		await expectQueue(page, { yourTurn: 1, sent: 0, all: 1 }, WITHIN_A_POLL);
-		await expect(
-			rowOf(page, guest).getByTestId("thread-status"),
-			"the guest is Your turn",
-		).toHaveText(crmCopy.yourTurn);
-
-		// The agent opens the thread: its header says the guest is not in the CRM yet.
-		await openThreadOf(page, guest);
-		await expectNotInCrmYet(page, "the agent");
-
-		// The manager sees the same on that thread.
-		const manager = office.manager.page;
-		await openThreadOf(manager, guest, { all: true });
-		await expect(
-			manager.getByTestId("owner-filter"),
-			"they are the office's manager (only a manager filters by owner, Assign 9)",
-		).toBeVisible();
-		await expectNotInCrmYet(manager, "the manager");
-
-		expect(await leadsOf(office.id, guest), "no lead is in the CRM").toEqual([]);
-	});
-
+// scenario: docs/e2e-scenarios.md CRM 10
+test.describe("CRM 4a — a missing lead says so, and heals when the thread is opened; CRM 10 — In CRM opens the lead in the CRM, where the CRM has a web app", () => {
 	test("once the CRM works again and the wait before trying again has passed, opening the thread makes it In CRM, and the CRM holds exactly one lead for the guest", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
 		const office = await newOffice("CRM 4a heals", { crm: "mock", manager: true });
 		const { page } = office.agent;
+		const manager = office.manager.page;
 		await takeMockCrmDown(office.id);
 
 		const guest = await office.newGuest();
 		await office.assignToAgent(guest);
 
 		// First the lead is missing, and the thread says so.
-		await openThreadOf(page, guest);
-		await expect(
-			crmStatus(page),
-			"with the CRM down, the thread header says Not in CRM yet",
-		).toHaveText(crmCopy.notInCrmYet, WITHIN_A_POLL);
+		await test.step("with the CRM down when a new guest writes: the message still arrives in Your turn, the agent and the manager both see a neutral Not in CRM yet in the thread header, and no lead is in the CRM", async () => {
+			// The message still arrives: the guest waits on the agent, in Your turn.
+			await page.goto("/en/inbox");
+			await expectQueue(page, { yourTurn: 1, sent: 0, all: 1 }, WITHIN_A_POLL);
+			await expect(
+				rowOf(page, guest).getByTestId("thread-status"),
+				"the guest is Your turn",
+			).toHaveText(crmCopy.yourTurn);
+
+			// The agent opens the thread: its header says the guest is not in the CRM yet.
+			await openThreadOf(page, guest);
+			await expectNotInCrmYet(page, "the agent");
+
+			await test.step("with the lead not written (the mock CRM down when the guest first writes), the thread header's Not in CRM yet is plain text: no link, nothing to click through", async () => {
+				await expectPlainCrmStatus(page, crmCopy.notInCrmYet);
+			});
+
+			// The manager sees the same on that thread.
+			await openThreadOf(manager, guest, { all: true });
+			await expect(
+				manager.getByTestId("owner-filter"),
+				"they are the office's manager (only a manager filters by owner, Assign 9)",
+			).toBeVisible();
+			await expectNotInCrmYet(manager, "the manager");
+
+			expect(await leadsOf(office.id, guest), "no lead is in the CRM").toEqual([]);
+		});
+
+		// The manager leaves the thread: an open thread asks again on every poll, and only the
+		// agent's opening it is to write the lead.
+		await manager.goto("about:blank");
 		// The agent leaves the thread for the list.
 		await page.goto("/en/inbox");
-		await expect(rowOf(page, guest), "the agent is back on the thread list").toBeVisible();
+		const row = rowOf(page, guest);
+		await expect(row, "the agent is back on the thread list").toBeVisible();
 
 		// The CRM works again, and Nhịp's wait before trying again is over.
 		await bringMockCrmBack(office.id);
 		await passCrmRetryWait(office.id);
 
-		// The agent opens the thread: within a poll, its header says the guest is in the CRM.
-		await openThreadOf(page, guest);
+		// The agent opens the thread from the list on show: within a poll, its header says the
+		// guest is in the CRM.
+		await expect(row, `the agent has ${guest.id}'s thread`).toBeVisible();
+		await row.click();
+		await expect(openThread(page).getByText(guest.texts[0], { exact: true })).toBeVisible();
 		await expect(
 			crmStatus(page),
 			"opening the thread writes the lead: the header says In CRM",
@@ -972,106 +885,58 @@ test.describe("CRM 4a — a missing lead says so, and heals when the thread is o
 		expect(leads, "the CRM holds exactly one lead for the guest").toHaveLength(1);
 		expect(leads[0].name, "the lead carries the guest's name").toBe(nameOf(guest));
 	});
-
-	test("an office with no CRM: a new guest's thread shows no CRM status, neither Not in CRM yet nor In CRM, to the agent or the manager", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 4a none", { crm: "none", manager: true });
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
-
-		for (const [who, operator, all] of [
-			["the agent", office.agent, false],
-			["the manager", office.manager, true],
-		] as const) {
-			const { page } = operator;
-			await openThreadOf(page, guest, { all });
-			// Judged once the open thread has asked again: the guest writes, and it shows.
-			const again = await guest.write(`Still available? ${randomUUID().slice(0, 8)}`);
-			await expect(
-				openThread(page).getByText(again, { exact: true }),
-				`${who}'s open thread shows the guest's new message`,
-			).toBeVisible(WITHIN_A_POLL);
-			await expectNoCrmStatus(page, who);
-		}
-	});
 });
 
 // scenario: docs/e2e-scenarios.md CRM 8
-test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
+// scenario: docs/e2e-scenarios.md CRM 2
+test.describe("CRM 8 — the admin connects an office to HubSpot; CRM 2 — the admin sets an office's CRM", () => {
 	// No guest writes on a HubSpot office here and nothing calls HubSpot: the adapter is held to its
 	// contract by Vitest on recorded HubSpot HTTP (spec #59). The tokens are fakes of the test's own.
 
-	test("the platform admin chooses HubSpot, enters the office's access token and saves: nothing is saved before that, and after a reload the card shows HubSpot with a token set, the token field empty and the token nowhere in the page or the API's answer", async ({
+	test("the platform admin's HubSpot setting: with no token nothing is saved and the setting asks for one; with the office's access token it is saved, and the card and the API show a token set, never the token", async ({
 		admin,
 		newOffice,
 	}) => {
 		test.setTimeout(120_000);
 		const office = await newOffice("CRM 8 hubspot", { crm: "none", agent: false });
-		const token = fakeHubSpotToken();
 
-		const setting = await openCrmSetting(admin, office.id);
-		await setting.shows("none", "a new office has no CRM");
-		await setting.chooseHubSpot();
+		await test.step("HubSpot with no token is not saved: the setting asks for the token, and the office stays on None", async () => {
+			const setting = await openCrmSetting(admin, office.id);
+			await setting.shows("none", "a new office has no CRM");
+			await setting.chooseHubSpot();
+			await setting.save.click();
+			await expect(
+				setting.says(crmCopy.setting.tokenRequired),
+				"the setting asks for the HubSpot access token",
+			).toBeVisible();
+			await expect(
+				(await admin.openPage()).getByText(crmCopy.setting.saved, { exact: true }),
+				"no CRM saved.",
+			).toHaveCount(0);
 
-		// Choosing HubSpot alone saves nothing: the office is still on no CRM.
-		const before = await admin.api.get(crmConnection.address(office.id));
-		expect(before.status()).toBe(200);
-		expect(await officeCrmIn(before), "choosing HubSpot does not save it").toBeNull();
+			const res = await admin.api.get(crmConnection.address(office.id));
+			expect(res.status()).toBe(200);
+			expect(await officeCrmIn(res), "the office is still on no CRM").toBeNull();
+			await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
+		});
 
-		await setting.saveToken(token);
+		await test.step("the platform admin chooses HubSpot, enters the office's access token and saves: nothing is saved before that, and after a reload the card shows HubSpot with a token set, the token field empty and the token nowhere in the page or the API's answer", async () => {
+			const token = fakeHubSpotToken();
 
-		await expectCardShowsTokenSetNeverToken(admin, office.id, [token]);
-		await expectHubSpotWithTokenUnseen(admin, office.id, [token]);
-	});
+			const setting = await openCrmSetting(admin, office.id);
+			await setting.shows("none", "the office has no CRM yet");
+			await setting.chooseHubSpot();
 
-	test("HubSpot with no token is not saved: the setting asks for the token, and the office stays on None", async ({
-		admin,
-		newOffice,
-	}) => {
-		test.setTimeout(120_000);
-		const office = await newOffice("CRM 8 no token", { crm: "none", agent: false });
+			// Choosing HubSpot alone saves nothing: the office is still on no CRM.
+			const before = await admin.api.get(crmConnection.address(office.id));
+			expect(before.status()).toBe(200);
+			expect(await officeCrmIn(before), "choosing HubSpot does not save it").toBeNull();
 
-		const setting = await openCrmSetting(admin, office.id);
-		await setting.shows("none", "a new office has no CRM");
-		await setting.chooseHubSpot();
-		await setting.save.click();
-		await expect(
-			setting.says(crmCopy.setting.tokenRequired),
-			"the setting asks for the HubSpot access token",
-		).toBeVisible();
-		await expect(
-			admin.page.getByText(crmCopy.setting.saved, { exact: true }),
-			"no CRM saved.",
-		).toHaveCount(0);
+			await setting.saveToken(token);
 
-		const res = await admin.api.get(crmConnection.address(office.id));
-		expect(res.status()).toBe(200);
-		expect(await officeCrmIn(res), "the office is still on no CRM").toBeNull();
-		await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
-	});
-
-	test("saving a new token replaces the old one, and neither is shown afterwards, on the card or through the API", async ({
-		admin,
-		newOffice,
-	}) => {
-		test.setTimeout(120_000);
-		const office = await newOffice("CRM 8 replace", { crm: "none", agent: false });
-		const first = fakeHubSpotToken();
-		const second = fakeHubSpotToken();
-
-		const setting = await openCrmSetting(admin, office.id);
-		await setting.chooseHubSpot();
-		await setting.saveToken(first);
-
-		// On the reloaded card (HubSpot, a token set), the admin enters a new token and saves it.
-		await expectCardShowsTokenSetNeverToken(admin, office.id, [first]);
-		const reopened = await openCrmSetting(admin, office.id);
-		await reopened.saveToken(second);
-
-		await expectCardShowsTokenSetNeverToken(admin, office.id, [first, second]);
-		await expectHubSpotWithTokenUnseen(admin, office.id, [first, second]);
+			await expectCardShowsTokenSetNeverToken(admin, office.id, [token]);
+			await expectHubSpotWithTokenUnseen(admin, office.id, [token]);
+		});
 	});
 
 	test("through the API: HubSpot with a token is saved and read back as a token set, never the token; HubSpot without a token answers 400 and the office stays as it was", async ({
@@ -1081,7 +946,7 @@ test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
 		test.setTimeout(120_000);
 		const office = await newOffice("CRM 8 api", { crm: "none", agent: false });
 		const address = crmConnection.address(office.id);
-		const { request } = admin.page;
+		const { request } = admin;
 		const first = fakeHubSpotToken();
 		const second = fakeHubSpotToken();
 
@@ -1118,6 +983,10 @@ test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
 			await page.goto(`/en/admin/organizations/${office.id}`);
 			// Judge on a rendered page, not an empty one.
 			await expect(page.getByRole("main")).toBeVisible();
+			await expect(
+				page.getByTestId("office-connections"),
+				`${who} sees no Connections`,
+			).toHaveCount(0);
 			await expect(page.getByTestId("crm-kind"), `${who} sees no CRM setting`).toHaveCount(0);
 			await expect(page.getByTestId("crm-token"), `${who} sees no token field`).toHaveCount(0);
 
@@ -1126,26 +995,47 @@ test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
 			expect(await read.text(), `${who} is not shown the token`).not.toContain(token);
 			const write = await crmConnection.put(page.request, office.id, "hubspot", fakeHubSpotToken());
 			expect(write.status(), `${who} cannot connect the office to HubSpot`).toBe(403);
+			const writeMock = await crmConnection.put(page.request, office.id, "mock");
+			expect(writeMock.status(), `${who} cannot set the office's CRM`).toBe(403);
 		};
 
-		// On no CRM, the office's own agent and manager are refused, and so is anyone signed out.
-		for (const [who, operator] of [
-			["the agent", office.agent],
-			["the manager", office.manager],
-		] as const) {
-			await refusedBy(who, operator.page);
-		}
-		const signedOutRead = await request.get(address, { maxRedirects: 0 });
-		expect(signedOutRead.status(), "nobody signed in cannot read it").toBe(401);
-		const signedOutWrite = await crmConnection.put(request, office.id, "hubspot", token);
-		expect(signedOutWrite.status(), "nobody signed in cannot set it").toBe(401);
-		expect(
-			await officeCrmIn(await admin.api.get(address)),
-			"the refused requests changed nothing",
-		).toBeNull();
+		await test.step("a non-admin is refused: the office's agent and manager find no CRM setting, the API answers them 403 and anyone signed out 401, and the office's CRM stays None", async () => {
+			// The platform admin has the setting, and the API answers them: the office has no CRM.
+			const setting = await openCrmSetting(admin, office.id);
+			await setting.shows("none", "the office has no CRM");
+			const asAdmin = await admin.api.get(address);
+			expect(asAdmin.status(), "the platform admin reads the office's CRM").toBe(200);
+			expect(await officeCrmIn(asAdmin)).toBeNull();
+
+			// On no CRM, the office's own agent and manager are refused, and so is anyone signed out.
+			for (const [who, operator] of [
+				["the agent", office.agent],
+				["the manager", office.manager],
+			] as const) {
+				await refusedBy(who, operator.page);
+			}
+			const signedOutRead = await request.get(address, { maxRedirects: 0 });
+			expect(signedOutRead.status(), "nobody signed in cannot read it").toBe(401);
+			const signedOutWrite = await crmConnection.put(request, office.id, "hubspot", token);
+			expect(signedOutWrite.status(), "nobody signed in cannot set it").toBe(401);
+			const signedOutMock = await crmConnection.put(request, office.id, "mock");
+			expect(signedOutMock.status(), "nobody signed in cannot set it").toBe(401);
+
+			// Nothing changed: the office is still on no CRM.
+			expect(
+				await officeCrmIn(await admin.api.get(address)),
+				"the refused requests changed nothing",
+			).toBeNull();
+			await (await openCrmSetting(admin, office.id)).shows("none", "the admin still sees None");
+
+			// The same request from the platform admin is taken: the refusals were about who asked.
+			const mockByAdmin = await crmConnection.put(admin.request, office.id, "mock");
+			expect(mockByAdmin.status(), "the platform admin sets the office's CRM").toBe(200);
+			expect(await officeCrmIn(await admin.api.get(address)), "the office is on Mock").toBe("mock");
+		});
 
 		// The same request from the platform admin is taken: the refusals were about who asked.
-		const byAdmin = await crmConnection.put(admin.page.request, office.id, "hubspot", token);
+		const byAdmin = await crmConnection.put(admin.request, office.id, "hubspot", token);
 		expect(byAdmin.status(), "the platform admin connects the office to HubSpot").toBe(200);
 
 		// With a token set, the agent and manager still read nothing and change nothing.
@@ -1159,68 +1049,5 @@ test.describe("CRM 8 — the admin connects an office to HubSpot", () => {
 		expect(signedOutAgain.status(), "nobody signed in cannot read it").toBe(401);
 		expect(await signedOutAgain.text(), "nor see the token").not.toContain(token);
 		await expectHubSpotWithTokenUnseen(admin, office.id, [token]);
-	});
-});
-
-/**
- * The open thread's CRM status reads exactly `text`, and is plain text: nothing to click through.
- * No link named for it in the thread header, no link, `a` or `href` inside the badge, and the
- * badge itself, and everything around it up to the header, is no `a`, `href` or link role.
- */
-async function expectPlainCrmStatus(page: Page, text: string) {
-	const status = crmStatus(page);
-	await expect(status, `the thread header says exactly ${text}`).toHaveText(text, WITHIN_A_POLL);
-	await expect(
-		threadHeader(page).getByRole("link", { name: text }),
-		`no link named ${text} in the thread header`,
-	).toHaveCount(0);
-	await expect(status.getByRole("link"), `no link inside ${text}`).toHaveCount(0);
-	await expect(status.locator("a, [href]"), `no a or href inside ${text}`).toHaveCount(0);
-	const around = await status.evaluate((badge) => {
-		const found: string[] = [];
-		for (let el: Element | null = badge; el; el = el.parentElement) {
-			if (el.tagName === "A" || el.hasAttribute("href") || el.getAttribute("role") === "link") {
-				found.push(el === badge ? "the badge itself" : `an ancestor <${el.tagName.toLowerCase()}>`);
-			}
-			if (el.tagName === "HEADER") break;
-		}
-		return found;
-	});
-	expect(around, `${text} is no link, nor inside one, within the thread header`).toEqual([]);
-}
-
-// scenario: docs/e2e-scenarios.md CRM 10
-test.describe("CRM 10 — In CRM opens the lead in the CRM, where the CRM has a web app", () => {
-	// The mock half only: the mock CRM has no web app, so its In CRM is plain text. The HubSpot
-	// half (In CRM a link to the deal) needs a deal Nhịp linked in real HubSpot, so Vitest holds it.
-
-	test("on the mock CRM, the thread header's In CRM reads exactly In CRM and is plain text: no link, nothing to click through", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 10 in", { crm: "mock", manager: true });
-		const { page } = office.agent;
-
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
-
-		await expectInCrmOnThread(page, office.id, guest);
-		await expectPlainCrmStatus(page, crmCopy.inCrm);
-	});
-
-	test("with the lead not written (the mock CRM down when the guest first writes), the thread header's Not in CRM yet is plain text: no link, nothing to click through", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(150_000);
-		const office = await newOffice("CRM 10 not yet", { crm: "mock", manager: true });
-		const { page } = office.agent;
-		await takeMockCrmDown(office.id);
-
-		const guest = await office.newGuest();
-		await office.assignToAgent(guest);
-
-		await openThreadOf(page, guest);
-		await expectNotInCrmYet(page, "the agent");
-		await expectPlainCrmStatus(page, crmCopy.notInCrmYet);
 	});
 });

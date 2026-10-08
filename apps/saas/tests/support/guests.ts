@@ -1,7 +1,10 @@
 import { askState } from "./state-client";
 
-/** How many guests one state call writes: each call answers well within its 10 s. */
-const PER_CALL = 25;
+/**
+ * How many guests one state call writes: each call answers well within its 10 s. A multiple of
+ * the eight guest-state.ts writes at once, so no call ends on a short batch.
+ */
+const PER_CALL = 32;
 
 /**
  * Guests who each wrote once to the office's Zalo OA (`connectZaloOa` first), written straight

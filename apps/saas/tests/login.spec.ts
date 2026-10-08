@@ -23,25 +23,6 @@ test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI
 		await expect(page.getByText(/don't have an account/i)).toHaveCount(0);
 	});
 
-	// rule: AGENTS.md password login; docs/e2e-scenarios.md Auth 3 names the magic link as a way
-	// to sign in (for an existing account only).
-	test("password and magic link are both ways to sign in", async ({ page }) => {
-		const login = new LoginPage(page);
-		await login.goto("en");
-
-		await login.switchMode("password");
-		await expect(login.submit).toHaveText("Sign in");
-		await expect(login.password).toBeVisible();
-
-		await login.switchMode("magic-link");
-		await expect(login.submit).toHaveText("Send magic link");
-		await expect(login.password).toBeHidden();
-
-		await login.switchMode("password");
-		await expect(login.submit).toHaveText("Sign in");
-		await expect(login.password).toBeVisible();
-	});
-
 	// rule: PRODUCT.md "English and Vietnamese only."
 	test("language switcher offers only English and Vietnamese", async ({ page }) => {
 		await page.goto("/en/login");

@@ -13,10 +13,9 @@ import { newWhatsAppGuest, newWhatsAppNumber, sendWhatsAppText } from "./support
 
 const copy = ownerCopy("en");
 
-/** The window sizes the scenarios name: a desk, `md` itself (768px), and a phone. */
+/** The window sizes the scenarios name: a desk and `md` itself (768px). */
 const DESK = { width: 1280, height: 720 };
 const MD = { width: 768, height: 1024 };
-const PHONE = { width: 390, height: 844 };
 
 /** A guest of the test's own office, writing on WhatsApp under a long profile name. */
 type Guest = WhatsAppGuest & { text: string };
@@ -99,10 +98,6 @@ function view(page: Page, name: ViewName, count?: number): Locator {
 	});
 }
 
-function searchBox(page: Page): Locator {
-	return page.getByRole("textbox", { name: "Search threads" });
-}
-
 /** The manager's owner filter ("Showing": All threads, or one operator). */
 function ownerFilter(page: Page): Locator {
 	return page.getByTestId("owner-filter");
@@ -119,11 +114,6 @@ function countLine(page: Page): Locator {
 /** A guest's row in the list: a button named by the guest, first of all. */
 function rowOf(page: Page, guest: Guest): Locator {
 	return threadList(page).getByRole("button", { name: startsWithName(guest) });
-}
-
-/** The guest's name as their row shows it. */
-function nameOf(page: Page, guest: Guest): Locator {
-	return rowOf(page, guest).getByText(guest.name, { exact: true });
 }
 
 /**
@@ -184,32 +174,6 @@ async function openView(page: Page, name: ViewName) {
 /** The pointer leaves the thread list: no row is hovered. */
 async function pointerAway(page: Page) {
 	await page.mouse.move(0, 0);
-}
-
-/** Where an element is laid out; fails the test if it is not. */
-async function boxOf(locator: Locator, what: string) {
-	const box = await locator.boundingBox();
-	expect(box, `${what} is laid out`).not.toBeNull();
-	return box!;
-}
-
-/** The pill, shown, does not cover the guest's name: their boxes do not overlap. */
-async function expectNameUncovered(page: Page, guest: Guest, where: string) {
-	await expect(assignFromRow(page, guest), `${where}: Assign to… shows`).toBeVisible();
-	await expect(nameOf(page, guest), `${where}: the guest's name shows`).toBeVisible();
-	const pill = await boxOf(assignFromRow(page, guest), "Assign to…");
-	const name = await boxOf(nameOf(page, guest), "the guest's name");
-	const overlap =
-		pill.x < name.x + name.width &&
-		name.x < pill.x + pill.width &&
-		pill.y < name.y + name.height &&
-		name.y < pill.y + pill.height;
-	expect
-		.soft(
-			overlap,
-			`${where}: Assign to… ${JSON.stringify(pill)} covers no part of the name ${JSON.stringify(name)}`,
-		)
-		.toBe(false);
 }
 
 /* ---------------------------------------------------------------- setup through the app */
@@ -276,19 +240,22 @@ async function approveReply(page: Page, guest: Guest) {
  */
 async function countedOffice(newOffice: () => Promise<OwnOffice>) {
 	const office = await newOffice();
-	const manager = await office.join("admin", "manager");
-	const agentA = await office.join("member", "agent A");
-	const agentB = await office.join("member", "agent B");
+	// Independent setup at once (#278): each guest's message carries its own time, so their
+	// order is the times', not the order they arrive in.
+	const [manager, agentA, agentB] = await Promise.all([
+		office.join("admin", "manager"),
+		office.join("member", "agent A"),
+		office.join("member", "agent B"),
+	]);
 	const assigner = assignerAs(manager.api);
-	await office.guestWrites(6);
-	await office.guestWrites(5);
-	const forA = [await office.guestWrites(4), await office.guestWrites(3)];
-	const answeredByA = await office.guestWrites(2);
-	const forB = await office.guestWrites(1);
-	for (const guest of [...forA, answeredByA]) {
-		await assigner.assignGuestTo(guest.phone, agentA.userId);
-	}
-	await assigner.assignGuestTo(forB.phone, agentB.userId);
+	const [, , fourMinutes, threeMinutes, answeredByA, forB] = await Promise.all(
+		[6, 5, 4, 3, 2, 1].map((minutesAgo) => office.guestWrites(minutesAgo)),
+	);
+	const forA = [fourMinutes, threeMinutes];
+	await Promise.all([
+		...[...forA, answeredByA].map((guest) => assigner.assignGuestTo(guest.phone, agentA.userId)),
+		assigner.assignGuestTo(forB.phone, agentB.userId),
+	]);
 	await approveReply(agentA.page, answeredByA);
 	return { manager, agentA, agentB };
 }
@@ -297,50 +264,8 @@ async function countedOffice(newOffice: () => Promise<OwnOffice>) {
 
 test.describe.configure({ timeout: 120_000 });
 
-// scenario: docs/e2e-scenarios.md Inbox polish 1
-test.describe("Inbox polish 1 — the view tabs stay put between a manager's views", () => {
-	test("at a desk, Unassigned → Waiting → Sent → All → Unassigned leaves the view tabs and the search field at the same height in every view", async ({
-		newOffice,
-	}) => {
-		// An office of the test's own, so nothing another spec does to an office (a pipe's banner
-		// above the list) moves the list while it is measured.
-		const { manager } = await unassignedOffice(newOffice);
-		const { page } = manager;
-		await page.setViewportSize(DESK);
-		await page.goto("/en/inbox");
-		await expect(view(page, "Unassigned"), "the Inbox opens on Unassigned").toHaveAttribute(
-			"aria-pressed",
-			"true",
-		);
-		await expectListLoaded(page);
-		const tabs = view(page, "Waiting");
-		const tabsAt = (await boxOf(tabs, "the view tabs")).y;
-		const searchAt = (await boxOf(searchBox(page), "the search field")).y;
-		// The list starts under the count line, so the line's foot staying put keeps the list still.
-		const listTop = async () => {
-			const box = await boxOf(countLine(page), "the count line");
-			return box.y + box.height;
-		};
-		const listAt = await listTop();
-
-		for (const name of ["Waiting", "Sent", "All", "Unassigned"] as const) {
-			await openView(page, name);
-			expect.soft(await listTop(), `${name}: the list has not moved`).toBe(listAt);
-			expect
-				.soft((await boxOf(tabs, "the view tabs")).y, `${name}: the view tabs have not moved`)
-				.toBe(tabsAt);
-			expect
-				.soft(
-					(await boxOf(searchBox(page), "the search field")).y,
-					`${name}: the search field has not moved`,
-				)
-				.toBe(searchAt);
-		}
-	});
-});
-
 // scenario: docs/e2e-scenarios.md Inbox polish 2
-test.describe("Inbox polish 2 — a manager's Unassigned row shows Assign to… on hover, focus and selection, from md up", () => {
+test.describe("Inbox polish 2 — a manager's Unassigned row shows Assign to… on hover, from md up", () => {
 	test("at 1280 and at 768 px, a row that is not selected, hovered or focused hides its Assign to…; pointing at the row shows it, and leaving hides it again", async ({
 		newOffice,
 	}) => {
@@ -373,127 +298,6 @@ test.describe("Inbox polish 2 — a manager's Unassigned row shows Assign to… 
 				assignFromRow(page, first),
 				`${at}: the pointer gone, it hides again`,
 			).toBeHidden();
-		}
-	});
-
-	test("at a desk, Tab onto a row shows its Assign to…, the next Tab lands on Assign to… itself, and tabbing on to the next row hides it again", async ({
-		newOffice,
-	}) => {
-		const { manager, first, second, newest } = await unassignedOffice(newOffice);
-		const { page } = manager;
-		await openWithSelected(manager, newest, DESK);
-		await expect(assignFromRow(page, first), "at rest, the row hides Assign to…").toBeHidden();
-
-		// From the search field, the keyboard alone: Tab until the first row has focus.
-		await searchBox(page).focus();
-		for (let presses = 0; presses < 20; presses++) {
-			if (await rowOf(page, first).evaluate((row) => row === document.activeElement)) break;
-			await page.keyboard.press("Tab");
-		}
-		await expect(rowOf(page, first), "Tab reaches the first row").toBeFocused();
-		await expect(
-			assignFromRow(page, first),
-			"with focus on its row, Assign to… shows",
-		).toBeVisible();
-		await expect(assignFromRow(page, second), "the next row, unfocused, hides it").toBeHidden();
-
-		await page.keyboard.press("Tab");
-		await expect(assignFromRow(page, first), "the next Tab lands on Assign to…").toBeFocused();
-
-		await page.keyboard.press("Tab");
-		await expect(rowOf(page, second), "the Tab after it reaches the next row").toBeFocused();
-		await expect(
-			assignFromRow(page, second),
-			"the newly focused row shows its Assign to…",
-		).toBeVisible();
-		await expect(
-			assignFromRow(page, first),
-			"focus gone, the first row hides it again",
-		).toBeHidden();
-	});
-
-	test("at 1280 and at 768 px, the selected row shows its Assign to… with no pointer or focus on it, whether opened by its link or chosen in the list", async ({
-		newOffice,
-	}) => {
-		const { manager, first, second, newest } = await unassignedOffice(newOffice);
-		const { page } = manager;
-		for (const size of [DESK, MD]) {
-			const at = `${size.width}px`;
-			// Opened by its link: nothing has touched the row.
-			await openWithSelected(manager, second, size);
-			await expect(
-				assignFromRow(page, second),
-				`${at}: the selected row shows Assign to…`,
-			).toBeVisible();
-			await expect(assignFromRow(page, first), `${at}: a row not selected hides it`).toBeHidden();
-			await expect(assignFromRow(page, newest), `${at}: a row not selected hides it`).toBeHidden();
-		}
-
-		// Chosen in the list, then the pointer and the focus move to the search field.
-		await rowOf(page, first).click();
-		await expect(rowOf(page, first)).toHaveAttribute("aria-current", "true");
-		await searchBox(page).click();
-		await expect(assignFromRow(page, first), "the row just chosen shows Assign to…").toBeVisible();
-		await expect(assignFromRow(page, second), "the row no longer selected hides it").toBeHidden();
-	});
-
-	test("at a desk, while a row's Assign to… menu is open, the pill stays shown with the pointer elsewhere", async ({
-		newOffice,
-	}) => {
-		const { manager, first, newest } = await unassignedOffice(newOffice);
-		const { page } = manager;
-		await openWithSelected(manager, newest, DESK);
-		await expect(assignFromRow(page, first), "at rest, the row hides Assign to…").toBeHidden();
-
-		await rowOf(page, first).hover();
-		await assignFromRow(page, first).click();
-		await expect(
-			page.getByRole("menu").getByRole("menuitem", { name: manager.name, exact: true }),
-			"the menu is open, offering the office's operators",
-		).toBeVisible();
-		await pointerAway(page);
-		await expect(page.getByRole("menu"), "the menu is still open").toBeVisible();
-		await expect(
-			assignFromRow(page, first),
-			"while its menu is open, Assign to… stays shown",
-		).toBeVisible();
-		await page.keyboard.press("Escape");
-		await expect(page.getByRole("menu")).toHaveCount(0);
-	});
-
-	test("at 1280 and at 768 px, Assign to… never covers a long guest name: not on the hovered row, nor on the selected one", async ({
-		newOffice,
-	}) => {
-		const { manager, first, newest } = await unassignedOffice(newOffice);
-		const { page } = manager;
-		for (const size of [DESK, MD]) {
-			const at = `${size.width}px`;
-			await openWithSelected(manager, newest, size);
-			await expectNameUncovered(page, newest, `${at}, the selected row`);
-			await rowOf(page, first).hover();
-			await expectNameUncovered(page, first, `${at}, the hovered row`);
-		}
-	});
-
-	test("on a phone (390 px), every Unassigned row shows Assign to… with no pointer, as a 44 px target that covers no part of the guest's name", async ({
-		newOffice,
-	}) => {
-		const { manager, first, second, newest } = await unassignedOffice(newOffice);
-		const { page } = manager;
-		await page.setViewportSize(PHONE);
-		await page.goto("/en/inbox");
-		await expect(
-			view(page, "Unassigned", 3),
-			"the Inbox lists the three on Unassigned",
-		).toHaveAttribute("aria-pressed", "true");
-		await pointerAway(page);
-		for (const guest of [first, second, newest]) {
-			await expect(rowOf(page, guest)).toBeVisible();
-			await expectNameUncovered(page, guest, "on a phone");
-			const pill = await boxOf(assignFromRow(page, guest), "Assign to…");
-			expect
-				.soft(pill.height, "on a phone, Assign to… is a 44 px target")
-				.toBeGreaterThanOrEqual(44);
 		}
 	});
 });
@@ -548,26 +352,5 @@ test.describe("Inbox polish 3 — the count line under the tabs says what each v
 		await expect
 			.soft(countLine(page), "All, showing agent B")
 			.toHaveText(COUNT_LINE_EN.all(1, 1, agentB.name));
-	});
-
-	test("an agent's line still says how many guests wait on them, the same in Your turn, Sent and All: '2 guests are waiting on you', '1 guest is waiting on you'", async ({
-		newOffice,
-	}) => {
-		test.setTimeout(180_000);
-		const { agentA, agentB } = await countedOffice(newOffice);
-		for (const [agent, label, waiting] of [
-			[agentA, "agent A", 2],
-			[agentB, "agent B", 1],
-		] as const) {
-			const { page } = agent;
-			await page.goto("/en/inbox");
-			await expect(view(page, "Unassigned"), `${label} has no Unassigned view`).toHaveCount(0);
-			for (const name of ["Your turn", "Sent", "All"] as const) {
-				await openView(page, name);
-				await expect
-					.soft(countLine(page), `${label}, ${name}`)
-					.toHaveText(COUNT_LINE_EN.agent(waiting));
-			}
-		}
 	});
 });

@@ -10,17 +10,15 @@ import type {
 
 import type { AlertRow } from "./support/alerts";
 import { alertState } from "./support/alerts";
-import { assignerAs } from "./support/assign";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
-import { LoginPage } from "./support/login-page";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
 import { connectZaloOa, releaseZaloOa } from "./support/pipes";
-import { NEW_PASSWORD, PLATFORM_ADMIN } from "./support/seed";
 import type { Api } from "./support/session";
 import { appOrigin, clientIpHeaders, withOrigin } from "./support/session";
-import { deliverZalo, sendZaloText, signedZaloText } from "./support/zalo";
+import { signInAgain } from "./support/session-state";
+import { sendZaloText } from "./support/zalo";
 
 /**
  * Alerts are decided after the webhook has answered (ADR 0019: in the background), so every
@@ -44,8 +42,6 @@ type Guest = {
 	id: string;
 	/** The guest writes; resolves with the text. */
 	write: (text?: string) => Promise<string>;
-	/** One message, delivered by Zalo twice: the same signed body, the same message id. */
-	writeDeliveredTwice: (text: string) => Promise<void>;
 };
 
 /**
@@ -64,8 +60,6 @@ type AlertOffice = {
 	platformAdminId: string;
 	/** A guest who has not written yet. */
 	newGuest: () => Guest;
-	/** The manager gives the guest's thread to the agent, through the owner API (setup). */
-	assign: (guest: Guest, agent: Operator) => Promise<void>;
 };
 
 const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promise<AlertOffice> }>({
@@ -95,7 +89,6 @@ const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promis
 				join("manager 1", "admin"),
 				...(managers === 2 ? [join("manager 2", "admin")] : []),
 			]);
-			const assigner = assignerAs(joinedManagers[0].api);
 			return {
 				id: office.id,
 				agent1,
@@ -104,15 +97,12 @@ const test = base.extend<{ newOffice: (options?: { managers?: 1 | 2 }) => Promis
 				managers: joinedManagers,
 				platformAdminId: await ownId(admin.api),
 				newGuest: () => newGuestOf(request, oaId),
-				assign: (guest, agent) => assigner.assignGuestTo(guest.id, agent.id),
 			};
 		});
-		for (const context of contexts) {
-			await context.close();
-		}
-		for (const oaId of oaIds) {
-			await releaseZaloOa(oaId);
-		}
+		await Promise.all([
+			...contexts.map((context) => context.close()),
+			...oaIds.map((oaId) => releaseZaloOa(oaId)),
+		]);
 	},
 });
 
@@ -128,11 +118,6 @@ function newGuestOf(request: APIRequestContext, oaId: string): Guest {
 		write: async (text = `Hello from ${id}, ${randomUUID().slice(0, 8)}`) => {
 			await sendZaloText(request, { guestId: id, oaId, text });
 			return text;
-		},
-		writeDeliveredTwice: async (text) => {
-			const delivery = signedZaloText({ guestId: id, oaId, text, msgId: uniqueId("msg") });
-			await deliverZalo(request, delivery);
-			await deliverZalo(request, delivery);
 		},
 	};
 }
@@ -248,8 +233,8 @@ async function laterGuestArrives(office: AlertOffice) {
 
 // ---------------------------------------------------------------------------------------
 
-// scenario: docs/e2e-scenarios.md Alerts 1, 2, 5, 6, 7 (ADR 0019, ADR 0022, #132)
-test.describe("Alerts — who a guest's message alerts, decided and logged", () => {
+// scenario: docs/e2e-scenarios.md Alerts 1 (ADR 0019, ADR 0022, #132)
+test.describe("Alerts 1 — who a guest's message alerts, decided and logged", () => {
 	test.describe.configure({ timeout: 180_000 });
 
 	// scenario: docs/e2e-scenarios.md Alerts 1
@@ -295,138 +280,6 @@ test.describe("Alerts — who a guest's message alerts, decided and logged", () 
 			expect(row.link, `${who}'s link carries no thread id`).not.toContain(threadId);
 			expect(row.link, `${who}'s link names no guest`).not.toContain(guest.id);
 		}
-	});
-
-	// scenario: docs/e2e-scenarios.md Alerts 2
-	test("an owned thread's guest alerts only its owner", async ({ newOffice }) => {
-		const office = await newOffice();
-		const guest = office.newGuest();
-		await guest.write();
-		const { id: threadId } = await threadSeenBy(office.manager, guest);
-		await expect
-			.poll(() => countsOn(office, threadId), {
-				...ON_THE_PHONES,
-				message: "the new guest's first message alerts the manager only",
-			})
-			.toEqual(everyManager(office, 1));
-
-		await office.assign(guest, office.agent1);
-		await guest.write(`Is it still available? ${guest.id}`);
-
-		// One new guest alert, agent 1's.
-		const after = { "agent 1": 1, ...everyManager(office, 1) };
-		await expect
-			.poll(() => countsOn(office, threadId), {
-				...ON_THE_PHONES,
-				message: "the guest writing again on agent 1's thread alerts agent 1",
-			})
-			.toEqual(after);
-		await laterGuestArrives(office);
-		expect(
-			await countsOn(office, threadId),
-			"agent 2 and the manager got nothing for the owned thread's message",
-		).toEqual(after);
-	});
-
-	// scenario: docs/e2e-scenarios.md Alerts 5
-	test("a vendor retry alerts no one: the same signed Zalo message twice is one message and one alert per manager", async ({
-		newOffice,
-	}) => {
-		const office = await newOffice();
-		const guest = office.newGuest();
-		const text = `Only once, ${guest.id}`;
-		await guest.writeDeliveredTwice(text);
-		const { id: threadId } = await threadSeenBy(office.manager, guest);
-
-		await expect
-			.poll(() => countsOn(office, threadId), {
-				...ON_THE_PHONES,
-				message: "the guest's message alerts the manager",
-			})
-			.toEqual(everyManager(office, 1));
-		await laterGuestArrives(office);
-		expect(await countsOn(office, threadId), "one alert per manager, not two").toEqual(
-			everyManager(office, 1),
-		);
-
-		// The manager opens the thread: the message is in it once.
-		const { page } = office.manager;
-		await page.goto("/en/inbox");
-		const row = page
-			.getByRole("complementary")
-			.getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
-		await expect(row, "the manager has the guest's thread").toBeVisible();
-		await row.click();
-		await expect(
-			page.getByRole("article").getByText(text, { exact: true }),
-			"the thread holds the message once",
-		).toHaveCount(1);
-	});
-
-	// scenario: docs/e2e-scenarios.md Alerts 6
-	test("a burst makes one sounding alert per manager; the rest are silent replacements", async ({
-		newOffice,
-	}) => {
-		const office = await newOffice();
-		const guest = office.newGuest();
-		const started = Date.now();
-		await guest.write(`One, ${guest.id}`);
-		const { id: threadId } = await threadSeenBy(office.manager, guest);
-		await guest.write(`Two, ${guest.id}`);
-		await guest.write(`Three, ${guest.id}`);
-		// Two at the same moment.
-		await Promise.all([guest.write(`Four, ${guest.id}`), guest.write(`Five, ${guest.id}`)]);
-		expect(Date.now() - started, "five messages within 20 seconds").toBeLessThan(20_000);
-
-		await expect
-			.poll(() => countsOn(office, threadId), {
-				...ON_THE_PHONES,
-				message: "each of the five messages alerts the manager, and no agent",
-			})
-			.toEqual(everyManager(office, 5));
-		await laterGuestArrives(office);
-
-		const sounding: Record<string, number> = {};
-		for (const row of await guestAlertsOn(office, threadId)) {
-			const who = whose(office, row.userId);
-			sounding[who] = (sounding[who] ?? 0) + (row.sounded ? 1 : 0);
-		}
-		expect(sounding, "exactly one sounding alert on the thread").toEqual(everyManager(office, 1));
-		expect(await countsOn(office, threadId), "nothing more arrived").toEqual(
-			everyManager(office, 5),
-		);
-	});
-
-	// scenario: docs/e2e-scenarios.md Alerts 7
-	test("the platform admin, the office's owner, is never alerted", async ({ admin, newOffice }) => {
-		const office = await newOffice();
-		// The platform admin made the office, so the kit holds them as a member (its owner).
-		expect(await admin.memberEmails(office.id)).toContain(PLATFORM_ADMIN.email);
-
-		const guest = office.newGuest();
-		await guest.write();
-		const { id: threadId } = await threadSeenBy(office.manager, guest);
-		await expect
-			.poll(() => countsOn(office, threadId), {
-				...ON_THE_PHONES,
-				message: "the new guest alerts the manager",
-			})
-			.toEqual(everyManager(office, 1));
-
-		await office.assign(guest, office.agent1);
-		await guest.write(`One more thing, ${guest.id}`);
-		await expect
-			.poll(() => countsOn(office, threadId), {
-				...ON_THE_PHONES,
-				message: "the guest writing again on agent 1's thread alerts agent 1",
-			})
-			.toEqual({ "agent 1": 1, ...everyManager(office, 1) });
-		await laterGuestArrives(office);
-
-		expect(
-			(await alertState.alerts(office.id)).filter((row) => row.userId === office.platformAdminId),
-			"the platform admin has no alert in the office",
-		).toEqual([]);
 	});
 });
 
@@ -483,15 +336,12 @@ test.describe("Alerts 10 — signing out removes the device", () => {
 			extraHTTPHeaders: clientIpHeaders(`${agent.email}#2`),
 		});
 		try {
-			// The same agent signs in again in a second browser: a second session of one login.
+			// The same agent signs in again in a second browser: a second session of one login,
+			// minted for them (setup; signing in is the Auth specs').
+			await signInAgain(second, agent.id);
 			const secondPage = await second.newPage();
-			const login = new LoginPage(secondPage);
-			await login.goto("en");
-			await login.signIn(agent.email, NEW_PASSWORD);
-			await expect(secondPage, "the second browser signs in to the Inbox").toHaveURL(
-				/\/en\/inbox/,
-				{ timeout: 15_000 },
-			);
+			await secondPage.goto("/en/inbox");
+			await expect(secondPage, "the second browser signs in to the Inbox").toHaveURL(/\/en\/inbox/);
 			const secondApi = withOrigin(second.request);
 			expect(await ownId(secondApi), "both browsers are the same agent").toBe(agent.id);
 

@@ -55,6 +55,19 @@ The database is seeded once per build, as in one CI run. `--status` says whether
 current; `--stop` stops it when you're done. CI and the default mode still build fresh every
 run.
 
+`pnpm e2e:changed` (repo root) is the local check before pushing: it runs the spec files
+changed since `origin/main` against that server (`playwright test --only-changed=origin/main`,
+`E2E_REUSE=1`).
+
+#### CI's two runners (#278)
+
+CI runs the suite on two runners, each with its own build and database. They split the spec
+files by measured seconds, not by test count: `scripts/e2e-shard-lists.mjs --shards 2` packs
+whole files by `tests/e2e-timings.json` and each runner passes its list to `--test-list`. A
+new spec file counts as the median file until the timings are refreshed from CI's JSON
+reports (`node scripts/e2e-shard-lists.mjs --update <results.json>…`, one per runner's
+`playwright-report-<n>` artifact).
+
 ## Smoke
 
 After every staging deploy, `.github/workflows/staging-smoke.yml` runs the read-only staging

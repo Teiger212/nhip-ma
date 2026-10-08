@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -9,12 +8,16 @@ import type { Locale } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
 import type { NameGuestsSee } from "./support/name-guests-see";
 import { NAME_GUESTS_SEE_ROUTE, getNameGuestsSee } from "./support/name-guests-see";
-import { deleteOffice } from "./support/offices";
 import type { Joined } from "./support/operators";
-import { joinOffice } from "./support/operators";
-import { connectZaloOa, releaseZaloOa } from "./support/pipes";
-import type { Api } from "./support/session";
-import { sendZaloText } from "./support/zalo";
+import type { Guest } from "./support/own-office";
+import {
+	greetingIn,
+	literal,
+	openByLink,
+	threadIdOf,
+	WITHIN_SECONDS,
+	withOwnOffice,
+} from "./support/own-office";
 
 /* ---------------------------------------------------------------- what the scenarios promise */
 
@@ -56,9 +59,6 @@ function introOf(nameGuestsSee: string): string {
 /** The guest's first message, which the auto-reply greets. */
 const FIRST_MESSAGE = "Hi, we're looking to rent an apartment in Tay Ho";
 
-/** The greeting goes out "within seconds"; a production build under load gets a margin. */
-const WITHIN_SECONDS = { timeout: 20_000 };
-
 /**
  * The reply box's own name, which is how a person finds it, not what a scenario promises
  * (packages/i18n/translations/en/saas.json, `inbox.reply`).
@@ -74,8 +74,6 @@ const REPLY_LABEL = (
 
 /* ---------------------------------------------------------------- the office and its guests */
 
-type Guest = { id: string; write: (text: string) => Promise<void> };
-
 /**
  * An office of the test's own named "Saigon Prime Test" (deleted afterwards), with its own Zalo
  * OA (released afterwards), an invited manager (the kit's `admin`) and an invited agent whose
@@ -85,55 +83,15 @@ type Guest = { id: string; write: (text: string) => Promise<void> };
 type NamedOffice = { manager: Joined; agent: Joined; newGuest: () => Guest };
 
 const test = base.extend<{ office: NamedOffice }>({
-	office: async ({ admin, browser, request }, use) => {
-		const created = await admin.api.post("/api/auth/organization/create", {
-			name: OFFICE_NAME,
-			slug: `e2e-ngs-${randomUUID()}`,
-		});
-		expect(created.status(), `the platform admin creates "${OFFICE_NAME}"`).toBe(200);
-		const { id } = (await created.json()) as { id: string };
-		const oaId = uniqueId("oa");
-		const joined: Joined[] = [];
-		try {
-			await connectZaloOa(id, oaId);
-			const join = async (role: "member" | "admin") => {
-				const operator = await joinOffice(admin, browser, id, role, `ngs-${role}`);
-				joined.push(operator);
-				return operator;
-			};
-			const [manager, agent] = await Promise.all([join("admin"), join("member")]);
-			const renamed = await agent.api.post("/api/auth/update-user", { name: AGENT_ACCOUNT_NAME });
-			expect(renamed.ok(), `the agent takes the name ${AGENT_ACCOUNT_NAME}`).toBe(true);
-			await use({ manager, agent, newGuest: () => guestOf(request, oaId) });
-		} finally {
-			for (const operator of joined) {
-				await operator.close();
-			}
-			await releaseZaloOa(oaId);
-			await deleteOffice(admin.api, id);
-		}
-	},
+	office: ({ admin, browser, request }, use) =>
+		withOwnOffice(
+			{ admin, browser, request },
+			// The agent takes the account name only: their name guests see starts empty.
+			{ tag: "ngs", name: OFFICE_NAME, agent: { name: AGENT_ACCOUNT_NAME } },
+			async (office) =>
+				use({ manager: office.manager, agent: await office.agent(), newGuest: office.newGuest }),
+		),
 });
-
-/** A vendor id (OA, guest) no other test, repeat or earlier run uses. */
-function uniqueId(kind: string): string {
-	return `e2e-ngs-${kind}-${randomUUID()}`;
-}
-
-function guestOf(request: APIRequestContext, oaId: string): Guest {
-	const id = uniqueId("guest");
-	return { id, write: (text) => sendZaloText(request, { guestId: id, oaId, text }) };
-}
-
-/* ---------------------------------------------------------------- the thread, through the API */
-
-type Thread = { messages: { direction: "in" | "out"; text: string }[] };
-
-async function readThread(api: Api, threadId: string): Promise<Thread> {
-	const res = await api.get(`/api/conversations/${encodeURIComponent(threadId)}`);
-	expect(res.status(), "the thread opens").toBe(200);
-	return (await res.json()) as Thread;
-}
 
 /**
  * A new guest writes their first message, the office greets them, and the manager assigns the
@@ -143,17 +101,9 @@ async function assignedGreetedThread(office: NamedOffice): Promise<string> {
 	const { manager, agent } = office;
 	const guest = office.newGuest();
 	await guest.write(FIRST_MESSAGE);
-	const assigner = assignerAs(manager.api);
-	const threadId = await assigner.threadOf(guest.id);
-	await expect
-		.poll(
-			async () =>
-				(await readThread(manager.api, threadId)).messages.filter((m) => m.direction === "out")
-					.length,
-			{ message: "the office greets the guest within seconds", ...WITHIN_SECONDS },
-		)
-		.toBe(1);
-	await assigner.assignTo(threadId, agent.userId);
+	const threadId = await threadIdOf(manager.api, guest.id);
+	await greetingIn(manager.api, threadId);
+	await assignerAs(manager.api).assignTo(threadId, agent.userId);
 	return threadId;
 }
 
@@ -161,15 +111,6 @@ async function assignedGreetedThread(office: NamedOffice): Promise<string> {
 
 function openThread(page: Page) {
 	return page.getByRole("article");
-}
-
-/** The operator opens the thread by its link, the guest's first message showing. */
-async function openByLink(page: Page, threadId: string) {
-	await page.goto(`/en/inbox?thread=${encodeURIComponent(threadId)}`);
-	await expect(
-		openThread(page).getByText(FIRST_MESSAGE, { exact: true }),
-		"the thread shows the guest's message",
-	).toBeVisible();
 }
 
 /** The open thread's reply box. */
@@ -180,10 +121,6 @@ function replyBox(page: Page) {
 /** The text starts with exactly this sentence. */
 function startingWith(sentence: string): RegExp {
 	return new RegExp(`^${literal(sentence)}`);
-}
-
-function literal(text: string): string {
-	return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /* ---------------------------------------------------------------- the account page */
@@ -250,7 +187,7 @@ test.describe("Name guests see 1 — an agent sets it and is introduced by it", 
 			.toEqual({ nameGuestsSee: LAN });
 
 		const threadId = await assignedGreetedThread(office);
-		await openByLink(page, threadId);
+		await openByLink(page, threadId, FIRST_MESSAGE);
 		await expect(
 			replyBox(page),
 			"the box introduces the agent by their name guests see",

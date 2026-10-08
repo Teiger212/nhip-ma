@@ -130,7 +130,7 @@ test.describe("Auth 4 — only the platform admin creates offices", () => {
 		expect(refused.status()).toBe(403);
 
 		const agentOfficeRow = await admin.searchOffices(agentOffice);
-		await expect(admin.page.getByTestId("admin-no-results")).toBeVisible(ADMIN_LIST);
+		await expect((await admin.openPage()).getByTestId("admin-no-results")).toBeVisible(ADMIN_LIST);
 		await expect(agentOfficeRow).toHaveCount(0);
 
 		const created = await admin.createOffice("admin office");

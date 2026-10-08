@@ -1,9 +1,8 @@
-import type { Browser, Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page, Response } from "@playwright/test";
 
 import type { Admin } from "./support/fixtures";
 import { expect, test } from "./support/fixtures";
-import { newcomer, openInboxAsNewAccount } from "./support/invitee";
-import { setOfficeLanguage } from "./support/office-language";
+import { openInboxAsNewAccount } from "./support/invitee";
 import type { Office } from "./support/offices";
 import { joinOffice } from "./support/operators";
 import {
@@ -19,37 +18,29 @@ import type { Api } from "./support/session";
 import { apiAs, withOrigin } from "./support/session";
 import { signInContext } from "./support/session-state";
 
-/** Team's words (docs/e2e-scenarios.md "Team"): Nhịp's roles, never member, admin or owner. */
+/**
+ * Team's words (docs/e2e-scenarios.md "Team"): Nhịp's roles, never member, admin or owner. The
+ * Vietnamese copy is the translation-key test's (modules/i18n/lib/translation-keys.test.ts, #278).
+ */
 const COPY = {
 	en: { team: "Team", agent: "Agent", manager: "Manager", logOut: "Log out" },
-	vi: { team: "Nhóm", agent: "Nhân viên", manager: "Quản lý", logOut: "Đăng xuất" },
 } as const;
 
-/** "Remove from office" and its confirmation (docs/e2e-scenarios.md Team 4), per locale. */
+/** "Remove from office" and its confirmation (docs/e2e-scenarios.md Team 4). */
 const REMOVE = {
-	en: {
-		menuItem: "Remove from office",
-		title: (name: string) => `Remove ${name} from the office?`,
-		message: (name: string) =>
-			`Removing ${name} ends their account. Their guests return to Unassigned.`,
-		cancel: "Cancel",
-		confirm: "Remove",
-	},
-	vi: {
-		menuItem: "Xóa khỏi văn phòng",
-		title: (name: string) => `Xóa ${name} khỏi văn phòng?`,
-		message: (name: string) =>
-			`Xóa ${name} sẽ xóa tài khoản của họ. Khách của họ trở về Chưa giao.`,
-		cancel: "Hủy",
-		confirm: "Xóa",
-	},
+	menuItem: "Remove from office",
+	title: (name: string) => `Remove ${name} from the office?`,
+	message: (name: string) =>
+		`Removing ${name} ends their account. Their guests return to Unassigned.`,
+	cancel: "Cancel",
+	confirm: "Remove",
 } as const;
 
 /** How the platform admin's own row reads in the admin area (docs/e2e-scenarios.md Team 6). */
 const PLATFORM_ADMIN_ROLE = { en: "Platform admin", vi: "Quản trị viên nền tảng" } as const;
 
-/** The name every newcomer signs up with (support/invitee.ts). */
-const NEWCOMER_NAME = "E2E Invitee";
+/** The name every joined operator's account has (support/accounts.ts). */
+const JOINED_NAME = "E2E Invitee";
 
 /** The kit's success toast for an invitation, in Nhịp's words. */
 const INVITATION_SENT = "Invitation sent";
@@ -100,8 +91,8 @@ async function openUserMenu(page: Page) {
 	await page.getByRole("button", { name: "User menu" }).click();
 }
 
-function teamItem(page: Page, locale: keyof typeof COPY = "en") {
-	return page.getByRole("menuitem", { name: COPY[locale].team, exact: true });
+function teamItem(page: Page) {
+	return page.getByRole("menuitem", { name: COPY.en.team, exact: true });
 }
 
 /** Team's flow handles (data-test) and the copy under test. */
@@ -191,21 +182,6 @@ function officeAnswered(page: Page) {
 
 // scenario: docs/e2e-scenarios.md Team 1
 test.describe("Team 1 — a manager invites an agent from Team", () => {
-	test("the manager's user menu has Team, and it opens the office's Team page", async ({
-		page,
-		context,
-	}) => {
-		await signInContext(context, MANAGER);
-		await page.goto("/en/inbox");
-
-		await openUserMenu(page);
-		await expect(teamItem(page)).toBeVisible();
-		await teamItem(page).click();
-
-		await expect(page).toHaveURL(new RegExp(`${officeUrl("settings/members")}$`));
-		await expect(team(page).heading(COPY.en.team)).toBeVisible();
-	});
-
 	test("Team's invite form offers Agent and Manager only, and invites an agent and a manager", async ({
 		page,
 		context,
@@ -217,10 +193,19 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 		const asManager = admin.newEmail("team-manager");
 
 		try {
-			await page.goto(officeUrl("settings/members"));
-			await expect(t.heading(COPY.en.team)).toBeVisible();
+			await test.step("the manager's user menu has Team, and it opens the office's Team page", async () => {
+				await page.goto("/en/inbox");
 
-			// The role offers exactly Agent and Manager, with Agent chosen; no Owner.
+				await openUserMenu(page);
+				await expect(teamItem(page)).toBeVisible();
+				await teamItem(page).click();
+
+				await expect(page).toHaveURL(new RegExp(`${officeUrl("settings/members")}$`));
+				await expect(t.heading(COPY.en.team)).toBeVisible();
+			});
+
+			// On the Team page the menu opened: the role offers exactly Agent and Manager, with Agent
+			// chosen; no Owner.
 			await expect(t.inviteRole).toHaveText(COPY.en.agent);
 			await t.inviteRole.click();
 			await expect(t.options).toHaveText([COPY.en.agent, COPY.en.manager]);
@@ -249,34 +234,6 @@ test.describe("Team 1 — a manager invites an agent from Team", () => {
 			expect.soft(managerInvite?.role, "Manager is the kit's admin").toBe("admin");
 		} finally {
 			await cancelInvitationsTo(admin, DEMO_OFFICE_ID, [asAgent, asManager]);
-		}
-	});
-
-	test("in a Vietnamese office the menu item, the title and the roles are Nhóm, Nhân viên and Quản lý", async ({
-		browser,
-		admin,
-	}) => {
-		// A member reads Nhịp in the office language (ADR 0025): a Vietnamese office of the test's
-		// own with a manager of its own, never the walk office.
-		const office = await admin.createOffice("Team 1 vi");
-		const manager = await joinOffice(admin, browser, office.id, "admin", "team1-vi-manager");
-		try {
-			await setOfficeLanguage(manager.page.request, "vi");
-			const { page } = manager;
-			const t = team(page);
-
-			await page.goto("/vi/inbox");
-			await openUserMenu(page);
-			await expect.soft(teamItem(page, "vi")).toBeVisible();
-			await page.keyboard.press("Escape");
-
-			await page.goto(officeUrlOf(await slugOf(admin.api, office.id), "settings/members", "vi"));
-			await expect.soft(t.heading(COPY.vi.team)).toBeVisible();
-			await expect(t.inviteRole).toHaveText(COPY.vi.agent);
-			await t.inviteRole.click();
-			await expect(t.options).toHaveText([COPY.vi.agent, COPY.vi.manager]);
-		} finally {
-			await manager.close();
 		}
 	});
 });
@@ -309,7 +266,7 @@ test.describe("Team 2 — an agent has no Team", () => {
 	});
 
 	test("the platform admin's user menu has no Team either", async ({ admin }) => {
-		const { page } = admin;
+		const page = await admin.openPage();
 		await page.goto("/en/admin/organizations");
 		await expect(page.getByTestId("admin-organizations-search")).toBeVisible();
 
@@ -325,10 +282,9 @@ test.describe("Team 2 — an agent has no Team", () => {
 		test.slow();
 		// An office of the test's own: were a removal taken, it would cost no seeded login.
 		const office = await admin.createOffice("Team 2");
-		const owners: string[] = [];
 		const [agent, colleague] = await Promise.all([
-			newcomer(browser, admin, office, "team2-agent", "member", owners),
-			newcomer(browser, admin, office, "team2-colleague", "member", owners),
+			joinOffice(admin, browser, office.id, "member", "team2-agent"),
+			joinOffice(admin, browser, office.id, "member", "team2-colleague"),
 		]);
 		const invitees: string[] = [];
 
@@ -383,58 +339,135 @@ test.describe("Team 2 — an agent has no Team", () => {
 });
 
 // scenario: docs/e2e-scenarios.md Team 3
-test.describe("Team 3 — no owner, no Leave, no platform admin on Team", () => {
-	test("the manager's Team lists managers and agents only, with no Leave or menu on their own row", async ({
+// scenario: docs/e2e-scenarios.md Team 6
+test.describe("Team 3 and Team 6 — the walk office's manager on Team: no owner, no Leave, no platform admin, and nothing of the platform admin reaches their browser", () => {
+	test("the manager opens Team: no answer the browser gets carries the platform admin, the list shows managers and agents only, and the office read directly lists no platform admin", async ({
 		page,
 		context,
 	}) => {
 		// Many independent checks, each waiting its own timeout when it fails.
 		test.slow();
 		await signInContext(context, MANAGER);
-		const t = team(page);
-		await page.goto(officeUrl("settings/members"));
 
-		// The list is rendered: the manager's own row, as Manager.
-		await expect(page.getByText(MANAGER.email)).toBeVisible();
-		const own = t.member(MANAGER.email);
-		await expect.soft(own).toBeVisible();
-		await expect.soft(t.memberRole(own)).toHaveText(COPY.en.manager);
-		await expect.soft(t.memberRole(t.member(AGENT.email))).toHaveText(COPY.en.agent);
-		await expect.soft(t.memberRole(t.member(AGENT_2.email))).toHaveText(COPY.en.agent);
+		// First: Team 6 judges what the page's first load carried.
+		await test.step("Team 6: neither Team's page nor any /api/auth/ answer it gets carries the platform admin's email", async () => {
+			const answers: Promise<{ url: string; document: boolean; body: string | null }>[] = [];
+			const listen = (response: Response) => {
+				const url = response.url();
+				const document = response.request().resourceType() === "document";
+				if (!document && !new URL(url).pathname.startsWith("/api/auth/")) {
+					return;
+				}
+				answers.push(
+					response.text().then(
+						(body) => ({ url, document, body }),
+						// A redirect has no body to read.
+						() => ({ url, document, body: null }),
+					),
+				);
+			};
+			page.on("response", listen);
 
-		// Every row reads Agent or Manager; no Owner anywhere.
-		const roles = await t.memberRole(page.getByTestId("team-member")).allInnerTexts();
-		expect.soft(roles.length, "the member rows carry their role").toBeGreaterThan(0);
-		for (const role of roles) {
-			expect.soft([COPY.en.agent, COPY.en.manager]).toContain(role.trim());
-		}
-		await expect.soft(page.getByText("Owner", { exact: true })).toHaveCount(0);
+			await page.goto(officeUrl("settings/members"));
+			// The list is rendered, so the answers it was made from have arrived.
+			const t = team(page);
+			await expect(t.memberRole(t.member(AGENT.email))).toHaveText(COPY.en.agent);
+			await expect(t.memberRole(t.member(MANAGER.email))).toHaveText(COPY.en.manager);
 
-		// The platform admin, the office's inert kit owner, is not listed.
-		await expect.soft(t.member(PLATFORM_ADMIN.email)).toHaveCount(0);
-		await expect.soft(page.getByText(PLATFORM_ADMIN.email)).toHaveCount(0);
+			page.off("response", listen);
+			const read = await Promise.all(answers);
+			expect(
+				read.some((a) => a.document && a.body),
+				"the page itself was read",
+			).toBe(true);
+			// The office's members did reach the browser through what was read: the check below has teeth.
+			expect(
+				read.some((a) => a.body?.includes(AGENT.email)),
+				"the members the page lists are in what was read",
+			).toBe(true);
+			const carrying = read.filter((a) => a.body?.includes(PLATFORM_ADMIN.email)).map((a) => a.url);
+			expect(carrying, "answers carrying the platform admin's email").toEqual([]);
+		});
 
-		// Their own row: no Leave, no menu, and their role can't be changed there.
-		await expect.soft(own.getByRole("button")).toHaveCount(0);
-		await expect.soft(own.getByRole("combobox", { disabled: false })).toHaveCount(0);
-		await expect.soft(page.getByText(/Leave/)).toHaveCount(0);
+		// On the same page: Team 3's list.
+		await test.step("Team 3: the manager's Team lists managers and agents only, with no Leave or menu on their own row", async () => {
+			const t = team(page);
 
-		// An agent's row offers Agent and Manager only.
-		await t.memberRole(t.member(AGENT.email)).click();
-		await expect(t.options).toHaveText([COPY.en.agent, COPY.en.manager]);
-		await page.keyboard.press("Escape");
+			// The list is rendered: the manager's own row, as Manager. (In the page's main region: by
+			// now the sidebar's user link shows the same email.)
+			await expect(page.getByRole("main").getByText(MANAGER.email)).toBeVisible();
+			const own = t.member(MANAGER.email);
+			await expect.soft(own).toBeVisible();
+			await expect.soft(t.memberRole(own)).toHaveText(COPY.en.manager);
+			await expect.soft(t.memberRole(t.member(AGENT.email))).toHaveText(COPY.en.agent);
+			await expect.soft(t.memberRole(t.member(AGENT_2.email))).toHaveText(COPY.en.agent);
+
+			// Every row reads Agent or Manager; no Owner anywhere.
+			const roles = await t.memberRole(page.getByTestId("team-member")).allInnerTexts();
+			expect.soft(roles.length, "the member rows carry their role").toBeGreaterThan(0);
+			for (const role of roles) {
+				expect.soft([COPY.en.agent, COPY.en.manager]).toContain(role.trim());
+			}
+			await expect.soft(page.getByText("Owner", { exact: true })).toHaveCount(0);
+
+			// The platform admin, the office's inert kit owner, is not listed.
+			await expect.soft(t.member(PLATFORM_ADMIN.email)).toHaveCount(0);
+			await expect.soft(page.getByText(PLATFORM_ADMIN.email)).toHaveCount(0);
+
+			// Their own row: no Leave, no menu, and their role can't be changed there.
+			await expect.soft(own.getByRole("button")).toHaveCount(0);
+			await expect.soft(own.getByRole("combobox", { disabled: false })).toHaveCount(0);
+			await expect.soft(page.getByText(/Leave/)).toHaveCount(0);
+
+			// An agent's row offers Agent and Manager only.
+			await t.memberRole(t.member(AGENT.email)).click();
+			await expect(t.options).toHaveText([COPY.en.agent, COPY.en.manager]);
+			await page.keyboard.press("Escape");
+		});
+
+		await test.step("Team 6: asked directly, the office as the manager reads it lists no platform admin, and list-members counts only whom it lists", async () => {
+			const api = withOrigin(page.request);
+
+			const full = await api.get("/api/auth/organization/get-full-organization", {
+				organizationId: DEMO_OFFICE_ID,
+			});
+			expect(full.status(), "the manager reads the office").toBe(200);
+			const fullEmails = ((await full.json()) as { members: Member[] }).members.map(
+				(m) => m.user.email,
+			);
+			expect(fullEmails, "get-full-organization lists the office's people").toContain(AGENT.email);
+			expect
+				.soft(fullEmails, "get-full-organization lists no platform admin")
+				.not.toContain(PLATFORM_ADMIN.email);
+
+			const listed = await api.get("/api/auth/organization/list-members", {
+				organizationId: DEMO_OFFICE_ID,
+			});
+			expect(listed.status(), "the manager lists the office's members").toBe(200);
+			const { members, total } = (await listed.json()) as { members: Member[]; total: number };
+			const listedEmails = members.map((m) => m.user.email);
+			expect(listedEmails, "list-members lists the office's people").toContain(AGENT.email);
+			expect
+				.soft(listedEmails, "list-members lists no platform admin")
+				.not.toContain(PLATFORM_ADMIN.email);
+			expect
+				.soft(total, "list-members' total counts only the members it lists")
+				.toBe(members.length);
+		});
 	});
+});
 
+// scenario: docs/e2e-scenarios.md Team 3
+test.describe("Team 3 — no owner, no Leave, no platform admin on Team", () => {
 	test("a manager (the kit's admin) can't make an owner, by invitation or by role change", async ({
 		browser,
 		admin,
 	}) => {
 		test.slow();
 		const office = await admin.createOffice("Team 3 admin");
-		const owners: string[] = [];
 		const [manager, agent] = await Promise.all([
-			newcomer(browser, admin, office, "team3-manager", "admin", owners),
-			newcomer(browser, admin, office, "team3-agent", "member", owners),
+			joinOffice(admin, browser, office.id, "admin", "team3-manager"),
+			joinOffice(admin, browser, office.id, "member", "team3-agent"),
 		]);
 
 		try {
@@ -451,75 +484,64 @@ test.describe("Team 3 — no owner, no Leave, no platform admin on Team", () => 
 	}) => {
 		test.slow();
 		const office = await admin.createOffice("Team 3 owner");
-		const owners: string[] = [];
+		const [manager, agent] = await Promise.all([
+			// A new account, before the kit's first-run step, which it walks below.
+			joinOffice(admin, browser, office.id, "owner", "team3-owner", { onboarded: false }),
+			joinOffice(admin, browser, office.id, "member", "team3-owner-agent"),
+		]);
 		try {
-			const [manager, agent] = await Promise.all([
-				newcomer(browser, admin, office, "team3-owner", "owner", owners),
-				newcomer(browser, admin, office, "team3-owner-agent", "member", owners),
-			]);
-			try {
-				// Team as any manager sees it (before any owner grant is tried).
-				const { page } = manager;
-				const t = team(page);
-				await openInboxAsNewAccount(page);
-				await openUserMenu(page);
-				await expect.soft(teamItem(page)).toBeVisible();
-				await page.keyboard.press("Escape");
+			// Team as any manager sees it (before any owner grant is tried).
+			const { page } = manager;
+			const t = team(page);
+			await openInboxAsNewAccount(page);
+			await openUserMenu(page);
+			await expect.soft(teamItem(page)).toBeVisible();
+			await page.keyboard.press("Escape");
 
-				await page.goto(officeUrlOf(await slugOf(admin.api, office.id), "settings/members"));
-				const own = t.member(manager.email);
-				await expect.soft(own).toBeVisible();
-				await expect.soft(t.memberRole(own)).toHaveText(COPY.en.manager);
-				await expect.soft(t.memberRole(t.member(agent.email))).toHaveText(COPY.en.agent);
-				await expect.soft(page.getByText("Owner", { exact: true })).toHaveCount(0);
-				await expect.soft(t.member(PLATFORM_ADMIN.email)).toHaveCount(0);
-				await expect.soft(own.getByRole("button")).toHaveCount(0);
-				await expect.soft(page.getByText(/Leave/)).toHaveCount(0);
+			await page.goto(officeUrlOf(await slugOf(admin.api, office.id), "settings/members"));
+			const own = t.member(manager.email);
+			await expect.soft(own).toBeVisible();
+			await expect.soft(t.memberRole(own)).toHaveText(COPY.en.manager);
+			await expect.soft(t.memberRole(t.member(agent.email))).toHaveText(COPY.en.agent);
+			await expect.soft(page.getByText("Owner", { exact: true })).toHaveCount(0);
+			await expect.soft(t.member(PLATFORM_ADMIN.email)).toHaveCount(0);
+			await expect.soft(own.getByRole("button")).toHaveCount(0);
+			await expect.soft(page.getByText(/Leave/)).toHaveCount(0);
 
-				await expectNoOwnerFrom(manager.api, admin, office, agent.email, "kit-owner manager");
-			} finally {
-				await manager.close();
-				await agent.close();
-			}
+			await expectNoOwnerFrom(manager.api, admin, office, agent.email, "kit-owner manager");
 		} finally {
-			for (const invitationId of owners) {
-				await admin.cancelInvitation(invitationId);
-			}
+			await manager.close();
+			await agent.close();
 		}
 	});
 });
 
 /** Chooses "Remove from office" on a member's row: the row's own menu, then the item. */
-async function chooseRemove(page: Page, email: string, locale: keyof typeof REMOVE) {
+async function chooseRemove(page: Page, email: string) {
 	await team(page).member(email).getByRole("button").click();
-	await page.getByRole("menuitem", { name: REMOVE[locale].menuItem, exact: true }).click();
+	await page.getByRole("menuitem", { name: REMOVE.menuItem, exact: true }).click();
 }
 
 /** The confirmation "Remove from office" opens, for the person named `name`. */
-function removeConfirmation(page: Page, locale: keyof typeof REMOVE, name: string) {
-	const copy = REMOVE[locale];
-	const dialog = page.getByRole("alertdialog", { name: copy.title(name) });
+function removeConfirmation(page: Page, name: string) {
+	const dialog = page.getByRole("alertdialog", { name: REMOVE.title(name) });
 	return {
 		dialog,
-		message: dialog.getByText(copy.message(name), { exact: true }),
-		cancel: dialog.getByRole("button", { name: copy.cancel, exact: true }),
-		confirm: dialog.getByRole("button", { name: copy.confirm, exact: true }),
+		message: dialog.getByText(REMOVE.message(name), { exact: true }),
+		cancel: dialog.getByRole("button", { name: REMOVE.cancel, exact: true }),
+		confirm: dialog.getByRole("button", { name: REMOVE.confirm, exact: true }),
 	};
 }
 
-/** An office of the test's own with a newcomer manager (the kit's admin) on its Team page, and a newcomer agent. */
-async function officeWithTeam(
-	browser: Browser,
-	admin: Admin,
-	label: string,
-	tag: string,
-	locale: keyof typeof REMOVE,
-) {
+/**
+ * An office of the test's own with a new manager (the kit's admin), past the first-run step and
+ * on its Team page, and an agent; both joined (support/operators.ts).
+ */
+async function officeWithTeam(browser: Browser, admin: Admin, label: string, tag: string) {
 	const office = await admin.createOffice(label);
-	const owners: string[] = [];
 	const [manager, agent] = await Promise.all([
-		newcomer(browser, admin, office, `${tag}-manager`, "admin", owners),
-		newcomer(browser, admin, office, `${tag}-agent`, "member", owners),
+		joinOffice(admin, browser, office.id, "admin", `${tag}-manager`, { onboarded: false }),
+		joinOffice(admin, browser, office.id, "member", `${tag}-agent`),
 	]);
 	const close = async () => {
 		await manager.close();
@@ -527,16 +549,9 @@ async function officeWithTeam(
 	};
 	try {
 		await openInboxAsNewAccount(manager.page);
-		// A member reads Nhịp in the office language (ADR 0025): Vietnamese is a Vietnamese office,
-		// set once the newcomer has passed the first-run step.
-		if (locale === "vi") {
-			await setOfficeLanguage(manager.page.request, "vi");
-		}
-		await manager.page.goto(
-			officeUrlOf(await slugOf(admin.api, office.id), "settings/members", locale),
-		);
+		await manager.page.goto(officeUrlOf(await slugOf(admin.api, office.id), "settings/members"));
 		const t = team(manager.page);
-		await expect(t.memberRole(t.member(agent.email))).toHaveText(COPY[locale].agent);
+		await expect(t.memberRole(t.member(agent.email))).toHaveText(COPY.en.agent);
 	} catch (error) {
 		await close();
 		throw error;
@@ -556,14 +571,13 @@ test.describe("Team 4 — removing someone asks first", () => {
 			admin,
 			"Team 4",
 			"team4",
-			"en",
 		);
 		try {
 			const { page } = manager;
 			const row = team(page).member(agent.email);
-			const ask = removeConfirmation(page, "en", NEWCOMER_NAME);
+			const ask = removeConfirmation(page, JOINED_NAME);
 
-			await chooseRemove(page, agent.email, "en");
+			await chooseRemove(page, agent.email);
 			await expect(ask.dialog, "Remove from office asks first").toBeVisible();
 			await expect.soft(ask.message).toBeVisible();
 			await expect.soft(ask.cancel).toBeVisible();
@@ -581,7 +595,7 @@ test.describe("Team 4 — removing someone asks first", () => {
 			).toContain(agent.email);
 
 			// Remove: in that one step, the row leaves Team and the account is gone (ADR 0013).
-			await chooseRemove(page, agent.email, "en");
+			await chooseRemove(page, agent.email);
 			await expect(ask.dialog).toBeVisible();
 			await ask.confirm.click();
 			await expect(ask.dialog).toHaveCount(0);
@@ -594,40 +608,6 @@ test.describe("Team 4 — removing someone asks first", () => {
 				"the agent is no longer in the office",
 			).not.toContain(agent.email);
 			await admin.expectNoAccount(agent.email);
-		} finally {
-			await close();
-		}
-	});
-
-	test("in Vietnamese the confirmation reads Xóa {name} khỏi văn phòng?, with Hủy and Xóa", async ({
-		browser,
-		admin,
-	}) => {
-		test.slow();
-		const { office, manager, agent, close } = await officeWithTeam(
-			browser,
-			admin,
-			"Team 4 vi",
-			"team4-vi",
-			"vi",
-		);
-		try {
-			const { page } = manager;
-			const ask = removeConfirmation(page, "vi", NEWCOMER_NAME);
-
-			await chooseRemove(page, agent.email, "vi");
-			await expect(ask.dialog, "Xóa khỏi văn phòng asks first").toBeVisible();
-			await expect.soft(ask.message).toBeVisible();
-			await expect.soft(ask.confirm).toBeVisible();
-			await expect(ask.cancel).toBeVisible();
-
-			await ask.cancel.click();
-			await expect(ask.dialog).toHaveCount(0);
-			await expect(team(page).member(agent.email), "Hủy keeps the agent on Team").toBeVisible();
-			expect(
-				(await membersOf(admin.api, office.id)).map((m) => m.user.email),
-				"Hủy keeps the agent in the office",
-			).toContain(agent.email);
 		} finally {
 			await close();
 		}
@@ -655,173 +635,93 @@ test.describe("Team 5 — the platform admin's membership is theirs alone", () =
 		test.slow();
 		// Created by the platform admin: their inert kit `owner` membership is in it.
 		const office = await admin.createOffice("Team 5");
-		const owners: string[] = [];
+		const [ownerManager, adminManager] = await Promise.all([
+			joinOffice(admin, browser, office.id, "owner", "team5-owner"),
+			joinOffice(admin, browser, office.id, "admin", "team5-admin"),
+		]);
 		try {
-			const [ownerManager, adminManager] = await Promise.all([
-				newcomer(browser, admin, office, "team5-owner", "owner", owners),
-				newcomer(browser, admin, office, "team5-admin", "admin", owners),
-			]);
-			try {
-				const self = (await membersOf(admin.api, office.id)).find(
-					(m) => m.user.email === PLATFORM_ADMIN.email,
-				);
-				expect(self?.role, "the platform admin, who created the office, is its kit owner").toBe(
-					"owner",
-				);
-				const memberId = self!.id;
-				const owner = { who: "kit-owner manager", api: ownerManager.api };
-				const kitAdmin = { who: "kit-admin manager", api: adminManager.api };
-				const changeRole = (role: "admin" | "member") => ({
-					what: `change the platform admin's role to ${role}`,
-					ask: (api: Api) =>
-						api.post("/api/auth/organization/update-member-role", {
-							memberId,
-							role,
-							organizationId: office.id,
-						}),
-				});
-				// The same role change with a stray `memberIdOrEmail` beside the real `memberId` (a
-				// field the kit ignores here): the refusal reads the field the kit acts on.
-				const changeRoleWithDecoy = (decoy: string | number) => ({
-					what: `change the platform admin's role to member, with a stray memberIdOrEmail ${JSON.stringify(decoy)}`,
-					ask: (api: Api) =>
-						api.post("/api/auth/organization/update-member-role", {
-							memberId,
-							memberIdOrEmail: decoy,
-							role: "member",
-							organizationId: office.id,
-						}),
-				});
-				const remove = (by: "member id" | "email") => ({
-					what: `remove the platform admin by ${by}`,
-					ask: (api: Api) =>
-						api.post("/api/auth/organization/remove-member", {
-							memberIdOrEmail: by === "email" ? PLATFORM_ADMIN.email : memberId,
-							organizationId: office.id,
-						}),
-				});
-				// Role changes first, removals last, the kit owner's last of all: a removal taken in a
-				// red run leaves nothing for the asks after it to remove.
-				const asks = [
-					{ ...owner, ...changeRoleWithDecoy("someone") },
-					{ ...owner, ...changeRoleWithDecoy(1) },
-					{ ...owner, ...changeRole("admin") },
-					{ ...kitAdmin, ...changeRole("admin") },
-					{ ...owner, ...changeRole("member") },
-					{ ...kitAdmin, ...changeRole("member") },
-					{ ...kitAdmin, ...remove("member id") },
-					{ ...kitAdmin, ...remove("email") },
-					{ ...owner, ...remove("email") },
-					{ ...owner, ...remove("member id") },
-				];
+			const self = (await membersOf(admin.api, office.id)).find(
+				(m) => m.user.email === PLATFORM_ADMIN.email,
+			);
+			expect(self?.role, "the platform admin, who created the office, is its kit owner").toBe(
+				"owner",
+			);
+			const memberId = self!.id;
+			const owner = { who: "kit-owner manager", api: ownerManager.api };
+			const kitAdmin = { who: "kit-admin manager", api: adminManager.api };
+			const changeRole = (role: "admin" | "member") => ({
+				what: `change the platform admin's role to ${role}`,
+				ask: (api: Api) =>
+					api.post("/api/auth/organization/update-member-role", {
+						memberId,
+						role,
+						organizationId: office.id,
+					}),
+			});
+			// The same role change with a stray `memberIdOrEmail` beside the real `memberId` (a
+			// field the kit ignores here): the refusal reads the field the kit acts on.
+			const changeRoleWithDecoy = (decoy: string | number) => ({
+				what: `change the platform admin's role to member, with a stray memberIdOrEmail ${JSON.stringify(decoy)}`,
+				ask: (api: Api) =>
+					api.post("/api/auth/organization/update-member-role", {
+						memberId,
+						memberIdOrEmail: decoy,
+						role: "member",
+						organizationId: office.id,
+					}),
+			});
+			const remove = (by: "member id" | "email") => ({
+				what: `remove the platform admin by ${by}`,
+				ask: (api: Api) =>
+					api.post("/api/auth/organization/remove-member", {
+						memberIdOrEmail: by === "email" ? PLATFORM_ADMIN.email : memberId,
+						organizationId: office.id,
+					}),
+			});
+			// Role changes first, removals last, the kit owner's last of all: a removal taken in a
+			// red run leaves nothing for the asks after it to remove.
+			const asks = [
+				{ ...owner, ...changeRoleWithDecoy("someone") },
+				{ ...owner, ...changeRoleWithDecoy(1) },
+				{ ...owner, ...changeRole("admin") },
+				{ ...kitAdmin, ...changeRole("admin") },
+				{ ...owner, ...changeRole("member") },
+				{ ...kitAdmin, ...changeRole("member") },
+				{ ...kitAdmin, ...remove("member id") },
+				{ ...kitAdmin, ...remove("email") },
+				{ ...owner, ...remove("email") },
+				{ ...owner, ...remove("member id") },
+			];
 
-				// Each ask's answer, and the platform admin's role right after it, side by side.
-				const answered: Record<string, { status: number; platformAdminRole?: string }> = {};
-				const refused: typeof answered = {};
-				for (const { who, api, what, ask } of asks) {
-					const label = `${who}: ${what}`;
-					const status = (await ask(api)).status();
-					answered[label] = {
-						status,
-						platformAdminRole: await platformAdminRoleIn(admin, office.id),
-					};
-					refused[label] = { status: 403, platformAdminRole: "owner" };
-				}
-				expect(
-					answered,
-					"every ask is refused (403), and the platform admin is still in the office, as owner",
-				).toEqual(refused);
-			} finally {
-				await ownerManager.close();
-				await adminManager.close();
+			// Each ask's answer, and the platform admin's role right after it, side by side.
+			const answered: Record<string, { status: number; platformAdminRole?: string }> = {};
+			const refused: typeof answered = {};
+			for (const { who, api, what, ask } of asks) {
+				const label = `${who}: ${what}`;
+				const status = (await ask(api)).status();
+				answered[label] = {
+					status,
+					platformAdminRole: await platformAdminRoleIn(admin, office.id),
+				};
+				refused[label] = { status: 403, platformAdminRole: "owner" };
 			}
+			expect(
+				answered,
+				"every ask is refused (403), and the platform admin is still in the office, as owner",
+			).toEqual(refused);
 		} finally {
-			for (const invitationId of owners) {
-				await admin.cancelInvitation(invitationId);
-			}
+			await ownerManager.close();
+			await adminManager.close();
 		}
 	});
 });
 
 // scenario: docs/e2e-scenarios.md Team 6
 test.describe("Team 6 — the platform admin never reaches a manager's browser", () => {
-	test("neither Team's page nor any /api/auth/ answer it gets carries the platform admin's email", async ({
-		page,
-		context,
-	}) => {
-		await signInContext(context, MANAGER);
-		const answers: Promise<{ url: string; document: boolean; body: string | null }>[] = [];
-		page.on("response", (response) => {
-			const url = response.url();
-			const document = response.request().resourceType() === "document";
-			if (!document && !new URL(url).pathname.startsWith("/api/auth/")) {
-				return;
-			}
-			answers.push(
-				response.text().then(
-					(body) => ({ url, document, body }),
-					// A redirect has no body to read.
-					() => ({ url, document, body: null }),
-				),
-			);
-		});
-
-		await page.goto(officeUrl("settings/members"));
-		// The list is rendered, so the answers it was made from have arrived.
-		const t = team(page);
-		await expect(t.memberRole(t.member(AGENT.email))).toHaveText(COPY.en.agent);
-		await expect(t.memberRole(t.member(MANAGER.email))).toHaveText(COPY.en.manager);
-
-		const read = await Promise.all(answers);
-		expect(
-			read.some((a) => a.document && a.body),
-			"the page itself was read",
-		).toBe(true);
-		// The office's members did reach the browser through what was read: the check below has teeth.
-		expect(
-			read.some((a) => a.body?.includes(AGENT.email)),
-			"the members the page lists are in what was read",
-		).toBe(true);
-		const carrying = read.filter((a) => a.body?.includes(PLATFORM_ADMIN.email)).map((a) => a.url);
-		expect(carrying, "answers carrying the platform admin's email").toEqual([]);
-	});
-
-	test("asked directly, the office as the manager reads it lists no platform admin, and list-members counts only whom it lists", async ({
-		page,
-		context,
-	}) => {
-		await signInContext(context, MANAGER);
-		const api = withOrigin(page.request);
-
-		const full = await api.get("/api/auth/organization/get-full-organization", {
-			organizationId: DEMO_OFFICE_ID,
-		});
-		expect(full.status(), "the manager reads the office").toBe(200);
-		const fullEmails = ((await full.json()) as { members: Member[] }).members.map(
-			(m) => m.user.email,
-		);
-		expect(fullEmails, "get-full-organization lists the office's people").toContain(AGENT.email);
-		expect
-			.soft(fullEmails, "get-full-organization lists no platform admin")
-			.not.toContain(PLATFORM_ADMIN.email);
-
-		const listed = await api.get("/api/auth/organization/list-members", {
-			organizationId: DEMO_OFFICE_ID,
-		});
-		expect(listed.status(), "the manager lists the office's members").toBe(200);
-		const { members, total } = (await listed.json()) as { members: Member[]; total: number };
-		const listedEmails = members.map((m) => m.user.email);
-		expect(listedEmails, "list-members lists the office's people").toContain(AGENT.email);
-		expect
-			.soft(listedEmails, "list-members lists no platform admin")
-			.not.toContain(PLATFORM_ADMIN.email);
-		expect.soft(total, "list-members' total counts only the members it lists").toBe(members.length);
-	});
-
 	test("the platform admin's own view of the office lists them as Platform admin, not Manager", async ({
 		admin,
 	}) => {
-		const { page } = admin;
+		const page = await admin.openPage();
 		const t = team(page);
 		for (const locale of ["en", "vi"] as const) {
 			await page.goto(`/${locale}/admin/organizations/${DEMO_OFFICE_ID}`);

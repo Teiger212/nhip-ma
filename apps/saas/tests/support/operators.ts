@@ -30,9 +30,9 @@ type Account = { userId: string; cookies: Cookies };
  * The account the invitation sign-up page would make for `email`, and a session for it
  * (accounts.ts, in this worker's state process).
  */
-async function signedUpAccount(email: string): Promise<Account> {
+async function signedUpAccount(email: string, onboarded: boolean): Promise<Account> {
 	try {
-		return await askState<Account>("account", email);
+		return await askState<Account>("account", email, onboarded ? "onboarded" : "first-run");
 	} catch (error) {
 		throw new Error(
 			`No account for ${email}: ${error instanceof Error ? error.message : String(error)}`,
@@ -43,8 +43,9 @@ async function signedUpAccount(email: string): Promise<Account> {
 /**
  * A new operator of `officeId`, invited by the platform admin, with a blank tab in a browser
  * context of their own (its own client IP): an agent (the kit's `member`) or a manager (the kit's
- * `admin`, CONTEXT.md "Manager"). `tag` marks their email. Their account starts signed up and
- * signed in (setup, accounts.ts); they accept the invitation through the kit's API, so the
+ * `admin`, or its `owner`: CONTEXT.md "Manager"). `tag` marks their email. Their account starts
+ * signed up and signed in (setup, accounts.ts), past the kit's first-run step unless told
+ * `onboarded: false` (a spec that walks that step); they accept the invitation through the kit's API, so the
  * membership, its role and the session's office are the server's, as after the invitation link.
  * Their password is `NEW_PASSWORD`, for a spec that signs them in elsewhere.
  */
@@ -52,12 +53,13 @@ export async function joinOffice(
 	admin: Admin,
 	browser: Browser,
 	officeId: string,
-	role: "member" | "admin",
+	role: "member" | "admin" | "owner",
 	tag: string,
+	{ onboarded = true }: { onboarded?: boolean } = {},
 ): Promise<Joined> {
 	const email = admin.newEmail(tag);
 	const invitationId = await admin.invite(email, officeId, role);
-	const account = await signedUpAccount(email);
+	const account = await signedUpAccount(email, onboarded);
 	const context = await browser.newContext({ extraHTTPHeaders: clientIpHeaders(email) });
 	try {
 		// The minted session, as signInContext gives the seeded logins theirs.
@@ -67,6 +69,7 @@ export async function joinOffice(
 		expect(accepted.ok(), `the invitee accepts the invitation: ${await accepted.text()}`).toBe(
 			true,
 		);
+		admin.joined(email, officeId);
 		// Blank: the test opens the Inbox, or any page, when it looks (#223).
 		const page = await context.newPage();
 		return { email, userId: account.userId, page, api, close: () => context.close() };

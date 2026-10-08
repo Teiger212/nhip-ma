@@ -108,6 +108,8 @@ changes need no new test. There is no red-first rule.
   rule promises; never internal calls, and never mock the thing under test.
 - Locally, run only the spec files you touched; never the full suite. One green CI run is the
   gate (Ticket workflow 5). Hardening (more tests, flakes, edge cases) is one later pass.
+- The local E2E check is `pnpm e2e:changed`: the spec files changed since `origin/main`, against
+  the build `scripts/e2e-server.sh` started (`apps/saas/tests/AGENTS.md`).
 
 ## Change management
 

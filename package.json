@@ -10,6 +10,7 @@
 		"lint:fix": "oxlint --fix --disable-nested-config .",
 		"clean": "turbo clean",
 		"test": "dotenv -c -- turbo test",
+		"e2e:changed": "pnpm --filter saas e2e:changed",
 		"format": "oxfmt .",
 		"format:check": "oxfmt --check .",
 		"seed": "dotenv -c -- pnpm --filter saas seed"

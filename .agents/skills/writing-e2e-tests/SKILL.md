@@ -60,6 +60,10 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
      `scripts/e2e-server.sh --stop` when you're done.
 
   The database is seeded once per build, as in one CI run, so specs that pass in CI pass here.
+- The local check before pushing: `pnpm e2e:changed` (from the repo root) runs every spec file
+  changed since `origin/main` against that server (`playwright test --only-changed=origin/main`,
+  `E2E_REUSE=1`). Never the full suite locally; CI's one green run, split over two runners, is
+  the gate.
 - Shared setup lives in `apps/saas/tests/support/`: `fixtures.ts` (`test`, `expect`, the
   `admin` fixture: create offices, invite, clean up), `session-state.ts` (`signInContext`), `login-page.ts` (`LoginPage`), `session.ts`, `invitee.ts`,
   `offices.ts`, `operators.ts` (`joinOffice`), `data.ts` (`uniqueEmail`), `seed.ts` (seed
@@ -126,6 +130,8 @@ contacts: [{ wa_id: guest, profile: { name } }], messages: [{ from: guest, id, t
 ## Done
 
 - The spec names its scenario or rule.
+- A test that covers more than one scenario (a merge) names each in its describe title and has a
+  `// scenario:` line for each.
 - It covers one happy path of a demo-visible feature (lean testing, AGENTS.md); no variant
   scenarios, no Vietnamese copy of an English scenario.
 - It passes once headlessly; CI's single green run is the gate.

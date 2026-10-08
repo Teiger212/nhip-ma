@@ -14,7 +14,9 @@ import { assertReusable, readServerState } from "./tests/support/e2e-reuse";
  * - `E2E_REUSE=1` (#205): the default mode against the build `scripts/e2e-server.sh` started,
  *   so many spec files share one build. It refuses a build of other app code.
  * - `E2E_BASE_URL=http://localhost:3010`: fast iteration against a running dev server; no
- *   build. The final `--repeat-each=3` check still runs the default way.
+ *   build.
+ * `pnpm e2e:changed` runs the spec files changed since origin/main the `E2E_REUSE` way. CI splits
+ * the suite over two runners (`scripts/e2e-shard-lists.mjs`, #278).
  */
 const devServer = process.env.E2E_BASE_URL;
 const reuse = process.env.E2E_REUSE === "1" ? readServerState() : undefined;
