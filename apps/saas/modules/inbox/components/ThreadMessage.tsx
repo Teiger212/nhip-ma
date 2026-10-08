@@ -3,6 +3,7 @@
 import { Badge, cn } from "@repo/ui";
 import { useTranslations } from "next-intl";
 
+import { useOfficeLanguage } from "../lib/inbox-queries";
 import { isSupportedLanguage, languageName } from "../lib/language-name";
 import { formatInboxTimestamp } from "../lib/time";
 import type { Message } from "../lib/types";
@@ -31,9 +32,13 @@ export function ThreadMessage({
 }) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
+	const officeLanguage = useOfficeLanguage().data;
 	const inbound = message.direction === "in";
-	// Rendered as text, never as markup (ADR 0007): a React text node cannot carry HTML.
-	const translation = inbound ? message.translations?.[locale] : undefined;
+	// In the office language, whatever the reader's interface (ADR 0025): a translation kept from
+	// before the manager changed it doesn't show. Rendered as text, never as markup (ADR 0007): a
+	// React text node cannot carry HTML.
+	const translation =
+		inbound && officeLanguage ? message.translations?.[officeLanguage] : undefined;
 	// A guest language Nhịp doesn't support gets no translation; a note says so in its place (#245).
 	const untranslated =
 		inbound && !translation && guestLanguage && !isSupportedLanguage(guestLanguage)

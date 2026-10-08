@@ -504,6 +504,13 @@
 				"organizationNameUpdated": "Đã cập nhật tên văn phòng của bạn.",
 				"organizationNotDeleted": "Chúng tôi không thể xóa văn phòng của bạn. Vui lòng thử lại sau."
 			},
+			"officeLanguage": {
+				"error": "Không lưu được ngôn ngữ văn phòng. Hãy thử lại.",
+				"hint": "Tin nhắn của khách được dịch sang ngôn ngữ này, một lần.",
+				"loadError": "Không tải được ngôn ngữ văn phòng. Hãy tải lại trang để thử lại.",
+				"saved": "Đã lưu ngôn ngữ văn phòng",
+				"title": "Ngôn ngữ văn phòng"
+			},
 			"subtitle": "Quản lý cài đặt của văn phòng.",
 			"title": "Văn phòng",
 			"dangerZone": {

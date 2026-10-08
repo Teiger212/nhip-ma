@@ -23,11 +23,18 @@ export const LanguageCode = z.string().regex(/^[a-z]{2,3}$/);
 export type LanguageCode = z.infer<typeof LanguageCode>;
 
 /**
- * The operator's language (CONTEXT.md): the target of every translation and the language
- * of the operator note. EN or VI, from the operator's locale setting.
+ * The office language (CONTEXT.md, ADR 0025): EN or VI, one per office, set by its manager. It
+ * is the target of every translation and the second text of an AI suggested reply. (The name
+ * predates ADR 0025, when each operator had their own.)
  */
 export const OperatorLanguage = z.enum(["en", "vi"]);
 export type OperatorLanguage = z.infer<typeof OperatorLanguage>;
+
+/**
+ * The language of an office whose manager hasn't set one, every office before ADR 0025 included:
+ * English (decided by Eyal on 2026-10-08, on #256). One constant, so it can change later.
+ */
+export const DEFAULT_OFFICE_LANGUAGE: OperatorLanguage = "en";
 
 export const RentOrBuy = z.enum(["rent", "buy"]);
 export type RentOrBuy = z.infer<typeof RentOrBuy>;

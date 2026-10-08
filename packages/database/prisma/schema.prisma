@@ -737,6 +737,9 @@ model OfficeSetting {
   autoReply        Boolean      @default(true)
   /// When the auto-reply was last turned on: a thread that began before it is never greeted (S1).
   autoReplyOnSince DateTime?
+  /// The office language (ADR 0025), `en` or `vi`: every guest message is translated into it.
+  /// Null until a manager sets it, which reads as the default in code (`DEFAULT_OFFICE_LANGUAGE`).
+  language         String?
 
   @@map("inbox_office_setting")
 }

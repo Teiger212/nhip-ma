@@ -7,12 +7,17 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useLocale } from "next-intl";
 
 import { noteOwnAction } from "./inbox-presence";
 import { yourTurnCount } from "./queue";
 import { summarize } from "./summary";
-import type { Conversation, ConversationSummary, GuestDeletionReason, Pipe } from "./types";
+import type {
+	Conversation,
+	ConversationSummary,
+	GuestDeletionReason,
+	OperatorLanguage,
+	Pipe,
+} from "./types";
 
 /**
  * Server data for the inbox lives in TanStack Query; nothing else caches it. Everything
@@ -70,21 +75,26 @@ export function useConversations({ enabled = true }: { enabled?: boolean } = {})
 	return useQuery({ ...conversationListQuery, enabled });
 }
 
+const officeLanguageQueryKey = ["inbox", "office-language"] as const;
+
 /**
  * The open thread, whole: messages, translations, the one-shot and the Answers. Polled like
- * the list while it is open. Opening it is also what asks the server for any translation
- * into the operator's language that is still missing (ADR 0007). Each fetch also refreshes
- * the thread's row, so the row and the open thread never tell two stories.
+ * the list while it is open. Opening it is also what has the server fill any translation into
+ * the office language that is still missing (ADR 0007, ADR 0025); the server reads the office
+ * language itself. Each fetch also refreshes the thread's row, so the row and the open thread
+ * never tell two stories.
  */
 export function useConversation(id: string | null) {
-	const locale = useLocale();
 	const queryClient = useQueryClient();
 	return useQuery({
 		queryKey: detailQueryKey(id ?? ""),
 		queryFn: async () => {
-			const conversation = await api<Conversation>(
-				`/api/conversations/${encodeURIComponent(id ?? "")}?locale=${encodeURIComponent(locale)}`,
-			);
+			const { officeLanguage, ...conversation } = await api<
+				Conversation & { officeLanguage: OperatorLanguage }
+			>(`/api/conversations/${encodeURIComponent(id ?? "")}`);
+			// Each poll of the open thread keeps the office language fresh for its translations,
+			// so a manager's change shows within a poll.
+			queryClient.setQueryData(officeLanguageQueryKey, officeLanguage);
 			putSummary(queryClient, conversation);
 			return conversation;
 		},
@@ -211,6 +221,33 @@ export function useSetOfficeAutoReply() {
 				body: JSON.stringify({ on }),
 			}),
 		onSettled: () => queryClient.invalidateQueries({ queryKey: autoReplyQueryKey }),
+	});
+}
+
+/**
+ * The office language (ADR 0025): what the open thread shows translations in, and the manager's
+ * setting on the General tab. Every member of the office reads it.
+ */
+export function useOfficeLanguage() {
+	return useQuery({
+		queryKey: officeLanguageQueryKey,
+		queryFn: async () =>
+			(await api<{ language: OperatorLanguage }>("/api/office/language")).language,
+		staleTime: 60_000,
+	});
+}
+
+/** A manager sets the office language; the setting then reads it back. */
+export function useSetOfficeLanguage() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (language: OperatorLanguage) =>
+			api<{ language: OperatorLanguage }>("/api/office/language", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ language }),
+			}),
+		onSettled: () => queryClient.invalidateQueries({ queryKey: officeLanguageQueryKey }),
 	});
 }
 

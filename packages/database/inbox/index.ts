@@ -14,6 +14,7 @@ export {
 	CrmLinkMethod,
 	CrmOutcomeCounts,
 	CrmOutcomeStatus,
+	DEFAULT_OFFICE_LANGUAGE,
 	DraftSource,
 	Funnel,
 	GUEST_DELETION_NOTE_MAX,

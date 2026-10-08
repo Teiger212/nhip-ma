@@ -32,7 +32,8 @@ import { TRANSLATION_MAX_ATTEMPTS, TRANSLATION_RETRY_AFTER_MS } from "./translat
 import type { Conversation } from "./types";
 
 /**
- * Translation (ADR 0007) runs once per guest message per operator language. A failed model
+ * Translation (ADR 0007, ADR 0025) runs once per guest message, into the office language (the
+ * walk office's is the default, English). A failed model
  * call stores no translation, so without a record of the failure every read would call the
  * paid model again. The failure is kept in the database and the model is asked again only
  * after a backoff, a bounded number of times.
@@ -91,7 +92,7 @@ async function pollList(): Promise<void> {
 	await settleBackgroundWork();
 }
 
-/** One read of the open thread in Vietnamese. */
+/** One read of the open thread, as a Vietnamese interface asks for it (the office's language decides). */
 async function openThread(id: string): Promise<Conversation> {
 	const res = await getConversation(
 		new Request(`http://localhost/api/conversations/${encodeURIComponent(id)}?locale=vi`),
@@ -115,10 +116,10 @@ async function ageFailure(messageId: string, locale: string, ms: number): Promis
 }
 
 test("a failing model is not called again by polls or reads until the backoff has passed (ADR 0007)", async () => {
-	// At ingest the model is asked once per operator language, and fails.
+	// At ingest the model is asked once, into the office language, and fails.
 	const conv = await arrive("안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.");
 	await settleBackgroundWork();
-	expect(calls.sort()).toEqual(["en", "vi"]);
+	expect(calls).toEqual(["en"]);
 	const messageId = conv.messages[0].id;
 
 	// The list never asks for translations, however often it is polled.
@@ -126,22 +127,22 @@ test("a failing model is not called again by polls or reads until the backoff ha
 	// Opening the thread within the backoff does not ask again either.
 	await openThread(conv.id);
 	await openThread(conv.id);
-	expect(calls).toHaveLength(2);
+	expect(calls).toHaveLength(1);
 
-	// Once the backoff has passed, opening the thread asks again, once, for its language.
-	await ageFailure(messageId, "vi", TRANSLATION_RETRY_AFTER_MS);
+	// Once the backoff has passed, opening the thread asks again, once, for the office language.
+	await ageFailure(messageId, "en", TRANSLATION_RETRY_AFTER_MS);
 	await openThread(conv.id);
 	await openThread(conv.id);
-	expect(calls).toEqual(["en", "vi", "vi"]);
+	expect(calls).toEqual(["en", "en"]);
 
 	// The model answers this time: the translation lands and its failure is cleared.
 	answer = (to, text) => `[${to}] ${text}`;
-	await ageFailure(messageId, "vi", TRANSLATION_RETRY_AFTER_MS);
+	await ageFailure(messageId, "en", TRANSLATION_RETRY_AFTER_MS);
 	await openThread(conv.id);
 	const opened = await openThread(conv.id);
-	expect(opened.messages[0].translations.vi).toBe(`[vi] ${conv.messages[0].text}`);
-	expect(calls).toEqual(["en", "vi", "vi", "vi"]);
-	expect(await testDb.translationFailure.count({ where: { messageId, locale: "vi" } })).toBe(0);
+	expect(opened.messages[0].translations).toEqual({ en: `[en] ${conv.messages[0].text}` });
+	expect(calls).toEqual(["en", "en", "en"]);
+	expect(await testDb.translationFailure.count({ where: { messageId, locale: "en" } })).toBe(0);
 });
 
 test("after the last allowed attempt fails, the model is never asked again for that message (ADR 0007)", async () => {
@@ -149,14 +150,14 @@ test("after the last allowed attempt fails, the model is never asked again for t
 	await settleBackgroundWork();
 	const messageId = conv.messages[0].id;
 	for (let attempt = 1; attempt < TRANSLATION_MAX_ATTEMPTS; attempt += 1) {
-		await ageFailure(messageId, "vi", TRANSLATION_RETRY_AFTER_MS);
+		await ageFailure(messageId, "en", TRANSLATION_RETRY_AFTER_MS);
 		await openThread(conv.id);
 	}
-	expect(calls.filter((to) => to === "vi")).toHaveLength(TRANSLATION_MAX_ATTEMPTS);
+	expect(calls).toEqual(Array(TRANSLATION_MAX_ATTEMPTS).fill("en"));
 
-	await ageFailure(messageId, "vi", 24 * 60 * MINUTE);
+	await ageFailure(messageId, "en", 24 * 60 * MINUTE);
 	await openThread(conv.id);
-	expect(calls.filter((to) => to === "vi")).toHaveLength(TRANSLATION_MAX_ATTEMPTS);
+	expect(calls).toHaveLength(TRANSLATION_MAX_ATTEMPTS);
 	const opened = await openThread(conv.id);
-	expect(opened.messages[0].translations.vi).toBeUndefined();
+	expect(opened.messages[0].translations.en).toBeUndefined();
 });

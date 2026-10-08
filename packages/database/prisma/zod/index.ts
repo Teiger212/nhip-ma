@@ -192,7 +192,7 @@ export type InboxAlertScalarFieldEnum = z.infer<typeof InboxAlertScalarFieldEnum
 
 // File: OfficeSettingScalarFieldEnum.schema.ts
 
-export const OfficeSettingScalarFieldEnumSchema = z.enum(['officeId', 'autoReply', 'autoReplyOnSince'])
+export const OfficeSettingScalarFieldEnumSchema = z.enum(['officeId', 'autoReply', 'autoReplyOnSince', 'language'])
 
 export type OfficeSettingScalarFieldEnum = z.infer<typeof OfficeSettingScalarFieldEnumSchema>;
 
@@ -828,6 +828,7 @@ export const OfficeSettingSchema = z.object({
   officeId: z.string(),
   autoReply: z.boolean().default(true),
   autoReplyOnSince: z.date().nullish(),
+  language: z.string().nullish(),
 });
 
 export type OfficeSettingType = z.infer<typeof OfficeSettingSchema>;

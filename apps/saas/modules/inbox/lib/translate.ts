@@ -11,10 +11,12 @@ import {
 } from "./types";
 
 /**
- * Guest message translation (ADR 0007). Runs once per message per operator language, as the
- * model layer's `translate` task (ADR 0024), in the background; the UI shows the original at
- * once and the translation when it lands. A message already in the operator's language is not
- * translated, and nothing runs at all without a model behind the task. A call past the office's
+ * Guest message translation (ADR 0007 as amended by ADR 0025). Runs once per message, into the
+ * office language, as the model layer's `translate` task (ADR 0024), in the background; the UI
+ * shows the original at once and the translation when it lands. A message already in the office
+ * language is not translated, and nothing runs at all without a model behind the task. After the
+ * manager changes the language, a thread's next open translates its messages into the new one;
+ * those in the old one are kept (decided by Eyal, 2026-10-08). A call past the office's
  * daily cap is not a failure: it spends none of the message's attempts, and the thread's next open
  * asks again (still capped that day, the layer declines it with one statement and no model call).
  */
@@ -109,23 +111,27 @@ export function scheduleTranslation(
 	return job;
 }
 
-/** At ingest: the new guest message, into every operator language it is not already in. */
+/** At ingest: the new guest message, into the office language, unless it is already in it. */
 export function scheduleTranslations(
 	runtime: Runtime,
 	officeId: string,
 	message: Message,
 	guestLanguage?: string | null,
 ): void {
-	for (const locale of OperatorLanguage.options) {
-		void scheduleTranslation(runtime, officeId, message, locale, guestLanguage);
+	if (!runtime.drafts.serves("translate")) {
+		return;
 	}
+	void runInBackground("translate", async () => {
+		const language = await runtime.store.officeLanguage(officeId);
+		await scheduleTranslation(runtime, officeId, message, language, guestLanguage);
+	});
 }
 
 /**
- * On opening a thread: whatever the operator's locale is missing. This is how messages
- * written before translation existed, or before this locale was used, get theirs, and how a
- * failed translation is retried once its backoff has passed. Nothing is read from the
- * database unless a message is actually missing its translation.
+ * On opening a thread: whatever the office language (`locale`, read by the caller) is missing.
+ * This is how messages written before translation existed, or before the office changed its
+ * language, get theirs, and how a failed translation is retried once its backoff has passed.
+ * Nothing is read from the database unless a message is actually missing its translation.
  */
 export function scheduleMissingTranslations(
 	runtime: Runtime,
