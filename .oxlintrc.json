@@ -77,7 +77,6 @@
 				"apps/saas/modules/organizations/components/OrganizationSelect.tsx",
 				"apps/saas/modules/organizations/components/OrganizationsGrid.tsx",
 				"apps/saas/modules/settings/components/UserAvatarUpload.tsx",
-				"apps/saas/modules/shared/components/NotificationCenter.tsx",
 				"apps/saas/modules/shared/components/SettingsItem.tsx",
 				"apps/saas/modules/shared/components/UserAvatar.tsx"
 			],

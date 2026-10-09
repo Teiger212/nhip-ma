@@ -1,10 +1,11 @@
 "use client";
 
 import { cn } from "@repo/ui";
+import { useHydrated } from "@shared/hooks/use-hydrated";
 import { useLocale } from "next-intl";
 import type { ReactNode } from "react";
 
-import { displayName } from "../lib/display-name";
+import { guestLabel } from "../lib/display-name";
 import { formatInboxTimestamp } from "../lib/time";
 import type { ConversationSummary } from "../lib/types";
 import { GuestMark, ThreadFlags } from "./ThreadParts";
@@ -26,8 +27,10 @@ export function ThreadRow({
 	action?: ReactNode;
 }) {
 	const locale = useLocale();
+	const hydrated = useHydrated();
 	const preview = conversation.lastInboundText;
-	const name = displayName(conversation);
+	const label = guestLabel(conversation);
+	const name = label.text;
 	const when = conversation.lastGuestInboundAt;
 	// From `md` an action shows only on the row's hover, on focus within it, on the selected row
 	// and while its menu is open; it then takes the time's place, and the name ends before it so
@@ -55,7 +58,7 @@ export function ThreadRow({
 				)}
 				onClick={onOpen}
 			>
-				<GuestMark name={name} selected={active} />
+				<GuestMark name={name} phone={label.phone} selected={active} />
 				<span className="min-w-0 flex-1">
 					<span className={cn("gap-2 flex w-full items-baseline justify-between", shown?.line)}>
 						<span className="font-semibold tracking-tight font-heading truncate">{name}</span>
@@ -67,7 +70,7 @@ export function ThreadRow({
 								)}
 								dateTime={when}
 							>
-								{formatInboxTimestamp(when, locale)}
+								{hydrated ? formatInboxTimestamp(when, locale) : null}
 							</time>
 						) : null}
 					</span>

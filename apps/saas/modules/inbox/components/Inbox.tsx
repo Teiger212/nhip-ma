@@ -15,7 +15,7 @@ import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
-import { displayName } from "../lib/display-name";
+import { guestLabel } from "../lib/display-name";
 import type { AlertLinkTarget } from "../lib/guest-alerts/alert-link";
 import {
 	clearHandedOffThread,
@@ -275,7 +275,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			dropEdit(selected.id);
 			setPinnedId(null);
 			toast.add({
-				title: t("sentTo", { name: displayName(result.conversation) }),
+				title: t("sentTo", { name: guestLabel(result.conversation).text }),
 				type: "success",
 			});
 			// Sent and All keep the answered thread open; Your turn and Unassigned move on, since
@@ -340,15 +340,22 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 					{/* Above the list, a panel of its own (The Canvas And Panel Rule, #135). */}
 					<AlertsPanel />
 					<aside className="min-h-0 min-w-0 md:rounded-3xl md:border flex flex-1 flex-col overflow-hidden bg-card">
-						{/* In every view of a manager's, so the search and the tabs never move (#208):
-						    Unassigned holds no one's threads, so there it is disabled, on All threads. */}
-						{manager ? (
-							<div className="px-3 pt-3 gap-2 text-xs flex items-center text-muted-foreground">
+						{/* A row in every view of a manager's, so the search and the tabs never move (#208).
+						    Unassigned holds no one's threads, so there a quiet note keeps the filter's
+						    place instead of a filter that could only narrow it to nothing (#94). */}
+						{manager && view === "unassigned" ? (
+							<p
+								data-test="owner-filter-note"
+								className="px-3 pt-3 min-h-11 text-xs flex items-center text-pretty text-muted-foreground"
+							>
+								{t("owner.unassignedNote")}
+							</p>
+						) : manager ? (
+							<div className="px-3 pt-3 gap-2 min-h-11 text-xs flex items-center text-muted-foreground">
 								<span id="inbox-owner-filter-label">{t("owner.filter")}</span>
 								<Select
 									items={ownerFilterItems}
 									value={filterOwner ?? "all"}
-									disabled={view === "unassigned"}
 									onValueChange={(value) => {
 										if (value === null) return;
 										setPinnedId(null);

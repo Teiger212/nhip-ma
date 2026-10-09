@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Skeleton } from "@repo/ui";
+import { ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -119,8 +120,12 @@ export function ThreadList({
 				rows(queue.visible)
 			)}
 			{queue.quiet.length > 0 ? (
-				<details className="border-t">
-					<summary className="min-h-11 px-3 text-xs font-medium gap-2 flex cursor-pointer items-center text-muted-foreground">
+				<details className="group/quiet border-t">
+					<summary className="min-h-11 px-3 text-xs font-medium gap-1.5 no-marker flex cursor-pointer items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset">
+						<ChevronRightIcon
+							aria-hidden="true"
+							className="size-3.5 ease-out shrink-0 transition-transform duration-200 group-open/quiet:rotate-90 motion-reduce:transition-none"
+						/>
 						{t("quiet", { count: queue.quiet.length })}
 					</summary>
 					<p className="px-3 pb-2 text-xs text-pretty text-muted-foreground">{t("quietHint")}</p>

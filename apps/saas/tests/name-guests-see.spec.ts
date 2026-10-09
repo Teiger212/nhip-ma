@@ -38,8 +38,8 @@ const LAN = "Lan";
  * is the contract. The VI wording is pending a native read (#78).
  */
 const FIELD_LABEL: Record<Locale, string> = {
-	en: "Name guests see",
-	vi: "Tên hiển thị với khách",
+	en: "Display name",
+	vi: "Tên hiển thị",
 };
 
 /** The account page's Save (VI "Lưu"); only the EN page is saved through here. */
@@ -144,7 +144,7 @@ function accountMain(page: Page): Locator {
 	return page.getByRole("main");
 }
 
-/** The "Name guests see" box. */
+/** The "Display name" box. */
 function nameGuestsSeeField(page: Page, locale: Locale = "en"): Locator {
 	return accountMain(page).getByRole("textbox", { name: FIELD_LABEL[locale], exact: true });
 }

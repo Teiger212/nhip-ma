@@ -144,7 +144,7 @@ async function expectListLoaded(page: Page) {
 	await expect(
 		threadList(page)
 			.locator(
-				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
+				'[data-test="thread-status"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
 			)
 			.filter({ visible: true })
 			.or(threadList(page).getByText(copy.onlyQuiet, { exact: true }))
