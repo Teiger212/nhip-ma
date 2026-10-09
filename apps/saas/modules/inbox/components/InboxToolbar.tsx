@@ -34,7 +34,7 @@ function managerCountLine(
 
 /**
  * A tab's side padding and the gap between its label and count, roomiest first: DESIGN.md's 12px
- * and 6px, then 8px, then 4px and 4px. The view tabs stay on one line and never scroll (#210), so
+ * and 6px, then 8px, then 4px and 4px, then 2px and 2px (the counts' 11px, #94, needs the last). The view tabs stay on one line and never scroll (#210), so
  * when the row runs short (a manager's four Vietnamese tabs with three-digit counts at the list's
  * 22rem) the padding and gap give way before a label wraps or is cut. Counts are always whole.
  */
@@ -42,6 +42,7 @@ const TAB_FITS = [
 	{ className: "px-3 gap-1.5", pad: 12, gap: 6 },
 	{ className: "px-2 gap-1.5", pad: 8, gap: 6 },
 	{ className: "px-1 gap-1", pad: 4, gap: 4 },
+	{ className: "px-0.5 gap-0.5", pad: 2, gap: 2 },
 ] as const;
 
 /** The spare pixel a fit keeps, so rounding never tips the last tab past the row's edge. */
@@ -165,7 +166,7 @@ export function InboxToolbar({
 				<div
 					ref={tabs}
 					className={cn(
-						"gap-0.5 p-0.5 shadow-hairline max-w-full rounded-full bg-muted",
+						"gap-0 p-0.5 shadow-hairline max-w-full rounded-full bg-muted",
 						fit > 0 ? "flex w-full" : "inline-flex",
 					)}
 				>
