@@ -148,10 +148,10 @@ export function homeCopy(locale: Locale): HomeCopy {
  * The count line under the Inbox's view tabs, in English (#208, worded by Eyal on the ticket).
  * Written out here rather than read from saas.json: the wording is the contract the Inbox must
  * meet, so a spec reading it back from the app's own strings would pass whatever they say.
- * `on` is the operator the manager's owner filter shows, or none for "All threads".
+ * `on` is the operator the manager's owner filter shows, or none for "All conversations".
  */
 export const COUNT_LINE_EN = {
-	/** A manager's Unassigned view (its owner filter is disabled, on All threads). */
+	/** A manager's Unassigned view (its owner filter is disabled, on All conversations). */
 	unassigned: (unassigned: number, waiting: number) =>
 		`${unassigned} unassigned · ${waitingIn(waiting)}`,
 	/** A manager's Waiting view (their Your turn, named Waiting since #210). */
@@ -159,8 +159,8 @@ export const COUNT_LINE_EN = {
 	/** A manager's Sent view. */
 	sent: (sent: number, waiting: number, on?: string) => `${sent} sent · ${waitingIn(waiting, on)}`,
 	/** A manager's All view. */
-	all: (threads: number, waiting: number, on?: string) =>
-		`${threads} ${threads === 1 ? "thread" : "threads"} · ${waitingIn(waiting, on)}`,
+	all: (conversations: number, waiting: number, on?: string) =>
+		`${conversations} ${conversations === 1 ? "conversation" : "conversations"} · ${waitingIn(waiting, on)}`,
 	/** An agent's line, the same in every view (unchanged by #208). */
 	agent: (waiting: number) =>
 		waiting === 0

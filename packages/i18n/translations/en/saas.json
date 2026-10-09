@@ -117,7 +117,7 @@
 			},
 			"confirmDisconnect": {
 				"title": "Disconnect Zalo OA",
-				"message": "Replies on OA {oa} stop, and new guest messages to it will no longer reach this office. Its threads stay."
+				"message": "Replies on OA {oa} stop, and new guest messages to it will no longer reach this office. Its conversations stay."
 			},
 			"outcome": {
 				"connected": "Zalo OA connected.",
@@ -203,8 +203,8 @@
 				"message": "Replies on it are blocked until you reconnect it, with the owner present, in the office's Connections. Guests' messages still arrive."
 			},
 			"threadAssigned": {
-				"title": "A manager gave you a thread",
-				"grouped": "{count} threads were assigned to you"
+				"title": "A manager gave you a conversation",
+				"grouped": "{count} conversations were assigned to you"
 			},
 			"threadMoved": {
 				"title": "{name} was moved to another agent",
@@ -831,7 +831,7 @@
 			"title": "Funnel",
 			"leadsIn": "Leads in",
 			"engaged": "Engaged",
-			"inConversation": "In conversation",
+			"inConversation": "Talking",
 			"closings": "Closings",
 			"lost": "Lost",
 			"leadsInHint": "Guests who first wrote in during this window.",
@@ -886,20 +886,20 @@
 		"yes": "Yes",
 		"no": "No",
 		"searchPlaceholder": "Search name or last message",
-		"searchAria": "Search threads",
+		"searchAria": "Search conversations",
 		"empty": "No conversations.",
 		"loading": "Loading conversations…",
 		"loadError": "Could not load conversations.",
 		"retry": "Try again",
-		"noMatches": "No matching threads.",
+		"noMatches": "No matching conversations.",
 		"noneSelected": "No conversation selected.",
-		"threadNotFound": "This conversation isn't here. The link may be out of date, or the thread was moved or deleted.",
+		"threadNotFound": "This conversation isn't here. The link may be out of date, or the conversation was moved or deleted.",
 		"sent": "Sent",
 		"yourTurn": "Your turn",
 		"waiting": "Waiting",
 		"quiet": "Quiet ({count})",
 		"quietHint": "The guest last wrote more than 48 hours ago. Still your turn.",
-		"onlyQuiet": "Nothing new. The quiet threads below are still your turn.",
+		"onlyQuiet": "Nothing new. The quiet conversations below are still your turn.",
 		"translation": "Translation",
 		"translationIn": "Translation · {language}",
 		"noTranslation": "{language} isn't supported: no translation",
@@ -926,7 +926,7 @@
 		"sending": "Sending…",
 		"language": "Language",
 		"back": "Back",
-		"backAria": "Back to thread list",
+		"backAria": "Back to conversation list",
 		"missingLabel": "Missing",
 		"pipes": {
 			"zalo": "Zalo",
@@ -1038,7 +1038,7 @@
 			}
 		},
 		"views": {
-			"aria": "Filter threads",
+			"aria": "Filter conversations",
 			"unassigned": "Unassigned",
 			"yourTurn": "Your turn",
 			"waiting": "Waiting",
@@ -1052,7 +1052,7 @@
 			"waitingOn": "{count} waiting on {name}",
 			"unassigned": "{count} unassigned",
 			"sent": "{count} sent",
-			"all": "{count, plural, one {# thread} other {# threads}}"
+			"all": "{count, plural, one {# conversation} other {# conversations}}"
 		},
 		"allCaughtUp": "All caught up.",
 		"allAssigned": "Every lead is assigned.",
@@ -1067,9 +1067,9 @@
 			"assignTo": "Assign to…",
 			"mine": "Yours",
 			"assigned": "Assigned to {name}",
-			"failed": "Could not reassign the thread. Try again.",
+			"failed": "Could not reassign the conversation. Try again.",
 			"filter": "Showing",
-			"all": "All threads",
+			"all": "All conversations",
 			"unassignedNote": "New leads wait here until you assign them."
 		},
 		"emptyAssigned": "Nothing assigned to you yet.",
@@ -1090,11 +1090,11 @@
 			"lost": "Lost"
 		},
 		"deletion": {
-			"actions": "Thread actions",
+			"actions": "Conversation actions",
 			"delete": "Delete guest data",
 			"sendingReason": "A reply is still sending",
 			"title": "Delete {name}'s data?",
-			"what": "Nhịp deletes this thread's {count, plural, one {# message} other {# messages}} with their translations, the suggested reply and the extracted details.",
+			"what": "Nhịp deletes this conversation's {count, plural, one {# message} other {# messages}} with their translations, the suggested reply and the extracted details.",
 			"keptZalo": "Kept elsewhere: the chat in your Zalo OA.",
 			"keptWhatsapp": "Kept elsewhere: the chat in your WhatsApp.",
 			"irreversible": "This can't be undone.",
@@ -1103,7 +1103,7 @@
 			"deleting": "Deleting…",
 			"done": "Guest data deleted",
 			"failed": "Could not delete the guest's data. Try again.",
-			"gone": "This thread was already deleted.",
+			"gone": "This conversation was already deleted.",
 			"reasonLabel": "Reason",
 			"reasonPlaceholder": "Choose a reason",
 			"reasons": {

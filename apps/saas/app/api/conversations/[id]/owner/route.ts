@@ -24,7 +24,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 	if (gate.denied) return gate.denied;
 	if (gate.viewer.role !== "manager") {
 		return NextResponse.json(
-			{ error: "forbidden", message: "Only a manager reassigns threads." },
+			{ error: "forbidden", message: "Only a manager reassigns conversations." },
 			{ status: 403 },
 		);
 	}

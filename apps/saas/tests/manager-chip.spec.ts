@@ -105,7 +105,7 @@ async function openAll(page: Page) {
 /** The operator finds the guest's row: the Inbox under All, searched by the guest's id. */
 async function findRow(page: Page, guestId: string): Promise<Locator> {
 	await openAll(page);
-	await page.getByRole("textbox", { name: "Search threads" }).fill(guestId);
+	await page.getByRole("textbox", { name: "Search conversations" }).fill(guestId);
 	const row = rowOf(page, guestId);
 	await expect(row).toBeVisible();
 	return row;
