@@ -1222,7 +1222,7 @@ has no profile name, so the template greets them without one) to an office of th
 named "Saigon Prime Test", with a manager and an invited agent, the auto-reply on and
 `SEND_MODE=mock`. The stub model drafts (First greeting, "How these run"), but only after the
 office's first human reply (#252), so before it the reply box holds the template. The template
-introduces the owner by their "Name guests see" (Name guests see, #266), never by a word of
+introduces the owner by their "Display name" (Name guests see, #266), never by a word of
 their account name. The EN copy is the reference; the
 VI copy is pending a native read (#78), and JA, KO and RU have no native read planned yet.
 

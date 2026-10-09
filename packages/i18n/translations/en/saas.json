@@ -569,12 +569,12 @@
 				"title": "Your language"
 			},
 			"nameGuestsSee": {
-				"title": "Name guests see",
+				"title": "Display name",
 				"description": "Suggested replies introduce you to guests by this name. Left empty, they introduce the office only.",
 				"placeholder": "Linh",
 				"notifications": {
-					"error": "Could not update the name guests see",
-					"success": "Name guests see was updated"
+					"error": "Could not update the display name",
+					"success": "Display name was updated"
 				}
 			},
 			"security": {

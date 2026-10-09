@@ -569,12 +569,12 @@
 				"title": "Ngôn ngữ của bạn"
 			},
 			"nameGuestsSee": {
-				"title": "Tên hiển thị với khách",
+				"title": "Tên hiển thị",
 				"description": "Gợi ý trả lời giới thiệu bạn với khách bằng tên này. Để trống thì chỉ giới thiệu văn phòng.",
 				"placeholder": "Linh",
 				"notifications": {
-					"error": "Không cập nhật được tên hiển thị với khách",
-					"success": "Đã cập nhật tên hiển thị với khách"
+					"error": "Không cập nhật được tên hiển thị",
+					"success": "Đã cập nhật tên hiển thị"
 				}
 			},
 			"security": {

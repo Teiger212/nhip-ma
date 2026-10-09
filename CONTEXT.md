@@ -171,8 +171,8 @@ is renamed.
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
   (Qualification), the template suggested reply, operator note. Regex and templates. The
   auto-reply's fallback template is built from it too (ADR 0021).
-- **Name guests see**: the name an operator gives guests, a field on their own account page
-  (#266). The template suggested reply introduces the thread's owner by it, never by a word of
+- **Name guests see**: the name an operator gives guests, the "Display name" field on their own
+  account page (#266; the label was "Name guests see" until 2026-10-09). The template suggested reply introduces the thread's owner by it, never by a word of
   their account name (Vietnamese names are written family name first). Empty, the template
   names the office only (pending Eyal's nod). Changing it writes an untouched template again on
   that operator's threads, as assigning does.
