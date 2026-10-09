@@ -9,7 +9,8 @@ const NATIONALITIES: Array<{ id: string; re: RegExp }> = [
 	{ id: "Russian", re: bounded("russian|russia|người\\s*nga|русский|росси") },
 	{ id: "American", re: bounded("american|usa|u\\.s\\.|người\\s*mỹ") },
 	{ id: "British", re: bounded("british|english\\s+(guest|client)|người\\s*anh") },
-	{ id: "French", re: bounded("french|france|người\\s*pháp") },
+	// "française" too (#243): the boundary is ASCII, so the longer forms come first.
+	{ id: "French", re: bounded("french|france|fran[cç]aises?|fran[cç]ais|người\\s*pháp") },
 	{ id: "German", re: bounded("german|germany|người\\s*đức") },
 	{ id: "Chinese", re: bounded("chinese|china|người\\s*trung|trung\\s*quốc") },
 	{ id: "Singaporean", re: bounded("singaporean|singapore") },
@@ -56,34 +57,75 @@ function inferRentOrBuy(text: string): Qualification["rentOrBuy"] {
 	return null;
 }
 
+/** A month's English name or abbreviation, whole: "dec", "Dec", "December"; never "decent". */
+const MONTH =
+	"jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+
+/** The move-in forms, most precise first; the guest details read each one back (#243). */
+const MOVE_IN_PATTERNS: RegExp[] = [
+	/\b(?:this|next)\s+(?:mon(?:day)?|tues(?:day)?|wed(?:nesday)?|thu(?:rs(?:day)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/gi,
+	/\b(?:this|next)\s+(?:week|month|weekend)\b/gi,
+	/\b(?:today|tomorrow|tonight)\b/gi,
+	/\bin\s+\d+\s+(?:days?|weeks?|months?)\b/gi,
+	new RegExp(`\\b(?:early|mid|late|end of)\\s+(?:${MONTH})\\b`, "gi"),
+	new RegExp(`\\b\\d{1,2}\\s+(?:${MONTH})\\b`, "gi"),
+	new RegExp(`\\b(?:${MONTH})\\.?\\s+\\d{1,2}\\b`, "gi"),
+	// "in December", "from March" (#243), after the forms that name a day or a part of the month.
+	new RegExp(`\\b(?:in|from)\\s+(?:${MONTH})\\b`, "gi"),
+	/(?:đầu|cuối|giữa)\s+tháng(?:\s+\d+)?/gi,
+	/tháng\s+(?:sau|\d+)/gi,
+	/tuần\s+sau/gi,
+	/ngày\s+\d{1,2}/gi,
+	/이번\s*(?:주|달|금요일)|다음\s*(?:주|달)/g,
+	/今週|来週|来月|今月/g,
+	/на этой неделе|в следующем месяце/gi,
+];
+
+/**
+ * A word for viewing a place (#243): a day beside it is when the guest wants to look, not when
+ * they move in. Plain substrings for the non-Latin words, as `\b` is ASCII-only. "보다" is also
+ * Korean for "than" (a pre-MVP edge case, left).
+ */
+const VIEWING_RE =
+	/\b(?:view(?:ing|s)?|visit(?:ing)?|tour|visite[rz]?)\b|(?<!\p{L})xem(?!\p{L})|посмотр|просмотр|보다|보러|구경|見学|内見|内覧/iu;
+
+/** A clause ends at the guest's punctuation or at a new message (they are joined by "\n"). */
+const CLAUSE_BREAK = /[,.;!?\n。、，！？]/;
+
+/** The clause around a match: from the last break before it to the next one after it. */
+function clauseAround(text: string, index: number, length: number): string {
+	let start = index;
+	while (start > 0 && !CLAUSE_BREAK.test(text[start - 1] ?? "")) start--;
+	let end = index + length;
+	while (end < text.length && !CLAUSE_BREAK.test(text[end] ?? "")) end++;
+	return text.slice(start, end);
+}
+
+/**
+ * The move-in, as the guest wrote it: the first match, in pattern order, whose clause names no
+ * viewing. "Is a viewing possible this Saturday?" and "на этой неделе хотим посмотреть" are
+ * when the guest wants to look; the next match, or the next pattern, is read instead (#243).
+ */
 function inferTimeframe(text: string): string | null {
-	const patterns = [
-		/\b(?:this|next)\s+(?:mon(?:day)?|tues(?:day)?|wed(?:nesday)?|thu(?:rs(?:day)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i,
-		/\b(?:this|next)\s+(?:week|month|weekend)\b/i,
-		/\b(?:today|tomorrow|tonight)\b/i,
-		/\bin\s+\d+\s+(?:days?|weeks?|months?)\b/i,
-		/\b(?:early|mid|late|end of)\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/i,
-		/\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/i,
-		/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b/i,
-		/(?:đầu|cuối|giữa)\s+tháng(?:\s+\d+)?/i,
-		/tháng\s+(?:sau|\d+)/i,
-		/tuần\s+sau/i,
-		/ngày\s+\d{1,2}/i,
-		/이번\s*(?:주|달|금요일)|다음\s*(?:주|달)/,
-		/今週|来週|来月|今月/,
-		/на этой неделе|в следующем месяце/,
-	];
-	for (const re of patterns) {
-		const match = text.match(re);
-		if (match) return match[0].replace(/\s+/g, " ").trim();
+	for (const re of MOVE_IN_PATTERNS) {
+		for (const match of text.matchAll(re)) {
+			if (VIEWING_RE.test(clauseAround(text, match.index, match[0].length))) continue;
+			return match[0].replace(/\s+/g, " ").trim();
+		}
 	}
 	return null;
 }
 
+/** An amount ends on a digit, so "budget $3500." keeps no full stop (#243). */
+const AMOUNT = "[0-9](?:[0-9,.]*[0-9])?";
+
+const BUDGET_RE = new RegExp(
+	`(?:\\$|usd|us\\$)\\s*(${AMOUNT})(?:\\s*\\/\\s*(month|mo|tháng))?|(${AMOUNT})\\s*(usd|dollars|\\$|triệu|trieu|tỷ|ty|million)(?:\\s*\\/\\s*(month|mo|tháng))?`,
+	"i",
+);
+
 function inferBudget(text: string): string | null {
-	const match = text.match(
-		/(?:\$|usd|us\$)\s*([0-9][0-9,.]*)(?:\s*\/\s*(month|mo|tháng))?|([0-9][0-9,.]*)\s*(usd|dollars|\$|triệu|trieu|tỷ|ty|million)(?:\s*\/\s*(month|mo|tháng))?/i,
-	);
+	const match = text.match(BUDGET_RE);
 	if (!match) return null;
 	return match[0].replace(/\s+/g, " ").trim();
 }

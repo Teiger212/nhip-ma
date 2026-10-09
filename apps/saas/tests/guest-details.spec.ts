@@ -32,6 +32,16 @@ const MISSING_COUNT = /\d+[  ]*(?:missing|trường còn thiếu)(?![  ]*:)/i;
 const ASKS_BUDGET_AND_MOVE_IN = "I want to rent a 2 bedroom in Tay Ho.";
 
 /**
+ * Guest details 4: a Russian guest's move-in and budget, as an English office reads them (the
+ * scenario's own words). The values are terms' values, as the Missing row's is.
+ */
+const RUSSIAN_GUEST = "3 bedroom, на этой неделе, бюджет $2000/month";
+const IN_ENGLISH = [
+	{ term: "Move-in", value: "This week" },
+	{ term: "Budget", value: "$2,000 / month" },
+] as const;
+
+/**
  * A wide thread pane, where the guest's details sit in a rail beside the conversation, and a
  * narrow one (the sidebar open), where they fold into a strip under the header (Thread layout 1
  * and 2).
@@ -210,6 +220,32 @@ test.describe("Guest details 1 — the details name what to ask for", () => {
 				await page.setViewportSize(size);
 				await expectMissingRow(check, page, pane);
 				await expectNothingOpens(check, page, pane);
+			});
+		}
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Guest details 4
+test.describe("Guest details 4 — an English office reads a Russian guest's details in English", () => {
+	test(`a guest who wrote "${RUSSIAN_GUEST}": the details read Move-in "This week" and Budget "$2,000 / month"`, async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const { page } = manager;
+		const check = expect.configure({ soft: true });
+
+		const guest = office.newGuest();
+		await guest.write(RUSSIAN_GUEST);
+		const threadId = await threadIdOf(manager.api, guest.id);
+
+		await page.setViewportSize(PANES[0].size);
+		await openThreadByLink(page, threadId, RUSSIAN_GUEST);
+
+		for (const { term: label, value } of IN_ENGLISH) {
+			const row = term(page, label);
+			await check(row, `a "${label}" row`).toHaveCount(1, WITHIN_A_POLL);
+			await check(valueOf(row), `the "${label}" row reads "${value}"`).toHaveText(value, {
+				useInnerText: true,
 			});
 		}
 	});
