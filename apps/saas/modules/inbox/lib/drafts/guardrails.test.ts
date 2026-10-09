@@ -84,6 +84,22 @@ describe("the first draft eval's drafts", () => {
 		).toBe(true);
 	});
 
+	test("the medium-reasoning run: a bare day as the topic, and “… hay chưa”, are the matter deferred", () => {
+		for (const draft of [
+			"Hello Mikhail! I'll check with the owners whether utilities are included in the rent and let you know right away. For Saturday, I'll confirm the viewing availability and send you the time as soon as it's settled.",
+			"Dạ anh Khánh, em sẽ gửi ảnh studio cho anh ngay. Về việc 9,5 triệu đã gồm phí dịch vụ hay chưa, em sẽ kiểm tra lại với chủ nhà và xác nhận cho anh sớm nhé.",
+		]) {
+			expect(checkFollowUp(draft, ["9,5 triệu"]), draft).toBe(draft);
+		}
+		for (const draft of [
+			"For Saturday it's fine for the viewing, I'll confirm the time.",
+			"Về lịch xem thì thứ bảy 10 giờ anh qua xem được, em sẽ báo lại chủ nhà.",
+			"Về việc căn này còn trống hay chưa thì còn trống ạ, em sẽ xác nhận lại.",
+		]) {
+			expect(checkFollowUp(draft, ["10 giờ"]), draft).toBeNull();
+		}
+	});
+
 	test("Mikhail: checking Saturday and offering another day defers the viewing day", () => {
 		const thread = [
 			guestSays(

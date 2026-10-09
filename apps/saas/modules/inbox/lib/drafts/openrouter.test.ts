@@ -112,7 +112,7 @@ test("a key with no model ids drafts and translates with the defaults in code", 
 	expect(calls.every((call) => call.body.provider !== undefined)).toBe(true);
 });
 
-test("Gemini 3.x thinks at its lowest level and Haiku doesn't think, since thinking bills as output and eats max_tokens (#289)", async () => {
+test("Gemini 3.x thinks at its lowest level; Haiku drafts at medium and translates without thinking (#289)", async () => {
 	vi.spyOn(console, "info").mockImplementation(() => {});
 	const calls = stubFetch(() => completion("ok"));
 	const layer = layerFor({
@@ -127,10 +127,14 @@ test("Gemini 3.x thinks at its lowest level and Haiku doesn't think, since think
 	// Another vendor's model keeps its own defaults.
 	expect(calls[1].body).not.toHaveProperty("reasoning");
 
+	// Haiku drafts at its default medium effort and translates without reasoning (#289).
 	const haiku = layerFor({ DRAFT_API_KEY: "sk-test" });
 	await haiku.draft(DRAFT_INPUT);
+	await haiku.translate(TRANSLATE_INPUT);
 	expect(calls[2].body.model).toBe("anthropic/claude-haiku-5.5");
-	expect(calls[2].body.reasoning).toEqual({ enabled: false });
+	expect(calls[2].body.reasoning).toEqual({ effort: "medium", exclude: true });
+	expect(calls[3].body.model).toBe("anthropic/claude-haiku-5.5");
+	expect(calls[3].body.reasoning).toEqual({ enabled: false });
 });
 
 test("translate speaks the chat-completions protocol and frames guest text as data", async () => {
@@ -170,7 +174,7 @@ test("draft sends the facts and the transcript with its own output budget", asyn
 	const layer = layerFor({ DRAFT_API_KEY: "sk-test" });
 	expect(await layer.draft(DRAFT_INPUT)).toBe(answer);
 	const [call] = calls;
-	expect(call.body.max_tokens).toBe(1500);
+	expect(call.body.max_tokens).toBe(2000);
 	const messages = call.body.messages as Array<{ role: string; content: string }>;
 	expect(messages[0].content).toMatch(/reply in Korean, the guest's language/);
 	expect(messages[0].content).toMatch(/same reply in Vietnamese/);

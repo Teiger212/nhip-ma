@@ -133,9 +133,11 @@ greeting. Related: #242, #245, #246, #83.
 ### Models
 
 - **Drafting: Haiku 5.5** (`anthropic/claude-haiku-5.5`, $0.10 in and $0.50 out per 1M tokens
-  on OpenRouter). It has ZDR endpoints. Its reasoning is off (`reasoning: { enabled: false }`):
-  reasoning bills as output and counts against `max_tokens`, and at its default medium effort
-  it used a draft's whole 768 tokens in the first eval. A draft may use 1,500 (#289).
+  on OpenRouter). It has ZDR endpoints. It drafts at its default medium reasoning effort
+  (`reasoning: { effort: "medium" }`), decided by Eyal on 2026-10-09 (#289): with reasoning off,
+  drafts confirmed more viewing days. Reasoning counts against `max_tokens`, and at 768 it used a
+  draft's whole budget in the first eval, so a draft may use 2,000. A translation runs with
+  reasoning off (`reasoning: { enabled: false }`).
 - **Translation: decided by an eval.** All 62 seed pairs in VI, JA, KO and RU compare Haiku 5.5
   with Gemini 3.1 Flash-Lite (`google/gemini-3.1-flash-lite`, $0.25 in and $1.50 out). The
   seed holds 41 such guest messages; JA, KO and RU go into both EN and VI. Eyal reads them

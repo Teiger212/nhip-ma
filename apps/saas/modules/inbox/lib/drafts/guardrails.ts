@@ -127,7 +127,7 @@ function defers(clause: string): boolean {
  * asserts nothing by itself.
  */
 const CONDITION =
-	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|in case|(?:(?:as\s+)?for|about|regarding|on|as\s+to)?\s*whether)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|trường hợp)(?!\p{L})|(?:は|について|に関して|에 대해(?:서)?|관련(?:해서)?|[은는])$/iu;
+	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|in case|(?:(?:as\s+)?for|about|regarding|on|as\s+to)?\s*whether)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|trường hợp)(?!\p{L})|(?:は|について|に関して|에 대해(?:서)?|관련(?:해서)?|[은는])$|(?<!\p{L})hay\s+(?:chưa|không)(?:\s+(?:ạ|nhé))?$/iu;
 
 /** The matter a clause is about ("for the pink book", "regarding the fee", "về sổ hồng…"). */
 const TOPIC =
@@ -162,7 +162,7 @@ function clauses(sentence: string, viewing: boolean): Clause[] {
 		const setsUp =
 			!defers(part) &&
 			((CONDITION.test(part) && !conditionStates(part, viewing)) ||
-				(TOPIC.test(part) && !statesAnswer({ text: part, main: part }, viewing)));
+				(TOPIC.test(part) && !topicStates(part, viewing)));
 		if (setsUp) {
 			pending.push(part);
 			continue;
@@ -201,7 +201,22 @@ function conditionStates(part: string, viewing: boolean): boolean {
 	return AVAILABILITY.test(part) || LEGAL_ANSWER.test(part);
 }
 
-const INDIRECT_QUESTION = /\bwhether\b|^(?:(?:và|nhưng)\s+)?liệu(?!\p{L})/iu;
+/**
+ * Whether a topic states an answer by itself. A bare day is the matter ("For Saturday, I'll
+ * confirm the viewing time"); a day that something asserts or settles ("About Saturday it's
+ * fine", "về lịch thì thứ Bảy được") is the answer.
+ */
+function topicStates(part: string, viewing: boolean): boolean {
+	if (statesAnswer({ text: part, main: part }, false)) return true;
+	return viewing && DAY_OR_TIME.test(part) && (ASSERTS.test(part) || SETTLES.test(part));
+}
+
+/** What settles a day: "works", "booked", "được", "chốt". */
+const SETTLES =
+	/\b(?:works?|ok|okay|good|fine|great|booked|suits?|set|on)\b|(?<!\p{L})(?:được|nhé|ổn|chốt|hẹn)(?!\p{L})/iu;
+
+const INDIRECT_QUESTION =
+	/\bwhether\b|^(?:(?:và|nhưng)\s+)?liệu(?!\p{L})|(?<!\p{L})hay\s+(?:chưa|không)(?:\s+(?:ạ|nhé))?$/iu;
 
 /** A verdict: the answer itself ("it definitely is", "that's correct", "chắc chắn rồi"). */
 const VERDICT =
