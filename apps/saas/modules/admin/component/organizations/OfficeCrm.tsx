@@ -87,9 +87,14 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 	const setting = crm.data;
 	const shown: Kind = pending ?? setting?.kind ?? null;
 	const takesToken = (kind: Kind) => kind !== null && (setting?.tokenKinds.includes(kind) ?? false);
-	const items = [
+	const items: { value: string; label: string; description?: string }[] = [
 		{ value: NONE, label: t("none") },
-		...(setting?.kinds ?? []).map((kind) => ({ value: kind, label: t(kind) })),
+		...(setting?.kinds ?? []).map((kind) => ({
+			value: kind,
+			label: t(kind),
+			// The mock is for development and demos only (PRODUCT.md, Integrations).
+			description: kind === "mock" ? t("mockHint") : undefined,
+		})),
 	];
 
 	const choose = (value: string | null) => {
@@ -111,6 +116,12 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 		save.mutate({ kind });
 	};
 
+	/** Back to the office's saved CRM: the picked one was never saved. */
+	const cancelPending = () => {
+		setPending(null);
+		tokenForm.reset({ token: "" });
+	};
+
 	// The field is checked on Save, so an empty one asks for the token and saves nothing.
 	const saveToken = tokenForm.handleSubmit(({ token }) => {
 		if (shown) save.mutate({ kind: shown, token });
@@ -118,7 +129,8 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 
 	return (
 		<div className="gap-3 grid grid-cols-1" data-test="connection-crm">
-			<div className="gap-3 flex items-start justify-between">
+			{/* Label over control on a phone, side by side from `sm`. */}
+			<div className="gap-3 sm:flex-row sm:items-start sm:justify-between flex flex-col">
 				<div className="min-w-0">
 					<p className="font-medium">{t("label")}</p>
 					<p className="mt-1 text-sm text-muted-foreground">{t("hint")}</p>
@@ -129,12 +141,16 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 					disabled={!crm.isSuccess || save.isPending}
 					onValueChange={choose}
 				>
-					<SelectTrigger className="w-56 shrink-0" aria-label={t("label")} data-test="crm-kind">
+					<SelectTrigger
+						className="sm:w-56 w-full shrink-0"
+						aria-label={t("label")}
+						data-test="crm-kind"
+					>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
 						{items.map((item) => (
-							<SelectItem key={item.value} value={item.value}>
+							<SelectItem key={item.value} value={item.value} description={item.description}>
 								{item.label}
 							</SelectItem>
 						))}
@@ -161,7 +177,7 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 												data-test="crm-token"
 											/>
 										</FormControl>
-										<Button type="submit" size="sm" className="shrink-0" loading={save.isPending}>
+										<Button type="submit" className="shrink-0" loading={save.isPending}>
 											{t("save")}
 										</Button>
 									</div>
@@ -173,6 +189,24 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 						{!tokenForm.formState.errors.token && !pending && setting?.tokenSet && (
 							<p className="text-sm text-muted-foreground">{t("tokenSet")}</p>
 						)}
+						{/* A CRM picked here is not the office's until its token is saved: say so, and
+						    offer the way back (#94). */}
+						{pending ? (
+							<div className="gap-3 flex flex-wrap items-center justify-between">
+								<p className="text-sm text-muted-foreground" data-test="crm-pending">
+									{t("pending")}
+								</p>
+								<Button
+									type="button"
+									variant="ghost"
+									className="shrink-0"
+									disabled={save.isPending}
+									onClick={cancelPending}
+								>
+									{t("cancel")}
+								</Button>
+							</div>
+						) : null}
 					</form>
 				</Form>
 			)}

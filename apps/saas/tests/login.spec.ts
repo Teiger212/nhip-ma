@@ -11,7 +11,6 @@ test.describe("ADR 0010 / PRODUCT.md — login offers sign-in only, in EN and VI
 		await login.goto("en");
 
 		await expect(login.email).toBeVisible();
-		await login.switchMode("password");
 		await expect(login.password).toBeVisible();
 		await expect(login.submit).toHaveText("Sign in");
 		await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();

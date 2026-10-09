@@ -109,6 +109,9 @@ test("an Unassigned lead given to agent 1: one sounding `assigned` alert, pushed
 	expect(rows[0].link?.endsWith(alert.link)).toBe(true);
 	expect(JSON.stringify(rows[0].data)).not.toContain("Minji");
 	expect(JSON.stringify(rows[0].data)).not.toContain(conversation.id);
+	// The row can say "Zalo · Korean" (#94): the pipe and the language's code, nothing more; here
+	// no one-shot has named the language yet.
+	expect(rows[0].data).toEqual({ pipe: conversation.pipe, language: null });
 	expect(await bell("THREAD_MOVED")).toEqual([]);
 	expect(sendEmail).not.toHaveBeenCalled();
 });

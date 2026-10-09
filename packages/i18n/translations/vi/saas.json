@@ -132,7 +132,7 @@
 				"label": "CRM",
 				"hint": "Khách mới được tạo thành khách hàng tiềm năng trong CRM của văn phòng này.",
 				"none": "Không có",
-				"mock": "CRM mô phỏng (phát triển và demo)",
+				"mock": "CRM mô phỏng",
 				"saved": "Đã lưu CRM.",
 				"failed": "Không lưu được CRM. Hãy thử lại.",
 				"hubspot": "HubSpot",
@@ -140,7 +140,10 @@
 				"tokenHint": "Lấy từ ứng dụng Nhịp trong tài khoản HubSpot của văn phòng: Distribution, Show.",
 				"save": "Lưu",
 				"tokenSet": "Đã lưu mã. Mã sẽ không bao giờ được hiển thị lại.",
-				"tokenRequired": "Nhập mã truy cập HubSpot."
+				"tokenRequired": "Nhập mã truy cập HubSpot.",
+				"mockHint": "Chỉ dùng để phát triển và demo",
+				"pending": "Chưa lưu cho đến khi lưu mã.",
+				"cancel": "Hủy"
 			}
 		},
 		"webhooks": {
@@ -202,7 +205,8 @@
 				"message": "Chưa gửi được trả lời trên kênh này cho đến khi bạn kết nối lại, cùng chủ tài khoản, trong mục Kết nối của văn phòng. Tin nhắn của khách vẫn đến."
 			},
 			"threadAssigned": {
-				"title": "Một quản lý đã giao cho bạn một cuộc trò chuyện"
+				"title": "Bạn được giao một cuộc trò chuyện",
+				"grouped": "Bạn được giao {count} cuộc trò chuyện"
 			},
 			"threadMoved": {
 				"title": "{name} đã được chuyển cho nhân viên khác",
@@ -275,8 +279,8 @@
 				"password": "Mật khẩu"
 			},
 			"submit": "Đăng nhập",
-			"subtitle": "Nhập thông tin của bạn để đăng nhập.",
-			"title": "Chào mừng bạn trở lại",
+			"subtitle": "Trả lời mọi khách bằng chính ngôn ngữ của họ.",
+			"title": "Đăng nhập vào Nhịp",
 			"sendMagicLink": "Gửi liên kết đăng nhập"
 		},
 		"resetPassword": {
@@ -568,12 +572,12 @@
 				"title": "Ngôn ngữ của bạn"
 			},
 			"nameGuestsSee": {
-				"title": "Tên hiển thị với khách",
+				"title": "Tên hiển thị",
 				"description": "Gợi ý trả lời giới thiệu bạn với khách bằng tên này. Để trống thì chỉ giới thiệu văn phòng.",
 				"placeholder": "Linh",
 				"notifications": {
-					"error": "Không cập nhật được tên hiển thị với khách",
-					"success": "Đã cập nhật tên hiển thị với khách"
+					"error": "Không cập nhật được tên hiển thị",
+					"success": "Đã cập nhật tên hiển thị"
 				}
 			},
 			"security": {
@@ -869,6 +873,11 @@
 			"from5to15m": "5–15 phút",
 			"from15to60m": "15–60 phút",
 			"over60m": "Trên 1 giờ"
+		},
+		"units": {
+			"day": "ngày",
+			"hour": "giờ",
+			"minute": "phút"
 		}
 	},
 	"inbox": {
@@ -876,24 +885,24 @@
 		"navItem": "Hộp thư",
 		"navReports": "Báo cáo",
 		"navPaperwork": "Giấy tờ",
-		"footer": "Khách thấy số của môi giới. Không bao giờ gửi tự động.",
+		"footer": "Khách chỉ thấy số của văn phòng. Sau lời chào, mọi tin trả lời đều do bạn duyệt.",
 		"yes": "Có",
 		"no": "Không",
 		"searchPlaceholder": "Tìm tên hoặc tin nhắn gần nhất",
-		"searchAria": "Tìm cuộc hội thoại",
-		"empty": "Không có cuộc hội thoại.",
-		"loading": "Đang tải cuộc hội thoại…",
-		"loadError": "Không tải được cuộc hội thoại.",
+		"searchAria": "Tìm cuộc trò chuyện",
+		"empty": "Không có cuộc trò chuyện nào.",
+		"loading": "Đang tải cuộc trò chuyện…",
+		"loadError": "Không tải được cuộc trò chuyện.",
 		"retry": "Thử lại",
-		"noMatches": "Không có cuộc hội thoại phù hợp.",
-		"noneSelected": "Chưa chọn cuộc hội thoại.",
-		"threadNotFound": "Không có cuộc hội thoại này. Có thể liên kết đã cũ, hoặc cuộc hội thoại đã được chuyển hay đã bị xóa.",
+		"noMatches": "Không có cuộc trò chuyện phù hợp.",
+		"noneSelected": "Chưa chọn cuộc trò chuyện.",
+		"threadNotFound": "Không có cuộc trò chuyện này. Có thể liên kết đã cũ, hoặc cuộc trò chuyện đã được chuyển hay đã bị xóa.",
 		"sent": "Đã gửi",
 		"yourTurn": "Đến lượt bạn",
 		"waiting": "Đang chờ",
-		"quiet": "Đã lắng ({count})",
+		"quiet": "Lâu chưa nhắn ({count})",
 		"quietHint": "Khách nhắn lần cuối hơn 48 giờ trước. Vẫn đến lượt bạn.",
-		"onlyQuiet": "Không có gì mới. Các cuộc đã lắng bên dưới vẫn đến lượt bạn.",
+		"onlyQuiet": "Không có gì mới. Các cuộc trò chuyện lâu chưa nhắn bên dưới vẫn đến lượt bạn.",
 		"translation": "Bản dịch",
 		"translationIn": "Bản dịch · {language}",
 		"noTranslation": "Chưa hỗ trợ {language}: không dịch",
@@ -920,7 +929,7 @@
 		"sending": "Đang gửi…",
 		"language": "Ngôn ngữ",
 		"back": "Quay lại",
-		"backAria": "Quay lại danh sách hội thoại",
+		"backAria": "Quay lại danh sách cuộc trò chuyện",
 		"missingLabel": "Còn thiếu",
 		"pipes": {
 			"zalo": "Zalo",
@@ -950,8 +959,8 @@
 		},
 		"paperworkFlag": "Khách có nhắc giấy tờ hoặc sở hữu. Không bịa luật Việt Nam. Không hứa sổ hồng.",
 		"crib": {
-			"noteUnsupported": "bằng tiếng Anh · chưa hỗ trợ {language} · đừng hỏi thêm kiểu phỏng vấn",
-			"note": "bằng {language} · đừng hỏi thêm kiểu phỏng vấn"
+			"noteUnsupported": "bằng tiếng Anh · chưa hỗ trợ {language} · đừng hỏi dồn",
+			"note": "bằng {language} · đừng hỏi dồn"
 		},
 		"details": {
 			"title": "Thông tin khách",
@@ -1032,7 +1041,7 @@
 			}
 		},
 		"views": {
-			"aria": "Lọc cuộc hội thoại",
+			"aria": "Lọc cuộc trò chuyện",
 			"unassigned": "Chưa giao",
 			"yourTurn": "Đến lượt bạn",
 			"waiting": "Đang chờ",
@@ -1046,7 +1055,7 @@
 			"waitingOn": "{count} khách đang chờ {name}",
 			"unassigned": "{count} khách chưa giao",
 			"sent": "{count} đã gửi",
-			"all": "{count} cuộc hội thoại"
+			"all": "{count} cuộc trò chuyện"
 		},
 		"allCaughtUp": "Đã xử lý hết.",
 		"allAssigned": "Mọi khách đã được giao.",
@@ -1063,7 +1072,8 @@
 			"assigned": "Đã giao cho {name}",
 			"failed": "Không chuyển được cuộc trò chuyện. Hãy thử lại.",
 			"filter": "Hiển thị",
-			"all": "Tất cả cuộc trò chuyện"
+			"all": "Tất cả",
+			"unassignedNote": "Khách mới chờ ở đây cho đến khi bạn giao."
 		},
 		"emptyAssigned": "Chưa có khách nào được giao cho bạn.",
 		"source": {
@@ -1132,6 +1142,8 @@
 				"add": "Chọn Thêm vào MH chính.",
 				"open": "Mở Nhịp từ Màn hình chính và bật cảnh báo."
 			}
-		}
+		},
+		"answered": "Đã trả lời · Đã gửi {at} · đang chờ khách",
+		"answeredNoTime": "Đã trả lời · đang chờ khách"
 	}
 }

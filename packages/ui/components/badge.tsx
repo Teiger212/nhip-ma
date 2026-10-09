@@ -14,6 +14,19 @@ export const badge = cva(["inline-flex", "items-center", "leading-none", "whites
 			md: ["h-5", "rounded-md", "px-2", "text-micro", "font-medium"],
 			/** Inline beside a message's meta line: squared (status isn't a pill), sentence case. */
 			sm: ["h-4", "rounded-md", "px-1.5", "text-2xs", "font-medium"],
+			/**
+			 * A count pinned to an icon's corner (the collapsed sidebar's Inbox count, #94): 16px tall,
+			 * the 11px floor of the type ramp, as narrow as its digits allow.
+			 */
+			corner: [
+				"h-4",
+				"min-w-4",
+				"justify-center",
+				"rounded-md",
+				"px-1",
+				"text-micro",
+				"font-medium",
+			],
 		},
 		/** A count: digits in mono with tabular figures (DESIGN.md: mono is for digits). */
 		numeric: {

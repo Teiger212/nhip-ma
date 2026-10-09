@@ -26,9 +26,9 @@ test("loaded en and vi saas messages include inbox.crib.note", async () => {
 	expect(enMessages.inbox.guestLanguage.vi).toBe("Vietnamese");
 	expect(viMessages.inbox.guestLanguage.vi).toBe("tiếng Việt");
 	expect(enMessages.inbox.loading).toBe("Loading conversations…");
-	expect(viMessages.inbox.loading).toBe("Đang tải cuộc hội thoại…");
+	expect(viMessages.inbox.loading).toBe("Đang tải cuộc trò chuyện…");
 	expect(enMessages.inbox.loadError).toBe("Could not load conversations.");
-	expect(viMessages.inbox.loadError).toBe("Không tải được cuộc hội thoại.");
+	expect(viMessages.inbox.loadError).toBe("Không tải được cuộc trò chuyện.");
 	expect(enMessages.inbox.retry).toBe("Try again");
 	expect(viMessages.inbox.retry).toBe("Thử lại");
 	expect(enMessages.inbox.back).toBe("Back");
@@ -88,7 +88,7 @@ test("English UI note names the reply's language and the no-interview rule, not 
 
 test("Vietnamese UI note uses the Vietnamese wording for the same thread", () => {
 	const note = formatCribNote({ language: "vi" }, vi);
-	expect(note).toBe("bằng tiếng Việt · đừng hỏi thêm kiểu phỏng vấn");
+	expect(note).toBe("bằng tiếng Việt · đừng hỏi dồn");
 	expect(note).not.toMatch(/Draft|inbound|interviewer|field/i);
 	expect(note).not.toMatch(/Tây Hồ|30 triệu|thuê/);
 });

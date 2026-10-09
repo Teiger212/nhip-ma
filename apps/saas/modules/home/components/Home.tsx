@@ -1,6 +1,7 @@
-import { durationParts } from "@home/lib/duration";
+import { type DurationUnits, durationParts, formatDuration } from "@home/lib/duration";
 import { FUNNEL_WINDOW_DAYS, loadHomeFunnel } from "@home/lib/funnel";
 import { OFFICE_TIME_ZONE } from "@home/lib/window";
+import { formatDateTime } from "@inbox/lib/time";
 import type { CrmOutcomeCounts, Funnel } from "@repo/database/inbox";
 import { Card, cn } from "@repo/ui";
 import { PageHeader } from "@shared/components/PageHeader";
@@ -131,23 +132,32 @@ function FunnelStrip({
 	);
 }
 
-function ResponseTime({ funnel, locale, t }: { funnel: Funnel; locale: string; t: Translate }) {
+/** The units a duration is spelled in, from the interface language's copy. */
+function unitsOf(t: Translate): DurationUnits {
+	return { day: t("units.day"), hour: t("units.hour"), minute: t("units.minute") };
+}
+
+function ResponseTime({ funnel, t }: { funnel: Funnel; t: Translate }) {
 	const time = funnel.responseTime;
+	const units = unitsOf(t);
 	const answered = time?.answered ?? 0;
 	return (
 		<Card aria-labelledby="home-response-time" className="md:grid-cols-3 grid overflow-hidden">
 			<div className="gap-3 p-4 md:p-5 md:border-r md:border-b-0 flex flex-col border-b">
-				<h3 id="home-response-time" className="text-xs font-medium text-muted-foreground">
+				<h3
+					id="home-response-time"
+					className="font-semibold text-sm md:text-base tracking-tight font-heading"
+				>
 					{t("responseTime")}
 				</h3>
 				{time ? (
 					<>
 						<div className="gap-2 mt-3 flex items-baseline">
-							<Figure parts={durationParts(time.medianMs, locale)} />
+							<Figure parts={durationParts(time.medianMs, units)} />
 							<span className="text-sm text-muted-foreground">{t("median")}</span>
 						</div>
 						<p className="text-sm text-muted-foreground">
-							{t("p90", { value: formatParts(time.p90Ms, locale) })}
+							{t("p90", { value: formatDuration(time.p90Ms, units) })}
 							<span aria-hidden="true"> · </span>
 							{t("answered", { count: time.answered })}
 						</p>
@@ -221,29 +231,16 @@ export async function Home() {
 							<WaitingNow />
 						</div>
 					</div>
-					<ResponseTime funnel={funnel} locale={locale} t={t} />
+					<ResponseTime funnel={funnel} t={t} />
 				</div>
 			) : null}
 		</div>
 	);
 }
 
-function formatParts(ms: number, locale: string): string {
-	return durationParts(ms, locale)
-		.map((part) => part.value)
-		.join("");
-}
-
-/** When Nhịp last heard from the CRM, in the office's time zone: "Oct 7, 14:32". */
+/** When Nhịp last heard from the CRM, on the office's clock: "Oct 7, 2:32 PM", "14:32 7 thg 10". */
 function formatAsOf(at: string, locale: string): string {
-	return new Intl.DateTimeFormat(locale, {
-		timeZone: OFFICE_TIME_ZONE,
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		hourCycle: "h23",
-	}).format(new Date(at));
+	return formatDateTime(at, locale, { timeZone: OFFICE_TIME_ZONE });
 }
 
 function percent(part: number, whole: number): number {

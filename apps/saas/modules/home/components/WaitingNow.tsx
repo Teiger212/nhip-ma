@@ -2,11 +2,12 @@
 
 import { LocaleLink } from "@i18n/routing";
 import { GuestMark, ThreadListState } from "@inbox/components/ThreadParts";
-import { displayName } from "@inbox/lib/display-name";
+import { guestLabel } from "@inbox/lib/display-name";
 import { useConversations, useOfficeRole } from "@inbox/lib/inbox-queries";
 import { languageName } from "@inbox/lib/language-name";
 import { waitingNow } from "@inbox/lib/queue";
 import { Badge, Button, Card, Skeleton } from "@repo/ui";
+import { useHydrated } from "@shared/hooks/use-hydrated";
 import { useLocale, useTranslations } from "next-intl";
 
 import { formatDuration } from "../lib/duration";
@@ -30,7 +31,10 @@ export function WaitingNow() {
 	const waiting = waitingNow(query.data ?? [], { manager: role === "manager" });
 	const shown = waiting.slice(0, SHOWN);
 	const more = waiting.length - shown.length;
+	// The clock is read once hydrated: the server's "now" is not the browser's (`useHydrated`).
+	const hydrated = useHydrated();
 	const now = Date.now();
+	const units = { day: t("units.day"), hour: t("units.hour"), minute: t("units.minute") };
 
 	return (
 		<Card className="min-w-0 flex flex-col" aria-labelledby="home-waiting-now">
@@ -77,17 +81,19 @@ export function WaitingNow() {
 			) : (
 				<ul data-test="waiting-now" className="gap-0.5 px-2 pt-2 flex flex-col">
 					{shown.map((conversation) => {
-						const name = displayName(conversation);
+						const label = guestLabel(conversation);
+						const name = label.text;
 						const language = conversation.guestLanguage;
 						const since = conversation.lastGuestInboundAt;
-						const waited = since ? formatDuration(now - new Date(since).getTime(), locale) : null;
+						const waited =
+							since && hydrated ? formatDuration(now - new Date(since).getTime(), units) : null;
 						return (
 							<li key={conversation.id}>
 								<LocaleLink
 									href={`/inbox?thread=${encodeURIComponent(conversation.id)}`}
 									className="gap-2.5 px-3 py-2.5 min-h-14 ease-out flex items-center rounded-xl transition-colors duration-200 hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-reduce:transition-none"
 								>
-									<GuestMark name={name} />
+									<GuestMark name={name} phone={label.phone} />
 									<span className="min-w-0 flex-1">
 										<span className="font-semibold text-sm tracking-tight font-heading block truncate">
 											{name}

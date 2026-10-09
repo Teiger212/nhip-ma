@@ -80,11 +80,16 @@ const SelectLabel = ({
 	/>
 );
 
+/**
+ * An option of the list. `description` is a quiet second line under its label, for the list
+ * only: the trigger shows the label alone, and the option's name stays its label (#94).
+ */
 const SelectItem = ({
 	className,
 	children,
+	description,
 	...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) => (
+}: React.ComponentProps<typeof SelectPrimitive.Item> & { description?: React.ReactNode }) => (
 	<SelectPrimitive.Item
 		className={cn(
 			"py-1.5 pr-8 pl-2 text-sm relative flex w-full cursor-default items-center rounded-md outline-hidden select-none focus:bg-accent focus:text-accent-foreground aria-disabled:pointer-events-none aria-disabled:opacity-50",
@@ -97,7 +102,16 @@ const SelectItem = ({
 				<CheckIcon className="size-4" />
 			</SelectPrimitive.ItemIndicator>
 		</span>
-		<SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+		{description ? (
+			<span className="gap-0.5 min-w-0 flex flex-col">
+				<SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+				<span aria-hidden="true" className="text-xs text-muted-foreground">
+					{description}
+				</span>
+			</span>
+		) : (
+			<SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+		)}
 	</SelectPrimitive.Item>
 );
 

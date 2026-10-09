@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, cn } from "@repo/ui";
+import { PhoneIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -15,8 +16,20 @@ export function useOperatorLanguage(): OperatorLanguage {
 	return useLocale() as OperatorLanguage;
 }
 
-/** The guest's initials; solid blue on the selected thread, which is how selection shows. */
-export function GuestMark({ name, selected = false }: { name: string; selected?: boolean }) {
+/**
+ * The guest's initials; solid blue on the selected thread, which is how selection shows. A guest
+ * known only by their WhatsApp number gets a phone glyph instead of the number's first digit
+ * (`guestLabel`, #94).
+ */
+export function GuestMark({
+	name,
+	phone = false,
+	selected = false,
+}: {
+	name: string;
+	phone?: boolean;
+	selected?: boolean;
+}) {
 	return (
 		<span
 			aria-hidden="true"
@@ -25,7 +38,7 @@ export function GuestMark({ name, selected = false }: { name: string; selected?:
 				selected ? "bg-primary text-primary-foreground" : "bg-touch/12 text-touch",
 			)}
 		>
-			{guestInitials(name)}
+			{phone ? <PhoneIcon className="size-3.5" strokeWidth={1.75} /> : guestInitials(name)}
 		</span>
 	);
 }
@@ -49,34 +62,49 @@ const STATUS_BADGE = {
  * thread header alike. A manager's chip reads "Your turn" only on a thread they own; on an
  * Unassigned thread or a colleague's it reads "Waiting", in the same amber (ADR 0022, 2026-10-06).
  * Only the chip changes: views and counts still go by the thread's status.
+ *
+ * An agent sees only their own threads (ADR 0022), so for them the owner would always say
+ * "Yours": they get no owner badge (#94). `parts` splits the set for the phone's thread, whose
+ * header keeps the turn and whose details strip takes the pipe and the owner (#94).
  */
 export function ThreadFlags({
 	conversation,
+	parts = "all",
 }: {
 	conversation: Pick<
 		ConversationSummary,
 		"pipe" | "owner" | "unansweredInboundId" | "crm" | "lastGuestInboundAt"
 	>;
+	parts?: "all" | "meta" | "turn";
 }) {
 	const t = useTranslations("inbox");
 	const status = threadStatus(conversation);
-	const { userId, role } = useOfficeRole();
+	const { userId, role, pending } = useOfficeRole();
 	const owner = conversation.owner;
 	const chip =
 		status === "yourTurn" && role === "manager" && owner?.id !== userId ? "waiting" : status;
+	const showOwner = pending || role === "manager";
 	return (
 		<>
-			<Badge status="neutral">{t(`pipes.${conversation.pipe}`)}</Badge>
-			<Badge
-				status="neutral"
-				data-test="thread-owner"
-				data-owner={!owner ? "unassigned" : owner.id === userId ? "mine" : "other"}
-			>
-				{!owner ? t("owner.unassigned") : owner.id === userId ? t("owner.mine") : owner.name}
-			</Badge>
-			<Badge status={STATUS_BADGE[chip]} data-test="thread-status" data-status={chip}>
-				{isDecided(status) ? t(`crm.${status}`) : t(chip)}
-			</Badge>
+			{parts === "turn" ? null : (
+				<>
+					<Badge status="neutral">{t(`pipes.${conversation.pipe}`)}</Badge>
+					{showOwner ? (
+						<Badge
+							status="neutral"
+							data-test="thread-owner"
+							data-owner={!owner ? "unassigned" : owner.id === userId ? "mine" : "other"}
+						>
+							{!owner ? t("owner.unassigned") : owner.id === userId ? t("owner.mine") : owner.name}
+						</Badge>
+					) : null}
+				</>
+			)}
+			{parts === "meta" ? null : (
+				<Badge status={STATUS_BADGE[chip]} data-test="thread-status" data-status={chip}>
+					{isDecided(status) ? t(`crm.${status}`) : t(chip)}
+				</Badge>
+			)}
 		</>
 	);
 }

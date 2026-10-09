@@ -13,6 +13,7 @@ import { Button } from "@repo/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { useRouter } from "@shared/hooks/router";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { getSafeRedirectPath } from "@shared/lib/redirect";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -48,6 +49,10 @@ const formSchema = z.union([
 	}),
 ]);
 
+/** The login screen offers a magic link, or a passkey, only where KIT_SCREENS shows it (#94). */
+const offersMagicLink = KIT_SCREENS.magicLink && authConfig.enableMagicLink;
+const offersPasskey = KIT_SCREENS.passkeyLogin && authConfig.enablePasskeys;
+
 export function LoginForm() {
 	const t = useTranslations();
 	const { getAuthErrorMessage } = useAuthErrorMessages();
@@ -67,7 +72,7 @@ export function LoginForm() {
 		defaultValues: {
 			email: email ?? "",
 			password: "",
-			mode: authConfig.enablePasswordLogin ? "password" : "magic-link",
+			mode: authConfig.enablePasswordLogin || !offersMagicLink ? "password" : "magic-link",
 		},
 	});
 
@@ -154,7 +159,7 @@ export function LoginForm() {
 
 					<Form {...form}>
 						<form className="space-y-4" onSubmit={onSubmit}>
-							{authConfig.enableMagicLink && authConfig.enablePasswordLogin && (
+							{offersMagicLink && authConfig.enablePasswordLogin && (
 								<LoginModeSwitch
 									activeMode={signinMode}
 									onChange={(mode) => form.setValue("mode", mode as typeof signinMode)}
@@ -238,8 +243,7 @@ export function LoginForm() {
 						</form>
 					</Form>
 
-					{(authConfig.enablePasskeys ||
-						(authConfig.enableSignup && authConfig.enableSocialLogin)) && (
+					{(offersPasskey || (authConfig.enableSignup && authConfig.enableSocialLogin)) && (
 						<>
 							<div className="my-6 h-4 relative">
 								<hr className="top-2 relative" />
@@ -255,7 +259,7 @@ export function LoginForm() {
 										<SocialSigninButton key={providerId} provider={providerId as OAuthProvider} />
 									))}
 
-								{authConfig.enablePasskeys && (
+								{offersPasskey && (
 									<Button
 										variant="secondary"
 										className="sm:col-span-2 w-full"

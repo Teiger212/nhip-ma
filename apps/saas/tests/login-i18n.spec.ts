@@ -9,7 +9,6 @@ const en = loginCopy("en");
 
 /** Signs in by what each field says, in the page's language: the labels are the point here. */
 async function signInByLabels(page: Page, copy: LoginCopy) {
-	await page.getByRole("tab", { name: copy.modes.password }).click();
 	await page.getByLabel("Email", { exact: true }).fill(AGENT.email);
 	await page.getByLabel(copy.password, { exact: true }).fill(AGENT.password);
 	await page.getByRole("button", { name: copy.submit, exact: true }).click();

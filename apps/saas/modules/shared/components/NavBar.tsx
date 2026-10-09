@@ -152,15 +152,16 @@ function NavItemLink({
 					<Icon />
 					<span className={FADING_LABEL}>{label}</span>
 					{count ? (
-						/* Open, the count closes the row; in the strip it sits on the icon's corner, on a
-						   canvas backing so the badge's tint stays readable over the icon (#234). */
+						/* Open, the count closes the row. In the strip it is a compact count pinned to the
+						   icon's top-right corner, its right edge fixed on the strip, overlapping only that corner (#94), on a canvas backing
+						   so its tint stays readable over the icon (#234); past 99 it reads "99+". */
 						<span
 							data-test="nav-your-turn-count"
 							aria-label={countLabel}
-							className="group-data-[collapsible=icon]:top-0 group-data-[collapsible=icon]:-right-1 ml-auto flex shrink-0 group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:z-20 group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:bg-sidebar group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
+							className="group-data-[collapsible=icon]:-top-0.5 group-data-[collapsible=icon]:-right-3 ml-auto flex shrink-0 group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:z-20 group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:bg-sidebar group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
 						>
-							<Badge status="warning" numeric size={collapsed ? "sm" : "md"}>
-								{count}
+							<Badge status="warning" numeric size={collapsed ? "corner" : "md"}>
+								{collapsed && count > 99 ? "99+" : count}
 							</Badge>
 						</span>
 					) : null}

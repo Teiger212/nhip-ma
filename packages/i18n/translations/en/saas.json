@@ -132,7 +132,7 @@
 				"label": "CRM",
 				"hint": "New guests become leads in this office's CRM.",
 				"none": "None",
-				"mock": "Mock CRM (development and demo)",
+				"mock": "Mock CRM",
 				"saved": "CRM saved.",
 				"failed": "Could not save the CRM. Try again.",
 				"hubspot": "HubSpot",
@@ -140,7 +140,10 @@
 				"tokenHint": "From the Nhịp app in this office's HubSpot account: Distribution, Show.",
 				"save": "Save",
 				"tokenSet": "Token saved. It is never shown again.",
-				"tokenRequired": "Enter the HubSpot access token."
+				"tokenRequired": "Enter the HubSpot access token.",
+				"mockHint": "Development and demo only",
+				"pending": "Not saved until the token is saved.",
+				"cancel": "Cancel"
 			}
 		},
 		"webhooks": {
@@ -202,7 +205,8 @@
 				"message": "Replies on it are blocked until you reconnect it, with the owner present, in the office's Connections. Guests' messages still arrive."
 			},
 			"threadAssigned": {
-				"title": "A manager gave you a thread"
+				"title": "A manager gave you a thread",
+				"grouped": "{count} threads were assigned to you"
 			},
 			"threadMoved": {
 				"title": "{name} was moved to another agent",
@@ -275,8 +279,8 @@
 				"password": "Password"
 			},
 			"submit": "Sign in",
-			"subtitle": "Please enter your credentials to sign in.",
-			"title": "Welcome back",
+			"subtitle": "Answer every guest in their own language.",
+			"title": "Sign in to Nhịp",
 			"sendMagicLink": "Send magic link"
 		},
 		"resetPassword": {
@@ -568,12 +572,12 @@
 				"title": "Your language"
 			},
 			"nameGuestsSee": {
-				"title": "Name guests see",
+				"title": "Display name",
 				"description": "Suggested replies introduce you to guests by this name. Left empty, they introduce the office only.",
 				"placeholder": "Linh",
 				"notifications": {
-					"error": "Could not update the name guests see",
-					"success": "Name guests see was updated"
+					"error": "Could not update the display name",
+					"success": "Display name was updated"
 				}
 			},
 			"security": {
@@ -869,6 +873,11 @@
 			"from5to15m": "5–15 min",
 			"from15to60m": "15–60 min",
 			"over60m": "Over 1 hour"
+		},
+		"units": {
+			"day": "d",
+			"hour": "h",
+			"minute": "min"
 		}
 	},
 	"inbox": {
@@ -876,7 +885,7 @@
 		"navItem": "Inbox",
 		"navReports": "Reports",
 		"navPaperwork": "Paperwork",
-		"footer": "Guests see the agency number. Never auto-send.",
+		"footer": "Guests only ever see your agency's number. After the greeting, you approve every reply.",
 		"yes": "Yes",
 		"no": "No",
 		"searchPlaceholder": "Search name or last message",
@@ -1063,7 +1072,8 @@
 			"assigned": "Assigned to {name}",
 			"failed": "Could not reassign the thread. Try again.",
 			"filter": "Showing",
-			"all": "All threads"
+			"all": "All threads",
+			"unassignedNote": "New leads wait here until you assign them."
 		},
 		"emptyAssigned": "Nothing assigned to you yet.",
 		"source": {
@@ -1132,6 +1142,8 @@
 				"add": "Choose Add to Home Screen.",
 				"open": "Open Nhịp from your Home Screen and turn alerts on."
 			}
-		}
+		},
+		"answered": "Answered · Sent {at} · waiting for the guest",
+		"answeredNoTime": "Answered · waiting for the guest"
 	}
 }

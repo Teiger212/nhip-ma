@@ -13,7 +13,8 @@ import {
 	useState,
 } from "react";
 
-import { displayName } from "../lib/display-name";
+import { guestLabel } from "../lib/display-name";
+import { useInboxSideBySide } from "../lib/inbox-presence";
 import { replyEndpoint, useDisconnectedEndpoints, useOfficeLanguage } from "../lib/inbox-queries";
 import { suggestionLine } from "../lib/office-line";
 import { PIPE_NAMES } from "../lib/pipe-names";
@@ -23,7 +24,7 @@ import { CrmStatus } from "./CrmStatus";
 import { ExtractFields } from "./ExtractFields";
 import { OwnerControl } from "./OwnerControl";
 import { ReplyBox } from "./ReplyBox";
-import { SendBar } from "./SendBar";
+import { AnsweredLine, SendBar } from "./SendBar";
 import { ThreadActions } from "./ThreadActions";
 import { ThreadMessage } from "./ThreadMessage";
 import { GuestMark, ThreadFlags } from "./ThreadParts";
@@ -183,6 +184,9 @@ export function ThreadDetail({
 	const t = useTranslations("inbox");
 	const pane = useRef<HTMLDivElement>(null);
 	const rail = usePaneFitsRail(pane);
+	// A phone (below `md`): the header keeps Back, the guest and the turn on one line; the pipe,
+	// the owner and the CRM status move into the details strip under it (#94).
+	const phone = !useInboxSideBySide();
 	const { scroller, unseen, toLatest } = useConversationScroll(
 		conversation.id,
 		conversation.messages,
@@ -194,31 +198,52 @@ export function ThreadDetail({
 	);
 	// An office with no CRM shows no CRM status (DESIGN.md, Badges), so no CRM section either.
 	const hasCrm = Boolean(conversation.crm) || conversation.officeHasCrm;
-	const name = displayName(conversation);
+	const label = guestLabel(conversation);
+	const name = label.text;
 	const officeLanguage = useOfficeLanguage().data;
+	// No guest message waits and nothing about the last send needs a person: the reply box folds to
+	// one line (#94). An unknown delivery or a failed send keeps the whole box, with its status.
+	const answered =
+		!conversation.unansweredInboundId &&
+		!reply.sending &&
+		(reply.status.kind === "sent" || reply.status.kind === "none");
 	return (
 		<div ref={pane} className="min-h-0 min-w-0 flex flex-1 flex-col">
-			<header className="gap-2 px-3 py-2 md:px-4 flex shrink-0 flex-wrap items-center border-b">
+			<header
+				className={cn(
+					"gap-2 px-3 py-2 md:px-4 flex shrink-0 items-center border-b",
+					phone ? "pl-1" : "flex-wrap",
+				)}
+			>
 				<Button
 					type="button"
 					variant="ghost"
-					className="md:hidden min-h-11 min-w-11"
+					size="icon"
+					className="md:hidden min-h-11 min-w-11 shrink-0"
 					onClick={onBack}
 					aria-label={t("backAria")}
 				>
-					<ChevronLeftIcon className="size-4" />
-					{t("back")}
+					<ChevronLeftIcon className="size-5" />
 				</Button>
 				{/* Who it is, as one group: a long name truncates before the controls wrap. */}
-				<div className="gap-2 min-w-0 basis-40 flex flex-1 flex-wrap items-center">
-					<GuestMark name={name} />
+				<div
+					className={cn(
+						"gap-2 min-w-0 flex flex-1 items-center",
+						phone ? "flex-nowrap" : "basis-40 flex-wrap",
+					)}
+				>
+					<GuestMark name={name} phone={label.phone} />
 					<p className="min-w-0 font-semibold tracking-tight font-heading max-w-full truncate">
 						{name}
 					</p>
-					<ThreadFlags conversation={conversation} />
+					<span className="gap-2 flex shrink-0 items-center">
+						<ThreadFlags conversation={conversation} parts={phone ? "turn" : "all"} />
+					</span>
 				</div>
-				<div className={cn("gap-2 ml-auto flex shrink-0 items-center", !rail && "flex-wrap")}>
-					{rail ? null : (
+				<div
+					className={cn("gap-2 ml-auto flex shrink-0 items-center", !rail && !phone && "flex-wrap")}
+				>
+					{rail || phone ? null : (
 						<>
 							<CrmStatus conversation={conversation} />
 							<OwnerControl
@@ -236,7 +261,25 @@ export function ThreadDetail({
 					/>
 				</div>
 			</header>
-			{rail ? null : <ExtractFields conversation={conversation} layout="strip" />}
+			{rail ? null : (
+				<ExtractFields
+					conversation={conversation}
+					layout="strip"
+					meta={
+						phone ? (
+							<>
+								<ThreadFlags conversation={conversation} parts="meta" />
+								<CrmStatus conversation={conversation} />
+								<OwnerControl
+									conversation={conversation}
+									placement="header"
+									onAssigned={onAssigned}
+								/>
+							</>
+						) : undefined
+					}
+				/>
+			)}
 			<div className="min-h-0 flex flex-1">
 				<div className="min-h-0 min-w-0 flex flex-1 flex-col">
 					<div className="min-h-0 relative flex flex-1 flex-col">
@@ -270,27 +313,39 @@ export function ThreadDetail({
 						) : null}
 					</div>
 					<div className="gap-2 px-3 py-3 md:px-5 flex shrink-0 flex-col border-t bg-muted/40">
-						<ReplyBox
-							reply={reply.reply}
-							onReplyChange={reply.onReplyChange}
-							edited={reply.edited}
-							guestWroteAgain={reply.guestWroteAgain}
-							draftSource={reply.draftSource}
-							canApprove={reply.canApprove}
-							regenerating={reply.regenerating}
-							onRegenerate={reply.onRegenerate}
-							note={cribNotes}
-							officeLine={suggestionLine(conversation.oneShot?.draft, reply.edited, officeLanguage)}
-						/>
-						<SendBar
-							blockedReason={
-								blocked ? t("pipeDisconnected", { pipe: PIPE_NAMES[conversation.pipe] }) : undefined
-							}
-							status={reply.status}
-							canApprove={reply.canApprove}
-							sending={reply.sending}
-							onApprove={reply.onApprove}
-						/>
+						{answered ? (
+							<AnsweredLine sentAt={reply.status.kind === "sent" ? reply.status.at : null} />
+						) : (
+							<>
+								<ReplyBox
+									reply={reply.reply}
+									onReplyChange={reply.onReplyChange}
+									edited={reply.edited}
+									guestWroteAgain={reply.guestWroteAgain}
+									draftSource={reply.draftSource}
+									canApprove={reply.canApprove}
+									regenerating={reply.regenerating}
+									onRegenerate={reply.onRegenerate}
+									note={cribNotes}
+									officeLine={suggestionLine(
+										conversation.oneShot?.draft,
+										reply.edited,
+										officeLanguage,
+									)}
+								/>
+								<SendBar
+									blockedReason={
+										blocked
+											? t("pipeDisconnected", { pipe: PIPE_NAMES[conversation.pipe] })
+											: undefined
+									}
+									status={reply.status}
+									canApprove={reply.canApprove}
+									sending={reply.sending}
+									onApprove={reply.onApprove}
+								/>
+							</>
+						)}
 					</div>
 				</div>
 				{rail ? (
