@@ -100,23 +100,23 @@ export function OrganizationInvitationsList({ organizationId }: { organizationId
 					canceled: XIcon,
 				}[row.original.status];
 				return (
-					<div className="leading-normal">
-						<strong
-							className={cn("block", {
+					<div className="min-w-0">
+						<p
+							className={cn("font-heading font-semibold text-sm tracking-tight break-all", {
 								"opacity-50": row.original.status === "canceled",
 							})}
 						>
 							{row.original.email}
-						</strong>
-						<small className="gap-1 flex flex-wrap text-foreground/60">
-							<span className="gap-0.5 flex items-center">
+						</p>
+						<p className="gap-x-1 text-xs flex flex-wrap text-muted-foreground">
+							<span className="gap-1 flex items-center">
 								<InvitationStatusIcon className="size-3" />
 								{t(
 									`organizations.settings.members.invitations.invitationStatus.${row.original.status}`,
 								)}
 							</span>
-							<span>-</span>
-							<span>
+							<span aria-hidden="true">·</span>
+							<span className="tabular-nums">
 								{t("organizations.settings.members.invitations.expiresAt", {
 									date: formatter.dateTime(new Date(row.original.expiresAt), {
 										dateStyle: "medium",
@@ -124,7 +124,7 @@ export function OrganizationInvitationsList({ organizationId }: { organizationId
 									}),
 								})}
 							</span>
-						</small>
+						</p>
 					</div>
 				);
 			},
@@ -135,9 +135,10 @@ export function OrganizationInvitationsList({ organizationId }: { organizationId
 				const isPending = row.original.status === "pending";
 
 				return (
-					<div className="gap-2 flex flex-row justify-end">
+					<div className="gap-2 flex flex-row items-center justify-end">
 						<OrganizationRoleSelect
 							dataTest="team-invitation-role"
+							size="sm"
 							value={row.original.role}
 							disabled
 							onSelect={() => {
@@ -178,23 +179,31 @@ export function OrganizationInvitationsList({ organizationId }: { organizationId
 	});
 
 	return (
-		<div className="rounded-2xl border">
+		<div>
 			<Table>
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
 							<TableRow key={row.id} data-test="team-invitation">
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
-								))}
+								{/* One cell: the person, then the role and actions, which wrap under them on a
+								    phone instead of squeezing the name (#295). */}
+								<TableCell>
+									<div className="gap-x-3 gap-y-2 flex flex-wrap items-center justify-between">
+										{row.getVisibleCells().map((cell, index) => (
+											<div key={cell.id} className={index === 0 ? "min-w-48 flex-1" : "ml-auto"}>
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</div>
+										))}
+									</div>
+								</TableCell>
 							</TableRow>
 						))
 					) : (
 						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								{t("organizations.settings.members.invitations.empty")}
+							<TableCell className="h-24 text-center">
+								<span className="text-muted-foreground">
+									{t("organizations.settings.members.invitations.empty")}
+								</span>
 							</TableCell>
 						</TableRow>
 					)}

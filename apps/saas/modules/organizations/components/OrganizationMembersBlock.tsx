@@ -24,7 +24,7 @@ export function OrganizationMembersBlock({
 			description={t("organizations.settings.members.description")}
 		>
 			<Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab)}>
-				<TabsList className="mb-4 max-w-full overflow-x-auto">
+				<TabsList className="mb-2 w-full max-w-full justify-start overflow-x-auto">
 					<TabsTrigger value="members">
 						{t("organizations.settings.members.activeMembers")}
 					</TabsTrigger>

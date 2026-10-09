@@ -2,11 +2,12 @@
 
 import { useSession } from "@auth/hooks/use-session";
 import { authClient } from "@repo/auth/client";
+import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import type { UserType } from "@repo/database";
 import { Spinner } from "@repo/ui";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Card } from "@repo/ui/components/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -254,19 +255,27 @@ export function UserList() {
 				header: "",
 				accessorFn: (row) => row.name,
 				cell: ({ row }) => (
-					<div className="gap-2 flex items-center">
+					<div className="gap-3 min-w-0 flex items-center">
 						<UserAvatar
 							name={row.original.name ?? row.original.email}
 							avatarUrl={row.original.image}
 						/>
-						<div className="leading-tight">
-							<strong className="block">{row.original.name ?? row.original.email}</strong>
-							<small className="gap-1 flex items-center text-foreground/60">
-								<span className="block">{!!row.original.name && row.original.email}</span>
-								<EmailVerified verified={row.original.emailVerified} />
-								<strong className="block">{row.original.role === "admin" ? "Admin" : ""}</strong>
+						<div className="min-w-0">
+							<p className="gap-2 flex flex-wrap items-center">
+								<span className="font-heading font-semibold text-sm tracking-tight">
+									{row.original.name ?? row.original.email}
+								</span>
+								{isPlatformAdmin(row.original.role) && (
+									<Badge>{t("organizations.settings.members.platformAdmin")}</Badge>
+								)}
 								<UserBanStatus user={row.original} currentTime={banStatusTime} />
-							</small>
+							</p>
+							<p className="gap-1 text-xs flex items-center text-muted-foreground">
+								{!!row.original.name && (
+									<span className="min-w-0 break-all">{row.original.email}</span>
+								)}
+								<EmailVerified verified={row.original.emailVerified} className="shrink-0" />
+							</p>
 						</div>
 					</div>
 				),
@@ -331,6 +340,7 @@ export function UserList() {
 									)}
 
 									<DropdownMenuItem
+										variant="destructive"
 										onClick={() =>
 											confirm({
 												title: t("admin.users.confirmDelete.title"),
@@ -341,10 +351,8 @@ export function UserList() {
 											})
 										}
 									>
-										<span className="flex items-center text-destructive hover:text-destructive">
-											<TrashIcon className="mr-2 size-4" />
-											{t("admin.users.delete")}
-										</span>
+										<TrashIcon className="mr-2 size-4" />
+										{t("admin.users.delete")}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -367,28 +375,29 @@ export function UserList() {
 
 	return (
 		<>
-			<Card className="p-6">
-				<h2 className="mb-4 font-semibold text-2xl">{t("admin.users.title")}</h2>
-				<Input
-					data-test="admin-users-search"
-					type="search"
-					placeholder={t("admin.users.search")}
-					value={searchTerm}
-					onChange={(event) => setSearchTerm(event.target.value)}
-					className="mb-4"
-				/>
+			<Card>
+				<CardHeader>
+					<CardTitle>{t("admin.users.title")}</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<Input
+						data-test="admin-users-search"
+						type="search"
+						aria-label={t("admin.users.search")}
+						placeholder={t("admin.users.search")}
+						value={searchTerm}
+						onChange={(event) => setSearchTerm(event.target.value)}
+						className="mb-2"
+					/>
 
-				<div className="rounded-md border">
+					{/* Rows split by hairlines on the card itself: no box inside the card (#295). */}
 					<Table>
 						<TableBody>
 							{table.getRowModel().rows?.length ? (
 								table.getRowModel().rows.map((row) => (
-									<TableRow key={row.id} className="group">
+									<TableRow key={row.id}>
 										{row.getVisibleCells().map((cell) => (
-											<TableCell
-												key={cell.id}
-												className="py-2 group-first:rounded-t-md group-last:rounded-b-md"
-											>
+											<TableCell key={cell.id}>
 												{flexRender(cell.column.columnDef.cell, cell.getContext())}
 											</TableCell>
 										))}
@@ -398,29 +407,31 @@ export function UserList() {
 								<TableRow>
 									<TableCell colSpan={columns.length} className="h-24 text-center">
 										{isLoading ? (
-											<div className="flex h-full items-center justify-center">
-												<Spinner className="mr-2 size-4 text-primary" />
+											<div className="flex h-full items-center justify-center text-muted-foreground">
+												<Spinner className="mr-2 size-4" />
 												{t("admin.users.loading")}
 											</div>
 										) : (
-											<p data-test="admin-no-results">No results.</p>
+											<p data-test="admin-no-results" className="text-muted-foreground">
+												{t("admin.users.empty")}
+											</p>
 										)}
 									</TableCell>
 								</TableRow>
 							)}
 						</TableBody>
 					</Table>
-				</div>
 
-				{data?.total && data.total > ITEMS_PER_PAGE && (
-					<Pagination
-						className="mt-4"
-						totalItems={data.total}
-						itemsPerPage={ITEMS_PER_PAGE}
-						currentPage={currentPage}
-						onChangeCurrentPage={setCurrentPage}
-					/>
-				)}
+					{!!data?.total && data.total > ITEMS_PER_PAGE && (
+						<Pagination
+							className="mt-4"
+							totalItems={data.total}
+							itemsPerPage={ITEMS_PER_PAGE}
+							currentPage={currentPage}
+							onChangeCurrentPage={setCurrentPage}
+						/>
+					)}
+				</CardContent>
 			</Card>
 
 			<BanUserDialog

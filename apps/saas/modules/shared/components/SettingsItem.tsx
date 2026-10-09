@@ -8,6 +8,12 @@ import {
 } from "@repo/ui/components/card";
 import type { PropsWithChildren, ReactNode } from "react";
 
+/**
+ * A settings card. Inside a `SettingsList` (its `settings` container) at 42rem and up it is a
+ * row: title and description on the left third, the control on the right. Anywhere else, such
+ * as the admin area's office page, it stacks like the cards beside it. The title is the Title
+ * role (`CardTitle`), as on every card.
+ */
 export function SettingsItem({
 	children,
 	title,
@@ -19,18 +25,16 @@ export function SettingsItem({
 	danger?: boolean;
 }>) {
 	return (
-		<Card className="@2xl:grid @2xl:grid-cols-setting @2xl:gap-8 @container">
-			<CardHeader className="@2xl:pb-6">
-				<CardTitle className={cn("font-medium text-base", danger && "text-destructive")}>
-					{title}
-				</CardTitle>
-				{description && (
-					<CardDescription className="leading-snug text-foreground/60">
-						{description}
-					</CardDescription>
-				)}
-			</CardHeader>
-			<CardContent className="@2xl:pt-6">{children}</CardContent>
+		<Card className="@container">
+			<div className="@2xl/settings:grid @2xl/settings:grid-cols-setting @2xl/settings:gap-8">
+				<CardHeader className="@2xl/settings:pb-6">
+					<CardTitle>
+						<span className={cn(danger && "text-destructive")}>{title}</span>
+					</CardTitle>
+					{description && <CardDescription>{description}</CardDescription>}
+				</CardHeader>
+				<CardContent className="@2xl/settings:pt-6">{children}</CardContent>
+			</div>
 		</Card>
 	);
 }

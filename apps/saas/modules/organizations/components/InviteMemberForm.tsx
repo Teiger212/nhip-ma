@@ -109,6 +109,7 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
 					<div className="mt-4 flex justify-end">
 						<Button
 							type="submit"
+							variant="primary"
 							data-test="team-invite-submit"
 							loading={form.formState.isSubmitting}
 						>

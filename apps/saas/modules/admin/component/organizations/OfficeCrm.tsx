@@ -177,7 +177,12 @@ export function OfficeCrm({ officeId }: { officeId: string }) {
 												data-test="crm-token"
 											/>
 										</FormControl>
-										<Button type="submit" className="shrink-0" loading={save.isPending}>
+										<Button
+											type="submit"
+											variant="primary"
+											className="shrink-0"
+											loading={save.isPending}
+										>
 											{t("save")}
 										</Button>
 									</div>

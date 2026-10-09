@@ -106,6 +106,9 @@ async function listedDeliveries(page: Page): Promise<ListedDelivery[]> {
 	);
 }
 
+/** The admin menu's link to the page (admin.menu.webhooks). */
+const MENU_ITEM = "Webhook log";
+
 /** What a delivery says of the endpoint it came to (admin.webhooks.endpoint). */
 function endpointOf(oaId: string): string {
 	return `to ${oaId}`;
@@ -171,8 +174,8 @@ test.describe("Webhook deliveries 1 — every delivery is on record; Webhook del
 		await test.step("Admin → Webhooks lists a signed message to a held OA as filed to its office, one to an OA no office holds as dropped, an unsigned one as refused, newest first", async () => {
 			// Admin → Webhooks, through the admin menu.
 			await page.goto("/en/admin/organizations");
-			const menuItem = page.getByRole("link", { name: "Webhooks", exact: true });
-			await expect(menuItem, "the admin menu has Webhooks").toBeVisible();
+			const menuItem = page.getByRole("link", { name: MENU_ITEM, exact: true });
+			await expect(menuItem, "the admin menu has the Webhook log").toBeVisible();
 			await menuItem.click();
 			await expect(page).toHaveURL(/\/en\/admin\/webhooks/);
 			await expect(page.getByTestId("webhook-deliveries")).toBeVisible();
@@ -248,7 +251,7 @@ test.describe("Webhook deliveries 3 — only the platform admin sees it", () => 
 			const adminPage = await admin.openPage();
 			await adminPage.goto("/en/admin/webhooks");
 			await expect(adminPage.getByTestId("webhook-deliveries")).toBeVisible();
-			await expect(adminPage.getByRole("link", { name: "Webhooks", exact: true })).toBeVisible();
+			await expect(adminPage.getByRole("link", { name: MENU_ITEM, exact: true })).toBeVisible();
 
 			await signInContext(context, AGENT);
 			await page.goto("/en/admin/webhooks");
@@ -257,7 +260,7 @@ test.describe("Webhook deliveries 3 — only the platform admin sees it", () => 
 			await expect(page).not.toHaveURL(/\/admin\/webhooks/);
 			await expect(page.getByTestId("webhook-deliveries")).toHaveCount(0);
 			await expect(page.getByTestId("webhook-delivery")).toHaveCount(0);
-			await expect(page.getByRole("link", { name: "Webhooks", exact: true })).toHaveCount(0);
+			await expect(page.getByRole("link", { name: MENU_ITEM, exact: true })).toHaveCount(0);
 		});
 
 		await test.step("the deliveries API refuses the agent (403) and a visitor signed out (401), and answers the platform admin", async () => {

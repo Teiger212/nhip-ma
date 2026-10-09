@@ -19,10 +19,11 @@ export function EmailVerified({ verified, className }: { verified: boolean; clas
 						: t("admin.users.emailVerified.waiting")}
 				</TooltipContent>
 				<TooltipTrigger className={cn(className)}>
+					{/* Verified reads as success (DESIGN.md, In Admin); blue stays for actions. */}
 					{verified ? (
-						<CheckIcon className="size-3 text-primary" />
+						<CheckIcon className="size-3 text-success" />
 					) : (
-						<ClockIcon className="size-3" />
+						<ClockIcon className="size-3 text-muted-foreground" />
 					)}
 				</TooltipTrigger>
 			</Tooltip>

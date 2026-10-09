@@ -68,8 +68,6 @@
 		},
 		{
 			"files": [
-				"apps/saas/modules/admin/component/organizations/OrganizationList.tsx",
-				"apps/saas/modules/admin/component/users/UserList.tsx",
 				"apps/saas/modules/auth/components/OtpForm.tsx",
 				"apps/saas/modules/onboarding/components/OnboardingAccountStep.tsx",
 				"apps/saas/modules/organizations/components/OrganizationLogo.tsx",
@@ -77,7 +75,6 @@
 				"apps/saas/modules/organizations/components/OrganizationSelect.tsx",
 				"apps/saas/modules/organizations/components/OrganizationsGrid.tsx",
 				"apps/saas/modules/settings/components/UserAvatarUpload.tsx",
-				"apps/saas/modules/shared/components/SettingsItem.tsx",
 				"apps/saas/modules/shared/components/UserAvatar.tsx"
 			],
 			"rules": {

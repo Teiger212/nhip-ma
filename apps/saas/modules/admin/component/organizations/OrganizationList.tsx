@@ -4,9 +4,8 @@ import { getAdminPath } from "@admin/lib/links";
 import { OrganizationLogo } from "@organizations/components/OrganizationLogo";
 import { organizationListQueryKey } from "@organizations/lib/api";
 import { authClient } from "@repo/auth/client";
-import { cn } from "@repo/ui";
 import { Button } from "@repo/ui/components/button";
-import { Card } from "@repo/ui/components/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -125,17 +124,20 @@ export function OrganizationList() {
 						original: { id, name, logo, membersCount },
 					},
 				}) => (
-					<div className="gap-2 flex items-center">
+					<div className="gap-3 min-w-0 flex items-center">
 						<OrganizationLogo name={name} logoUrl={logo} />
-						<div className="leading-tight">
-							<Link href={getOrganizationEditPath(id)} className="font-bold block">
+						<div className="min-w-0">
+							<Link
+								href={getOrganizationEditPath(id)}
+								className="font-heading font-semibold text-sm tracking-tight block truncate hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+							>
 								{name}
 							</Link>
-							<small>
+							<p className="text-xs text-muted-foreground tabular-nums">
 								{t("admin.organizations.membersCount", {
 									count: membersCount,
 								})}
-							</small>
+							</p>
 						</div>
 					</div>
 				),
@@ -162,17 +164,14 @@ export function OrganizationList() {
 									<DropdownMenuItem
 										nativeButton={false}
 										render={(props) => (
-											<Link
-												{...props}
-												href={getOrganizationEditPath(id)}
-												className={cn(props.className, "flex items-center")}
-											>
+											<Link {...props} href={getOrganizationEditPath(id)}>
 												<EditIcon className="mr-2 size-4" />
 												{t("admin.organizations.edit")}
 											</Link>
 										)}
 									/>
 									<DropdownMenuItem
+										variant="destructive"
 										onClick={() =>
 											confirm({
 												title: t("admin.organizations.confirmDelete.title"),
@@ -183,10 +182,8 @@ export function OrganizationList() {
 											})
 										}
 									>
-										<span className="flex items-center text-destructive hover:text-destructive">
-											<TrashIcon className="mr-2 size-4" />
-											{t("admin.organizations.delete")}
-										</span>
+										<TrashIcon className="mr-2 size-4" />
+										{t("admin.organizations.delete")}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -208,58 +205,57 @@ export function OrganizationList() {
 	});
 
 	return (
-		<Card className="p-6">
-			<div className="mb-4 gap-6 flex items-center justify-between">
-				<h2 className="font-semibold text-2xl">{t("admin.organizations.title")}</h2>
-
+		<Card>
+			<CardHeader className="gap-4 space-y-0 flex-row items-center justify-between">
+				<CardTitle>{t("admin.organizations.title")}</CardTitle>
 				<Button
+					variant="primary"
 					render={(props) => (
 						<Link {...props} href={getAdminPath("/organizations/new")}>
-							<PlusIcon className="mr-1.5 size-4" />
+							<PlusIcon className="size-4" />
 							{t("admin.organizations.create")}
 						</Link>
 					)}
 				/>
-			</div>
-			<Input
-				data-test="admin-organizations-search"
-				type="search"
-				placeholder={t("admin.organizations.search")}
-				value={searchTerm}
-				onChange={(e) => setSearchTerm(e.target.value)}
-				className="mb-4"
-			/>
+			</CardHeader>
+			<CardContent>
+				<Input
+					data-test="admin-organizations-search"
+					type="search"
+					aria-label={t("admin.organizations.search")}
+					placeholder={t("admin.organizations.search")}
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					className="mb-2"
+				/>
 
-			<div className="rounded-md border">
+				{/* Rows split by hairlines on the card itself: no box inside the card (#295). */}
 				<Table>
 					<TableBody>
 						{isLoading ? (
 							Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
 								<TableRow key={`skeleton-${index}`}>
-									<TableCell className="py-2">
-										<div className="gap-2 flex items-center">
-											<Skeleton className="size-10 rounded-md" />
+									<TableCell>
+										<div className="gap-3 flex items-center">
+											<Skeleton className="size-8 rounded-md" />
 											<div className="space-y-2 flex-1">
 												<Skeleton className="h-4 w-32" />
 												<Skeleton className="h-3 w-24" />
 											</div>
 										</div>
 									</TableCell>
-									<TableCell className="py-2">
+									<TableCell>
 										<div className="flex justify-end">
-											<Skeleton className="size-9 rounded-md" />
+											<Skeleton className="size-8 rounded-full" />
 										</div>
 									</TableCell>
 								</TableRow>
 							))
 						) : table.getRowModel().rows?.length ? (
 							table.getRowModel().rows.map((row) => (
-								<TableRow key={row.id} className="group">
+								<TableRow key={row.id}>
 									{row.getVisibleCells().map((cell) => (
-										<TableCell
-											key={cell.id}
-											className="py-2 group-first:rounded-t-md group-last:rounded-b-md"
-										>
+										<TableCell key={cell.id}>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</TableCell>
 									))}
@@ -268,23 +264,25 @@ export function OrganizationList() {
 						) : (
 							<TableRow>
 								<TableCell colSpan={columns.length} className="h-24 text-center">
-									<p data-test="admin-no-results">No results.</p>
+									<p data-test="admin-no-results" className="text-muted-foreground">
+										{t("admin.organizations.empty")}
+									</p>
 								</TableCell>
 							</TableRow>
 						)}
 					</TableBody>
 				</Table>
-			</div>
 
-			{!!data?.total && data.total > ITEMS_PER_PAGE && (
-				<Pagination
-					className="mt-4"
-					totalItems={data.total}
-					itemsPerPage={ITEMS_PER_PAGE}
-					currentPage={currentPage}
-					onChangeCurrentPage={setCurrentPage}
-				/>
-			)}
+				{!!data?.total && data.total > ITEMS_PER_PAGE && (
+					<Pagination
+						className="mt-4"
+						totalItems={data.total}
+						itemsPerPage={ITEMS_PER_PAGE}
+						currentPage={currentPage}
+						onChangeCurrentPage={setCurrentPage}
+					/>
+				)}
+			</CardContent>
 		</Card>
 	);
 }
