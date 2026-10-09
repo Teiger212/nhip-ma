@@ -62,18 +62,18 @@ export function parseModelDraft(raw: string | null | undefined): ModelDraft | nu
  * The agent answers them by hand; the flag in the operator note says so.
  */
 const PAPERWORK_TERMS =
-	/pink\s*book|s[ổo]\s*h[ồo]ng|s[ổo]\s*đ[ỏo]|ownership|residency|visa|work\s*permit|lease\s*hold|free\s*hold|sở\s*hữu|giấy\s*tờ|pháp\s*lý|핑크북|소유권|비자|所有権|ピンクブック|ビザ|розов(?:ая|ую)\s+книг|собственност|виз[аы]/iu;
+	/pink\s*book|title\s*deed|s[ổo]\s*h[ồo]ng|s[ổo]\s*đ[ỏo]|ownership|residency|visa|work\s*permit|lease\s*hold|free\s*hold|sở\s*hữu|giấy\s*tờ|pháp\s*lý|핑크북|소유권|비자|所有権|ピンクブック|ビザ|розов(?:ая|ую)\s+книг|собственност|виз[аы]/iu;
 
 /**
  * A clause that asserts something, in English or Vietnamese: with a paperwork word it is a legal
  * answer ("You will get a sổ hồng"); without one, "Thanks for asking about the pink book" isn't.
  */
 const ASSERTS =
-	/\b(?:is|are|was|were|will|won't|can|can't|cannot|could|should|may|get|gets|got|have|has|need|needs|require|requires|allowed|eligible|possible|ready|fine|guaranteed?|no problem)\b|(?:^|\s)(?:được|sẽ|là|cần|không cần|không sao|không vấn đề|đầy đủ|có sổ|đã có)(?=\s|$|[,.!?])/iu;
+	/\b(?:you|it|they)(?:'ll|’ll)\b|\b(?:qualify|qualifies|is|are|was|were|will|won't|can|can't|cannot|could|should|may|get|gets|got|have|has|need|needs|require|requires|allowed|eligible|possible|ready|fine|guaranteed?|no problem)\b|(?:^|\s)(?:được|sẽ|là|cần|không cần|không sao|không vấn đề|đầy đủ|có sổ|đã có)(?=\s|$|[,.!?])/iu;
 
 /** A legal answer with no paperwork word: who may own or buy. */
 const LEGAL_ANSWER =
-	/\bforeigners?\s+(?:can|may|cannot|can't|are allowed|is allowed|are not allowed|are eligible)\b|\byou\s+(?:can|will|could)\s+(?:own|buy|obtain)\b|người nước ngoài\s+(?:được|có thể|không được|không thể)/iu;
+	/\bforeigners?\s+(?:qualify|can|may|cannot|can't|are allowed|is allowed|are not allowed|are eligible)\b|\byou\s+(?:can|will|could)\s+(?:own|buy|obtain)\b|người nước ngoài\s+(?:được|có thể|không được|không thể)/iu;
 
 /** What a price is called. */
 const PRICE_NOUN =
@@ -111,14 +111,19 @@ export function sentences(text: string): string[] {
 }
 
 /**
- * Offering another day later defers the viewing day (#289, Mikhail), but only in a clause that
- * names no day itself: "Saturday at 10 works, or I can arrange another slot" states one.
+ * Offering another day later defers the viewing day (#289, Mikhail), and only the viewing day: a
+ * price, an availability or a legal answer beside it still states. A clause that names a day
+ * itself ("Saturday at 10 works, or I can arrange another slot") states that day.
  */
 const RESCHEDULE =
 	/\b(?:suggest|propose|offer|find|arrange)\s+(?:another|a different|other)\s+(?:days?|times?|dates?|slots?)\b|(?:đề xuất|hẹn|chọn|sắp xếp)\s+(?:\p{L}+\s+)?(?:ngày|giờ|hôm|buổi)\s+khác/iu;
 
+function reschedules(clause: string): boolean {
+	return RESCHEDULE.test(clause) && !DAY_OR_TIME.test(clause);
+}
+
 function defers(clause: string): boolean {
-	return DEFERRAL.test(clause) || (RESCHEDULE.test(clause) && !DAY_OR_TIME.test(clause));
+	return DEFERRAL.test(clause);
 }
 
 /**
@@ -155,32 +160,37 @@ function clauses(sentence: string, viewing: boolean): Clause[] {
 	// A closing quote or bracket after the question mark still ends a question.
 	const question = /[?？]["'”’»)\]」]*$/u.test(sentence);
 	const joined: Clause[] = [];
-	let pending: string[] = [];
+	let pending: { part: string; dayRuledOut: boolean }[] = [];
 	for (const [index, part] of parts.entries()) {
 		// The question a sentence closes on is skipped (it asks), so nothing folds into it.
 		if (question && index === parts.length - 1) break;
+		const condition = CONDITION.test(part) && !conditionStates(part, viewing);
 		const setsUp =
-			!defers(part) &&
-			((CONDITION.test(part) && !conditionStates(part, viewing)) ||
-				(TOPIC.test(part) && !topicStates(part, viewing)));
+			!defers(part) && (condition || (TOPIC.test(part) && !topicStates(part, viewing)));
 		if (setsUp) {
-			pending.push(part);
+			pending.push({ part, dayRuledOut: condition && viewing && DAY_OR_TIME.test(part) });
 			continue;
 		}
-		joined.push({ text: [...pending, part].join(", "), main: part });
+		// A condition that rules a day out ("if Saturday doesn't work") belongs only to a main
+		// clause offering another day; beside anything else it is read on its own.
+		const alone = pending.filter((each) => each.dayRuledOut && !reschedules(part));
+		for (const each of alone) joined.push({ text: each.part, main: each.part });
+		const covered = pending.filter((each) => !alone.includes(each)).map((each) => each.part);
+		joined.push({ text: [...covered, part].join(", "), main: part });
 		pending = [];
 	}
-	for (const part of pending) joined.push({ text: part, main: part });
+	for (const { part } of pending) joined.push({ text: part, main: part });
 	if (question) joined.push({ text: parts[parts.length - 1], main: parts[parts.length - 1] });
 	return joined;
 }
 
 /**
- * A day ruled out, not proposed: the negation right after the day ("if Saturday doesn't work",
- * "nếu thứ Bảy không được"), not anywhere in the clause ("nếu anh không bận thì thứ Bảy…").
+ * A day ruled out, not proposed: the day, then that it doesn't work ("if Saturday doesn't work",
+ * "nếu thứ Bảy không được"); not a negation elsewhere ("nếu anh không bận thì thứ Bảy…", "if
+ * Saturday isn't too soon").
  */
 const DAY_RULED_OUT = new RegExp(
-	`(?:${DAY_OR_TIME.source})(?:\\s+[\\p{L}\\d']+){0,2}?\\s+(?:doesn't|does not|don't|isn't|is not|won't|can't|cannot|not|không|chưa)(?!\\p{L})`,
+	`(?:${DAY_OR_TIME.source})(?:\\s+[\\p{L}\\d']+){0,2}?\\s+(?:(?:doesn't|does not|won't|will not|can't|cannot)\\s+(?:work|suit)|(?:isn't|is not)\\s+(?:convenient|possible|good)|(?:không|chưa)\\s+(?:được|tiện|phù hợp|hợp))(?!\\p{L})`,
 	"iu",
 );
 
@@ -220,7 +230,7 @@ const INDIRECT_QUESTION =
 
 /** A verdict: the answer itself ("it definitely is", "that's correct", "chắc chắn rồi"). */
 const VERDICT =
-	/\b(?:yes|no problem|not a problem|fine|guaranteed|the answer|definitely|certainly|of course|correct|that's right)\b|(?<!\p{L})(?:có ạ|được ạ|không sao|không vấn đề|được|chắc chắn|đúng|rồi ạ|có rồi)(?!\p{L})/iu;
+	/\b(?:yes|no problem|not a problem|(?:isn't|is not|not) an? (?:issue|problem)|doesn't matter|does not matter|not (?:needed|required|necessary)|fine|guaranteed|the answer|definitely|certainly|of course|correct|that's right)\b|(?<!\p{L})(?:có ạ|được ạ|không sao|không vấn đề|không cần|không quan trọng|không ảnh hưởng|được|chắc chắn|đúng|rồi ạ|có rồi)(?!\p{L})/iu;
 
 /**
  * The agent's own promise ("I will", "em sẽ") to do a harmless thing (`SAFE_ACTION`: send,
@@ -235,9 +245,20 @@ const OWN_PROMISE =
 const SAFE_ACTION =
 	/\b(?:send|share|pull together|put together|prioriti[sz]e|look (?:for|at|into|through)|note|noting|list|shortlist|pick|select|include)\b|(?<!\p{L})(?:gửi|ưu tiên|chọn|tìm|lọc|liệt kê|ghi chú|kèm)(?!\p{L})/iu;
 
-/** Getting, issuing or handing over the paperwork: with a paperwork word, a legal answer. */
-const HANDS_OVER =
-	/\b(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\s+over|deliver|issue|process|sort|take care of|register|secure|arrange|sign (?:it )?over|make sure|in your name)\b|\b(?:send|include|share)\s+(?:\w+\s+){0,2}(?:pink|red)\s*book|(?<!\p{L})(?:giao|sang tên|làm sổ|làm giấy|làm hồ sơ|thủ tục|lo|chuyển nhượng|cấp|đăng ký|đứng tên|hoàn tất|đảm bảo)(?!\p{L})|(?<!\p{L})(?:gửi|kèm)\s+(?:\p{L}+\s+)?s[ổo]\s*(?:h[ồo]ng|đ[ỏo])/iu;
+/**
+ * Getting, issuing or handing over the paperwork, as a verb (after a subject, a modal or "to"):
+ * with a paperwork word, a legal answer ("Em sẽ giao sổ hồng", "you will get it"). The same word
+ * as a noun is the matter ("Về thủ tục sang tên sổ hồng, em sẽ kiểm tra", "the ownership
+ * transfer"). Sending or attaching the pink book itself is handing it over too.
+ */
+const HANDS_OVER = new RegExp(
+	[
+		"(?:(?<!\\p{L})(?:will|can|could|to|we|I|you|they|sẽ|được|để|em|anh|chị|mình|tôi)|['’]ll)(?:\\s+[\\p{L}']+){0,3}?\\s+(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\\s+over|deliver|issue|issued|process|sort|take care of|register|secure|arrange|sign (?:it )?over|make sure|prepare|giao|bàn giao|sang tên|làm sổ|làm giấy|làm hồ sơ|làm thủ tục|hoàn tất|lo|chuyển nhượng|chuyển|cấp|ra sổ|đăng ký|đảm bảo|chuẩn bị)(?!\\p{L})",
+		"\\bin your name\\b|(?<!\\p{L})đứng tên(?!\\p{L})",
+		"(?:\\bsend|\\bshare|\\battach|\\binclude|(?<!\\p{L})gửi|(?<!\\p{L})kèm)[^.?!]*?(?:pink\\s*book|red\\s*book|title\\s*deed|s[ổo]\\s*h[ồo]ng|s[ổo]\\s*đ[ỏo])",
+	].join("|"),
+	"iu",
+);
 
 /**
  * A bare yes in Vietnamese ("Dạ được anh", "Được ạ"): in a draft about a viewing it answers the
@@ -261,7 +282,7 @@ function statesAnswer({ text: clause, main }: Clause, viewing: boolean): boolean
 	) {
 		return true;
 	}
-	return viewing && DAY_OR_TIME.test(clause);
+	return viewing && DAY_OR_TIME.test(clause) && !reschedules(main);
 }
 
 const MULTIPLIERS: [RegExp, number][] = [

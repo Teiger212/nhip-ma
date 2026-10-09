@@ -225,6 +225,26 @@ describe("the first draft eval's drafts", () => {
 			// Sending the pink book itself promises one.
 			"I will send you the pink book after signing.",
 			"Em sẽ gửi sổ hồng cho anh sau khi ký hợp đồng.",
+			// A day ruled out belongs only to a main clause offering another day.
+			"Nếu thứ Bảy anh không bận, em sẽ xác nhận lịch xem nhà với chủ nhà ạ.",
+			"Nếu thứ Bảy 10 giờ không quá sớm với anh, em sẽ xác nhận lịch xem với chủ nhà ạ.",
+			"If Saturday at 10am isn't a problem for you, I'll confirm the viewing with the owner.",
+			"If Saturday isn't too soon for you, I'll confirm the viewing with the owner.",
+			"If Saturday works but Sunday doesn't, I'll confirm the viewing with the owner.",
+			// Offering another slot doesn't cover a price or an availability beside it.
+			"The rent is $650 but I can arrange another slot for the viewing.",
+			"The studio is still available and I can suggest another time for the viewing.",
+			"Căn này vẫn còn trống nên em có thể sắp xếp buổi khác cho anh xem ạ.",
+			// Sending a copy of the pink book promises one.
+			"I will send you a copy of the pink book.",
+			"I'll send you a copy of the pink book.",
+			"Em sẽ gửi anh ảnh sổ hồng của căn này ạ.",
+			"Em sẽ gửi kèm bản sao sổ hồng để anh yên tâm ạ.",
+			"I will send you the contract and prepare the pink book for you.",
+			"You'll be issued a pink book after the handover.",
+			"Foreigners qualify for a pink book on this project.",
+			// A verdict inside "whether".
+			"Whether you have a visa or not doesn't matter for renting, I'll check the details with the landlord.",
 			// Nor does a closing question cover the condition before it.
 			"Nếu anh thích thì căn này còn trống, anh muốn em gửi ảnh không?",
 			"If you're still keen the studio is available at $650, shall I send photos?",
@@ -305,6 +325,10 @@ describe("in English", () => {
 			"Let me check the viewing slots with the owner.",
 			// The second eval's Hương draft (#289): the matter deferred, as an indirect question.
 			"Regarding whether the Vinhomes units have a separate red book (sổ hồng): I'll check the legal status with the owners.",
+			// The paperwork's steps, named as the matter deferred (#289).
+			"Regarding the pink book transfer, I'll check the timeline with the developer.",
+			"About the ownership registration process, I'll confirm with our legal team.",
+			"Thanks for your question about the pink book process. I'll check with the developer and get back to you.",
 			// And its Khánh draft: the fee question the guest asked, deferred.
 			"About whether the service fee is included in the 2,000, I'll check with the landlord and confirm it.",
 			"When would you like to see it?",
@@ -361,6 +385,8 @@ describe("in Vietnamese", () => {
 	test("a mention passes: a deferral, a question", () => {
 		for (const draft of [
 			"Em sẽ kiểm tra quy định về sở hữu cho anh/chị ạ.",
+			"Về thủ tục sang tên sổ hồng, em sẽ kiểm tra và báo lại anh/chị ạ.",
+			"Về việc cấp sổ hồng cho người nước ngoài, em sẽ tìm hiểu và báo lại anh/chị ạ.",
 			"Dạ, em sẽ xác nhận giá thuê với chủ nhà rồi báo lại anh/chị ạ.",
 			"Anh/chị muốn xem nhà vào thời gian nào ạ?",
 		]) {
