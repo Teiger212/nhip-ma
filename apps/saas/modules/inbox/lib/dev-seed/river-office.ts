@@ -7,9 +7,11 @@ import {
 import {
 	assigns,
 	daysAgo,
+	draftWaits,
 	hoursAgo,
 	minutesAgo,
 	replies,
+	repliesAi,
 	type SeedGuest,
 	type SeedOffice,
 	writes,
@@ -165,6 +167,8 @@ const guests: SeedGuest[] = [
 			writes(hoursAgo(5), "Gửi mình ảnh nhé, căn đó có ban công không bạn?", {
 				en: "Send me the photos, please. Does that one have a balcony?",
 			}),
+			// The office has replied by hand, so the model drafts this one (ADR 0024): it waits.
+			draftWaits(hoursAgo(5) - minutesAgo(1), "mai"),
 		],
 	},
 	// The second agent's
@@ -275,6 +279,194 @@ const guests: SeedGuest[] = [
 				"manager",
 				"Chào chị Hoa, bên em có ba căn 2 phòng ngủ ở Times City quanh 4 tỷ. Em gửi chị thông tin nhé.",
 			),
+		],
+	},
+	// The model's drafts (#302, ADR 0024). The office's first reply on each is typed by hand
+	// (the auto-reply is off here, and a first reply is never a model's); the later turns are
+	// the model's, written once by the real model (`river-ai-drafts.ts`, `pnpm seed:drafts`).
+	// A model draft, approved and sent as it stood; the guest has written back since.
+	{
+		pipe: "whatsapp",
+		guestId: "14155550116",
+		name: "Emma",
+		story: [
+			writes(
+				daysAgo(4),
+				"Hi, I'm relocating to Hanoi for work in January. Looking to rent a 2-bedroom in Tay Ho, budget around $1,500 a month.",
+				{
+					vi: "Chào bạn, tôi chuyển đến Hà Nội làm việc vào tháng 1. Tôi tìm thuê căn 2 phòng ngủ ở Tây Hồ, ngân sách khoảng 1.500 USD/tháng.",
+				},
+			),
+			assigns(daysAgo(4) - minutesAgo(8), "agent"),
+			replies(
+				daysAgo(4) - minutesAgo(20),
+				"agent",
+				"Hi Emma, River Agent here from River Office. I'll look for 2-bedrooms in Tay Ho around your budget and send you a few options.",
+			),
+			writes(
+				daysAgo(3),
+				"Thanks! Ideally a place with a balcony and a lift, and my cat is coming with me. Could we view something this weekend?",
+				{
+					vi: "Cảm ơn bạn! Tốt nhất là căn có ban công và thang máy, và con mèo của tôi sẽ đi cùng. Cuối tuần này mình có thể xem nhà không?",
+				},
+			),
+			repliesAi(daysAgo(3) - minutesAgo(15), "agent", "emma"),
+			writes(hoursAgo(20), "Great, thank you. A weekend afternoon would work best for us.", {
+				vi: "Tuyệt, cảm ơn bạn. Chiều cuối tuần là hợp nhất với chúng tôi.",
+			}),
+		],
+	},
+	{
+		pipe: "zalo",
+		guestId: "zalo-demo-quang",
+		name: "Quang",
+		story: [
+			writes(
+				daysAgo(6),
+				"Chào em, anh cần thuê căn hộ 2 phòng ngủ ở Cầu Giấy, khoảng 12 triệu một tháng, cho gia đình 3 người.",
+				{
+					en: "Hi, I need to rent a 2-bedroom apartment in Cầu Giấy, around 12 million a month, for a family of three.",
+				},
+			),
+			assigns(daysAgo(6) - minutesAgo(6), "agent2"),
+			replies(
+				daysAgo(6) - minutesAgo(18),
+				"agent2",
+				"Chào anh Quang, em là River Agent Two bên River Office. Em sẽ tìm vài căn 2 phòng ngủ ở Cầu Giấy quanh mức anh nói rồi gửi anh ạ.",
+			),
+			writes(
+				daysAgo(5),
+				"Cảm ơn em. Anh muốn căn gần trường tiểu học và có chỗ để ô tô. Cuối tuần này anh đi xem nhà được không em?",
+				{
+					en: "Thank you. I'd like a place near a primary school with room to park a car. Can I go and view one this weekend?",
+				},
+			),
+			repliesAi(daysAgo(5) - minutesAgo(14), "agent2", "quang"),
+			writes(hoursAgo(30), "Ok em, anh chờ ảnh nhé.", { en: "Ok, I'll wait for the photos." }),
+		],
+	},
+	{
+		pipe: "whatsapp",
+		guestId: "14155550117",
+		name: "Min-jun",
+		story: [
+			writes(
+				daysAgo(8),
+				"안녕하세요. 한국인 회사원입니다. Hai Ba Trung 지역에서 1 bedroom 월세를 찾고 있습니다. 예산은 $900/month입니다.",
+				{
+					en: "Hello. I'm a Korean office worker. I'm looking for a 1-bedroom to rent in Hai Bà Trưng. My budget is $900/month.",
+					vi: "Xin chào. Tôi là nhân viên văn phòng người Hàn. Tôi tìm thuê căn 1 phòng ngủ ở Hai Bà Trưng. Ngân sách của tôi là 900 USD/tháng.",
+				},
+			),
+			assigns(daysAgo(8) - minutesAgo(7), "agent"),
+			replies(
+				daysAgo(8) - minutesAgo(25),
+				"agent",
+				"안녕하세요 Min-jun님! River Office의 River Agent입니다. Hai Ba Trung 지역 1 bedroom 후보를 찾아서 보내드리겠습니다.",
+			),
+			writes(
+				daysAgo(7),
+				"감사합니다. 헬스장이 있는 건물이면 좋겠어요. 반려견도 괜찮을까요? 이번 주 토요일에 볼 수 있을까요?",
+				{
+					en: "Thank you. A building with a gym would be nice. Would a dog be ok? Could I see one this Saturday?",
+					vi: "Cảm ơn bạn. Tốt nhất là tòa nhà có phòng gym. Nuôi chó có được không? Thứ Bảy này tôi có thể xem nhà không?",
+				},
+			),
+			repliesAi(daysAgo(7) - minutesAgo(13), "agent", "minjun"),
+			writes(hoursAgo(26), "네, 사진 먼저 보내주세요.", {
+				en: "Yes, please send the photos first.",
+				vi: "Vâng, hãy gửi ảnh trước cho tôi.",
+			}),
+		],
+	},
+	{
+		pipe: "whatsapp",
+		guestId: "14155550118",
+		name: "Harper",
+		story: [
+			writes(
+				daysAgo(10),
+				"Hello! My partner and I are looking to rent a 3-bedroom house in Long Bien, budget about $2,000 a month, from December.",
+				{
+					vi: "Xin chào! Tôi và bạn đời đang tìm thuê một căn nhà 3 phòng ngủ ở Long Biên, ngân sách khoảng 2.000 USD/tháng, từ tháng 12.",
+				},
+			),
+			assigns(daysAgo(10) - minutesAgo(9), "agent2"),
+			replies(
+				daysAgo(10) - minutesAgo(22),
+				"agent2",
+				"Hi Harper, River Agent Two from River Office here. I'll put together a few 3-bedroom houses in Long Bien and send them over.",
+			),
+			writes(
+				daysAgo(9),
+				"Thank you! A garden and a garage would be great. What is the usual lease length, and could we see a couple of places next Tuesday?",
+				{
+					vi: "Cảm ơn bạn! Có vườn và gara thì tuyệt. Thời hạn thuê thông thường là bao lâu, và thứ Ba tuần sau chúng tôi có thể xem vài căn không?",
+				},
+			),
+			repliesAi(daysAgo(9) - minutesAgo(16), "agent2", "harper"),
+			writes(hoursAgo(50), "Perfect, looking forward to the photos.", {
+				vi: "Tuyệt vời, tôi mong chờ những bức ảnh.",
+			}),
+		],
+	},
+	// A model draft waits in the reply box for the guest's latest message.
+	{
+		pipe: "whatsapp",
+		guestId: "14155550119",
+		name: "Yuna",
+		story: [
+			writes(
+				daysAgo(2),
+				"こんにちは。日本人です。Ba Dinhで1 bedroomの賃貸を探しています。予算は$1,100/monthです。",
+				{
+					en: "Hello. I'm Japanese. I'm looking to rent a 1-bedroom in Ba Dinh. My budget is $1,100/month.",
+					vi: "Xin chào. Tôi là người Nhật. Tôi tìm thuê căn 1 phòng ngủ ở Ba Đình. Ngân sách của tôi là 1.100 USD/tháng.",
+				},
+			),
+			assigns(daysAgo(2) - minutesAgo(5), "agent"),
+			replies(
+				daysAgo(2) - minutesAgo(17),
+				"agent",
+				"Yunaさん、こんにちは。River OfficeのRiver Agentです。Ba Dinhで1 bedroomの候補を探して、ご連絡します。",
+			),
+			writes(
+				hoursAgo(3),
+				"ありがとうございます。駅から近くて、エレベーターがある物件が希望です。来週の水曜日に内見できますか？",
+				{
+					en: "Thank you. I'd like a place close to a station, with a lift. Could I view one next Wednesday?",
+					vi: "Cảm ơn bạn. Tôi muốn căn gần ga và có thang máy. Thứ Tư tuần sau tôi có thể xem nhà không?",
+				},
+			),
+			draftWaits(hoursAgo(3) - minutesAgo(1), "yuna"),
+		],
+	},
+	{
+		pipe: "whatsapp",
+		guestId: "14155550120",
+		name: "Rowan",
+		story: [
+			writes(
+				daysAgo(1),
+				"Hi, Rowan here. Moving from Singapore with a toddler. Looking to rent a 3-bedroom in Ciputra, up to $2,300 a month, from January.",
+				{
+					vi: "Chào bạn, tôi là Rowan. Tôi chuyển từ Singapore đến cùng một bé nhỏ. Tôi tìm thuê căn 3 phòng ngủ ở Ciputra, tối đa 2.300 USD/tháng, từ tháng 1.",
+				},
+			),
+			assigns(daysAgo(1) - minutesAgo(11), "agent2"),
+			replies(
+				daysAgo(1) - minutesAgo(24),
+				"agent2",
+				"Hi Rowan, River Agent Two from River Office. I'll look for 3-bedrooms in Ciputra within your budget and send you a few.",
+			),
+			writes(
+				hoursAgo(2),
+				"Thanks. Is there a good international school nearby, and could we do a video tour before we fly in?",
+				{
+					vi: "Cảm ơn bạn. Gần đó có trường quốc tế tốt không, và chúng tôi có thể xem nhà qua video trước khi bay sang không?",
+				},
+			),
+			draftWaits(hoursAgo(2) - minutesAgo(1), "rowan"),
 		],
 	},
 ];

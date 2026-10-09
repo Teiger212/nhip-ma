@@ -8,6 +8,7 @@
 		"dev": "next dev --port 3010",
 		"seed": "tsx --tsconfig tsconfig.json modules/inbox/scripts/seed.ts",
 		"seed:check": "tsx --tsconfig tsconfig.json modules/inbox/scripts/seed-loads.ts",
+		"seed:drafts": "tsx --tsconfig tsconfig.json modules/inbox/scripts/generate-demo-drafts.ts",
 		"eval:drafts": "tsx --tsconfig tsconfig.json modules/inbox/scripts/eval.ts drafts",
 		"eval:translation": "tsx --tsconfig tsconfig.json modules/inbox/scripts/eval.ts translation",
 		"pipe:connect": "tsx --tsconfig tsconfig.json modules/inbox/scripts/connect-pipe.ts",

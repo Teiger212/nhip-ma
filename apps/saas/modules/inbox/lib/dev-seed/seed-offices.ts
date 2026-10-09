@@ -15,9 +15,10 @@ import { applyOneShot, refreshTemplate, sendAutoReply, threadUrl } from "../inbo
 import { transmit } from "../pipes";
 import type { Runtime } from "../runtime";
 import { needsTranslation } from "../translate";
-import type { Conversation, InboxViewer } from "../types";
+import type { Conversation, InboxViewer, OperatorLanguage, SuggestedReplyLine } from "../types";
 import { atTime } from "./clock";
 import { DEMO_SEED_OFFICE } from "./demo-office";
+import { type AiDraftFixture, RIVER_AI_DRAFTS } from "./river-ai-drafts";
 import { RIVER_SEED_OFFICE } from "./river-office";
 import {
 	type Actor,
@@ -224,6 +225,10 @@ async function playGuest(ctx: OfficeSeed, guest: SeedGuest): Promise<boolean> {
 				await managerAssigns(ctx, await thread(), step.to);
 			} else if (step.kind === "replies") {
 				await operatorReplies(ctx, await thread(), step);
+			} else if (step.kind === "ai-replies") {
+				await operatorRepliesWithDraft(ctx, await thread(), step);
+			} else if (step.kind === "ai-draft") {
+				await modelDraftWaits(ctx, await thread(), step.fixture);
 			} else {
 				await crmDecides(ctx, await thread(), step);
 			}
@@ -321,11 +326,72 @@ async function managerAssigns(
 	);
 }
 
+/** The committed model draft a step names (#302); a missing one asks for `pnpm seed:drafts`. */
+function fixtureFor(key: string): AiDraftFixture {
+	const fixture = RIVER_AI_DRAFTS.drafts[key];
+	if (!fixture) {
+		throw new Error(
+			`dev seed: no model draft "${key}" in river-ai-drafts.ts: run pnpm seed:drafts`,
+		);
+	}
+	return fixture;
+}
+
+/** The model's office-language text, as the app stores it: none when the reply is already in it. */
+async function officeTextOf(
+	ctx: OfficeSeed,
+	conversation: Conversation,
+	fixture: AiDraftFixture,
+): Promise<{ locale: OperatorLanguage; text: string } | null> {
+	const language = conversation.oneShot?.language;
+	const locale = await ctx.runtime.store.officeLanguage(conversation.officeId);
+	return language && language !== locale ? { locale, text: fixture.officeReply } : null;
+}
+
+/**
+ * Approve and send a model draft as it stood (ADR 0024): the same Answer and mock send as any
+ * reply, and the sent message carries `writtenBy: "model"` (the AI label) and its operator line.
+ */
+async function operatorRepliesWithDraft(
+	ctx: OfficeSeed,
+	conversation: Conversation,
+	step: Extract<StoryStep, { kind: "ai-replies" }>,
+): Promise<void> {
+	const fixture = fixtureFor(step.fixture);
+	await operatorReplies(
+		ctx,
+		conversation,
+		{ by: step.by, text: fixture.reply },
+		{ writtenBy: "model", officeText: await officeTextOf(ctx, conversation, fixture) },
+	);
+}
+
+/** A model draft in the reply box for the guest's latest message, as `generateModelDraft` stores it. */
+async function modelDraftWaits(
+	ctx: OfficeSeed,
+	conversation: Conversation,
+	key: string,
+): Promise<void> {
+	const fixture = fixtureFor(key);
+	const answersMessageId = conversation.unansweredInboundId;
+	if (!answersMessageId) {
+		throw new Error(`dev seed: ${conversation.guestId} has no guest message to draft for`);
+	}
+	const officeText = await officeTextOf(ctx, conversation, fixture);
+	await ctx.runtime.store.setDraft(conversation.officeId, conversation.id, {
+		reply: fixture.reply,
+		answersMessageId,
+		source: "model",
+		...(officeText ? { officeReply: officeText.text } : {}),
+	});
+}
+
 /** Approve and send (ADR 0011): the Answer on record, the mock send, then the Answer sent. */
 async function operatorReplies(
 	ctx: OfficeSeed,
 	conversation: Conversation,
-	step: Extract<StoryStep, { kind: "replies" }>,
+	step: { by: Actor; text: string },
+	suggested?: SuggestedReplyLine,
 ): Promise<void> {
 	const { store, config } = ctx.runtime;
 	const { officeId, id } = conversation;
@@ -341,7 +407,7 @@ async function operatorReplies(
 	if (!begun.ok)
 		throw new Error(`dev seed: answering ${conversation.guestId} refused (${begun.reason})`);
 	const sent = await transmit({ conversation, text: step.text, from: null, config, store });
-	await store.completeAnswer(officeId, begun.answer.id, sent);
+	await store.completeAnswer(officeId, begun.answer.id, sent, suggested);
 }
 
 /** The CRM marks the lead won or lost (its own record), and Nhịp hears of it at once. */
