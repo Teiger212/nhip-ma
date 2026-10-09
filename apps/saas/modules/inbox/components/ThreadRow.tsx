@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@repo/ui";
+import { useHydrated } from "@shared/hooks/use-hydrated";
 import { useLocale } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -26,6 +27,7 @@ export function ThreadRow({
 	action?: ReactNode;
 }) {
 	const locale = useLocale();
+	const hydrated = useHydrated();
 	const preview = conversation.lastInboundText;
 	const label = guestLabel(conversation);
 	const name = label.text;
@@ -68,7 +70,7 @@ export function ThreadRow({
 								)}
 								dateTime={when}
 							>
-								{formatInboxTimestamp(when, locale)}
+								{hydrated ? formatInboxTimestamp(when, locale) : null}
 							</time>
 						) : null}
 					</span>

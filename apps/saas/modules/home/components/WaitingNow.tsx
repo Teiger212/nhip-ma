@@ -7,6 +7,7 @@ import { useConversations, useOfficeRole } from "@inbox/lib/inbox-queries";
 import { languageName } from "@inbox/lib/language-name";
 import { waitingNow } from "@inbox/lib/queue";
 import { Badge, Button, Card, Skeleton } from "@repo/ui";
+import { useHydrated } from "@shared/hooks/use-hydrated";
 import { useLocale, useTranslations } from "next-intl";
 
 import { formatDuration } from "../lib/duration";
@@ -30,6 +31,8 @@ export function WaitingNow() {
 	const waiting = waitingNow(query.data ?? [], { manager: role === "manager" });
 	const shown = waiting.slice(0, SHOWN);
 	const more = waiting.length - shown.length;
+	// The clock is read once hydrated: the server's "now" is not the browser's (`useHydrated`).
+	const hydrated = useHydrated();
 	const now = Date.now();
 	const units = { day: t("units.day"), hour: t("units.hour"), minute: t("units.minute") };
 
@@ -82,7 +85,8 @@ export function WaitingNow() {
 						const name = label.text;
 						const language = conversation.guestLanguage;
 						const since = conversation.lastGuestInboundAt;
-						const waited = since ? formatDuration(now - new Date(since).getTime(), units) : null;
+						const waited =
+							since && hydrated ? formatDuration(now - new Date(since).getTime(), units) : null;
 						return (
 							<li key={conversation.id}>
 								<LocaleLink

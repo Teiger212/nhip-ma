@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, cn } from "@repo/ui";
+import { useHydrated } from "@shared/hooks/use-hydrated";
 import { useTranslations } from "next-intl";
 
 import { useOfficeLanguage } from "../lib/inbox-queries";
@@ -38,6 +39,7 @@ export function ThreadMessage({
 }) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
+	const hydrated = useHydrated();
 	const officeLanguage = useOfficeLanguage().data;
 	const inbound = message.direction === "in";
 	// In the office language, whatever the reader's interface (ADR 0025). Rendered as text, never
@@ -113,7 +115,7 @@ export function ThreadMessage({
 					</Badge>
 				) : null}
 				<time className="tabular-nums" dateTime={message.at}>
-					{formatInboxTimestamp(message.at, locale)}
+					{hydrated ? formatInboxTimestamp(message.at, locale) : null}
 				</time>
 			</div>
 		</div>

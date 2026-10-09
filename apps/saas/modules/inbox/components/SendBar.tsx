@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, cn } from "@repo/ui";
+import { useHydrated } from "@shared/hooks/use-hydrated";
 import { CheckIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -29,6 +30,7 @@ export function SendBar({
 }) {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
+	const hydrated = useHydrated();
 	const text = blockedReason
 		? blockedReason
 		: status.kind === "sending"
@@ -38,7 +40,7 @@ export function SendBar({
 				: status.kind === "unknown"
 					? t("deliveryUnknown")
 					: status.kind === "sent"
-						? t("alreadySent", { at: formatInboxTimestamp(status.at, locale) })
+						? t("alreadySent", { at: hydrated ? formatInboxTimestamp(status.at, locale) : "" })
 						: t("notSent");
 	const warn = Boolean(blockedReason) || status.kind === "error" || status.kind === "unknown";
 	const quiet = !blockedReason && status.kind === "none";
@@ -83,6 +85,7 @@ export function SendBar({
 export function AnsweredLine({ sentAt }: { sentAt: string | null }) {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
+	const hydrated = useHydrated();
 	return (
 		<div className="gap-2 min-h-11 flex items-center">
 			<CheckIcon aria-hidden="true" className="size-3.5 shrink-0 text-success" />
@@ -92,7 +95,9 @@ export function AnsweredLine({ sentAt }: { sentAt: string | null }) {
 				aria-atomic="true"
 				className="text-xs min-w-0 text-pretty text-muted-foreground"
 			>
-				{sentAt ? t("answered", { at: formatInboxTimestamp(sentAt, locale) }) : t("answeredNoTime")}
+				{sentAt && hydrated
+					? t("answered", { at: formatInboxTimestamp(sentAt, locale) })
+					: t("answeredNoTime")}
 			</output>
 		</div>
 	);
