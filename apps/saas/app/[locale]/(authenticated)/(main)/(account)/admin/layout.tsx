@@ -28,17 +28,13 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 			<PageHeader title={t("title")} subtitle={t("description")} />
 
 			<SettingsMenu
-				className="mb-6"
+				className="mb-4 md:mb-6"
 				menuItems={[
 					{
 						avatar: <Logo className="size-8" withLabel={false} />,
 						title: t("title"),
+						// Offices first: the platform admin lands there.
 						items: [
-							{
-								title: t("menu.users"),
-								href: "/admin/users",
-								icon: <UsersIcon className="size-4 opacity-50" />,
-							},
 							...(config.organizations.enable
 								? [
 										{
@@ -48,6 +44,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 										},
 									]
 								: []),
+							{
+								title: t("menu.users"),
+								href: "/admin/users",
+								icon: <UsersIcon className="size-4 opacity-50" />,
+							},
 							{
 								title: t("menu.webhooks"),
 								href: "/admin/webhooks",

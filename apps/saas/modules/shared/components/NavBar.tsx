@@ -257,7 +257,12 @@ export function NavBar() {
 										prefetch
 									>
 										<Logo withLabel={false} className="group-data-[collapsible=icon]:ml-0.5" />
-										<span className={cn("font-semibold tracking-tight text-brand", FADING_LABEL)}>
+										<span
+											className={cn(
+												"font-heading font-semibold tracking-tight text-brand",
+												FADING_LABEL,
+											)}
+										>
 											{t("inbox.brand")}
 										</span>
 									</LocaleLink>
@@ -272,7 +277,8 @@ export function NavBar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarGroupLabel>{t("app.menu.groupWorkspace")}</SidebarGroupLabel>
+					{/* The platform admin's one item is Admin: a "Workspace" heading over it names nothing. */}
+					{isAdmin ? null : <SidebarGroupLabel>{t("app.menu.groupWorkspace")}</SidebarGroupLabel>}
 					<SidebarGroupContent>
 						<nav aria-label={t("app.menu.groupWorkspace")}>
 							<SidebarMenu>

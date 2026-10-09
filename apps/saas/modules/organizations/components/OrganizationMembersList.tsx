@@ -140,14 +140,16 @@ export function OrganizationMembersList({
 			accessorFn: (row) => row.user,
 			cell: ({ row }) =>
 				row.original.user ? (
-					<div className="gap-2 flex items-center">
+					<div className="gap-3 min-w-0 flex items-center">
 						<UserAvatar
 							name={row.original.user.name ?? row.original.user.email}
 							avatarUrl={row.original.user?.image}
 						/>
-						<div>
-							<strong className="block">{row.original.user.name}</strong>
-							<small className="text-foreground/60">{row.original.user.email}</small>
+						<div className="min-w-0">
+							<p className="font-heading font-semibold text-sm tracking-tight">
+								{row.original.user.name}
+							</p>
+							<p className="text-xs break-all text-muted-foreground">{row.original.user.email}</p>
 						</div>
 					</div>
 				) : null,
@@ -163,7 +165,10 @@ export function OrganizationMembersList({
 				if (ownRow && isPlatformAdmin(user?.role)) {
 					return (
 						<div className="gap-2 flex flex-row justify-end">
-							<span data-test="team-member-role" className="font-medium text-sm text-foreground/60">
+							<span
+								data-test="team-member-role"
+								className="text-sm text-right text-muted-foreground"
+							>
 								{t("organizations.settings.members.platformAdmin")}
 							</span>
 						</div>
@@ -171,11 +176,12 @@ export function OrganizationMembersList({
 				}
 				const name = row.original.user?.name || row.original.user?.email || "";
 				return (
-					<div className="gap-2 flex flex-row justify-end">
+					<div className="gap-2 flex flex-row items-center justify-end">
 						{canManageOrganization ? (
 							<>
 								<OrganizationRoleSelect
 									dataTest="team-member-role"
+									size="sm"
 									value={row.original.role}
 									onSelect={async (value) => updateMemberRole(row.original.id, value)}
 									disabled={!canManageOrganization || row.original.role === "owner" || locked}
@@ -229,7 +235,7 @@ export function OrganizationMembersList({
 								)}
 							</>
 						) : (
-							<span data-test="team-member-role" className="font-medium text-sm text-foreground/60">
+							<span data-test="team-member-role" className="text-sm text-muted-foreground">
 								{memberRoles[row.original.role as keyof typeof memberRoles]}
 							</span>
 						)}
@@ -239,7 +245,19 @@ export function OrganizationMembersList({
 		},
 	];
 
-	const members = useMemo(() => organization?.members ?? [], [organization?.members]);
+	// Managers first, then agents, each by name; the platform admin's own row (inert, ADR 0015)
+	// last. Presentation only: who can do what is unchanged.
+	const members = useMemo(() => {
+		const rank = (member: NonNullable<typeof organization>["members"][number]) => {
+			if (member.userId === user?.id && isPlatformAdmin(user?.role)) return 2;
+			return member.role === "member" ? 1 : 0;
+		};
+		const nameOf = (member: NonNullable<typeof organization>["members"][number]) =>
+			member.user?.name || member.user?.email || "";
+		return [...(organization?.members ?? [])].sort(
+			(a, b) => rank(a) - rank(b) || nameOf(a).localeCompare(nameOf(b)),
+		);
+	}, [organization?.members, user?.id, user?.role]);
 
 	const table = useTable({
 		features: clientDataTableFeatures,
@@ -255,23 +273,32 @@ export function OrganizationMembersList({
 	});
 
 	return (
-		<div className="rounded-2xl border">
+		// Rows split by hairlines on the card itself: no box inside the card (#295).
+		<div>
 			<Table>
 				<TableBody>
 					{table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
 							<TableRow key={row.id} data-test="team-member">
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
-								))}
+								{/* One cell: the person, then the role and actions, which wrap under them on a
+								    phone instead of squeezing the name (#295). */}
+								<TableCell>
+									<div className="gap-x-3 gap-y-2 flex flex-wrap items-center justify-between">
+										{row.getVisibleCells().map((cell, index) => (
+											<div key={cell.id} className={index === 0 ? "min-w-48 flex-1" : "ml-auto"}>
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</div>
+										))}
+									</div>
+								</TableCell>
 							</TableRow>
 						))
 					) : (
 						<TableRow>
-							<TableCell colSpan={columns.length}>
-								<div className="h-24 flex items-center justify-center">No results.</div>
+							<TableCell>
+								<div className="h-24 text-sm flex items-center justify-center text-muted-foreground">
+									{t("organizations.settings.members.emptyMembers")}
+								</div>
 							</TableCell>
 						</TableRow>
 					)}

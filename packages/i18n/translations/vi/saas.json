@@ -3,16 +3,16 @@
 		"menu": {
 			"organizations": "Văn phòng",
 			"users": "Người dùng",
-			"webhooks": "Webhook"
+			"webhooks": "Nhật ký webhook"
 		},
 		"organizations": {
 			"backToList": "Quay lại danh sách văn phòng",
 			"confirmDelete": {
 				"confirm": "Xóa",
-				"message": "Bạn có chắc muốn xóa văn phòng này? Không thể hoàn tác thao tác này.",
+				"message": "Xóa văn phòng này? Không thể hoàn tác.",
 				"title": "Xóa văn phòng"
 			},
-			"create": "Tạo",
+			"create": "Tạo văn phòng",
 			"delete": "Xóa",
 			"deleteOrganization": {
 				"deleted": "Đã xóa văn phòng.",
@@ -28,12 +28,13 @@
 					"success": "Đã lưu văn phòng."
 				},
 				"save": "Lưu",
-				"updateTitle": "Sửa văn phòng"
+				"updateTitle": "Thông tin văn phòng"
 			},
 			"loading": "Đang tải danh sách văn phòng...",
 			"membersCount": "{count} {count, plural, one {thành viên} other {thành viên}}",
 			"search": "Tìm văn phòng...",
-			"title": "Quản lý văn phòng"
+			"title": "Văn phòng",
+			"empty": "Không có văn phòng nào khớp."
 		},
 		"title": "Quản trị",
 		"users": {
@@ -97,11 +98,12 @@
 				"title": "Gửi lại email xác minh"
 			},
 			"search": "Tìm theo tên hoặc email...",
-			"title": "Quản lý người dùng",
+			"title": "Người dùng",
 			"assignAdminRole": "Cấp quyền quản trị",
-			"removeAdminRole": "Gỡ quyền quản trị"
+			"removeAdminRole": "Gỡ quyền quản trị",
+			"empty": "Không có người dùng nào khớp."
 		},
-		"description": "Quản lý ứng dụng của bạn.",
+		"description": "Văn phòng, người và kết nối của từng văn phòng, và mọi webhook gửi tới Nhịp.",
 		"connections": {
 			"title": "Kết nối",
 			"connectZalo": "Kết nối Zalo OA",
@@ -142,9 +144,9 @@
 			}
 		},
 		"webhooks": {
-			"title": "Webhook đã nhận",
+			"title": "Nhật ký webhook",
 			"description": "Mọi webhook WhatsApp và Zalo gửi đến trong 30 ngày qua, mới nhất trước. Không lưu nội dung tin nhắn hay mã khách.",
-			"empty": "Chưa có webhook nào.",
+			"empty": "Không có webhook nào trong 30 ngày qua.",
 			"endpoint": "tới {endpoints}",
 			"outcome": {
 				"filed": "Đã vào {offices}",
@@ -496,7 +498,8 @@
 				},
 				"platformAdmin": "Quản trị viên nền tảng",
 				"title": "Nhóm",
-				"people": "Mọi người"
+				"people": "Mọi người",
+				"emptyMembers": "Chưa có ai tham gia."
 			},
 			"notifications": {
 				"organizationDeleted": "Đã xóa văn phòng của bạn.",
