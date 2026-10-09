@@ -175,11 +175,6 @@ async function expectNoOwnerFrom(
 	}
 }
 
-/** The office's answer that tells the app the operator's role; the menu offers Team only after it. */
-function officeAnswered(page: Page) {
-	return page.waitForResponse((r) => new URL(r.url()).pathname === "/api/office");
-}
-
 // scenario: docs/e2e-scenarios.md Team 1
 test.describe("Team 1 — a manager invites an agent from Team", () => {
 	test("Team's invite form offers Agent and Manager only, and invites an agent and a manager", async ({
@@ -245,10 +240,10 @@ test.describe("Team 2 — an agent has no Team", () => {
 		context,
 	}) => {
 		await signInContext(context, AGENT);
-		// "No Team" is judged once the app knows the agent's role, not before.
-		const office = officeAnswered(page);
 		await page.goto("/en/inbox");
-		expect((await office).ok(), "the office answered").toBe(true);
+		// "No Team" is judged once the app knows the agent's role (the Inbox page hands it over with
+		// the page), so the menu is judged with the Inbox shown, not before.
+		await expect(page.getByRole("heading", { level: 1, name: "Inbox" })).toBeAttached();
 
 		await openUserMenu(page);
 		await expect(page.getByRole("menuitem", { name: COPY.en.logOut })).toBeVisible();

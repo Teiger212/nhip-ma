@@ -421,11 +421,16 @@ async function openCrmSetting(admin: Admin, officeId: string) {
 		says: (text: string) => crm.getByText(text, { exact: true }),
 		/** The admin chooses the office's CRM; it saves at once. */
 		choose: async (choice: "none" | "mock") => {
-			await pick(choice);
-			await expect(
-				page.getByText(crmCopy.setting.saved, { exact: true }),
-				"CRM saved.",
-			).toBeVisible();
+			// A pick made while the page is still settling can be lost (CI saw the list close with
+			// nothing saved), so the admin picks again until the setting says it saved.
+			await expect(async () => {
+				await page.keyboard.press("Escape");
+				await pick(choice);
+				await expect(
+					page.getByText(crmCopy.setting.saved, { exact: true }),
+					"CRM saved.",
+				).toBeVisible({ timeout: 3_000 });
+			}).toPass({ timeout: 20_000 });
 			await shows(choice);
 		},
 		/**
