@@ -9,7 +9,12 @@ import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import { noDraftAdapter } from "./drafts";
 import { greetingTemplate } from "./greeting";
-import { approveAndSend, ingestEvents, refreshOfficeTemplates } from "./inbox";
+import {
+	approveAndSend,
+	changeOfficeLanguage,
+	ingestEvents,
+	refreshOfficeTemplates,
+} from "./inbox";
 import { replyTemplate } from "./reply-template";
 import { type Runtime, setRuntimeForTests } from "./runtime";
 import { guestMessage, TEST_SECRETS_KEY, threadOf } from "./test-fixtures";
@@ -187,5 +192,67 @@ describe("a Vietnamese office", () => {
 		expect(after.oneShot!.draft.officeReply).toBe(template(after, "vi"));
 		// The auto-reply keeps the line it was sent with.
 		expect(Object.keys(autoReply(after).translations)).toEqual(["en"]);
+	});
+});
+
+/**
+ * A model draft's operator-language text is written in the office language of its moment (#288,
+ * ADR 0025): after the manager changes the language it is dropped, so no line shows under the
+ * waiting draft and a send stores none, never a line labelled with one language holding another's.
+ */
+describe("a model draft waiting across an office-language change", () => {
+	const reply = "확인해 보고 이 채팅으로 다시 연락드리겠습니다.";
+	const line = "I'll check and get back to you here.";
+
+	async function waitingModelDraft(guestId: string) {
+		const conversation = await arrive(guestId, KOREAN);
+		await runtime.store.setDraft(OFFICE, conversation.id, {
+			reply,
+			answersMessageId: conversation.unansweredInboundId,
+			source: "model",
+			officeReply: line,
+		});
+		return conversation;
+	}
+
+	async function sentUnedited(conversation: Conversation) {
+		await approveAndSend(
+			conversation.id,
+			{ inboundId: conversation.unansweredInboundId ?? undefined, text: reply },
+			MANAGER,
+		);
+		return (await runtime.store.getOfficeConversation(OFFICE, conversation.id))!.messages.find(
+			(message) => message.source === "nhip",
+		);
+	}
+
+	test("English text, office switched to Vietnamese, sent unedited: no operator line", async () => {
+		const conversation = await waitingModelDraft("ko-288-a");
+		await changeOfficeLanguage(runtime.store, OFFICE, "vi");
+		const waiting = (await runtime.store.getOfficeConversation(OFFICE, conversation.id))!;
+		expect(waiting.oneShot!.draft.officeReply).toBeUndefined();
+		const sent = await sentUnedited(conversation);
+		expect(sent).toMatchObject({ writtenBy: "model", translations: {} });
+	});
+
+	test("a language set to what it already is keeps the line", async () => {
+		const conversation = await waitingModelDraft("ko-288-b");
+		await changeOfficeLanguage(runtime.store, OFFICE, "en");
+		const sent = await sentUnedited(conversation);
+		expect(sent).toMatchObject({ writtenBy: "model", translations: { en: line } });
+	});
+
+	test("a draft written after the change keeps its line, in the new language", async () => {
+		await changeOfficeLanguage(runtime.store, OFFICE, "vi");
+		const conversation = await arrive("ko-288-c", KOREAN);
+		const viLine = "Tôi sẽ kiểm tra và phản hồi lại ở đây.";
+		await runtime.store.setDraft(OFFICE, conversation.id, {
+			reply,
+			answersMessageId: conversation.unansweredInboundId,
+			source: "model",
+			officeReply: viLine,
+		});
+		const sent = await sentUnedited(conversation);
+		expect(sent).toMatchObject({ writtenBy: "model", translations: { vi: viLine } });
 	});
 });

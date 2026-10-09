@@ -85,9 +85,26 @@ export async function refreshTemplate(
 }
 
 /**
+ * A manager sets the office language (ADR 0025). A model draft's operator-language text was
+ * written in the previous language and does not record which, so it is dropped (#288): the
+ * reply box shows no line under it and a send stores none, rather than a line labelled with one
+ * language that holds another's text. Nothing changes when the language is the same. No model
+ * call; a template suggestion is rewritten by `refreshOfficeTemplates`.
+ */
+export async function changeOfficeLanguage(
+	store: Store,
+	officeId: string,
+	language: OperatorLanguage,
+): Promise<void> {
+	const before = await store.officeLanguage(officeId);
+	await store.setOfficeLanguage(officeId, language);
+	if (before !== language) await store.clearModelOfficeReplies(officeId);
+}
+
+/**
  * After the office language changed: every open thread of the office has its untouched template
  * written again (`refreshTemplate`), so the line under the reply box is in the new language
- * (#242). A model draft keeps the office-language text it was written with. A thread whose
+ * (#242). A model draft's office-language text is dropped by `changeOfficeLanguage`. A thread whose
  * rewrite fails keeps its suggestion; the failure is logged by its kind only (PDPL).
  */
 export async function refreshOfficeTemplates(store: Store, viewer: InboxViewer): Promise<void> {
