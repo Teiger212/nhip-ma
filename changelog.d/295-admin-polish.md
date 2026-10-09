@@ -13,6 +13,9 @@
   inside it; the role select is row-sized; the admin tabs and People's tabs draw the same
   underline. People lists managers first, then agents, the platform admin's own row last.
   On a phone a person's role and actions wrap under their name instead of squeezing it.
+  Connections splits Zalo, WhatsApp and the CRM by hairlines, lists the office's Zalo OAs as
+  hairline rows instead of boxes inside the card, and makes Reconnect and the CRM token's Save
+  primary.
 
 ### Fixed
 

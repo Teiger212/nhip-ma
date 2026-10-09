@@ -68,106 +68,113 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 			<CardHeader>
 				<CardTitle>{t("title")}</CardTitle>
 			</CardHeader>
-			<CardContent className="gap-4 grid grid-cols-1">
-				<div className="gap-2 grid grid-cols-1" data-test="connection-zalo">
-					<div className="gap-3 flex items-start justify-between">
-						<div className="min-w-0">
-							<p className="font-medium">Zalo</p>
-							{zalo.length === 0 && (
-								<Badge status="neutral" data-test="connection-status">
-									{t("status.none")}
-								</Badge>
-							)}
-							{!pipesQuery.data?.configured.zalo && pipesQuery.isSuccess && (
-								<p className="mt-1 text-sm text-muted-foreground">{t("zaloNotConfigured")}</p>
-							)}
-						</div>
-						{pipesQuery.data?.configured.zalo && (
-							<Button
-								size="sm"
-								variant={zalo.length === 0 ? "primary" : "outline"}
-								data-test="connect-zalo"
-								render={(props) => (
-									<a {...props} href={connectHref}>
-										{t("connectZalo")}
-									</a>
+			{/* Zalo, WhatsApp and the CRM as sections split by hairlines on the card (#295). */}
+			<CardContent>
+				<div className="*:py-4 *:first:pt-0 *:last:pb-0 grid grid-cols-1 divide-y">
+					<div className="gap-2 grid grid-cols-1" data-test="connection-zalo">
+						<div className="gap-3 flex items-start justify-between">
+							<div className="min-w-0">
+								<p className="font-medium">Zalo</p>
+								{zalo.length === 0 && (
+									<Badge status="neutral" data-test="connection-status">
+										{t("status.none")}
+									</Badge>
 								)}
-							/>
-						)}
-					</div>
-					{zalo.map((pipe) => (
-						<div
-							key={pipe.externalId}
-							data-test="connection-zalo-oa"
-							data-oa-id={pipe.externalId}
-							className="gap-3 p-3 flex items-center justify-between rounded-md border"
-						>
-							<div className="gap-2 min-w-0 flex flex-wrap items-center">
-								<Badge
-									status={
-										pipe.credential === "connected"
-											? "success"
-											: pipe.credential === "disconnected"
-												? "error"
-												: "neutral"
-									}
-									data-test="connection-status"
-								>
-									{t(
-										`status.${pipe.credential === "connected" ? "connected" : pipe.credential === "disconnected" ? "needsReconnect" : "none"}`,
-									)}
-								</Badge>
-								<span className="text-sm">OA {pipe.externalId}</span>
-								{pipe.disconnectedReason && (
-									<span className="text-sm text-muted-foreground">· {pipe.disconnectedReason}</span>
+								{!pipesQuery.data?.configured.zalo && pipesQuery.isSuccess && (
+									<p className="mt-1 text-sm text-muted-foreground">{t("zaloNotConfigured")}</p>
 								)}
 							</div>
-							<div className="gap-2 flex shrink-0">
-								{pipe.credential !== "connected" && pipesQuery.data?.configured.zalo && (
-									<Button
-										size="sm"
-										data-test="reconnect-zalo"
-										render={(props) => (
-											<a {...props} href={connectHref}>
-												{t("reconnect")}
-											</a>
-										)}
-									/>
-								)}
+							{pipesQuery.data?.configured.zalo && (
 								<Button
 									size="sm"
-									variant="outline"
-									data-test="disconnect-zalo"
-									loading={
-										disconnect.isPending && disconnect.variables?.externalId === pipe.externalId
-									}
-									onClick={() =>
-										confirm({
-											title: t("confirmDisconnect.title"),
-											message: t("confirmDisconnect.message", { oa: pipe.externalId }),
-											destructive: true,
-											onConfirm: async () => {
-												await disconnect.mutateAsync(pipe);
-											},
-										})
-									}
-								>
-									{t("disconnect")}
-								</Button>
-							</div>
+									variant={zalo.length === 0 ? "primary" : "outline"}
+									data-test="connect-zalo"
+									render={(props) => (
+										<a {...props} href={connectHref}>
+											{t("connectZalo")}
+										</a>
+									)}
+								/>
+							)}
 						</div>
-					))}
-				</div>
-				<div className="gap-3 flex items-start justify-between" data-test="connection-whatsapp">
-					<div>
-						<p className="font-medium">WhatsApp</p>
-						<Badge status="neutral" data-test="connection-status">
-							{t("status.none")}
-						</Badge>
-						<p className="mt-1 text-sm text-muted-foreground">{t("whatsappLater")}</p>
+						{/* The office's OAs as hairline rows, not boxes inside the card (#295). */}
+						{zalo.map((pipe) => (
+							<div
+								key={pipe.externalId}
+								data-test="connection-zalo-oa"
+								data-oa-id={pipe.externalId}
+								className="gap-3 py-2 flex flex-wrap items-center justify-between border-t"
+							>
+								<div className="gap-2 min-w-0 flex flex-wrap items-center">
+									<Badge
+										status={
+											pipe.credential === "connected"
+												? "success"
+												: pipe.credential === "disconnected"
+													? "error"
+													: "neutral"
+										}
+										data-test="connection-status"
+									>
+										{t(
+											`status.${pipe.credential === "connected" ? "connected" : pipe.credential === "disconnected" ? "needsReconnect" : "none"}`,
+										)}
+									</Badge>
+									<span className="text-sm">OA {pipe.externalId}</span>
+									{pipe.disconnectedReason && (
+										<span className="text-sm text-muted-foreground">
+											· {pipe.disconnectedReason}
+										</span>
+									)}
+								</div>
+								<div className="gap-2 flex shrink-0">
+									{pipe.credential !== "connected" && pipesQuery.data?.configured.zalo && (
+										<Button
+											size="sm"
+											variant="primary"
+											data-test="reconnect-zalo"
+											render={(props) => (
+												<a {...props} href={connectHref}>
+													{t("reconnect")}
+												</a>
+											)}
+										/>
+									)}
+									<Button
+										size="sm"
+										variant="outline"
+										data-test="disconnect-zalo"
+										loading={
+											disconnect.isPending && disconnect.variables?.externalId === pipe.externalId
+										}
+										onClick={() =>
+											confirm({
+												title: t("confirmDisconnect.title"),
+												message: t("confirmDisconnect.message", { oa: pipe.externalId }),
+												destructive: true,
+												onConfirm: async () => {
+													await disconnect.mutateAsync(pipe);
+												},
+											})
+										}
+									>
+										{t("disconnect")}
+									</Button>
+								</div>
+							</div>
+						))}
 					</div>
+					<div className="gap-3 flex items-start justify-between" data-test="connection-whatsapp">
+						<div>
+							<p className="font-medium">WhatsApp</p>
+							<Badge status="neutral" data-test="connection-status">
+								{t("status.none")}
+							</Badge>
+							<p className="mt-1 text-sm text-muted-foreground">{t("whatsappLater")}</p>
+						</div>
+					</div>
+					<OfficeCrm officeId={officeId} />
 				</div>
-				<OfficeCrm officeId={officeId} />
 			</CardContent>
 		</Card>
 	);
