@@ -670,7 +670,7 @@ async function alertFor(
 /** The bell's row for a thread a manager gave the person (saas.json `app.notifications`). */
 const GAVE_YOU_A_THREAD = {
 	en: "A manager gave you a thread",
-	vi: "Một quản lý đã giao cho bạn một cuộc trò chuyện",
+	vi: "Bạn được giao một cuộc trò chuyện",
 } as const;
 
 const OPEN_BELL = { en: "Open notifications", vi: "Mở thông báo" } as const;

@@ -393,7 +393,8 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
 
 2. **Assigning gives the thread to that agent only.** On the thread's row in Unassigned, the
    manager picks "Assign to…" → agent 1.
-   - The thread leaves Unassigned. Agent 1's Inbox has it, Your turn, marked "Yours".
+   - The thread leaves Unassigned. Agent 1's Inbox has it, Your turn. It carries no owner flag
+     there: an agent sees only their own threads, so a "Yours" would say nothing (#94).
    - Agent 2 still finds nothing (404).
    - Agent 1 approves a reply: it is sent from agent 1, and the thread stays theirs.
 
@@ -401,7 +402,7 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
    invited agents and an invited manager; agent 1 takes a name of their own, so the row's menu
    item names them; "leaves Unassigned" is the row gone and the view at 0; agent 1 has no
    Unassigned view; "stays theirs" is the approved reply (200) putting the thread under agent 1's
-   Sent, still "Yours", the manager's owner flag naming agent 1, and agent 2 still finding
+   Sent, still with no owner flag, the manager's owner flag naming agent 1, and agent 2 still finding
    nothing. "Sent from agent 1" is not checked: the thread shows no sender beyond "Sent from
    Nhịp").
 
@@ -668,9 +669,12 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
 4. **On a phone the details are a strip too.** At 390×844 the thread, opened from the list, has
    its details under the header and above the conversation (the first message, scrolled into
    view, is below them), and the reply box and Approve and
-   send wholly inside the window, with the latest message in view.
+   send wholly inside the window, with the latest message in view. The header is one line: back,
+   the guest and the turn; the pipe, the owner and the CRM status (and a manager's Assign to…)
+   open the strip instead (#94). The reply box grows with the draft, up to 12rem, before it
+   scrolls.
    No E2E test (lean testing, #278): the phone's strip is Thread layout 2's and its reply box
-   Thread layout 3's, at a narrower window.
+   Thread layout 3's, at a narrower window; the one-line header is layout polish.
 
 5. **A new guest message doesn't pull an operator who is reading older ones** (decided by Eyal on
    2026-10-08, on PR #258). A manager has a guest's thread of ten messages open, at 1366×768 with
@@ -694,6 +698,21 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    pill is hidden. "Scrolls back down themselves" is wheeling down until the latest message is in
    view, then the pill hidden. "No pill" at the latest message is judged once the new message has
    come into view. The Vietnamese name "Tin nhắn mới" is not tested.)
+6. **An answered thread shows no draft until the guest writes again** (decided by Eyal on #94).
+   While no guest message waits for an answer, the docked reply box folds to one line: "Answered
+   · Sent <when> · waiting for the guest" (VI "Đã trả lời · Đã gửi <when> · đang chờ khách"; with
+   no send of Nhịp's to date, "Answered · waiting for the guest"). There is no draft and no
+   disabled Approve and send. When the guest writes again, the reply box is back as before, with
+   its draft and Approve and send. A send whose outcome is unknown, or one that failed, keeps the
+   whole reply box and its status.
+   Spec: `apps/saas/tests/answered-thread.spec.ts` (Thread layout 6; an office of the test's own
+   with a Zalo OA, an invited agent and manager, and a nameless Zalo guest the manager gives the
+   agent. The agent opens the thread under All (which keeps an answered thread open), fills the
+   reply box and approves; the send status then reads the answered line, matched as
+   `Answered · Sent … · waiting for the guest`, and the thread has no textbox named "Reply" and no
+   `approve-and-send`. The guest writes again; once their message shows, the textbox and the
+   button are back and the status no longer reads the answered line. The VI line, the line with
+   no send and the kept reply box on an unknown or failed send are not tested (lean testing).)
 
 ## Guest details (#244)
 
@@ -860,7 +879,10 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 3. **An assignment alerts the chosen agent, with a bell row** (#133).
    - The manager assigns an Unassigned guest to agent 1 through "Assign to…". The log holds
      one `assigned` alert, for agent 1 only. Agent 1's bell shows "A manager gave you a
-     thread", with no guest's name, and it opens the thread.
+     thread", with no guest's name, and it opens the thread. The row also says when, and the
+     guest's pipe and language once known ("WhatsApp · Korean"), which name no one (#94).
+     Back-to-back rows of this kind fold into one, "5 threads were assigned to you", opening
+     the Inbox (#94; not tested end to end: Vitest holds the grouping, `bell-rows.test.ts`).
    - Reassigning the thread to agent 2 makes one `assigned` alert, for agent 2. Agent 1, who
      lost it, gets no alert but a bell row naming the guest: "Minji was moved to another
      agent". It doesn't say to whom (ADR 0022, P4).
@@ -1397,7 +1419,7 @@ VI copy is pending a native read (#78).
      sit, under the guest's text. In VI: "Chưa hỗ trợ tiếng Pháp: không dịch".
    - **The operator note**, one line beside the reply box (#248), says the reply is in English
      and names French: "in English · French isn't supported · don't interview". In VI: "bằng
-     tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi thêm kiểu phỏng vấn".
+     tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi dồn".
    - **What the guest gets is English.** The auto-reply is the English template, label
      included ("Auto-reply from …: a colleague will continue with you right here."). The reply
      box holds the English template suggested reply (ADR 0024), naming the office: it starts
@@ -1564,7 +1586,7 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    office language with the alert's id only.
    The bell: the agent, set to English, is given a guest's thread by the manager (judged once the
    agent's `assigned` alert is in the log) and opens their settings at `/en/settings/general`,
-   their own language's address; the bell reads "Một quản lý đã giao cho bạn một cuộc trò chuyện"
+   their own language's address; the bell reads "Bạn được giao một cuộc trò chuyện"
    and not "A manager gave you a thread". Not tested: the alert's text, which the alert log
    doesn't hold and a mock deployment pushes nowhere).
 9. **Sign-in keeps its own switch.** Signed out, the login page still offers English and Tiếng

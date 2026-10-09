@@ -101,9 +101,13 @@ test.describe("Auth 3 — no account without an invitation", () => {
 	}) => {
 		const stranger = admin.newEmail("stranger");
 
-		const login = new LoginPage(page);
-		await login.goto("en");
-		await login.requestMagicLink(stranger);
+		// The login page no longer offers a magic link (KIT_SCREENS, #94), but the auth plugin
+		// still answers: ask it for one, as the hidden form did.
+		const asked = await withOrigin(page.request).post("/api/auth/sign-in/magic-link", {
+			email: stranger,
+			callbackURL: "/",
+		});
+		expect(asked.ok(), `the magic-link endpoint takes the request (${asked.status()})`).toBe(true);
 
 		await expectSignedOut(page);
 		await admin.expectNoAccount(stranger);

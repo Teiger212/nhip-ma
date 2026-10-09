@@ -26,7 +26,7 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
-import { displayName } from "../lib/display-name";
+import { guestLabel } from "../lib/display-name";
 import { InboxApiError, useDeleteGuest, useOfficeRole } from "../lib/inbox-queries";
 import type { Conversation, GuestDeletionReason } from "../lib/types";
 
@@ -164,7 +164,7 @@ export function DeleteGuestDialog({
 		<AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
 			<AlertDialogContent data-test="delete-guest-dialog">
 				<AlertDialogHeader>
-					<AlertDialogTitle>{t("title", { name: displayName(conversation) })}</AlertDialogTitle>
+					<AlertDialogTitle>{t("title", { name: guestLabel(conversation).text })}</AlertDialogTitle>
 					<AlertDialogDescription>
 						{t("what", { count: conversation.messages.length })}
 					</AlertDialogDescription>

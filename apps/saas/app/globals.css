@@ -64,16 +64,19 @@
 	clip-path: inset(0);
 }
 
-/* A popover as wide as the screen allows, up to 22rem. */
-@utility w-popover {
-	width: min(100vw - 2rem, 22rem);
-}
-
 @utility container {
 	margin-inline: auto;
 	padding-inline: 1.5rem;
 	width: 100%;
 	max-width: var(--container-7xl);
+}
+
+/* A `<summary>` drawn by its own chevron: no browser disclosure triangle (the Quiet fold, #94). */
+@utility no-marker {
+	list-style: none;
+	&::-webkit-details-marker {
+		display: none;
+	}
 }
 
 @utility no-scrollbar {

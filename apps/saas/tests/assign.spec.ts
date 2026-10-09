@@ -177,12 +177,12 @@ async function firstWordOf(request: APIRequestContext, oaId: string): Promise<Gu
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		// A row (it carries its owner flag), or the list saying it is empty, caught up, unmatched,
+		// A row (it carries its status flag), or the list saying it is empty, caught up, unmatched,
 		// that every lead is assigned (a manager's Unassigned), or that only Quiet threads wait.
 		// The view buttons above the list are buttons too, so a button proves nothing.
 		threadList(page)
 			.locator(
-				'[data-test="thread-owner"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
+				'[data-test="thread-status"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
 			)
 			// A Quiet row sits folded away until opened, so only a shown one counts.
 			.filter({ visible: true })
@@ -286,7 +286,11 @@ async function choose(select: Locator, label: string) {
 	await expect(option, "the list closes").toBeHidden();
 }
 
-/** Whose a thread is, as its row or header shows it. */
+/**
+ * Whose a thread is, as its row or header shows it. "mine" is an agent's own thread: an agent
+ * sees only their own (ADR 0022), so it carries no owner flag at all, never "Yours" (#94); the
+ * row being in their Inbox is what says it is theirs.
+ */
 type Owner = "unassigned" | "mine" | { other: string };
 
 async function expectOwner(where: Locator, owner: Owner, message?: string) {
@@ -295,8 +299,8 @@ async function expectOwner(where: Locator, owner: Owner, message?: string) {
 		await expect(flag, message).toHaveAttribute("data-owner", "unassigned");
 		await expect(flag, message).toHaveText(copy.unassigned);
 	} else if (owner === "mine") {
-		await expect(flag, message).toHaveAttribute("data-owner", "mine");
-		await expect(flag, message).toHaveText(copy.mine);
+		await expect(where.getByTestId("thread-status"), message).toBeVisible();
+		await expect(flag, message).toHaveCount(0);
 	} else {
 		await expect(flag, message).toHaveAttribute("data-owner", "other");
 		await expect(flag, message).toHaveText(owner.other);
@@ -440,7 +444,7 @@ test.describe("Assign 1 — a new guest waits in Unassigned, for managers only",
 
 // scenario: docs/e2e-scenarios.md Assigning leads 2
 test.describe("Assign 2 — assigning gives the thread to that agent only", () => {
-	test("from the row's Assign to… in the manager's Unassigned view, choosing agent 1 takes the thread out of Unassigned; agent 1 has it in Your turn, marked Yours, agent 2 finds nothing (404); agent 1 approves a reply and the thread stays theirs", async ({
+	test("from the row's Assign to… in the manager's Unassigned view, choosing agent 1 takes the thread out of Unassigned; agent 1 has it in Your turn (no owner flag: it is theirs), agent 2 finds nothing (404); agent 1 approves a reply and the thread stays theirs", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
@@ -475,7 +479,7 @@ test.describe("Assign 2 — assigning gives the thread to that agent only", () =
 		await expect(view(one.page, "Your turn", 1)).toHaveAttribute("aria-pressed", "true");
 		const row = rowOf(one.page, guest);
 		await expect(row, "the guest is waiting on agent 1").toBeVisible();
-		await expectOwner(row, "mine", "agent 1's row says Yours");
+		await expectOwner(row, "mine", "agent 1's row is theirs, with no owner flag");
 
 		// Agent 2: nothing.
 		await expectHasNot(two, guest, threadId);

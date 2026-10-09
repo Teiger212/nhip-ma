@@ -35,7 +35,7 @@ test("the one-line operator note says the reply is in English and names French",
 		"in English · French isn't supported · don't interview",
 	);
 	expect(formatCribNote(shot, vi, "vi")).toBe(
-		"bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi thêm kiểu phỏng vấn",
+		"bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi dồn",
 	);
 });
 

@@ -18,7 +18,8 @@ const alwaysSounds = () => true;
  * A manager's owner change, once `setOwner` has succeeded (ADR 0022 "Alerts", #133):
  * - the operator given the thread gets an `assigned` alert, pushed with the toast's words
  *   ("Minji was assigned to you"), and the bell row "A manager gave you a thread", which names
- *   no guest and opens the alert's own link;
+ *   no guest and opens the alert's own link; its data carries the pipe and the guest language's
+ *   code (#94), which identify no one, so the row can say "Zalo · Korean";
  * - a thread back in Unassigned gives the other managers a `returned` alert ("Minji is
  *   waiting"), with no bell row;
  * - the operator it left gets the bell row naming the guest (P4), with `data.threadId` so guest
@@ -41,6 +42,7 @@ export async function alertOwnerChange(
 		await store.officeOperators(conversation.officeId),
 	);
 	const guestName = conversation.guestName?.trim() || null;
+	const guestLanguage = conversation.oneShot ? namedLanguage(conversation.oneShot) : null;
 	// Error kinds only: an error's text can carry guest data (PDPL).
 	const failures: string[] = [];
 
@@ -68,7 +70,7 @@ export async function alertOwnerChange(
 					{
 						guestName,
 						pipe: conversation.pipe,
-						guestLanguage: conversation.oneShot ? namedLanguage(conversation.oneShot) : null,
+						guestLanguage,
 					},
 					t,
 					locale,
@@ -104,6 +106,7 @@ export async function alertOwnerChange(
 						userId: recipient.userId,
 						type: NOTIFICATION_TYPES.THREAD_ASSIGNED,
 						link: recorded.link,
+						data: { pipe: conversation.pipe, language: guestLanguage },
 					});
 				}
 			} catch (error) {

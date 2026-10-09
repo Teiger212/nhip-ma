@@ -2,7 +2,7 @@
 
 import { cn } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { arrangeExtractRows, type ExtractFieldId, type ExtractRow } from "../lib/extract-rows";
 import { formatGuestDetail } from "../lib/guest-details-format";
@@ -101,14 +101,17 @@ function DetailLine({ details }: { details: Detail[] }) {
 /**
  * The one-shot extraction (Qualification, paperwork): the known facts, and a last row naming what
  * is still to ask. In the details rail a label/value grid; in the narrow pane's strip under the
- * header (#248), the same pairs along a line.
+ * header (#248), the same pairs along a line. On a phone the strip opens with the thread's
+ * metadata badges (`meta`: pipe, owner, CRM status), which leave the header there (#94).
  */
 export function ExtractFields({
 	conversation,
 	layout,
+	meta,
 }: {
 	conversation: Conversation;
 	layout: "rail" | "strip";
+	meta?: ReactNode;
 }) {
 	const { rows, missing } = useMemo(
 		() => arrangeExtractRows(conversation.oneShot),
@@ -121,8 +124,9 @@ export function ExtractFields({
 	return (
 		<div
 			data-test="thread-details"
-			className="px-3 py-2 text-xs md:px-4 flex shrink-0 flex-col border-b bg-muted/40"
+			className="gap-1.5 px-3 py-2 text-xs md:px-4 flex shrink-0 flex-col border-b bg-muted/40"
 		>
+			{meta ? <div className="gap-1.5 flex flex-wrap items-center">{meta}</div> : null}
 			<DetailLine details={details} />
 		</div>
 	);
