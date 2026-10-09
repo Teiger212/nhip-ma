@@ -162,9 +162,7 @@ If the Neon CLI is not available, you can visit https://neon.com/.well-known/age
 
 ### Updating Skills
 
-Keep the skills up to date: for every new session, update them so you are working with the latest best practices.
-
-Run `neon skills update` to update all installed Neon skills, or `neon skills update -y` to skip prompts. If the skills were installed via a plugin, they are updated automatically.
+Run `neon skills update` to update all installed Neon skills, or `neon skills update -y` to skip prompts. Update on purpose, not every session: where a repository vendors its skills and pins them (for example in `skills-lock.json`), an update rewrites committed files and is a change to review and commit. If the skills were installed via a plugin, they are updated automatically.
 
 ## Getting Started with Neon
 

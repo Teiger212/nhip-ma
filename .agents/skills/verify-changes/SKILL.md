@@ -22,18 +22,11 @@ Use for the final repository gates and for selecting focused tests. Do not use t
    pnpm install
    ```
    The ignored custom Prisma client under `packages/database/prisma/generated` is absent in a clean checkout. Run `pnpm --filter @repo/database generate` before direct package tests/scripts that load `@repo/database`, after schema changes, and before local E2E. Root `pnpm dev`, `pnpm build`, and `pnpm type-check` already reach the database `generate` task through `turbo.json`; do not add redundant generation to every command.
-3. Run focused Vitest tests first. The exact CI unit command is:
-   ```bash
-   pnpm --filter @repo/api --filter saas --filter marketing test
-   ```
-   Narrow to one workspace when appropriate, for example `pnpm --filter @repo/api test`.
-4. Run the matching Playwright suite when routes, rendering, auth, navigation, forms, or another browser-visible flow changed. Each config builds and starts its own app:
-   ```bash
-   pnpm --filter saas e2e:ci
-   pnpm --filter marketing e2e:ci
-   ```
-   Tests are under `apps/saas/tests` and `apps/marketing/tests`.
-   E2E may be skipped for docs-only, server-only, unit-only, or non-behavioral changes when no browser contract is affected; state that reason in the handoff. CI still runs both suites for every PR.
+3. Run focused Vitest tests first, in the owning workspace (for example
+   `pnpm --filter @repo/api test`). CI runs root `pnpm test`: Turbo, every workspace with a
+   `test` script.
+4. When routes, rendering, auth, navigation, forms, or another browser-visible flow changed, run the spec files you touched against the build-once server: `pnpm e2e:changed` from the repo root (`apps/saas/tests/AGENTS.md`, "How E2E runs"). Never the full suite locally; CI's one green run is the gate, and CI runs the SaaS suite only.
+   E2E may be skipped for docs-only, server-only, unit-only, or non-behavioral changes when no browser contract is affected; state that reason in the handoff.
 5. Run CI-parity read-only gates:
    ```bash
    pnpm lint
@@ -42,7 +35,7 @@ Use for the final repository gates and for selecting focused tests. Do not use t
    ```
    If they fail, use `pnpm lint:fix` and/or `pnpm format`, review the edits, then rerun the read-only gates.
 6. Reinspect `git diff` after any fix command. Confirm no secrets, generated client artifacts, `console.log`, unjustified `any`, or unrelated edits were introduced.
-7. Compare failures with `.github/workflows/validate-prs.yml`; its jobs are `lint`, `type-check`, `unit`, and `e2e`. CI's e2e job (`.github/workflows/ci.yml`) uploads the `playwright-report` artifact on every run that isn't cancelled: `apps/saas/playwright-report/` and `apps/saas/test-results/results.json` (every test's duration).
+7. Compare failures with `.github/workflows/ci.yml`; its jobs are `ci` (lint, type-check, `pnpm test`, `migrate:check`, migration lint, `seed:check`) and `e2e` (two shards); `format.yml` runs `format:check`. Each e2e shard uploads a `playwright-report-<n>` artifact on every run that isn't cancelled: `apps/saas/playwright-report/` and `apps/saas/test-results/results.json` (every test's duration).
 
 ## Canonical reference
 
@@ -59,4 +52,4 @@ Report every command and exit result, whether clean-checkout installation/genera
 | Missing `packages/database/prisma/generated/client`       | Clean checkout or changed Prisma schema has not generated the ignored client                | Run `pnpm --filter @repo/database generate`; never edit generated client/Zod output  |
 | `ERR_PNPM_NO_MATCHING_VERSION` or catalog install refusal | A catalog entry is wrong or the release is younger than `minimumReleaseAge: 1440`           | Correct/reuse `catalog:` or choose an eligible release; do not disable the age guard |
 | `pnpm format:check` reports Markdown/TS indentation       | Hand indentation differs from Oxfmt output, including tabs in formatted TypeScript examples | Run `pnpm format`, review the diff, then rerun `pnpm format:check`                   |
-| No root `e2e` script or wrong filter                      | E2E is app-local; CI unit uses exact workspace names                                        | Use the commands above, including `@repo/api` and `@repo/database`                   |
+| No root `e2e` script or wrong filter                      | E2E is app-local; the root has only `e2e:changed`                                           | Use the commands above, including `@repo/api` and `@repo/database`                   |

@@ -7,7 +7,7 @@ description: Use when triaging or fixing a failed GitHub Actions validation job 
 
 ## Scope
 
-Use for failures in `.github/workflows/validate-prs.yml`. Do not change tests, workflow gates, or production behavior merely to hide an unrelated infrastructure failure.
+Use for failures in `.github/workflows/ci.yml` (and `format.yml`, which runs `pnpm format:check`). Do not change tests, workflow gates, or production behavior merely to hide an unrelated infrastructure failure.
 
 ## Procedure
 
@@ -17,19 +17,19 @@ Use for failures in `.github/workflows/validate-prs.yml`. Do not change tests, w
    gh run view <run-id>
    gh run view <run-id> --log-failed
    ```
-2. Confirm the failure belongs to the current commit and classify it by the actual jobs: `lint`, `type-check`, `unit`, or `e2e`.
+2. Confirm the failure belongs to the current commit and classify it by job and step: `ci` (lint, type-check, `pnpm test`, `migrate:check`, migration lint, `seed:check`) or one of the two `e2e` shards.
 3. Reproduce the failed workflow step from a clean install when dependency/cache state is suspect:
    ```bash
    pnpm install
+   pnpm --filter @repo/database generate
    pnpm lint
    pnpm format:check
    pnpm type-check
-   pnpm --filter @repo/api --filter saas --filter marketing test
-   pnpm --filter @repo/database generate
-   pnpm --filter saas e2e:ci
-   pnpm --filter marketing e2e:ci
+   pnpm test
+   pnpm --filter @repo/database migrate:check
+   pnpm --filter saas seed:check
    ```
-   Run only the commands for the failed job after installation. CI's E2E install step uses `pnpm --filter database generate`; the unambiguous local package name is `@repo/database`.
+   Run only the commands for the failed step after installation. For an E2E failure, run the failing spec file against the build-once server (`apps/saas/tests/AGENTS.md`, "How E2E runs"), not the whole suite.
 4. Match CI environment requirements: `DATABASE_URL`, a test `BETTER_AUTH_SECRET`, and `RESEND_API_KEY` are workflow env values. Do not print secret values.
 5. Reduce the reproduction to the failing file or test, then trace the earliest application error rather than later cascade errors or artifact-upload noise.
 6. Fix the root cause and add or update a regression test when the failure exposed missing coverage.
@@ -37,7 +37,7 @@ Use for failures in `.github/workflows/validate-prs.yml`. Do not change tests, w
 
 ## Canonical reference
 
-`.github/workflows/validate-prs.yml` is authoritative for Node setup, package filters, command order and the 60-minute E2E timeout. The e2e job (`.github/workflows/ci.yml`) uploads the `playwright-report` artifact on every run that isn't cancelled: the html report (`playwright-report/`) and every test's duration (`test-results/results.json`), both from `apps/saas/`.
+`.github/workflows/ci.yml` is authoritative for Node setup, package filters, step order and the timeouts (20 minutes for `ci`, 30 for each E2E shard). Each e2e shard uploads a `playwright-report-<n>` artifact on every run that isn't cancelled: the html report (`playwright-report/`) and every test's duration (`test-results/results.json`), both from `apps/saas/`.
 
 ## Done
 
@@ -46,7 +46,6 @@ Document the failing job and error, root cause, changed files, and successful lo
 ## Common mistakes
 
 - Debugging the latest run without checking its SHA.
-- Assuming CI runs root `pnpm test`; its unit job uses three explicit filters.
 - Fixing a secondary timeout while ignoring an earlier server build error.
 - Logging or copying secret values into an issue or test fixture.
 - Looking for a marketing report in CI artifacts; the current upload step includes only SaaS.

@@ -46,7 +46,7 @@ translations and qualifiers filled. It prints every login at the end. A re-run a
 48 hours. It refuses `VERCEL_ENV=production` and any database that is not local, unless
 `SEED_REMOTE_DATABASE_HOST` names that database's host (the Neon `dev` branch; never staging or
 production). Under `E2E` (the E2E run's own seed) it writes only the walk logins and the four
-demo threads, as before.
+demo threads.
 
 ## Vitest
 

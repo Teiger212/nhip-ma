@@ -48,15 +48,12 @@ from code: that is what lets your tests catch an implementation that is wrong.
 ## Done means
 
 1. The spec names its scenario (`describe` title plus a `// scenario:` line).
-2. You saw it fail for the right reason when the behaviour is missing: run it against the
-   state the main session tells you is "before", or ask how to break the behaviour. Report
-   the red run.
-3. It passes headlessly against the current build, one file at a time with `--workers=1`.
+2. It passes headlessly against the current build, one file at a time with `--workers=1`.
    No `--repeat-each`: one green CI run is the merge gate, and a flaky spec is fixed after.
-4. `pnpm lint` and `pnpm type-check` pass.
+3. `pnpm lint` and `pnpm type-check` pass.
 
 ## Report
 
-Per spec: the scenario, what it asserts in user terms, the red run and the three green runs,
+Per spec: the scenario, what it asserts in user terms, the green run,
 and anything you could not test and why. If the app does something the scenario does not
 promise (or the reverse), report it as a finding; don't bend the test to fit the code.

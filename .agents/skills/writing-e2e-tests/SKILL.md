@@ -21,8 +21,6 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
 3. Assert what the person sees or what the rule promises: text, roles, where a thread is
    listed, what a count says. Never assert internal calls, database rows the UI never shows,
    or copy that only restates the implementation.
-4. Cover the refusal, not only the happy path: the scenario's "fails / is refused / creates
-   nothing" lines are tests too.
 
 ## Where and how
 
@@ -32,9 +30,9 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   (a reused server silently tests stale code; use `E2E_BASE_URL` to target a running one, or
   `E2E_REUSE=1` for the build `scripts/e2e-server.sh` started, below). No retries anywhere: a flaky spec is fixed, not retried.
 - Routes are locale-prefixed: navigate to `/en/…` or `/vi/…`; bare paths redirect.
-- Locators: `getByRole`, `getByLabel`, `getByText` for what users read; a `data-test`
-  attribute only when nothing user-facing is stable (add it to the component deliberately).
-  Never CSS structure, never nth-child.
+- Locators: flow elements with `getByTestId` (`data-test`, set in the config); roles and
+  labels only where the text or accessibility is what the test proves. Never CSS structure,
+  never nth-child.
 - Waiting: web-first assertions (`await expect(locator).toBeVisible()`, `toHaveURL`,
   `toHaveText`). No `waitForTimeout`, no `networkidle`.
 - The E2E build polls the Inbox every second, not ten (#222). A change a page learns of shows
@@ -84,8 +82,6 @@ funnel rules, background work). Do not use Playwright for pure functions or sing
   never a `pnpm exec tsx` spawn per call (about 2 s each on CI). A read is fast now, so an
   absence check waits for something that settles first (a later guest's alert or lead), never
   on the read being slow.
-- Locate flow elements with `getByTestId` (`data-test`, set in the config). Use roles and
-  labels only where the text or accessibility is what the test proves.
 - While writing a spec: `E2E_BASE_URL=http://localhost:3010 pnpm --filter saas exec playwright
 test <file>` against your running dev server (no build).
 - The app is served over HTTPS (self-signed; `ignoreHTTPSErrors` is on), so cookies are
