@@ -199,6 +199,16 @@ describe("the first draft eval's drafts", () => {
 			"If Saturday at 10am works for the viewing it's booked, otherwise I'll suggest another day.",
 			"Whether foreigners can own it is not a problem here, I'll check the details.",
 			"On whether you get a pink book the answer is yes, I'll confirm the timeline.",
+			"Nếu anh mua thì căn này đã có sổ hồng riêng, em sẽ kiểm tra lại.",
+			"If you buy here the pink book is guaranteed, I'll check the timeline.",
+			"On whether it's available it definitely is, I'll confirm the price.",
+			"Liệu căn này còn trống thì chắc chắn rồi, em sẽ xác nhận lại.",
+			// A negation elsewhere in the condition doesn't rule the day out.
+			"If you don't mind Saturday at 10am is booked for the viewing, I'll confirm the address.",
+			"Nếu anh không bận thì thứ bảy 10 giờ anh qua xem nhà nhé, em sẽ báo lại chủ nhà.",
+			// Sending the pink book itself promises one.
+			"I will send you the pink book after signing.",
+			"Em sẽ gửi sổ hồng cho anh sau khi ký hợp đồng.",
 			// Nor does a closing question cover the condition before it.
 			"Nếu anh thích thì căn này còn trống, anh muốn em gửi ảnh không?",
 			"If you're still keen the studio is available at $650, shall I send photos?",

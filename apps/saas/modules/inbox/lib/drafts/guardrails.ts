@@ -175,8 +175,14 @@ function clauses(sentence: string, viewing: boolean): Clause[] {
 	return joined;
 }
 
-/** A day ruled out, not proposed: "if Saturday doesn't work", "nếu thứ Bảy không được". */
-const NEGATED = /n't\b|\b(?:not|cannot)\b|(?<!\p{L})(?:không|chưa)(?!\p{L})/iu;
+/**
+ * A day ruled out, not proposed: the negation right after the day ("if Saturday doesn't work",
+ * "nếu thứ Bảy không được"), not anywhere in the clause ("nếu anh không bận thì thứ Bảy…").
+ */
+const DAY_RULED_OUT = new RegExp(
+	`(?:${DAY_OR_TIME.source})(?:\\s+[\\p{L}\\d']+){0,2}?\\s+(?:doesn't|does not|don't|isn't|is not|won't|can't|cannot|not|không|chưa)(?!\\p{L})`,
+	"iu",
+);
 
 /**
  * Whether a condition states an answer by itself, so no deferral may cover it: a price, an
@@ -185,19 +191,21 @@ const NEGATED = /n't\b|\b(?:not|cannot)\b|(?<!\p{L})(?:không|chưa)(?!\p{L})/iu
  */
 function conditionStates(part: string, viewing: boolean): boolean {
 	if (PAPERWORK_TERMS.test(part) && HANDS_OVER.test(part)) return true;
-	if (viewing && DAY_OR_TIME.test(part) && !NEGATED.test(part)) return true;
-	// An indirect question names the matter ("whether the fee is included in the 9.5M"): only a
-	// verdict in it answers ("whether foreigners can own it is not a problem").
-	if (INDIRECT_QUESTION.test(part)) return VERDICT.test(part);
+	if (viewing && DAY_OR_TIME.test(part) && !DAY_RULED_OUT.test(part)) return true;
+	if (VERDICT.test(part)) return true;
+	// An indirect question names the matter ("whether the fee is included in the 9.5M",
+	// "whether it has its own pink book"): only a verdict in it answers.
+	if (INDIRECT_QUESTION.test(part)) return false;
 	if (PRICE_BARE.test(part) || (PRICE_NOUN.test(part) && PRICE_STATED.test(part))) return true;
+	if (PAPERWORK_TERMS.test(part) && ASSERTS.test(part)) return true;
 	return AVAILABILITY.test(part) || LEGAL_ANSWER.test(part);
 }
 
 const INDIRECT_QUESTION = /\bwhether\b|^(?:(?:và|nhưng)\s+)?liệu(?!\p{L})/iu;
 
-/** A verdict: the answer itself. */
+/** A verdict: the answer itself ("it definitely is", "that's correct", "chắc chắn rồi"). */
 const VERDICT =
-	/\b(?:yes|no problem|not a problem|fine|guaranteed|the answer)\b|(?<!\p{L})(?:có ạ|được ạ|không sao|không vấn đề|được)(?!\p{L})/iu;
+	/\b(?:yes|no problem|not a problem|fine|guaranteed|the answer|definitely|certainly|of course|correct|that's right)\b|(?<!\p{L})(?:có ạ|được ạ|không sao|không vấn đề|được|chắc chắn|đúng|rồi ạ|có rồi)(?!\p{L})/iu;
 
 /**
  * The agent's own promise ("I will", "em sẽ") to do a harmless thing (`SAFE_ACTION`: send,
@@ -214,7 +222,7 @@ const SAFE_ACTION =
 
 /** Getting, issuing or handing over the paperwork: with a paperwork word, a legal answer. */
 const HANDS_OVER =
-	/\b(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\s+over|deliver|issue|process|sort|take care of|register|secure|arrange|sign (?:it )?over|make sure|in your name)\b|(?<!\p{L})(?:giao|sang tên|làm sổ|làm giấy|làm hồ sơ|thủ tục|lo|chuyển nhượng|cấp|đăng ký|đứng tên|hoàn tất|đảm bảo)(?!\p{L})/iu;
+	/\b(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\s+over|deliver|issue|process|sort|take care of|register|secure|arrange|sign (?:it )?over|make sure|in your name)\b|\b(?:send|include|share)\s+(?:\w+\s+){0,2}(?:pink|red)\s*book|(?<!\p{L})(?:giao|sang tên|làm sổ|làm giấy|làm hồ sơ|thủ tục|lo|chuyển nhượng|cấp|đăng ký|đứng tên|hoàn tất|đảm bảo)(?!\p{L})|(?<!\p{L})(?:gửi|kèm)\s+(?:\p{L}+\s+)?s[ổo]\s*(?:h[ồo]ng|đ[ỏo])/iu;
 
 /**
  * A bare yes in Vietnamese ("Dạ được anh", "Được ạ"): in a draft about a viewing it answers the
