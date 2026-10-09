@@ -13,7 +13,9 @@
 		"e2e:changed": "pnpm --filter saas e2e:changed",
 		"format": "oxfmt .",
 		"format:check": "oxfmt --check .",
-		"seed": "dotenv -c -- pnpm --filter saas seed"
+		"seed": "dotenv -c -- pnpm --filter saas seed",
+		"eval:drafts": "dotenv -c -- pnpm --filter saas eval:drafts",
+		"eval:translation": "dotenv -c -- pnpm --filter saas eval:translation"
 	},
 	"devDependencies": {
 		"@neon/config": "^1.8.2",

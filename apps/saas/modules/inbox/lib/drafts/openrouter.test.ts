@@ -112,6 +112,22 @@ test("a key with no model ids drafts and translates with the defaults in code", 
 	expect(calls.every((call) => call.body.provider !== undefined)).toBe(true);
 });
 
+test("Gemini 3.x thinks at its lowest level, since thinking bills as output; Haiku sends no reasoning", async () => {
+	vi.spyOn(console, "info").mockImplementation(() => {});
+	const calls = stubFetch(() => completion("ok"));
+	const layer = layerFor({
+		DRAFT_API_KEY: "sk-test",
+		TRANSLATE_MODEL: "google/gemini-3.1-flash-lite",
+	});
+
+	await layer.translate(TRANSLATE_INPUT);
+	await layer.draft(DRAFT_INPUT);
+
+	expect(calls[0].body.reasoning).toEqual({ effort: "minimal", exclude: true });
+	expect(calls[1].body.model).toBe("anthropic/claude-haiku-5.5");
+	expect(calls[1].body).not.toHaveProperty("reasoning");
+});
+
 test("translate speaks the chat-completions protocol and frames guest text as data", async () => {
 	vi.spyOn(console, "info").mockImplementation(() => {});
 	const calls = stubFetch(() => completion("  Xin chào, tôi tìm thuê ở Tây Hồ.  "));
