@@ -37,10 +37,11 @@ type Reasoning = { effort: "minimal"; exclude: true } | { enabled: false };
 /**
  * Reasoning bills as output and counts against `max_tokens`, and these tasks don't need it.
  * Gemini 3.x thinks at its lowest level, kept out of the answer (ADR 0024). Anthropic models
- * think at medium effort unless told otherwise; `enabled: false` is OpenRouter's switch for
- * Anthropic's `thinking: { type: "disabled" }` (same page, "Reasoning with the Anthropic
- * Messages API"), where `effort: "none"` is rejected. Any other model's request carries no
- * `reasoning`.
+ * think at medium effort unless told otherwise, so their reasoning is off (#289). On
+ * openrouter.ai/docs/guides/best-practices/reasoning-tokens, `enabled: false` is the switch for
+ * Anthropic's `thinking: { type: "disabled" }` ("Reasoning with the Anthropic Messages API"),
+ * and Claude rejects `effort: "none"` ("Changing Effort Mid-Conversation"). Any other model's
+ * request carries no `reasoning`.
  */
 export function reasoningFor(model: string): Reasoning | undefined {
 	if (/^google\/gemini-3/u.test(model)) return { effort: "minimal", exclude: true };
