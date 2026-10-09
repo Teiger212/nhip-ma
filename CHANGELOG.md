@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-09 (Model drafts: no cut-off JSON, and the post-check blocks answers, not mentions)
+
+### Fixed
+
+- **Model drafts no longer run out of tokens** (#289, ADR 0024). Haiku's hidden reasoning used a
+  draft's whole 768-token budget on two threads of the first eval, so the JSON never closed and
+  the template stood. A draft now asks for Haiku's medium reasoning explicitly and may use 2,000
+  tokens; a translation runs with reasoning off. A cut-off answer still leaves the template.
+- **The post-check lets good deferrals through** (#289, ADR 0024). A number the guest or the
+  office already wrote in the thread passes (the agent's "9 giờ" viewing, Kenji's 60億 written
+  as 6 billion), while a number nobody wrote still blocks. A deferral that names a day or a legal
+  term passes ("If Saturday doesn't work, I'll suggest another day", "I'll check whether it has
+  its own pink book"); a confirmation beside a deferral ("Next week works, I'll check the time"),
+  a condition that states an answer ("Nếu anh hỏi thì căn này vẫn còn trống, em sẽ xác nhận"), a
+  promise about the paperwork ("Em sẽ giao sổ hồng cho anh") and a bare Vietnamese yes to a
+  viewing ("Dạ được anh") still block. The draft eval's number
+  check follows the same rule.
+
 ## 2026-10-08 (The agent reads what goes out, in the office language)
 
 ### Added
