@@ -1,15 +1,22 @@
 import { z } from "zod";
 
+import type { Message } from "../types";
+import { DRAFT_MESSAGES } from "./adapter";
+
 /**
  * The post-check behind the model (ADR 0005, ADR 0024). The prompt carries the rules; this is
  * the part that does not trust the prompt. It blocks an answer, never a mention: a draft that
- * states a price, an availability, a viewing time or a legal answer, or writes a number the
- * guest didn't, is dropped and the template stands. "I'll check the ownership rules for you"
- * passes.
+ * states a price, an availability, a viewing time or a legal answer, or writes a number nobody
+ * in the thread wrote, is dropped and the template stands. "I'll check the ownership rules for
+ * you" passes.
  *
  * Each sentence is read clause by clause. A clause that defers ("I'll check", "em sẽ kiểm
- * tra") states nothing, and neither does a question, unless it proposes a viewing day. The
- * number rule has no exemption: a deferral can still carry a figure.
+ * tra") states nothing, and neither does a question, unless it proposes a viewing day. A
+ * condition or the matter deferred ("if Saturday doesn't work", "whether it has its own pink
+ * book") is read with the clause it belongs to, so a deferral covers it; a confirmation beside
+ * a deferral ("Next week works, I'll check the time") is its own clause and still blocks (#289).
+ * The number rule has no exemption: a deferral can still carry a figure, but only one the guest
+ * or the office already wrote in the thread the model read.
  *
  * The statement patterns are English and Vietnamese, the office languages: every model draft
  * has an office-language text, checked as well, so an answer in Japanese, Korean or Russian is
@@ -55,18 +62,18 @@ export function parseModelDraft(raw: string | null | undefined): ModelDraft | nu
  * The agent answers them by hand; the flag in the operator note says so.
  */
 const PAPERWORK_TERMS =
-	/pink\s*book|s[ổo]\s*h[ồo]ng|s[ổo]\s*đ[ỏo]|ownership|residency|visa|work\s*permit|lease\s*hold|free\s*hold|sở\s*hữu|giấy\s*tờ|pháp\s*lý|핑크북|소유권|비자|所有権|ピンクブック|ビザ|розов(?:ая|ую)\s+книг|собственност|виз[аы]/iu;
+	/pink\s*book|title\s*deed|s[ổo]\s*h[ồo]ng|s[ổo]\s*đ[ỏo]|ownership|residency|visa|work\s*permit|lease\s*hold|free\s*hold|sở\s*hữu|giấy\s*tờ|pháp\s*lý|핑크북|소유권|비자|所有権|ピンクブック|ビザ|розов(?:ая|ую)\s+книг|собственност|виз[аы]/iu;
 
 /**
  * A clause that asserts something, in English or Vietnamese: with a paperwork word it is a legal
  * answer ("You will get a sổ hồng"); without one, "Thanks for asking about the pink book" isn't.
  */
 const ASSERTS =
-	/\b(?:is|are|was|were|will|won't|can|can't|cannot|could|should|may|get|gets|got|have|has|need|needs|require|requires|allowed|eligible|possible|ready|fine|guaranteed?|no problem)\b|(?:^|\s)(?:được|sẽ|là|cần|không cần|không sao|không vấn đề|đầy đủ|có sổ|đã có)(?=\s|$|[,.!?])/iu;
+	/\b(?:you|it|they)(?:'ll|’ll)\b|\b(?:qualify|qualifies|is|are|was|were|will|won't|can|can't|cannot|could|should|may|get|gets|got|have|has|need|needs|require|requires|allowed|eligible|possible|ready|fine|guaranteed?|no problem)\b|(?:^|\s)(?:được|sẽ|là|cần|không cần|không sao|không vấn đề|đầy đủ|có sổ|đã có)(?=\s|$|[,.!?])/iu;
 
 /** A legal answer with no paperwork word: who may own or buy. */
 const LEGAL_ANSWER =
-	/\bforeigners?\s+(?:can|may|cannot|can't|are allowed|is allowed|are not allowed|are eligible)\b|\byou\s+(?:can|will|could)\s+(?:own|buy|obtain)\b|người nước ngoài\s+(?:được|có thể|không được|không thể)/iu;
+	/\bforeigners?\s+(?:qualify|can|may|cannot|can't|are allowed|is allowed|are not allowed|are eligible)\b|\byou\s+(?:can|will|could)\s+(?:own|buy|obtain)\b|người nước ngoài\s+(?:được|có thể|không được|không thể)/iu;
 
 /** What a price is called. */
 const PRICE_NOUN =
@@ -84,7 +91,7 @@ const AVAILABILITY =
 
 /** What a viewing is called: a viewing day is only a viewing day in a draft that talks of one. */
 const VIEWING =
-	/\b(?:view|viewing|viewings|visit|tour|show you|see (?:it|the (?:place|apartment|flat|unit|villa|house))|come (?:by|over|and see))\b|xem\s+(?:nhà|căn|phòng|trực tiếp)|đi xem|dẫn\s+.*\s+xem|lịch xem/iu;
+	/\b(?:view|viewing|viewings|visit|tour|show you|see (?:it|the (?:place|apartment|flat|unit|villa|house))|come (?:by|over|and see))\b|xem\s+(?:nhà|căn|phòng|trực tiếp)|(?:đi|qua|ghé|đến|tới)\s+xem|dẫn\s+.*\s+xem|lịch xem/iu;
 
 /** A day or a time of day. */
 const DAY_OR_TIME =
@@ -103,31 +110,188 @@ export function sentences(text: string): string[] {
 		.filter(Boolean);
 }
 
-/** A sentence's clauses: a comma, a semicolon or a dash can join a statement to a deferral. */
-function clauses(sentence: string): string[] {
-	return sentence
-		.split(/[;:，、]|,\s|\s[–—-]\s/u)
-		.map((clause) => clause.trim())
-		.filter(Boolean);
+/**
+ * Offering another day later defers the viewing day (#289, Mikhail), and only the viewing day: a
+ * price, an availability or a legal answer beside it still states. A clause that names a day
+ * itself ("Saturday at 10 works, or I can arrange another slot") states that day.
+ */
+const RESCHEDULE =
+	/\b(?:suggest|propose|offer|find|arrange)\s+(?:another|a different|other)\s+(?:days?|times?|dates?|slots?)\b|(?:đề xuất|hẹn|chọn|sắp xếp)\s+(?:\p{L}+\s+)?(?:ngày|giờ|hôm|buổi)\s+khác/iu;
+
+function reschedules(clause: string): boolean {
+	return RESCHEDULE.test(clause) && !DAY_OR_TIME.test(clause);
 }
 
+function defers(clause: string): boolean {
+	return DEFERRAL.test(clause);
+}
+
+/**
+ * A condition or an indirect question ("if Saturday doesn't work", "for whether it has its own
+ * pink book", "nếu…", "liệu…", a Japanese or Korean topic ending in は, について, 은 or 는): it
+ * asserts nothing by itself.
+ */
+const CONDITION =
+	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|in case|(?:(?:as\s+)?for|about|regarding|on|as\s+to)?\s*whether)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|trường hợp)(?!\p{L})|(?:は|について|に関して|에 대해(?:서)?|관련(?:해서)?|[은는])$|(?<!\p{L})hay\s+(?:chưa|không)(?:\s+(?:ạ|nhé))?$/iu;
+
+/** The matter a clause is about ("for the pink book", "regarding the fee", "về sổ hồng…"). */
+const TOPIC =
+	/^(?:(?:and|but|so|or)\s+)?(?:(?:as\s+)?for|about|regarding)\b|^(?:(?:và|nhưng)\s+)?về(?!\p{L})/iu;
+
+/**
+ * A clause as the checks read it: its whole text, and the main clause in it, which alone decides
+ * whether it defers.
+ */
+type Clause = { text: string; main: string };
+
+/**
+ * A sentence's clauses: a comma, a semicolon or a dash can join a statement to a deferral. A
+ * condition, or a topic that states nothing by itself, is read with the main clause after it,
+ * and only that main clause's deferral covers it: "If Saturday doesn't work, I'll suggest another
+ * day" defers; "If I check with the owner, Saturday works for the viewing", "Regarding the price
+ * it's $650, I'll confirm the rest" and "Next week works, I'll check the time" state. Nothing
+ * attaches backwards: a condition or topic last in its sentence is read on its own.
+ */
+function clauses(sentence: string, viewing: boolean): Clause[] {
+	const parts = sentence
+		.split(/[;:，、]|,\s|\s[–—-]\s/u)
+		.map((part) => part.trim())
+		.filter(Boolean);
+	// A closing quote or bracket after the question mark still ends a question.
+	const question = /[?？]["'”’»)\]」]*$/u.test(sentence);
+	const joined: Clause[] = [];
+	let pending: { part: string; dayRuledOut: boolean }[] = [];
+	for (const [index, part] of parts.entries()) {
+		// The question a sentence closes on is skipped (it asks), so nothing folds into it.
+		if (question && index === parts.length - 1) break;
+		const condition = CONDITION.test(part) && !conditionStates(part, viewing);
+		const setsUp =
+			!defers(part) && (condition || (TOPIC.test(part) && !topicStates(part, viewing)));
+		if (setsUp) {
+			pending.push({ part, dayRuledOut: condition && viewing && DAY_OR_TIME.test(part) });
+			continue;
+		}
+		// A condition that rules a day out ("if Saturday doesn't work") belongs only to a main
+		// clause offering another day; beside anything else it is read on its own.
+		const alone = pending.filter((each) => each.dayRuledOut && !reschedules(part));
+		for (const each of alone) joined.push({ text: each.part, main: each.part });
+		const covered = pending.filter((each) => !alone.includes(each)).map((each) => each.part);
+		joined.push({ text: [...covered, part].join(", "), main: part });
+		pending = [];
+	}
+	for (const { part } of pending) joined.push({ text: part, main: part });
+	if (question) joined.push({ text: parts[parts.length - 1], main: parts[parts.length - 1] });
+	return joined;
+}
+
+/**
+ * A day ruled out, not proposed: the day, then that it doesn't work ("if Saturday doesn't work",
+ * "nếu thứ Bảy không được"); not a negation elsewhere ("nếu anh không bận thì thứ Bảy…", "if
+ * Saturday isn't too soon").
+ */
+const DAY_RULED_OUT = new RegExp(
+	`(?:${DAY_OR_TIME.source})(?:\\s+[\\p{L}\\d']+){0,2}?\\s+(?:(?:doesn't|does not|won't|will not|can't|cannot)\\s+(?:work|suit)|(?:isn't|is not)\\s+(?:convenient|possible|good)|(?:không|chưa)\\s+(?:được|tiện|phù hợp|hợp))(?!\\p{L})`,
+	"iu",
+);
+
+/**
+ * Whether a condition states an answer by itself, so no deferral may cover it: a price, an
+ * availability, a legal answer or a handover, or a viewing day it doesn't rule out. A paperwork
+ * word alone doesn't: "whether it has its own pink book" is the matter, not the answer.
+ */
+function conditionStates(part: string, viewing: boolean): boolean {
+	if (PAPERWORK_TERMS.test(part) && HANDS_OVER.test(part)) return true;
+	if (viewing && DAY_OR_TIME.test(part) && !DAY_RULED_OUT.test(part)) return true;
+	if (VERDICT.test(part)) return true;
+	// An indirect question names the matter ("whether the fee is included in the 9.5M",
+	// "whether it has its own pink book"): only a verdict in it answers.
+	if (INDIRECT_QUESTION.test(part)) return false;
+	if (PRICE_BARE.test(part) || (PRICE_NOUN.test(part) && PRICE_STATED.test(part))) return true;
+	if (PAPERWORK_TERMS.test(part) && ASSERTS.test(part)) return true;
+	return AVAILABILITY.test(part) || LEGAL_ANSWER.test(part);
+}
+
+/**
+ * Whether a topic states an answer by itself. A bare day is the matter ("For Saturday, I'll
+ * confirm the viewing time"); a day that something asserts or settles ("About Saturday it's
+ * fine", "về lịch thì thứ Bảy được") is the answer.
+ */
+function topicStates(part: string, viewing: boolean): boolean {
+	if (statesAnswer({ text: part, main: part }, false)) return true;
+	return viewing && DAY_OR_TIME.test(part) && (ASSERTS.test(part) || SETTLES.test(part));
+}
+
+/** What settles a day: "works", "booked", "được", "chốt". */
+const SETTLES =
+	/\b(?:works?|ok|okay|good|fine|great|booked|suits?|set|on)\b|(?<!\p{L})(?:được|nhé|ổn|chốt|hẹn)(?!\p{L})/iu;
+
+const INDIRECT_QUESTION =
+	/\bwhether\b|^(?:(?:và|nhưng)\s+)?liệu(?!\p{L})|(?<!\p{L})hay\s+(?:chưa|không)(?:\s+(?:ạ|nhé))?$/iu;
+
+/** A verdict: the answer itself ("it definitely is", "that's correct", "chắc chắn rồi"). */
+const VERDICT =
+	/\b(?:yes|no problem|not a problem|(?:isn't|is not|not) an? (?:issue|problem)|doesn't matter|does not matter|not (?:needed|required|necessary)|fine|guaranteed|the answer|definitely|certainly|of course|correct|that's right)\b|(?<!\p{L})(?:có ạ|được ạ|không sao|không vấn đề|không cần|không quan trọng|không ảnh hưởng|được|chắc chắn|đúng|rồi ạ|có rồi)(?!\p{L})/iu;
+
+/**
+ * The agent's own promise ("I will", "em sẽ") to do a harmless thing (`SAFE_ACTION`: send,
+ * prioritise, pick…) is an action, not an answer about the place: "Em sẽ ưu tiên các căn có giấy
+ * tờ rõ ràng" states nothing. Any other promise about the paperwork ("We will register the pink
+ * book", "Em sẽ hoàn tất thủ tục sở hữu") is read as the answer it implies, as "You will get a
+ * sổ hồng" is.
+ */
+const OWN_PROMISE =
+	/\b(?:I|we)(?:\s+will|'ll|’ll)\b|(?<!\p{L})(?:em|mình|tôi|chúng (?:tôi|em))(?:\s+cũng)?\s+sẽ(?!\p{L})/giu;
+
+const SAFE_ACTION =
+	/\b(?:send|share|pull together|put together|prioriti[sz]e|look (?:for|at|into|through)|note|noting|list|shortlist|pick|select|include)\b|(?<!\p{L})(?:gửi|ưu tiên|chọn|tìm|lọc|liệt kê|ghi chú|kèm)(?!\p{L})/iu;
+
+/**
+ * Getting, issuing or handing over the paperwork, as a verb (after a subject, a modal or "to"):
+ * with a paperwork word, a legal answer ("Em sẽ giao sổ hồng", "you will get it"). The same word
+ * as a noun is the matter ("Về thủ tục sang tên sổ hồng, em sẽ kiểm tra", "the ownership
+ * transfer"). Sending or attaching the pink book itself is handing it over too.
+ */
+const HANDS_OVER = new RegExp(
+	[
+		"(?:(?<!\\p{L})(?:will|can|could|to|we|I|you|they|sẽ|được|để|em|anh|chị|mình|tôi)|['’]ll)(?:\\s+[\\p{L}']+){0,3}?\\s+(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\\s+over|deliver|issue|issued|process|sort|take care of|register|secure|arrange|sign (?:it )?over|make sure|prepare|giao|bàn giao|sang tên|làm sổ|làm giấy|làm hồ sơ|làm thủ tục|hoàn tất|lo|chuyển nhượng|chuyển|cấp|ra sổ|đăng ký|đảm bảo|chuẩn bị)(?!\\p{L})",
+		"\\bin your name\\b|(?<!\\p{L})đứng tên(?!\\p{L})",
+		"(?:\\bsend|\\bshare|\\battach|\\binclude|(?<!\\p{L})gửi|(?<!\\p{L})kèm)[^.?!]*?(?:pink\\s*book|red\\s*book|title\\s*deed|s[ổo]\\s*h[ồo]ng|s[ổo]\\s*đ[ỏo])",
+	].join("|"),
+	"iu",
+);
+
+/**
+ * A bare yes in Vietnamese ("Dạ được anh", "Được ạ"): in a draft about a viewing it answers the
+ * guest's "… xem được không?" (#289, Hải).
+ */
+const ASSENT = /^(?:(?:dạ|vâng|ok|okay)\s+)*được(?:\s+(?:ạ|anh|chị|nhé|luôn|rồi))*[\s.!]*$/iu;
+
 /** Whether a clause states an answer the agent gives by hand. */
-function statesAnswer(clause: string, viewing: boolean): boolean {
-	if (DEFERRAL.test(clause)) return false;
+function statesAnswer({ text: clause, main }: Clause, viewing: boolean): boolean {
+	if (defers(main)) return false;
+	if (viewing && ASSENT.test(clause)) return true;
 	if (PRICE_BARE.test(clause)) return true;
 	if (PRICE_NOUN.test(clause) && PRICE_STATED.test(clause)) return true;
 	if (AVAILABILITY.test(clause)) return true;
 	if (LEGAL_ANSWER.test(clause)) return true;
-	if (PAPERWORK_TERMS.test(clause) && (ASSERTS.test(clause) || !/[a-zà-ỹ]/iu.test(clause))) {
+	if (
+		PAPERWORK_TERMS.test(clause) &&
+		(HANDS_OVER.test(clause) ||
+			ASSERTS.test(SAFE_ACTION.test(clause) ? clause.replace(OWN_PROMISE, " ") : clause) ||
+			!/[a-zà-ỹ]/iu.test(clause))
+	) {
 		return true;
 	}
-	return viewing && DAY_OR_TIME.test(clause);
+	return viewing && DAY_OR_TIME.test(clause) && !reschedules(main);
 }
 
 const MULTIPLIERS: [RegExp, number][] = [
 	[/^\s*(?:k|nghìn|ngàn|thousand)(?!\p{L})/iu, 1e3],
 	[/^\s*(?:tr|triệu|trieu|million|mil|m)(?!\p{L})/iu, 1e6],
 	[/^\s*(?:tỷ|tỉ|ty|billion|bn)(?!\p{L})/iu, 1e9],
+	// Japanese and Korean count in ten-thousands: Kenji's "60億" is the "6 billion" a draft writes.
+	[/^\s*[万만]/u, 1e4],
+	[/^\s*[億억]/u, 1e8],
 ];
 
 /** A number as written: digits, with dots or commas between groups. */
@@ -153,19 +317,33 @@ export function numbersIn(text: string): number[][] {
 	});
 }
 
-/** Whether every number in `text` is one the guest wrote, read either way. */
-function onlyGuestNumbers(text: string, guestTexts: readonly string[]): boolean {
-	const written = new Set(guestTexts.flatMap((guest) => numbersIn(guest).flat()));
-	return numbersIn(text).every((readings) => readings.some((value) => written.has(value)));
+/**
+ * The thread's texts a draft's numbers may come from (#289): every guest message (the guest's
+ * details, which the model reads, come from all of them) and every message the model read, the
+ * office's included. The agent's "9 giờ" may come back; a number nobody wrote may not.
+ */
+export function threadTexts(
+	messages: ReadonlyArray<Pick<Message, "direction" | "text">>,
+): string[] {
+	const read = new Set(messages.slice(-DRAFT_MESSAGES));
+	return messages
+		.filter((message) => message.direction === "in" || read.has(message))
+		.map((message) => message.text);
+}
+
+/** Whether every number in `text` is one the thread already has, read either way. */
+function onlyThreadNumbers(text: string, written: readonly string[]): boolean {
+	const values = new Set(written.flatMap((each) => numbersIn(each).flat()));
+	return numbersIn(text).every((readings) => readings.some((value) => values.has(value)));
 }
 
 /**
- * Returns the draft to store, or `null` when the template must stand instead. `guestTexts` are
- * the guest's own messages: a number in the draft must be one of theirs.
+ * Returns the draft to store, or `null` when the template must stand instead. `written` are the
+ * thread's texts (`threadTexts`): a number in the draft must be one of theirs.
  */
 export function checkFollowUp(
 	draft: string | null | undefined,
-	guestTexts: readonly string[],
+	written: readonly string[],
 ): string | null {
 	if (!draft) {
 		return null;
@@ -177,23 +355,23 @@ export function checkFollowUp(
 		return null;
 	}
 	if (
-		!onlyGuestNumbers(
+		!onlyThreadNumbers(
 			text,
-			guestTexts.map((guest) => guest.normalize("NFC")),
+			written.map((each) => each.normalize("NFC")),
 		)
 	) {
 		return null;
 	}
 	const viewing = VIEWING.test(text);
 	for (const sentence of sentences(text)) {
-		const parts = clauses(sentence);
+		const parts = clauses(sentence, viewing);
 		// A closing quote or bracket after the question mark still ends a question.
 		const question = /[?？]["'”’»)\]」]*$/u.test(sentence);
 		for (const [index, clause] of parts.entries()) {
 			// A question asks; it states nothing, unless it proposes a viewing day. Only the clause
 			// the question mark closes is the question: "The rent is $2,000, is that ok?" states.
 			if (question && index === parts.length - 1) {
-				if (viewing && DAY_OR_TIME.test(clause)) return null;
+				if (viewing && DAY_OR_TIME.test(clause.text)) return null;
 				continue;
 			}
 			if (statesAnswer(clause, viewing)) return null;

@@ -105,8 +105,11 @@ greeting. Related: #242, #245, #246, #83.
   6. It is 2 to 4 short sentences, in chat register and the guest's formality (VI: anh/chị),
      with no sign-off and no placeholders like "[time]".
 - **The post-check blocks answers, not mentions.** It blocks a stated answer (a price, an
-  availability, a viewing time, a legal answer) and a number the guest didn't write. A mention
-  passes: "I'll check the ownership rules for you" is fine.
+  availability, a viewing time, a legal answer) and a number nobody in the thread wrote: a
+  number the guest or the office already wrote in the thread the model read passes (#289). A
+  mention passes: "I'll check the ownership rules for you" is fine, and so is "I'll check
+  Saturday and confirm the time" or "I'll check whether it has its own pink book"; "Next week
+  works, I'll check the time" still blocks.
 - **When the guest writes again.**
   - A draft the agent hasn't touched is replaced.
   - An edited one stays, with a quiet "Guest wrote again" note next to Regenerate.
@@ -130,7 +133,11 @@ greeting. Related: #242, #245, #246, #83.
 ### Models
 
 - **Drafting: Haiku 5.5** (`anthropic/claude-haiku-5.5`, $0.10 in and $0.50 out per 1M tokens
-  on OpenRouter). It has ZDR endpoints.
+  on OpenRouter). It has ZDR endpoints. It drafts at its default medium reasoning effort
+  (`reasoning: { effort: "medium" }`), decided by Eyal on 2026-10-09 (#289): with reasoning off,
+  drafts confirmed more viewing days. Reasoning counts against `max_tokens`, and at 768 it used a
+  draft's whole budget in the first eval, so a draft may use 2,000. A translation runs with
+  reasoning off (`reasoning: { enabled: false }`).
 - **Translation: decided by an eval.** All 62 seed pairs in VI, JA, KO and RU compare Haiku 5.5
   with Gemini 3.1 Flash-Lite (`google/gemini-3.1-flash-lite`, $0.25 in and $1.50 out). The
   seed holds 41 such guest messages; JA, KO and RU go into both EN and VI. Eyal reads them
@@ -138,8 +145,8 @@ greeting. Related: #242, #245, #246, #83.
   - Gemini 3.x bills thinking as output, so its thinking is set to minimal or off.
 - **The draft eval.** About 15 seeded walk-office threads: a bare hello, Claire's photos and
   viewing question, Ji-ho after her auto-reply, a later turn, RU, VI, and more.
-  - Local checks fail a draft that has a number the guest didn't write, a repeated question,
-    an intro, or more than 4 sentences.
+  - Local checks fail a draft that has a number nobody in the thread wrote (#289), a repeated
+    question, an intro, or more than 4 sentences.
   - It runs on demand, not in CI, because it costs money. Eyal reads it once.
 - **Cost estimate, one office a month.** Translation about $0.65 with Haiku 5.5, or about
   $1.89 with Gemini 3.1 Flash-Lite. Drafting about $0.41.

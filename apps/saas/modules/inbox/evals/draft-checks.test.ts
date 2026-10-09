@@ -7,7 +7,7 @@ import { type CheckId, type CheckThread, checkDraft } from "./draft-checks";
 
 /**
  * The draft eval's local checks (#254), from ADR 0024 "The rules a draft follows" and "Models":
- * a draft fails with a number the guest didn't write, a repeated open question, an intro, more
+ * a draft fails with a number nobody in the thread wrote (#289), a repeated open question, an intro, more
  * than 4 sentences, or an answer that isn't the JSON shape. One passing and one failing draft
  * per check, in English and in Vietnamese. No model.
  */
@@ -70,8 +70,21 @@ describe("JSON shape: the reply and the same reply in the office language", () =
 	});
 });
 
-describe("a number the guest didn't write fails", () => {
-	test("English: the guest's $2800 passes as $2,800; the agent's $2,900 doesn't", () => {
+describe("a number nobody in the thread wrote fails", () => {
+	test("Linh's draft, with the 9 of the 9 am viewing the agent set, passes (#289)", () => {
+		const linh = thread(
+			guest("Chào bạn, mình tìm căn hộ 2 phòng ngủ ở Long Biên để mua, tầm 3 tỷ."),
+			agent("Dạ được ạ, em hẹn chị sáng thứ Bảy lúc 9 giờ nhé."),
+			guest("Em ơi, phí quản lý căn đó bao nhiêu một tháng vậy?"),
+		);
+		const draft = json(
+			"Dạ, em sẽ kiểm tra phí quản lý hằng tháng của căn tầng cao với ban quản lý tòa nhà và xác nhận lại cho chị trước buổi xem nhà sáng thứ Bảy ạ. Em cũng sẽ gửi chị các khoản phí khác khi mua để chị tính tổng chi phí.",
+			"Yes, I'll check the monthly management fee for the high-floor unit with the building management and confirm it with her before the Saturday 9 am viewing. I'll also send her the other charges she'd pay when buying so she can work out the total.",
+		);
+		expect(verdictOf(draft, linh, "numbers")?.pass).toBe(true);
+	});
+
+	test("English: the guest's $2800 passes as $2,800; a $2,900 nobody wrote doesn't", () => {
 		expect(
 			verdictOf(
 				json("I'll pull together 3 bedroom options in Tay Ho around $2,800."),

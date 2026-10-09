@@ -53,7 +53,7 @@ const SPECS: Spec[] = [
 		id: "claire-photos-viewing",
 		title: "Claire wants photos and a viewing this Saturday",
 		watch:
-			"Acknowledges both; promises the photos, defers the viewing time; no $2,900 (the agent's figure, not hers).",
+			"Acknowledges both; promises the photos, defers the viewing time; the $2,900 is the agent's own figure, so it may come back, never as a stated rent.",
 		guest: "Claire",
 	},
 	{
@@ -139,7 +139,8 @@ const SPECS: Spec[] = [
 	{
 		id: "linh-fee",
 		title: "Linh (VI), a later turn after the viewing is set, asks the management fee",
-		watch: "Vietnamese (chị); the fee is deferred, nothing about the 9 am viewing restated.",
+		watch:
+			"Vietnamese (chị); the fee is deferred; the 9 am viewing the agent set may come back, its 9 included.",
 		guest: "Linh",
 		then: [{ by: "guest", text: "Em ơi, phí quản lý căn đó bao nhiêu một tháng vậy?" }],
 	},

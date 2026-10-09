@@ -20,20 +20,42 @@ import {
  *
  * Both tasks are short, one-turn completions, so `max_tokens` is deliberately small: a
  * translation of a chat message, or a reply of up to four sentences in two languages, never
- * needs more.
+ * needs more. A model's reasoning counts against `max_tokens` too
+ * (openrouter.ai/docs/guides/best-practices/reasoning-tokens: the page's opening, and "Reasoning
+ * tokens and max_tokens"): at 768, two drafts of the first eval used the whole budget and the
+ * JSON never closed (#289). A draft reasons, so its budget leaves room for the reasoning and the
+ * JSON both: for Anthropic models the reasoning budget is at least 1,024 tokens and `max_tokens`
+ * must be strictly above it ("Anthropic Models with Reasoning Tokens"). A cut-off answer isn't
+ * the JSON, so the template stands.
  */
 const TRANSLATION_MAX_TOKENS = 1024;
-const DRAFT_MAX_TOKENS = 768;
+const DRAFT_MAX_TOKENS = 2000;
 
 /** OpenRouter's provider routing: zero-retention endpoints only, and no training on the text. */
 export const ZERO_RETENTION = { zdr: true, data_collection: "deny" } as const;
 
+type Reasoning =
+	| { effort: "minimal"; exclude: true }
+	| { effort: "medium"; exclude: true }
+	| { enabled: false };
+
 /**
- * Gemini 3.x bills its thinking as output (ADR 0024), so it thinks at its lowest level, kept out
- * of the answer. Every other model's request carries no `reasoning`.
+ * The `reasoning` a task's request carries (#289, decided by Eyal 2026-10-09). Reasoning bills as
+ * output and counts against `max_tokens`.
+ * - Gemini 3.x thinks at its lowest level for both tasks (ADR 0024).
+ * - An Anthropic model drafts at medium effort, its own default, which kept the first eval's
+ *   drafts to the rules; it translates with reasoning off, which a translation doesn't need.
+ *   `enabled: false` is OpenRouter's switch for Anthropic's `thinking: { type: "disabled" }`
+ *   ("Reasoning with the Anthropic Messages API"); Claude rejects `effort: "none"` ("Changing
+ *   Effort Mid-Conversation"). The reasoning is kept out of the answer (`exclude`).
+ * - Any other model's request carries no `reasoning`.
  */
-export function reasoningFor(model: string): { effort: "minimal"; exclude: true } | undefined {
-	return /^google\/gemini-3/u.test(model) ? { effort: "minimal", exclude: true } : undefined;
+export function reasoningFor(model: string, task: "draft" | "translate"): Reasoning | undefined {
+	if (/^google\/gemini-3/u.test(model)) return { effort: "minimal", exclude: true };
+	if (/^anthropic\//u.test(model)) {
+		return task === "draft" ? { effort: "medium", exclude: true } : { enabled: false };
+	}
+	return undefined;
 }
 
 /** The slice of a chat-completions response this client reads. Everything else is ignored. */
@@ -54,7 +76,7 @@ const completion = z.object({
 		.nullish(),
 });
 
-type Prompt = { system: string; user: string; maxTokens: number };
+type Prompt = { task: "draft" | "translate"; system: string; user: string; maxTokens: number };
 
 export function createOpenRouterBackends(input: {
 	apiKey: string;
@@ -64,7 +86,7 @@ export function createOpenRouterBackends(input: {
 	const endpoint = `${input.baseUrl.replace(/\/+$/, "")}/chat/completions`;
 
 	async function complete(model: string, prompt: Prompt, signal: AbortSignal): Promise<Attempt> {
-		const reasoning = reasoningFor(model);
+		const reasoning = reasoningFor(model, prompt.task);
 		const response = await fetch(endpoint, {
 			method: "POST",
 			headers: {
@@ -112,6 +134,7 @@ export function createOpenRouterBackends(input: {
 				complete(
 					input.models.translate,
 					{
+						task: "translate",
 						system: translationSystemPrompt(request.to),
 						user: translationUserPrompt(request),
 						maxTokens: TRANSLATION_MAX_TOKENS,
@@ -125,6 +148,7 @@ export function createOpenRouterBackends(input: {
 				complete(
 					input.models.draft,
 					{
+						task: "draft",
 						system: followUpSystemPrompt(request.guestLanguage, request.officeLanguage),
 						user: followUpUserPrompt(request),
 						maxTokens: DRAFT_MAX_TOKENS,

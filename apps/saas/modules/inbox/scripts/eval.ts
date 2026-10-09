@@ -23,7 +23,7 @@ import {
 import { translationPairs } from "../evals/translation-pairs";
 import { DEFAULT_DRAFT_BASE_URL, MODEL_DEFAULTS } from "../lib/config";
 import { DEMO_OFFICE_NAME, RIVER_OFFICE_NAME } from "../lib/demo-user";
-import { checkFollowUp } from "../lib/drafts/guardrails";
+import { checkFollowUp, threadTexts } from "../lib/drafts/guardrails";
 import { MODEL_TIMEOUT_MS, officeDay, type Attempt, type TaskBackend } from "../lib/drafts/layer";
 import { createOpenRouterBackends } from "../lib/drafts/openrouter";
 import {
@@ -258,13 +258,11 @@ async function draftEval(options: Options, date: string): Promise<void> {
 			messages: thread.messages,
 			officeNames: [DEMO_OFFICE_NAME, RIVER_OFFICE_NAME],
 		});
-		const guestTexts = thread.messages
-			.filter((message) => message.direction === "in")
-			.map((message) => message.text);
+		const written = threadTexts(thread.messages);
 		const appPasses = Boolean(
 			check.draft &&
-			checkFollowUp(check.draft.reply, guestTexts) &&
-			checkFollowUp(check.draft.officeReply, guestTexts),
+			checkFollowUp(check.draft.reply, written) &&
+			checkFollowUp(check.draft.officeReply, written),
 		);
 		return { ...row, call: result, check, appPasses };
 	});

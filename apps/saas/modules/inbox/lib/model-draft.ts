@@ -1,6 +1,6 @@
 import { runInBackground } from "./background";
 import { CAPPED, DRAFT_MESSAGES } from "./drafts";
-import { checkFollowUp, parseModelDraft } from "./drafts/guardrails";
+import { checkFollowUp, parseModelDraft, threadTexts } from "./drafts/guardrails";
 import { askedIn, greetingQuestion, missingQualifiers } from "./greeting";
 import { officeHasHumanReply } from "./reply-template";
 import type { Runtime } from "./runtime";
@@ -75,11 +75,9 @@ export async function generateModelDraft(
 	});
 	// Past the office's daily cap the template stands; a draft keeps no attempts to spare.
 	const drafted = parseModelDraft(raw === CAPPED ? null : raw);
-	const guestTexts = conversation.messages
-		.filter((message) => message.direction === "in")
-		.map((message) => message.text);
-	const reply = checkFollowUp(drafted?.reply, guestTexts);
-	const officeReply = checkFollowUp(drafted?.officeReply, guestTexts);
+	const written = threadTexts(conversation.messages);
+	const reply = checkFollowUp(drafted?.reply, written);
+	const officeReply = checkFollowUp(drafted?.officeReply, written);
 	if (!reply || !officeReply) {
 		return null;
 	}

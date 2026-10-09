@@ -155,7 +155,7 @@ export function draftReport(input: {
 				? []
 				: [`Local checks: ${passed} of ${rows.length} drafts pass every check`]),
 		]),
-		"Local checks (#254): JSON shape, only numbers the guest wrote, asks nothing again (the office's open questions, or a detail the guest gave), no intro, at most 4 sentences. Each runs on both texts. **App post-check** is the app's own `checkFollowUp` (ADR 0024): where it blocks, the app shows the template instead.",
+		"Local checks (#254): JSON shape, only numbers already in the thread (the guest's or the office's), asks nothing again (the office's open questions, or a detail the guest gave), no intro, at most 4 sentences. Each runs on both texts. **App post-check** is the app's own `checkFollowUp` (ADR 0024): where it blocks, the app shows the template instead.",
 		"",
 		"## Summary",
 		"",
