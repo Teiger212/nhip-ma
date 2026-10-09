@@ -190,8 +190,27 @@ describe("the first draft eval's drafts", () => {
 			"I'll hand over the pink book when you sign.",
 			// Offering another slot doesn't defer a day the same clause names.
 			"Saturday at 10am works for the viewing and I can arrange another slot if needed.",
+			// A condition that states an answer by itself isn't covered by the deferral after it.
+			"Nếu anh hỏi thì căn này vẫn còn trống, em sẽ xác nhận lại với chủ nhà.",
+			"Nếu anh cần thì giá 19 triệu đã gồm phí quản lý, em sẽ kiểm tra thêm.",
+			"Nếu anh muốn xem nhà thì thứ bảy 10 giờ được ạ, em sẽ báo lại chủ nhà.",
+			"Nếu anh mua thì người nước ngoài được sở hữu căn này, em sẽ kiểm tra hồ sơ.",
+			"If you want the studio it's available at $650, I'll confirm the viewing.",
+			"If Saturday at 10am works for the viewing it's booked, otherwise I'll suggest another day.",
+			"Whether foreigners can own it is not a problem here, I'll check the details.",
+			"On whether you get a pink book the answer is yes, I'll confirm the timeline.",
+			// Nor does a closing question cover the condition before it.
+			"Nếu anh thích thì căn này còn trống, anh muốn em gửi ảnh không?",
+			"If you're still keen the studio is available at $650, shall I send photos?",
+			// Any promise about the paperwork that isn't a harmless action is an answer.
+			"We will register the pink book in your name.",
+			"I will secure the pink book for you.",
+			"I will make sure the ownership goes to you.",
+			"Em sẽ đăng ký sổ hồng đứng tên anh.",
+			"Em sẽ hoàn tất thủ tục sở hữu cho anh.",
+			"Em sẽ đảm bảo pháp lý sở hữu cho anh.",
 		]) {
-			expect(checkFollowUp(draft, ["$650", "19 triệu", "10am"]), draft).toBeNull();
+			expect(checkFollowUp(draft, ["$650", "19 triệu", "10am", "10 giờ"]), draft).toBeNull();
 		}
 	});
 });
@@ -260,6 +279,8 @@ describe("in English", () => {
 			"Let me check the viewing slots with the owner.",
 			// The second eval's Hương draft (#289): the matter deferred, as an indirect question.
 			"Regarding whether the Vinhomes units have a separate red book (sổ hồng): I'll check the legal status with the owners.",
+			// And its Khánh draft: the fee question the guest asked, deferred.
+			"About whether the service fee is included in the 2,000, I'll check with the landlord and confirm it.",
 			"When would you like to see it?",
 			"Are you looking to rent or to buy?",
 		]) {

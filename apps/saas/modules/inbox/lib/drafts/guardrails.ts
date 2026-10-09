@@ -152,12 +152,16 @@ function clauses(sentence: string, viewing: boolean): Clause[] {
 		.split(/[;:，、]|,\s|\s[–—-]\s/u)
 		.map((part) => part.trim())
 		.filter(Boolean);
+	// A closing quote or bracket after the question mark still ends a question.
+	const question = /[?？]["'”’»)\]」]*$/u.test(sentence);
 	const joined: Clause[] = [];
 	let pending: string[] = [];
-	for (const part of parts) {
+	for (const [index, part] of parts.entries()) {
+		// The question a sentence closes on is skipped (it asks), so nothing folds into it.
+		if (question && index === parts.length - 1) break;
 		const setsUp =
 			!defers(part) &&
-			(CONDITION.test(part) ||
+			((CONDITION.test(part) && !conditionStates(part, viewing)) ||
 				(TOPIC.test(part) && !statesAnswer({ text: part, main: part }, viewing)));
 		if (setsUp) {
 			pending.push(part);
@@ -167,20 +171,50 @@ function clauses(sentence: string, viewing: boolean): Clause[] {
 		pending = [];
 	}
 	for (const part of pending) joined.push({ text: part, main: part });
+	if (question) joined.push({ text: parts[parts.length - 1], main: parts[parts.length - 1] });
 	return joined;
 }
 
+/** A day ruled out, not proposed: "if Saturday doesn't work", "nếu thứ Bảy không được". */
+const NEGATED = /n't\b|\b(?:not|cannot)\b|(?<!\p{L})(?:không|chưa)(?!\p{L})/iu;
+
 /**
- * The agent's own promise ("I will", "em sẽ"): an action, not an answer about the place. "I'll
- * prioritise units with clear paperwork" states nothing; "You will get a sổ hồng" does, and so
- * does a promise to hand the paperwork over ("Em sẽ giao sổ hồng cho anh", `HANDS_OVER`).
+ * Whether a condition states an answer by itself, so no deferral may cover it: a price, an
+ * availability, a legal answer or a handover, or a viewing day it doesn't rule out. A paperwork
+ * word alone doesn't: "whether it has its own pink book" is the matter, not the answer.
+ */
+function conditionStates(part: string, viewing: boolean): boolean {
+	if (PAPERWORK_TERMS.test(part) && HANDS_OVER.test(part)) return true;
+	if (viewing && DAY_OR_TIME.test(part) && !NEGATED.test(part)) return true;
+	// An indirect question names the matter ("whether the fee is included in the 9.5M"): only a
+	// verdict in it answers ("whether foreigners can own it is not a problem").
+	if (INDIRECT_QUESTION.test(part)) return VERDICT.test(part);
+	if (PRICE_BARE.test(part) || (PRICE_NOUN.test(part) && PRICE_STATED.test(part))) return true;
+	return AVAILABILITY.test(part) || LEGAL_ANSWER.test(part);
+}
+
+const INDIRECT_QUESTION = /\bwhether\b|^(?:(?:và|nhưng)\s+)?liệu(?!\p{L})/iu;
+
+/** A verdict: the answer itself. */
+const VERDICT =
+	/\b(?:yes|no problem|not a problem|fine|guaranteed|the answer)\b|(?<!\p{L})(?:có ạ|được ạ|không sao|không vấn đề|được)(?!\p{L})/iu;
+
+/**
+ * The agent's own promise ("I will", "em sẽ") to do a harmless thing (`SAFE_ACTION`: send,
+ * prioritise, pick…) is an action, not an answer about the place: "Em sẽ ưu tiên các căn có giấy
+ * tờ rõ ràng" states nothing. Any other promise about the paperwork ("We will register the pink
+ * book", "Em sẽ hoàn tất thủ tục sở hữu") is read as the answer it implies, as "You will get a
+ * sổ hồng" is.
  */
 const OWN_PROMISE =
 	/\b(?:I|we)(?:\s+will|'ll|’ll)\b|(?<!\p{L})(?:em|mình|tôi|chúng (?:tôi|em))(?:\s+cũng)?\s+sẽ(?!\p{L})/giu;
 
+const SAFE_ACTION =
+	/\b(?:send|share|pull together|put together|prioriti[sz]e|look (?:for|at|into|through)|note|noting|list|shortlist|pick|select|include)\b|(?<!\p{L})(?:gửi|ưu tiên|chọn|tìm|lọc|liệt kê|ghi chú|kèm)(?!\p{L})/iu;
+
 /** Getting, issuing or handing over the paperwork: with a paperwork word, a legal answer. */
 const HANDS_OVER =
-	/\b(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\s+over|deliver|issue|process|sort out|take care of)\b|(?<!\p{L})(?:giao|sang tên|làm sổ|làm giấy|làm thủ tục|lo|chuyển nhượng|cấp)(?!\p{L})/iu;
+	/\b(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\s+over|deliver|issue|process|sort|take care of|register|secure|arrange|sign (?:it )?over|make sure|in your name)\b|(?<!\p{L})(?:giao|sang tên|làm sổ|làm giấy|làm hồ sơ|thủ tục|lo|chuyển nhượng|cấp|đăng ký|đứng tên|hoàn tất|đảm bảo)(?!\p{L})/iu;
 
 /**
  * A bare yes in Vietnamese ("Dạ được anh", "Được ạ"): in a draft about a viewing it answers the
@@ -199,7 +233,7 @@ function statesAnswer({ text: clause, main }: Clause, viewing: boolean): boolean
 	if (
 		PAPERWORK_TERMS.test(clause) &&
 		(HANDS_OVER.test(clause) ||
-			ASSERTS.test(clause.replace(OWN_PROMISE, " ")) ||
+			ASSERTS.test(SAFE_ACTION.test(clause) ? clause.replace(OWN_PROMISE, " ") : clause) ||
 			!/[a-zà-ỹ]/iu.test(clause))
 	) {
 		return true;
