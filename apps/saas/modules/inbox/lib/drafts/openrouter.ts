@@ -20,20 +20,32 @@ import {
  *
  * Both tasks are short, one-turn completions, so `max_tokens` is deliberately small: a
  * translation of a chat message, or a reply of up to four sentences in two languages, never
- * needs more.
+ * needs more. A model's reasoning counts against `max_tokens` too
+ * (openrouter.ai/docs/guides/best-practices/reasoning-tokens, "Reasoning tokens and
+ * max_tokens"): at 768, Haiku's default reasoning used the whole budget on two drafts of the
+ * first eval and the JSON never closed (#289). A cut-off answer isn't the JSON, so the template
+ * stands.
  */
 const TRANSLATION_MAX_TOKENS = 1024;
-const DRAFT_MAX_TOKENS = 768;
+const DRAFT_MAX_TOKENS = 1500;
 
 /** OpenRouter's provider routing: zero-retention endpoints only, and no training on the text. */
 export const ZERO_RETENTION = { zdr: true, data_collection: "deny" } as const;
 
+type Reasoning = { effort: "minimal"; exclude: true } | { enabled: false };
+
 /**
- * Gemini 3.x bills its thinking as output (ADR 0024), so it thinks at its lowest level, kept out
- * of the answer. Every other model's request carries no `reasoning`.
+ * Reasoning bills as output and counts against `max_tokens`, and these tasks don't need it.
+ * Gemini 3.x thinks at its lowest level, kept out of the answer (ADR 0024). Anthropic models
+ * think at medium effort unless told otherwise; `enabled: false` is OpenRouter's switch for
+ * Anthropic's `thinking: { type: "disabled" }` (same page, "Reasoning with the Anthropic
+ * Messages API"), where `effort: "none"` is rejected. Any other model's request carries no
+ * `reasoning`.
  */
-export function reasoningFor(model: string): { effort: "minimal"; exclude: true } | undefined {
-	return /^google\/gemini-3/u.test(model) ? { effort: "minimal", exclude: true } : undefined;
+export function reasoningFor(model: string): Reasoning | undefined {
+	if (/^google\/gemini-3/u.test(model)) return { effort: "minimal", exclude: true };
+	if (/^anthropic\//u.test(model)) return { enabled: false };
+	return undefined;
 }
 
 /** The slice of a chat-completions response this client reads. Everything else is ignored. */

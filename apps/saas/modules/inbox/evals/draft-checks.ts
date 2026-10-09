@@ -1,4 +1,10 @@
-import { type ModelDraft, numbersIn, parseModelDraft, sentences } from "../lib/drafts/guardrails";
+import {
+	type ModelDraft,
+	numbersIn,
+	parseModelDraft,
+	sentences,
+	threadTexts,
+} from "../lib/drafts/guardrails";
 import { extractFromInbound } from "../lib/extract";
 import { askedIn, missingQualifiers, type Qualifier } from "../lib/greeting";
 import type { Message } from "../lib/types";
@@ -6,8 +12,9 @@ import type { Message } from "../lib/types";
 /**
  * The draft eval's local checks (#254, ADR 0024 "The rules a draft follows"): no model, so they
  * decide pass or fail on their own. A draft fails when it breaks the JSON shape, writes a number
- * the guest didn't, asks again a question the office asked and the guest hasn't answered (or
- * asks for a detail the guest already gave), introduces anyone, or runs past 4 sentences. Each runs on both texts, the reply in the guest's
+ * nobody in the thread wrote (#289), asks again a question the office asked and the guest hasn't
+ * answered (or asks for a detail the guest already gave), introduces anyone, or runs past 4
+ * sentences. Each runs on both texts, the reply in the guest's
  * language and the same reply in the office language: a pattern this file lacks for Japanese,
  * Korean or Russian is caught in the English or Vietnamese twin, as the post-check does.
  */
@@ -16,7 +23,7 @@ export type CheckId = "json" | "numbers" | "open-question" | "intro" | "length";
 
 export const CHECK_LABELS: Record<CheckId, string> = {
 	json: "JSON shape",
-	numbers: "Only the guest's numbers",
+	numbers: "Only the thread's numbers",
 	"open-question": "Asks nothing again",
 	intro: "No intro",
 	length: "At most 4 sentences",
@@ -113,9 +120,13 @@ function introIn(text: string, officeNames: readonly string[]): string | null {
 	return null;
 }
 
-/** The numbers in `text` the guest never wrote, as `text` writes them. */
-export function strayNumbers(text: string, guestTexts: readonly string[]): string[] {
-	const written = new Set(guestTexts.flatMap((guest) => numbersIn(guest.normalize("NFC")).flat()));
+/**
+ * The numbers in `text` nobody in the thread wrote, as `text` writes them. `written` are the
+ * thread's texts (`threadTexts`), the guest's and the office's, as the app's post-check reads
+ * them (#289).
+ */
+export function strayNumbers(text: string, thread: readonly string[]): string[] {
+	const written = new Set(thread.flatMap((each) => numbersIn(each.normalize("NFC")).flat()));
 	const raw = text.normalize("NFKC").match(/\d+(?:[.,]\d+)*/gu) ?? [];
 	return numbersIn(text.normalize("NFC")).flatMap((readings, index) =>
 		readings.some((value) => written.has(value)) ? [] : [raw[index] ?? String(readings[0])],
@@ -167,14 +178,12 @@ export function checkDraft(raw: string | null, thread: CheckThread): DraftCheck 
 		{ name: "reply", text: draft.reply },
 		{ name: "office reply", text: draft.officeReply },
 	];
-	const guestTexts = thread.messages
-		.filter((message) => message.direction === "in")
-		.map((message) => message.text);
+	const written = threadTexts(thread.messages);
 	const { open, answered } = settledQualifiers(thread.messages);
 	const verdicts: CheckVerdict[] = [
 		{ id: "json", pass: true, detail: null },
 		verdict("numbers", texts, (text) => {
-			const stray = strayNumbers(text, guestTexts);
+			const stray = strayNumbers(text, written);
 			return stray.length ? stray.join(", ") : null;
 		}),
 		verdict("open-question", texts, (text) => {

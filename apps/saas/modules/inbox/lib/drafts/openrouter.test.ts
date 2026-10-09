@@ -112,20 +112,25 @@ test("a key with no model ids drafts and translates with the defaults in code", 
 	expect(calls.every((call) => call.body.provider !== undefined)).toBe(true);
 });
 
-test("Gemini 3.x thinks at its lowest level, since thinking bills as output; Haiku sends no reasoning", async () => {
+test("Gemini 3.x thinks at its lowest level and Haiku doesn't think, since thinking bills as output and eats max_tokens (#289)", async () => {
 	vi.spyOn(console, "info").mockImplementation(() => {});
 	const calls = stubFetch(() => completion("ok"));
 	const layer = layerFor({
 		DRAFT_API_KEY: "sk-test",
 		TRANSLATE_MODEL: "google/gemini-3.1-flash-lite",
+		DRAFT_MODEL: "openai/gpt-5-mini",
 	});
 
 	await layer.translate(TRANSLATE_INPUT);
 	await layer.draft(DRAFT_INPUT);
-
 	expect(calls[0].body.reasoning).toEqual({ effort: "minimal", exclude: true });
-	expect(calls[1].body.model).toBe("anthropic/claude-haiku-5.5");
+	// Another vendor's model keeps its own defaults.
 	expect(calls[1].body).not.toHaveProperty("reasoning");
+
+	const haiku = layerFor({ DRAFT_API_KEY: "sk-test" });
+	await haiku.draft(DRAFT_INPUT);
+	expect(calls[2].body.model).toBe("anthropic/claude-haiku-5.5");
+	expect(calls[2].body.reasoning).toEqual({ enabled: false });
 });
 
 test("translate speaks the chat-completions protocol and frames guest text as data", async () => {
@@ -154,7 +159,7 @@ test("translate speaks the chat-completions protocol and frames guest text as da
 	expect(JSON.stringify(call.body)).not.toContain("office-a");
 });
 
-test("draft sends the facts and the transcript with a smaller output budget", async () => {
+test("draft sends the facts and the transcript with its own output budget", async () => {
 	vi.spyOn(console, "info").mockImplementation(() => {});
 	// The layer returns the model's text as it is; `generateModelDraft` reads its JSON (#251).
 	const answer = JSON.stringify({
@@ -165,7 +170,7 @@ test("draft sends the facts and the transcript with a smaller output budget", as
 	const layer = layerFor({ DRAFT_API_KEY: "sk-test" });
 	expect(await layer.draft(DRAFT_INPUT)).toBe(answer);
 	const [call] = calls;
-	expect(call.body.max_tokens).toBe(768);
+	expect(call.body.max_tokens).toBe(1500);
 	const messages = call.body.messages as Array<{ role: string; content: string }>;
 	expect(messages[0].content).toMatch(/reply in Korean, the guest's language/);
 	expect(messages[0].content).toMatch(/same reply in Vietnamese/);

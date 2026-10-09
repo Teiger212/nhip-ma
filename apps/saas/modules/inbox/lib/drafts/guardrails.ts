@@ -1,15 +1,22 @@
 import { z } from "zod";
 
+import type { Message } from "../types";
+import { DRAFT_MESSAGES } from "./adapter";
+
 /**
  * The post-check behind the model (ADR 0005, ADR 0024). The prompt carries the rules; this is
  * the part that does not trust the prompt. It blocks an answer, never a mention: a draft that
- * states a price, an availability, a viewing time or a legal answer, or writes a number the
- * guest didn't, is dropped and the template stands. "I'll check the ownership rules for you"
- * passes.
+ * states a price, an availability, a viewing time or a legal answer, or writes a number nobody
+ * in the thread wrote, is dropped and the template stands. "I'll check the ownership rules for
+ * you" passes.
  *
  * Each sentence is read clause by clause. A clause that defers ("I'll check", "em sẽ kiểm
- * tra") states nothing, and neither does a question, unless it proposes a viewing day. The
- * number rule has no exemption: a deferral can still carry a figure.
+ * tra") states nothing, and neither does a question, unless it proposes a viewing day. A
+ * condition or the matter deferred ("if Saturday doesn't work", "whether it has its own pink
+ * book") is read with the clause it belongs to, so a deferral covers it; a confirmation beside
+ * a deferral ("Next week works, I'll check the time") is its own clause and still blocks (#289).
+ * The number rule has no exemption: a deferral can still carry a figure, but only one the guest
+ * or the office already wrote in the thread the model read.
  *
  * The statement patterns are English and Vietnamese, the office languages: every model draft
  * has an office-language text, checked as well, so an answer in Japanese, Korean or Russian is
@@ -84,15 +91,18 @@ const AVAILABILITY =
 
 /** What a viewing is called: a viewing day is only a viewing day in a draft that talks of one. */
 const VIEWING =
-	/\b(?:view|viewing|viewings|visit|tour|show you|see (?:it|the (?:place|apartment|flat|unit|villa|house))|come (?:by|over|and see))\b|xem\s+(?:nhà|căn|phòng|trực tiếp)|đi xem|dẫn\s+.*\s+xem|lịch xem/iu;
+	/\b(?:view|viewing|viewings|visit|tour|show you|see (?:it|the (?:place|apartment|flat|unit|villa|house))|come (?:by|over|and see))\b|xem\s+(?:nhà|căn|phòng|trực tiếp)|(?:đi|qua|ghé|đến|tới)\s+xem|dẫn\s+.*\s+xem|lịch xem/iu;
 
 /** A day or a time of day. */
 const DAY_OR_TIME =
 	/\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:tomorrow|today|tonight|weekend|noon|midday)\b|\bthis (?:morning|afternoon|evening|week)\b|\bnext (?:week|month)\b|\d\s*(?:am|pm|a\.m\.|p\.m\.|h\b|giờ)|thứ\s+(?:hai|ba|tư|năm|sáu|bảy|[2-7])|chủ nhật|ngày mai|hôm nay|tối nay|cuối tuần|tuần (?:sau|tới|này)|(?:sáng|chiều|tối) (?:mai|nay)/iu;
 
-/** A clause that defers to the agent: it states nothing (ADR 0024). */
+/**
+ * A clause that defers to the agent: it states nothing (ADR 0024). Offering another day later
+ * defers the viewing day too; proposing a named one doesn't.
+ */
 const DEFERRAL =
-	/\b(?:check|checking|confirm|confirming|find out|look into|looking into|get back|come back to you|verify|double-check|ask the (?:owner|landlord)|let you know)\b|kiểm tra|xác nhận|báo lại|hỏi lại|tìm hiểu|hỏi chủ nhà|phản hồi|確認|お調べ|改めて|확인|알아보|다시 연락|уточн|провер|узна|сообщ|свяж/iu;
+	/\b(?:check|checking|confirm|confirming|find out|look into|looking into|get back|come back to you|verify|double-check|ask the (?:owner|landlord)|let you know)\b|\b(?:suggest|propose|offer|find|arrange)\s+(?:another|a different|other)\s+(?:days?|times?|dates?|slots?)\b|(?:đề xuất|hẹn|chọn|sắp xếp)\s+(?:\p{L}+\s+)?(?:ngày|giờ|hôm|buổi)\s+khác|kiểm tra|xác nhận|báo lại|hỏi lại|tìm hiểu|hỏi chủ nhà|phản hồi|確認|お調べ|改めて|확인|알아보|다시 연락|уточн|провер|узна|сообщ|свяж/iu;
 
 /** A sentence, ending at its stop: the question mark tells a question. */
 export function sentences(text: string): string[] {
@@ -103,13 +113,44 @@ export function sentences(text: string): string[] {
 		.filter(Boolean);
 }
 
-/** A sentence's clauses: a comma, a semicolon or a dash can join a statement to a deferral. */
+/**
+ * A clause that only sets up another: a condition ("if Saturday doesn't work", "nếu…") or the
+ * matter a clause is about ("for whether it has its own pink book", "về sổ hồng…").
+ */
+const SUBORDINATE =
+	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|whether|in case|(?:as\s+)?for|about|regarding)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|về|trường hợp)(?!\p{L})/iu;
+
+/**
+ * A sentence's clauses: a comma, a semicolon or a dash can join a statement to a deferral. A
+ * subordinate clause is read with the clause after it (or, last in its sentence, the one before
+ * it): "If Saturday doesn't work, I'll suggest another day" is one deferral, while "Next week
+ * works, I'll check the time" is a statement and a deferral.
+ */
 function clauses(sentence: string): string[] {
-	return sentence
+	const parts = sentence
 		.split(/[;:，、]|,\s|\s[–—-]\s/u)
 		.map((clause) => clause.trim())
 		.filter(Boolean);
+	const joined: string[] = [];
+	let pending: string | null = null;
+	for (const part of parts) {
+		const clause: string = pending ? `${pending}, ${part}` : part;
+		pending = SUBORDINATE.test(part) ? clause : null;
+		if (!pending) joined.push(clause);
+	}
+	if (pending) {
+		const last = joined.pop();
+		joined.push(last ? `${last}, ${pending}` : pending);
+	}
+	return joined;
 }
+
+/**
+ * The agent's own promise ("I will", "em sẽ"): an action, not an answer about the place. "I'll
+ * prioritise units with clear paperwork" states nothing; "You will get a sổ hồng" does.
+ */
+const OWN_PROMISE =
+	/\b(?:I|we)(?:\s+will|'ll|’ll)\b|(?<!\p{L})(?:em|mình|tôi|chúng (?:tôi|em))(?:\s+cũng)?\s+sẽ(?!\p{L})/giu;
 
 /** Whether a clause states an answer the agent gives by hand. */
 function statesAnswer(clause: string, viewing: boolean): boolean {
@@ -118,7 +159,10 @@ function statesAnswer(clause: string, viewing: boolean): boolean {
 	if (PRICE_NOUN.test(clause) && PRICE_STATED.test(clause)) return true;
 	if (AVAILABILITY.test(clause)) return true;
 	if (LEGAL_ANSWER.test(clause)) return true;
-	if (PAPERWORK_TERMS.test(clause) && (ASSERTS.test(clause) || !/[a-zà-ỹ]/iu.test(clause))) {
+	if (
+		PAPERWORK_TERMS.test(clause) &&
+		(ASSERTS.test(clause.replace(OWN_PROMISE, " ")) || !/[a-zà-ỹ]/iu.test(clause))
+	) {
 		return true;
 	}
 	return viewing && DAY_OR_TIME.test(clause);
@@ -153,19 +197,33 @@ export function numbersIn(text: string): number[][] {
 	});
 }
 
-/** Whether every number in `text` is one the guest wrote, read either way. */
-function onlyGuestNumbers(text: string, guestTexts: readonly string[]): boolean {
-	const written = new Set(guestTexts.flatMap((guest) => numbersIn(guest).flat()));
-	return numbersIn(text).every((readings) => readings.some((value) => written.has(value)));
+/**
+ * The thread's texts a draft's numbers may come from (#289): every guest message (the guest's
+ * details, which the model reads, come from all of them) and every message the model read, the
+ * office's included. The agent's "9 giờ" may come back; a number nobody wrote may not.
+ */
+export function threadTexts(
+	messages: ReadonlyArray<Pick<Message, "direction" | "text">>,
+): string[] {
+	const read = new Set(messages.slice(-DRAFT_MESSAGES));
+	return messages
+		.filter((message) => message.direction === "in" || read.has(message))
+		.map((message) => message.text);
+}
+
+/** Whether every number in `text` is one the thread already has, read either way. */
+function onlyThreadNumbers(text: string, written: readonly string[]): boolean {
+	const values = new Set(written.flatMap((each) => numbersIn(each).flat()));
+	return numbersIn(text).every((readings) => readings.some((value) => values.has(value)));
 }
 
 /**
- * Returns the draft to store, or `null` when the template must stand instead. `guestTexts` are
- * the guest's own messages: a number in the draft must be one of theirs.
+ * Returns the draft to store, or `null` when the template must stand instead. `written` are the
+ * thread's texts (`threadTexts`): a number in the draft must be one of theirs.
  */
 export function checkFollowUp(
 	draft: string | null | undefined,
-	guestTexts: readonly string[],
+	written: readonly string[],
 ): string | null {
 	if (!draft) {
 		return null;
@@ -177,9 +235,9 @@ export function checkFollowUp(
 		return null;
 	}
 	if (
-		!onlyGuestNumbers(
+		!onlyThreadNumbers(
 			text,
-			guestTexts.map((guest) => guest.normalize("NFC")),
+			written.map((each) => each.normalize("NFC")),
 		)
 	) {
 		return null;
