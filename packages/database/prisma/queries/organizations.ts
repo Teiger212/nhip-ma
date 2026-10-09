@@ -29,7 +29,12 @@ export async function getOrganizations({
 			include: {
 				_count: {
 					select: {
-						members: true,
+						// The office's people only: the platform admin's own membership is left out.
+						members: {
+							where: {
+								OR: [{ user: { role: null } }, { user: { role: { not: { contains: "admin" } } } }],
+							},
+						},
 					},
 				},
 			},

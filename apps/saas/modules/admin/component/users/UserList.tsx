@@ -26,6 +26,7 @@ import {
 import { useConfirmationAlert } from "@shared/components/ConfirmationAlertProvider";
 import { Pagination } from "@shared/components/Pagination";
 import { UserAvatar } from "@shared/components/UserAvatar";
+import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { manualPaginationTableFeatures } from "@shared/lib/table-features";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -295,16 +296,18 @@ export function UserList() {
 									}
 								/>
 								<DropdownMenuContent>
-									<DropdownMenuItem
-										onClick={() =>
-											impersonateUser(row.original.id, {
-												name: row.original.name ?? "",
-											})
-										}
-									>
-										<SquareUserRoundIcon className="mr-2 size-4" />
-										{t("admin.users.impersonate")}
-									</DropdownMenuItem>
+									{KIT_SCREENS.impersonate && (
+										<DropdownMenuItem
+											onClick={() =>
+												impersonateUser(row.original.id, {
+													name: row.original.name ?? "",
+												})
+											}
+										>
+											<SquareUserRoundIcon className="mr-2 size-4" />
+											{t("admin.users.impersonate")}
+										</DropdownMenuItem>
+									)}
 
 									{!row.original.emailVerified && (
 										<DropdownMenuItem onClick={() => resendVerificationMail(row.original.email)}>

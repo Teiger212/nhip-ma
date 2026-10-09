@@ -167,10 +167,18 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 					<div className="gap-3 flex items-start justify-between" data-test="connection-whatsapp">
 						<div>
 							<p className="font-medium">WhatsApp</p>
-							<Badge status="neutral" data-test="connection-status">
-								{t("status.none")}
-							</Badge>
-							<p className="mt-1 text-sm text-muted-foreground">{t("whatsappLater")}</p>
+							{pipesQuery.isSuccess && (
+								<>
+									<Badge status="neutral" data-test="connection-status">
+										{pipesQuery.data.configured.whatsapp ? t("status.onNhip") : t("status.none")}
+									</Badge>
+									<p className="mt-1 text-sm text-muted-foreground">
+										{pipesQuery.data.configured.whatsapp
+											? t("whatsappShared")
+											: t("whatsappNotConfigured")}
+									</p>
+								</>
+							)}
 						</div>
 					</div>
 					<OfficeCrm officeId={officeId} />

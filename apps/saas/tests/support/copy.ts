@@ -34,7 +34,7 @@ export function loginCopy(locale: Locale): LoginCopy {
 
 /** The pipe-connection copy (ADR 0017): the admin's Connections card and the inbox's blocked send. */
 export type PipeCopy = {
-	status: { none: string; connected: string; needsReconnect: string };
+	status: { none: string; onNhip: string; connected: string; needsReconnect: string };
 	connectZalo: string;
 	disconnectTitle: string;
 	/** The reason a thread on a disconnected pipe cannot be sent. */

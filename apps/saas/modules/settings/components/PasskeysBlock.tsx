@@ -198,7 +198,7 @@ export function PasskeysBlock() {
 				)}
 
 				<div className="flex justify-start">
-					<Button variant="secondary" onClick={addPasskey}>
+					<Button variant="primary" onClick={addPasskey}>
 						<PlusIcon className="mr-1.5 size-4" />
 						{t("settings.account.security.passkeys.addPasskey")}
 					</Button>
