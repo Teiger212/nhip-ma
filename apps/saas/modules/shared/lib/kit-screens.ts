@@ -8,7 +8,8 @@
  *   plans for the office. Hidden with the account's until ADR 0014's billing is built (#198;
  *   ADR 0022, 2026-10-06, #210).
  * - start: the kit's start page with sample stats. PRODUCT.md: no claimed metrics.
- * - chatbot: the kit's AI chat demo. Not in PRODUCT.md.
+ * - chatbot: the kit's AI chat demo. Not in PRODUCT.md. Its oRPC `ai` router is unmounted
+ *   (`packages/api/orpc/router.ts`) and `AiChat.tsx` is out of the type-check (tsconfig).
  * - docs: the user menu's Documentation link to the kit's docs site; Nhịp's own operator wiki
  *   is #238. Turn on with it.
  * - magicLink: the login page's Password / Magic link tabs and the magic-link form. Operators

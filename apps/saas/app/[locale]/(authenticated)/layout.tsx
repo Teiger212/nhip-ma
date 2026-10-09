@@ -4,6 +4,7 @@ import { getOrganizationList, getSession } from "@auth/lib/server";
 import { OfficeLocaleSync } from "@i18n/components/OfficeLocaleSync";
 import { followOfficeLanguage, officeLanguageFor } from "@i18n/lib/office-locale";
 import { localeRedirect } from "@i18n/routing";
+import { prefetchInbox } from "@inbox/lib/prefetch-inbox";
 import { ActiveOrganizationProvider } from "@organizations/components/ActiveOrganizationProvider";
 import { organizationListQueryKey } from "@organizations/lib/api";
 import { listPurchases } from "@payments/lib/server";
@@ -58,6 +59,11 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 		queryKey: sessionQueryKey,
 		queryFn: () => session,
 	});
+
+	// The thread list and the operator's role, for the shell's nav count and user menu and for the
+	// Inbox: present at first paint, polled by the client afterwards. Nothing for an operator the
+	// inbox refuses (platform admin, no office, two offices).
+	await prefetchInbox(queryClient, session.user);
 
 	if (authConfig.organizations.enable) {
 		await queryClient.prefetchQuery({

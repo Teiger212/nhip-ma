@@ -45,6 +45,8 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const marketingUrl = config.marketingUrl;
 	// Team is the manager's: the office's members page (#82). The platform admin has no office.
 	const office = useOfficeRole({ enabled: !!user && !isPlatformAdmin(user.role) });
+	// Set once the office has answered; the specs wait on it before judging a menu item missing.
+	const officeRole = office.userId ? office.role : undefined;
 	const officeHref =
 		office.role === "manager" && office.officeSlug ? `/${office.officeSlug}/settings` : null;
 	const teamHref = officeHref ? `${officeHref}/members` : null;
@@ -109,6 +111,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 									"size-8 shrink-0 justify-center hover:bg-sidebar-accent",
 								)}
 								aria-label="User menu"
+								data-office-role={officeRole}
 							>
 								<MoreVerticalIcon className="size-4" />
 							</button>
@@ -130,6 +133,7 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 								"min-h-11 min-w-11 gap-2 lg:min-h-8 lg:min-w-8 lg:self-start justify-center hover:bg-sidebar-accent",
 							)}
 							aria-label="User menu"
+							data-office-role={officeRole}
 						>
 							<UserAvatar name={name ?? ""} avatarUrl={image} />
 						</button>

@@ -64,7 +64,7 @@ export function OfficeConnections({ officeId }: { officeId: string }) {
 	const connectHref = `/api/pipes/zalo/connect?officeId=${encodeURIComponent(officeId)}`;
 
 	return (
-		<Card data-test="office-connections">
+		<Card data-test="office-connections" data-pipes-loaded={pipesQuery.isSuccess || undefined}>
 			<CardHeader>
 				<CardTitle>{t("title")}</CardTitle>
 			</CardHeader>

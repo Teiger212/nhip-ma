@@ -9,6 +9,12 @@ import {
 } from "@tanstack/react-query";
 
 import { noteOwnAction } from "./inbox-presence";
+import {
+	conversationListQueryKey,
+	conversationsQueryKey,
+	officeQueryKey,
+} from "./inbox-query-keys";
+import type { OfficeViewer } from "./office-viewer";
 import { yourTurnCount } from "./queue";
 import { summarize } from "./summary";
 import type {
@@ -24,8 +30,8 @@ import type {
  * about threads sits under this key, so invalidating it refreshes the list, the nav count
  * and the open thread together.
  */
-export const conversationsQueryKey = ["inbox", "conversations"] as const;
-const listQueryKey = [...conversationsQueryKey, "list"] as const;
+export { conversationsQueryKey };
+const listQueryKey = conversationListQueryKey;
 const detailQueryKey = (id: string) => [...conversationsQueryKey, "detail", id] as const;
 
 /**
@@ -157,8 +163,6 @@ export function replyEndpoint(conversation: Conversation): string | null {
 	return null;
 }
 
-type OfficeViewer = { userId: string; role: "agent" | "manager"; officeSlug: string | null };
-
 /**
  * The signed-in operator, their role in the office (ADR 0015) and the office's slug. An
  * agent until known (`pending` until `/api/office` answers). Off for the platform admin, whom
@@ -171,7 +175,7 @@ export function useOfficeRole({ enabled = true }: { enabled?: boolean } = {}): {
 	pending: boolean;
 } {
 	const query = useQuery({
-		queryKey: ["inbox", "office"],
+		queryKey: officeQueryKey,
 		queryFn: () => api<OfficeViewer>("/api/office"),
 		staleTime: 5 * 60_000,
 		enabled,
