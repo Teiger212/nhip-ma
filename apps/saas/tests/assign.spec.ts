@@ -240,7 +240,7 @@ function assignMenuItem(page: Page, name: string) {
 }
 
 async function search(page: Page, text: string) {
-	await page.getByRole("textbox", { name: "Search threads" }).fill(text);
+	await page.getByRole("textbox", { name: "Search conversations" }).fill(text);
 }
 
 /** The thread list (not the open thread). */
@@ -264,7 +264,7 @@ function navCount(page: Page) {
 	return page.getByRole("link", { name: /^Inbox\b/ }).getByTestId("nav-your-turn-count");
 }
 
-/** The manager's owner filter (All threads, Unassigned, or one operator). */
+/** The manager's owner filter (All conversations, Unassigned, or one operator). */
 function ownerFilter(page: Page) {
 	return page.getByTestId("owner-filter");
 }

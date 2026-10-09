@@ -13,7 +13,7 @@ import type { AlertDelivery, AlertTransport } from "./transport";
 /**
  * A manager's owner change, against the test database (ADR 0022 "Alerts", #133;
  * docs/e2e-scenarios.md Alerts 3 and 4): the chosen operator's `assigned` alert, pushed and
- * logged, with the bell row "A manager gave you a thread" opening the alert's link; a return's
+ * logged, with the bell row "A manager gave you a conversation" opening the alert's link; a return's
  * `returned` alert to the other managers; and the bell row naming the guest for the operator
  * the thread left (P4), which is never pushed, logged as an alert or emailed. The bell rows go
  * through the kit's `createNotification`, and no notification emails (PRODUCT.md "Deliberately

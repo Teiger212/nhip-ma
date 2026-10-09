@@ -17,7 +17,7 @@ const alwaysSounds = () => true;
 /**
  * A manager's owner change, once `setOwner` has succeeded (ADR 0022 "Alerts", #133):
  * - the operator given the thread gets an `assigned` alert, pushed with the toast's words
- *   ("Minji was assigned to you"), and the bell row "A manager gave you a thread", which names
+ *   ("Minji was assigned to you"), and the bell row "A manager gave you a conversation", which names
  *   no guest and opens the alert's own link; its data carries the pipe and the guest language's
  *   code (#94), which identify no one, so the row can say "Zalo · Korean";
  * - a thread back in Unassigned gives the other managers a `returned` alert ("Minji is
