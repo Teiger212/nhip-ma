@@ -18,9 +18,7 @@ export function Logo({ withLabel = true, className }: { className?: string; with
 				<rect x="4.5" y="22.25" width="23" height="4.5" rx="2.25" fill="currentColor" />
 			</svg>
 			{withLabel && (
-				<span className="font-semibold tracking-tight max-md:sr-only md:block text-[1.05rem]">
-					Nhịp
-				</span>
+				<span className="font-semibold tracking-tight max-md:sr-only md:block text-base">Nhịp</span>
 			)}
 		</span>
 	);

@@ -1,41 +1,42 @@
 {
 	"admin": {
 		"menu": {
-			"organizations": "Organizations",
+			"organizations": "Offices",
 			"users": "Users",
-			"webhooks": "Webhooks"
+			"webhooks": "Webhook log"
 		},
 		"organizations": {
-			"backToList": "Back to organizations",
+			"backToList": "Back to offices",
 			"confirmDelete": {
 				"confirm": "Delete",
-				"message": "Are you sure you want to delete this organization? This action cannot be undone.",
-				"title": "Delete organization"
+				"message": "Delete this office? This can't be undone.",
+				"title": "Delete office"
 			},
-			"create": "Create",
+			"create": "New office",
 			"delete": "Delete",
 			"deleteOrganization": {
-				"deleted": "Organization has been deleted successfully!",
-				"deleting": "Deleting organization...",
-				"notDeleted": "Organization could not be deleted. Please try again."
+				"deleted": "Office deleted.",
+				"deleting": "Deleting office...",
+				"notDeleted": "Could not delete the office. Try again."
 			},
 			"edit": "Edit",
 			"form": {
-				"createTitle": "Create an organization",
-				"name": "Organization name",
+				"createTitle": "New office",
+				"name": "Office name",
 				"notifications": {
-					"error": "Could not save the organization. Please try again later.",
-					"success": "Organization has been saved."
+					"error": "Could not save the office. Try again.",
+					"success": "Office saved."
 				},
 				"save": "Save",
-				"updateTitle": "Edit organization"
+				"updateTitle": "Office details"
 			},
 			"loading": "Loading organizations...",
 			"membersCount": "{count} {count, plural, one {member} other {members}}",
-			"search": "Search for an organization...",
-			"title": "Manage organizations"
+			"search": "Search offices...",
+			"title": "Offices",
+			"empty": "No offices match."
 		},
-		"title": "Administration",
+		"title": "Admin",
 		"users": {
 			"ban": {
 				"actions": {
@@ -96,12 +97,13 @@
 				"success": "Verification mail has been sent.",
 				"title": "Resend verification mail"
 			},
-			"search": "Search for name or email...",
-			"title": "Manage users",
+			"search": "Search name or email...",
+			"title": "Users",
 			"assignAdminRole": "Assign admin role",
-			"removeAdminRole": "Remove admin role"
+			"removeAdminRole": "Remove admin role",
+			"empty": "No users match."
 		},
-		"description": "Manage your application.",
+		"description": "Offices, their people and connections, and every webhook that reaches Nhịp.",
 		"connections": {
 			"title": "Connections",
 			"connectZalo": "Connect Zalo OA",
@@ -145,9 +147,9 @@
 			}
 		},
 		"webhooks": {
-			"title": "Webhook deliveries",
+			"title": "Webhook log",
 			"description": "Every incoming WhatsApp and Zalo webhook of the last 30 days, newest first. No message text or guest ids are kept.",
-			"empty": "No webhooks yet.",
+			"empty": "No webhooks in the last 30 days.",
 			"endpoint": "to {endpoints}",
 			"outcome": {
 				"filed": "Filed to {offices}",
@@ -500,7 +502,8 @@
 				},
 				"platformAdmin": "Platform admin",
 				"title": "Team",
-				"people": "People"
+				"people": "People",
+				"emptyMembers": "No one has joined yet."
 			},
 			"notifications": {
 				"organizationDeleted": "Your organization has been deleted.",

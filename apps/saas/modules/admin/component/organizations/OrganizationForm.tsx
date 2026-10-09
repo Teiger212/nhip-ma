@@ -120,6 +120,7 @@ export function OrganizationForm({ organizationId }: { organizationId: string })
 							<div className="flex justify-end">
 								<Button
 									type="submit"
+									variant="primary"
 									loading={
 										updateOrganizationMutation.isPending || createOrganizationMutation.isPending
 									}

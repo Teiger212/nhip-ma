@@ -322,7 +322,7 @@ UPDATE` and writes the new pair in the same transaction. **WhatsApp** is not yet
   (`recordWebhookDelivery`: pipe, outcome `processed`, `refused` or `failed`, the endpoints
   and offices it touched, how many messages were filed or dropped, the vendor's message
   ids), never a message's text or the guest's id. The platform admin reads it in
-  Admin → Webhooks. Deliveries are kept 30 days, pruned without a scheduler by about one
+  Admin → Webhook log. Deliveries are kept 30 days, pruned without a scheduler by about one
   delivery in a hundred. Spec: `tests/webhooks.spec.ts`.
 
 ## Data

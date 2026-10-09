@@ -1,7 +1,13 @@
 "use client";
 
 import { Badge } from "@repo/ui/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@repo/ui/components/card";
 import { useQuery } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 
@@ -42,7 +48,7 @@ export function WebhookDeliveries() {
 		<Card data-test="webhook-deliveries">
 			<CardHeader>
 				<CardTitle>{t("title")}</CardTitle>
-				<p className="text-sm text-muted-foreground">{t("description")}</p>
+				<CardDescription>{t("description")}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{query.isSuccess && deliveries.length === 0 ? (
@@ -56,7 +62,7 @@ export function WebhookDeliveries() {
 								key={delivery.id}
 								data-test="webhook-delivery"
 								data-outcome={outcomeOf(delivery)}
-								className="gap-x-3 gap-y-1 py-2 text-sm flex flex-wrap items-center"
+								className="gap-x-3 gap-y-1 py-3 text-sm flex flex-wrap items-center"
 							>
 								<time className="text-muted-foreground tabular-nums" dateTime={delivery.receivedAt}>
 									{format.dateTime(new Date(delivery.receivedAt), {
