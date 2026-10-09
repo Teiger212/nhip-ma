@@ -884,7 +884,7 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      one `assigned` alert, for agent 1 only. Agent 1's bell shows "A manager gave you a
      thread", with no guest's name, and it opens the thread. The row also says when, and the
      guest's pipe and language once known ("WhatsApp · Korean"), which name no one (#94).
-     Back-to-back rows of this kind fold into one, "5 threads were assigned to you", opening
+     Back-to-back rows of this kind fold into one, "5 conversations were assigned to you", opening
      the Inbox (#94; not tested end to end: Vitest holds the grouping, `bell-rows.test.ts`).
    - Reassigning the thread to agent 2 makes one `assigned` alert, for agent 2. Agent 1, who
      lost it, gets no alert but a bell row naming the guest: "Minji was moved to another
@@ -1122,12 +1122,12 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    began from its own app is never greeted.
 
 3. **The greeting counts nowhere in the funnel.**
-   - After the auto-reply, Home reads Leads in 1, Engaged 0, In conversation 0, and no
+   - After the auto-reply, Home reads Leads in 1, Engaged 0, Talking 0, and no
      answered leads under response time.
-   - The guest writes back before any human reply: still In conversation 0.
+   - The guest writes back before any human reply: still Talking 0.
    - The manager approves a reply: Engaged 1, and the response time runs from the guest's
      first message to that reply.
-   - The guest writes again: In conversation 1.
+   - The guest writes again: Talking 1.
 
    Covered by Vitest: `apps/saas/modules/inbox/lib/auto-reply.db.test.ts` › the funnel ignores
    the auto-reply from first message to conversation (R10, First greeting 3) › Engaged, In
@@ -1590,7 +1590,7 @@ Korean to Vietnamese."). The setting's VI copy is pending a native read (#78).
    The bell: the agent, set to English, is given a guest's thread by the manager (judged once the
    agent's `assigned` alert is in the log) and opens their settings at `/en/settings/general`,
    their own language's address; the bell reads "Bạn được giao một cuộc trò chuyện"
-   and not "A manager gave you a thread". Not tested: the alert's text, which the alert log
+   and not "A manager gave you a conversation". Not tested: the alert's text, which the alert log
    doesn't hold and a mock deployment pushes nowhere).
 9. **Sign-in keeps its own switch.** Signed out, the login page still offers English and Tiếng
    Việt, and choosing Tiếng Việt goes to `/vi/login`: no office is known there yet.
@@ -1641,7 +1641,7 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 
 1. **A manager deletes a guest's data.** An office with no CRM. A guest writes three messages and
    the agent approves a reply to the first one. As the manager, the thread header's
-   "Thread actions" menu has "Delete guest data". It opens a dialog:
+   "Conversation actions" menu has "Delete guest data". It opens a dialog:
    - Its title is "Delete <guest>'s data?".
    - It says Nhịp deletes the thread's "4 messages" (the guest's three and the reply) with their
      translations, the suggested reply and the extracted details.
@@ -1677,7 +1677,7 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
 2. **Home's numbers don't move when a guest is deleted.** Three guests write. The agent answers
    two of them, and one of those two writes back. Note Home's
    numbers:
-   - Leads in, Engaged and In conversation;
+   - Leads in, Engaged and Talking;
    - the median, the 90th percentile and every response-time band;
    - each day of leads by day.
 
@@ -1697,7 +1697,7 @@ deletion receipts and lead tallies on request; nothing in the app shows them yet
    Spec: `apps/saas/tests/guest-deletion.spec.ts` (Guest deletion 3; 403 `{ error: "forbidden" }`
    with a full body (a reason given), and also with no reason or no body, since the agent is
    refused before the body is read; the manager's header
-   on the agent's thread has Thread actions, the positive control; "unchanged" is the thread
+   on the agent's thread has Conversation actions, the positive control; "unchanged" is the thread
    still opening for both, through the API, and the thread each opened after every refused
    request still showing the guest's message and the agent's reply. An Unassigned thread
    is not checked: agents can't open one, ADR 0022).

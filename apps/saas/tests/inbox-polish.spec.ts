@@ -98,7 +98,7 @@ function view(page: Page, name: ViewName, count?: number): Locator {
 	});
 }
 
-/** The manager's owner filter ("Showing": All threads, or one operator). */
+/** The manager's owner filter ("Showing": All conversations, or one operator). */
 function ownerFilter(page: Page): Locator {
 	return page.getByTestId("owner-filter");
 }

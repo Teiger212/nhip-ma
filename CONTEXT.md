@@ -122,6 +122,7 @@ is renamed.
   0021). Mock sends count only in a mock deployment.
 - **In conversation**: a lead with more than one exchange (a guest message after the
   office's first human reply).
+  The interface says _conversation_ for a thread, and _Talking_ for this funnel stage.
 - **Closing**: a lead that became a signed lease or a completed sale. Known only through
   the CRM adapter, never inferred from chat.
 - **Lost**: a lead the office marked lost in its CRM, with reason where known.

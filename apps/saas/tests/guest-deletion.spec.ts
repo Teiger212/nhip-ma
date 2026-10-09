@@ -352,12 +352,12 @@ function escapeRegExp(text: string) {
 
 /** The manager opens the thread's actions; the menu offers "Delete guest data". */
 async function openThreadActionsMenu(page: Page) {
-	await expect(threadActions(page), "the thread header has Thread actions").toBeVisible();
+	await expect(threadActions(page), "the thread header has Conversation actions").toBeVisible();
 	await threadActions(page).click();
 	await expect(deleteItem(page), "the menu offers Delete guest data").toBeVisible();
 }
 
-/** From the open thread's header: Thread actions, Delete guest data; the dialog, named for the guest. */
+/** From the open thread's header: Conversation actions, Delete guest data; the dialog, named for the guest. */
 async function openDeletionDialog(page: Page, guest: Guest): Promise<Locator> {
 	await openThreadActionsMenu(page);
 	await expect(deleteItem(page), "Delete guest data can be chosen").toBeEnabled();
@@ -487,7 +487,7 @@ async function redPartsOf(root: Locator): Promise<string[]> {
 }
 
 /**
- * How many choices the manager's owner filter offers (All threads, then each operator): its
+ * How many choices the manager's owner filter offers (All conversations, then each operator): its
  * list opened and closed again. It is the kit's Base UI Select, not a native one (#248).
  */
 async function ownerFilterOptions(filter: Locator): Promise<number> {
@@ -574,7 +574,7 @@ test.describe.configure({ timeout: 180_000 });
 
 // scenario: docs/e2e-scenarios.md Guest deletion 1
 test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
-	test("the manager's Thread actions → Delete guest data opens a dialog naming the guest, what goes (5 messages) and what is kept, with no CRM box and only its confirm red; the confirm waits for a reason, and for Other a note, under the note's hint; confirming deletes the thread for the manager and the agent, the nav count drops, and the API answers 404", async ({
+	test("the manager's Conversation actions → Delete guest data opens a dialog naming the guest, what goes (5 messages) and what is kept, with no CRM box and only its confirm red; the confirm waits for a reason, and for Other a note, under the note's hint; confirming deletes the thread for the manager and the agent, the nav count drops, and the API answers 404", async ({
 		newOffice,
 	}) => {
 		const office = await newOffice("Deletion 1");
@@ -600,7 +600,7 @@ test.describe("Guest deletion 1 — a manager deletes a guest's data", () => {
 		);
 		await expect(navCount(agent.page), "the nav counts them").toHaveText("2");
 
-		// The manager opens the guest's thread: Thread actions offers Delete guest data, not in red.
+		// The manager opens the guest's thread: Conversation actions offers Delete guest data, not in red.
 		await openThreadOf(manager, guest);
 		await openThreadActionsMenu(manager.page);
 		expect(
@@ -736,7 +736,7 @@ test.describe("Guest deletion 3 — an agent can't delete", () => {
 		await openThreadOf(agent, theirs);
 		await expect(
 			threadActions(agent.page),
-			`the agent's header on ${theirs.id} has no Thread actions`,
+			`the agent's header on ${theirs.id} has no Conversation actions`,
 		).toHaveCount(0);
 		await expect(
 			agent.page.getByRole("menuitem", { name: deletionCopy.delete }),

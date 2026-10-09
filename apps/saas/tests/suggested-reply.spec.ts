@@ -113,7 +113,7 @@ async function openUnderUnassigned(page: Page, guest: Guest, latestText: string)
 		"aria-pressed",
 		"true",
 	);
-	await page.getByRole("textbox", { name: "Search threads" }).fill(guest.id);
+	await page.getByRole("textbox", { name: "Search conversations" }).fill(guest.id);
 	const row = page
 		.getByRole("complementary")
 		.getByRole("button", { name: new RegExp(`^${literal(guest.id)}\\b`) });

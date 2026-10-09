@@ -366,7 +366,7 @@ const BELL: Record<
 	en: {
 		open: "Open notifications",
 		title: "Notifications",
-		assigned: "A manager gave you a thread",
+		assigned: "A manager gave you a conversation",
 		moved: (name) =>
 			name === null ? "A guest was moved to another agent" : `${name} was moved to another agent`,
 	},
@@ -480,7 +480,7 @@ async function laterGuestArrives(office: InAppOffice) {
 // scenario: docs/e2e-scenarios.md Alerts 3 (#133; ADR 0019, ADR 0022 P4)
 test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell row", () => {
 	// scenario: docs/e2e-scenarios.md Alerts 3, assigning and reassigning
-	test("the manager's Assign to… gives Minji to agent 1: one assigned alert, agent 1's only, and agent 1's bell says 'A manager gave you a thread' without her name and opens her thread; reassigned to agent 2, agent 2 gets the one new assigned alert, and agent 1 no alert but a bell row 'Minji was moved to another agent' that doesn't say to whom", async ({
+	test("the manager's Assign to… gives Minji to agent 1: one assigned alert, agent 1's only, and agent 1's bell says 'A manager gave you a conversation' without her name and opens her thread; reassigned to agent 2, agent 2 gets the one new assigned alert, and agent 1 no alert but a bell row 'Minji was moved to another agent' that doesn't say to whom", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(360_000);
@@ -535,10 +535,10 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 			"on Minji's thread: the manager's guest alert from before, and one assigned alert, agent 1's",
 		).toEqual({ "manager: guest": 1, "agent 1: assigned": 1 });
 
-		// Agent 1's bell: "A manager gave you a thread", naming no guest, and it opens the thread.
+		// Agent 1's bell: "A manager gave you a conversation", naming no guest, and it opens the thread.
 		await openBell(agent1.page, "en");
 		const given = bellRow(agent1.page, BELL.en.assigned);
-		await expect(given, "agent 1's bell: A manager gave you a thread").toHaveCount(1);
+		await expect(given, "agent 1's bell: A manager gave you a conversation").toHaveCount(1);
 		await expect(
 			shown(agent1.page.getByText("Minji")),
 			"agent 1's bell names no guest",
@@ -575,11 +575,11 @@ test.describe("Alerts 3 — an assignment alerts the chosen agent, with a bell r
 			"agent 1's bell doesn't say to whom",
 		).toHaveCount(0);
 
-		// Agent 2's bell: A manager gave you a thread, once.
+		// Agent 2's bell: A manager gave you a conversation, once.
 		await openBell(agent2.page, "en");
 		await expect(
 			bellRow(agent2.page, BELL.en.assigned),
-			"agent 2's bell: A manager gave you a thread",
+			"agent 2's bell: A manager gave you a conversation",
 		).toHaveCount(1);
 		await expect(shown(agent2.page.getByText(ANY_MOVED.en)), "agent 2 lost nothing").toHaveCount(0);
 	});

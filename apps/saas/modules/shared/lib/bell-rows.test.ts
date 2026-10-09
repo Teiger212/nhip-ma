@@ -4,7 +4,7 @@ import { bellLines } from "./bell-rows";
 
 const row = (id: string, type: string, read = false) => ({ id, type, read });
 
-// rule: #94 "Bell rows": repeats are grouped ("5 threads were assigned to you").
+// rule: #94 "Bell rows": repeats are grouped ("5 conversations were assigned to you").
 test("back-to-back assignments fold into one line, unread while any of them is", () => {
 	const lines = bellLines([
 		row("a", "THREAD_ASSIGNED", true),

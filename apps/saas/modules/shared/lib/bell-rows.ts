@@ -8,7 +8,7 @@ export type BellLine<T extends Groupable> =
 
 /**
  * The bell's lines, newest first as the rows come (#94). Back-to-back "A manager gave you a
- * thread" rows fold into one line ("5 threads were assigned to you"), which is unread while any
+ * thread" rows fold into one line ("5 conversations were assigned to you"), which is unread while any
  * of them is: seven identical titles say less than one count. A lone one stays its own row, with
  * its link to the thread; anything between two runs keeps them apart, so the order still reads
  * as what happened.
