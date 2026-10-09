@@ -169,8 +169,29 @@ describe("the first draft eval's drafts", () => {
 			// A deferral inside the condition doesn't cover the statement beside it.
 			"If you'd like me to check, the rent is $2,000.",
 			"If I check with the owner, Saturday works for the viewing.",
+			// A condition or topic never attaches backwards to an earlier deferral.
+			"Thanks Lucas, I'll confirm with the landlord, but for now the studio is available at $650.",
+			"I'll check with the landlord, but for your viewing Thursday at 5pm works.",
+			"I'll check the paperwork, as for ownership foreigners can own it.",
+			"I'll check the details, regarding the pink book you will get it at signing.",
+			"Em sẽ kiểm tra hồ sơ, về pháp lý thì người nước ngoài được sở hữu ạ.",
+			"Em sẽ kiểm tra lại, về lịch xem thì thứ bảy anh qua xem được ạ.",
+			// A topic that states an answer by itself isn't covered by the deferral after it.
+			"Regarding the price it's $650 a month, I'll confirm the rest with the landlord.",
+			"As for the pink book you will get it at signing, I'll confirm the exact date.",
+			"Về pháp lý người nước ngoài được sở hữu căn này, em sẽ kiểm tra hồ sơ cho anh.",
+			"Về giá thuê 19 triệu đã gồm phí quản lý, em sẽ kiểm tra lịch xem nhà.",
+			// The agent's promise to hand over the paperwork is a legal answer.
+			"Em sẽ giao sổ hồng cho anh khi ký hợp đồng ạ.",
+			"Chúng tôi sẽ sang tên sổ hồng cho anh ngay.",
+			"Mình sẽ lo pháp lý sở hữu cho anh trọn gói.",
+			"I will help you obtain the pink book for the Vinhomes unit.",
+			"We will transfer ownership to you at signing.",
+			"I'll hand over the pink book when you sign.",
+			// Offering another slot doesn't defer a day the same clause names.
+			"Saturday at 10am works for the viewing and I can arrange another slot if needed.",
 		]) {
-			expect(checkFollowUp(draft, []), draft).toBeNull();
+			expect(checkFollowUp(draft, ["$650", "19 triệu", "10am"]), draft).toBeNull();
 		}
 	});
 });
@@ -237,6 +258,8 @@ describe("in English", () => {
 			"Thanks for asking about the pink book. I'll confirm the details and come back to you.",
 			"I'll find out whether it's still available and get back to you here.",
 			"Let me check the viewing slots with the owner.",
+			// The second eval's Hương draft (#289): the matter deferred, as an indirect question.
+			"Regarding whether the Vinhomes units have a separate red book (sổ hồng): I'll check the legal status with the owners.",
 			"When would you like to see it?",
 			"Are you looking to rent or to buy?",
 		]) {

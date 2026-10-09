@@ -21,9 +21,9 @@ import {
  * Both tasks are short, one-turn completions, so `max_tokens` is deliberately small: a
  * translation of a chat message, or a reply of up to four sentences in two languages, never
  * needs more. A model's reasoning counts against `max_tokens` too
- * (openrouter.ai/docs/guides/best-practices/reasoning-tokens, "Reasoning tokens and
- * max_tokens"): at 768, Haiku's default reasoning used the whole budget on two drafts of the
- * first eval and the JSON never closed (#289). A cut-off answer isn't the JSON, so the template
+ * (openrouter.ai/docs/guides/best-practices/reasoning-tokens: the page's opening, and "Reasoning
+ * tokens and max_tokens"): at 768, two drafts of the first eval used the whole budget and the
+ * JSON never closed (#289). A cut-off answer isn't the JSON, so the template
  * stands.
  */
 const TRANSLATION_MAX_TOKENS = 1024;

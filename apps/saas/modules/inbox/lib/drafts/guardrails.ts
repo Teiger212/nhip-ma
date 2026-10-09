@@ -97,12 +97,9 @@ const VIEWING =
 const DAY_OR_TIME =
 	/\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:tomorrow|today|tonight|weekend|noon|midday)\b|\bthis (?:morning|afternoon|evening|week)\b|\bnext (?:week|month)\b|\d\s*(?:am|pm|a\.m\.|p\.m\.|h\b|giờ)|thứ\s+(?:hai|ba|tư|năm|sáu|bảy|[2-7])|chủ nhật|ngày mai|hôm nay|tối nay|cuối tuần|tuần (?:sau|tới|này)|(?:sáng|chiều|tối) (?:mai|nay)/iu;
 
-/**
- * A clause that defers to the agent: it states nothing (ADR 0024). Offering another day later
- * defers the viewing day too; proposing a named one doesn't.
- */
+/** A clause that defers to the agent: it states nothing (ADR 0024). */
 const DEFERRAL =
-	/\b(?:check|checking|confirm|confirming|find out|look into|looking into|get back|come back to you|verify|double-check|ask the (?:owner|landlord)|let you know)\b|\b(?:suggest|propose|offer|find|arrange)\s+(?:another|a different|other)\s+(?:days?|times?|dates?|slots?)\b|(?:đề xuất|hẹn|chọn|sắp xếp)\s+(?:\p{L}+\s+)?(?:ngày|giờ|hôm|buổi)\s+khác|kiểm tra|xác nhận|báo lại|hỏi lại|tìm hiểu|hỏi chủ nhà|phản hồi|確認|お調べ|改めて|확인|알아보|다시 연락|уточн|провер|узна|сообщ|свяж/iu;
+	/\b(?:check|checking|confirm|confirming|find out|look into|looking into|get back|come back to you|verify|double-check|ask the (?:owner|landlord)|let you know)\b|kiểm tra|xác nhận|báo lại|hỏi lại|tìm hiểu|hỏi chủ nhà|phản hồi|確認|お調べ|改めて|확인|알아보|다시 연락|уточн|провер|узна|сообщ|свяж/iu;
 
 /** A sentence, ending at its stop: the question mark tells a question. */
 export function sentences(text: string): string[] {
@@ -114,12 +111,27 @@ export function sentences(text: string): string[] {
 }
 
 /**
- * A clause that only sets up another: a condition ("if Saturday doesn't work", "nếu…") or the
- * matter a clause is about ("for whether it has its own pink book", "về sổ hồng…", a Japanese
- * or Korean topic ending in は, について, 은 or 는).
+ * Offering another day later defers the viewing day (#289, Mikhail), but only in a clause that
+ * names no day itself: "Saturday at 10 works, or I can arrange another slot" states one.
  */
-const SUBORDINATE =
-	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|whether|in case|(?:as\s+)?for|about|regarding)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|về|trường hợp)(?!\p{L})|(?:は|について|に関して|에 대해(?:서)?|관련(?:해서)?|[은는])$/iu;
+const RESCHEDULE =
+	/\b(?:suggest|propose|offer|find|arrange)\s+(?:another|a different|other)\s+(?:days?|times?|dates?|slots?)\b|(?:đề xuất|hẹn|chọn|sắp xếp)\s+(?:\p{L}+\s+)?(?:ngày|giờ|hôm|buổi)\s+khác/iu;
+
+function defers(clause: string): boolean {
+	return DEFERRAL.test(clause) || (RESCHEDULE.test(clause) && !DAY_OR_TIME.test(clause));
+}
+
+/**
+ * A condition or an indirect question ("if Saturday doesn't work", "for whether it has its own
+ * pink book", "nếu…", "liệu…", a Japanese or Korean topic ending in は, について, 은 or 는): it
+ * asserts nothing by itself.
+ */
+const CONDITION =
+	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|in case|(?:(?:as\s+)?for|about|regarding|on|as\s+to)?\s*whether)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|trường hợp)(?!\p{L})|(?:は|について|に関して|에 대해(?:서)?|관련(?:해서)?|[은는])$/iu;
+
+/** The matter a clause is about ("for the pink book", "regarding the fee", "về sổ hồng…"). */
+const TOPIC =
+	/^(?:(?:and|but|so|or)\s+)?(?:(?:as\s+)?for|about|regarding)\b|^(?:(?:và|nhưng)\s+)?về(?!\p{L})/iu;
 
 /**
  * A clause as the checks read it: its whole text, and the main clause in it, which alone decides
@@ -129,12 +141,13 @@ type Clause = { text: string; main: string };
 
 /**
  * A sentence's clauses: a comma, a semicolon or a dash can join a statement to a deferral. A
- * subordinate clause that doesn't defer by itself is read with the main clause after it (or, last
- * in its sentence, the one before it), and that main clause's deferral covers it: "If Saturday
- * doesn't work, I'll suggest another day" defers, "If I check with the owner, Saturday works"
- * states, and so does "Next week works, I'll check the time".
+ * condition, or a topic that states nothing by itself, is read with the main clause after it,
+ * and only that main clause's deferral covers it: "If Saturday doesn't work, I'll suggest another
+ * day" defers; "If I check with the owner, Saturday works for the viewing", "Regarding the price
+ * it's $650, I'll confirm the rest" and "Next week works, I'll check the time" state. Nothing
+ * attaches backwards: a condition or topic last in its sentence is read on its own.
  */
-function clauses(sentence: string): Clause[] {
+function clauses(sentence: string, viewing: boolean): Clause[] {
 	const parts = sentence
 		.split(/[;:，、]|,\s|\s[–—-]\s/u)
 		.map((part) => part.trim())
@@ -142,27 +155,32 @@ function clauses(sentence: string): Clause[] {
 	const joined: Clause[] = [];
 	let pending: string[] = [];
 	for (const part of parts) {
-		if (SUBORDINATE.test(part) && !DEFERRAL.test(part)) {
+		const setsUp =
+			!defers(part) &&
+			(CONDITION.test(part) ||
+				(TOPIC.test(part) && !statesAnswer({ text: part, main: part }, viewing)));
+		if (setsUp) {
 			pending.push(part);
 			continue;
 		}
 		joined.push({ text: [...pending, part].join(", "), main: part });
 		pending = [];
 	}
-	if (pending.length) {
-		const last = joined.pop();
-		const text = pending.join(", ");
-		joined.push(last ? { text: `${last.text}, ${text}`, main: last.main } : { text, main: text });
-	}
+	for (const part of pending) joined.push({ text: part, main: part });
 	return joined;
 }
 
 /**
  * The agent's own promise ("I will", "em sẽ"): an action, not an answer about the place. "I'll
- * prioritise units with clear paperwork" states nothing; "You will get a sổ hồng" does.
+ * prioritise units with clear paperwork" states nothing; "You will get a sổ hồng" does, and so
+ * does a promise to hand the paperwork over ("Em sẽ giao sổ hồng cho anh", `HANDS_OVER`).
  */
 const OWN_PROMISE =
 	/\b(?:I|we)(?:\s+will|'ll|’ll)\b|(?<!\p{L})(?:em|mình|tôi|chúng (?:tôi|em))(?:\s+cũng)?\s+sẽ(?!\p{L})/giu;
+
+/** Getting, issuing or handing over the paperwork: with a paperwork word, a legal answer. */
+const HANDS_OVER =
+	/\b(?:obtain|obtaining|get|gets|got|receive|transfer|transferring|hand(?:s|ing)?\s+over|deliver|issue|process|sort out|take care of)\b|(?<!\p{L})(?:giao|sang tên|làm sổ|làm giấy|làm thủ tục|lo|chuyển nhượng|cấp)(?!\p{L})/iu;
 
 /**
  * A bare yes in Vietnamese ("Dạ được anh", "Được ạ"): in a draft about a viewing it answers the
@@ -172,7 +190,7 @@ const ASSENT = /^(?:(?:dạ|vâng|ok|okay)\s+)*được(?:\s+(?:ạ|anh|chị|nh
 
 /** Whether a clause states an answer the agent gives by hand. */
 function statesAnswer({ text: clause, main }: Clause, viewing: boolean): boolean {
-	if (DEFERRAL.test(main)) return false;
+	if (defers(main)) return false;
 	if (viewing && ASSENT.test(clause)) return true;
 	if (PRICE_BARE.test(clause)) return true;
 	if (PRICE_NOUN.test(clause) && PRICE_STATED.test(clause)) return true;
@@ -180,7 +198,9 @@ function statesAnswer({ text: clause, main }: Clause, viewing: boolean): boolean
 	if (LEGAL_ANSWER.test(clause)) return true;
 	if (
 		PAPERWORK_TERMS.test(clause) &&
-		(ASSERTS.test(clause.replace(OWN_PROMISE, " ")) || !/[a-zà-ỹ]/iu.test(clause))
+		(HANDS_OVER.test(clause) ||
+			ASSERTS.test(clause.replace(OWN_PROMISE, " ")) ||
+			!/[a-zà-ỹ]/iu.test(clause))
 	) {
 		return true;
 	}
@@ -266,7 +286,7 @@ export function checkFollowUp(
 	}
 	const viewing = VIEWING.test(text);
 	for (const sentence of sentences(text)) {
-		const parts = clauses(sentence);
+		const parts = clauses(sentence, viewing);
 		// A closing quote or bracket after the question mark still ends a question.
 		const question = /[?？]["'”’»)\]」]*$/u.test(sentence);
 		for (const [index, clause] of parts.entries()) {
