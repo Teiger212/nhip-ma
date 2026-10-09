@@ -1,5 +1,5 @@
+import { readOfficeViewer } from "@inbox/lib/office-viewer";
 import { requireInboxSession } from "@inbox/lib/require-session";
-import { db } from "@repo/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -11,13 +11,5 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
 	const gate = await requireInboxSession(request);
 	if (gate.denied) return gate.denied;
-	const office = await db.organization.findUnique({
-		where: { id: gate.viewer.officeId },
-		select: { slug: true },
-	});
-	return NextResponse.json({
-		userId: gate.viewer.userId,
-		role: gate.viewer.role ?? "agent",
-		officeSlug: office?.slug ?? null,
-	});
+	return NextResponse.json(await readOfficeViewer(gate.viewer));
 }

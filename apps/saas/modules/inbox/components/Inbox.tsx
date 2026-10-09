@@ -77,6 +77,7 @@ function turnState(thread: ConversationSummary): string {
  */
 export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const t = useTranslations("inbox");
+	const tMenu = useTranslations("app.menu");
 	const locale = useLocale();
 	const disconnectedPipes = [...new Set(useDisconnectedEndpoints().map((item) => item.pipe))];
 	const conversationsQuery = useConversations();
@@ -316,6 +317,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 
 	return (
 		<div className="min-h-0 text-sm md:gap-2.5 md:p-3 lg:pl-1 md:bg-canvas flex h-full flex-col bg-card text-foreground">
+			<h1 className="sr-only">{tMenu("inbox")}</h1>
 			{disconnectedPipes.length > 0 ? (
 				<output
 					data-test="pipe-disconnected-banner"

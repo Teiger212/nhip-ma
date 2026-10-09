@@ -274,31 +274,35 @@ export function NavBar() {
 				<SidebarGroup>
 					<SidebarGroupLabel>{t("app.menu.groupWorkspace")}</SidebarGroupLabel>
 					<SidebarGroupContent>
-						<SidebarMenu>
-							{items.map((item) => (
-								<SidebarMenuItem key={item.id}>
-									{item.comingSoon ? (
-										<NavItemComingSoon
-											item={item}
-											label={t(NAV_LABEL_KEYS[item.id])}
-											soon={t("app.menu.comingSoon")}
-											collapsed={collapsed}
-										/>
-									) : (
-										<NavItemLink
-											item={item}
-											label={t(NAV_LABEL_KEYS[item.id])}
-											onNavigate={closeMobileNav}
-											collapsed={collapsed}
-											count={item.id === "inbox" ? yourTurnCount : null}
-											countLabel={
-												yourTurnCount ? t("inbox.queueCount", { count: yourTurnCount }) : undefined
-											}
-										/>
-									)}
-								</SidebarMenuItem>
-							))}
-						</SidebarMenu>
+						<nav aria-label={t("app.menu.groupWorkspace")}>
+							<SidebarMenu>
+								{items.map((item) => (
+									<SidebarMenuItem key={item.id}>
+										{item.comingSoon ? (
+											<NavItemComingSoon
+												item={item}
+												label={t(NAV_LABEL_KEYS[item.id])}
+												soon={t("app.menu.comingSoon")}
+												collapsed={collapsed}
+											/>
+										) : (
+											<NavItemLink
+												item={item}
+												label={t(NAV_LABEL_KEYS[item.id])}
+												onNavigate={closeMobileNav}
+												collapsed={collapsed}
+												count={item.id === "inbox" ? yourTurnCount : null}
+												countLabel={
+													yourTurnCount
+														? t("inbox.queueCount", { count: yourTurnCount })
+														: undefined
+												}
+											/>
+										)}
+									</SidebarMenuItem>
+								))}
+							</SidebarMenu>
+						</nav>
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</SidebarContent>

@@ -388,7 +388,6 @@ async function expectPlainCrmStatus(page: Page, text: string) {
 
 /** The CRMs the setting offers, by their copy key. */
 type CrmChoice = "none" | "mock" | "hubspot";
-const CRM_CHOICES: readonly CrmChoice[] = ["none", "mock", "hubspot"];
 
 /** The platform admin's CRM setting, on the office's Connections card (Admin → Organizations). */
 async function openCrmSetting(admin: Admin, officeId: string) {
@@ -396,19 +395,15 @@ async function openCrmSetting(admin: Admin, officeId: string) {
 	await page.goto(`/en/admin/organizations/${officeId}`);
 	const card = page.getByTestId("office-connections");
 	await expect(card, "the platform admin sees the office's Connections card").toBeVisible();
+	// Settled first: when the pipes arrive, the card adds a line above the CRM row and moves it.
+	await expect(card, "the card has loaded its pipes").toHaveAttribute("data-pipes-loaded", "true");
 	const crm = card.getByTestId("connection-crm");
 	const kind = crm.getByTestId("crm-kind");
 	await expect(kind, "the office's Connections card has a CRM setting").toBeVisible();
 	await expect(kind, "the setting is the office's CRM").toHaveAccessibleName(crmCopy.setting.label);
-	/**
-	 * The setting shows this choice as the office's CRM, and none of the others. The trigger also
-	 * holds its dropdown arrow, so the choice is judged within its text, not as all of it.
-	 */
+	/** The setting shows this choice as the office's CRM, and nothing else. */
 	const shows = async (choice: CrmChoice, message?: string) => {
-		await expect(kind, message).toContainText(crmCopy.setting[choice]);
-		for (const other of CRM_CHOICES.filter((c) => c !== choice)) {
-			await expect(kind, message).not.toContainText(crmCopy.setting[other]);
-		}
+		await expect(kind, message).toHaveText(crmCopy.setting[choice]);
 	};
 	/** The admin picks a CRM in the setting's list (whether that saves depends on the CRM). */
 	const pick = async (choice: CrmChoice) => {
@@ -428,7 +423,12 @@ async function openCrmSetting(admin: Admin, officeId: string) {
 		says: (text: string) => crm.getByText(text, { exact: true }),
 		/** The admin chooses the office's CRM; it saves at once. */
 		choose: async (choice: "none" | "mock") => {
+			const saved = page.waitForResponse(
+				(r) =>
+					new URL(r.url()).pathname === "/api/crm/connection" && r.request().method() === "PUT",
+			);
 			await pick(choice);
+			expect((await saved).ok(), "the CRM choice is saved").toBe(true);
 			await expect(
 				page.getByText(crmCopy.setting.saved, { exact: true }),
 				"CRM saved.",
