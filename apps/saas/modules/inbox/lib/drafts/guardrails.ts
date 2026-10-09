@@ -115,32 +115,44 @@ export function sentences(text: string): string[] {
 
 /**
  * A clause that only sets up another: a condition ("if Saturday doesn't work", "nếu…") or the
- * matter a clause is about ("for whether it has its own pink book", "về sổ hồng…").
+ * matter a clause is about ("for whether it has its own pink book", "về sổ hồng…", a Japanese
+ * or Korean topic ending in は, について, 은 or 는).
  */
 const SUBORDINATE =
-	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|whether|in case|(?:as\s+)?for|about|regarding)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|về|trường hợp)(?!\p{L})/iu;
+	/^(?:(?:and|but|so|or)\s+)?(?:if|unless|whether|in case|(?:as\s+)?for|about|regarding)\b|^(?:(?:và|nhưng)\s+)?(?:nếu|liệu|về|trường hợp)(?!\p{L})|(?:は|について|に関して|에 대해(?:서)?|관련(?:해서)?|[은는])$/iu;
+
+/**
+ * A clause as the checks read it: its whole text, and the main clause in it, which alone decides
+ * whether it defers.
+ */
+type Clause = { text: string; main: string };
 
 /**
  * A sentence's clauses: a comma, a semicolon or a dash can join a statement to a deferral. A
- * subordinate clause is read with the clause after it (or, last in its sentence, the one before
- * it): "If Saturday doesn't work, I'll suggest another day" is one deferral, while "Next week
- * works, I'll check the time" is a statement and a deferral.
+ * subordinate clause that doesn't defer by itself is read with the main clause after it (or, last
+ * in its sentence, the one before it), and that main clause's deferral covers it: "If Saturday
+ * doesn't work, I'll suggest another day" defers, "If I check with the owner, Saturday works"
+ * states, and so does "Next week works, I'll check the time".
  */
-function clauses(sentence: string): string[] {
+function clauses(sentence: string): Clause[] {
 	const parts = sentence
 		.split(/[;:，、]|,\s|\s[–—-]\s/u)
-		.map((clause) => clause.trim())
+		.map((part) => part.trim())
 		.filter(Boolean);
-	const joined: string[] = [];
-	let pending: string | null = null;
+	const joined: Clause[] = [];
+	let pending: string[] = [];
 	for (const part of parts) {
-		const clause: string = pending ? `${pending}, ${part}` : part;
-		pending = SUBORDINATE.test(part) ? clause : null;
-		if (!pending) joined.push(clause);
+		if (SUBORDINATE.test(part) && !DEFERRAL.test(part)) {
+			pending.push(part);
+			continue;
+		}
+		joined.push({ text: [...pending, part].join(", "), main: part });
+		pending = [];
 	}
-	if (pending) {
+	if (pending.length) {
 		const last = joined.pop();
-		joined.push(last ? `${last}, ${pending}` : pending);
+		const text = pending.join(", ");
+		joined.push(last ? { text: `${last.text}, ${text}`, main: last.main } : { text, main: text });
 	}
 	return joined;
 }
@@ -152,9 +164,16 @@ function clauses(sentence: string): string[] {
 const OWN_PROMISE =
 	/\b(?:I|we)(?:\s+will|'ll|’ll)\b|(?<!\p{L})(?:em|mình|tôi|chúng (?:tôi|em))(?:\s+cũng)?\s+sẽ(?!\p{L})/giu;
 
+/**
+ * A bare yes in Vietnamese ("Dạ được anh", "Được ạ"): in a draft about a viewing it answers the
+ * guest's "… xem được không?" (#289, Hải).
+ */
+const ASSENT = /^(?:(?:dạ|vâng|ok|okay)\s+)*được(?:\s+(?:ạ|anh|chị|nhé|luôn|rồi))*[\s.!]*$/iu;
+
 /** Whether a clause states an answer the agent gives by hand. */
-function statesAnswer(clause: string, viewing: boolean): boolean {
-	if (DEFERRAL.test(clause)) return false;
+function statesAnswer({ text: clause, main }: Clause, viewing: boolean): boolean {
+	if (DEFERRAL.test(main)) return false;
+	if (viewing && ASSENT.test(clause)) return true;
 	if (PRICE_BARE.test(clause)) return true;
 	if (PRICE_NOUN.test(clause) && PRICE_STATED.test(clause)) return true;
 	if (AVAILABILITY.test(clause)) return true;
@@ -172,6 +191,9 @@ const MULTIPLIERS: [RegExp, number][] = [
 	[/^\s*(?:k|nghìn|ngàn|thousand)(?!\p{L})/iu, 1e3],
 	[/^\s*(?:tr|triệu|trieu|million|mil|m)(?!\p{L})/iu, 1e6],
 	[/^\s*(?:tỷ|tỉ|ty|billion|bn)(?!\p{L})/iu, 1e9],
+	// Japanese and Korean count in ten-thousands: Kenji's "60億" is the "6 billion" a draft writes.
+	[/^\s*[万만]/u, 1e4],
+	[/^\s*[億억]/u, 1e8],
 ];
 
 /** A number as written: digits, with dots or commas between groups. */
@@ -251,7 +273,7 @@ export function checkFollowUp(
 			// A question asks; it states nothing, unless it proposes a viewing day. Only the clause
 			// the question mark closes is the question: "The rent is $2,000, is that ok?" states.
 			if (question && index === parts.length - 1) {
-				if (viewing && DAY_OR_TIME.test(clause)) return null;
+				if (viewing && DAY_OR_TIME.test(clause.text)) return null;
 				continue;
 			}
 			if (statesAnswer(clause, viewing)) return null;

@@ -7,8 +7,9 @@
   the template stood. Anthropic models now run with reasoning off, and a draft may use 1,500
   tokens. A cut-off answer still leaves the template.
 - **The post-check lets good deferrals through** (#289, ADR 0024). A number the guest or the
-  office already wrote in the thread passes (the agent's "9 giờ" viewing), while a number nobody
-  wrote still blocks. A deferral that names a day or a legal term passes ("I'll check Saturday
-  and confirm the time", "I'll check whether it has its own pink book"); a confirmation beside a
-  deferral ("Next week works, I'll check the time") still blocks. The draft eval's number check
-  follows the same rule.
+  office already wrote in the thread passes (the agent's "9 giờ" viewing, Kenji's 60億 written
+  as 6 billion), while a number nobody wrote still blocks. A deferral that names a day or a legal
+  term passes ("If Saturday doesn't work, I'll suggest another day", "I'll check whether it has
+  its own pink book"); a confirmation beside a deferral ("Next week works, I'll check the time")
+  and a bare Vietnamese yes to a viewing ("Dạ được anh") still block. The draft eval's number
+  check follows the same rule.

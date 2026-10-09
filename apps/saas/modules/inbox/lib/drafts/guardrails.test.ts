@@ -52,6 +52,38 @@ describe("the first draft eval's drafts", () => {
 		).toBeNull();
 	});
 
+	test("Hải, the second eval: a bare “Dạ được anh” to “can I come next week?” is a yes, blocked", () => {
+		const thread = [
+			guestSays("Chào bạn, mình cần thuê một căn 2 phòng ngủ ở Đống Đa, khoảng 20 triệu."),
+			guestSays("Ảnh đẹp đấy. Tuần sau mình qua xem được không?"),
+		];
+		expect(
+			checkFollowUp(
+				"Dạ được anh, em sẽ kiểm tra lịch xem nhà và xác nhận lại thời gian phù hợp với anh trong tuần sau. Anh cho em biết anh thường rảnh buổi nào để em sắp xếp nhé.",
+				threadTexts(thread),
+			),
+		).toBeNull();
+	});
+
+	test("Kenji: his 60億 as 6 billion, and the pink book's timeline deferred, pass", () => {
+		const thread = [
+			guestSays(
+				"こんにちは。日本人です。Vinhomesのマンション購入を考えています。外国人でもピンクブック (sổ hồng) はもらえますか？",
+			),
+			officeSays(
+				"Kenjiさん、こんにちは。Vinhomesの物件と、外国人の所有について確認してご連絡します。",
+			),
+			guestSays("ありがとうございます。予算は60億ドンくらいです。ピンクブックはいつもらえますか？"),
+		];
+		expect(
+			shown(
+				thread,
+				"Kenjiさん、ご予算と、ピンクブック（sổ hồng）の取得時期についてのご質問ありがとうございます。Vinhomesで60億ドン前後の物件を探し、外国人の方のピンクブックの取得条件と発行までの期間は、確認のうえ改めてご連絡します。",
+				"Kenji, thank you for the budget and for asking when the pink book (sổ hồng) would be issued. I'll look at Vinhomes units around 6 billion VND and check the foreigner conditions and the issuance timeline, then get back to you.",
+			),
+		).toBe(true);
+	});
+
 	test("Mikhail: checking Saturday and offering another day defers the viewing day", () => {
 		const thread = [
 			guestSays(
@@ -134,6 +166,9 @@ describe("the first draft eval's drafts", () => {
 			"For the pink book, you will get it after signing; I'll confirm the details.",
 			"Nếu anh muốn, tuần sau anh qua xem được ạ.",
 			"Em sẽ kiểm tra, căn này đã có sổ hồng riêng ạ.",
+			// A deferral inside the condition doesn't cover the statement beside it.
+			"If you'd like me to check, the rent is $2,000.",
+			"If I check with the owner, Saturday works for the viewing.",
 		]) {
 			expect(checkFollowUp(draft, []), draft).toBeNull();
 		}
@@ -190,6 +225,10 @@ describe("in English", () => {
 		expect(checkFollowUp(draft, ["budget 2.8k"])).toBe(draft);
 		// Full-width digits read as the digits they are.
 		expect(checkFollowUp(draft, ["予算は２８００ドルです"])).toBe(draft);
+		// Japanese counts in 億 (a hundred million): Kenji's 60億 is 6 billion (#289).
+		const kenji = "I'll look at Vinhomes units around 6 billion VND.";
+		expect(checkFollowUp(kenji, ["予算は60億ドンくらいです。"])).toBe(kenji);
+		expect(checkFollowUp(kenji, ["予算は50億ドンくらいです。"])).toBeNull();
 	});
 
 	test("a mention passes: a deferral, an acknowledgement, a question", () => {
