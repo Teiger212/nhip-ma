@@ -1166,6 +1166,24 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    greeting, for the first message and the next; `apps/saas/modules/inbox/lib/reply-template.test.ts`
    › it thanks the guest only when the office has sent nothing, never after the auto-reply.
 
+9. **An English-reading agent reads the Korean auto-reply and suggestion in English** (#242,
+   ADR 0007 as amended). The office's language is English (the default). A guest writes in
+   Korean, "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요", and is greeted in Korean.
+   - Inside the auto-reply's bubble, under the Korean, a muted line labelled "In English" holds
+     the English auto-reply: it starts "Thanks for writing to us." and ends with the office's
+     English label ("Auto-reply from Saigon Prime Test: …").
+   - Under the reply box, which holds the Korean template, a muted line labelled "In English"
+     holds the English template: "Hi, this is Saigon Prime Test. …".
+   - The manager types into the box: the line under it goes.
+   - No model is asked for either line: they are the templates, rendered in the office language.
+
+   Spec: `apps/saas/tests/first-greeting.spec.ts` (First greeting 9). Covered by Vitest too:
+   `apps/saas/modules/inbox/lib/office-line.test.ts` (which text, which label, when none: an
+   English guest, or a French one answered in English, in an English office) and
+   `apps/saas/modules/inbox/lib/office-line.db.test.ts` (the lines as stored; a reply sent as
+   suggested keeps its line, an edited one none; a Vietnamese office reads the Vietnamese
+   templates; a language change rewrites the open suggestion's line).
+
 ## Suggested reply template (ADR 0024, #253)
 
 The template is the suggested reply with no model, in the agent's own voice: the first reply,

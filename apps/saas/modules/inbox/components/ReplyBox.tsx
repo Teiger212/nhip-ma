@@ -4,13 +4,16 @@ import { Button, cn, Textarea } from "@repo/ui";
 import { RefreshCwIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import type { OfficeLine as Line } from "../lib/office-line";
 import type { DraftSource } from "../lib/types";
+import { OfficeLine } from "./OfficeLine";
 
 /**
  * The suggested reply, always editable, never sent from here: the send bar approves it. Beside
  * "Reply", the operator note, one line on how to answer (#248). While the box still holds the
  * server's suggestion it says where that came from; once the operator has typed, that goes.
  * Typed text kept after the guest wrote again says so, quietly, in its place (ADR 0024).
+ * Under the box, the suggestion in the office language (#242), until the operator types.
  * Regenerate asks the server for a new one.
  */
 export function ReplyBox({
@@ -23,6 +26,7 @@ export function ReplyBox({
 	regenerating,
 	onRegenerate,
 	note,
+	officeLine,
 }: {
 	reply: string;
 	onReplyChange: (reply: string) => void;
@@ -34,6 +38,8 @@ export function ReplyBox({
 	onRegenerate: () => void;
 	/** The operator note: the reply's language and "don't interview" (`crib.ts`). */
 	note: string | null;
+	/** The suggestion's operator line (`suggestionLine`): null once edited, or with none. */
+	officeLine: Line | null;
 }) {
 	const t = useTranslations("inbox");
 	return (
@@ -83,6 +89,9 @@ export function ReplyBox({
 				className="min-h-20 max-h-48"
 				aria-label={t("reply")}
 			/>
+			{officeLine ? (
+				<OfficeLine line={officeLine} className="px-1 max-h-24 overflow-y-auto" />
+			) : null}
 		</section>
 	);
 }

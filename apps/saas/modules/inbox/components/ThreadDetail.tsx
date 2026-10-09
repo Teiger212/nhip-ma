@@ -14,7 +14,8 @@ import {
 } from "react";
 
 import { displayName } from "../lib/display-name";
-import { replyEndpoint, useDisconnectedEndpoints } from "../lib/inbox-queries";
+import { replyEndpoint, useDisconnectedEndpoints, useOfficeLanguage } from "../lib/inbox-queries";
+import { suggestionLine } from "../lib/office-line";
 import { PIPE_NAMES } from "../lib/pipe-names";
 import type { SendStatus } from "../lib/send-status";
 import type { Conversation, DraftSource } from "../lib/types";
@@ -194,6 +195,7 @@ export function ThreadDetail({
 	// An office with no CRM shows no CRM status (DESIGN.md, Badges), so no CRM section either.
 	const hasCrm = Boolean(conversation.crm) || conversation.officeHasCrm;
 	const name = displayName(conversation);
+	const officeLanguage = useOfficeLanguage().data;
 	return (
 		<div ref={pane} className="min-h-0 min-w-0 flex flex-1 flex-col">
 			<header className="gap-2 px-3 py-2 md:px-4 flex shrink-0 flex-wrap items-center border-b">
@@ -245,6 +247,7 @@ export function ThreadDetail({
 										key={message.id}
 										message={message}
 										guestLanguage={conversation.oneShot?.guestLanguage ?? null}
+										replyLanguage={conversation.oneShot?.language ?? null}
 									/>
 								))}
 							</div>
@@ -277,6 +280,7 @@ export function ThreadDetail({
 							regenerating={reply.regenerating}
 							onRegenerate={reply.onRegenerate}
 							note={cribNotes}
+							officeLine={suggestionLine(conversation.oneShot?.draft, reply.edited, officeLanguage)}
 						/>
 						<SendBar
 							blockedReason={

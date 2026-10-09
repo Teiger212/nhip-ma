@@ -429,3 +429,52 @@ test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
 		await expect(autoReplySwitch(manager.page), "still off").toBeChecked({ checked: false });
 	});
 });
+
+/* ---------------------------------------------------------------- the operator line (#242) */
+
+/** The line's label, in the scenario's own words: the office language, English by default. */
+const IN_ENGLISH = "In English";
+
+/** The open thread's operator lines (#242): under a bubble's text, or under the reply box. */
+function officeLines(page: Page) {
+	return openThread(page).getByTestId("office-line");
+}
+
+// scenario: docs/e2e-scenarios.md First greeting 9
+test.describe("First greeting 9 — an English-reading agent reads the Korean auto-reply and suggestion in English", () => {
+	test("a Korean guest's auto-reply and the reply box each show \"In English\" with the English template under them, in an English office; typing takes the box's line away", async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const guest = office.newGuest();
+		const korean = "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요";
+		await guest.write(korean);
+		const threadId = await threadIdOf(manager.api, guest.id);
+		const greeting = await greetingIn(manager.api, threadId);
+		expect(greeting, "the auto-reply is in Korean").toMatch(HANGUL);
+
+		const { page } = manager;
+		await openByLink(page, threadId, korean);
+
+		// Inside the auto-reply's bubble, under the Korean: the English auto-reply.
+		const bubble = openThread(page)
+			.getByTestId("message")
+			.filter({ hasText: greeting.split("\n")[0] });
+		const greetingLine = bubble.getByTestId("office-line");
+		await expect(greetingLine.getByTestId("office-line-label")).toHaveText(IN_ENGLISH);
+		await expect(greetingLine, "the English auto-reply").toContainText("Thanks for writing to us.");
+		await expect(greetingLine, "its English label").toContainText(EN_LABEL);
+
+		// Under the reply box, holding the Korean template: the English template.
+		const replyLine = officeLines(page).filter({ hasText: `Hi, this is ${OFFICE_NAME}.` });
+		await expect(replyLine, "the English template under the box").toBeVisible(WITHIN_SECONDS);
+		await expect(replyLine.getByTestId("office-line-label")).toHaveText(IN_ENGLISH);
+		const box = openThread(page).getByRole("textbox", { name: saas.inbox.reply, exact: true });
+		await expect(box, "the box holds the Korean template").toHaveValue(HANGUL);
+
+		// The manager types: the line under the box goes; the auto-reply's stays.
+		await box.fill("제가 직접 답장하겠습니다.");
+		await expect(replyLine, "no line once the box is edited").toHaveCount(0);
+		await expect(greetingLine).toBeVisible();
+	});
+});

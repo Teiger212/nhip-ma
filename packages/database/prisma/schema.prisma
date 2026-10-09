@@ -378,7 +378,8 @@ model Message {
   vendorMessageId     String?
   mock                Boolean              @default(false)
   pipeExternalId      String?
-  /// Who wrote an auto-reply (ADR 0021): the template or the model. Null for every other message.
+  /// Who wrote an office message (ADR 0021, #242): the template or the model, on an auto-reply
+  /// and on a reply sent as suggested. Null on an edited or typed reply, and on a guest message.
   writtenBy           DraftSource?
   translations        Translation[]
   translationFailures TranslationFailure[]
@@ -395,6 +396,8 @@ model Message {
   @@map("inbox_message")
 }
 
+/// A message rendered in an office language: a guest message's translation (ADR 0007), or an
+/// office message's operator line, written when it is sent (#242).
 model Translation {
   messageId String
   officeId  String
@@ -453,8 +456,8 @@ model Draft {
   answersMessageId String?
   answersMessage   Message?     @relation(fields: [answersMessageId], references: [id], onDelete: SetNull)
   source           DraftSource  @default(template)
-  /// The model draft's reply in the office language (ADR 0024, ADR 0025): null on a template,
-  /// and on a model draft already in the office language.
+  /// The reply in the office language (ADR 0024, ADR 0025, #242): the template rendered in it,
+  /// or the model draft's own text; null when the reply is already in it.
   officeReply      String?
 
   /// Prisma's one-to-one relation needs it; the primary key already makes it hold.

@@ -26,6 +26,7 @@ import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import type { DraftAdapter, DraftInput } from "./drafts";
 import { greetingQuestion } from "./greeting";
+import { NEW_THREAD, replyTemplate } from "./reply-template";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { json, params, post, DEMO_SESSION } from "./test-fixtures";
 import type { Conversation } from "./types";
@@ -258,8 +259,11 @@ test("a template written after a model draft leaves no stale second text", async
 		source: "model",
 	});
 	answer = () => null;
-	// The guest writes again: the one-shot's template replaces the model draft, second text too.
+	// The guest writes again: the one-shot's template replaces the model draft, second text too:
+	// the template's own, in the office language (#242), never the model's.
 	const next = await guestWrites("stale", "Also near a park");
 	expect(next.oneShot?.draft).toMatchObject({ source: "template" });
-	expect(next.oneShot?.draft.officeReply).toBeUndefined();
+	expect(next.oneShot?.draft.officeReply).toBe(
+		replyTemplate("vi", next.oneShot!.qualification, { ...NEW_THREAD, sentAt: next.sentAt }),
+	);
 });

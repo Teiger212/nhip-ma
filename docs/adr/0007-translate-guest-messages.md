@@ -5,6 +5,21 @@ Date: 2026-09-17. Status: accepted.
 **Amended by ADR 0025 (2026-10-08).** A guest message is translated once, into the office
 language the manager sets, not into each operator's language.
 
+**Amended by #242 (decided by Eyal, 2026-10-08).** Outgoing text gets an operator line: "office
+messages are not translated back" no longer holds, because an agent who reads only English or
+Vietnamese was approving Korean, Russian or Vietnamese replies blind.
+
+- The auto-reply, the suggested reply and a reply sent as suggested show what they say in the
+  office language, muted inside the office's bubble and under the reply box.
+- **Templates first.** A template's line is the same template rendered in the office language,
+  with no model call, stored with the suggestion and, once sent, with the sent message. It is
+  labelled with that language ("In English", "Bằng tiếng Việt"), not "Translation": it is the
+  parallel template, not a translation.
+- A model draft carries its office-language text from when it was written (#251); sent as it
+  was, the sent message keeps it, labelled "Translation".
+- No line when the reply is already in the office language. A reply the agent edited or typed
+  gets none for now: its model translation is a later ticket.
+
 ## Context
 
 The operator note is written in the operator's language, but it carries only what the

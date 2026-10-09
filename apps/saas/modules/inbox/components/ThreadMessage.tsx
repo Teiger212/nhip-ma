@@ -5,8 +5,10 @@ import { useTranslations } from "next-intl";
 
 import { useOfficeLanguage } from "../lib/inbox-queries";
 import { isSupportedLanguage, languageName } from "../lib/language-name";
+import { messageLine } from "../lib/office-line";
 import { formatInboxTimestamp } from "../lib/time";
-import type { Message } from "../lib/types";
+import type { GuestLanguage, Message } from "../lib/types";
+import { OfficeLine } from "./OfficeLine";
 import { useOperatorLanguage } from "./ThreadParts";
 
 /** Who sent one of the office's messages, as a person reads it (the stored values are internal). */
@@ -19,16 +21,20 @@ const SOURCE_KEYS = {
 
 /**
  * One message on the thread as a chat bubble (#248): the guest's on the left, with its
- * translation as a muted second block inside the bubble; the office's on the right. Under the
- * bubble, on its side: where an office message came from, the demo-send badge, and the time.
+ * translation as a muted second block inside the bubble; the office's on the right, with its
+ * operator line (#242) as the same muted block. Under the bubble, on its side: where an office
+ * message came from, the demo-send badge, and the time.
  */
 export function ThreadMessage({
 	message,
 	guestLanguage = null,
+	replyLanguage = null,
 }: {
 	message: Message;
 	/** The thread's guest language, named (#245); null before the one-shot has run. */
 	guestLanguage?: string | null;
+	/** The language the office writes to the guest in; null before the one-shot has run. */
+	replyLanguage?: GuestLanguage | null;
 }) {
 	const t = useTranslations("inbox");
 	const locale = useOperatorLanguage();
@@ -51,6 +57,7 @@ export function ThreadMessage({
 		inbound && !translation && guestLanguage && !isSupportedLanguage(guestLanguage)
 			? languageName(guestLanguage, locale, (language) => t(`guestLanguage.${language}`))
 			: null;
+	const officeLine = messageLine(message, officeLanguage, replyLanguage);
 	return (
 		<div className={cn("gap-1 min-w-0 flex flex-col", inbound ? "items-start" : "items-end")}>
 			<div
@@ -80,6 +87,8 @@ export function ThreadMessage({
 					<p className="mt-2 pt-2 text-xs leading-relaxed border-t text-muted-foreground">
 						{t("noTranslation", { language: untranslated })}
 					</p>
+				) : officeLine ? (
+					<OfficeLine line={officeLine} className="mt-2 pt-2 border-t" />
 				) : null}
 			</div>
 			<div className="gap-x-2 gap-y-1 px-1 text-xs flex flex-wrap items-center text-muted-foreground">

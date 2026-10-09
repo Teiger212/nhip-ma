@@ -8,11 +8,35 @@ import { greetingTemplate } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
 import type { AlertTransport } from "./guest-alerts/transport";
 import { draftNow, modelDrafts, scheduleModelDraft } from "./model-draft";
+import { officeRender, sentLine } from "./office-line";
 import { connectionFor, pipeAdapter, SendError, transmit } from "./pipes";
-import { replyTemplate, type TemplateThread } from "./reply-template";
+import { replyTemplate, type TemplateThread, templateTexts } from "./reply-template";
 import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
-import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store } from "./types";
+import type {
+	Conversation,
+	InboundEvent,
+	InboxViewer,
+	OperatorLanguage,
+	Pipe,
+	SendResult,
+	Store,
+	SuggestedReplyLine,
+} from "./types";
+
+/**
+ * What the template reads of the office: its name (null when it can't be read, and then no
+ * intro), and its language, which the template's operator line is rendered in (#242).
+ */
+export type TemplateOffice = { name: string | null; language: OperatorLanguage };
+
+async function templateOffice(store: Store, officeId: string): Promise<TemplateOffice> {
+	const [office, language] = await Promise.all([
+		store.officeAutoReply(officeId),
+		store.officeLanguage(officeId),
+	]);
+	return { name: office?.name ?? null, language };
+}
 
 /**
  * What the template suggested reply reads of `conversation` (ADR 0024): its office's name too, and
@@ -21,7 +45,7 @@ import type { Conversation, InboundEvent, InboxViewer, Pipe, SendResult, Store }
 async function templateThread(
 	store: Store,
 	conversation: Conversation,
-	officeName?: string | null,
+	office: TemplateOffice,
 ): Promise<TemplateThread> {
 	return {
 		guestName: conversation.guestName,
@@ -29,31 +53,61 @@ async function templateThread(
 		// An owner with no name guests see is introduced as the office alone, as on an Unassigned
 		// thread (pending Eyal's nod, #266): this line is the switch, never a word of the account name.
 		agentName: conversation.owner ? await store.nameGuestsSee(conversation.owner.id) : null,
-		officeName:
-			officeName === undefined
-				? ((await store.officeAutoReply(conversation.officeId))?.name ?? null)
-				: officeName,
+		officeName: office.name,
 		messages: conversation.messages,
 	};
 }
 
 /**
  * Write the template suggested reply again for the thread as it is now (ADR 0024): after it was
- * assigned, or after the greeting landed. Only the server's template is rewritten: a model draft
- * stays, and an edit the operator typed lives in their browser (`use-reply-draft.ts`), so it is
- * never overwritten. Returns the thread, rewritten or not.
+ * assigned, after the greeting landed, or after the office language changed (its operator line,
+ * #242). Only the server's template is rewritten: a model draft stays, and an edit the operator
+ * typed lives in their browser (`use-reply-draft.ts`), so it is never overwritten. Returns the
+ * thread, rewritten or not.
  */
 export async function refreshTemplate(
 	store: Store,
 	conversation: Conversation,
-	officeName?: string | null,
+	office?: TemplateOffice,
 ): Promise<Conversation | null> {
 	const shot = conversation.oneShot;
 	if (!shot || shot.draft.source !== "template") return conversation;
-	const thread = await templateThread(store, conversation, officeName);
-	const reply = replyTemplate(shot.language, shot.qualification, thread);
-	if (reply === shot.draft.reply) return conversation;
-	return store.rewriteTemplateDraft(conversation.officeId, conversation.id, shot.draft, reply);
+	const read = office ?? (await templateOffice(store, conversation.officeId));
+	const thread = await templateThread(store, conversation, read);
+	const next = templateTexts(shot.language, read.language, shot.qualification, thread);
+	if (
+		next.reply === shot.draft.reply &&
+		(next.officeReply ?? null) === (shot.draft.officeReply ?? null)
+	) {
+		return conversation;
+	}
+	return store.rewriteTemplateDraft(conversation.officeId, conversation.id, shot.draft, next);
+}
+
+/**
+ * After the office language changed: every open thread of the office has its untouched template
+ * written again (`refreshTemplate`), so the line under the reply box is in the new language
+ * (#242). A model draft keeps the office-language text it was written with. A thread whose
+ * rewrite fails keeps its suggestion; the failure is logged by its kind only (PDPL).
+ */
+export async function refreshOfficeTemplates(store: Store, viewer: InboxViewer): Promise<void> {
+	// Read as a manager, whoever asked: every thread of the office.
+	const threads = await store.listConversations({ ...viewer, role: "manager" });
+	const open = threads.filter(
+		(conversation) =>
+			conversation.unansweredInboundId && conversation.oneShot?.draft.source === "template",
+	);
+	if (open.length === 0) return;
+	const office = await templateOffice(store, viewer.officeId);
+	for (const conversation of open) {
+		try {
+			await refreshTemplate(store, conversation, office);
+		} catch (error) {
+			console.warn("inbox: template rewrite after a language change failed", {
+				kind: error instanceof Error ? error.name : "unknown",
+			});
+		}
+	}
 }
 
 /**
@@ -76,10 +130,10 @@ export async function setNameGuestsSee(
 		(conversation) => conversation.unansweredInboundId && conversation.oneShot,
 	);
 	if (open.length === 0) return saved;
-	const officeName = (await store.officeAutoReply(operator.officeId))?.name ?? null;
+	const office = await templateOffice(store, operator.officeId);
 	for (const conversation of open) {
 		try {
-			await refreshTemplate(store, conversation, officeName);
+			await refreshTemplate(store, conversation, office);
 		} catch (error) {
 			console.warn("inbox: template rewrite after a name change failed", {
 				kind: error instanceof Error ? error.name : "unknown",
@@ -104,12 +158,13 @@ export async function applyOneShot(
 	if (!inbound) {
 		return conversation;
 	}
-	const thread = await templateThread(store, conversation);
-	const shot = oneShot(inbound, conversation.unansweredInboundId, thread);
+	const office = await templateOffice(store, conversation.officeId);
+	const thread = await templateThread(store, conversation, office);
+	const shot = oneShot(inbound, conversation.unansweredInboundId, thread, office.language);
 	const stored = await store.setOneShot(conversation.officeId, conversation.id, shot);
 	// The thread may have moved since it was read (the greeting landed, its own rewrite may
 	// already have run, or it was assigned): the template follows the stored thread.
-	return stored ? refreshTemplate(store, stored, thread.officeName) : stored;
+	return stored ? refreshTemplate(store, stored, office) : stored;
 }
 
 /**
@@ -274,6 +329,12 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 	if (!pipeAdapter(conversation.pipe).sendWindow(conversation).open) return;
 
 	const text = greetingTemplate(shot.language, shot.qualification, office.name);
+	// Its operator line (#242): the same template in the office language, no model call. Read
+	// before the send, so a failed read never leaves a sent greeting off file.
+	const officeLanguage = await store.officeLanguage(conversation.officeId);
+	const officeText = officeRender(shot.language, officeLanguage, (language) =>
+		greetingTemplate(language, shot.qualification, office.name),
+	);
 	let result: SendResult;
 	try {
 		result = await transmit({
@@ -293,6 +354,7 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 		greeted = await store.recordAutoReply(conversation.officeId, conversation.id, {
 			text,
 			writtenBy: "template",
+			officeText: officeText ? { locale: officeLanguage, text: officeText } : null,
 			result,
 			pipeExternalId: endpoint,
 			at: afterGuestMessage(conversation),
@@ -629,6 +691,10 @@ export async function approveAndSend(
 		};
 	}
 
+	// What the reply keeps of its suggestion (#242), read before the Answer is on record, so no
+	// read runs while it is sending.
+	const suggested = await suggestedReplyLine(store, conv, inboundId, text);
+
 	// The Answer is written before the vendor call. Its unique inbound is the guard against
 	// a concurrent approval; its status is what decides whether a retry is ever allowed.
 	const begun = await store.beginAnswer({
@@ -680,7 +746,7 @@ export async function approveAndSend(
 	}
 
 	try {
-		const updated = await store.completeAnswer(conv.officeId, answerId, result);
+		const updated = await store.completeAnswer(conv.officeId, answerId, result, suggested);
 		if (!updated) {
 			return { ok: false, status: 404, error: "not_found" };
 		}
@@ -698,6 +764,38 @@ export async function approveAndSend(
 			error: "record_failed",
 			message: "The reply was sent but could not be recorded. It will not be sent again.",
 		};
+	}
+}
+
+/**
+ * What a reply carries of its suggestion when it is sent as suggested (#242): who wrote it, and
+ * its operator line (`sentLine`). A typed or edited reply reads nothing. The line is never worth
+ * a send: a read that fails leaves the reply without one, logged by its kind only (PDPL).
+ */
+async function suggestedReplyLine(
+	store: Store,
+	conversation: Conversation,
+	inboundId: string,
+	text: string,
+): Promise<SuggestedReplyLine | null> {
+	const shot = conversation.oneShot;
+	if (!shot || shot.draft.reply.trim() !== text) return null;
+	try {
+		const office = await templateOffice(store, conversation.officeId);
+		const thread = await templateThread(store, conversation, office);
+		return sentLine({
+			draft: shot.draft,
+			inboundId,
+			text,
+			replyLanguage: shot.language,
+			officeLanguage: office.language,
+			render: (language) => replyTemplate(language, shot.qualification, thread),
+		});
+	} catch (error) {
+		console.warn("inbox: a sent reply's operator line was not read", {
+			kind: error instanceof Error ? error.name : "unknown",
+		});
+		return null;
 	}
 }
 
@@ -725,13 +823,15 @@ export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<
 		return { ok: true, conversation: drafted };
 	}
 	const shot = conv.oneShot;
-	const reply = replyTemplate(
+	const office = await templateOffice(runtime.store, conv.officeId);
+	const texts = templateTexts(
 		shot.language,
+		office.language,
 		shot.qualification,
-		await templateThread(runtime.store, conv),
+		await templateThread(runtime.store, conv, office),
 	);
 	const updated = await runtime.store.setDraft(conv.officeId, conv.id, {
-		reply,
+		...texts,
 		answersMessageId: conv.unansweredInboundId,
 		source: "template",
 	});

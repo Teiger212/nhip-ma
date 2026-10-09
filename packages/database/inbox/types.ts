@@ -56,8 +56,8 @@ export type Draft = {
 	answersMessageId: string | null;
 	source: DraftSource;
 	/**
-	 * A model draft's reply in the office language (ADR 0024, ADR 0025), for the agent to read.
-	 * Absent on a template, and on a model draft already in the office language.
+	 * The reply in the office language (ADR 0024, ADR 0025), for the agent to read (#242): the
+	 * template rendered in it, or the model's own text. Absent when the reply is already in it.
 	 */
 	officeReply?: string;
 };
@@ -78,6 +78,12 @@ export type OneShot = {
 /** A guest message rendered in an operator language (ADR 0007). Keyed by that language. */
 export type Translations = Partial<Record<OperatorLanguage, string>>;
 
+/** An office message's text in the office language (#242), stored as its translation row. */
+export type OfficeText = { locale: OperatorLanguage; text: string };
+
+/** What a reply sent as suggested carries (#242): who wrote it, and its operator line if any. */
+export type SuggestedReplyLine = { writtenBy: DraftSource; officeText: OfficeText | null };
+
 export type Message = {
 	id: string;
 	direction: MessageDirection;
@@ -92,9 +98,15 @@ export type Message = {
 	 * wrote to, or what the reply went out on. `null` for dev injections and old files.
 	 */
 	pipeExternalId: string | null;
-	/** Who wrote an auto-reply (ADR 0021): the template or the model. Null for any other message. */
+	/**
+	 * Who wrote an office message (ADR 0021, #242): the template or the model, on an auto-reply and
+	 * on a reply sent as suggested. Null on an edited or typed reply, and on a guest message.
+	 */
 	writtenBy: DraftSource | null;
-	/** Empty for office messages: they are never translated back (ADR 0007). */
+	/**
+	 * A guest message's translations (ADR 0007). On an office message, its operator line (#242):
+	 * the template rendered in the office language, or the model's office-language text.
+	 */
 	translations: Translations;
 };
 
@@ -486,7 +498,7 @@ export type InboxStore = {
 		officeId: string,
 		id: string,
 		read: Draft,
-		reply: string,
+		next: Pick<Draft, "reply" | "officeReply">,
 	) => Promise<Conversation | null>;
 	/** Store one guest message's rendering in one operator language; clears its failures. */
 	setTranslation: (
@@ -521,11 +533,15 @@ export type InboxStore = {
 		text: string;
 		operatorId: string | null;
 	}) => Promise<BeginAnswerResult>;
-	/** The vendor acknowledged: `sent`, the outbound message on the thread, `sentAt` on it. */
+	/**
+	 * The vendor acknowledged: `sent`, the outbound message on the thread, `sentAt` on it. A reply
+	 * sent as suggested carries who wrote it and its operator line (#242).
+	 */
 	completeAnswer: (
 		officeId: string,
 		answerId: string,
 		result: SendResult,
+		suggested?: SuggestedReplyLine | null,
 	) => Promise<Conversation | null>;
 	/** The vendor definitely refused: `failed`. The operator may approve again. */
 	failAnswer: (officeId: string, answerId: string, reason: string) => Promise<void>;
@@ -574,6 +590,8 @@ export type InboxStore = {
 		reply: {
 			text: string;
 			writtenBy: DraftSource;
+			/** Its operator line (#242): the template in the office language. */
+			officeText?: OfficeText | null;
 			result: SendResult;
 			pipeExternalId: string | null;
 			/** When it went out, placed after the message it greets (ADR 0021). */

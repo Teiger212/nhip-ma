@@ -32,6 +32,7 @@ import type {
 	InboxViewer,
 	Message,
 	MockCrmLead,
+	OfficeText,
 	OneShot,
 	Qualification,
 	SendResult,
@@ -290,8 +291,8 @@ function mapAnswer(row: AnswerRecord): Answer {
  * hidden by the outbound that answers an earlier one.
  */
 /**
- * A draft's row. `officeReply` is written null when the draft has none, so a template written
- * over a model draft never keeps the model's office-language text (ADR 0024).
+ * A draft's row. `officeReply` is written null when the draft has none, so a draft written over
+ * another never keeps the other's office-language text (ADR 0024, #242).
  */
 function draftRow(draft: Draft) {
 	return {
@@ -300,6 +301,16 @@ function draftRow(draft: Draft) {
 		source: draft.source,
 		officeReply: draft.officeReply ?? null,
 	};
+}
+
+/**
+ * An office message's operator line (#242), as its translation row, created with it: the row
+ * takes the message's id and office.
+ */
+function officeTextRow(officeText: OfficeText | null | undefined) {
+	return officeText
+		? { translations: { create: { locale: officeText.locale, text: officeText.text } } }
+		: {};
 }
 
 function mapConversation(record: ConversationRecord): Conversation {
@@ -873,7 +884,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			return load(officeId, id);
 		},
 
-		async rewriteTemplateDraft(officeId, id, read: Draft, reply: string) {
+		async rewriteTemplateDraft(officeId, id, read: Draft, next) {
 			await db.draft.updateMany({
 				where: {
 					conversationId: id,
@@ -882,7 +893,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					reply: read.reply,
 					answersMessageId: read.answersMessageId,
 				},
-				data: { reply, officeReply: null },
+				data: { reply: next.reply, officeReply: next.officeReply ?? null },
 			});
 			return load(officeId, id);
 		},
@@ -1030,7 +1041,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 			}
 		},
 
-		async completeAnswer(officeId, answerId, result: SendResult) {
+		async completeAnswer(officeId, answerId, result: SendResult, suggested) {
 			const answer = await db.answer.findUnique({ where: { id: answerId, officeId } });
 			if (!answer) {
 				return null;
@@ -1063,6 +1074,8 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						vendorMessageId,
 						mock: result.mock,
 						pipeExternalId: answer.pipeExternalId,
+						writtenBy: suggested?.writtenBy ?? null,
+						...officeTextRow(suggested?.officeText),
 					},
 				}),
 			]);
@@ -1179,6 +1192,7 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 						mock: reply.result.mock,
 						pipeExternalId: reply.pipeExternalId,
 						writtenBy: reply.writtenBy,
+						...officeTextRow(reply.officeText),
 					},
 				});
 			} catch (error) {
