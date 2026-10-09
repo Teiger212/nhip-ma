@@ -164,7 +164,10 @@ would in HubSpot. No test writes Nhịp's own link to a lead. Each scenario name
 2. **Registering someone else's invited email fails.** Sign-up with an invited email but no
    invitation link (or someone else's, or an expired one) is refused (T1). Spec: `apps/saas/tests/auth-signup.spec.ts` (Auth 2; expired invitation is `fixme`: nothing a person does expires one early).
 3. **No account without an invitation.** A magic link or Google/GitHub sign-in for an email
-   with no account creates nothing (T4). Spec: `apps/saas/tests/auth-signup.spec.ts` (Auth 3; weak until E2E mail is readable, OAuth skipped: not configured).
+   with no account creates nothing (T4). Spec: `apps/saas/tests/auth-signup.spec.ts` (Auth 3; the
+   login page no longer offers a magic link (`KIT_SCREENS`, #94), so the spec asks the auth
+   plugin's magic-link endpoint directly, as the hidden form did; weak until E2E mail is
+   readable, OAuth skipped: not configured).
 4. **Only the platform admin creates offices.** An agent calling organization create gets
    403; the platform admin succeeds (T3). Spec: `apps/saas/tests/auth-signup.spec.ts` (Auth 4).
 5. **One office, even at once.** One account accepting two offices' invitations at the same
