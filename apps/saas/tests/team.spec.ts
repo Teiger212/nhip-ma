@@ -241,9 +241,9 @@ test.describe("Team 2 — an agent has no Team", () => {
 	}) => {
 		await signInContext(context, AGENT);
 		await page.goto("/en/inbox");
-		// "No Team" is judged once the app knows the agent's role (the Inbox page hands it over with
-		// the page), so the menu is judged with the Inbox shown, not before.
-		await expect(page.getByRole("heading", { level: 1, name: "Inbox" })).toBeAttached();
+		// "No Team" is judged once the app knows the agent's role: until then the menu defaults to
+		// an agent's, which would pass this vacuously.
+		await expect(page.locator('[data-office-role="agent"]').first()).toBeAttached();
 
 		await openUserMenu(page);
 		await expect(page.getByRole("menuitem", { name: COPY.en.logOut })).toBeVisible();

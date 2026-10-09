@@ -2,12 +2,9 @@ import { getSession } from "@auth/lib/server";
 import { Inbox } from "@inbox/components/Inbox";
 import { type AlertLinkTarget, resolveAlertLink } from "@inbox/lib/guest-alerts/alert-link";
 import { resolveOffice } from "@inbox/lib/office";
-import { prefetchInbox } from "@inbox/lib/prefetch-inbox";
 import { getRuntime } from "@inbox/lib/runtime";
 import { requireSession } from "@organizations/lib/require-session";
 import { sendPlatformAdminToAdminArea } from "@shared/lib/platform-admin";
-import { getServerQueryClient } from "@shared/lib/server";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
@@ -44,14 +41,6 @@ export default async function InboxPage({
 	const { alert } = await searchParams;
 	const alertId = typeof alert === "string" ? alert : null;
 	const alertLink = alertId === null ? undefined : await openAlert(alertId);
-	// The thread list and the operator's role arrive with the page, not after first paint; the
-	// client keeps polling the list as before.
-	const queryClient = getServerQueryClient();
-	await prefetchInbox(queryClient);
 	// A new alert link opens a fresh Inbox, whatever the last one had open.
-	return (
-		<HydrationBoundary state={dehydrate(queryClient)}>
-			<Inbox key={alertId ?? ""} alertLink={alertLink} />
-		</HydrationBoundary>
-	);
+	return <Inbox key={alertId ?? ""} alertLink={alertLink} />;
 }

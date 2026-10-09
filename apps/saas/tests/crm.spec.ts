@@ -395,6 +395,8 @@ async function openCrmSetting(admin: Admin, officeId: string) {
 	await page.goto(`/en/admin/organizations/${officeId}`);
 	const card = page.getByTestId("office-connections");
 	await expect(card, "the platform admin sees the office's Connections card").toBeVisible();
+	// Settled first: when the pipes arrive, the card adds a line above the CRM row and moves it.
+	await expect(card, "the card has loaded its pipes").toHaveAttribute("data-pipes-loaded", "true");
 	const crm = card.getByTestId("connection-crm");
 	const kind = crm.getByTestId("crm-kind");
 	await expect(kind, "the office's Connections card has a CRM setting").toBeVisible();
@@ -421,16 +423,16 @@ async function openCrmSetting(admin: Admin, officeId: string) {
 		says: (text: string) => crm.getByText(text, { exact: true }),
 		/** The admin chooses the office's CRM; it saves at once. */
 		choose: async (choice: "none" | "mock") => {
-			// A pick made while the page is still settling can be lost (CI saw the list close with
-			// nothing saved), so the admin picks again until the setting says it saved.
-			await expect(async () => {
-				await page.keyboard.press("Escape");
-				await pick(choice);
-				await expect(
-					page.getByText(crmCopy.setting.saved, { exact: true }),
-					"CRM saved.",
-				).toBeVisible({ timeout: 3_000 });
-			}).toPass({ timeout: 20_000 });
+			const saved = page.waitForResponse(
+				(r) =>
+					new URL(r.url()).pathname === "/api/crm/connection" && r.request().method() === "PUT",
+			);
+			await pick(choice);
+			expect((await saved).ok(), "the CRM choice is saved").toBe(true);
+			await expect(
+				page.getByText(crmCopy.setting.saved, { exact: true }),
+				"CRM saved.",
+			).toBeVisible();
 			await shows(choice);
 		},
 		/**
