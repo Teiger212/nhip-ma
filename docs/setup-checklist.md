@@ -64,7 +64,7 @@ paste the password in chat or a file.
 - [ ] **Vercel, staging, Sensitive, all three together:** `ZALO_APP_ID`, `ZALO_APP_SECRET`,
       `ZALO_OA_SECRET_KEY` (the OA secret key that signs webhooks).
 - [ ] **Tell Claude**, who then sets `PIPE_SECRETS_KEY` (generated, never shown) and redeploys.
-- [ ] **Connect:** Admin → Organizations → Test Office → Connections → Connect Zalo OA;
+- [ ] **Connect:** Admin → Offices → Test Office → Connections → Connect Zalo OA;
       approve on Zalo's screen. Verify: the OA shows "Connected".
 - [ ] **Guest account:** a second Zalo account follows the OA and writes to it. Verify: the
       message appears in Test Office's inbox, translated.
