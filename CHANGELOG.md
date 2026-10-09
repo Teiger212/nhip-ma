@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-08 (The agent reads what goes out, in the office language)
+
+### Added
+
+- **An operator line under outgoing text** (#242, ADR 0007 as amended, ADR 0025). The auto-reply, the suggested reply and a reply sent as suggested now show what they say in the office language, as a muted line inside the office's bubble and under the reply box. A template's line is the same template rendered in the office language, with no model call, labelled "In English" or "Bằng tiếng Việt"; a model draft's is the office-language text it was written with (#251), labelled "Translation". There is no line when the reply is already in the office language (an English office answering an English guest, or a French one answered in English), and the line under the box goes once the agent types. A reply the agent edited or typed gets no line yet: translating it with the model is a later ticket. When a manager changes the office language, each open template suggestion's line is written again in the new one.
+
+## 2026-10-08 (Guest details read in the office language)
+
+### Changed
+
+- **The guest details read in the office language** (#243, #96, ADR 0025). Move-in reads as a phrase ("Next week", "Tuần sau"), not the guest's own words ("tuần sau", "на этой неделе"). Budget reads as an amount and a currency ("$3,000 / month", "15 million VND", "15 triệu đồng"). Nationality and beds / household read in words ("Người Nga", "3 phòng ngủ, gia đình 4 người"). One formatter turns the stored values into words when they are shown, so older threads read the same way with no migration. A value it doesn't recognise shows as the guest wrote it. The VI wording is pending #78.
+
+### Fixed
+
+- **Extraction slips from the demo walk** (#243). A budget at the end of a sentence no longer keeps the full stop ("$3500." is now "$3500"). "In December" and "from March" are now read as the move-in. A day the guest wants to view on ("is a viewing possible this Saturday?", "на этой неделе хотим посмотреть") is no longer read as the move-in. "Française" and "français" are now read as French. These change only stored values, and only on the guest's next message. Run `pnpm seed -- --reset` to see them on the walk office.
+
+## 2026-10-09 (The draft and translation evals)
+
+### Added
+
+- **`pnpm eval:drafts` and `pnpm eval:translation`** (#254, ADR 0024). Run by hand, never in CI: they call OpenRouter with `DRAFT_API_KEY` and cost a few cents. The draft eval runs 15 walk-office threads through the draft prompt with Haiku 5.5, each after the office's first human reply, and checks every draft locally: the JSON shape, no number the guest didn't write, no repeated open question, no intro, at most 4 sentences. The translation eval runs the seed's 69 pairs (VI, JA, KO, RU into EN and VI) through Haiku 5.5 and Gemini 3.1 Flash-Lite. Each writes a side-by-side Markdown report under `reports/evals/` with tokens, latency and cost per call. `--dry-run` builds every prompt and prints the estimate; `--stub` answers with E2E's stub model.
+
+### Changed
+
+- **A Gemini 3.x model thinks at its lowest level** (#254, ADR 0024). Its requests send `reasoning: { effort: "minimal", exclude: true }`, since Gemini bills thinking as output; other models' requests are unchanged.
+
 ## 2026-10-08 (A lean E2E suite on two CI runners)
 
 ### Changed
