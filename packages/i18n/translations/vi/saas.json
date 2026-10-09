@@ -111,9 +111,11 @@
 			"disconnect": "Ngắt kết nối",
 			"disconnectFailed": "Không ngắt kết nối được. Hãy thử lại.",
 			"zaloNotConfigured": "Bản triển khai này chưa cấu hình ứng dụng Zalo.",
-			"whatsappLater": "WhatsApp hiện chạy trên số của Nhịp; văn phòng sẽ kết nối số riêng sau.",
+			"whatsappShared": "Khách nhắn đến số WhatsApp chung của Nhịp. Sau này mỗi văn phòng sẽ kết nối số riêng.",
+			"whatsappNotConfigured": "Máy chủ này chưa cấu hình số WhatsApp.",
 			"status": {
 				"none": "Chưa kết nối",
+				"onNhip": "Dùng số của Nhịp",
 				"connected": "Đã kết nối",
 				"needsReconnect": "Cần kết nối lại"
 			},

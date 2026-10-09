@@ -16,6 +16,9 @@
  *   sign in with email and password (#94); the auth plugin stays on, only its screen is hidden.
  * - passkeyLogin: the login page's "Or continue with" and "Login with passkey". Same: the plugin
  *   and Settings' passkeys stay; the login screen offers only what operators use (#94).
+ * - impersonate: Admin → Users → the row menu's Impersonate. Impersonating signs the platform
+ *   admin in as that person and opens their office's guest data (PDPL exposure). The Better Auth
+ *   admin plugin and its code stay; only the menu item is hidden.
  *
  * An office's own URL redirects to the Inbox instead (its kit start page shows sample
  * revenue and churn): see app/[locale]/(authenticated)/(main)/(organizations)/[organizationSlug].
@@ -28,4 +31,5 @@ export const KIT_SCREENS = {
 	docs: false,
 	magicLink: false,
 	passkeyLogin: false,
+	impersonate: false,
 } as const;
