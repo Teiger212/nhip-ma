@@ -19,10 +19,9 @@ pnpm --filter @repo/database migrate <name>       # write the migration for it (
 pnpm --filter @repo/database studio
 ```
 
-The kit's `migrate` ran `prisma migrate dev`, which can't work here: every dev, worktree, E2E
-and test database is built with `push`, so it stops at "We need to reset" (Prisma 7.9.1 exits
-without touching data). It now runs `migrations.sh new`, the kit's name with the kit's intent:
-create a migration.
+`migrate` runs `migrations.sh new`, not `prisma migrate dev`: every dev, worktree, E2E and test
+database is built with `push`, so `prisma migrate dev` stops at "We need to reset" (Prisma
+7.9.1 exits without touching data).
 
 Change the schema in `packages/database/prisma/schema.prisma`, then run the matching
 command. Do not hand-edit generated Prisma client output or

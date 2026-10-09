@@ -13,7 +13,7 @@ Use for transactional templates, provider-neutral send calls, and mail translati
 
 1. Add or edit a React Email component in `packages/mail/emails`. Accept feature context plus `BaseMailProps`, and use shared `Wrapper` and `PrimaryButton` components.
 2. Register a new template key in `packages/mail/emails/index.ts`; that exact key becomes both the typed `TemplateId` and the translation namespace used to resolve `subject`.
-3. Add that namespace, including `subject`, to every `packages/i18n/translations/{en,de,es,fr}/mail.json`. Use `createTranslator` from `use-intl/core` in the component instead of hard-coded template copy.
+3. Add that namespace, including `subject`, to every `packages/i18n/translations/{en,vi}/mail.json`. Use `createTranslator` from `use-intl/core` in the component instead of hard-coded template copy.
 4. Add realistic static `PreviewProps` with `defaultLocale` and `defaultTranslations`, following `packages/mail/emails/Notification.tsx`.
 5. Send through `sendEmail` from `@repo/mail`:
    ```ts
@@ -38,7 +38,7 @@ Use for transactional templates, provider-neutral send calls, and mail translati
 
 ## Done
 
-The key resolves to a component and same-named translation namespace, all four locales include compatible messages/subject, HTML and plain text preview correctly, links use real base URLs, the call site handles `sendEmail`'s boolean result as needed, and gates pass.
+The key resolves to a component and same-named translation namespace, both locales (`en`, `vi`) include compatible messages/subject, HTML and plain text preview correctly, links use real base URLs, the call site handles `sendEmail`'s boolean result as needed, and gates pass.
 
 ## Common mistakes
 

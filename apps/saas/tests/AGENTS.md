@@ -10,10 +10,10 @@ User flows have Playwright specs (`apps/saas/tests`) that CI runs on every PR on
 production build behind a local HTTPS proxy, its own Postgres 18, mock pipes). After every
 staging deploy a read-only Playwright smoke run checks the deployment (`tests/smoke/`).
 
-The root test task runs Vitest in `apps/marketing`, `apps/saas`, and `packages/api`.
-Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. E2E scripts are per app:
-use `pnpm --filter marketing e2e`, `pnpm --filter marketing e2e:ci`, `pnpm --filter saas e2e`,
-or `pnpm --filter saas e2e:ci`. E2E requires a running application and database.
+The root test task runs Vitest in `apps/marketing`, `apps/saas`, `packages/api`, and `packages/database`.
+Playwright tests are in `apps/marketing/tests` and `apps/saas/tests`. Each app has `e2e` (UI
+mode) and `e2e:ci` (the whole suite); locally, run the spec files you touched with
+`pnpm e2e:changed` (below), never the whole suite.
 
 ## Test quality
 
