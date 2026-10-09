@@ -93,6 +93,7 @@ export function OnboardingAccountStep({ onCompleted }: { onCompleted: () => void
 					</FormItem>
 
 					<Button
+						variant="primary"
 						type="submit"
 						loading={form.formState.isSubmitting}
 						data-test="onboarding-continue"

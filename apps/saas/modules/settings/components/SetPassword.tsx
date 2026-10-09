@@ -49,7 +49,7 @@ export function SetPasswordForm() {
 			title={t("settings.account.security.setPassword.title")}
 			description={t("settings.account.security.setPassword.description")}
 		>
-			<Button type="submit" loading={submitting} onClick={onSubmit}>
+			<Button variant="primary" type="submit" loading={submitting} onClick={onSubmit}>
 				{t("settings.account.security.setPassword.submit")}
 			</Button>
 		</SettingsItem>

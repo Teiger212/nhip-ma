@@ -56,6 +56,7 @@ export function ChangeNameForm() {
 
 				<div className="mt-4 flex justify-end">
 					<Button
+						variant="primary"
 						type="submit"
 						loading={form.formState.isSubmitting}
 						disabled={!(form.formState.isValid && form.formState.dirtyFields.name)}

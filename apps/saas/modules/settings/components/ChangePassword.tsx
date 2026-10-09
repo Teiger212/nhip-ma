@@ -106,6 +106,7 @@ export function ChangePasswordForm() {
 						/>
 						<div className="flex justify-end">
 							<Button
+								variant="primary"
 								type="submit"
 								loading={form.formState.isSubmitting}
 								disabled={
