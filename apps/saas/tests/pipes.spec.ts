@@ -164,7 +164,7 @@ async function openConnections(admin: Admin, officeId: string) {
 
 // scenario: docs/e2e-scenarios.md Pipe connections 1
 test.describe("Pipes 1 — the platform admin starts connecting a Zalo OA", () => {
-	test("Connections lists Zalo and WhatsApp as not connected, and Connect Zalo OA goes to Zalo's consent page for Nhịp's app", async ({
+	test("Connections lists Zalo as not connected and WhatsApp as on Nhịp's number, and Connect Zalo OA goes to Zalo's consent page for Nhịp's app", async ({
 		admin,
 	}) => {
 		// An office of its own: nothing else ever connects a pipe to it.
@@ -174,7 +174,7 @@ test.describe("Pipes 1 — the platform admin starts connecting a Zalo OA", () =
 		await expect(connections.zalo).toBeVisible();
 		await expect(connections.whatsapp).toBeVisible();
 		await expect(connections.status("zalo")).toHaveText(copy.status.none);
-		await expect(connections.status("whatsapp")).toHaveText(copy.status.none);
+		await expect(connections.status("whatsapp")).toHaveText(copy.status.onNhip);
 
 		// Zalo's consent screen is Zalo's; the browser only has to get there.
 		const page = await admin.openPage();

@@ -111,9 +111,11 @@
 			"disconnect": "Disconnect",
 			"disconnectFailed": "Could not disconnect. Try again.",
 			"zaloNotConfigured": "This deployment has no Zalo app configured yet.",
-			"whatsappLater": "WhatsApp runs on Nhịp's own number for now; offices connect their own numbers later.",
+			"whatsappShared": "Guests write to Nhịp's shared WhatsApp number. Offices connect their own number later.",
+			"whatsappNotConfigured": "This deployment has no WhatsApp number configured yet.",
 			"status": {
 				"none": "Not connected",
+				"onNhip": "On Nhịp's number",
 				"connected": "Connected",
 				"needsReconnect": "Needs reconnect"
 			},

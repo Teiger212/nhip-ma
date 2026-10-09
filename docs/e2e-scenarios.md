@@ -311,7 +311,7 @@ The consent on Zalo's own screens (the OA owner approving Nhịp's app) happens 
 not driven here; a test sets up a connected or disconnected OA directly, as setup.
 
 1. **The platform admin starts connecting a Zalo OA.** Admin → Organizations → an office →
-   Connections lists Zalo and WhatsApp, each "Not connected". "Connect Zalo OA" takes the
+   Connections lists Zalo "Not connected" and WhatsApp "On Nhịp's number" (the deployment has a WhatsApp number). "Connect Zalo OA" takes the
    browser to Zalo's consent page for Nhịp's Zalo app, carrying Nhịp's callback address.
    Spec: `apps/saas/tests/pipes.spec.ts` (Pipes 1; a new office, so nothing else connects to it).
 2. **Only the platform admin connects.** An agent sees no Connections; asking for the connect
