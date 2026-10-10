@@ -152,7 +152,8 @@ tell a name.
 
 - **How it shows.** The auto-reply shows as the office's message. Its meta line carries a
   small neutral **"Auto-reply"** badge, squared (DESIGN.md, The Pill Acts Rule), followed by
-  "Model" or "Template".
+  "Model" or "Template". The writer word was removed by Eyal 2026-10-10 (#303); the badge keeps
+  the writer as `data-writer` for tests.
 - **The reply box (R11, P2)** takes the follow-up path once the greeting is sent. That
   covers the first message, still unanswered, and every message after it. The model drafts
   from the whole conversation, knowing the greeting went out, so it never greets twice. With

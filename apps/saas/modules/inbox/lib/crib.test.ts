@@ -79,16 +79,16 @@ test("loaded en and vi saas messages include inbox.crib.note", async () => {
 
 // #248: the note is one line beside "Reply" on how to answer; the guest's facts and the
 // paperwork flag are in the guest details beside it, so the note no longer repeats them.
-test("English UI note names the reply's language and to ask only what's missing, not the facts", () => {
+test("English UI note names only the reply's language, not the facts", () => {
 	const note = formatCribNote({ language: "vi" }, en);
-	expect(note).toBe("in Vietnamese · ask only what's missing");
+	expect(note).toBe("in Vietnamese");
 	expect(formatConversationCrib({ oneShot: shotOf(thao, false) }, en)).toBe(note);
 	expect(note).not.toMatch(/Tây Hồ|30 triệu|Rent/);
 });
 
 test("Vietnamese UI note uses the Vietnamese wording for the same thread", () => {
 	const note = formatCribNote({ language: "vi" }, vi);
-	expect(note).toBe("bằng tiếng Việt · chỉ hỏi những gì còn thiếu");
+	expect(note).toBe("bằng tiếng Việt");
 	expect(note).not.toMatch(/Draft|inbound|interviewer|field/i);
 	expect(note).not.toMatch(/Tây Hồ|30 triệu|thuê/);
 });
@@ -96,7 +96,7 @@ test("Vietnamese UI note uses the Vietnamese wording for the same thread", () =>
 test("paperwork is left to the details: the note does not repeat the flag, nor invent law", () => {
 	const enNote = formatConversationCrib({ oneShot: shotOf(emptyQualification(), true) }, en);
 	const viNote = formatConversationCrib({ oneShot: shotOf(emptyQualification(), true) }, vi);
-	expect(enNote).toBe("in Japanese · ask only what's missing");
+	expect(enNote).toBe("in Japanese");
 	expect(enNote).not.toMatch(/stored English flag|pink book/);
 	expect(viNote).not.toMatch(/sổ hồng/i);
 });
@@ -107,7 +107,7 @@ test("For you is omitted when there is no one-shot crib", () => {
 
 test("a one-shot with no facts still gives the note", () => {
 	const note = formatConversationCrib({ oneShot: shotOf(emptyQualification(), false, "en") }, en);
-	expect(note).toBe("in English · ask only what's missing");
+	expect(note).toBe("in English");
 });
 
 function shotOf(

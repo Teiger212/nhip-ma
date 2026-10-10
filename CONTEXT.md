@@ -155,7 +155,7 @@ is renamed.
     the lawyer.
   - **What it isn't:** not an Answer. It claims nothing, leaves the thread Your turn, and
     counts nowhere in the funnel.
-  - **In the thread:** an "Auto-reply" badge, with "Model" or "Template".
+  - **In the thread:** an "Auto-reply" badge, with no word for who wrote it (Eyal, 2026-10-10, #303).
 - **Answer**: the record of one send, the office's reply to exactly one guest message,
   on file from the moment the operator approves it and through `sending`, `sent`,
   `failed` or `unknown` (ADR 0011). One per inbound. Keeps the sender's name after the
@@ -182,10 +182,11 @@ is renamed.
     the office's first human reply, after the auto-reply too. It introduces the
     agent by their name guests see while the office has no human reply yet; on an unassigned
     thread, or when the owner hasn't set one, it names the office only. Later it stands in when there is no model, the call fails, or the office is past its
-    daily cap. Shown as "Drafted from a template" (#303).
+    daily cap.
   - **AI**: the model's draft for every reply after the office's first human reply, from the
     last 10 messages. It never introduces anyone. It comes with the same reply in the office
-    language. Shown as "Drafted by AI" (#303).
+    language.
+  - Which source a suggestion came from is not shown (Eyal, 2026-10-10, #303).
   - A draft the agent hasn't touched is replaced when the guest writes again. An edited one
     stays, with a "Guest wrote again" note, and sending it answers the latest guest message.
     Always editable, never sent without Approve and send.
@@ -195,7 +196,7 @@ is renamed.
 - **Daily cap**: how many model calls of one task an office gets in a day, midnight to
   midnight in Asia/Ho_Chi_Minh (ADR 0024). Past it, the task falls back.
 - **Operator note**: one line in the agent's language beside the reply box: the language the
-  reply is in, and to ask only what's missing (#303). The guest's facts and the paperwork flag are in
+  reply is in, nothing more (#303). The guest's facts and the paperwork flag are in
   the guest details beside it (#248). Not shown to the guest, never invents Vietnamese law, and
   is not a translation.
 - **Translation**: the guest message rendered in the office language, shown under the

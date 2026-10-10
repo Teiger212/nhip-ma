@@ -11,9 +11,10 @@ import { OfficeLine } from "./OfficeLine";
 /**
  * The suggested reply, editable while a guest message waits, never sent from here: the send bar
  * approves it. Once the thread is answered the box folds away (`AnsweredLine`, #94). Beside
- * "Reply", the operator note, one line on how to answer (#248). While the box still holds the
- * server's suggestion it says where that came from; once the operator has typed, that goes.
- * Typed text kept after the guest wrote again says so, quietly, in its place (ADR 0024).
+ * "Reply", the operator note: the language the reply is in (#248). Where the suggestion came from
+ * (the model or the template, ADR 0024) is not shown (Eyal, 2026-10-10, #303); while the box
+ * still holds it, the textarea carries it as `data-source` for tests, and drops it once the
+ * operator types. Typed text kept after the guest wrote again says so, quietly (ADR 0024).
  * Under the box, the suggestion in the office language (#242), until the operator types.
  * Regenerate asks the server for a new one.
  */
@@ -37,7 +38,7 @@ export function ReplyBox({
 	canApprove: boolean;
 	regenerating: boolean;
 	onRegenerate: () => void;
-	/** The operator note: the reply's language and "ask only what's missing" (`crib.ts`). */
+	/** The operator note: the reply's language (`crib.ts`). */
 	note: string | null;
 	/** The suggestion's operator line (`suggestionLine`): null once edited, or with none. */
 	officeLine: Line | null;
@@ -57,11 +58,7 @@ export function ReplyBox({
 				) : null}
 				{canApprove ? (
 					<div className="gap-2 ml-auto flex items-center">
-						{!edited ? (
-							<span className="text-xs text-muted-foreground">
-								{draftSource === "model" ? t("suggested.model") : t("suggested.template")}
-							</span>
-						) : guestWroteAgain ? (
+						{edited && guestWroteAgain ? (
 							<span data-test="guest-wrote-again" className="text-xs text-muted-foreground">
 								{t("guestWroteAgain")}
 							</span>
@@ -90,6 +87,7 @@ export function ReplyBox({
 				className="min-h-20 max-h-48"
 				growOnPhone
 				aria-label={t("reply")}
+				data-source={edited ? undefined : draftSource}
 			/>
 			{officeLine ? (
 				<OfficeLine line={officeLine} className="px-1 max-h-24 overflow-y-auto" />

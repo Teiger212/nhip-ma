@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import { assignerAs } from "./support/assign";
 import { expect, test as base } from "./support/fixtures";
@@ -37,10 +37,10 @@ const OFFICE_INTRO = `Hi, this is ${OFFICE_NAME}.`;
 const AGENT_INTRO = `Hi, I'm ${AGENT.nameGuestsSee} from ${OFFICE_NAME}.`;
 
 /**
- * The label above the reply box while it holds the template (ADR 0024, "The label"), written out
- * rather than read from saas.json: the wording is the contract.
+ * The reply box's source while it holds the template (ADR 0024). The visible label was removed by
+ * Eyal on 2026-10-10 (#303); the box carries it as `data-source`.
  */
-const TEMPLATE_LABEL = "Drafted from a template";
+const TEMPLATE_SOURCE = "template";
 
 /** The guest's first message: the auto-reply to it asks for the budget, then move-in. */
 const FIRST_MESSAGE = "Hi, we're looking to rent an apartment in Tay Ho";
@@ -129,11 +129,6 @@ function replyBox(page: Page) {
 	return openThread(page).getByRole("textbox", { name: REPLY_LABEL, exact: true });
 }
 
-/** The label above the reply box saying it holds the template. */
-function templateLabel(page: Page): Locator {
-	return openThread(page).getByText(TEMPLATE_LABEL, { exact: true });
-}
-
 /** The text starts with exactly this sentence. */
 function startingWith(sentence: string): RegExp {
 	return new RegExp(`^${literal(sentence)}`);
@@ -158,7 +153,7 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md Suggested reply template 1
 test.describe("Suggested reply template 1 — the suggested reply after the auto-reply is the agent's own", () => {
-	test(`a greeted guest's thread, assigned to Lan Pham, opens for her with the reply box starting "${AGENT_INTRO}", no thanks and no "a colleague", labelled "${TEMPLATE_LABEL}"`, async ({
+	test(`a greeted guest's thread, assigned to Lan Pham, opens for her with the reply box starting "${AGENT_INTRO}", no thanks and no "a colleague", its source the template`, async ({
 		office,
 	}) => {
 		const { manager, agent } = office;
@@ -177,7 +172,7 @@ test.describe("Suggested reply template 1 — the suggested reply after the auto
 		expect(text, 'it doesn\'t say "a colleague": the agent is that colleague').not.toMatch(
 			/colleague/i,
 		);
-		await expect(templateLabel(page), `labelled "${TEMPLATE_LABEL}"`).toBeVisible();
+		await expect(box, "its source is the template").toHaveAttribute("data-source", TEMPLATE_SOURCE);
 	});
 });
 

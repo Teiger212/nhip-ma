@@ -23,7 +23,7 @@ import { deliverZalo } from "./support/zalo";
 
 /**
  * The Inbox's copy, from packages/i18n/translations/en/saas.json: the auto-reply's meta line
- * (inbox.source.autoReply, inbox.autoReply.template, inbox.mock) and the reply box (inbox.reply).
+ * (inbox.source.autoReply, inbox.mock) and the reply box (inbox.reply).
  */
 const saas = JSON.parse(
 	fs.readFileSync(
@@ -119,7 +119,7 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md First greeting 1
 test.describe("First greeting 1 — a new guest is greeted at once, and it's still their turn", () => {
-	test("a guest writing in English to rent in Tay Ho gets one office message within seconds: it acknowledges renting in Tây Hồ, asks about budget then move-in, has no digit, ends with the office's auto-reply label and is marked Auto-reply · Template · Demo send; the thread is still Your turn with no owner, the nav counts it and Sent is 0", async ({
+	test("a guest writing in English to rent in Tay Ho gets one office message within seconds: it acknowledges renting in Tây Hồ, asks about budget then move-in, has no digit, ends with the office's auto-reply label and is marked Auto-reply · Demo send, written by the template; the thread is still Your turn with no owner, the nav counts it and Sent is 0", async ({
 		office,
 	}) => {
 		const { manager } = office;
@@ -165,13 +165,14 @@ test.describe("First greeting 1 — a new guest is greeted at once, and it's sti
 		await expect(rowOf(page, guest), "the guest is listed under Unassigned").toBeVisible();
 
 		// In the thread, opened from its row in the Inbox already open: the office's message,
-		// marked Auto-reply, Template and the mock badge.
+		// marked Auto-reply (no writer word, `data-writer` says template) and the mock badge.
 		await rowOf(page, guest).click();
 		await expect(openThread(page).getByText(first, { exact: true })).toBeVisible();
 		await expect(sourced(page, saas.inbox.source.autoReply)).toHaveCount(1);
 		await expect(
-			openThread(page).getByText(saas.inbox.autoReply.template, { exact: true }),
-		).toHaveCount(1);
+			sourced(page, saas.inbox.source.autoReply),
+			"the writer is the template, carried as data-writer, not shown",
+		).toHaveAttribute("data-writer", "template");
 		await expect(openThread(page).getByText(saas.inbox.mock, { exact: true })).toHaveCount(1);
 		await expect(openThread(page).getByText(EN_LABEL)).toBeVisible();
 	});

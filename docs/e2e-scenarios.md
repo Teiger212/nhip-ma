@@ -1091,9 +1091,9 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
     after the office's first human reply (a sent reply, or one from the office's own app; the
     auto-reply doesn't count). Before it, every suggested reply is the template. After it, the
     stub's suggested reply reads "Thanks for your message. I'll look into it and come back to
-    you here." ("Drafted by AI"); a guest whose last message asks about the pink book
-    (or sổ hồng) gets one the post-check blocks, so the template stands ("Drafted from a
-    template").
+    you here." (its source the model); a guest whose last message asks about the pink book
+    (or sổ hồng) gets one the post-check blocks, so the template stands. No label shows the
+    source (removed by Eyal, 2026-10-10, #303); the reply box carries it as `data-source`.
 - The model's path is proven in Vitest (the post-check, the caps, the timeout and retry, the
   log line, the request's zero-retention routing and each task's model), by the greeting test
   set run by hand, and on staging (`docs/setup-checklist.md`).
@@ -1108,7 +1108,7 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
      budget and move-in time (R3's order, two at most) and contains no digit. Its last line
      reads "Auto-reply from Saigon Prime Test: a colleague will continue with you right
      here."
-   - **Its meta line** carries "Auto-reply", "Template" and the mock badge.
+   - **Its meta line** carries "Auto-reply" and the mock badge, with no word for who wrote it (removed by Eyal, 2026-10-10, #303; the badge carries it as `data-writer`, here "template").
    - **The queue doesn't move.** The thread is still Your turn and has no owner. The nav count
      includes it, and Sent is 0.
 2. **Only the first message is greeted.**
@@ -1251,7 +1251,8 @@ VI copy is pending a native read (#78), and JA, KO and RU have no native read pl
    "Hi, we're looking to rent an apartment in Tay Ho", gets the auto-reply. The manager assigns
    the thread to an agent, who opens it. The reply box introduces the agent by their name guests
    see and the office ("Hi, I'm ‹name› from Saigon Prime Test."), doesn't thank the guest again,
-   doesn't say "a colleague", and is labelled "Drafted from a template".
+   doesn't say "a colleague", and its source is the template (`data-source`; no visible label
+   since Eyal's decision of 2026-10-10, #303).
 2. **An unassigned thread names the office only.** The manager opens an unassigned thread after
    its auto-reply. The suggestion names the office ("Hi, this is Saigon Prime Test.") and no
    person: neither the manager's nor any agent's name guests see.
@@ -1262,14 +1263,13 @@ VI copy is pending a native read (#78), and JA, KO and RU have no native read pl
 4. **No intro once the office has replied.** Before the agent replies, the suggestion
    introduces them. The agent sends a reply. The guest writes again. The new suggestion
    introduces no one: it names neither the agent nor the office. With the stub model's draft on
-   (#252) it is the "Drafted by AI" draft; the template's later-turn branch is proven in Vitest.
+   (#252) it is the model's draft; the template's later-turn branch is proven in Vitest.
 5. **No repeated question.** The auto-reply asked for the budget (and move-in), and the guest
    wrote back without one ("Thanks! 2 of us, we'd like a 2-bedroom"). The suggestion still
    introduces the office, and doesn't ask for the budget again: no "What budget do you have in
    mind?", and no "budget" at all.
-6. **The label in Vietnamese.** In a Vietnamese inbox the label reads "Soạn theo mẫu"
-   (VI form of "Drafted from a template", wording pending #78): an office whose language is
-   VI (#256; a member reads Nhịp in the office language, Office language 6).
+6. **The label in Vietnamese.** Withdrawn: the reply box shows no source label in any language
+   (removed by Eyal, 2026-10-10, #303).
 
 Spec: `apps/saas/tests/suggested-reply.spec.ts` (Suggested reply template 1 and 3; each test has an
 office of its own named "Saigon Prime Test" with one invited manager and one invited agent, who
@@ -1280,9 +1280,8 @@ is a nameless Zalo guest whose first message is "Hi, we're looking to rent an ap
 Ho", judged once the auto-reply is in the thread. "Introduces" is the reply box's text starting
 with the intro exactly, "Hi, I'm Lan from Saigon Prime Test." or "Hi, this is Saigon Prime
 Test."; the rest of the template is not pinned. "Doesn't thank" is no "thank" in any form, and
-"doesn't say a colleague" no "colleague". The label is a text in the open thread reading
-"Drafted from a template", written in the spec and never read
-from saas.json. 1: the manager assigns through the owner API and the agent opens the thread by
+"doesn't say a colleague" no "colleague". "Its source is the template" is the reply box's
+`data-source="template"`. 1: the manager assigns through the owner API and the agent opens the thread by
 its `?thread=` link. 3: the manager opens it under Unassigned (where it stays open once assigned,
 #267), sees the office's intro, picks Lan in the thread's own Assign to…, and, once that control
 names her, the same box with no reload starts with her intro within three polls. Typed text not
@@ -1344,20 +1343,20 @@ latest message (ADR 0024, amending ADR 0011's stale-target rule for that case on
 **How these run.** As First greeting: guests write through signed Zalo webhooks to an office of
 the test's own named "Saigon Prime Test", with a manager and an invited agent, the auto-reply on,
 `SEND_MODE=mock`, and the stub model drafting (`MODEL_STUB=draft,translate`). The stub's draft
-reads "Thanks for your message. I'll look into it and come back to you here." and is labelled
-"Drafted by AI"; a guest whose last message asks about the pink book gets a draft the
-post-check blocks, so the template stands, labelled "Drafted from a template" (once the
+reads "Thanks for your message. I'll look into it and come back to you here."; a guest whose
+last message asks about the pink book gets a draft the post-check blocks, so the template
+stands. The box shows no source label (removed by Eyal, 2026-10-10, #303): it carries the source
+as `data-source` ("model" or "template") while it holds the suggestion (once the
 office has replied, the template reads "Noted. I'll look into this and get back to you here
 shortly."). The agent keeps the thread open or opens it, so no scenario waits out the 30 s: an
 open thread is drafted at once. The 30 s wait and the burst are proven in Vitest.
 
 1. **The model writes the reply after the office's first human reply.** A guest's first
    message gets the auto-reply. The agent sends a reply. The guest writes again ("Could you
-   send me some photos?"). The reply box holds the stub model's draft, labelled "Drafted by
-   AI".
+   send me some photos?"). The reply box holds the stub model's draft, its source the model.
 2. **No model draft before the first human reply.** A guest's first message gets the
-   auto-reply. The agent opens the thread. The reply box holds the template, labelled
-   "Drafted from a template", and still does a few polls later: the stub model is on, but
+   auto-reply. The agent opens the thread. The reply box holds the template, its source the
+   template, and still does a few polls later: the stub model is on, but
    the office hasn't replied yet.
 3. **An edited reply survives the guest writing again.** After the agent's first reply, the
    guest writes again and the box holds the stub's draft. The agent types their own reply into
@@ -1368,9 +1367,9 @@ open thread is drafted at once. The 30 s wait and the burst are proven in Vitest
    text as the office's reply, after the guest's latest message, and the thread leaves Your
    turn.
 5. **An untouched reply follows the guest.** After the agent's first reply, the guest writes
-   again and the box holds the stub's draft, labelled "Drafted by AI". The agent doesn't
+   again and the box holds the stub's draft, its source the model. The agent doesn't
    type. The guest writes again, asking about the pink book ("Is the pink book ready?"). The box
-   now holds the template for that message, labelled "Drafted from a template", with no
+   now holds the template for that message, its source the template, with no
    "Guest wrote again" note.
 
 Spec: `apps/saas/tests/model-draft.spec.ts` (When the model drafts 3 and 4, one test, and 5; 1's
@@ -1381,8 +1380,7 @@ agent by the manager through the owner API. "The agent sends a reply" is Approve
 template as it stands, the thread opened by its `?thread=` link, until `unansweredInboundId` is
 null; the agent then opens it again by link once "Could you send me some photos?" is in it, and
 keeps it open from there (never reloaded once typed into). The box is the textbox named "Reply";
-"holds the draft" is its value exactly the stub's text, and each label a text in the open thread,
-the spaces around "·" aside, written in the spec. 3: the agent's text is typed with
+"holds the draft" is its value exactly the stub's text, and the source its `data-source`. 3: the agent's text is typed with
 `fill`, and two polls pass before the guest writes "Also, do any of them have a balcony?"; once
 that shows in the open thread, the box's value and the exact note "Guest wrote again" are read
 together, Regenerate is visible, and the value holds for 5 s of polls. "Next to" is not measured.
@@ -1390,9 +1388,9 @@ together, Regenerate is visible, and the value holds for 5 s of polls. "Next to"
 with the typed text comes after the balcony message, and `unansweredInboundId` is null, while no
 "The guest wrote again" (any case) shows on the page. 5: once "Is the pink book ready?" shows in
 the open thread, the box is exactly "Noted. I'll look into this and get back to you here
-shortly.", with the template label, no AI label and no note).
+shortly.", with `data-source="template"` and no note).
 1: covered by the 3-and-4 and 5 specs, whose setup is 1's whole flow with its checks (the stub's
-draft in the box, "Drafted by AI"), and by Vitest:
+draft in the box, `data-source="model"`), and by Vitest:
 `apps/saas/modules/inbox/lib/model-draft.db.test.ts` › after a sent Answer, the guest's next
 message is drafted by the model.
 2: covered by Vitest: `apps/saas/modules/inbox/lib/model-draft.db.test.ts` › the model drafts only
@@ -1423,8 +1421,8 @@ VI copy is pending a native read (#78).
    - **The message** shows "French isn't supported: no translation" where a translation would
      sit, under the guest's text. In VI: "Chưa hỗ trợ tiếng Pháp: không dịch".
    - **The operator note**, one line beside the reply box (#248), says the reply is in English
-     and names French: "in English · French isn't supported · ask only what's
-     missing". In VI: "bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · chỉ hỏi những gì còn thiếu".
+     and names French: "in English · French isn't supported". In VI: "bằng tiếng Anh · chưa hỗ
+     trợ tiếng Pháp".
    - **What the guest gets is English.** The auto-reply is the English template, label
      included ("Auto-reply from …: a colleague will continue with you right here."). The reply
      box holds the English template suggested reply (ADR 0024), naming the office: it starts
@@ -1449,14 +1447,14 @@ VI copy is pending a native read (#78).
    operator note is the open thread's one paragraph labelled "Operator note", reading exactly
    the scenario's line after that label. What the guest gets is checked
    first and stops the test: the auto-reply (read as the manager, through the API) starts "Thanks
-   for writing" and ends with the English label, marked Template, and the reply box's text starts
+   for writing" and ends with the English label, whose badge carries `data-writer="template"`, and the reply box's text starts
    "Hi, this is Saigon Prime Test." (the thread is Unassigned; the rest of the template is not
    pinned) and holds no "colleague". Home's entry is judged by its link's name: it holds "French"
    and not "English").
 
 2. **A guest writes in Korean: the thread reads as before.** A guest writes "안녕하세요, 서호에서
    방 두 개짜리 아파트를 월세로 찾고 있어요." The Language row reads "Korean" with no note, no
-   message shows a "isn't supported" note, the operator note reads "in Korean · ask only what's missing",
+   message shows a "isn't supported" note, the operator note reads "in Korean",
    and the auto-reply is in Hangul. Home's Waiting now names "Korean".
    Covered by Vitest: `apps/saas/modules/inbox/lib/language-name.test.ts` › a supported language
    keeps its own copy; › the operator note of a supported language reads as before; › a supported

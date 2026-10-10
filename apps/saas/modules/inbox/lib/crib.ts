@@ -5,9 +5,9 @@ export type CribTranslate = (key: string, values?: Record<string, string>) => st
 
 /**
  * The operator note: one line beside the reply box, in the operator's language, on how to answer
- * (#248): the language the reply is in, and to ask only what is missing (#303), which the details'
- * Missing row names. The guest's facts and the paperwork flag are in the guest details beside it,
- * so the note never repeats them. For a guest language Nhịp doesn't support, it says the reply is
+ * (#248): the language the reply is in, and nothing more (Eyal, 2026-10-10, #303). The guest's
+ * facts, what is missing and the paperwork flag are in the guest details beside it, so the note
+ * never repeats them. For a guest language Nhịp doesn't support, it says the reply is
  * in English and names that language (#245).
  */
 export function formatConversationCrib(

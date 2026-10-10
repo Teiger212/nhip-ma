@@ -117,7 +117,8 @@ greeting. Related: #242, #245, #246, #83.
   - The agent can just send the kept edit. The send is recorded as answering the latest guest
     message, with no `409 stale_target`.
 - **The label.** "Drafted by AI" or "Drafted from a template" (#303; first "Suggested reply · AI"
-  or "Suggested reply · template").
+  or "Suggested reply · template"). Label removed by Eyal 2026-10-10 (#303): the reply box shows
+  no source; it keeps it as `data-source` for tests.
 - **The template.** A reply with no model, in the agent's own voice. It replaces today's
   `followUpTemplate` and `draftReply` copy, which repeats the auto-reply and promises
   "a colleague" (prototype: branch `prototype/thread-layout`,
