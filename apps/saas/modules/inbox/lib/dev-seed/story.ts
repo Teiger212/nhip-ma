@@ -31,6 +31,8 @@ export type StoryStep = { ago: number } & (
 	| { kind: "writes"; text: string; translations: Translations }
 	| { kind: "assigns"; to: Actor | null }
 	| { kind: "replies"; by: Actor; text: string }
+	| { kind: "ai-replies"; by: Actor; fixture: string }
+	| { kind: "ai-draft"; fixture: string }
 	| { kind: "crm"; outcome: "won" | "lost"; reason: string | null }
 );
 
@@ -51,6 +53,24 @@ export const replies = (ago: number, by: Actor, text: string): StoryStep => ({
 	ago,
 	by,
 	text,
+});
+
+/**
+ * An operator approves and sends a model draft as it stands (ADR 0024): the text is the committed
+ * fixture's (`river-ai-drafts.ts`), and the sent message carries the AI label and its operator line.
+ */
+export const repliesAi = (ago: number, by: Actor, fixture: string): StoryStep => ({
+	kind: "ai-replies",
+	ago,
+	by,
+	fixture,
+});
+
+/** A model draft waits in the reply box for the guest's latest message ("Suggested reply · AI"). */
+export const draftWaits = (ago: number, fixture: string): StoryStep => ({
+	kind: "ai-draft",
+	ago,
+	fixture,
 });
 
 /** The office's CRM marks the guest's lead won or lost, and Nhịp hears of it (ADR 0003). */
