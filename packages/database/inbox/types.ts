@@ -500,6 +500,12 @@ export type InboxStore = {
 		read: Draft,
 		next: Pick<Draft, "reply" | "officeReply">,
 	) => Promise<Conversation | null>;
+	/**
+	 * Drop the operator-language text of every model draft of the office (#288): it was written in
+	 * the office language of its moment and does not record which, so a language change leaves it
+	 * in the wrong one. Template drafts are rewritten instead (`rewriteTemplateDraft`).
+	 */
+	clearModelOfficeReplies: (officeId: string) => Promise<void>;
 	/** Store one guest message's rendering in one operator language; clears its failures. */
 	setTranslation: (
 		officeId: string,
