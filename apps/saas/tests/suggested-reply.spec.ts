@@ -40,7 +40,7 @@ const AGENT_INTRO = `Hi, I'm ${AGENT.nameGuestsSee} from ${OFFICE_NAME}.`;
  * The label above the reply box while it holds the template (ADR 0024, "The label"), written out
  * rather than read from saas.json: the wording is the contract.
  */
-const TEMPLATE_LABEL = "Suggested reply · template";
+const TEMPLATE_LABEL = "Drafted from a template";
 
 /** The guest's first message: the auto-reply to it asks for the budget, then move-in. */
 const FIRST_MESSAGE = "Hi, we're looking to rent an apartment in Tay Ho";
@@ -129,12 +129,9 @@ function replyBox(page: Page) {
 	return openThread(page).getByRole("textbox", { name: REPLY_LABEL, exact: true });
 }
 
-/** The label above the reply box saying it holds the template (spacing around "·" aside). */
+/** The label above the reply box saying it holds the template. */
 function templateLabel(page: Page): Locator {
-	const [what, source] = TEMPLATE_LABEL.split(" · ");
-	return openThread(page).getByText(
-		new RegExp(`^\\s*${literal(what)}\\s*·\\s*${literal(source)}\\s*$`),
-	);
+	return openThread(page).getByText(TEMPLATE_LABEL, { exact: true });
 }
 
 /** The text starts with exactly this sentence. */

@@ -412,6 +412,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								onRetry={() => void conversationsQuery.refetch()}
 								onViewSent={() => void setView("sent")}
 								emptyTitle={manager ? undefined : t("emptyAssigned")}
+								ownerBadges={!(manager && view === "unassigned")}
 								rowAction={
 									manager && view === "unassigned"
 										? (conversation) => (

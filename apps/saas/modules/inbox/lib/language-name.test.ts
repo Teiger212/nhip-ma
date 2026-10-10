@@ -32,16 +32,16 @@ test("a supported language keeps its own copy", () => {
 test("the one-line operator note says the reply is in English and names French", () => {
 	const shot = { language: "en" as const, guestLanguage: "fr" };
 	expect(formatCribNote(shot, en, "en")).toBe(
-		"in English · French isn't supported · don't interview",
+		"in English · French isn't supported · ask only what's missing",
 	);
 	expect(formatCribNote(shot, vi, "vi")).toBe(
-		"bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · đừng hỏi dồn",
+		"bằng tiếng Anh · chưa hỗ trợ tiếng Pháp · chỉ hỏi những gì còn thiếu",
 	);
 });
 
 test("the operator note of a supported language reads as before", () => {
 	expect(formatCribNote({ language: "ko", guestLanguage: "ko" }, en)).toBe(
-		"in Korean · don't interview",
+		"in Korean · ask only what's missing",
 	);
 });
 

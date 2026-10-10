@@ -913,8 +913,8 @@
 			"vi": "In Vietnamese"
 		},
 		"suggested": {
-			"template": "Suggested reply · template",
-			"model": "Suggested reply · AI"
+			"template": "Drafted from a template",
+			"model": "Drafted by AI"
 		},
 		"guestWroteAgain": "Guest wrote again",
 		"regenerate": "Regenerate",
@@ -961,8 +961,8 @@
 		},
 		"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
 		"crib": {
-			"noteUnsupported": "in English · {language} isn't supported · don't interview",
-			"note": "in {language} · don't interview"
+			"noteUnsupported": "in English · {language} isn't supported · ask only what's missing",
+			"note": "in {language} · ask only what's missing"
 		},
 		"details": {
 			"title": "Guest details",

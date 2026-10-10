@@ -116,7 +116,8 @@ greeting. Related: #242, #245, #246, #83.
   - The model never overwrites typed text.
   - The agent can just send the kept edit. The send is recorded as answering the latest guest
     message, with no `409 stale_target`.
-- **The label.** "Suggested reply · AI" or "Suggested reply · template".
+- **The label.** "Drafted by AI" or "Drafted from a template" (#303; first "Suggested reply · AI"
+  or "Suggested reply · template").
 - **The template.** A reply with no model, in the agent's own voice. It replaces today's
   `followUpTemplate` and `draftReply` copy, which repeats the auto-reply and promises
   "a colleague" (prototype: branch `prototype/thread-layout`,

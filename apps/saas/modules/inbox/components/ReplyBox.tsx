@@ -37,7 +37,7 @@ export function ReplyBox({
 	canApprove: boolean;
 	regenerating: boolean;
 	onRegenerate: () => void;
-	/** The operator note: the reply's language and "don't interview" (`crib.ts`). */
+	/** The operator note: the reply's language and "ask only what's missing" (`crib.ts`). */
 	note: string | null;
 	/** The suggestion's operator line (`suggestionLine`): null once edited, or with none. */
 	officeLine: Line | null;

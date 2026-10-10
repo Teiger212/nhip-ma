@@ -83,9 +83,11 @@ const UNASSIGNED = "__unassigned__";
  * The open thread's owner (ADR 0022). A manager's is "Assign to…", the kit's Select showing who
  * holds the thread: Unassigned, then the office's operators in the order a row's "Assign to…"
  * lists them. Choosing acts at once, and the last assignment wins. In the details rail it fills
- * the Owner section; in a narrow pane's header (#248) it sits there, a smaller field. An
- * agent can't assign: the rail names the owner, read-only, and the header has nothing more (the
- * owner badge in its flags already says whose it is).
+ * the Owner section; in a narrow pane's header (#248) it sits there, a smaller field, and on a
+ * phone it ends the details strip's first row, beside the pipe (#303). It is the one place an open
+ * thread says whose it is: the header carries no owner badge beside it (#303). An agent can't
+ * assign: the rail names the owner, read-only, and the header and strip have nothing more (an
+ * agent's threads are all their own, ADR 0022).
  */
 export function OwnerControl({
 	conversation,
@@ -93,7 +95,7 @@ export function OwnerControl({
 	onAssigned,
 }: {
 	conversation: Conversation;
-	placement: "rail" | "header";
+	placement: "rail" | "header" | "strip";
 	/** Told as an operator is chosen, before the thread leaves the list (#267). */
 	onAssigned: (id: string) => void;
 }) {
@@ -103,7 +105,7 @@ export function OwnerControl({
 	const setOwner = useAssign();
 	const owner = conversation.owner;
 	if (role !== "manager") {
-		if (placement === "header") return null;
+		if (placement !== "rail") return null;
 		return (
 			<p className="text-sm font-medium">
 				{!owner ? t("unassigned") : owner.id === userId ? t("mine") : owner.name}
@@ -136,7 +138,7 @@ export function OwnerControl({
 				data-test="thread-owner-select"
 				aria-label={t("assignTo")}
 				title={t("assignTo")}
-				size={placement === "header" ? "sm" : "md"}
+				size={placement === "rail" ? "md" : "sm"}
 				className={placement === "header" ? "w-44" : "w-full"}
 			>
 				<SelectValue />

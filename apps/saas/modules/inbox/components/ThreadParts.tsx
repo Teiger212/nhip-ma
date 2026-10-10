@@ -64,18 +64,23 @@ const STATUS_BADGE = {
  * Only the chip changes: views and counts still go by the thread's status.
  *
  * An agent sees only their own threads (ADR 0022), so for them the owner would always say
- * "Yours": they get no owner badge (#94). `parts` splits the set for the phone's thread, whose
- * header keeps the turn and whose details strip takes the pipe and the owner (#94).
+ * "Yours": they get no owner badge (#94). Nor does an open thread: a manager's owner select there
+ * already says whose it is, and a row in the Unassigned view, which the view already says (#303).
+ * `parts` splits the set for the phone's thread, whose header keeps the turn and whose details
+ * strip takes the pipe (#94).
  */
 export function ThreadFlags({
 	conversation,
 	parts = "all",
+	owner: ownerShown = true,
 }: {
 	conversation: Pick<
 		ConversationSummary,
 		"pipe" | "owner" | "unansweredInboundId" | "crm" | "lastGuestInboundAt"
 	>;
 	parts?: "all" | "meta" | "turn";
+	/** Whether the owner badge may show; something else on screen already says it (#303). */
+	owner?: boolean;
 }) {
 	const t = useTranslations("inbox");
 	const status = threadStatus(conversation);
@@ -83,7 +88,7 @@ export function ThreadFlags({
 	const owner = conversation.owner;
 	const chip =
 		status === "yourTurn" && role === "manager" && owner?.id !== userId ? "waiting" : status;
-	const showOwner = pending || role === "manager";
+	const showOwner = ownerShown && (pending || role === "manager");
 	return (
 		<>
 			{parts === "turn" ? null : (

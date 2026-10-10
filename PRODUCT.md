@@ -87,7 +87,7 @@ well at small sizes); guests' text arrives in Latin, CJK and Cyrillic scripts.
    under the original, extract what the guest already said (area, rent or buy,
    timeframe, budget, household, nationality, in Vietnam now, paperwork raised).
 3. **Draft.** A suggested reply in the guest's language in the reply box, plus an
-   **operator note** in the agent's language (the reply's language, don't interview) beside
+   **operator note** in the agent's language (the reply's language; ask only what's missing) beside
    the guest's details, the facts and flags extracted. A new guest's first
    message also gets the **auto-reply** (ADR 0021): a greeting, an acknowledgement and up to
    two questions, written by the model within a post-check or taken from a fixed template,

@@ -20,11 +20,14 @@ export function ThreadRow({
 	active,
 	onOpen,
 	action,
+	ownerBadge = true,
 }: {
 	conversation: ConversationSummary;
 	active: boolean;
 	onOpen: () => void;
 	action?: ReactNode;
+	/** False where the view already says who holds every row (a manager's Unassigned, #303). */
+	ownerBadge?: boolean;
 }) {
 	const locale = useLocale();
 	const hydrated = useHydrated();
@@ -82,7 +85,7 @@ export function ThreadRow({
 					<span
 						className={cn("mt-1.5 gap-1 flex flex-wrap items-center", action && "pr-20 md:pr-0")}
 					>
-						<ThreadFlags conversation={conversation} />
+						<ThreadFlags conversation={conversation} owner={ownerBadge} />
 					</span>
 				</span>
 			</button>

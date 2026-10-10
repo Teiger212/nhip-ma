@@ -30,7 +30,7 @@ const FRENCH = {
 	/** Under each of the guest's messages, where a translation would sit. */
 	noTranslation: "French isn't supported: no translation",
 	/** The operator note, one line beside the reply box (#248). */
-	operatorNote: "in English · French isn't supported · don't interview",
+	operatorNote: "in English · French isn't supported · ask only what's missing",
 } as const;
 
 /** The French guest's two messages: the second mixes French and English. */

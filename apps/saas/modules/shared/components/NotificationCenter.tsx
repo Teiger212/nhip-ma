@@ -271,10 +271,10 @@ export function NotificationCenter({ className }: { className?: string }) {
 					>
 						<BellIcon className="size-4 text-muted-foreground" />
 						{unreadCount > 0 ? (
-							/* The squared count badge (DESIGN.md, Badges), on a backing of the bar it sits
-							   on so its tint reads over the bell's edge, as the nav's count does (#234). */
+							/* The squared count badge (DESIGN.md, Badges) in solid blue, so it reads as a count on
+							   the canvas (#303), ringed in the bar it sits on to part it from the bell's edge. */
 							<span className="-right-1.5 -top-1.5 absolute flex rounded-md bg-sidebar ring-2 ring-sidebar">
-								<Badge status="info" numeric size="sm">
+								<Badge status="primary" numeric size="corner">
 									{unreadCount > 99 ? "99+" : unreadCount}
 								</Badge>
 							</span>

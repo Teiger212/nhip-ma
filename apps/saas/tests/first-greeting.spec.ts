@@ -84,8 +84,11 @@ function rowOf(page: Page, guest: Guest) {
 	return threadList(page).getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
 }
 
-/** A view button of the Inbox (a manager's Your turn is named Waiting (#210) / Sent), with its count. */
-function view(page: Page, name: "Waiting" | "Sent", count: number) {
+/**
+ * A view button of the Inbox (a manager's Your turn is named Waiting (#210) / Sent / Unassigned),
+ * with its count.
+ */
+function view(page: Page, name: "Unassigned" | "Waiting" | "Sent", count: number) {
 	return page.getByRole("button", { name: `${name} ${count}`, exact: true });
 }
 
@@ -153,10 +156,13 @@ test.describe("First greeting 1 — a new guest is greeted at once, and it's sti
 		await expect(view(page, "Waiting", 1), "the manager's Waiting counts it").toBeVisible();
 		await expect(view(page, "Sent", 0), "nothing is Sent").toBeVisible();
 		await expect(navCount(page), "the nav counts it").toHaveText("1");
-		await expect(rowOf(page, guest).getByTestId("thread-owner")).toHaveAttribute(
-			"data-owner",
-			"unassigned",
+		// Still Unassigned: listed in the Unassigned view the manager's Inbox opens on, which says
+		// it, so the row carries no owner flag (#303).
+		await expect(view(page, "Unassigned", 1), "Unassigned holds it").toHaveAttribute(
+			"aria-pressed",
+			"true",
 		);
+		await expect(rowOf(page, guest), "the guest is listed under Unassigned").toBeVisible();
 
 		// In the thread, opened from its row in the Inbox already open: the office's message,
 		// marked Auto-reply, Template and the mock badge.

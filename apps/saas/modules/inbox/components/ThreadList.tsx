@@ -43,6 +43,7 @@ export function ThreadList({
 	onViewSent,
 	emptyTitle,
 	rowAction,
+	ownerBadges = true,
 }: {
 	queue: QueueView;
 	loading: boolean;
@@ -57,6 +58,8 @@ export function ThreadList({
 	emptyTitle?: string;
 	/** What sits at each row's end (a manager's "Assign to…" in Unassigned, ADR 0022). */
 	rowAction?: (conversation: ConversationSummary) => ReactNode;
+	/** False in a manager's Unassigned view: the view says whose they are, so rows don't (#303). */
+	ownerBadges?: boolean;
 }) {
 	const t = useTranslations("inbox");
 
@@ -70,6 +73,7 @@ export function ThreadList({
 						active={conversation.id === selectedId}
 						onOpen={() => onOpen(conversation.id)}
 						action={rowAction?.(conversation)}
+						ownerBadge={ownerBadges}
 					/>
 				))}
 			</ul>

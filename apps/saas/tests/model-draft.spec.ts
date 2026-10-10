@@ -30,9 +30,9 @@ const STUB_DRAFT = "Thanks for your message. I'll look into it and come back to 
 /** The template once the office has replied (Suggested reply template, "On a later turn"). */
 const LATER_TEMPLATE = "Noted. I'll look into this and get back to you here shortly.";
 
-/** The labels beside the reply box (ADR 0024, "The label"), the spaces around "·" aside. */
-const AI_LABEL = /^\s*Suggested reply\s*·\s*AI\s*$/;
-const TEMPLATE_LABEL = /^\s*Suggested reply\s*·\s*template\s*$/;
+/** The labels beside the reply box saying where the draft came from (ADR 0024, "The label"; #303). */
+const AI_LABEL = /^\s*Drafted by AI\s*$/;
+const TEMPLATE_LABEL = /^\s*Drafted from a template\s*$/;
 
 /** The quiet note next to Regenerate when a kept edit outlives the guest's new message (ADR 0024). */
 const WROTE_AGAIN_NOTE = "Guest wrote again";
@@ -177,7 +177,7 @@ async function draftedAfterFirstReply(
 		STUB_DRAFT,
 		WITHIN_POLLS,
 	);
-	await expect(aiLabel(page), 'the draft is labelled "Suggested reply · AI"').toBeVisible();
+	await expect(aiLabel(page), 'the draft is labelled "Drafted by AI"').toBeVisible();
 	return { guest, threadId, page, box };
 }
 
@@ -281,7 +281,7 @@ test.describe("When the model drafts 3 and 4 — an edited reply survives the gu
 
 // scenario: docs/e2e-scenarios.md When the model drafts 5
 test.describe("When the model drafts 5 — an untouched reply follows the guest", () => {
-	test(`the agent leaves the AI draft untouched, the guest asks about the pink book: the box holds the later-turn template, labelled "Suggested reply · template", with no "${WROTE_AGAIN_NOTE}" note`, async ({
+	test(`the agent leaves the AI draft untouched, the guest asks about the pink book: the box holds the later-turn template, labelled "Drafted from a template", with no "${WROTE_AGAIN_NOTE}" note`, async ({
 		office,
 	}) => {
 		const { guest, page, box } = await draftedAfterFirstReply(office);
@@ -292,7 +292,7 @@ test.describe("When the model drafts 5 — an untouched reply follows the guest"
 			box,
 			"the suggestion follows the guest: the template for that message",
 		).toHaveValue(LATER_TEMPLATE, WITHIN_POLLS);
-		await expect(templateLabel(page), 'labelled "Suggested reply · template"').toBeVisible();
+		await expect(templateLabel(page), 'labelled "Drafted from a template"').toBeVisible();
 		await expect(aiLabel(page), "no AI label").toHaveCount(0);
 		await expect(wroteAgainNote(page), `no "${WROTE_AGAIN_NOTE}" note`).toHaveCount(0);
 	});
