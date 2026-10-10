@@ -41,15 +41,16 @@ A second office, `river-office`, has its own manager (`river-manager@nhip.local`
 (`river-agent@nhip.local`, `river-agent2@nhip.local`), its auto-reply off and no CRM; nothing
 crosses offices. Guests write on WhatsApp (numbers in North America's 555-01xx fiction range)
 and Zalo, in Vietnamese, English, Korean, Japanese, Russian, French and Chinese, with
-translations and qualifiers filled. The river office also shows the model (#302, ADR 0024):
+translations and qualifiers filled. The river office also shows the model (#302, ADR 0024), as production with the model on does:
 four threads (Emma, Quang, Min-jun, Harper) have a later office reply that was a model draft,
-approved and sent (the AI label in history), and the guest has written back since; three
-(Mai, Yuna, Rowan) end on a guest message with a "Suggested reply · AI" waiting. First replies
-are typed by hand (its auto-reply stays off). The text is committed in
-`lib/dev-seed/river-ai-drafts.ts`, written once by Haiku 5.5 (forced, whatever `DRAFT_MODEL`
+approved and sent (a plain "Sent from Nhịp": the app labels the writer on auto-replies only), and
+the guest has written back, so each holds a waiting model draft; Mai, Yuna and Rowan end on a
+guest message with a "Suggested reply · AI" waiting too. Every later turn that waits holds a
+model draft, never the template; first replies are typed by hand (its auto-reply stays off). The
+text is committed in `lib/dev-seed/river-ai-drafts.ts`, written once by Haiku 5.5 (forced, whatever `DRAFT_MODEL`
 says) through the app's draft prompt and `checkFollowUp`; `pnpm seed` calls no model. To
 regenerate after a story or prompt change: `pnpm seed:drafts -- --dry-run`, then
-`pnpm seed:drafts` (needs `DRAFT_API_KEY`; about $0.003; `--stub` writes the stub model's text,
+`pnpm seed:drafts` (needs `DRAFT_API_KEY`; about $0.003, `--missing` writes only new ones; `--stub` writes the stub model's text,
 never to be committed), then `pnpm seed -- --reset`. It prints every login at the end. A re-run adds nothing;
 `pnpm seed -- --reset` rewrites the seed's own rows as of now, which fresh threads need after
 48 hours. It refuses `VERCEL_ENV=production` and any database that is not local, unless

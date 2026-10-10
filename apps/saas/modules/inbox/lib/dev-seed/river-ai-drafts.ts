@@ -65,5 +65,29 @@ export const RIVER_AI_DRAFTS: AiDraftFixtures = {
 			officeReply:
 				"Thanks, Rowan. I'll check which international schools are near Ciputra and send you the options. I'll also see whether video tours of the 3-bedroom places can be arranged before you fly in, and confirm the details with you.",
 		},
+		"emma-2": {
+			reply:
+				"Noted, Emma, a weekend afternoon works. I'll check which Tây Hồ 2-bedrooms with a balcony, a lift and cat-friendly rules can be viewed this weekend in the afternoon, and confirm the times with you. If none fit, I'll look at the following weekend instead.",
+			officeReply:
+				"Noted, Emma, a weekend afternoon works. I'll check which Tây Hồ 2-bedrooms with a balcony, a lift and cat-friendly rules can be viewed this weekend in the afternoon, and confirm the times with you. If none fit, I'll look at the following weekend instead.",
+		},
+		"quang-2": {
+			reply:
+				"Dạ vâng anh, em sẽ lọc và gửi ảnh các căn 2 phòng ngủ ở Cầu Giấy gần trường tiểu học, có chỗ đỗ ô tô, quanh mức 12 triệu cho anh sớm nhất có thể ạ. Lịch xem nhà cuối tuần em cũng sẽ kiểm tra và xác nhận lại với anh.",
+			officeReply:
+				"Noted, I'll filter and send photos of 2-bedroom places in Cầu Giấy near a primary school with car parking, around 12 million, as soon as possible. I'll also check the weekend viewing schedule and confirm back with him.",
+		},
+		"minjun-2": {
+			reply:
+				"네, 알겠습니다. Hai Bà Trưng 지역에서 예산 $900 안의 1 bedroom 후보를 헬스장 있는 건물 위주로 골라 사진을 보내드리겠습니다. 반려견 허용 여부는 건물별로 확인해서 사진과 함께 알려드리겠습니다.",
+			officeReply:
+				"Yes, understood. I'll pull together photos of 1-bedroom options in Hai Bà Trưng within the $900 budget, focusing on buildings with a gym. I'll check the pet policy for each building and send it with the photos.",
+		},
+		"harper-2": {
+			reply:
+				"Thanks Harper, I'll send photos of 3-bedroom houses in Long Bien with a garden and garage, within your $2,000 monthly budget. I'll confirm the Tuesday viewings and the usual lease length once I've checked, and let you know.",
+			officeReply:
+				"Thanks Harper, I'll send photos of 3-bedroom houses in Long Bien with a garden and garage, within your $2,000 monthly budget. I'll confirm the Tuesday viewings and the usual lease length once I've checked, and let you know.",
+		},
 	},
 };

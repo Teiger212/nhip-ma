@@ -314,6 +314,8 @@ const guests: SeedGuest[] = [
 			writes(hoursAgo(20), "Great, thank you. A weekend afternoon would work best for us.", {
 				vi: "Tuyệt, cảm ơn bạn. Chiều cuối tuần là hợp nhất với chúng tôi.",
 			}),
+			// Still the model's turn: the guest's latest message waits for a model draft too.
+			draftWaits(hoursAgo(20) - minutesAgo(1), "emma-2"),
 		],
 	},
 	{
@@ -343,6 +345,8 @@ const guests: SeedGuest[] = [
 			),
 			repliesAi(daysAgo(5) - minutesAgo(14), "agent2", "quang"),
 			writes(hoursAgo(30), "Ok em, anh chờ ảnh nhé.", { en: "Ok, I'll wait for the photos." }),
+			// Still the model's turn: the guest's latest message waits for a model draft too.
+			draftWaits(hoursAgo(30) - minutesAgo(1), "quang-2"),
 		],
 	},
 	{
@@ -377,6 +381,8 @@ const guests: SeedGuest[] = [
 				en: "Yes, please send the photos first.",
 				vi: "Vâng, hãy gửi ảnh trước cho tôi.",
 			}),
+			// Still the model's turn: the guest's latest message waits for a model draft too.
+			draftWaits(hoursAgo(26) - minutesAgo(1), "minjun-2"),
 		],
 	},
 	{
@@ -408,6 +414,8 @@ const guests: SeedGuest[] = [
 			writes(hoursAgo(50), "Perfect, looking forward to the photos.", {
 				vi: "Tuyệt vời, tôi mong chờ những bức ảnh.",
 			}),
+			// Still the model's turn: the guest's latest message waits for a model draft too.
+			draftWaits(hoursAgo(50) - minutesAgo(1), "harper-2"),
 		],
 	},
 	// A model draft waits in the reply box for the guest's latest message.

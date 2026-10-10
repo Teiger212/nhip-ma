@@ -21,7 +21,7 @@ import { STUB_MODEL, stubBackends } from "../lib/drafts/stub";
 /**
  * The river office's model drafts, written once by the real model (#302, ADR 0024):
  *
- *   pnpm seed:drafts [--dry-run | --stub]
+ *   pnpm seed:drafts [--dry-run | --stub | --missing]
  *
  * For every conversation of the river office's story that has a model draft (`repliesAi`,
  * `draftWaits`), it builds the request the app builds (`generateModelDraft`: the same prompts,
@@ -78,16 +78,23 @@ async function main(): Promise<void> {
 		throw new Error("seed:drafts calls a paid model and runs by hand only, never in CI (#302).");
 	}
 	const args = process.argv.slice(2).filter((arg) => arg !== "--");
-	const unknown = args.filter((arg) => arg !== "--dry-run" && arg !== "--stub");
+	const unknown = args.filter(
+		(arg) => arg !== "--dry-run" && arg !== "--stub" && arg !== "--missing",
+	);
 	if (unknown.length > 0)
-		throw new Error(`unknown option ${unknown[0]}\nusage: seed:drafts [--dry-run | --stub]`);
+		throw new Error(
+			`unknown option ${unknown[0]}\nusage: seed:drafts [--dry-run | --stub | --missing]`,
+		);
 	const dryRun = args.includes("--dry-run");
 	const stub = args.includes("--stub");
+	// Default: every draft again. `--missing` keeps the fixtures already there and writes the rest.
+	const missingOnly = args.includes("--missing");
 	// Forced: the owner's local DRAFT_MODEL may be another model, and the fixtures are Haiku's.
 	const model = stub ? STUB_MODEL : MODEL_DEFAULTS.draft.model;
 
 	const sentReplies = new Map<string, string>();
-	const list = riverDraftRequests(Date.now(), sentReplies);
+	const now = Date.now();
+	const list = riverDraftRequests(now, sentReplies);
 	const estimate = list.reduce(
 		(sum, job) => {
 			const prompt = `${followUpSystemPrompt(job.input.guestLanguage, job.input.officeLanguage)}\n${followUpUserPrompt(job.input)}`;
@@ -128,12 +135,18 @@ async function main(): Promise<void> {
 	}
 
 	// Earlier fixtures kept when a re-run only fixes some; a stub run never mixes with real ones.
-	const kept = stub || RIVER_AI_DRAFTS.model !== model ? {} : RIVER_AI_DRAFTS.drafts;
+	const kept =
+		stub || !missingOnly || RIVER_AI_DRAFTS.model !== model ? {} : RIVER_AI_DRAFTS.drafts;
 	const drafts: Record<string, AiDraftFixture> = { ...kept };
+	for (const [key, draft] of Object.entries(kept)) sentReplies.set(key, draft.reply);
 	let spent = 0;
 	let costKnown = true;
 	const failed: string[] = [];
-	for (const job of list) {
+	for (const key of list.map((request) => request.fixture)) {
+		if (key in kept) continue;
+		// Rebuilt each time: a draft that follows a sent one reads the reply just generated.
+		const job = riverDraftRequests(now, sentReplies).find((request) => request.fixture === key);
+		if (!job) continue;
 		let result: AiDraftFixture | null = null;
 		for (let attempt = 1; attempt <= 2 && !result; attempt += 1) {
 			let text: string | null = null;
