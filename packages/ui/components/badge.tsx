@@ -37,6 +37,11 @@ export const badge = cva(["inline-flex", "items-center", "leading-none", "whites
 			neutral: ["bg-muted", "text-muted-foreground"],
 			success: ["bg-success/12", "text-success"],
 			info: ["bg-primary/12", "text-primary"],
+			/**
+			 * Solid Dispatch Blue: the one count that rides on a control (the bell's unread, #303), where
+			 * a 12% tint on the blue canvas reads as a label rather than a count.
+			 */
+			primary: ["bg-primary", "text-primary-foreground"],
 			warning: ["bg-warning/12", "text-warning"],
 			error: ["bg-destructive/12", "text-destructive"],
 		},

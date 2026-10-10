@@ -63,7 +63,9 @@
 		--secondary-foreground: #e2e8f0;
 		--muted: #1b2740;
 		--muted-foreground: #94a3b8;
-		--accent: #1b2740;
+		/* Night Hairline, as light's accent is Hairline Blue: a step off muted, so a neutral badge
+		   keeps its fill on the selected row (#303). */
+		--accent: #253352;
 		--accent-foreground: #e2e8f0;
 		--touch: #60a5fa;
 		--touch-foreground: #0b1220;

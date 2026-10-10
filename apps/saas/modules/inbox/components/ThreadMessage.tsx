@@ -97,12 +97,14 @@ export function ThreadMessage({
 				{inbound ? null : message.source === "auto-reply" ? (
 					<>
 						{/* The office's greeting, sent on its own (ADR 0021, DESIGN.md: inline badges). */}
-						<Badge status="neutral" size="sm" data-test="message-source">
+						<Badge
+							status="neutral"
+							size="sm"
+							data-test="message-source"
+							data-writer={message.writtenBy ?? undefined}
+						>
 							{t("source.autoReply")}
 						</Badge>
-						{message.writtenBy ? (
-							<span data-test="auto-reply-writer">{t(`autoReply.${message.writtenBy}`)}</span>
-						) : null}
 					</>
 				) : (
 					<span className="font-medium text-foreground/80" data-test="message-source">

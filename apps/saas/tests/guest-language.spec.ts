@@ -30,7 +30,7 @@ const FRENCH = {
 	/** Under each of the guest's messages, where a translation would sit. */
 	noTranslation: "French isn't supported: no translation",
 	/** The operator note, one line beside the reply box (#248). */
-	operatorNote: "in English · French isn't supported · don't interview",
+	operatorNote: "in English · French isn't supported",
 } as const;
 
 /** The French guest's two messages: the second mixes French and English. */
@@ -78,7 +78,7 @@ const UI = JSON.parse(
 		forYou: string;
 		translation: string;
 		fields: { language: string };
-		autoReply: { template: string };
+		source: { autoReply: string };
 	};
 	home: { waitingNow: string };
 };
@@ -225,12 +225,14 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 		await page.setViewportSize(PANES[0].size);
 		await openThreadByLink(page, threadId, FRENCH_FIRST);
 
-		await test.step("the auto-reply shows as the template, and the reply box holds the English template suggested reply", async () => {
+		await test.step("the auto-reply is written by the template, and the reply box holds the English template suggested reply", async () => {
 			await expect(bubbleSaying(page, EN_LABEL), "the English label shows").toHaveCount(1);
 			await expect(
-				openThread(page).getByText(UI.inbox.autoReply.template, { exact: true }),
-				"the auto-reply is marked Template",
-			).toHaveCount(1);
+				openThread(page)
+					.getByTestId("message-source")
+					.filter({ hasText: UI.inbox.source.autoReply }),
+				"the auto-reply is written by the template",
+			).toHaveAttribute("data-writer", "template");
 			await expect(
 				replyBox(page),
 				`the reply box holds the English template, starting "${EN_TEMPLATE_START}"`,

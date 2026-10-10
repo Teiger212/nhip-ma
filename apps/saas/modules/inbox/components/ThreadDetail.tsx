@@ -185,7 +185,7 @@ export function ThreadDetail({
 	const pane = useRef<HTMLDivElement>(null);
 	const rail = usePaneFitsRail(pane);
 	// A phone (below `md`): the header keeps Back, the guest and the turn on one line; the pipe,
-	// the owner and the CRM status move into the details strip under it (#94).
+	// the CRM status and a manager's owner select share the details strip's first row (#94, #303).
 	const phone = !useInboxSideBySide();
 	const { scroller, unseen, toLatest } = useConversationScroll(
 		conversation.id,
@@ -237,7 +237,7 @@ export function ThreadDetail({
 						{name}
 					</p>
 					<span className="gap-2 flex shrink-0 items-center">
-						<ThreadFlags conversation={conversation} parts={phone ? "turn" : "all"} />
+						<ThreadFlags conversation={conversation} parts={phone ? "turn" : "all"} owner={false} />
 					</span>
 				</div>
 				<div
@@ -268,13 +268,16 @@ export function ThreadDetail({
 					meta={
 						phone ? (
 							<>
-								<ThreadFlags conversation={conversation} parts="meta" />
+								<ThreadFlags conversation={conversation} parts="meta" owner={false} />
 								<CrmStatus conversation={conversation} />
-								<OwnerControl
-									conversation={conversation}
-									placement="header"
-									onAssigned={onAssigned}
-								/>
+								{/* At the row's end while it fits beside the badges; a narrow phone wraps it. */}
+								<div className="w-40 ml-auto empty:hidden">
+									<OwnerControl
+										conversation={conversation}
+										placement="strip"
+										onAssigned={onAssigned}
+									/>
+								</div>
 							</>
 						) : undefined
 					}

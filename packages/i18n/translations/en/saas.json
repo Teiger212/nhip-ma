@@ -912,10 +912,6 @@
 			"en": "In English",
 			"vi": "In Vietnamese"
 		},
-		"suggested": {
-			"template": "Suggested reply · template",
-			"model": "Suggested reply · AI"
-		},
 		"guestWroteAgain": "Guest wrote again",
 		"regenerate": "Regenerate",
 		"regenerating": "Regenerating…",
@@ -961,8 +957,8 @@
 		},
 		"paperworkFlag": "Guest mentioned paperwork or ownership. Do not invent Vietnamese law. Do not promise a pink book / sổ hồng.",
 		"crib": {
-			"noteUnsupported": "in English · {language} isn't supported · don't interview",
-			"note": "in {language} · don't interview"
+			"noteUnsupported": "in English · {language} isn't supported",
+			"note": "in {language}"
 		},
 		"details": {
 			"title": "Guest details",
@@ -1083,10 +1079,6 @@
 			"nhip": "Sent from Nhịp",
 			"oaEcho": "Sent from the office's app",
 			"autoReply": "Auto-reply"
-		},
-		"autoReply": {
-			"model": "Model",
-			"template": "Template"
 		},
 		"crm": {
 			"inCrm": "In CRM",

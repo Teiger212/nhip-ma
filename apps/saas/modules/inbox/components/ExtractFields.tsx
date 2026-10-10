@@ -102,7 +102,8 @@ function DetailLine({ details }: { details: Detail[] }) {
  * The one-shot extraction (Qualification, paperwork): the known facts, and a last row naming what
  * is still to ask. In the details rail a label/value grid; in the narrow pane's strip under the
  * header (#248), the same pairs along a line. On a phone the strip opens with the thread's
- * metadata badges (`meta`: pipe, owner, CRM status), which leave the header there (#94).
+ * metadata (`meta`: pipe, CRM status, a manager's owner select), which leave the header there
+ * (#94, #303).
  */
 export function ExtractFields({
 	conversation,

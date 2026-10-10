@@ -293,6 +293,17 @@ async function choose(select: Locator, label: string) {
  */
 type Owner = "unassigned" | "mine" | { other: string };
 
+/**
+ * An open thread of a manager's says whose it is once, in its owner select; the header carries no
+ * owner flag beside it (#303).
+ */
+async function expectThreadUnassigned(page: Page, message: string) {
+	await expect(assignControl(page), message).toHaveText(copy.unassigned);
+	await expect(openThread(page).getByTestId("thread-owner"), "no owner flag beside it").toHaveCount(
+		0,
+	);
+}
+
 async function expectOwner(where: Locator, owner: Owner, message?: string) {
 	const flag = where.getByTestId("thread-owner");
 	if (owner === "unassigned") {
@@ -406,7 +417,7 @@ test.describe.configure({ timeout: 120_000 });
 
 // scenario: docs/e2e-scenarios.md Assigning leads 1
 test.describe("Assign 1 — a new guest waits in Unassigned, for managers only", () => {
-	test("the manager finds the new guest in the Unassigned view, marked Unassigned in the list and the thread; for both agents it is not listed, counted or searched, its link opens nothing and the API answers 404", async ({
+	test("the manager finds the new guest in the Unassigned view, whose rows carry no owner flag, and the thread's owner select reads Unassigned; for both agents it is not listed, counted or searched, its link opens nothing and the API answers 404", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
@@ -415,8 +426,8 @@ test.describe("Assign 1 — a new guest waits in Unassigned, for managers only",
 		const guest = await office.newGuest();
 		const threadId = await assignerAs(manager.api).threadOf(guest.id);
 
-		// The manager: in the Unassigned view, which their Inbox opens on, marked so in the list
-		// and the thread.
+		// The manager: in the Unassigned view, which their Inbox opens on and which says it, so the
+		// row carries no owner flag (#303); the thread says it once, in its owner select.
 		const { page } = manager;
 		await openInbox(page);
 		await expect(view(page, "Unassigned", 1), "the Inbox opens on Unassigned").toHaveAttribute(
@@ -425,9 +436,13 @@ test.describe("Assign 1 — a new guest waits in Unassigned, for managers only",
 		);
 		const row = rowOf(page, guest);
 		await expect(row, "the new guest is under Unassigned").toBeVisible();
-		await expectOwner(row, "unassigned", "the row says Unassigned");
+		await expect(row.getByTestId("thread-status"), "the row is listed with its turn").toBeVisible();
+		await expect(
+			row.getByTestId("thread-owner"),
+			"the view says Unassigned, not the row",
+		).toHaveCount(0);
 		await row.click();
-		await expectOwner(openThread(page), "unassigned", "the thread's header says Unassigned");
+		await expectThreadUnassigned(page, "the thread's owner select reads Unassigned");
 
 		// Each agent: nothing at all in the office's Inbox, the nav counts nothing, and the
 		// thread can't be found or opened.
@@ -555,7 +570,7 @@ test.describe("Assign 6 — a reply from the vendor's own app assigns nothing", 
 		const thread = openThread(manager.page);
 		// The office's reply is in the thread: the echo arrived, and it assigned nothing.
 		await expect(thread.getByText(fromZaloApp, { exact: true })).toBeVisible();
-		await expectOwner(thread, "unassigned", "the thread is still Unassigned");
+		await expectThreadUnassigned(manager.page, "the thread is still Unassigned");
 
 		await expectHasNot(one, guest, threadId);
 		await expectHasNot(two, guest, threadId);

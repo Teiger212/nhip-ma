@@ -912,10 +912,6 @@
 			"en": "Bằng tiếng Anh",
 			"vi": "Bằng tiếng Việt"
 		},
-		"suggested": {
-			"template": "Gợi ý trả lời · mẫu",
-			"model": "Gợi ý trả lời · AI"
-		},
 		"guestWroteAgain": "Khách vừa nhắn thêm",
 		"regenerate": "Tạo lại",
 		"regenerating": "Đang tạo lại…",
@@ -961,8 +957,8 @@
 		},
 		"paperworkFlag": "Khách có nhắc giấy tờ hoặc sở hữu. Không bịa luật Việt Nam. Không hứa sổ hồng.",
 		"crib": {
-			"noteUnsupported": "bằng tiếng Anh · chưa hỗ trợ {language} · đừng hỏi dồn",
-			"note": "bằng {language} · đừng hỏi dồn"
+			"noteUnsupported": "bằng tiếng Anh · chưa hỗ trợ {language}",
+			"note": "bằng {language}"
 		},
 		"details": {
 			"title": "Thông tin khách",
@@ -1083,10 +1079,6 @@
 			"nhip": "Gửi từ Nhịp",
 			"oaEcho": "Gửi từ ứng dụng của văn phòng",
 			"autoReply": "Trả lời tự động"
-		},
-		"autoReply": {
-			"model": "Mô hình",
-			"template": "Mẫu"
 		},
 		"crm": {
 			"inCrm": "Trong CRM",
