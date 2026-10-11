@@ -29,6 +29,7 @@ import {
 	Wordmark,
 } from "@repo/ui";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
+import { TickingCount } from "@shared/components/TickingCount";
 import { UserMenu } from "@shared/components/UserMenu";
 import { KIT_SCREENS } from "@shared/lib/kit-screens";
 import { ContactRoundIcon, FileTextIcon, HomeIcon, InboxIcon, ShieldCheckIcon } from "lucide-react";
@@ -161,10 +162,10 @@ function NavItemLink({
 						>
 							{collapsed ? (
 								<Badge status="ink" size="corner">
-									{count > 99 ? "99+" : count}
+									<TickingCount value={count > 99 ? "99+" : count} />
 								</Badge>
 							) : (
-								<span className="text-sm font-bold tabular-nums">{count}</span>
+								<TickingCount value={count} className="text-sm font-bold tabular-nums" />
 							)}
 						</span>
 					) : null}

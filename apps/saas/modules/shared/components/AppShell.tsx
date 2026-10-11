@@ -13,6 +13,7 @@ import type { PropsWithChildren } from "react";
 import { NavBar, useShellYourTurnCount } from "./NavBar";
 import { NotificationCenter } from "./NotificationCenter";
 import { TabTitle } from "./TabTitle";
+import { TickingCount } from "./TickingCount";
 import { UserMenu } from "./UserMenu";
 
 /** While Nhịp is open: the Your-turn count in the tab title, and a toast when a guest writes (#136). */
@@ -49,7 +50,9 @@ function AppMobileChrome() {
 						aria-label={t("inbox.queueCount", { count: yourTurnCount })}
 						className="min-h-11 px-1 flex items-center"
 					>
-						<Badge status="ink">{yourTurnCount}</Badge>
+						<Badge status="ink">
+							<TickingCount value={yourTurnCount} />
+						</Badge>
 					</LocaleLink>
 				) : null}
 			</span>

@@ -3,7 +3,7 @@
 import { cn } from "@repo/ui";
 import { useHydrated } from "@shared/hooks/use-hydrated";
 import { useLocale } from "next-intl";
-import type { ReactNode } from "react";
+import { memo, type ReactNode, useCallback } from "react";
 
 import { guestLabel } from "../lib/display-name";
 import { formatInboxTimestamp } from "../lib/time";
@@ -24,18 +24,23 @@ import {
  * wrote. The plate shows only when it says something the view's tab doesn't (#327): under
  * Waiting, only the rows that aren't Waiting carry one. The marker keeps its fill either way. An `action` (a manager's "Assign to…" on Unassigned rows, ADR 0022) sits at the row's
  * end, beside the row's button rather than in it: a click on it never opens the thread.
+ * A row whose props are unchanged isn't rendered again (`memo`), so a send re-renders only the
+ * rows it changed (#330): its callbacks take the thread's id and stay the same between renders.
  */
-export function ThreadRow({
+export const ThreadRow = memo(function ThreadRow({
 	conversation,
 	active,
 	onOpen,
+	registerRow,
 	action,
 	ownerBadge = true,
 	viewSays = null,
 }: {
 	conversation: ConversationSummary;
 	active: boolean;
-	onOpen: () => void;
+	onOpen: (id: string) => void;
+	/** Hands the list the row's element, for the handoff's glide (#330). */
+	registerRow?: (id: string, node: HTMLLIElement | null) => void;
 	action?: ReactNode;
 	/** False where the view already says who holds every row (a manager's Unassigned, #303). */
 	ownerBadge?: boolean;
@@ -48,6 +53,11 @@ export function ThreadRow({
 	const preview = conversation.lastInboundText;
 	const name = guestLabel(conversation).text;
 	const when = conversation.lastGuestInboundAt;
+	const id = conversation.id;
+	const rowRef = useCallback(
+		(node: HTMLLIElement | null) => registerRow?.(id, node),
+		[registerRow, id],
+	);
 	// From `md` an action shows only on the row's hover, on focus within it, on the selected row
 	// and while its menu is open; it sits at the end of the name's line, so that line makes room
 	// for it and the plate moves left, never under the pill (#208). Where nothing hovers (below
@@ -65,6 +75,7 @@ export function ThreadRow({
 		// The row stays lit while the pointer is on its action, which sits over it. A hairline
 		// parts it from the row above, except where the selected row's own edge does.
 		<li
+			ref={rowRef}
 			data-test="thread-row"
 			data-active={active || undefined}
 			className="group/row px-1.5 before:inset-x-4 before:top-0 relative before:absolute before:h-px before:bg-border first:before:hidden data-active:before:hidden"
@@ -76,7 +87,7 @@ export function ThreadRow({
 					"gap-2.5 px-2.5 py-2 min-w-0 ease-out flex w-full cursor-pointer items-start overflow-hidden rounded-xl border text-left transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none",
 					active ? "border-primary bg-card" : "border-transparent group-hover/row:bg-card/70",
 				)}
-				onClick={onOpen}
+				onClick={() => onOpen(id)}
 			>
 				<LanguageMark code={conversation.guestLanguage} chip={chip} />
 				<span className="min-w-0 flex-1">
@@ -137,4 +148,4 @@ export function ThreadRow({
 			) : null}
 		</li>
 	);
-}
+});

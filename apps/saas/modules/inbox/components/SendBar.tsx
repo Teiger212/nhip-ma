@@ -2,7 +2,7 @@
 
 import { Button, cn } from "@repo/ui";
 import { useHydrated } from "@shared/hooks/use-hydrated";
-import { CheckIcon, SendIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, Loader2Icon, SendIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type { SendStatus } from "../lib/send-status";
@@ -12,7 +12,10 @@ import { formatInboxTimestamp } from "../lib/time";
  * The only send control (ADR 0006): one button that approves the reply for the open guest
  * message, next to what the last attempt came to: the last row of the reply box docked under the
  * conversation (#248). The status is decided in `sendStatusFor`; this only words it. While no
- * guest message waits, the box folds to `AnsweredLine` instead (#94).
+ * guest message waits, the box folds to `AnsweredLine` instead (#94). While a send is out the
+ * button keeps its blue and says it is busy; its icon gives way to a spinner only once the send
+ * passes 150ms, so a fast one never flashes it (#330). A failed send gets no motion: the red line,
+ * with its glyph, says what happened and that the reply is still in the box.
  */
 export function SendBar({
 	status,
@@ -44,6 +47,7 @@ export function SendBar({
 						: t("notSent");
 	const warn = Boolean(blockedReason) || status.kind === "error" || status.kind === "unknown";
 	const quiet = !blockedReason && status.kind === "none";
+	const failed = !blockedReason && status.kind === "error";
 	return (
 		<div className="gap-x-3 gap-y-2 flex flex-wrap items-center justify-between">
 			<output
@@ -55,23 +59,39 @@ export function SendBar({
 					quiet
 						? "sr-only"
 						: cn(
-								"font-medium min-w-0 flex-1 truncate",
+								"font-medium min-w-0 flex-1",
+								failed ? "gap-1.5 flex items-start" : "truncate",
 								warn ? "text-destructive" : "text-muted-foreground",
 							),
 				)}
 			>
-				{text}
+				{failed ? (
+					<>
+						<CircleAlertIcon aria-hidden="true" className="size-3.5 mt-px shrink-0" />
+						<span className="min-w-0 line-clamp-2">{text}</span>
+					</>
+				) : (
+					text
+				)}
 			</output>
 			<Button
 				type="button"
 				variant="primary"
 				size="lg"
 				className="md:h-10.5 md:w-auto ml-auto w-full shrink-0"
-				disabled={!canApprove || sending || Boolean(blockedReason)}
+				disabled={!canApprove || Boolean(blockedReason)}
+				aria-busy={sending || undefined}
 				data-test="approve-and-send"
-				onClick={onApprove}
+				onClick={sending ? undefined : onApprove}
 			>
-				<SendIcon aria-hidden="true" className="size-4.5" />
+				{sending ? (
+					<span aria-hidden="true" className="mr-1.5 size-4.5 grid shrink-0">
+						<SendIcon className="size-4.5 animate-busy-hide col-start-1 row-start-1" />
+						<Loader2Icon className="size-4.5 animate-busy-show col-start-1 row-start-1" />
+					</span>
+				) : (
+					<SendIcon aria-hidden="true" className="size-4.5" />
+				)}
 				{t("approveAndSend")}
 			</Button>
 		</div>

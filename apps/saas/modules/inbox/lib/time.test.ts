@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { formatDateTime, formatInboxTimestamp } from "./time";
+import { formatClockTime, formatDateTime, formatInboxTimestamp } from "./time";
 
 const now = Date.parse("2026-09-05T10:00:00.000Z");
 
@@ -48,4 +48,13 @@ test("the year is the one on the clock it is read on: New Year's Eve in UTC is a
 	expect(formatDateTime(eve, "en", { nowMs: newYear, timeZone: "UTC" })).toBe(
 		"Dec 31, 2026, 8:00 PM",
 	);
+});
+
+// rule: #330 "Last reply sent to {name} at {time}": a clock time only when it was today.
+test("today's moment reads as a clock time; an earlier day's keeps its date", () => {
+	const earlier = new Date(now - 10 * 60_000).toISOString();
+	expect(formatClockTime(earlier, "en", now)).toMatch(/^\d{1,2}:\d{2}\s?[AP]M$/);
+	const lastWeek = new Date(now - 6 * 24 * 60 * 60_000).toISOString();
+	expect(formatClockTime(lastWeek, "en", now)).toBe(formatDateTime(lastWeek, "en", { nowMs: now }));
+	expect(formatClockTime("not-a-date", "en", now)).toBe("not-a-date");
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Input, cn } from "@repo/ui";
+import { TickingCount } from "@shared/components/TickingCount";
 import { SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef } from "react";
@@ -13,7 +14,8 @@ import type { InboxView, QueueCounts } from "../lib/queue";
  * under them repeats them (Eyal, 2026-10-11). While the search holds text, an X at its end clears
  * it and leaves the cursor in the field (a 44px target on a phone, inside the field's own height).
  * The tabs share the row in equal columns and never scroll or wrap (#210); each holds its whole
- * label and count. They live inside the list, so they hide with it.
+ * label and count. They live inside the list, so they hide with it. A count ticks when it changes
+ * (#330).
  */
 export function InboxToolbar({
 	query,
@@ -96,7 +98,10 @@ export function InboxToolbar({
 							>
 								{manager && option === "yourTurn" ? t("views.waiting") : t(`views.${option}`)}
 							</span>
-							<span className="text-sm font-bold leading-tight tabular-nums">{counts[option]}</span>
+							<TickingCount
+								value={counts[option]}
+								className="text-sm font-bold leading-tight tabular-nums"
+							/>
 						</button>
 					);
 				})}
