@@ -121,3 +121,67 @@ test.describe("Thread layout 6 — an answered thread shows no draft until the g
 		}
 	});
 });
+
+/** All caught up's words in the open card (#330), as the scenario words them. */
+const CAUGHT_UP = "All caught up.";
+const CAUGHT_UP_NEXT = "No guest is waiting on you. The next one to write will open here.";
+
+// scenario: docs/e2e-scenarios.md Thread layout 7
+test.describe("Thread layout 7 — the last reply sent leaves the agent All caught up, with a way back on a phone", () => {
+	test("the agent approves the only waiting guest's reply: the card says All caught up and names the reply that went; at 390 wide it offers View sent, which shows the list on Sent", async ({
+		admin,
+		browser,
+		office,
+	}) => {
+		test.setTimeout(120_000);
+		const guest = office.newGuest();
+		const first = `Hello, a two-bedroom in Tay Ho? ${randomUUID().slice(0, 8)}`;
+		await guest.write(first);
+
+		let agent: Joined | undefined;
+		let manager: Joined | undefined;
+		try {
+			[agent, manager] = await Promise.all([
+				joinOffice(admin, browser, office.id, "member", "caught-up").then((a) => (agent = a)),
+				joinOffice(admin, browser, office.id, "admin", "caught-up-manager").then(
+					(m) => (manager = m),
+				),
+			]);
+			await assignerAs(manager.api).assignGuestTo(guest.id, agent.userId);
+			const { page } = agent;
+
+			// Your turn holds the one guest: the agent opens them and approves the reply.
+			await page.goto("/en/inbox?view=yourTurn");
+			await page
+				.getByRole("complementary")
+				.getByRole("button", { name: new RegExp(`^${guest.id}\\b`) })
+				.click();
+			await expect(openThread(page).getByText(first, { exact: true })).toBeVisible();
+			await replyBox(page).fill(`Reply to ${guest.id}`);
+			const sent = page.waitForResponse((r) => r.url().endsWith("/approve"));
+			await openThread(page).getByTestId("approve-and-send").click();
+			expect((await sent).status(), "the reply is sent").toBe(200);
+
+			// The card says the queue is done, and which reply went last.
+			const caughtUp = openThread(page).getByTestId("caught-up");
+			await expect(caughtUp.getByText(CAUGHT_UP, { exact: true })).toBeVisible();
+			await expect(caughtUp.getByText(CAUGHT_UP_NEXT, { exact: true })).toBeVisible();
+			await expect(caughtUp.getByTestId("caught-up-last-sent")).toHaveText(
+				new RegExp(`^Last reply sent to ${guest.id} at .+$`),
+			);
+
+			// On a phone the card is the whole screen: View sent is the way back to the list.
+			await page.setViewportSize({ width: 390, height: 844 });
+			const viewSent = openThread(page).getByRole("button", { name: "View sent", exact: true });
+			await expect(viewSent, "the phone's card offers View sent").toBeVisible();
+			await viewSent.click();
+			await expect(
+				page.getByRole("button", { name: /^Sent \d+$/ }),
+				"the list is back, on Sent",
+			).toHaveAttribute("aria-pressed", "true");
+			await expect(openThread(page), "the card has given the screen back to the list").toBeHidden();
+		} finally {
+			await Promise.all([agent?.close(), manager?.close()]);
+		}
+	});
+});
