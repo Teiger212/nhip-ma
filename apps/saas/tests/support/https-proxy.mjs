@@ -5,6 +5,9 @@
  * memory, and its temp folder deleted at once, so a proxy killed without a signal leaves nothing
  * behind; Playwright trusts it with ignoreHTTPSErrors. Headers pass through as sent,
  * including each test's own x-forwarded-for (support/session.ts, clientIpHeaders).
+ * Keep-alive (#333): Node's clients and servers both drop an idle socket after 5 s, so a client
+ * could reuse one the proxy was closing ("socket hang up"). The proxy keeps idle sockets longer
+ * than any client, and opens a fresh socket to the app for every request.
  *
  *   node tests/support/https-proxy.mjs <httpsPort> <targetPort>
  */
@@ -49,6 +52,7 @@ const server = https.createServer(tls, (req, res) => {
 		{
 			host: "127.0.0.1",
 			port: Number(targetPort),
+			agent: false,
 			method: req.method,
 			path: req.url,
 			headers: {
@@ -68,6 +72,8 @@ const server = https.createServer(tls, (req, res) => {
 	});
 	req.pipe(upstream);
 });
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
 
 server.listen(Number(httpsPort), () => {
 	console.info(`e2e https proxy: https://localhost:${httpsPort} -> http://127.0.0.1:${targetPort}`);
