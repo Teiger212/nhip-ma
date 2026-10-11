@@ -219,10 +219,15 @@ async function expectInCrm(page: Page) {
 	);
 }
 
+/** The turn plate in `region` ("Your turn", "Waiting", "Sent", or the CRM's Won or Lost). */
+function turnPlateIn(region: Locator) {
+	return region.getByTestId("thread-status").filter({ visible: true });
+}
+
 /**
  * Wide: one set of details, to the right of the conversation (left edge at or right of every
- * message's right edge and the reply box's), starting below the header; "In CRM" and Assign to…
- * in them, not in the header.
+ * message's right edge and the reply box's), starting below the header; Assign to… in them, not
+ * in the header; "In CRM" in the header after the turn plate (#314), not in the details.
  */
 async function expectDetailsBeside(page: Page) {
 	await expect(details(page), "exactly one set of guest details").toHaveCount(1);
@@ -246,10 +251,13 @@ async function expectDetailsBeside(page: Page) {
 		`the details are right of the reply box (its right edge ${reply.x + reply.width})`,
 	).toBeGreaterThanOrEqual(reply.x + reply.width - PX);
 
-	await expect(crmStatusIn(details(page)), "In CRM is in the details").toHaveText(IN_CRM);
 	await expect(ownerIn(details(page)), "Assign to… is in the details").toHaveCount(1);
-	await expect(crmStatusIn(header(page)), "no In CRM in the header").toHaveCount(0);
 	await expect(ownerIn(header(page)), "no Assign to… in the header").toHaveCount(0);
+	await expect(crmStatusIn(header(page)), "In CRM is in the header").toHaveText(IN_CRM);
+	await expect(crmStatusIn(details(page)), "no In CRM in the details").toHaveCount(0);
+	const plate = await boxOf(turnPlateIn(header(page)), "the header's turn plate");
+	const crm = await boxOf(crmStatusIn(header(page)), "the header's In CRM");
+	expect(crm.x, "In CRM follows the turn plate").toBeGreaterThanOrEqual(plate.x + plate.width - PX);
 }
 
 /**

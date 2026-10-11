@@ -24,8 +24,10 @@
   office's bubbles now read like a guest message's translation: the translate glyph, then the
   text, with no "In English" or "Translation" label above it. The glyph still says which one it
   is when you hover it.
-- **The CRM status reads like the pipe:** a small glyph and "In CRM" or "Not in CRM yet" in
-  slate, no longer a badge.
+- **The CRM status reads like the pipe, in the thread header:** a small glyph and "In CRM" or
+  "Not in CRM yet" in slate, no longer a badge. With the details open beside the thread, it now
+  sits in the header after Your turn, past a thin divider, and the details lose their CRM
+  section. An office with no CRM shows neither.
 - **The view tabs are slots:** a small label over the full count, with the view you're on
   filled blue.
 - **Home takes the same look.** The funnel's figures are bold, Leads by day marks today in blue

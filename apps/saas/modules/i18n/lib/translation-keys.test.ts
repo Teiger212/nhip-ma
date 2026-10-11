@@ -27,7 +27,6 @@ const SAME_IN_BOTH = new Set([
 	"saas:inbox.pipes.zalo",
 	"saas:inbox.pipes.whatsapp",
 	"saas:inbox.alerts.body",
-	"saas:inbox.details.crm",
 	"saas:inbox.managerCount.line",
 	"shared:pricing.products.pro.title",
 ]);

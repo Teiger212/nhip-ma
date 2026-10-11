@@ -640,7 +640,9 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    CRM opens a guest's thread at 1563×784 with the sidebar open, and again at 1366×768 with the
    sidebar collapsed. The details are to the right of the conversation: their left edge is at or
    right of every message's right edge, and of the reply box's, and they start below the header.
-   "In CRM" and Assign to… are in the details, not in the header.
+   Assign to… is in the details, not in the header. "In CRM" is in the header, after the turn
+   plate (its left edge at or right of the plate's right edge; Eyal, 2026-10-11, #314), not in the
+   details.
    Covered by Thread layout 2's spec (#278): its collapse step, at 1366×768 with the sidebar
    collapsed, is this wide pane; 1563×784 is a viewport variant. What every Thread layout test
    shares (`apps/saas/tests/thread-layout.spec.ts`): an office of the test's own on
@@ -650,13 +652,13 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    the details are looked for on the whole page, not only inside the `article`; "in / not in" is
    what a person sees: a copy hidden by CSS counts as absent; the sidebar's state is told by the
    Home link's width, as in Sidebar 1, and collapsed with `sidebar-toggle` before the thread opens).
-2. **On a narrow pane the details fold into a strip under the header, and the CRM status and the
-   owner move into the header.** The same thread at 1366×768 with the sidebar open: the details
+2. **On a narrow pane the details fold into a strip under the header, and the owner joins the
+   CRM status in the header.** The same thread at 1366×768 with the sidebar open: the details
    are under the header and above the first message, at least as wide as the messages' column
    (left edge at or left of each message's, right edge at or right of each's). "In CRM" and Assign
    to… are inside the header, not in the details. Collapsing the sidebar in the same window
-   brings the details back beside the conversation, with "In CRM" and Assign to… in them;
-   expanding it folds them into the strip again.
+   brings the details back beside the conversation, with Assign to… in them and "In CRM" in the
+   header after the turn plate, as in 1; expanding it folds them into the strip again.
    Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 2; set up as in 1; each layout
    after a sidebar change is polled until it holds, the sidebar's width animating).
 3. **The reply box is in view without scrolling, on a thread of ten messages.** A guest has

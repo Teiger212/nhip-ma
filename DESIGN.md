@@ -234,8 +234,9 @@ one at a time.
 reply dock at its foot, always in view; beside it, the guest's details in a 300px rail
 (`w-thread-rail`) behind a hairline. The rail shows from 46rem (736px) of the card's own width,
 never the window's: at 1440 and 1563 with the sidebar open, and at 1366 with it collapsed; at
-1366 with it open, and on a phone, the details fold into a strip under the header, and the CRM
-status and a manager's Assign to move into the header (or, on a phone, the strip's first row).
+1366 with it open, and on a phone, the details fold into a strip under the header, and a
+manager's Assign to joins the CRM status at the header's end (on a phone, both open the strip).
+Beside the rail, the CRM status sits in the header after the plate, past a hairline (#314).
 The conversation opens on its latest message and follows new ones while the operator is within
 80px of it; scrolled up, a "New message" button takes them down.
 
@@ -317,8 +318,10 @@ to make room; below `md` a 44px target over the tags' line. Quiet threads fold u
 
 ### Thread header
 
-The 38px marker, the name in Thread Title, the pipe, the 30px plate; at the end, in a narrow
-card, the CRM status and the manager's Assign to; then the thread's actions menu. On a phone:
+The 38px marker, the name in Thread Title, the pipe, the 30px plate; beside the rail, a 1px × 20px
+hairline and the CRM status (none, nor the hairline, without a CRM; Eyal, 2026-10-11, #314). At
+the end, in a narrow card, the CRM status and the manager's Assign to; then the thread's actions
+menu. On a phone:
 back, marker, name, pipe and plate on one line (a manager's pipe as its glyph alone, to leave
 room for the actions menu).
 
@@ -357,8 +360,8 @@ list; the area's term is for screen readers, where the pin stands for it. Nothin
 details opens or closes.
 
 Below it, past a hairline, **Guest** (800): Language (its tag), Nationality, In Vietnam now,
-Paperwork, as a label/value list (`grid-cols-fields`); then **CRM** (the status; no section
-without a CRM) and **Owner** (a manager's Assign to; an agent's read-only name).
+Paperwork, as a label/value list (`grid-cols-fields`); then **Owner** (a manager's Assign to; an
+agent's read-only name). The CRM status is in the header, not the rail (#314).
 
 The **strip** (a narrow card or a phone): a marble band under the header. First the stay as
 one 44px white line: pin, the area in bold, rent or buy, beds and move-in in Slate, cut with an
