@@ -42,7 +42,7 @@ test("a key alone is enough: both tasks get their default model and cap", () => 
 		apiKey: "sk",
 		baseUrl: DEFAULT_DRAFT_BASE_URL,
 		draft: { model: "anthropic/claude-haiku-5.5", dailyCap: 50 },
-		translate: { model: "anthropic/claude-haiku-5.5", dailyCap: 1000 },
+		translate: { model: "google/gemini-3.1-flash-lite", dailyCap: 1000 },
 		stub: [],
 	});
 	const layer = draftAdapterFromConfig(config, { claim });
