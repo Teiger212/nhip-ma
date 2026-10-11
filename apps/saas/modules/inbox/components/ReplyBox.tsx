@@ -47,11 +47,14 @@ export function ReplyBox({
 	return (
 		<section className="gap-2 flex flex-col">
 			<div className="gap-x-2 gap-y-0.5 flex flex-wrap items-center">
-				<label htmlFor="inbox-reply" className="font-semibold tracking-tight text-sm font-heading">
+				<label htmlFor="inbox-reply" className="text-sm font-extrabold">
 					{t("reply")}
 				</label>
 				{note ? (
-					<p className="text-xs min-w-0 text-muted-foreground" title={t("forYouHint")}>
+					<p
+						className="text-note font-medium min-w-0 text-muted-foreground"
+						title={t("forYouHint")}
+					>
 						<span className="sr-only">{t("forYou")}: </span>
 						{note}
 					</p>
@@ -65,9 +68,9 @@ export function ReplyBox({
 						) : null}
 						<Button
 							type="button"
-							variant="ghost"
+							variant="secondary"
 							size="sm"
-							className="min-h-11"
+							className="min-h-11 md:min-h-8"
 							disabled={regenerating}
 							onClick={onRegenerate}
 						>
@@ -90,7 +93,7 @@ export function ReplyBox({
 				data-source={edited ? undefined : draftSource}
 			/>
 			{officeLine ? (
-				<OfficeLine line={officeLine} className="px-1 max-h-24 overflow-y-auto" />
+				<OfficeLine line={officeLine} className="px-0.5 max-h-24 overflow-y-auto" />
 			) : null}
 		</section>
 	);

@@ -1,30 +1,48 @@
 "use client";
 
 import { cn } from "@repo/ui";
+import { MapPinIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type ReactNode, useMemo } from "react";
+import { Fragment, type ReactNode, useMemo } from "react";
 
 import { arrangeExtractRows, type ExtractFieldId, type ExtractRow } from "../lib/extract-rows";
+import { languageTone } from "../lib/fact-tags";
 import { formatGuestDetail } from "../lib/guest-details-format";
 import { isSupportedLanguage, languageName } from "../lib/language-name";
 import type { Conversation } from "../lib/types";
+import { FactTag } from "./ThreadParts";
 
-/** One label and value of the details, as the operator reads it. */
-type Detail = {
-	key: string;
-	label: string;
-	value: string;
-	/** What the guest still owes, in the Waiting tone (#244). */
-	missing?: boolean;
+/** The stay's own facts: what the guest wants, as the booking summary reads it (#314). */
+const STAY_FIELDS = ["area", "rentOrBuy", "beds", "moveIn", "budget"] as const;
+/** The guest's own facts, under the stay. */
+const GUEST_FIELDS = ["language", "nationality", "inVietnamNow", "paperwork"] as const;
+
+type StayField = (typeof STAY_FIELDS)[number];
+type GuestField = (typeof GUEST_FIELDS)[number];
+
+/** The guest's details as the operator reads them: each known fact in words, and what to ask. */
+type Details = {
+	values: Partial<Record<ExtractFieldId, string>>;
+	/** The guest language's code, for its tag's colour. */
+	languageCode: string | null;
+	/** What the guest still owes (#244), in the auto-reply's order, named in words. */
+	missing: string | null;
+	label: (id: ExtractFieldId) => string;
+	missingLabel: string;
+	notGiven: string;
 };
 
 /**
- * The details to show, translated: every known fact, then one "Missing" row naming what the agent
- * should still ask for (#244). Presence was decided upstream from the values; nothing missing, no row.
+ * The details to show, translated: every known fact, then what the agent should still ask for
+ * (#244). Presence was decided upstream from the values, never from rendered text.
  */
-function useDetails(rows: ExtractRow[], missing: ExtractFieldId[]): Detail[] {
+function useDetails(conversation: Conversation): Details {
 	const t = useTranslations("inbox");
 	const locale = useLocale();
+	const { rows, missing } = useMemo(
+		() => arrangeExtractRows(conversation.oneShot),
+		[conversation.oneShot],
+	);
 	const value = (row: ExtractRow): string => {
 		switch (row.id) {
 			case "language": {
@@ -49,49 +67,76 @@ function useDetails(rows: ExtractRow[], missing: ExtractFieldId[]): Detail[] {
 				);
 		}
 	};
-	const details: Detail[] = rows.map((row) => ({
-		key: row.id,
-		label: t(`fields.${row.id}`),
-		value: value(row),
-	}));
-	if (missing.length > 0) {
-		details.push({
-			key: "missing",
-			label: t("missingLabel"),
-			value: missing.map((id) => t(`fields.${id}`).toLocaleLowerCase(locale)).join(", "),
-			missing: true,
-		});
-	}
-	return details;
+	const languageRow = rows.find((row) => row.id === "language");
+	return {
+		values: Object.fromEntries(rows.map((row) => [row.id, value(row)])),
+		languageCode: languageRow ? String(languageRow.value) : null,
+		missing:
+			missing.length > 0
+				? missing.map((id) => t(`fields.${id}`).toLocaleLowerCase(locale)).join(", ")
+				: null,
+		label: (id) => t(`fields.${id}`),
+		missingLabel: t("missingLabel"),
+		notGiven: t("details.notGiven"),
+	};
 }
 
-/** A value in ink, or, for what is missing, in the Waiting tone. */
-function valueTone(detail: Detail): string {
-	return detail.missing ? "font-medium text-warning" : "font-medium text-foreground";
-}
-
-/** The rail's details: a label/value grid. */
-function DetailGrid({ details }: { details: Detail[] }) {
+/** A missing fact's value: a dash to the eye, "Not given yet" to a screen reader. */
+function NotGiven({ notGiven }: { notGiven: string }) {
 	return (
-		<dl className="gap-x-3 gap-y-2 text-sm min-w-0 grid-cols-fields grid">
-			{details.map((detail) => (
-				<div key={detail.key} className="contents">
-					<dt className="text-muted-foreground">{detail.label}</dt>
-					<dd className={cn("min-w-0", valueTone(detail))}>{detail.value}</dd>
-				</div>
-			))}
-		</dl>
+		<>
+			<span aria-hidden="true">—</span>
+			<span className="sr-only">{notGiven}</span>
+		</>
 	);
 }
 
-/** The strip's details: label and value pairs running along one line, wrapping when they must. */
-function DetailLine({ details }: { details: Detail[] }) {
+/** The Missing row (#244): a term and its value in the Waiting tone, one more row of the stay. */
+function MissingRow({ details, className }: { details: Details; className?: string }) {
+	if (!details.missing) return null;
 	return (
-		<dl className="gap-x-4 gap-y-1 min-w-0 flex flex-wrap items-baseline">
-			{details.map((detail) => (
-				<div key={detail.key} className="gap-1.5 min-w-0 flex items-baseline">
-					<dt className="shrink-0 text-muted-foreground">{detail.label}</dt>
-					<dd className={valueTone(detail)}>{detail.value}</dd>
+		<div className={cn("gap-1.5 min-w-0 flex items-baseline", className)}>
+			<dt className="font-semibold shrink-0 text-muted-foreground">{details.missingLabel}</dt>
+			<dd className="font-semibold min-w-0 text-muted-foreground">{details.missing}</dd>
+		</div>
+	);
+}
+
+/** A guest fact's value: the language as its coloured tag, anything else in ink. */
+function guestValue(details: Details, id: GuestField): ReactNode {
+	const value = details.values[id];
+	if (id === "language" && value && details.languageCode) {
+		return (
+			<FactTag tone={languageTone(details.languageCode)} wrap>
+				{value}
+			</FactTag>
+		);
+	}
+	return value;
+}
+
+/** The guest's own facts, those Nhịp has: a label/value list, or pairs along a line. */
+function GuestFacts({ details, layout }: { details: Details; layout: "rail" | "strip" }) {
+	const known = GUEST_FIELDS.filter((id) => details.values[id] !== undefined);
+	if (known.length === 0) return null;
+	if (layout === "rail") {
+		return (
+			<dl className="gap-x-3 gap-y-2.5 text-sm min-w-0 grid-cols-fields grid items-baseline">
+				{known.map((id) => (
+					<Fragment key={id}>
+						<dt className="text-note font-medium text-muted-foreground">{details.label(id)}</dt>
+						<dd className="font-bold min-w-0">{guestValue(details, id)}</dd>
+					</Fragment>
+				))}
+			</dl>
+		);
+	}
+	return (
+		<dl className="gap-x-4 gap-y-1 text-xs min-w-0 flex flex-wrap items-baseline">
+			{known.map((id) => (
+				<div key={id} className="gap-1.5 min-w-0 flex items-baseline">
+					<dt className="shrink-0 text-muted-foreground">{details.label(id)}</dt>
+					<dd className="font-semibold min-w-0">{guestValue(details, id)}</dd>
 				</div>
 			))}
 		</dl>
@@ -99,11 +144,149 @@ function DetailLine({ details }: { details: Detail[] }) {
 }
 
 /**
- * The one-shot extraction (Qualification, paperwork): the known facts, and a last row naming what
- * is still to ask. In the details rail a label/value grid; in the narrow pane's strip under the
- * header (#248), the same pairs along a line. On a phone the strip opens with the thread's
- * metadata (`meta`: pipe, CRM status, a manager's owner select), which leave the header there
- * (#94, #303).
+ * The stay card (#314), at the top of the details rail, the way a booking summary opens on the
+ * slot you picked: the area as its title, rent or buy and beds under it, then a field box with
+ * the move-in and the budget. A fact the guest hasn't given is a dashed open slot, and the
+ * Missing row under the box names what to ask for (#244). Its labels stay terms of one list, so
+ * the area's is there for a screen reader where the pin stands for it.
+ */
+function StayCard({ details }: { details: Details }) {
+	const { values, label, notGiven } = details;
+	const subtitle = (["rentOrBuy", "beds"] as const).map((id) =>
+		values[id] !== undefined ? (
+			<div key={id} className="contents">
+				<dt className="sr-only">{label(id)}</dt>
+				<dd>{values[id]}</dd>
+			</div>
+		) : (
+			<div
+				key={id}
+				className="gap-1 px-1.5 text-xs border-open inline-flex items-baseline rounded-md bg-canvas"
+			>
+				<dt>{label(id)}</dt>
+				<dd>
+					<NotGiven notGiven={notGiven} />
+				</dd>
+			</div>
+		),
+	);
+	return (
+		<dl className="flex flex-col">
+			<div className="gap-2.5 flex items-start">
+				<MapPinIcon aria-hidden="true" className="mt-1.5 size-4.5 shrink-0 text-muted-foreground" />
+				<div className="min-w-0 flex-1">
+					{values.area !== undefined ? (
+						<>
+							<dt className="sr-only">{label("area")}</dt>
+							<dd className="text-stay font-extrabold break-words">{values.area}</dd>
+						</>
+					) : (
+						<div className="gap-2 px-3 py-1.5 border-open flex items-baseline rounded-lg bg-canvas">
+							<dt className="text-2xs font-extrabold tracking-wider uppercase">{label("area")}</dt>
+							<dd className="text-base font-bold text-muted-foreground">
+								<NotGiven notGiven={notGiven} />
+							</dd>
+						</div>
+					)}
+					<div className="mt-1 gap-x-1.5 gap-y-1 text-sm font-semibold flex flex-wrap items-baseline text-muted-foreground">
+						{subtitle[0]}
+						<span aria-hidden="true">·</span>
+						{subtitle[1]}
+					</div>
+				</div>
+			</div>
+			<div className="mt-4 flex flex-col overflow-hidden rounded-lg border">
+				{(["moveIn", "budget"] as const).map((id) => {
+					const value = values[id];
+					return value !== undefined ? (
+						<div key={id} className="px-3 pt-2.5 pb-3 border-t first:border-t-0">
+							<dt className="text-2xs font-extrabold tracking-wider uppercase">{label(id)}</dt>
+							<dd
+								className={cn(
+									"mt-0.5 break-words",
+									id === "budget" ? "text-base font-bold" : "text-sm font-semibold",
+								)}
+							>
+								{value}
+							</dd>
+						</div>
+					) : (
+						<div
+							key={id}
+							className="gap-3 px-3 pt-2.5 pb-3 border-open flex items-center bg-canvas first:rounded-t-lg last:rounded-b-lg"
+						>
+							<div className="min-w-0 flex-1">
+								<dt className="text-2xs font-extrabold tracking-wider uppercase">{label(id)}</dt>
+								<dd className="mt-0.5 text-base font-bold text-muted-foreground">
+									<NotGiven notGiven={notGiven} />
+								</dd>
+							</div>
+							<span
+								aria-hidden="true"
+								className="size-7.5 text-sm font-extrabold border-open grid shrink-0 place-items-center rounded-full text-muted-foreground"
+							>
+								?
+							</span>
+						</div>
+					);
+				})}
+			</div>
+			<MissingRow details={details} className="mt-3 text-sm" />
+		</dl>
+	);
+}
+
+/**
+ * The narrow pane's stay (#248, #314): the same facts along one white box on the canvas band,
+ * the area first in bold, then rent or buy, beds, move-in, and the budget in its own frame. A
+ * fact not given is a small dashed slot; the Missing row closes the box.
+ */
+function StayLine({ details }: { details: Details }) {
+	const { values, label, notGiven } = details;
+	return (
+		<dl className="gap-x-2 gap-y-1.5 px-3 py-2 text-note min-w-0 flex flex-wrap items-center rounded-lg border bg-card">
+			<MapPinIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+			{STAY_FIELDS.map((id: StayField) => {
+				const value = values[id];
+				if (value === undefined) {
+					return (
+						<div
+							key={id}
+							className="gap-1 px-1.5 text-xs border-open inline-flex items-baseline rounded-md bg-canvas text-muted-foreground"
+						>
+							<dt>{label(id)}</dt>
+							<dd>
+								<NotGiven notGiven={notGiven} />
+							</dd>
+						</div>
+					);
+				}
+				return (
+					<div key={id} className="contents">
+						<dt className="sr-only">{label(id)}</dt>
+						<dd
+							className={cn(
+								id === "area" && "font-extrabold",
+								id === "budget" && "px-1.5 font-bold rounded-sm border",
+								id !== "area" && id !== "budget" && "font-semibold text-muted-foreground",
+							)}
+						>
+							{value}
+						</dd>
+					</div>
+				);
+			})}
+			<MissingRow details={details} className="text-xs" />
+		</dl>
+	);
+}
+
+/**
+ * The guest's details (#314): the stay card, then the guest's own facts. In the details rail
+ * the stay is a card over a label/value list; in the narrow pane's strip under the header
+ * (#248), a band with the stay along one line and the facts after it. On a phone the strip
+ * opens with the thread's metadata (`meta`: pipe, CRM status, a manager's owner select), which
+ * leave the header there (#94, #303). Nothing in it opens or closes.
  */
 export function ExtractFields({
 	conversation,
@@ -114,21 +297,26 @@ export function ExtractFields({
 	layout: "rail" | "strip";
 	meta?: ReactNode;
 }) {
-	const { rows, missing } = useMemo(
-		() => arrangeExtractRows(conversation.oneShot),
-		[conversation.oneShot],
-	);
-	const details = useDetails(rows, missing);
+	const t = useTranslations("inbox");
+	const details = useDetails(conversation);
 	if (layout === "rail") {
-		return <DetailGrid details={details} />;
+		return (
+			<div className="flex flex-col">
+				<StayCard details={details} />
+				<hr className="mt-5.5 mb-4" />
+				<h3 className="mb-3 text-base font-extrabold">{t("details.guest")}</h3>
+				<GuestFacts details={details} layout="rail" />
+			</div>
+		);
 	}
 	return (
 		<div
 			data-test="thread-details"
-			className="gap-1.5 px-3 py-2 text-xs md:px-4 flex shrink-0 flex-col border-b bg-muted/40"
+			className="gap-2 px-3 py-2.5 md:px-4 flex shrink-0 flex-col border-b bg-canvas"
 		>
-			{meta ? <div className="gap-1.5 flex flex-wrap items-center">{meta}</div> : null}
-			<DetailLine details={details} />
+			{meta ? <div className="gap-2 flex flex-wrap items-center">{meta}</div> : null}
+			<StayLine details={details} />
+			<GuestFacts details={details} layout="strip" />
 		</div>
 	);
 }

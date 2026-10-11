@@ -19,6 +19,7 @@ function conv(
 		crm: null,
 		updatedAt: new Date().toISOString(),
 		guestLanguage: null,
+		facts: null,
 		lastInboundText: "",
 		...partial,
 	};

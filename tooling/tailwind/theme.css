@@ -1,96 +1,151 @@
 @layer base {
 	/*
-	 * Nhịp palette (Flat, from the ui-ux-pro-max "messaging inbox triage" read). The state
-	 * colors are set as text on their own 12% tint (the turn flags), so the light values are
-	 * dark enough for 4.5:1 there, on the selected row included.
-	 * Blue is the one action color; red is destructive and errors only;
-	 * pending is amber, sent is green. The app sits on the canvas; content sits on
-	 * cards (panels). Charts use one blue at two strengths, and the hatch marks a number
-	 * Nhịp does not have yet.
+	 * Navy on Marble (DESIGN.md; Eyal, 2026-10-11, #314). Ink Navy is every glyph; Slate is the
+	 * secondary text; Mist marks only, never text. The app sits on a marble canvas; content sits
+	 * on white paper edged in 1px hairlines. Signal Blue fills only the primary action and what is
+	 * selected. Navy fills the secondary action and the Your turn plate. Red is destructive and
+	 * errors only. The fact tags are cool, muted pairs (fill and text), never Signal Blue, each
+	 * readable at 4.5:1 or better.
 	 */
 	:root {
-		--background: #ffffff;
-		--foreground: #0f172a;
+		--background: #f8f9fb;
+		--foreground: #0b3558;
 		--card: #ffffff;
-		--card-foreground: #0f172a;
+		--card-foreground: #0b3558;
 		--popover: #ffffff;
-		--popover-foreground: #0f172a;
-		--primary: #2563eb;
+		--popover-foreground: #0b3558;
+		--primary: #006bff;
 		--primary-foreground: #ffffff;
-		--secondary: #f1f5fd;
-		--secondary-foreground: #1e3a8a;
-		--muted: #f1f5fd;
-		--muted-foreground: #475569;
-		--accent: #e4ecfc;
-		--accent-foreground: #1e3a8a;
-		--touch: #1d4ed8;
+		--secondary: #0b3558;
+		--secondary-foreground: #ffffff;
+		--muted: #f0f3f8;
+		--muted-foreground: #476788;
+		--muted-strong: #e7ecf3;
+		--accent: #e6f0ff;
+		--accent-foreground: #0b3558;
+		--mist: #a6bbd1;
+		--touch: #006bff;
 		--touch-foreground: #ffffff;
-		--border: #e4ecfc;
-		--input: #cbd9f5;
-		--ring: #2563eb;
+		--border: #d4e0ed;
+		--input: #d4e0ed;
+		--ring: #006bff;
 		--destructive: #dc2626;
 		--destructive-foreground: #ffffff;
 		--success: #166534;
 		--success-foreground: #ffffff;
 		--warning: #92400e;
 		--warning-foreground: #ffffff;
-		--canvas: #f2f5fb;
-		--chart-strong: #2563eb;
-		--chart-soft: #9db9f2;
-		--chart-track: #eef3fd;
-		--hatch: #cbd9f5;
-		--sidebar: #f2f5fb;
-		--sidebar-foreground: #0f172a;
-		--sidebar-primary: #2563eb;
+		--canvas: #f8f9fb;
+		--chart-strong: #006bff;
+		--chart-soft: #9cc4ff;
+		--chart-track: #edf3fb;
+		--hatch: #d4e0ed;
+		--sidebar: #f8f9fb;
+		--sidebar-foreground: #0b3558;
+		--sidebar-primary: #006bff;
 		--sidebar-primary-foreground: #ffffff;
-		--sidebar-accent: #e4ecfc;
-		--sidebar-accent-foreground: #1e3a8a;
-		--sidebar-border: #e4ecfc;
-		--sidebar-ring: #2563eb;
-		--radius: 0.375rem;
+		--sidebar-accent: #ffffff;
+		--sidebar-accent-foreground: #0b3558;
+		--sidebar-border: #d4e0ed;
+		--sidebar-ring: #006bff;
+		--tag-violet: #ece9f7;
+		--tag-violet-foreground: #4f3f8a;
+		--tag-teal: #e0f0ed;
+		--tag-teal-foreground: #1c5b53;
+		--tag-rose: #f7e6ee;
+		--tag-rose-foreground: #8a325c;
+		--tag-amber: #f5eed8;
+		--tag-amber-foreground: #6b5312;
+		--tag-berry: #f8e4e7;
+		--tag-berry-foreground: #94303f;
+		--tag-lagoon: #dff0f3;
+		--tag-lagoon-foreground: #17596a;
+		--tag-sage: #e3efe0;
+		--tag-sage-foreground: #335e34;
+		--tag-moss: #eef0d8;
+		--tag-moss-foreground: #555a15;
+		--tag-plain: #edf1f6;
+		--tag-plain-foreground: #476788;
+		/* The one raised surface (the open thread), a dock lifted off what scrolls under it, and
+		   the primary action's lift: blue-tinted, three layers, never grey. */
+		--elevation-raised:
+			rgba(71, 103, 136, 0.04) 0 4px 5px 0, rgba(71, 103, 136, 0.03) 0 8px 15px 0,
+			rgba(71, 103, 136, 0.08) 0 30px 50px 0;
+		--elevation-dock:
+			rgba(71, 103, 136, 0.04) 0 -4px 5px 0, rgba(71, 103, 136, 0.03) 0 -8px 15px 0,
+			rgba(71, 103, 136, 0.06) 0 -15px 30px 0;
+		--elevation-cta: rgba(71, 103, 136, 0.04) 0 4px 5px 0, rgba(0, 107, 255, 0.14) 0 8px 15px 0;
+		--radius: 0.5rem;
 	}
 
+	/* Night: the same world with the lights down. Ink becomes a pale mist-blue on a deep navy
+	   canvas; Signal Blue lightens to keep its contrast; the tags darken their fills. */
 	.dark {
-		--background: #0b1220;
-		--foreground: #e2e8f0;
-		--card: #111a2e;
-		--card-foreground: #e2e8f0;
-		--popover: #111a2e;
-		--popover-foreground: #e2e8f0;
-		--primary: #3b82f6;
-		--primary-foreground: #0b1220;
-		--secondary: #1b2740;
-		--secondary-foreground: #e2e8f0;
-		--muted: #1b2740;
-		--muted-foreground: #94a3b8;
-		/* Night Hairline, as light's accent is Hairline Blue: a step off muted, so a neutral badge
-		   keeps its fill on the selected row (#303). */
-		--accent: #253352;
-		--accent-foreground: #e2e8f0;
-		--touch: #60a5fa;
-		--touch-foreground: #0b1220;
-		--border: #253352;
-		--input: #34456b;
-		--ring: #60a5fa;
+		--background: #071423;
+		--foreground: #e3ecf6;
+		--card: #0d1f33;
+		--card-foreground: #e3ecf6;
+		--popover: #0d1f33;
+		--popover-foreground: #e3ecf6;
+		--primary: #4d94ff;
+		--primary-foreground: #04101f;
+		--secondary: #e3ecf6;
+		--secondary-foreground: #0b3558;
+		--muted: #142a42;
+		--muted-foreground: #9fb4cc;
+		--muted-strong: #1b3350;
+		--accent: #16304d;
+		--accent-foreground: #e3ecf6;
+		--mist: #4a6888;
+		--touch: #4d94ff;
+		--touch-foreground: #04101f;
+		--border: #1f3a57;
+		--input: #2a4868;
+		--ring: #4d94ff;
 		--destructive: #f87171;
 		--destructive-foreground: #0b1220;
 		--success: #4ade80;
 		--success-foreground: #0b1220;
 		--warning: #fbbf24;
 		--warning-foreground: #0b1220;
-		--canvas: #080e1a;
-		--chart-strong: #60a5fa;
-		--chart-soft: #2f4f8a;
-		--chart-track: #17223a;
-		--hatch: #2a3a5e;
-		--sidebar: #080e1a;
-		--sidebar-foreground: #e2e8f0;
-		--sidebar-primary: #60a5fa;
-		--sidebar-primary-foreground: #0b1220;
-		--sidebar-accent: #1b2740;
-		--sidebar-accent-foreground: #e2e8f0;
-		--sidebar-border: #253352;
-		--sidebar-ring: #60a5fa;
+		--canvas: #071423;
+		--chart-strong: #4d94ff;
+		--chart-soft: #2a5590;
+		--chart-track: #12263d;
+		--hatch: #2a4868;
+		--sidebar: #071423;
+		--sidebar-foreground: #e3ecf6;
+		--sidebar-primary: #4d94ff;
+		--sidebar-primary-foreground: #04101f;
+		--sidebar-accent: #0d1f33;
+		--sidebar-accent-foreground: #e3ecf6;
+		--sidebar-border: #1f3a57;
+		--sidebar-ring: #4d94ff;
+		--tag-violet: #2a2550;
+		--tag-violet-foreground: #cbc2f2;
+		--tag-teal: #123a35;
+		--tag-teal-foreground: #a7dccf;
+		--tag-rose: #3d1f2f;
+		--tag-rose-foreground: #efb7d0;
+		--tag-amber: #3a3015;
+		--tag-amber-foreground: #e6cf8a;
+		--tag-berry: #401e24;
+		--tag-berry-foreground: #f2b3bd;
+		--tag-lagoon: #11363f;
+		--tag-lagoon-foreground: #9fd7e4;
+		--tag-sage: #1d3520;
+		--tag-sage-foreground: #b4d8af;
+		--tag-moss: #2f3212;
+		--tag-moss-foreground: #d7dc9a;
+		--tag-plain: #142a42;
+		--tag-plain-foreground: #9fb4cc;
+		--elevation-raised:
+			rgba(0, 0, 0, 0.18) 0 4px 5px 0, rgba(0, 0, 0, 0.14) 0 8px 15px 0,
+			rgba(0, 0, 0, 0.3) 0 30px 50px 0;
+		--elevation-dock:
+			rgba(0, 0, 0, 0.18) 0 -4px 5px 0, rgba(0, 0, 0, 0.14) 0 -8px 15px 0,
+			rgba(0, 0, 0, 0.24) 0 -15px 30px 0;
+		--elevation-cta: rgba(0, 0, 0, 0.2) 0 4px 5px 0, rgba(77, 148, 255, 0.2) 0 8px 15px 0;
 	}
 }
 
@@ -107,6 +162,8 @@
 	--color-secondary-foreground: var(--secondary-foreground);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
+	--color-muted-strong: var(--muted-strong);
+	--color-mist: var(--mist);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-touch: var(--touch);
@@ -133,13 +190,37 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
-	--radius-sm: calc(var(--radius) * 0.6);
-	--radius-md: calc(var(--radius) * 0.8);
+	--color-tag-violet: var(--tag-violet);
+	--color-tag-violet-foreground: var(--tag-violet-foreground);
+	--color-tag-teal: var(--tag-teal);
+	--color-tag-teal-foreground: var(--tag-teal-foreground);
+	--color-tag-rose: var(--tag-rose);
+	--color-tag-rose-foreground: var(--tag-rose-foreground);
+	--color-tag-amber: var(--tag-amber);
+	--color-tag-amber-foreground: var(--tag-amber-foreground);
+	--color-tag-berry: var(--tag-berry);
+	--color-tag-berry-foreground: var(--tag-berry-foreground);
+	--color-tag-lagoon: var(--tag-lagoon);
+	--color-tag-lagoon-foreground: var(--tag-lagoon-foreground);
+	--color-tag-sage: var(--tag-sage);
+	--color-tag-sage-foreground: var(--tag-sage-foreground);
+	--color-tag-moss: var(--tag-moss);
+	--color-tag-moss-foreground: var(--tag-moss-foreground);
+	--color-tag-plain: var(--tag-plain);
+	--color-tag-plain-foreground: var(--tag-plain-foreground);
+
+	--shadow-raised: var(--elevation-raised);
+	--shadow-dock: var(--elevation-dock);
+	--shadow-cta: var(--elevation-cta);
+
+	/* 4px plates and tags, 6px small marks, 8px controls, 12px list rows, 16px panels. */
+	--radius-sm: calc(var(--radius) * 0.5);
+	--radius-md: calc(var(--radius) * 0.75);
 	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) * 1.4);
-	--radius-2xl: calc(var(--radius) * 1.8);
-	--radius-3xl: calc(var(--radius) * 2.2);
-	--radius-4xl: calc(var(--radius) * 2.6);
+	--radius-xl: calc(var(--radius) * 1.5);
+	--radius-2xl: calc(var(--radius) * 2);
+	--radius-3xl: calc(var(--radius) * 2);
+	--radius-4xl: calc(var(--radius) * 2.5);
 
 	--animate-accordion-down: accordion-down 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 	--animate-accordion-up: accordion-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);

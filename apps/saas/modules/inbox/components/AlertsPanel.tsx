@@ -74,7 +74,7 @@ export function AlertsPanel() {
 		<section
 			data-test="alerts-panel"
 			aria-labelledby="alerts-panel-title"
-			className="px-4 py-3 md:rounded-3xl md:border shrink-0 border-b bg-card"
+			className="px-4 py-3 md:mx-3 md:mt-3 md:rounded-2xl md:border shrink-0 border-b bg-card"
 		>
 			<div className="gap-3 flex items-start">
 				<BellRingIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />

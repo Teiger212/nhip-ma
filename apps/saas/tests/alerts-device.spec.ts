@@ -239,7 +239,10 @@ async function expectNoPanel(page: Page, why: string) {
 	for (const title of PANEL_TITLES) {
 		await expect(page.getByText(title, { exact: true }), `${why}: "${title}"`).toHaveCount(0);
 	}
-	await expect(page.getByRole("button", { name: COPY.turnOn }), `${why}: no pill`).toHaveCount(0);
+	await expect(
+		page.getByRole("button", { name: COPY.turnOn }),
+		`${why}: no Turn on alerts`,
+	).toHaveCount(0);
 }
 
 /**
@@ -318,11 +321,14 @@ async function expectNothingRed(panel: Locator, state: string) {
 	expect(red, `nothing on the ${state} panel is red`).toEqual([]);
 }
 
-/** Dispatch Blue (#2563eb), the one primary colour. */
-const DISPATCH_BLUE = [37, 99, 235];
+/** Signal Blue (#006bff), the one primary colour (DESIGN.md, #314). */
+const SIGNAL_BLUE = [0, 107, 255];
 
-/** The button is a Dispatch Blue pill: blue fill, ends fully rounded. */
-async function expectBluePill(button: Locator) {
+/** A control's corner radius (DESIGN.md, Shapes: 8px controls, #314). */
+const CONTROL_RADIUS_PX = 8;
+
+/** The button is Signal Blue with a control's 8px corners. */
+async function expectBlueButton(button: Locator) {
 	const look = await button.evaluate((el) => {
 		const style = getComputedStyle(el);
 		const canvas = document.createElement("canvas");
@@ -334,17 +340,13 @@ async function expectBluePill(button: Locator) {
 		return {
 			background: Array.from(ctx.getImageData(0, 0, 1, 1).data),
 			radius: parseFloat(style.borderTopLeftRadius),
-			height: el.getBoundingClientRect().height,
 		};
 	});
 	expect(
-		near(look.background, DISPATCH_BLUE, 6),
-		`"Turn on alerts" is Dispatch Blue (painted ${look.background.join(", ")})`,
+		near(look.background, SIGNAL_BLUE, 6),
+		`"Turn on alerts" is Signal Blue (painted ${look.background.join(", ")})`,
 	).toBe(true);
-	expect(
-		look.radius,
-		`"Turn on alerts" is a pill (radius ${look.radius}, height ${look.height})`,
-	).toBeGreaterThanOrEqual(look.height / 2 - 0.5);
+	expect(look.radius, `"Turn on alerts" has a control's corners`).toBeCloseTo(CONTROL_RADIUS_PX, 0);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -353,7 +355,7 @@ async function expectBluePill(button: Locator) {
 test.describe("Alerts 9 — the alerts panel asks, and only when asked to", () => {
 	test.describe.configure({ timeout: 120_000 });
 
-	test("permission not yet asked: no browser prompt on load; the panel offers one blue Turn on alerts pill and Not now, and nothing on it is red", async ({
+	test("permission not yet asked: no browser prompt on load; the panel offers one blue Turn on alerts button and Not now, and nothing on it is red", async ({
 		newOperator,
 	}) => {
 		const operator = await newOperator();
@@ -364,10 +366,10 @@ test.describe("Alerts 9 — the alerts panel asks, and only when asked to", () =
 		await expect(panel.getByText(COPY.ask, { exact: true }), "the panel asks").toBeVisible();
 		expect(await promptsOn(page), "loading the Inbox asks the browser nothing").toBe(0);
 
-		const pill = panel.getByRole("button", { name: COPY.turnOn });
-		await expect(pill, "one Turn on alerts").toHaveCount(1);
+		const turnOn = panel.getByRole("button", { name: COPY.turnOn });
+		await expect(turnOn, "one Turn on alerts").toHaveCount(1);
 		await expect(panel.getByRole("button", { name: COPY.notNow }), "and Not now").toBeVisible();
-		await expectBluePill(pill);
+		await expectBlueButton(turnOn);
 		await expectNothingRed(panel, "asking");
 
 		await page.reload();
@@ -375,7 +377,7 @@ test.describe("Alerts 9 — the alerts panel asks, and only when asked to", () =
 		expect(await promptsOn(page), "a reload asks the browser nothing either").toBe(0);
 
 		// The stub counts: the browser is asked when the operator asks for alerts.
-		await pill.click();
+		await turnOn.click();
 		await expect
 			.poll(() => promptsOn(page), { message: "Turn on alerts asks the browser" })
 			.toBeGreaterThanOrEqual(1);

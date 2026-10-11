@@ -23,9 +23,12 @@ export function OfficeLine({ line, className }: { line: Line; className?: string
 	return (
 		<p
 			data-test="office-line"
-			className={cn("text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground", className)}
+			className={cn(
+				"text-note leading-normal whitespace-pre-wrap text-muted-foreground",
+				className,
+			)}
 		>
-			<span data-test="office-line-label" className="font-medium block">
+			<span data-test="office-line-label" className="font-semibold block">
 				{label}
 			</span>
 			{line.text}

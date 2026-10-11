@@ -12,7 +12,7 @@ import { sendZaloText } from "./support/zalo";
 
 /**
  * An open thread is the conversation, the reply box docked under it, and the guest's details
- * beside it when the thread's own pane is wide (from 896px), or folded into a strip under the
+ * beside it when the thread's own pane is wide (from 736px), or folded into a strip under the
  * header when it is narrow (#248, variant D). The pane's width is the window's less the sidebar
  * and the thread list, so the sidebar's state decides it as much as the window does.
  */

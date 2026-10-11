@@ -963,7 +963,10 @@
 		"details": {
 			"title": "Thông tin khách",
 			"crm": "CRM",
-			"owner": "Phụ trách"
+			"owner": "Phụ trách",
+			"guest": "Khách",
+			"stay": "Chỗ ở",
+			"notGiven": "Chưa có"
 		},
 		"fields": {
 			"language": "Ngôn ngữ",

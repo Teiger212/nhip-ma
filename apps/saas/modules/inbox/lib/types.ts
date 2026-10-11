@@ -35,6 +35,7 @@ export type {
 	SendMode,
 	SendResult,
 	SuggestedReplyLine,
+	SummaryFacts,
 	TranslationFailure,
 	Translations,
 } from "@repo/database/inbox";

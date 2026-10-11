@@ -42,6 +42,8 @@ export const badge = cva(["inline-flex", "items-center", "leading-none", "whites
 			 * a 12% tint on the blue canvas reads as a label rather than a count.
 			 */
 			primary: ["bg-primary", "text-primary-foreground"],
+			/** Ink Navy: the queue's own count where it rides on an icon (the collapsed sidebar). */
+			ink: ["bg-foreground", "text-background", "font-bold", "tabular-nums"],
 			warning: ["bg-warning/12", "text-warning"],
 			error: ["bg-destructive/12", "text-destructive"],
 		},

@@ -963,7 +963,10 @@
 		"details": {
 			"title": "Guest details",
 			"crm": "CRM",
-			"owner": "Owner"
+			"owner": "Owner",
+			"guest": "Guest",
+			"stay": "Stay",
+			"notGiven": "Not given yet"
 		},
 		"fields": {
 			"language": "Language",

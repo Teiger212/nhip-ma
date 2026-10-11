@@ -625,8 +625,9 @@ is a WhatsApp guest whose profile name is 40 characters.
 Decided by Eyal on 2026-10-08 (variant D of the thread-layout prototype): an open thread is the
 conversation, with the reply box docked under it, and the guest's details beside it. Whether the
 details fit beside it depends on the thread's own pane, not the window: the pane is "wide" from
-896px (56rem), so the sidebar counts. At 1563 wide with the sidebar open, and at 1366 wide with it
-collapsed, the pane is wide; at 1366 with the sidebar open, and on a phone, it is narrow.
+736px (46rem; 896px before the 300px rail of #314), so the sidebar counts. At 1563 and 1440 wide
+with the sidebar open, and at 1366 wide with it collapsed, the pane is wide; at 1366 with the
+sidebar open, and on a phone, it is narrow.
 
 **How these run.** The open thread is the page's `article`, its header the `header` inside it.
 The guest's details are `data-test="thread-details"`, exactly one wherever they sit; each message
@@ -968,7 +969,7 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 
 9. **The alerts panel asks, and only when asked to** (#135). Permission not yet asked
    (`addInitScript`): loading the Inbox shows no browser prompt, and the canvas shows "Get an
-   alert when a guest writes." with one blue "Turn on alerts" pill and "Not now".
+   alert when a guest writes." with one blue "Turn on alerts" button and "Not now".
    - **Not now:** the panel goes and stays gone across reloads; with the page's clock moved 7
      days on, it is back. Another browser context still shows it.
    - **Blocked:** permission "denied": the panel says how to unblock notifications in the
@@ -985,8 +986,8 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    says. The permission stub sets `Notification.permission`, `requestPermission`, the Permissions
    API's and the push manager's permission state alike, and counts every `requestPermission` (and
    a `pushManager.subscribe` while not granted) as a prompt: zero on load and on reload, and at
-   least one once "Turn on alerts" is tapped, which proves the count. The pill is one button,
-   Dispatch Blue #2563eb, fully rounded. "Nothing red" is no painted colour (text, background,
+   least one once "Turn on alerts" is tapped, which proves the count. "Turn on alerts" is one
+   button, Signal Blue #006bff, with the 8px corners of every control (#314). "Nothing red" is no painted colour (text, background,
    visible border, outline, SVG fill and stroke, each read back through a canvas so `oklch` counts)
    within reach of #dc2626, #f87171 or the theme's `--destructive`, judged on the asking panel.
    Not now: gone, gone after a reload, still gone with the page's clock 6 days on, back 7 days

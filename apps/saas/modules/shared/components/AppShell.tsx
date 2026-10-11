@@ -5,7 +5,7 @@ import { isInboxPath } from "@i18n/lib/locale-path";
 import { LocaleLink } from "@i18n/routing";
 import { GuestToasts } from "@inbox/components/GuestToasts";
 import { isPlatformAdmin } from "@repo/auth/lib/roles";
-import { Badge, cn, Logo, SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui";
+import { Badge, cn, SidebarInset, SidebarProvider, SidebarTrigger, Wordmark } from "@repo/ui";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -37,9 +37,8 @@ function AppMobileChrome() {
 				className="-ml-1 min-h-11 min-w-11 shrink-0"
 				aria-label={t("app.menu.openNavigation")}
 			/>
-			<LocaleLink href="/inbox" className="gap-2 flex shrink-0 items-center">
-				<Logo withLabel={false} className="shrink-0" />
-				<span className="font-semibold tracking-tight shrink-0">{t("inbox.brand")}</span>
+			<LocaleLink href="/inbox" className="flex shrink-0 items-center">
+				<Wordmark label={t("inbox.brand")} className="shrink-0" />
 			</LocaleLink>
 			{/* The sidebar is a sheet here, so the queue's count rides in the top bar. */}
 			<span className="mr-auto flex">
@@ -50,9 +49,7 @@ function AppMobileChrome() {
 						aria-label={t("inbox.queueCount", { count: yourTurnCount })}
 						className="min-h-11 px-1 flex items-center"
 					>
-						<Badge status="warning" numeric>
-							{yourTurnCount}
-						</Badge>
+						<Badge status="ink">{yourTurnCount}</Badge>
 					</LocaleLink>
 				) : null}
 			</span>
