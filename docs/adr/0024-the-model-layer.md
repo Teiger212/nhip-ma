@@ -44,8 +44,7 @@ greeting. Related: #242, #245, #246, #83.
   task: `draft` and `translate`.
 - **A model per task, defaulted in code.**
   - `DRAFT_MODEL` defaults to `anthropic/claude-haiku-5.5`.
-  - `TRANSLATE_MODEL` defaults to `anthropic/claude-haiku-5.5` until the translation eval
-    picks its model.
+  - `TRANSLATE_MODEL` defaults to `google/gemini-3.1-flash-lite`, the translation eval's pick.
   - An env var overrides either default. A key alone is enough to start.
   - The best-value model changes monthly, so the choice is per task. Switching is an env
     change and a redeploy. There is no admin UI for it.
@@ -144,6 +143,12 @@ greeting. Related: #242, #245, #246, #83.
   with Gemini 3.1 Flash-Lite (`google/gemini-3.1-flash-lite`, $0.25 in and $1.50 out). The
   seed holds 41 such guest messages; JA, KO and RU go into both EN and VI. Eyal reads them
   side by side. The winner replaces Haiku 5.5 as `TRANSLATE_MODEL`'s default, if it differs.
+  - **Result (2026-10-11): Gemini 3.1 Flash-Lite.** Over 82 pairs, Haiku 5.5 returned one
+    broken translation (the Korean left as written, then "Wait, I need to correct that") and
+    twice added "sổ đỏ" to a question about the sổ hồng; Gemini returned none. Gemini drops
+    the accents from Vietnamese place names in English. Both answered every call with
+    zero-retention routing, at a 0.7–0.8 s median; Gemini cost about 1.6 times as much, a few
+    cents an office a day at the cap. Only guest messages were measured, not outgoing replies.
   - Gemini 3.x bills thinking as output, so its thinking is set to minimal or off.
 - **The draft eval.** About 15 seeded walk-office threads: a bare hello, Claire's photos and
   viewing question, Ji-ho after her auto-reply, a later turn, RU, VI, and more.
@@ -193,4 +198,3 @@ greeting. Related: #242, #245, #246, #83.
 ## Open
 
 - **The Vietnamese copy** of the template and the labels. Pending a native read (#78).
-- **`TRANSLATE_MODEL`'s final default.** Haiku 5.5 until Eyal reads the translation eval.

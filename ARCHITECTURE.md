@@ -38,8 +38,8 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
 - **Drafts and translation** go through one model layer (`modules/inbox/lib/drafts/`,
   ADRs 0005, 0007, 0024), as two named tasks, `draft` and `translate`. With
   `DRAFT_API_KEY` set, each task calls OpenRouter (`drafts/openrouter.ts`, plain `fetch` to
-  `/chat/completions`) with its own model: `DRAFT_MODEL` and `TRANSLATE_MODEL`, both
-  defaulting to `anthropic/claude-haiku-5.5`. Every request asks for zero-retention routing
+  `/chat/completions`) with its own model: `DRAFT_MODEL` (default
+  `anthropic/claude-haiku-5.5`) and `TRANSLATE_MODEL` (default `google/gemini-3.1-flash-lite`). Every request asks for zero-retention routing
   (`provider: { zdr: true, data_collection: "deny" }`); production refuses a
   `DRAFT_BASE_URL` other than OpenRouter. `drafts/layer.ts` puts each call behind the
   office's daily cap (`DRAFT_DAILY_CAP` 50, `TRANSLATE_DAILY_CAP` 1000, counted per call in
