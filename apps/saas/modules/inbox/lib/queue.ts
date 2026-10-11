@@ -176,19 +176,31 @@ export function buildQueueView(
 /**
  * Which thread should be selected after the list changed. `ordered` is every thread the
  * operator can see, active then quiet. Keeps the current selection when it is still
- * there; otherwise the first thread; otherwise nothing. After a send in the queue view
- * the sent thread has left the list, so this is also what advances to the next waiting
- * guest. A thread the manager just assigned is `pinnedId`: it stays selected though it left
- * the view (#267); a send is never pinned.
+ * there. When it left the list, `previous` (the same view's list before the change) says where
+ * it stood: the thread that was below it and is still listed, else the one above it (#335).
+ * Otherwise the first thread; otherwise nothing. After a send in the queue view the sent
+ * thread has left the list, so this is also what advances to the next waiting guest. A thread
+ * the manager just assigned is `pinnedId`: it stays selected though it left the view (#267); a
+ * send is never pinned.
  */
 export function nextSelection(
 	ordered: ConversationSummary[],
 	selectedId: string | null,
 	pinnedId: string | null = null,
+	previous: ConversationSummary[] = [],
 ): string | null {
 	if (selectedId && selectedId === pinnedId) return selectedId;
-	if (selectedId && ordered.some((conversation) => conversation.id === selectedId)) {
-		return selectedId;
+	const listed = new Set(ordered.map((conversation) => conversation.id));
+	if (selectedId && listed.has(selectedId)) return selectedId;
+	const at = selectedId ? previous.findIndex((conversation) => conversation.id === selectedId) : -1;
+	if (at !== -1) {
+		const below = previous.slice(at + 1).find((conversation) => listed.has(conversation.id));
+		const above = previous
+			.slice(0, at)
+			.reverse()
+			.find((conversation) => listed.has(conversation.id));
+		const neighbour = below ?? above;
+		if (neighbour) return neighbour.id;
 	}
 	return ordered[0]?.id ?? null;
 }
