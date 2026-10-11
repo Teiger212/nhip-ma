@@ -539,15 +539,14 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    every guest the office owes a reply is labelled "Waiting N" (VI "Đang chờ N", pending the #78
    review). It is never "Your turn". It holds the same threads: the Unassigned guests and the
    agents' guests still waiting, not the answered ones. Its count is the same office-wide number
-   as the nav badge, the tab title ("(N) Inbox", VI "(N) Hộp thư") and the list's count line. An
+   as the nav badge and the tab title ("(N) Inbox", VI "(N) Hộp thư"). An
    agent in the same office still sees "Your turn N" (VI "Đến lượt bạn N"), and no "Waiting".
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN; an office of the test's
    own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
-   The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
-   title, and the count line is #208's manager line on Unassigned, "2 unassigned · 3 waiting in the
-   office". Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1,
-   Sent 1, All 2, their nav reads 1, and Your turn lists only their guest). The Vietnamese labels,
-   title and count line are checked by the translation-key test
+   The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so does the
+   title. Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1,
+   Sent 1, All 2, their nav reads 1, and Your turn lists only their guest). The Vietnamese labels
+   and title are checked by the translation-key test
    (`apps/saas/modules/i18n/lib/translation-keys.test.ts`, #278).
 
 3. **Clearing the search brings the whole list back** (Eyal, 2026-10-11, #314). While the
@@ -608,27 +607,22 @@ is a WhatsApp guest whose profile name is 40 characters.
    never covered and the phone have no E2E test (lean testing, #278): variants of the hover
    check; assigning through the menu is Assign's spec).
 
-3. **The count line under the tabs says what each view holds.** For a manager, per view:
-   - Unassigned: "{u} unassigned · {w} waiting in the office"
-   - Waiting: "{w} waiting in the office"
-   - Sent: "{s} sent · {w} waiting in the office"
-   - All: "{a} threads · {w} waiting in the office" ("1 thread" for one)
-
-   u is the Unassigned threads, w the office's Waiting threads, s the Sent threads and a all
-   threads. That w counts the Unassigned guests waiting too, as the manager's Waiting tab does,
-   is the test author's reading of #208, pending Eyal's confirmation: if w means only the guests
-   waiting on agents, every manager line in the spec changes. With
-   the "Showing" filter on an operator, the counts are that operator's threads and "waiting in the
-   office" becomes "waiting on <their name>". An agent's line is unchanged: "N guests are waiting
-   on you" ("1 guest is waiting on you"), the same in every view.
-   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 3; an office of the test's own with
+3. **Retired: the count line under the tabs** (#208). Eyal removed the line on 2026-10-11
+   (#314): since #314 the view tabs show each view's full count, so a line such as "7 unassigned
+   · 18 waiting in the office" or "6 guests are waiting on you" only repeated them, and the
+   "Showing" filter already names the operator. What it counted is now Inbox polish 4.
+4. **A manager's view tabs count the office, or the operator "Showing" names.** On every view
+   the tabs read the office's counts: Unassigned u, Waiting w, Sent s, All a. w counts the
+   Unassigned guests waiting too, as ADR 0022's Waiting view does. With the "Showing" filter on
+   an operator (Waiting, Sent or All), the filter names them and the tabs count only their
+   threads, Unassigned 0 among them. Unassigned sits the filter out: on it the tabs read the
+   office's counts again.
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 4; an office of the test's own with
    an invited manager and two invited agents, each with a name of their own. Two guests wait
    Unassigned; agent A holds three guests and has answered one through the Inbox; agent B holds
-   one, waiting. The office reads u 2, w 5, s 1, a 6, checked first on the view tabs; agent A
-   reads 2 waiting, 1 sent, 3 threads, judged on Waiting, Sent and All; agent B is "1 thread · 1
-   waiting on <B>". The wording is #208's, written out in `tests/support/copy.ts`, not read from
-   the app's strings. The agent's line has no E2E test here (lean testing, #278): an agent's
-   waiting count is proven by `nav-count.spec.ts` and Inbox view tabs 2).
+   one, waiting. The office reads 2, 5, 1, 6 on every view; showing agent A, 0, 2, 1, 3 on
+   Waiting, Sent and All; showing agent B, 0, 1, 0, 1 on All; then Unassigned reads 2, 5, 1, 6.
+   An agent's tabs are Inbox view tabs 2's and `nav-count.spec.ts`'s).
 
 ## Thread layout (#248)
 

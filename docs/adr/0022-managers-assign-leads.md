@@ -123,6 +123,8 @@ Decided in the grill of 2026-10-06, from Eyal's UI walk of main (Q1, Q2, Q15, Q1
   - "Waiting in the office" includes the unassigned guests.
   - Built for #208 in PR #209 (open when this was written), with wording per view.
   - Agents keep "N guests are waiting on you".
+  - Removed on 2026-10-11 (Eyal, #314): the view tabs show each view's full count, so the line
+    only repeated them. With the "Showing" filter on, the tabs count that operator's threads.
 - **The turn chip (Q2, #212).** A manager sees "Your turn" only on the threads they own.
   - On a thread another operator owns, and on an Unassigned thread, the chip reads
     **"Waiting"**.

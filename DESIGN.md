@@ -186,7 +186,7 @@ Neo", "Hiragino Sans", "PingFang SC", "Noto Sans CJK KR", "Noto Sans KR"), decla
 - **Name** (700, 0.875rem): the guest's name on a row; "Reply" over the dock (800).
 - **Note** (0.8125rem / 1.125rem, `text-note`): row previews (clamped to two lines),
   translation lines, the operator note, the pipe in the header, guest-fact labels.
-- **Body Small** (0.75rem): the count line, message meta, hints.
+- **Body Small** (0.75rem): message meta, hints.
 - **Label** (600, 0.6875rem, `text-micro`): fact tags, a view tab's label, row times.
 - **Field Key** (800, 0.625rem, +0.05em, uppercase, `text-2xs`): MOVE-IN and BUDGET in the
   stay card's field box.
@@ -226,8 +226,8 @@ a 56px top bar (menu, wordmark, the navy count, bell, user menu).
 
 **Inbox.** From `md` the list column (`w-inbox-list`, 23.25rem) sits flat on the canvas with a
 hairline on its right: the alerts panel when it shows, a manager's owner filter (or, on
-Unassigned, the note that holds its row), then search, the view tabs and the count line, then
-the rows. The thread is the raised card, inset 12px. Below `md` both go full-bleed on white,
+Unassigned, the note that holds its row), then search and the view tabs (each carries its count; no
+line under them repeats the counts, Eyal 2026-10-11), then the rows. The thread is the raised card, inset 12px. Below `md` both go full-bleed on white,
 one at a time.
 
 **The open thread (#248).** The card's header spans it; under it, the conversation with the

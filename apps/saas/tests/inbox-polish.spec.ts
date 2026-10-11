@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Locator, Page } from "@playwright/test";
 
 import { assignerAs } from "./support/assign";
-import { COUNT_LINE_EN, ownerCopy } from "./support/copy";
+import { ownerCopy } from "./support/copy";
 import { expect, test as base } from "./support/fixtures";
 import type { Joined } from "./support/operators";
 import { joinOffice } from "./support/operators";
@@ -45,7 +45,7 @@ const test = base.extend<{ newOffice: () => Promise<OwnOffice> }>({
 				join: async (role, label) => {
 					const joined = await joinOffice(admin, browser, office.id, role, "inbox-polish");
 					contexts.push(joined);
-					// A name of their own, so the owner filter and "waiting on <name>" name them.
+					// A name of their own, so the owner filter names them.
 					const name = `E2E ${label} ${randomUUID().slice(0, 8)}`;
 					const res = await joined.api.post("/api/auth/update-user", { name });
 					expect(res.ok(), `${label} takes a name of their own (${res.status()})`).toBe(true);
@@ -101,14 +101,6 @@ function view(page: Page, name: ViewName, count?: number): Locator {
 /** The manager's owner filter ("Showing": All conversations, or one operator). */
 function ownerFilter(page: Page): Locator {
 	return page.getByTestId("owner-filter");
-}
-
-/**
- * The line under the view tabs that says how many guests wait: found by its "waiting on" /
- * "waiting in", which both the agent's and the manager's line carry.
- */
-function countLine(page: Page): Locator {
-	return threadList(page).getByText(/\bwaiting (on|in)\b/);
 }
 
 /** A guest's row in the list: a button named by the guest, first of all. */
@@ -169,6 +161,18 @@ async function openView(page: Page, name: ViewName) {
 	await view(page, name).click();
 	await expect(view(page, name)).toHaveAttribute("aria-pressed", "true");
 	await expectListLoaded(page);
+}
+
+/** The manager's four view tabs read these counts, Unassigned, Waiting, Sent and All. */
+async function expectTabs(page: Page, at: string, [unassigned, waiting, sent, all]: number[]) {
+	for (const [name, count] of [
+		["Unassigned", unassigned],
+		["Waiting", waiting],
+		["Sent", sent],
+		["All", all],
+	] as const) {
+		await expect.soft(view(page, name, count), `${at}: ${name} reads ${count}`).toBeVisible();
+	}
 }
 
 /** The pointer leaves the thread list: no row is hovered. */
@@ -233,7 +237,7 @@ async function approveReply(page: Page, guest: Guest) {
 }
 
 /**
- * An office whose numbers all differ (Inbox polish 3): two Unassigned guests waiting; agent A
+ * An office whose numbers all differ (Inbox polish 4): two Unassigned guests waiting; agent A
  * holds three guests and has answered one; agent B holds one guest, waiting. So the office has
  * 2 unassigned, 5 waiting (the Unassigned two among them, as the manager's Waiting counts
  * them), 1 sent and 6 threads; agent A 2 waiting, 1 sent, 3 threads; agent B 1 of each but sent.
@@ -302,55 +306,43 @@ test.describe("Inbox polish 2 — a manager's Unassigned row shows Assign to… 
 	});
 });
 
-// scenario: docs/e2e-scenarios.md Inbox polish 3
-test.describe("Inbox polish 3 — the count line under the tabs says what each view holds", () => {
-	test("the manager's line reads '2 unassigned · 5 waiting in the office' on Unassigned, '5 waiting in the office' on Waiting, '1 sent · 5 …' on Sent and '6 threads · 5 …' on All; showing one operator, it counts theirs and says 'waiting on <name>', '1 thread' for one", async ({
+// scenario: docs/e2e-scenarios.md Inbox polish 4
+test.describe("Inbox polish 4 — a manager's view tabs count the office, or the operator Showing names", () => {
+	test("the tabs read Unassigned 2, Waiting 5, Sent 1, All 6 on every view; showing agent A they read 0, 2, 1, 3 on Waiting, Sent and All, showing agent B 0, 1, 0, 1, and Unassigned sits the filter out", async ({
 		newOffice,
 	}) => {
 		test.setTimeout(180_000);
 		const { manager, agentA, agentB } = await countedOffice(newOffice);
 		const { page } = manager;
 		await page.goto("/en/inbox");
-		// The office's numbers, as the view tabs count them (the setup, not the point).
-		for (const [name, count] of [
-			["Unassigned", 2],
-			["Waiting", 5],
-			["Sent", 1],
-			["All", 6],
-		] as const) {
-			await expect(view(page, name, count), `the office has ${count} under ${name}`).toBeVisible();
-		}
-
 		await expect(view(page, "Unassigned"), "the Inbox opens on Unassigned").toHaveAttribute(
 			"aria-pressed",
 			"true",
 		);
 		await expectListLoaded(page);
-		await expect.soft(countLine(page), "Unassigned").toHaveText(COUNT_LINE_EN.unassigned(2, 5));
-		await openView(page, "Waiting");
-		await expect.soft(countLine(page), "Waiting").toHaveText(COUNT_LINE_EN.waiting(5));
-		await openView(page, "Sent");
-		await expect.soft(countLine(page), "Sent").toHaveText(COUNT_LINE_EN.sent(1, 5));
-		await openView(page, "All");
-		await expect.soft(countLine(page), "All").toHaveText(COUNT_LINE_EN.all(6, 5));
+		const office = [2, 5, 1, 6];
+		await expectTabs(page, "Unassigned", office);
+		for (const name of ["Waiting", "Sent", "All"] as const) {
+			await openView(page, name);
+			await expectTabs(page, name, office);
+		}
 
-		// Showing agent A: their threads only, waiting on them.
-		for (const [name, line] of [
-			["Waiting", COUNT_LINE_EN.waiting(2, agentA.name)],
-			["Sent", COUNT_LINE_EN.sent(1, 2, agentA.name)],
-			["All", COUNT_LINE_EN.all(3, 2, agentA.name)],
-		] as const) {
+		// Showing agent A: the tabs count their threads only, and the filter names them.
+		for (const name of ["Waiting", "Sent", "All"] as const) {
 			await openView(page, name);
 			await choose(ownerFilter(page), agentA.name);
 			await expectListLoaded(page);
-			await expect.soft(countLine(page), `${name}, showing agent A`).toHaveText(line);
+			await expect(ownerFilter(page), `${name}: Showing names agent A`).toContainText(agentA.name);
+			await expectTabs(page, `${name}, showing agent A`, [0, 2, 1, 3]);
 		}
 
-		// Showing agent B, who holds one thread: "1 thread".
+		// Showing agent B, who holds one guest, waiting.
 		await choose(ownerFilter(page), agentB.name);
 		await expectListLoaded(page);
-		await expect
-			.soft(countLine(page), "All, showing agent B")
-			.toHaveText(COUNT_LINE_EN.all(1, 1, agentB.name));
+		await expectTabs(page, "All, showing agent B", [0, 1, 0, 1]);
+
+		// Unassigned sits the filter out: the office's counts again.
+		await openView(page, "Unassigned");
+		await expectTabs(page, "Unassigned, agent B chosen", office);
 	});
 });

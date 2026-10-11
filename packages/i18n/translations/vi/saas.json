@@ -1068,14 +1068,6 @@
 			"all": "Tất cả"
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
-		"managerCount": {
-			"line": "{view} · {waiting}",
-			"waitingOffice": "{count} khách đang chờ văn phòng",
-			"waitingOn": "{count} khách đang chờ {name}",
-			"unassigned": "{count} khách chưa giao",
-			"sent": "{count} đã gửi",
-			"all": "{count} cuộc trò chuyện"
-		},
 		"allCaughtUp": "Đã xử lý hết.",
 		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",

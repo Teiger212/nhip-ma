@@ -7,38 +7,13 @@ import { useRef } from "react";
 
 import type { InboxView, QueueCounts } from "../lib/queue";
 
-type InboxT = ReturnType<typeof useTranslations<"inbox">>;
-
-/**
- * A manager's count line: the view's own count, then how many guests wait in the office, or on
- * the operator the owner filter shows ("4 unassigned · 6 waiting in the office"). Waiting (the
- * manager's Your turn) names only the waiting count, which is that view's own.
- */
-function managerCountLine(
-	t: InboxT,
-	view: InboxView | null,
-	counts: QueueCounts,
-	ownerName: string | null,
-): string {
-	const waiting = ownerName
-		? t("managerCount.waitingOn", { count: counts.yourTurn, name: ownerName })
-		: t("managerCount.waitingOffice", { count: counts.yourTurn });
-	if (view === "unassigned" || view === "sent" || view === "all") {
-		return t("managerCount.line", {
-			view: t(`managerCount.${view}`, { count: counts[view] }),
-			waiting,
-		});
-	}
-	return waiting;
-}
-
 /**
  * The top of the thread list (#314): search, then the view tabs as slots (a small label over
- * its full count; the view shown is filled Signal Blue), then the count line. While the search
- * holds text, an X at its end clears it and leaves the cursor in the field (a 44px target on a
- * phone, inside the field's own height). The tabs share
- * the row in equal columns and never scroll or wrap (#210); each holds its whole label and count.
- * They live inside the list, so they hide with it.
+ * its full count; the view shown is filled Signal Blue). The tabs carry the counts, so no line
+ * under them repeats them (Eyal, 2026-10-11). While the search holds text, an X at its end clears
+ * it and leaves the cursor in the field (a 44px target on a phone, inside the field's own height).
+ * The tabs share the row in equal columns and never scroll or wrap (#210); each holds its whole
+ * label and count. They live inside the list, so they hide with it.
  */
 export function InboxToolbar({
 	query,
@@ -48,7 +23,6 @@ export function InboxToolbar({
 	onViewChange,
 	counts,
 	manager,
-	ownerName,
 }: {
 	query: string;
 	onQueryChange: (query: string) => void;
@@ -58,19 +32,11 @@ export function InboxToolbar({
 	view: InboxView | null;
 	onViewChange: (view: InboxView) => void;
 	counts: QueueCounts;
-	/**
-	 * A manager's Your turn view is named Waiting: it holds the whole office's (ADR 0022). Their
-	 * count line names the view's count, then who is waiting in the office (#208).
-	 */
+	/** A manager's Your turn view is named Waiting: it holds the whole office's (ADR 0022). */
 	manager: boolean;
-	/** The operator the owner filter shows, whose threads the counts then are. */
-	ownerName: string | null;
 }) {
 	const t = useTranslations("inbox");
 	const search = useRef<HTMLInputElement>(null);
-	const countLine = manager
-		? managerCountLine(t, view, counts, ownerName)
-		: t("queueCount", { count: counts.yourTurn });
 	return (
 		<div className="gap-2 px-4 pt-3 pb-2 flex shrink-0 flex-col">
 			<div className="relative w-full">
@@ -135,9 +101,6 @@ export function InboxToolbar({
 					);
 				})}
 			</div>
-			<p className="text-xs text-muted-foreground" aria-live="polite">
-				{countLine}
-			</p>
 		</div>
 	);
 }
