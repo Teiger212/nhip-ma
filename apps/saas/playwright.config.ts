@@ -95,6 +95,10 @@ export default defineConfig({
 		testIdAttribute: "data-test",
 		// The E2E proxy's certificate is self-signed and made at start.
 		ignoreHTTPSErrors: true,
+		// The reduced path of every motion (#330): no frame is ever caught mid-animation, and the
+		// phone push takes no snapshot. Contexts a spec makes itself inherit it. Motion is never
+		// asserted.
+		contextOptions: { reducedMotion: "reduce" },
 		baseURL: devServer ?? e2eUrl,
 		trace: "retain-on-failure",
 		video: {
