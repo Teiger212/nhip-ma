@@ -62,8 +62,7 @@
 /*
  * Motion (#330, DESIGN.md "Motion"). Three curves: arrive (a confident deceleration, for what
  * comes in), kit (the kit's own, for sheets and the phone's steps) and exit (what leaves, faster
- * than it came). The handoff (the answered row's ghost, the rows' glide, the card's turn) runs in
- * script with the same values (`modules/inbox/lib/motion.ts`).
+ * than it came). The handoff runs on React's View Transitions, below (#337).
  */
 @theme {
 	--ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
@@ -77,6 +76,8 @@
 	--animate-caught-mark: caught-mark 220ms var(--ease-arrive) both;
 	--animate-caught-check: caught-check 260ms 80ms var(--ease-arrive) both;
 	--animate-caught-words: fade-in 200ms ease-out both;
+	/* The handoff's ✓ Sent: it fades in over the answered row, then holds (#337). */
+	--animate-row-sent: fade-in 180ms ease-out both;
 	/* The reduced path of every motion above: a 150ms cross-fade. */
 	--animate-fade-in: fade-in 150ms ease-out both;
 	/* Approve and send: the send icon gives way to a spinner only once a send passes 150ms. */
@@ -188,6 +189,44 @@ html.vt-back::view-transition-new(inbox-screen) {
 @keyframes vt-return {
 	from {
 		transform: translateX(-24%);
+	}
+}
+
+/*
+ * The handoff (#330, #337; DESIGN.md "Motion"): once ✓ Sent has held its beat, one React View
+ * Transition typed `handoff` fades the answered row away (exit) while the rows below close up
+ * over it (their groups glide, update), the next one's outline fading in as it arrives. Built for
+ * forty sends in a row: nothing slides sideways or scales, and the card shows the next guest at
+ * once. The rest of the page swaps at once.
+ */
+html:active-view-transition-type(handoff)::view-transition-old(root) {
+	display: none;
+}
+html:active-view-transition-type(handoff)::view-transition-new(root) {
+	animation: none;
+}
+::view-transition-group(.handoff-row-move),
+::view-transition-old(.handoff-row-move),
+::view-transition-new(.handoff-row-move) {
+	animation-duration: 420ms;
+	animation-timing-function: ease;
+}
+::view-transition-old(.handoff-row-out) {
+	animation: handoff-row-out 260ms ease-out both;
+}
+@keyframes handoff-row-out {
+	to {
+		opacity: 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-group(.handoff-row-move),
+	::view-transition-old(.handoff-row-move),
+	::view-transition-new(.handoff-row-move) {
+		animation-duration: 0s;
+	}
+	::view-transition-old(.handoff-row-out) {
+		animation-duration: 150ms;
 	}
 }
 

@@ -1074,6 +1074,7 @@
 		"lastSentTo": "Last reply sent to <guest>{name}</guest> at {time}",
 		"allAssigned": "Every lead is assigned.",
 		"viewSent": "View sent",
+		"rowSent": "Sent",
 		"sentTo": "Sent to {name}",
 		"nextUp": "Next: {name}, waiting {duration}",
 		"sendFailed": "Send failed. Your reply is still here.",

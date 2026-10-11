@@ -13,7 +13,7 @@ import {
 } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { guestLabel } from "../lib/display-name";
@@ -34,19 +34,21 @@ import {
 	useOfficeRole,
 	useRegenerateDraft,
 } from "../lib/inbox-queries";
-import { playHandoff, swapScreens } from "../lib/motion";
+import { swapScreens } from "../lib/motion";
 import { PIPE_NAMES } from "../lib/pipe-names";
 import {
 	buildQueueView,
 	INBOX_VIEWS,
 	inView,
 	nextSelection,
+	withHeldRow,
 	openingView,
 	viewsFor,
 } from "../lib/queue";
 import { sendStatusFor } from "../lib/send-status";
 import { summarize } from "../lib/summary";
 import type { ConversationSummary } from "../lib/types";
+import { useHandoff } from "../lib/use-handoff";
 import { useReplyDraft } from "../lib/use-reply-draft";
 import { AlertsPanel } from "./AlertsPanel";
 import { CaughtUp } from "./CaughtUp";
@@ -155,25 +157,14 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const sideBySide = useInboxSideBySide();
 	const listOnScreen = sideBySide || !detailOpen;
 	const [sendError, setSendError] = useState<string | null>(null);
-	// The handoff (#330). The thread whose reply is out: when it leaves the list, its row fades and
-	// the rows below glide up (ThreadList), and the card turns to the next guest (`handoff`), or,
-	// when it was the last, All caught up plays its mark (`celebrate`). Set before the send, since
-	// the list drops the row before the send's promise resolves; a failure clears it, unplayed.
-	const [departingId, setDepartingId] = useState<string | null>(null);
+	// All caught up plays its mark only when the operator's own send emptied the queue (#330).
 	const [celebrate, setCelebrate] = useState(false);
-	const handoff = useRef(false);
-	const card = useRef<HTMLDivElement>(null);
 
 	const conversations = useMemo(() => {
 		const all = conversationsQuery.data ?? [];
 		if (!filterOwner) return all;
 		return all.filter((conversation) => conversation.owner?.id === filterOwner);
 	}, [conversationsQuery.data, filterOwner]);
-	const queue = useMemo(
-		() => buildQueueView(conversations, view, query),
-		[conversations, view, query],
-	);
-	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
 	// The list as the selection last saw it, for this view, search and filter only: a thread that
 	// leaves gives way to its neighbour in it (#335), while a new view starts at its first thread.
 	const listKey = `${view}|${query}|${filterOwner ?? ""}`;
@@ -181,6 +172,20 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		key: listKey,
 		ordered: [],
 	});
+	// After a send: ✓ Sent on the answered row, then the list closes up and the thread below opens.
+	const handoff = useHandoff({
+		latestList: () => lastList.current.ordered,
+		onMoveOn: (next) => {
+			setSelectedId(next);
+			setCelebrate(next === null);
+		},
+	});
+	const { keepSelection } = handoff;
+	const queue = useMemo(
+		() => withHeldRow(buildQueueView(conversations, view, query), handoff.held),
+		[conversations, view, query, handoff.held],
+	);
+	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
 
 	useEffect(() => {
 		if (alertParam !== null) void setAlertParam(null);
@@ -237,14 +242,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		lastList.current = { key: listKey, ordered };
 		const next = nextSelection(ordered, selectedId, pinnedId, previous);
 		if (next !== selectedId) {
-			// The answered thread left the view: the handoff (#330).
-			if (selectedId !== null && selectedId === departingId) {
-				handoff.current = next !== null;
-				setCelebrate(next === null);
-				setDepartingId(null);
-			} else if (next !== null) {
-				setCelebrate(false);
-			}
+			if (next !== null) setCelebrate(false);
 			setSelectedId(next);
 		}
 	}, [
@@ -264,15 +262,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		setOwnerFilter,
 		notice,
 		views,
-		departingId,
 	]);
-
-	// The card turns to the next guest once the selection has moved there (#330).
-	useLayoutEffect(() => {
-		if (!handoff.current) return;
-		handoff.current = false;
-		if (selectedId !== null && card.current) playHandoff(card.current, sideBySide);
-	}, [selectedId, sideBySide]);
 
 	// A pin outlives anything but a new selection: the thread selected is no longer the pinned one.
 	useEffect(() => {
@@ -327,7 +317,10 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		const remaining = ordered.filter((conversation) => conversation.id !== selected.id);
 		const nextUpId = moving ? nextSelection(remaining, selected.id, null, ordered) : null;
 		const nextUp = remaining.find((conversation) => conversation.id === nextUpId) ?? null;
-		setDepartingId(moving ? selected.id : null);
+		const row = moving
+			? ordered.find((conversation) => conversation.id === selected.id)
+			: undefined;
+		const run = row ? handoff.hold(row, queue) : null;
 		try {
 			// A kept edit names the message it was typed for; the server answers the latest with it.
 			const result = await approve.mutateAsync({
@@ -358,8 +351,9 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			// Sent and All keep the answered thread open; Your turn and Unassigned move on, since
 			// it has left them (a manager's reply on a lead makes it theirs, ADR 0022).
 			if (view === "sent" || view === "all") setSelectedId(result.conversation.id);
+			if (row && run !== null) handoff.sent(row.id, run);
 		} catch (error) {
-			setDepartingId(null);
+			handoff.release();
 			// No motion, only the red line: what went wrong, and that the reply is still in the box.
 			setSendError(
 				error instanceof InboxApiError && error.message
@@ -396,9 +390,9 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const openThread = useCallback(
 		(id: string) => {
 			const open = () => {
+				keepSelection();
 				setPinnedId(null);
 				setNotice(null);
-				setDepartingId(null);
 				setCelebrate(false);
 				setSelectedId(id);
 				setDetailOpen(true);
@@ -406,7 +400,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			if (sideBySide || detailOpen) open();
 			else swapScreens("push", open);
 		},
-		[sideBySide, detailOpen],
+		[sideBySide, detailOpen, keepSelection],
 	);
 
 	/** Phone only: back from the thread to the list. */
@@ -498,9 +492,9 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							// No view is pressed until the role says which one this Inbox opens on.
 							view={rolePending ? null : view}
 							onViewChange={(next) => {
+								handoff.release();
 								setPinnedId(null);
 								setNotice(null);
-								setDepartingId(null);
 								setCelebrate(false);
 								void setView(next);
 							}}
@@ -523,7 +517,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								emptyTitle={manager ? undefined : t("emptyAssigned")}
 								ownerBadges={!(manager && view === "unassigned")}
 								viewSays={turnTheViewSays(view, manager)}
-								departingId={departingId}
+								sentId={handoff.held?.sent ? handoff.held.conversation.id : null}
 								rowAction={
 									manager && view === "unassigned"
 										? (conversation) => (
@@ -541,8 +535,8 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 						detailOpen ? "flex" : "md:flex hidden",
 					)}
 				>
-					{/* The card's body: what the handoff turns to the next guest (#330). */}
-					<div ref={card} className="min-h-0 min-w-0 flex flex-1 flex-col">
+					{/* The card's body: on a send it shows the next guest at once (#337). */}
+					<div className="min-h-0 min-w-0 flex flex-1 flex-col">
 						{notice ? (
 							<ThreadListState
 								testId={notice === "colleague" ? "alert-colleague" : "thread-not-found"}

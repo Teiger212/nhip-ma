@@ -185,3 +185,57 @@ test.describe("Thread layout 7 — the last reply sent leaves the agent All caug
 		}
 	});
 });
+
+// scenario: docs/e2e-scenarios.md Thread layout 8
+test.describe("Thread layout 8 — a sent reply says Sent on its row, then the thread below it opens", () => {
+	test("with three guests waiting, the agent approves the middle one's reply: its row says Sent, then leaves, and the third guest's thread opens, not the first", async ({
+		admin,
+		browser,
+		office,
+	}) => {
+		test.setTimeout(120_000);
+		// Three guests, written one after the other: Your turn lists them oldest first.
+		const guests = [office.newGuest(), office.newGuest(), office.newGuest()];
+		const firsts = guests.map((guest, n) => `Hello from guest ${n + 1}, ${guest.id.slice(-8)}`);
+		for (const [n, guest] of guests.entries()) await guest.write(firsts[n]);
+		const [, middle, below] = guests;
+
+		let agent: Joined | undefined;
+		let manager: Joined | undefined;
+		try {
+			[agent, manager] = await Promise.all([
+				joinOffice(admin, browser, office.id, "member", "handoff").then((a) => (agent = a)),
+				joinOffice(admin, browser, office.id, "admin", "handoff-manager").then(
+					(m) => (manager = m),
+				),
+			]);
+			const assigner = assignerAs(manager.api);
+			for (const guest of guests) await assigner.assignGuestTo(guest.id, agent.userId);
+			const { page } = agent;
+			const list = page.getByRole("complementary");
+			const row = (guest: Guest) =>
+				list.getByRole("button", { name: new RegExp(`^${guest.id}\\b`) });
+
+			// The agent opens the middle guest and approves the reply.
+			await page.goto("/en/inbox?view=yourTurn");
+			await expect(row(below), "all three guests are listed").toBeVisible(WITHIN_A_POLL);
+			await row(middle).click();
+			await expect(openThread(page).getByText(firsts[1], { exact: true })).toBeVisible();
+			await replyBox(page).fill(`Reply to ${middle.id}`);
+			const sent = page.waitForResponse((r) => r.url().endsWith("/approve"));
+			await openThread(page).getByTestId("approve-and-send").click();
+			expect((await sent).status(), "the reply is sent").toBe(200);
+
+			// The row says Sent, then goes; the thread that was below it is open.
+			await expect(list.getByTestId("thread-row-sent")).toHaveText("Sent");
+			await expect(row(middle), "the answered row leaves the list").toHaveCount(0);
+			await expect(row(below), "the thread below is the current one").toHaveAttribute(
+				"aria-current",
+				"true",
+			);
+			await expect(openThread(page).getByText(firsts[2], { exact: true })).toBeVisible();
+		} finally {
+			await Promise.all([agent?.close(), manager?.close()]);
+		}
+	});
+});

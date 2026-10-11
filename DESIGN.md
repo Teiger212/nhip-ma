@@ -598,12 +598,14 @@ Three curves, tokens in `apps/saas/app/globals.css` (repeated for script in
 **kit** `cubic-bezier(0.32, 0.72, 0, 1)` for sheets and the phone's steps, **exit**
 `cubic-bezier(0.4, 0, 1, 1)` for what leaves.
 
-- **The handoff** (the focal motion). Only once the server has confirmed Approve and send, in Your
-  turn or Unassigned: the answered row leaves the list at once and a faded copy of it slides 12px
-  left in 160ms (exit) where it stood, while the rows below glide up in 220ms (arrive), FLIP with
-  transform only. On a desk the card cross-fades to the next guest in 160ms; on a phone it steps
-  12px forward in 240ms (kit), once, on whatever renders first. A row whose data didn't change
-  isn't rendered again. A poll, a view switch or a search swaps the list at once.
+- **The handoff** (the focal motion; #337, variant B4, chosen by Eyal on 2026-10-11 for forty sends
+  in a row). Only once the server has confirmed Approve and send, in Your turn or Unassigned: the
+  answered row stays where it stood and "✓ Sent" fades over it in 180ms (in the success tone),
+  holding 320ms. Then one React View Transition, typed `handoff`, fades the row away in 260ms while
+  the rows below close up over 420ms (`ease`) and the next row's outline fades in as it arrives;
+  the selection moves to the thread that was below the answered one (above it, when it was last).
+  The card shows the next guest at once, with no fade: only the list moves, so nothing blinks. A
+  poll, a view switch or a search swaps the list at once.
 - **Count tick.** The view tabs, the nav count and the phone top bar's count: the new value rises
   into its one-line slot in 150ms (arrive), the old one leaves upward in 120ms (exit). The first
   value shows still.
@@ -624,7 +626,7 @@ Three curves, tokens in `apps/saas/app/globals.css` (repeated for script in
   animated; menus, selects and popovers enter in 150ms and leave in 100ms. The 0.98 press stays.
 
 **The Reduced Motion Floor.** Under `prefers-reduced-motion` every motion has a path: the handoff
-removes the row and cross-fades the next thread in 150ms; a count changes in place with a 150ms
+keeps its ✓ Sent beat, then the row fades in 150ms and the list closes at once; a count changes in place with a 150ms
 fade, the old value gone at once; All caught up cross-fades with its check already drawn; the
 push is an instant swap; sheets, menus and dialogs keep a 150ms fade with no slide or zoom
 (one global block in `globals.css`); toasts fade in place. The spinner keeps turning: it is

@@ -10,6 +10,7 @@ import {
 	threadStatus,
 	waitingNow,
 	nextSelection,
+	withHeldRow,
 	openingView,
 	viewsFor,
 	QUIET_AFTER_MS,
@@ -158,6 +159,20 @@ test("a thread that left the list gives way to its neighbour in the list before"
 	expect(nextSelection([], "b", null, before)).toBeNull();
 	// No list before (a new view): the first thread.
 	expect(nextSelection([a, c, d], "b", null, [])).toBe("a");
+});
+
+// #337: the answered row keeps its slot through the handoff's beat, though the data dropped it.
+test("a held row goes back where it stood, until the data has it again", () => {
+	const [a, b, c] = ["a", "b", "c"].map((id) => conv({ id, guestName: id }));
+	const queue = buildQueueView([a, c], "all", "", NOW);
+	const held = { conversation: b, section: "visible" as const, index: 1, sent: true };
+	expect(withHeldRow(queue, held).visible.map((x) => x.id)).toEqual(["a", "b", "c"]);
+	expect(withHeldRow(queue, held).counts).toEqual(queue.counts);
+	expect(withHeldRow(buildQueueView([], "yourTurn", "", NOW), held).caughtUp).toBe(false);
+	// Still listed (the send hasn't landed): nothing is added twice.
+	const listed = buildQueueView([a, b, c], "all", "", NOW);
+	expect(withHeldRow(listed, held)).toBe(listed);
+	expect(withHeldRow(queue, null)).toBe(queue);
 });
 
 // #267: a thread the manager just assigned stays open though it left the view; a send doesn't pin.

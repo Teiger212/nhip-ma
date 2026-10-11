@@ -173,6 +173,29 @@ export function buildQueueView(
 	};
 }
 
+/** The answered thread held in the list through the handoff's ✓ Sent beat (#337). */
+export type HeldRow = {
+	conversation: ConversationSummary;
+	section: "visible" | "quiet";
+	index: number;
+	/** The server confirmed the send: the row says ✓ Sent. */
+	sent: boolean;
+};
+
+/**
+ * The queue with the held row back where it stood, once the data has dropped it: the list and
+ * the selection keep it until the handoff takes it away. The counts stay the data's, and the
+ * queue isn't caught up while the row still shows.
+ */
+export function withHeldRow(queue: QueueView, held: HeldRow | null): QueueView {
+	if (!held) return queue;
+	const id = held.conversation.id;
+	if (queue.visible.some((c) => c.id === id) || queue.quiet.some((c) => c.id === id)) return queue;
+	const section = [...queue[held.section]];
+	section.splice(Math.min(held.index, section.length), 0, held.conversation);
+	return { ...queue, [held.section]: section, caughtUp: false, allAssigned: false };
+}
+
 /**
  * Which thread should be selected after the list changed. `ordered` is every thread the
  * operator can see, active then quiet. Keeps the current selection when it is still
