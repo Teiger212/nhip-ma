@@ -107,7 +107,7 @@ test("a key with no model ids drafts and translates with the defaults in code", 
 
 	expect(calls.map((call) => call.body.model)).toEqual([
 		"anthropic/claude-haiku-5.5",
-		"anthropic/claude-haiku-5.5",
+		"google/gemini-3.1-flash-lite",
 	]);
 	expect(calls.every((call) => call.body.provider !== undefined)).toBe(true);
 });
@@ -128,7 +128,10 @@ test("Gemini 3.x thinks at its lowest level; Haiku drafts at medium and translat
 	expect(calls[1].body).not.toHaveProperty("reasoning");
 
 	// Haiku drafts at its default medium effort and translates without reasoning (#289).
-	const haiku = layerFor({ DRAFT_API_KEY: "sk-test" });
+	const haiku = layerFor({
+		DRAFT_API_KEY: "sk-test",
+		TRANSLATE_MODEL: "anthropic/claude-haiku-5.5",
+	});
 	await haiku.draft(DRAFT_INPUT);
 	await haiku.translate(TRANSLATE_INPUT);
 	expect(calls[2].body.model).toBe("anthropic/claude-haiku-5.5");
