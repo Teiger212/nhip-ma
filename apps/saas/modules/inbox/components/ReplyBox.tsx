@@ -87,8 +87,7 @@ export function ReplyBox({
 				id="inbox-reply"
 				value={reply}
 				onChange={(event) => onReplyChange(event.target.value)}
-				className="min-h-20 max-h-48"
-				growOnPhone
+				className="h-20"
 				aria-label={t("reply")}
 				data-source={edited ? undefined : draftSource}
 			/>
