@@ -149,7 +149,7 @@ go-live.
       pass the post-check and read well to you. If none passes, tell Claude before relaxing
       to `data_collection: "deny"` alone.
 - [ ] **Vercel, staging:** `DRAFT_API_KEY` (Sensitive). Then redeploy. A key alone is enough:
-      `DRAFT_MODEL` and `TRANSLATE_MODEL` default to Haiku 5.5 in code, and are set only to
+      `DRAFT_MODEL` (Haiku 5.5) and `TRANSLATE_MODEL` (Gemini 3.1 Flash-Lite) default in code, set only to
       switch a task's model; `DRAFT_DAILY_CAP` (50) and `TRANSLATE_DAILY_CAP` (1000) only to
       change an office's daily cap. This also turns on the model's translations and suggested
       replies (ADR 0005, ADR 0007, ADR 0024).
@@ -195,7 +195,8 @@ go-live.
       with its `VAPID_SUBJECT`). `DATABASE_URL` is prod's
       pooled Neon URL as the app role `nhip_app` (#98); `DIRECT_DATABASE_URL` is its direct URL
       as `neondb_owner`. `DRAFT_API_KEY`, set on neither staging nor prod yet;
-      `DRAFT_MODEL` and `TRANSLATE_MODEL` only to override their defaults (Haiku 5.5), and
+      `DRAFT_MODEL` and `TRANSLATE_MODEL` only to override their defaults (Haiku 5.5, Gemini 3.1
+      Flash-Lite), and
       `DRAFT_DAILY_CAP` and `TRANSLATE_DAILY_CAP` only to change 50 and 1,000. Never set
       `MOCK_CRM_WEBHOOK_SECRET`, `MODEL_STUB` or `AUTH_TRUSTED_ORIGINS` in production, nor a
       `DRAFT_BASE_URL` other than OpenRouter: startup refuses each.

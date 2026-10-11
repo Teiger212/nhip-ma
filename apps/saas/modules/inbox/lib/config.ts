@@ -400,8 +400,8 @@ export const DEFAULT_DRAFT_BASE_URL = "https://openrouter.ai/api/v1";
 /** Each task's model and cap when its env var is unset (ADR 0024). */
 export const MODEL_DEFAULTS = {
 	draft: { model: "anthropic/claude-haiku-5.5", dailyCap: 50 },
-	// Until the translation eval (#254) picks its model.
-	translate: { model: "anthropic/claude-haiku-5.5", dailyCap: 1000 },
+	// The translation eval's pick (#254, 2026-10-11).
+	translate: { model: "google/gemini-3.1-flash-lite", dailyCap: 1000 },
 } as const satisfies Record<ModelTask, { model: string; dailyCap: number }>;
 
 function isOpenRouter(value: string): boolean {

@@ -59,7 +59,8 @@ saas test`. Do not commit untracked local scripts.
   ever come from the CRM adapter (ADR 0003); until one is connected they say so.
 - Translation and AI suggested replies run through the model layer (ADRs 0005, 0007, 0024):
   OpenRouter only, zero-retention routing on every request, a model per task (`DRAFT_MODEL`,
-  `TRANSLATE_MODEL`, both defaulting to Haiku 5.5), daily caps per office, 20 s and one retry.
+  `TRANSLATE_MODEL`, defaulting to Haiku 5.5 and Gemini 3.1 Flash-Lite), daily caps per office,
+  20 s and one retry.
   Without `DRAFT_API_KEY` there is no model: no translation, template drafts. A model draft
   is JSON with the reply and the same reply in the office language (#251); one that states a
   price, an availability, a viewing time or a legal answer, or a number the guest didn't write,

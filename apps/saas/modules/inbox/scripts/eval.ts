@@ -49,7 +49,8 @@ import type { OperatorLanguage } from "../lib/types";
  * under `reports/evals/`. The key is never printed.
  */
 
-const TRANSLATION_MODELS = [MODEL_DEFAULTS.translate.model, "google/gemini-3.1-flash-lite"];
+/** The default against the runner-up of the first eval (#254, 2026-10-11). */
+const TRANSLATION_MODELS = [MODEL_DEFAULTS.translate.model, "anthropic/claude-haiku-5.5"];
 /** Two calls at a time: fast enough, and latencies stay honest. */
 const CONCURRENCY = 2;
 /** A draft's two texts, up to 4 sentences each, as JSON: a generous output estimate. */
