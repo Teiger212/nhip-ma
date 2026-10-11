@@ -147,6 +147,19 @@ test("selection stays when listed, otherwise advances to the first active thread
 	expect(nextSelection([...onlyQuiet.visible, ...onlyQuiet.quiet], null)).toBe("zalo:thao");
 });
 
+// #335: a thread that leaves gives way to the one below it, or above it when it was last.
+test("a thread that left the list gives way to its neighbour in the list before", () => {
+	const [a, b, c, d] = ["a", "b", "c", "d"].map((id) => conv({ id, guestName: id }));
+	const before = [a, b, c, d];
+	expect(nextSelection([a, c, d], "b", null, before)).toBe("c");
+	expect(nextSelection([a, b, c], "d", null, before)).toBe("c");
+	// The one below left too (a poll took both): the next still listed.
+	expect(nextSelection([a, d], "b", null, before)).toBe("d");
+	expect(nextSelection([], "b", null, before)).toBeNull();
+	// No list before (a new view): the first thread.
+	expect(nextSelection([a, c, d], "b", null, [])).toBe("a");
+});
+
 // #267: a thread the manager just assigned stays open though it left the view; a send doesn't pin.
 test("a pinned selection stays though it left the view, and only it", () => {
 	const q = buildQueueView(all, "yourTurn", "", NOW);

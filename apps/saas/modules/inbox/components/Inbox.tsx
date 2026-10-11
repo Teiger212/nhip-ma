@@ -174,6 +174,13 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		[conversations, view, query],
 	);
 	const ordered = useMemo(() => [...queue.visible, ...queue.quiet], [queue.visible, queue.quiet]);
+	// The list as the selection last saw it, for this view, search and filter only: a thread that
+	// leaves gives way to its neighbour in it (#335), while a new view starts at its first thread.
+	const listKey = `${view}|${query}|${filterOwner ?? ""}`;
+	const lastList = useRef<{ key: string; ordered: ConversationSummary[] }>({
+		key: listKey,
+		ordered: [],
+	});
 
 	useEffect(() => {
 		if (alertParam !== null) void setAlertParam(null);
@@ -226,7 +233,9 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			return;
 		}
 		if (listPending || notice) return;
-		const next = nextSelection(ordered, selectedId, pinnedId);
+		const previous = lastList.current.key === listKey ? lastList.current.ordered : [];
+		lastList.current = { key: listKey, ordered };
+		const next = nextSelection(ordered, selectedId, pinnedId, previous);
 		if (next !== selectedId) {
 			// The answered thread left the view: the handoff (#330).
 			if (selectedId !== null && selectedId === departingId) {
@@ -244,6 +253,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		conversationsQuery.isSuccess,
 		conversationsQuery.data,
 		ordered,
+		listKey,
 		selectedId,
 		pinnedId,
 		threadParam,
@@ -311,12 +321,12 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		if (!selected || !selected.unansweredInboundId || !target || !reply.trim() || approve.isPending)
 			return;
 		setSendError(null);
-		// Who is next once this one leaves the view: the oldest waiting guest after it, in Your
+		// Who is next once this one leaves the view: the thread the selection moves to, in Your
 		// turn and Unassigned only (Sent and All keep the answered thread open).
 		const moving = view === "yourTurn" || view === "unassigned";
-		const nextUp = moving
-			? (ordered.find((conversation) => conversation.id !== selected.id) ?? null)
-			: null;
+		const remaining = ordered.filter((conversation) => conversation.id !== selected.id);
+		const nextUpId = moving ? nextSelection(remaining, selected.id, null, ordered) : null;
+		const nextUp = remaining.find((conversation) => conversation.id === nextUpId) ?? null;
 		setDepartingId(moving ? selected.id : null);
 		try {
 			// A kept edit names the message it was typed for; the server answers the latest with it.
