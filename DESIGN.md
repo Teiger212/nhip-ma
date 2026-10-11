@@ -434,6 +434,7 @@ Confident, compact pills that press in slightly.
 - **Style:** 36px tall, Field Edge 1px stroke, card background, 8.4px radius, 12px horizontal padding, 1rem text (16px, so iOS doesn't zoom on focus).
 - **Focus:** the stroke turns Dispatch Blue, with a 1px blue ring.
 - **Placeholder:** 60% ink. **Disabled:** 50% opacity and a not-allowed cursor.
+- **Text boxes (`Textarea`):** a fixed height, never resizable (no drag handle) and never growing with the text; text longer than the box scrolls inside it (Eyal, 2026-10-11, #312).
 - **Search (`variant="search"`):** the inbox search, at the top of the list panel: 48px tall, a Morning Wash fill with no stroke, 4.8px radius, and 48px of left padding for the leading icon.
 
 ### View Tabs
@@ -486,7 +487,7 @@ One short line in Body Small Slate Note beside the reply box's "Reply" label: th
 
 ### Reply Box (docked)
 
-The foot of the conversation column, always in view: card background tinted 40% Morning Wash, top hairline, 12px × 20px. A first row holds "Reply" (Be Vietnam Pro semibold, 0.875rem) and the operator note, with Regenerate (ghost, 44px target) at its end; no label says whether the suggestion came from the model or the template (Eyal, 2026-10-10, #303). Then the textarea (at least 80px, at most 12rem before it scrolls; on a phone it grows with the draft up to that height). The last row has a polite live-region status in Body Small on the left (Slate Note, or Signal Red when a send failed or a pipe is disconnected) and Approve and send on the right, at least 44px tall. While no guest message waits for an answer, the box folds to one 44px line: a Sent Green check and, in Body Small Slate Note, "Answered · Sent <when> · waiting for the guest", with no draft and no disabled Approve; it comes back when the guest writes. An unknown or failed send keeps the whole box (#94).
+The foot of the conversation column, always in view: card background tinted 40% Morning Wash, top hairline, 12px × 20px. A first row holds "Reply" (Be Vietnam Pro semibold, 0.875rem) and the operator note, with Regenerate (ghost, 44px target) at its end; no label says whether the suggestion came from the model or the template (Eyal, 2026-10-10, #303). Then the textarea, a fixed 80px at every width with no resize handle; a longer draft scrolls inside it (#312). The last row has a polite live-region status in Body Small on the left (Slate Note, or Signal Red when a send failed or a pipe is disconnected) and Approve and send on the right, at least 44px tall. While no guest message waits for an answer, the box folds to one 44px line: a Sent Green check and, in Body Small Slate Note, "Answered · Sent <when> · waiting for the guest", with no draft and no disabled Approve; it comes back when the guest writes. An unknown or failed send keeps the whole box (#94).
 
 ### Guest Details (rail and strip)
 
