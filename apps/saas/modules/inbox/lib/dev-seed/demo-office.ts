@@ -4,6 +4,7 @@ import {
 	DEMO_OFFICE_ID,
 	DEMO_AGENT_EMAIL,
 } from "../demo-user";
+import { ENGLISH_REPLY_LINE } from "../greeting";
 import { DEMO_THREADS } from "../seed";
 import {
 	assigns,
@@ -369,7 +370,7 @@ const firstAgent: SeedGuest[] = [
 			replies(
 				daysAgo(11) - minutesAgo(11),
 				"agent",
-				"안녕하세요! Times City 근처에 $900 안팎의 1 bedroom이 두 곳 있습니다. 이번 주에 보러 오시겠어요?",
+				`Hi! There are two 1-bedrooms near Times City at around $900. Would you like to see them this week?\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 		],
 	},
@@ -390,7 +391,7 @@ const firstAgent: SeedGuest[] = [
 			replies(
 				daysAgo(15) - hoursAgo(2),
 				"agent",
-				"Здравствуйте, Михаил! В Hai Ba Trung есть две квартиры с 1 спальней до $1000 в месяц. Когда вам удобно посмотреть?",
+				`Hello Mikhail! There are two 1-bedroom flats in Hai Ba Trung under $1000 a month. When would suit you for a viewing?\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 		],
 	},
@@ -463,7 +464,7 @@ const firstAgent: SeedGuest[] = [
 			replies(
 				daysAgo(18) - minutesAgo(6),
 				"agent",
-				"こんにちは！Ciputraに$2400前後の3 bedroomが2件ございます。今週ご内見はいかがでしょうか。",
+				`Hello! There are two 3-bedrooms in Ciputra at around $2400. Would a viewing this week suit you?\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 			crmMarks(daysAgo(6), "won"),
 		],
@@ -616,17 +617,13 @@ const secondAgent: SeedGuest[] = [
 			replies(
 				daysAgo(22) - minutesAgo(5),
 				"agent2",
-				"はじめまして！Tay Hoに2 bedroomが3件ございます。来週火曜日はいかがでしょうか。",
+				`Nice to meet you! There are three 2-bedrooms in Tay Ho. Would next Tuesday suit you?\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 			writes(daysAgo(21), "火曜日の午後で大丈夫です。よろしくお願いします。", {
 				en: "Tuesday afternoon works. Thank you.",
 				vi: "Chiều thứ Ba được ạ. Cảm ơn bạn.",
 			}),
-			replies(
-				daysAgo(21) - minutesAgo(30),
-				"agent2",
-				"承知しました。火曜日の午後2時にお待ちしております。",
-			),
+			replies(daysAgo(21) - minutesAgo(30), "agent2", "Noted. See you on Tuesday at 2 pm."),
 		],
 	},
 	{
@@ -646,7 +643,7 @@ const secondAgent: SeedGuest[] = [
 			replies(
 				daysAgo(25) - minutesAgo(8),
 				"agent2",
-				"Добрый вечер, Николай! Сегодня пришлю подборку квартир с 3 спальнями в Landmark.",
+				`Good evening, Nikolai! I'll send you a selection of 3-bedroom flats in Landmark today.\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 			crmMarks(daysAgo(12), "lost", "Chose a cheaper flat with another agency"),
 		],
@@ -784,7 +781,7 @@ const managerOwn: SeedGuest[] = [
 			replies(
 				daysAgo(14) - minutesAgo(12),
 				"manager",
-				"こんにちは！Ba Dinhに$1100の1 bedroomがございます。明日ご内見いただけます。",
+				`Hello! There's a 1-bedroom in Ba Dinh for $1100. You can view it tomorrow.\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 			crmMarks(daysAgo(4), "won"),
 		],
@@ -821,7 +818,7 @@ const managerOwn: SeedGuest[] = [
 			replies(
 				daysAgo(27) - minutesAgo(17),
 				"manager",
-				"Здравствуйте, Елена! В Times City есть квартира с 2 спальнями за $1300. Могу показать в субботу.",
+				`Hello Elena! There's a 2-bedroom flat in Times City for $1300. I can show it on Saturday.\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 		],
 	},

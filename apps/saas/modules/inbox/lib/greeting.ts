@@ -1,4 +1,5 @@
-import type { GuestLanguage, Qualification } from "./types";
+import { isSupportedLanguage, namedLanguage, repliesInEnglishInstead } from "./language-name";
+import type { GuestLanguage, Message, OneShot, OperatorLanguage, Qualification } from "./types";
 
 /**
  * The auto-reply's fixed template (ADR 0021, R9): what goes out when no model writes the
@@ -186,11 +187,48 @@ export function withGreetingLabel(body: string, language: GuestLanguage, officeN
 	return `${body}\n\n${greetingLabel(language, officeName)}`;
 }
 
-/** The fixed template (R9) in the guest's language, label included. */
+/**
+ * The line a guest gets when Nhịp knows their language but the gate (`SUPPORTED_GUEST_LANGUAGES`)
+ * has it answered in English (#306), once per conversation: on the office's first message to
+ * them, the auto-reply when it is on, otherwise the first template reply. It always goes to the
+ * guest in English; the VI copy is only the operator line of a VI office (#242).
+ */
+export const ENGLISH_REPLY_LINE: Record<OperatorLanguage, string> = {
+	en: "We reply in English. If you can write to us in English, we'll help you faster.",
+	vi: "Bên em trả lời bằng tiếng Anh. Nếu anh/chị có thể nhắn bằng tiếng Anh, bên em sẽ hỗ trợ nhanh hơn ạ.",
+};
+
+/** The line in the language a reply or its operator line is rendered in. */
+export function englishReplyLine(language: GuestLanguage): string {
+	return language === "vi" ? ENGLISH_REPLY_LINE.vi : ENGLISH_REPLY_LINE.en;
+}
+
+/**
+ * Whether the office's next message to the guest carries the line (#306): the guest writes one
+ * of the five Nhịp knows, the thread is answered in English instead, and the office has sent the
+ * guest nothing yet. Read from the stored thread, so the line goes once, whichever instance
+ * writes: a language Nhịp doesn't know at all (#245) never gets it.
+ */
+export function owesEnglishReplyLine(
+	shot: Pick<OneShot, "language" | "guestLanguage">,
+	messages: Pick<Message, "direction">[],
+): boolean {
+	return (
+		isSupportedLanguage(namedLanguage(shot)) &&
+		repliesInEnglishInstead(shot) &&
+		!messages.some((message) => message.direction === "out")
+	);
+}
+
+/**
+ * The fixed template (R9) in the reply's language, label included. `englishLine` adds the
+ * English-reply line (#306) before the label, which stays last (R7).
+ */
 export function greetingTemplate(
 	language: GuestLanguage,
 	qualification: Qualification,
 	officeName: string,
+	englishLine: boolean,
 ): string {
 	const copy = COPY[language];
 	const area = qualification.areaOfInterest;
@@ -206,5 +244,6 @@ export function greetingTemplate(
 	for (const qualifier of greetingAsks(qualification)) sentences.push(copy.questions[qualifier]);
 	// Japanese runs its sentences together; the others leave a space.
 	const body = sentences.join(language === "ja" ? "" : " ");
-	return withGreetingLabel(body, language, officeName);
+	const withLine = englishLine ? `${body}\n\n${englishReplyLine(language)}` : body;
+	return withGreetingLabel(withLine, language, officeName);
 }

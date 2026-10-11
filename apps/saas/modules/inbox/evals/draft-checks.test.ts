@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { extractFromInbound } from "../lib/extract";
-import { greetingTemplate } from "../lib/greeting";
+import { greetingTemplate, owesEnglishReplyLine } from "../lib/greeting";
 import type { Message } from "../lib/types";
 import { type CheckId, type CheckThread, checkDraft } from "./draft-checks";
 
@@ -19,11 +19,16 @@ const guest = (text: string): Turn => ({ direction: "in", source: "guest", text 
 const agent = (text: string): Turn => ({ direction: "out", source: "nhip", text });
 /** The auto-reply as the office sends it to the guest's first message (ADR 0021). */
 const autoReply = (first: string): Turn => {
-	const { language, qualification } = extractFromInbound(first);
+	const shot = extractFromInbound(first);
 	return {
 		direction: "out",
 		source: "auto-reply",
-		text: greetingTemplate(language, qualification, OFFICE),
+		text: greetingTemplate(
+			shot.language,
+			shot.qualification,
+			OFFICE,
+			owesEnglishReplyLine(shot, []),
+		),
 	};
 };
 

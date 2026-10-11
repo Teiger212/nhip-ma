@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 import { formatCribNote } from "./crib";
 import { oneShot } from "./draft";
 import { extractFromInbound, PAPERWORK_FLAG } from "./extract";
+import { ENGLISH_REPLY_LINE } from "./greeting";
+import { NEW_THREAD } from "./reply-template";
 import { inboxEn as en, inboxVi as vi } from "./test-translate";
 
 test("full English inbound extracts fields that are present", () => {
@@ -87,6 +89,8 @@ test("paperwork flag does not invent Vietnamese law", () => {
 	expect(formatCribNote(shot, en)).not.toMatch(/sổ hồng ngày mai/i);
 });
 
+const JAPANESE = "ハノイにいます。Tay Hoで賃貸を探しています。";
+
 test("draft follows guest language; the operator note follows the operator's language", () => {
 	const enGuest = oneShot("Looking to rent in Ba Dinh, I am French");
 	expect(enGuest.language).toBe("en");
@@ -99,10 +103,31 @@ test("draft follows guest language; the operator note follows the operator's lan
 	expect(viGuest.draft.reply).toMatch(/mua|Ba Đình/);
 	expect(formatCribNote(viGuest, en)).toMatch(/Vietnamese/);
 
-	const jaGuest = oneShot("ハノイにいます。Tay Hoで賃貸を探しています。");
+	// With the gate open to Japanese (#306), as before it.
+	const jaGuest = oneShot(JAPANESE, null, NEW_THREAD, undefined, ["en", "vi", "ja"]);
 	expect(jaGuest.language).toBe("ja");
 	expect(jaGuest.draft.reply).toMatch(/チャット/);
-	expect(formatCribNote(jaGuest, vi)).toMatch(/tiếng Nhật/);
+	expect(jaGuest.draft.reply).not.toContain(ENGLISH_REPLY_LINE.en);
+	expect(formatCribNote(jaGuest, vi)).toBe("bằng tiếng Nhật");
+});
+
+// #306: until after the demo Nhịp replies in EN and VI only. A guest in another of the five is
+// answered in English, told so once, and the operator note says the reply is in English.
+test("by default a Japanese guest is answered in English, with the English-reply line", () => {
+	const shot = oneShot(JAPANESE);
+	expect(shot.language).toBe("en");
+	expect(shot.guestLanguage).toBe("ja");
+	expect(shot.draft.reply).toMatch(/^Thanks for getting in touch\./u);
+	expect(shot.draft.reply.endsWith(`\n\n${ENGLISH_REPLY_LINE.en}`)).toBe(true);
+	expect(formatCribNote(shot, en)).toBe("in English · Japanese isn't supported");
+	expect(formatCribNote(shot, vi)).toBe("bằng tiếng Anh · chưa hỗ trợ tiếng Nhật");
+});
+
+test("a French guest is answered in English without the line, as before (#245)", () => {
+	const shot = oneShot("Bonjour, je cherche un appartement à louer à Tay Ho");
+	expect(shot.language).toBe("en");
+	expect(shot.guestLanguage).toBe("fr");
+	expect(shot.draft.reply).not.toContain(ENGLISH_REPLY_LINE.en);
 });
 
 /* The extraction slips found on the demo walk, 2026-10-08 (#243). */

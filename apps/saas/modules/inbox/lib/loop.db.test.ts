@@ -28,6 +28,7 @@ import { POST as inject } from "../../../app/dev/inbound/route";
 import { settleBackgroundWork } from "./background";
 import { mockInboxConfig } from "./config";
 import { type DraftAdapter, type DraftInput, noDraftAdapter } from "./drafts";
+import { ENGLISH_REPLY_LINE } from "./greeting";
 import { NEW_THREAD, replyTemplate } from "./reply-template";
 import { peekTestRuntime, setRuntimeForTests } from "./runtime";
 import { json, params, post, DEMO_SESSION } from "./test-fixtures";
@@ -123,8 +124,11 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 		en: "[en] 안녕하세요. Tay Ho에서 2 bedroom 임대 찾고 있어요.",
 	});
 	// The auto-reply went out, and the first reply keeps the template: the office has no human
-	// reply yet, so the model isn't asked (ADR 0024).
+	// reply yet, so the model isn't asked (ADR 0024). Korean is outside the default gate (#306):
+	// the greeting is English and tells the guest so, once; the template after it doesn't.
 	expect(conv.messages.map((message) => message.source)).toEqual(["guest", "auto-reply"]);
+	expect(conv.messages[1].text).toContain(ENGLISH_REPLY_LINE.en);
+	expect(conv.oneShot?.draft.reply).not.toContain(ENGLISH_REPLY_LINE.en);
 	expect(followUps).toEqual([]);
 	expect(conv.oneShot?.draft).toMatchObject({ answersMessageId: firstInbound, source: "template" });
 
@@ -162,10 +166,9 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(secondInbound).toBe(conv.messages[3].id);
 	expect(secondInbound).not.toBe(firstInbound);
 	expect(conv.sentAt).toBeTruthy();
+	// In English (#306), the office language: no second text (#242).
 	expect(conv.oneShot?.draft).toEqual({
-		reply: laterTurn("ko", conv),
-		// The same template in the office language, for the agent to read (#242).
-		officeReply: laterTurn("en", conv),
+		reply: laterTurn("en", conv),
 		answersMessageId: secondInbound,
 		source: "template",
 	});
@@ -175,10 +178,9 @@ test("the conversation loop: reply, guest writes back, translated, AI follow-up,
 	expect(conv.messages[3].translations).toEqual({
 		en: "[en] 금요일에 볼 수 있을까요?",
 	});
+	// The model drafts in English (#306), the office language (ADR 0025): no second text.
 	expect(conv.oneShot?.draft).toEqual({
 		reply: 'Follow-up two: about "금요일에 볼 수 있을까요?"',
-		// The office's language is English (ADR 0025): the reply's second text is in it.
-		officeReply: '[en] Follow-up two: about "금요일에 볼 수 있을까요?"',
 		answersMessageId: secondInbound,
 		source: "model",
 	});
@@ -374,7 +376,7 @@ test("without a model there is no translation and every suggestion is a template
 	);
 	await settleBackgroundWork();
 	conv = await get(conv.id);
-	expect(conv.oneShot?.draft).toMatchObject({ reply: laterTurn("ru", conv), source: "template" });
+	expect(conv.oneShot?.draft).toMatchObject({ reply: laterTurn("en", conv), source: "template" });
 	const regenerated = await json(
 		await draft(post(`http://localhost/api/conversations/${conv.id}/draft`, {}), params(conv.id)),
 	);
@@ -386,8 +388,8 @@ test("without a model there is no translation and every suggestion is a template
  * The template once the office has replied (ADR 0024): it introduces no one and asks nothing,
  * whatever the thread holds.
  */
-function laterTurn(language: "ko" | "ru" | "en", conv: Conversation): string {
+function laterTurn(language: "en", conv: Conversation): string {
 	const qualification = conv.oneShot?.qualification;
 	if (!qualification) throw new Error("no one-shot");
-	return replyTemplate(language, qualification, { ...NEW_THREAD, sentAt: conv.sentAt });
+	return replyTemplate(language, qualification, { ...NEW_THREAD, sentAt: conv.sentAt }, false);
 }

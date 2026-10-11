@@ -4,6 +4,7 @@ import {
 	RIVER_MANAGER_EMAIL,
 	RIVER_OFFICE_ID,
 } from "../demo-user";
+import { ENGLISH_REPLY_LINE } from "../greeting";
 import {
 	assigns,
 	daysAgo,
@@ -204,7 +205,7 @@ const guests: SeedGuest[] = [
 			replies(
 				daysAgo(6) - minutesAgo(2),
 				"agent2",
-				"안녕하세요! Hai Ba Trung에 $780 1 bedroom이 있습니다. 사진 보내드릴까요?",
+				`Hi! There's a 1-bedroom in Hai Ba Trung for $780. Shall I send photos?\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 		],
 	},
@@ -225,7 +226,7 @@ const guests: SeedGuest[] = [
 			replies(
 				daysAgo(17) - minutesAgo(70),
 				"agent2",
-				"Добрый день, Иван! В Ciputra есть квартира с 3 спальнями за $2400. Отправить фото?",
+				`Good afternoon, Ivan! There's a 3-bedroom flat in Ciputra for $2400. Shall I send photos?\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 		],
 	},
@@ -366,7 +367,7 @@ const guests: SeedGuest[] = [
 			replies(
 				daysAgo(8) - minutesAgo(25),
 				"agent",
-				"안녕하세요 Min-jun님! River Office의 River Agent입니다. Hai Ba Trung 지역 1 bedroom 후보를 찾아서 보내드리겠습니다.",
+				`Hi Min-jun, River Agent from River Office here. I'll find a few 1-bedroom options in Hai Ba Trung and send them over.\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 			writes(
 				daysAgo(7),
@@ -436,7 +437,7 @@ const guests: SeedGuest[] = [
 			replies(
 				daysAgo(2) - minutesAgo(17),
 				"agent",
-				"Yunaさん、こんにちは。River OfficeのRiver Agentです。Ba Dinhで1 bedroomの候補を探して、ご連絡します。",
+				`Hi Yuna, River Agent from River Office here. I'll look for 1-bedroom options in Ba Dinh and get back to you.\n\n${ENGLISH_REPLY_LINE.en}`,
 			),
 			writes(
 				hoursAgo(3),

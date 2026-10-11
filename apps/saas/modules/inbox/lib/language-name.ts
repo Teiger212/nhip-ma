@@ -5,7 +5,11 @@ import type { GuestLanguage, OneShot } from "./types";
  * nothing from `@repo/database` at runtime.
  */
 
-/** The five Nhịp supports (CONTEXT.md "Guest language"), as `GuestLanguage` declares them. */
+/**
+ * The five Nhịp has copy and translation for, as `GuestLanguage` declares them. Whether it replies
+ * in one is the deployment's gate, `SUPPORTED_GUEST_LANGUAGES` (#306): a guest in one of the five
+ * the gate leaves out is still translated for the agent, and answered in English.
+ */
 const SUPPORTED: readonly string[] = [
 	"en",
 	"vi",
@@ -14,8 +18,39 @@ const SUPPORTED: readonly string[] = [
 	"ru",
 ] satisfies readonly GuestLanguage[];
 
+/** One of the five Nhịp has copy and translation for, whatever the gate says. */
 export function isSupportedLanguage(code: string): code is GuestLanguage {
 	return SUPPORTED.includes(code);
+}
+
+/**
+ * The guest languages Nhịp replies in when `SUPPORTED_GUEST_LANGUAGES` is unset (#306): English and
+ * Vietnamese, until after the demo. English is always among them: it is every other guest's reply.
+ */
+export const DEFAULT_SUPPORTED_GUEST_LANGUAGES: readonly GuestLanguage[] = ["en", "vi"];
+
+/**
+ * The language Nhịp writes to the guest in (ADR 0021 R4, #245, #306): the guest language when the
+ * gate lets it through, otherwise English.
+ */
+export function replyLanguageFor(
+	guestLanguage: string,
+	supported: readonly GuestLanguage[],
+): GuestLanguage {
+	return isSupportedLanguage(guestLanguage) && supported.includes(guestLanguage)
+		? guestLanguage
+		: "en";
+}
+
+/**
+ * Whether the thread is answered in English although the guest writes another language: one Nhịp
+ * doesn't know (#245), or one of the five the gate leaves out (#306). Read from the stored one-shot,
+ * never from the gate, so it is safe on the client.
+ */
+export function repliesInEnglishInstead(
+	shot: Pick<OneShot, "language" | "guestLanguage">,
+): boolean {
+	return namedLanguage(shot) !== shot.language;
 }
 
 /** The guest language a one-shot names: the detected one, or, from before #245, the reply's. */

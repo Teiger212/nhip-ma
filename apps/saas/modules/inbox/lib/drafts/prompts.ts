@@ -93,8 +93,8 @@ export function followUpSystemPrompt(
 	guestLanguage: GuestLanguage,
 	officeLanguage: OperatorLanguage,
 ): string {
-	// English is also the reply for a guest language Nhịp doesn't support (#245), so it isn't
-	// called the guest's.
+	// English is also the reply for a guest language Nhịp doesn't support (#245) or the gate
+	// leaves out (#306), so it isn't called the guest's.
 	const replyLanguage =
 		guestLanguage === "en" ? "English" : `${languageName(guestLanguage)}, the guest's language`;
 	const office = languageName(officeLanguage);

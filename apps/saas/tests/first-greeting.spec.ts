@@ -211,13 +211,20 @@ test.describe("First greeting 2 — only the first message is greeted", () => {
 
 /** A letter only Vietnamese uses (ADR 0021, R4): ă â đ ơ ư, a hook above or a dot below, ẽ ĩ ũ ỹ, a tone on ă â ê ô ơ ư. */
 const VIETNAMESE_ONLY = /[ăâđơưảẻỉỏủỷạẹịọụỵẽĩũỹắằẳẵặấầẩẫậếềểễệốồổỗộớờởỡợứừửữự]/iu;
-const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
-const HANGUL = /\p{Script=Hangul}/u;
-const CYRILLIC = /\p{Script=Cyrillic}/u;
+/** Japanese, Korean or Russian letters: an English greeting has none. */
+const OTHER_SCRIPT =
+	/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}]/u;
+
+/**
+ * Until after the demo Nhịp replies in EN and VI only (#306, `SUPPORTED_GUEST_LANGUAGES`, its
+ * default in E2E): a Japanese, Korean or Russian guest's first reply says so, in these words.
+ */
+const ENGLISH_REPLY_LINE =
+	"We reply in English. If you can write to us in English, we'll help you faster.";
 
 // scenario: docs/e2e-scenarios.md First greeting 4
 test.describe("First greeting 4 — the guest's language picks the greeting", () => {
-	test("Vietnamese, Japanese, Korean and Russian guests are greeted in their language, label included; French and Spanish guests get the English greeting", async ({
+	test(`a Vietnamese guest is greeted in Vietnamese, label included; Japanese, Korean and Russian guests get the English greeting with "${ENGLISH_REPLY_LINE}" before its label; French and Spanish guests get the English greeting without it`, async ({
 		office,
 	}) => {
 		const { manager } = office;
@@ -225,41 +232,68 @@ test.describe("First greeting 4 — the guest's language picks the greeting", ()
 			{
 				language: "Vietnamese",
 				text: "Chào anh, tôi muốn thuê căn hộ ở Tây Hồ",
-				script: VIETNAMESE_ONLY,
+				greeting: "own",
 			},
-			{ language: "Japanese", text: "こんにちは、タイホーでアパートを借りたいです", script: KANA },
+			{
+				language: "Japanese",
+				text: "こんにちは、タイホーでアパートを借りたいです",
+				greeting: "english-with-line",
+			},
 			{
 				language: "Korean",
 				text: "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요",
-				script: HANGUL,
+				greeting: "english-with-line",
 			},
 			{
 				language: "Russian",
 				text: "Здравствуйте, мы хотим снять квартиру в Тайхо",
-				script: CYRILLIC,
+				greeting: "english-with-line",
 			},
-			{ language: "French", text: "Bonjour, je cherche un appartement à louer", script: null },
-			{ language: "Spanish", text: "Hola, busco un apartamento, está disponible?", script: null },
+			{
+				language: "French",
+				text: "Bonjour, je cherche un appartement à louer",
+				greeting: "english",
+			},
+			{
+				language: "Spanish",
+				text: "Hola, busco un apartamento, está disponible?",
+				greeting: "english",
+			},
 		] as const;
 		const guests = cases.map((c) => ({ ...c, guest: office.newGuest() }));
 		for (const { guest, text } of guests) {
 			await guest.write(text);
 		}
 
-		for (const { language, guest, script } of guests) {
+		for (const { language, guest, greeting } of guests) {
 			await test.step(`${language}`, async () => {
 				const text = await greetingOf(manager.api, guest);
 				const label = lastLine(text);
-				if (script) {
-					expect.soft(text, `the ${language} greeting is in ${language}`).toMatch(script);
-					expect.soft(label, `the ${language} label is in ${language}`).toMatch(script);
+				if (greeting === "own") {
+					expect.soft(text, `the ${language} greeting is in ${language}`).toMatch(VIETNAMESE_ONLY);
+					expect.soft(label, `the ${language} label is in ${language}`).toMatch(VIETNAMESE_ONLY);
 					expect.soft(label, `the ${language} label names the office`).toContain(OFFICE_NAME);
 					expect.soft(label, `the ${language} label is not the English one`).not.toBe(EN_LABEL);
-				} else {
-					expect.soft(label, `the ${language} guest is greeted in English`).toBe(EN_LABEL);
+					return;
+				}
+				expect.soft(label, `the ${language} guest is greeted in English`).toBe(EN_LABEL);
+				expect
+					.soft(text, `the ${language} greeting has no Vietnamese-only letter`)
+					.not.toMatch(VIETNAMESE_ONLY);
+				expect
+					.soft(text, `the ${language} greeting is English, in no other script`)
+					.not.toMatch(OTHER_SCRIPT);
+				if (greeting === "english-with-line") {
 					expect
-						.soft(text, `the ${language} greeting has no Vietnamese-only letter`)
-						.not.toMatch(VIETNAMESE_ONLY);
+						.soft(
+							text.trim().split("\n\n").at(-2),
+							`the ${language} greeting says, before its label, that the office replies in English`,
+						)
+						.toBe(ENGLISH_REPLY_LINE);
+				} else {
+					expect
+						.soft(text, `the ${language} greeting doesn't carry the English-reply line`)
+						.not.toContain(ENGLISH_REPLY_LINE);
 				}
 			});
 		}
@@ -451,22 +485,22 @@ function officeLines(page: Page) {
 }
 
 // scenario: docs/e2e-scenarios.md First greeting 9
-test.describe("First greeting 9 — an English-reading agent reads the Korean auto-reply and suggestion in English", () => {
-	test("a Korean guest's auto-reply and the reply box each show the translate glyph named \"In English\" with the English template beside it, in an English office; typing takes the box's line away", async ({
+test.describe("First greeting 9 — an English-reading agent reads the Vietnamese auto-reply and suggestion in English", () => {
+	test("a Vietnamese guest's auto-reply and the reply box each show the translate glyph named \"In English\" with the English template beside it, in an English office; typing takes the box's line away", async ({
 		office,
 	}) => {
 		const { manager } = office;
 		const guest = office.newGuest();
-		const korean = "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요";
-		await guest.write(korean);
+		const vietnamese = "Chào anh, tôi muốn thuê căn hộ ở Tây Hồ";
+		await guest.write(vietnamese);
 		const threadId = await threadIdOf(manager.api, guest.id);
 		const greeting = await greetingIn(manager.api, threadId);
-		expect(greeting, "the auto-reply is in Korean").toMatch(HANGUL);
+		expect(greeting, "the auto-reply is in Vietnamese").toMatch(VIETNAMESE_ONLY);
 
 		const { page } = manager;
-		await openByLink(page, threadId, korean);
+		await openByLink(page, threadId, vietnamese);
 
-		// Inside the auto-reply's bubble, under the Korean: the English auto-reply.
+		// Inside the auto-reply's bubble, under the Vietnamese: the English auto-reply.
 		const bubble = openThread(page)
 			.getByTestId("message")
 			.filter({ hasText: greeting.split("\n")[0] });
@@ -478,7 +512,7 @@ test.describe("First greeting 9 — an English-reading agent reads the Korean au
 		await expect(greetingLine, "the English auto-reply").toContainText("Thanks for writing to us.");
 		await expect(greetingLine, "its English label").toContainText(EN_LABEL);
 
-		// Under the reply box, holding the Korean template: the English template.
+		// Under the reply box, holding the Vietnamese template: the English template.
 		const replyLine = officeLines(page).filter({ hasText: `Hi, this is ${OFFICE_NAME}.` });
 		await expect(replyLine, "the English template under the box").toBeVisible(WITHIN_SECONDS);
 		await expect(replyLine.getByRole("img", { name: IN_ENGLISH })).toBeVisible();
@@ -486,10 +520,10 @@ test.describe("First greeting 9 — an English-reading agent reads the Korean au
 			IN_ENGLISH,
 		);
 		const box = openThread(page).getByRole("textbox", { name: saas.inbox.reply, exact: true });
-		await expect(box, "the box holds the Korean template").toHaveValue(HANGUL);
+		await expect(box, "the box holds the Vietnamese template").toHaveValue(VIETNAMESE_ONLY);
 
 		// The manager types: the line under the box goes; the auto-reply's stays.
-		await box.fill("제가 직접 답장하겠습니다.");
+		await box.fill("Em sẽ tự trả lời anh ạ.");
 		await expect(replyLine, "no line once the box is edited").toHaveCount(0);
 		await expect(greetingLine).toBeVisible();
 	});

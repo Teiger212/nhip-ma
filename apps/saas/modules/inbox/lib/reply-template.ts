@@ -1,4 +1,4 @@
-import { askedIn, greetingQuestion, type Qualifier } from "./greeting";
+import { askedIn, englishReplyLine, greetingQuestion, type Qualifier } from "./greeting";
 import { officeRender } from "./office-line";
 import type {
 	Conversation,
@@ -24,6 +24,10 @@ import type {
  *   detail that changes what the agent would send, never one the office already asked (ADR
  *   0024's no-repeat rule). A later turn asks nothing: a template can't read what a human reply
  *   asked.
+ *
+ * - A guest whose language the gate answers in English (#306) gets the English-reply line, as
+ *   its own paragraph, on the office's first message only (`owesEnglishReplyLine`): the caller
+ *   decides, from the stored thread.
  *
  * EN is the reference. The VI copy is pending a native read (#78); JA, KO and RU have no native
  * read planned yet.
@@ -210,11 +214,15 @@ function nextQuestion(qualification: Qualification, thread: TemplateThread): Qua
 	);
 }
 
-/** The template suggested reply in `language`, for the thread as it stands. */
+/**
+ * The template suggested reply in `language`, for the thread as it stands; with the English-reply
+ * line (#306) when `englishLine`.
+ */
 export function replyTemplate(
 	language: GuestLanguage,
 	qualification: Qualification,
 	thread: TemplateThread,
+	englishLine: boolean,
 ): string {
 	const copy = COPY[language];
 	if (officeHasHumanReply(thread)) return copy.later;
@@ -233,20 +241,23 @@ export function replyTemplate(
 	const ask = nextQuestion(qualification, thread);
 	if (ask) sentences.push(greetingQuestion(language, ask));
 	// Japanese runs its sentences together; the others leave a space.
-	return sentences.join(language === "ja" ? "" : " ");
+	const body = sentences.join(language === "ja" ? "" : " ");
+	return englishLine ? `${body}\n\n${englishReplyLine(language)}` : body;
 }
 
 /**
  * The template suggested reply in the reply's language, and the same template in the office
  * language as its operator line (#242): no model call. No line when the reply is already in it.
+ * The English-reply line (#306), when owed, is in both.
  */
 export function templateTexts(
 	language: GuestLanguage,
 	officeLanguage: OperatorLanguage,
 	qualification: Qualification,
 	thread: TemplateThread,
+	englishLine: boolean,
 ): Pick<Draft, "reply" | "officeReply"> {
-	const render = (each: GuestLanguage) => replyTemplate(each, qualification, thread);
+	const render = (each: GuestLanguage) => replyTemplate(each, qualification, thread, englishLine);
 	const officeReply = officeRender(language, officeLanguage, render);
 	return { reply: render(language), ...(officeReply ? { officeReply } : {}) };
 }

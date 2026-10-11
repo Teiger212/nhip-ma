@@ -264,6 +264,6 @@ test("a template written after a model draft leaves no stale second text", async
 	const next = await guestWrites("stale", "Also near a park");
 	expect(next.oneShot?.draft).toMatchObject({ source: "template" });
 	expect(next.oneShot?.draft.officeReply).toBe(
-		replyTemplate("vi", next.oneShot!.qualification, { ...NEW_THREAD, sentAt: next.sentAt }),
+		replyTemplate("vi", next.oneShot!.qualification, { ...NEW_THREAD, sentAt: next.sentAt }, false),
 	);
 });

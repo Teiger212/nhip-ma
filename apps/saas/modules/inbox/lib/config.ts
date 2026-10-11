@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import { DEFAULT_SUPPORTED_GUEST_LANGUAGES, isSupportedLanguage } from "./language-name";
 import { isValidSecretsKey } from "./pipes/secrets";
 import { RETIRED_E2E_VAPID_PUBLIC_KEY } from "./retired-vapid-key";
-import type { SendMode } from "./types";
+import type { GuestLanguage, SendMode } from "./types";
 
 /** The literal shipped in `.env.local.example`; never valid in a real deployment. */
 export const EXAMPLE_BETTER_AUTH_SECRET = "walkthrough-better-auth-secret-key!";
@@ -58,6 +59,7 @@ const envSchema = z
 		DRAFT_DAILY_CAP: trimmed,
 		TRANSLATE_DAILY_CAP: trimmed,
 		MODEL_STUB: trimmed,
+		SUPPORTED_GUEST_LANGUAGES: trimmed,
 		VAPID_PUBLIC_KEY: trimmed,
 		VAPID_PRIVATE_KEY: trimmed,
 		VAPID_SUBJECT: trimmed,
@@ -258,6 +260,26 @@ const envSchema = z
 				});
 			}
 		}
+		// The guest languages Nhịp replies in (#306): codes of the five it has copy for, English
+		// always among them, as every other guest's reply is English.
+		if (env.SUPPORTED_GUEST_LANGUAGES !== undefined) {
+			const codes = splitList(env.SUPPORTED_GUEST_LANGUAGES.toLowerCase());
+			const unknown = codes.filter((code) => !isSupportedLanguage(code));
+			if (unknown.length > 0) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["SUPPORTED_GUEST_LANGUAGES"],
+					message: `SUPPORTED_GUEST_LANGUAGES lists guest languages Nhịp has copy for (en, vi, ja, ko, ru), got "${unknown.join(", ")}"`,
+				});
+			} else if (!codes.includes("en")) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["SUPPORTED_GUEST_LANGUAGES"],
+					message:
+						"SUPPORTED_GUEST_LANGUAGES must include en: English is the reply to every other guest",
+				});
+			}
+		}
 		// Better Auth's baseURL is set explicitly from NEXT_PUBLIC_SAAS_URL and wins over
 		// BETTER_AUTH_URL, so the two must agree or one of them is silently ignored.
 		if (!env.NEXT_PUBLIC_SAAS_URL) {
@@ -371,6 +393,12 @@ export type InboxConfig = {
 	 */
 	models: ModelsConfig;
 	/**
+	 * The guest languages Nhịp replies in (`SUPPORTED_GUEST_LANGUAGES`, #306), EN and VI unless
+	 * set. A guest in another of the five is still translated for the agent and answered in
+	 * English, with a line saying so on the first reply.
+	 */
+	supportedGuestLanguages: readonly GuestLanguage[];
+	/**
 	 * Web push's VAPID key pair and subject (ADR 0019), read as a set: null until all three are
 	 * set, and then a live deployment logs alerts and pushes nothing ("push not configured").
 	 */
@@ -421,6 +449,15 @@ function splitList(value: string): string[] {
 		.filter(Boolean);
 }
 
+/** The gate's languages as listed, each once; the default when unset (validation refuses a bad list). */
+function supportedGuestLanguagesFromEnv(value: string | undefined): readonly GuestLanguage[] {
+	const codes = value ? splitList(value.toLowerCase()) : [];
+	if (codes.length === 0 || !codes.includes("en") || !codes.every(isSupportedLanguage)) {
+		return DEFAULT_SUPPORTED_GUEST_LANGUAGES;
+	}
+	return [...new Set(codes)].filter(isSupportedLanguage);
+}
+
 function modelsFromEnv(env: Record<string, string | undefined>): ModelsConfig {
 	const clean = (value: string | undefined) => value?.trim() || undefined;
 	const cap = (value: string | undefined, fallback: number) => {
@@ -468,6 +505,7 @@ export function inboxConfigFromEnv(env: NodeJS.ProcessEnv): InboxConfig {
 		hubspotAppClientSecret: clean(env.HUBSPOT_APP_CLIENT_SECRET),
 		hubspotWebhookUrl: clean(env.HUBSPOT_WEBHOOK_URL),
 		models: modelsFromEnv(env),
+		supportedGuestLanguages: supportedGuestLanguagesFromEnv(env.SUPPORTED_GUEST_LANGUAGES),
 		vapid: vapidFromEnv(
 			clean(env.VAPID_PUBLIC_KEY),
 			clean(env.VAPID_PRIVATE_KEY),
@@ -509,6 +547,7 @@ export function mockInboxConfig(overrides: Partial<InboxConfig> = {}): InboxConf
 		whatsapp: {},
 		zalo: {},
 		models: modelsFromEnv({}),
+		supportedGuestLanguages: DEFAULT_SUPPORTED_GUEST_LANGUAGES,
 		vapid: null,
 		...overrides,
 	};
