@@ -18,7 +18,7 @@
   open slot, and the Missing row still names what to ask for. The details rail is narrower
   (300px), so it now shows at 1440 wide with the sidebar open. On a phone or a narrow pane the
   stay is one line under the header (area, rent or buy, beds, move-in, then the budget), and
-  the guest's facts and the CRM status share the line under it.
+  the guest's facts share the line under it (on a phone, with the CRM status).
 - **The CRM status reads like the pipe:** a small glyph and "In CRM" or "Not in CRM yet" in
   slate, no longer a badge.
 - **The view tabs are slots:** a small label over the full count, with the view you're on
