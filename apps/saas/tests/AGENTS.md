@@ -17,6 +17,9 @@ mode) and `e2e:ci` (the whole suite); locally, run the spec files you touched wi
 
 ## Test quality
 
+- Every page runs in reduced motion (`contextOptions.reducedMotion` in `playwright.config.ts`,
+  which contexts a spec makes itself inherit, #330): no frame is caught mid-animation and the
+  phone's push takes no snapshot. Never assert an animation.
 - Setup is not the flow under test. Seeded logins start signed in from sessions minted once
   per run by Better Auth's `testUtils` in a test-only auth instance
   (`apps/saas/tests/support/test-auth.ts`, run by `tests/sessions.setup.ts`); it never ships
