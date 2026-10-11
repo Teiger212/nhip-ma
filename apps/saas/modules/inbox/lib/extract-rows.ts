@@ -14,6 +14,7 @@ export const EXTRACT_FIELD_IDS = [
 	"inVietnamNow",
 	"rentOrBuy",
 	"moveIn",
+	"stay",
 	"budget",
 	"beds",
 	"paperwork",
@@ -54,6 +55,7 @@ function qualificationRows(q: Qualification | undefined): ExtractRow[] {
 		["inVietnamNow", q?.inVietnamNow],
 		["rentOrBuy", q?.rentOrBuy],
 		["moveIn", q?.timeframe],
+		["stay", q?.stayLength],
 		["budget", q?.budgetBand],
 		["beds", q?.bedsOrHousehold],
 	];

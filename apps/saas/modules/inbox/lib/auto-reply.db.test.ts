@@ -95,6 +95,7 @@ const RENT_IN_TAY_HO = {
 	timeframe: null,
 	budgetBand: null,
 	bedsOrHousehold: null,
+	stayLength: null,
 };
 
 function autoReplies(conversation: Conversation): Message[] {

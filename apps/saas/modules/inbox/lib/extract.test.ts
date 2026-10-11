@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { formatCribNote } from "./crib";
 import { oneShot } from "./draft";
@@ -17,6 +17,8 @@ test("full English inbound extracts fields that are present", () => {
 	expect(got.qualification.timeframe).toBeNull();
 	expect(got.qualification.budgetBand ?? "").toMatch(/1500/);
 	expect(got.qualification.bedsOrHousehold).toBe("2 bed");
+	// "In Hanoi for 2 weeks" is where the guest is now, not how long they want to stay (#317).
+	expect(got.qualification.stayLength).toBeNull();
 	expect(got.paperwork.mentioned).toBe(false);
 	expect(got.paperwork.flag).toBeNull();
 });
@@ -30,6 +32,7 @@ test("missing fields stay missing", () => {
 	expect(got.qualification.inVietnamNow).toBeNull();
 	expect(got.qualification.budgetBand).toBeNull();
 	expect(got.qualification.bedsOrHousehold).toBeNull();
+	expect(got.qualification.stayLength).toBeNull();
 });
 
 test("move-in timeframe is taken from inbound only", () => {
@@ -164,6 +167,93 @@ test("“française” reads as French (#243)", () => {
 	expect(extractFromInbound("Je suis français.").qualification.nationality).toBe("French");
 	// A Korean company doesn't make the guest Korean (left as it is).
 	expect(extractFromInbound("한국 회사 주재원입니다.").qualification.nationality).toBeNull();
+});
+
+/*
+ * Stay length (#317, CONTEXT.md "Stay length"): how long the guest wants to stay, from their own
+ * words only, stored in English like the household and read in the office language at render.
+ */
+describe("stay length is the guest's own words, never inferred (#317)", () => {
+	const stay = (text: string) => extractFromInbound(text).qualification.stayLength;
+
+	test.each([
+		// English.
+		["Tay Ho에서 3 nights vs monthly stay 고민이에요.", "3 nights or monthly"],
+		["need a studio to rent near Cau Giay for 6 months from mid November", "6 months"],
+		["We'd rent for 6-12 months", "6–12 months"],
+		["for 6 to 12 months", "6–12 months"],
+		["Need it for a year", "1 year"],
+		["a 12-month lease please", "12 months"],
+		["a one-year contract", "1 year"],
+		["just a 3-night stay", "3 nights"],
+		["looking for a monthly rental", "monthly"],
+		["month-to-month is best", "monthly"],
+		// Vietnamese.
+		["Em muốn thuê 6 tháng ở Tây Hồ", "6 months"],
+		["ở 3 đêm hay thuê theo tháng", "3 nights or monthly"],
+		["hợp đồng 1 năm", "1 year"],
+		["thuê trong 6-12 tháng", "6–12 months"],
+		// Korean.
+		["3박 4일 있을 거예요", "3 nights"],
+		["6개월 정도 살 예정이에요", "6 months"],
+		["1년 계약 원해요", "1 year"],
+		["한 달 살기", "1 month"],
+		// Japanese.
+		["3泊したいです", "3 nights"],
+		["6ヶ月住みたい", "6 months"],
+		["1年間の予定です", "1 year"],
+		["マンスリーマンションを探しています", "monthly"],
+		// Russian.
+		["Ищу квартиру на 6 месяцев", "6 months"],
+		["на год", "1 year"],
+		["на 3 ночи", "3 nights"],
+		["помесячно", "monthly"],
+	])("%s → %s", (text, expected) => {
+		expect(stay(text)).toBe(expected);
+	});
+
+	test.each([
+		// A budget per month is a price, not a stay.
+		"Budget $1500/month",
+		"budget around $1,500 a month",
+		"khoảng 12 triệu một tháng",
+		"1200 USD/tháng",
+		"до $1000 в месяц",
+		// "Monthly rent" is mostly a price; 월세 is a kind of lease, not a length.
+		"what's the monthly rent?",
+		"Long Bien에서 2 bedroom 월세 찾고 있어요",
+		// A move-in, a date or a year is not a stay.
+		"I'd like to move in 3 weeks",
+		"3개월 후에 입주",
+		"3ヶ月後に引っ越します",
+		"через 2 недели",
+		"từ ngày 15 tháng 12",
+		"Em cần nhà trong 2 tuần tới",
+		"Em đã ở đây trong 1 năm qua",
+		"2026년 계약",
+		"2026年",
+		// Where the guest is now, or a deposit, is not a stay.
+		"I'm in Hanoi for 2 weeks",
+		"đang ở Hà Nội 2 tuần",
+		"Я сейчас в Ханое на 2 недели",
+		"deposit of 2 months",
+		// A bare count names nothing.
+		"Hello, 2 bedroom in Tay Ho",
+	])("%s has no stay length", (text) => {
+		expect(stay(text)).toBeNull();
+	});
+
+	test("every length named, in the order written, once each", () => {
+		expect(stay("3 nights first.\nOr maybe a monthly stay, 3 nights at least")).toBe(
+			"3 nights or monthly",
+		);
+	});
+
+	test("stay length is separate from the move-in", () => {
+		const q = extractFromInbound("Moving in next month, for 1 year.").qualification;
+		expect(q.timeframe).toBe("next month");
+		expect(q.stayLength).toBe("1 year");
+	});
 });
 
 test("one-shot is not an interviewer", () => {

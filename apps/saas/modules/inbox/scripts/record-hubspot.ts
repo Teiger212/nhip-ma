@@ -283,6 +283,7 @@ async function main() {
 			timeframe: "next month",
 			budgetBand: "1,000–1,500 USD",
 			bedsOrHousehold: "2 bedrooms",
+			stayLength: null,
 		},
 		threadUrl: `https://nhip.test/vi/inbox?thread=nhip-test-${run}-${k}`,
 	});

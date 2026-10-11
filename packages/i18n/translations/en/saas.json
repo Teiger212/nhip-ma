@@ -972,6 +972,7 @@
 			"inVietnamNow": "In Vietnam now",
 			"rentOrBuy": "Rent or buy",
 			"moveIn": "Move-in",
+			"stay": "Stay",
 			"budget": "Budget",
 			"beds": "Beds / household",
 			"paperwork": "Paperwork"
@@ -1036,6 +1037,22 @@
 				"peopleOne": "{count} person",
 				"kids": "{count} kids",
 				"kidsOne": "{count} kid"
+			},
+			"stay": {
+				"nights": "{count} nights",
+				"nightsOne": "{count} night",
+				"nightsRange": "{from}–{to} nights",
+				"weeks": "{count} weeks",
+				"weeksOne": "{count} week",
+				"weeksRange": "{from}–{to} weeks",
+				"months": "{count} months",
+				"monthsOne": "{count} month",
+				"monthsRange": "{from}–{to} months",
+				"years": "{count} years",
+				"yearsOne": "{count} year",
+				"yearsRange": "{from}–{to} years",
+				"monthly": "monthly",
+				"or": "{first} or {second}"
 			}
 		},
 		"views": {

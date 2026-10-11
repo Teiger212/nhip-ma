@@ -438,6 +438,9 @@ model Qualification {
   timeframe       String?
   budgetBand      String?
   bedsOrHousehold String?
+  /// How long the guest wants to stay ("3 nights or monthly", "1 year"), from their own words
+  /// (#317); `timeframe` is when they move in.
+  stayLength      String?
 
   /// Prisma's one-to-one relation needs it; the primary key already makes it hold.
   @@unique([conversationId, officeId])
@@ -656,7 +659,7 @@ model MockCrmLead {
   pipe          Pipe
   language      String?
   /// The guest's qualification as Nhịp extracted it (area, rent or buy, budget, timeframe,
-  /// household). Never message text.
+  /// household, stay length). Never message text.
   fields        Json?
   threadUrl     String
   outcome       CrmOutcomeStatus @default(open)
