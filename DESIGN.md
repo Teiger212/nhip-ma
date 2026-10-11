@@ -1,7 +1,6 @@
 ---
 name: Nhịp
 description: A speed-to-lead inbox for Vietnamese apartment agencies. Navy ink on a marble desk, with one sheet of white paper for the thread you are working on.
-decision: "Navy on Marble+ (Eyal, 2026-10-11, #314), from the Calendly style reference in reports/design/DESIGN.md"
 colors:
   ink-navy: "#0b3558"
   slate: "#476788"
@@ -16,17 +15,32 @@ colors:
   signal-red: "#dc2626"
   sent-green: "#166534"
   amber-note: "#92400e"
-  chart-soft: "#9cc4ff"
-  chart-track: "#edf3fb"
-  tag-violet: ["#ece9f7", "#4f3f8a"]
-  tag-teal: ["#e0f0ed", "#1c5b53"]
-  tag-rose: ["#f7e6ee", "#8a325c"]
-  tag-amber: ["#f5eed8", "#6b5312"]
-  tag-berry: ["#f8e4e7", "#94303f"]
-  tag-lagoon: ["#dff0f3", "#17596a"]
-  tag-sage: ["#e3efe0", "#335e34"]
-  tag-moss: ["#eef0d8", "#555a15"]
-  tag-plain: ["#edf1f6", "#476788"]
+  chart-soft: "#a9cbff"
+  chart-track: "#d4e0ed"
+  tag-violet: "#ece9f7"
+  tag-violet-ink: "#4f3f8a"
+  tag-teal: "#e0f0ed"
+  tag-teal-ink: "#1c5b53"
+  tag-rose: "#f7e6ee"
+  tag-rose-ink: "#8a325c"
+  tag-amber: "#f5eed8"
+  tag-amber-ink: "#6b5312"
+  tag-berry: "#f8e4e7"
+  tag-berry-ink: "#94303f"
+  tag-lagoon: "#dff0f3"
+  tag-lagoon-ink: "#17596a"
+  tag-sage: "#e3efe0"
+  tag-sage-ink: "#335e34"
+  tag-moss: "#eef0d8"
+  tag-moss-ink: "#555a15"
+  tag-plain: "#edf1f6"
+  tag-plain-ink: "#476788"
+  area-copper: "#8a4a24"
+  area-cocoa: "#6b4f3a"
+  area-pine: "#2e5a46"
+  area-plum: "#6a3d63"
+  area-steel: "#3d5670"
+  area-olive: "#5a5a26"
   night-canvas: "#071423"
   night-card: "#0d1f33"
   night-muted: "#142a42"
@@ -35,45 +49,153 @@ colors:
   night-slate: "#9fb4cc"
   night-signal: "#4d94ff"
 typography:
-  family: 'Manrope (latin, latin-ext, vietnamese, cyrillic), then "Apple SD Gothic Neo", "Hiragino Sans", "PingFang SC", "Noto Sans CJK KR", "Noto Sans KR", system-ui'
-  mono: "IBM Plex Mono 300/400/500, Home's figures only"
-  stay-title: { fontSize: "1.375rem", fontWeight: 800, letterSpacing: "-0.015em" }
-  thread-title: { fontSize: "1.1875rem", fontWeight: 800, letterSpacing: "-0.01em" }
-  wordmark: { fontSize: "1.5rem", fontWeight: 800 }
-  body: { fontSize: "1rem", fontWeight: 400, lineHeight: 1.625 }
-  name: { fontSize: "0.875rem", fontWeight: 700 }
-  note: { fontSize: "0.8125rem", lineHeight: "1.125rem" }
-  body-small: { fontSize: "0.75rem" }
+  wordmark:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "1.5rem"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "-0.025em"
+  figure:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "2.375rem"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "-0.03em"
+    fontFeature: "tnum"
+  figure-sm:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "2rem"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "-0.03em"
+    fontFeature: "tnum"
+  stay-title:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "1.375rem"
+    fontWeight: 800
+    lineHeight: 1.25
+    letterSpacing: "-0.015em"
+  thread-title:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "1.1875rem"
+    fontWeight: 800
+    lineHeight: 1.3
+    letterSpacing: "-0.01em"
+  body:
+    fontFamily: "Manrope, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Noto Sans CJK KR', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.625
+  name:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 700
+  note:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "0.8125rem"
+    lineHeight: "1.125rem"
+  body-small:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "0.75rem"
+  label:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 600
   panel-heading:
-    { fontSize: "1.125rem", fontWeight: 800, lineHeight: 1.35, letterSpacing: "-0.01em" }
-  label: { fontSize: "0.6875rem", fontWeight: 600 }
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 800
+    lineHeight: 1.35
+    letterSpacing: "-0.01em"
   field-key:
-    {
-      fontSize: "0.6875rem",
-      fontWeight: 800,
-      lineHeight: 1.45,
-      letterSpacing: "0.04em",
-      textTransform: "uppercase",
-    }
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 800
+    lineHeight: 1.45
+    letterSpacing: "0.04em"
+  mono:
+    fontFamily: "'IBM Plex Mono', ui-monospace, monospace"
+    fontWeight: 500
+    fontFeature: "tnum"
 rounded:
   plate: "4px"
   mark: "6px"
   control: "8px"
   row: "12px"
   panel: "16px"
-shadows:
-  raised: "rgba(71,103,136,.04) 0 4px 5px, rgba(71,103,136,.03) 0 8px 15px, rgba(71,103,136,.08) 0 30px 50px"
-  dock: "the same three layers, cast upward"
-  cta: "rgba(71,103,136,.04) 0 4px 5px, rgba(0,107,255,.14) 0 8px 15px"
+spacing:
+  step: "4px"
+  row-inset: "6px"
+  card-inset: "12px"
+  tap: "44px"
+  inbox-list: "23.25rem"
+  thread-rail: "18.75rem"
+components:
+  button-primary:
+    backgroundColor: "{colors.signal-blue}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.control}"
+    padding: "0 24px"
+    height: "48px"
+  button-secondary:
+    backgroundColor: "{colors.ink-navy}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.control}"
+    padding: "0 12px"
+    height: "24px"
+  view-tab:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink-navy}"
+    rounded: "{rounded.control}"
+    height: "40px"
+  view-tab-active:
+    backgroundColor: "{colors.signal-blue}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.control}"
+    height: "40px"
+  plate-your-turn:
+    backgroundColor: "{colors.ink-navy}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.plate}"
+    height: "22px"
+  plate-waiting:
+    textColor: "{colors.slate}"
+    rounded: "{rounded.plate}"
+    height: "22px"
+  language-marker:
+    backgroundColor: "{colors.ink-navy}"
+    textColor: "{colors.marble}"
+    rounded: "{rounded.control}"
+    size: "28px"
+  fact-tag:
+    backgroundColor: "{colors.tag-violet}"
+    textColor: "{colors.tag-violet-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.plate}"
+    height: "18px"
+  area-tag:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.area-copper}"
+    typography: "{typography.label}"
+    rounded: "{rounded.plate}"
+    height: "18px"
+  input-search:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink-navy}"
+    rounded: "{rounded.control}"
+    padding: "0 12px 0 36px"
+    height: "36px"
 ---
 
 # Design System: Nhịp
 
 ## Overview
 
-**The world: Navy on Marble.** Decided by Eyal on 2026-10-11 (#314), from five rounds of
-mockups (`reports/design/directions-2026-10-11/navy-marble-plus.html`, local only), with its
-ink system borrowed from a Calendly style reference.
+**Creative North Star: "Navy on Marble"**
+
+Navy on Marble+ was decided by Eyal on 2026-10-11 (#314), from five rounds of mockups
+(`reports/design/directions-2026-10-11/navy-marble-plus.html`, local only), with its ink system
+borrowed from the Calendly style reference in `reports/design/DESIGN.md`.
 
 Nhịp is a desk where every new lead lands and someone answers it before it goes cold. The
 desk is a cool marble canvas. Every glyph on it is Ink Navy. Content sits on white paper edged
@@ -82,7 +204,7 @@ lifted by a soft, blue-tinted, three-layer shadow. Signal Blue fills only two th
 primary action (Approve and send) and what is selected (the view you are on, the row you have
 open). Navy fills the secondary action (Regenerate) and the turn that is yours.
 
-Its Nhịp parts:
+**Key Characteristics:**
 
 - A navy "Your turn" plate, an outlined "Waiting" plate with a clock, and a bare "Sent" with
   a check.
@@ -94,11 +216,6 @@ Its Nhịp parts:
   you picked.
 - Slot-style view tabs: a small label over a big count, the active one filled.
 - The "Nhịp" wordmark, with a legible dot under the ị.
-
-The phone and the desk are one product. Below `md` the list and the thread are full-bleed
-white, one at a time; from `md` the list sits flat on the canvas and the thread is the raised
-card beside it. Below `lg` the shell is the phone one: a 56px top bar with the sidebar as a
-sheet. Every control tapped mid-conversation is at least 44px tall.
 
 ## Colors
 
@@ -183,7 +300,8 @@ guest is never red.
 vietnamese and cyrillic subsets, so Vietnamese diacritics and Russian set cleanly at every
 size. Korean, Japanese and Chinese fall back to the platform's CJK faces ("Apple SD Gothic
 Neo", "Hiragino Sans", "PingFang SC", "Noto Sans CJK KR", "Noto Sans KR"), declared in
-`--font-sans` (`apps/saas/app/globals.css`). IBM Plex Mono stays for Home's figures only.
+`--font-sans` (`apps/saas/app/globals.css`). IBM Plex Mono (500, tabular) is left only in the
+chart tooltip's value and a numeric `Badge` (the notification bell's count).
 
 - **Wordmark** (800, 1.5rem): "Nhịp" beside the pulse, in the sidebar and the phone's top bar
   (`Wordmark` in `packages/ui/components/logo.tsx`). The nặng dot under the i is drawn as a
@@ -204,35 +322,17 @@ Neo", "Hiragino Sans", "PingFang SC", "Noto Sans CJK KR", "Noto Sans KR"), decla
   was too small, worse with Vietnamese stacked marks: NGÂN SÁCH, THỜI GIAN Ở); the tall line
   keeps those marks clear of the field box's edge. `text-2xs` (10px) stays for the language
   marker's code and the small badge only.
+- **Figure** (800, 2rem, 2.375rem from `md`, -0.03em, `text-figure-sm`/`text-figure`): Home's
+  numbers, tabular, units beside them at the body size in Slate.
 - **Numbers** are Manrope with `tabular-nums`: view-tab counts (700, 0.875rem), the nav count,
-  times, markers. Home's figures stay in light Plex Mono.
-
-## Shapes
-
-One base radius, `--radius: 0.5rem`, scaled: `rounded-sm` 4px (plates, fact tags, the strip's
-budget frame), `rounded-md` 6px (badges, small open slots), `rounded-lg` 8px (every control:
-buttons, inputs, selects, view tabs, nav items, markers, the field box), `rounded-xl` 12px
-(list rows, popovers), `rounded-2xl`/`rounded-3xl` 16px (panels, cards, dialogs, the thread
-card, bubbles). Bubbles keep one 4px corner, at the speaker's side. Round is for the user's
-avatar, the open slot's "?" and the switch only.
-
-## Elevation
-
-The desk is flat, with one exception per screen.
-
-- **Raised** (`shadow-raised`): the open thread's card, the one raised surface. Three
-  blue-tinted layers (4/5px, 8/15px, 30/50px of Slate at 4%, 3% and 8%), never grey.
-- **Dock** (`shadow-dock`): the same three layers cast upward, under the phone's reply dock
-  where messages scroll beneath it. From `md` the dock sits inside the raised card and is flat.
-- **CTA** (`shadow-cta`): the primary button's own lift, a 14% Signal Blue glow.
-- **Hairline** (`shadow-hairline`): a 1px border drawn inside, for the active nav item.
-- **Overlay**: menus, popovers, selects, tooltips, dialogs, sheets and toasts keep the kit's
-  soft shadow and a hairline border.
-
-**The One Raised Surface Rule.** One surface per screen lifts: in the Inbox, the thread. A new
-panel is paper on the canvas with a hairline, never a second lift. Nothing lifts on hover.
+  times, markers and Home's figures.
 
 ## Layout
+
+The phone and the desk are one product. Below `md` the list and the thread are full-bleed
+white, one at a time; from `md` the list sits flat on the canvas and the thread is the raised
+card beside it. Below `lg` the shell is the phone one: a 56px top bar with the sidebar as a
+sheet. Every control tapped mid-conversation is at least 44px tall.
 
 **Shell.** The sidebar is the marble canvas, 16rem, with a hairline on its edge: the wordmark,
 the bell and the collapse toggle; then the nav; then the user. Below `lg` it is a sheet behind
@@ -263,6 +363,31 @@ the funnel's cells become Leads in across the top with the other four two by two
 
 Tap targets that matter mid-conversation are at least 44px tall (`min-h-11`), even where the
 visual control is smaller. Spacing is Tailwind's 4px step.
+
+## Elevation & Depth
+
+The desk is flat, with one exception per screen.
+
+- **Raised** (`shadow-raised`): the open thread's card, the one raised surface. Three
+  blue-tinted layers (4/5px, 8/15px, 30/50px of Slate at 4%, 3% and 8%), never grey.
+- **Dock** (`shadow-dock`): three layers cast upward (-4/5px, -8/15px, -15/30px of Slate at
+  4%, 3% and 6%), under the phone's reply dock where messages scroll beneath it. From `md` the dock sits inside the raised card and is flat.
+- **CTA** (`shadow-cta`): the primary button's own lift, a 14% Signal Blue glow.
+- **Hairline** (`shadow-hairline`): a 1px border drawn inside, for the active nav item.
+- **Overlay**: menus, popovers, selects, tooltips, dialogs, sheets and toasts keep the kit's
+  soft shadow and a hairline border.
+
+**The One Raised Surface Rule.** One surface per screen lifts: in the Inbox, the thread. A new
+panel is paper on the canvas with a hairline, never a second lift. Nothing lifts on hover.
+
+## Shapes
+
+One base radius, `--radius: 0.5rem`, scaled: `rounded-sm` 4px (plates, fact tags, the strip's
+budget frame), `rounded-md` 6px (badges, small open slots), `rounded-lg` 8px (every control:
+buttons, inputs, selects, view tabs, nav items, markers, the field box), `rounded-xl` 12px
+(list rows, popovers), `rounded-2xl`/`rounded-3xl` 16px (panels, cards, dialogs, the thread
+card, bubbles). Bubbles keep one 4px corner, at the speaker's side. Round is for the user's
+avatar, the open slot's "?" and the switch only.
 
 ## Components
 
@@ -371,7 +496,9 @@ no auto-grow, they scroll on overflow. The reply box is 80px (#312, PR #313).
 
 At the top of the rail, the booking summary of what the guest wants: a pin, the area as Stay
 Title, then rent or buy · beds in Slate semibold; then a field box (8px corners, hairline):
-MOVE-IN, then BUDGET (larger, bold), each a Field Key over its value. A fact the guest hasn't
+MOVE-IN and STAY side by side when both are given (#317), parted by a hairline, then BUDGET
+(larger, bold) across the box under them, each a Field Key over its value. A stay length is
+optional: a missing one is simply not shown. A fact the guest hasn't
 given is a **dashed open slot** in the box's place, never inside its frame: 1.5px dashed Mist
 on marble, 8px corners, its key, a dash (and "Not given yet" to a screen reader) and a dashed
 "?" disc. Under the box the **Missing
