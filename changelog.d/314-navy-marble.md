@@ -19,3 +19,8 @@
   (300px), so it now shows at 1440 wide with the sidebar open.
 - **The view tabs are slots:** a small label over the full count, with the view you're on
   filled blue.
+- **Home takes the same look.** The funnel's figures are bold, Leads by day marks today in blue
+  with its bold date, and Waiting now is the one raised sheet, its guests marked by their
+  language. A small "Quiet · over 48 h" divider now shows where the quiet guests start.
+- **Response time says p90 in plain words:** "9 in 10 answered within 2 h" ("9/10 khách được
+  trả lời trong 2 giờ"). The number is the same.

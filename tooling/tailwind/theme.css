@@ -37,8 +37,8 @@
 		--warning-foreground: #ffffff;
 		--canvas: #f8f9fb;
 		--chart-strong: #006bff;
-		--chart-soft: #9cc4ff;
-		--chart-track: #edf3fb;
+		--chart-soft: #a9cbff;
+		--chart-track: #d4e0ed;
 		--hatch: #d4e0ed;
 		--sidebar: #f8f9fb;
 		--sidebar-foreground: #0b3558;
@@ -111,7 +111,7 @@
 		--canvas: #071423;
 		--chart-strong: #4d94ff;
 		--chart-soft: #2a5590;
-		--chart-track: #12263d;
+		--chart-track: #1f3a57;
 		--hatch: #2a4868;
 		--sidebar: #071423;
 		--sidebar-foreground: #e3ecf6;

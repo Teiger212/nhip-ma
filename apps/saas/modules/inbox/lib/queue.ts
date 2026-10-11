@@ -198,6 +198,18 @@ export function nextSelection(
  * manager's lists the Unassigned ones first, then the rest, each in that order (ADR 0022): the
  * leads only a manager can move come before the ones their owners are already on.
  */
+/**
+ * Which Your-turn threads are Quiet (the guest last wrote over 48 hours ago), by
+ * `buildQueueView`'s own split, so Home's Waiting now marks where its quiet guests start
+ * without deciding quiet a second way (#314).
+ */
+export function quietIds(
+	conversations: ConversationSummary[],
+	now: number = Date.now(),
+): Set<string> {
+	return new Set(buildQueueView(conversations, "yourTurn", "", now).quiet.map((c) => c.id));
+}
+
 export function waitingNow(
 	conversations: ConversationSummary[],
 	{ manager }: { manager: boolean },

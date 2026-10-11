@@ -234,7 +234,12 @@ status and a manager's Assign to move into the header (or, on a phone, the strip
 The conversation opens on its latest message and follows new ones while the operator is within
 80px of it; scrolled up, a "New message" button takes them down.
 
-**Home.** A `max-w-6xl` column under the page header, its panels paper on the canvas.
+**Home.** A `max-w-6xl` column under the page header (`PageHeader`: the title in 800 at
+1.875rem from `md`, a Slate subtitle, and the window chip on the right), its panels paper on the
+canvas, 12px apart (16px from `md`): the funnel strip, one row of five cells from `lg`; then
+Leads by day (two thirds) beside Waiting now (one third) from `lg`; then Response time (median
+on a third, buckets on two thirds, from `md`). Below `lg` Waiting now comes above the chart, and
+the funnel's cells become Leads in across the top with the other four two by two.
 
 Tap targets that matter mid-conversation are at least 44px tall (`min-h-11`), even where the
 visual control is smaller. Spacing is Tailwind's 4px step.
@@ -354,6 +359,36 @@ box: pin, the area in bold, rent or buy, beds and move-in in Slate, the budget i
 hairline frame, open slots as small dashed chips, the Missing row last. Then the guest facts
 along a line.
 
+### Home (#314, approved by Eyal 2026-10-11, `home-navy-marble-plus.html`)
+
+Home keeps its sections, copy and numbers; the look is the inbox's.
+
+- **Window chip:** paper, hairline, 8px, a calendar glyph in Slate and "Last 30 days" in bold
+  Note.
+- **Funnel strip:** the stay card's field box stretched to five stages, cells parted by
+  hairlines. Each cell: its index in Slate beside the stage as a Field Key (MOVE-IN style), a
+  Figure (Manrope 800, 2rem, 2.375rem from `md`, tabular; units at the body size in Slate), a
+  4px navy share bar on a hairline track, and a Note hint. Closings and Lost come from the CRM
+  ("As of <time>"); with no CRM, a 42px hatched box with a squared "No CRM" chip.
+- **Leads by day:** bars in Mist with 2px tops, today's in Signal Blue; hairline gridlines,
+  three y ticks, a date under every seventh day back from today. Today's date is bold ink, and
+  that is its only mark: an empty today draws nothing. The hover cursor is the hairline track.
+- **Waiting now:** Home's one raised sheet (`shadow-raised`). Its count is a navy plate
+  (`Badge status="ink"`). Rows (52px, parted by inset hairlines, Pebble on hover) are the
+  inbox's parts: the filled language marker, the name (700), the pipe and the language's tag,
+  and the wait at the end, digits in 800 ink and units in Slate ("1 d 23 h"). In the inbox's
+  order, fresh first, then Quiet: where the quiet guests start, a small "Quiet · over 48 h"
+  divider (Label, Slate, a hairline running out after it), by the inbox's own split
+  (`quietIds` over `buildQueueView`). An outline "Open inbox" with an arrow closes the sheet.
+- **Response time:** the median as a Figure with "median" beside it; under it, "9 in 10
+  answered within 2 h · 21 leads answered" (Note, 600; the p90 of ADR 0002, in plain words),
+  then the hint. Four bucket rows: label, a 10px bar on the hairline track (Under 5 min in
+  Signal Blue, the rest Signal Blue at the soft strength, #a9cbff), the count in 800 ink and its
+  share in Slate.
+
+**The Two Strengths Rule.** A chart is one colour at two strengths on a hairline track: Signal
+Blue for the value to read first, its soft strength (or Mist, for the day bars) for the rest.
+
 ### Navigation
 
 40px items (44px below `lg`), 8px corners, semibold ink with 18px icons. Active: paper with a
@@ -393,6 +428,7 @@ phone top bar's count).
   arbitrary values and inline styles in the app.
 - **Do** give every new colour a night twin in `.dark`.
 - **Do** keep text boxes a fixed height with no resize handle (#312).
+- **Do** draw a chart in one colour at two strengths on a hairline track.
 
 ### Don't:
 

@@ -29,8 +29,8 @@
 	--text-stay--line-height: 1.25;
 	--text-stay--letter-spacing: -0.015em;
 
-	/* Home's figures: Plex Mono light, for digits; words beside them stay in the sans. */
-	--text-figure: 2.5rem;
+	/* Home's figures: extra-bold Manrope, tabular; units beside them drop to the body size. */
+	--text-figure: 2.375rem;
 	--text-figure--line-height: 1;
 	--text-figure--letter-spacing: -0.03em;
 	--text-figure-sm: 2rem;

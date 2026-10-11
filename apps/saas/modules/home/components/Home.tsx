@@ -5,6 +5,7 @@ import { formatDateTime } from "@inbox/lib/time";
 import type { CrmOutcomeCounts, Funnel } from "@repo/database/inbox";
 import { Card, cn } from "@repo/ui";
 import { PageHeader } from "@shared/components/PageHeader";
+import { CalendarIcon } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { count, Figure, ShareBar } from "./HomeParts";
@@ -48,9 +49,9 @@ function Stage({
 	children: React.ReactNode;
 }) {
 	return (
-		<li className={cn("gap-3 p-4 md:p-5 lg:min-h-44 flex flex-col", CELL_EDGES[index])}>
-			<p className="gap-2 text-xs font-medium flex text-muted-foreground">
-				<span className="font-mono font-normal text-muted-foreground tabular-nums">
+		<li className={cn("gap-3 px-5 pt-4 pb-4.5 lg:min-h-40 flex flex-col", CELL_EDGES[index])}>
+			<p className="gap-2 text-2xs font-extrabold tracking-wider flex items-baseline uppercase">
+				<span className="text-micro font-bold tracking-normal text-muted-foreground tabular-nums">
 					{index + 1}
 				</span>
 				{label}
@@ -98,7 +99,9 @@ function FunnelStrip({
 										: 0
 							}
 						/>
-						<p className="text-xs text-pretty text-muted-foreground">{hints[stage]}</p>
+						<p className="text-note font-medium text-pretty text-muted-foreground">
+							{hints[stage]}
+						</p>
 					</Stage>
 				))}
 				{FROM_CRM.map((stage, index) => (
@@ -108,7 +111,7 @@ function FunnelStrip({
 								<>
 									<Figure parts={count(crm[stage])} className="mt-1" />
 									<ShareBar share={funnel.leadsIn > 0 ? crm[stage] / funnel.leadsIn : 0} />
-									<p className="text-xs text-pretty text-muted-foreground">
+									<p className="text-note font-medium text-pretty text-muted-foreground">
 										{crm.asOf
 											? t("crm.asOf", { time: formatAsOf(crm.asOf, locale) })
 											: t("crm.nothingYet")}
@@ -116,12 +119,14 @@ function FunnelStrip({
 								</>
 							) : (
 								<>
-									<div className="mt-1 h-10 px-3 shadow-hairline hatched flex items-center rounded-lg">
-										<span className="px-2 py-0.5 text-xs font-medium rounded-md bg-card text-foreground">
+									<div className="mt-1 h-10.5 px-2.5 hatched flex items-center rounded-lg border">
+										<span className="px-1.5 py-0.5 text-xs font-bold rounded-sm border bg-card text-foreground">
 											{t("crm.none")}
 										</span>
 									</div>
-									<p className="text-xs text-pretty text-muted-foreground">{t("crm.noneHint")}</p>
+									<p className="text-note font-medium text-pretty text-muted-foreground">
+										{t("crm.noneHint")}
+									</p>
 								</>
 							)}
 						</div>
@@ -143,51 +148,55 @@ function ResponseTime({ funnel, t }: { funnel: Funnel; t: Translate }) {
 	const answered = time?.answered ?? 0;
 	return (
 		<Card aria-labelledby="home-response-time" className="md:grid-cols-3 grid overflow-hidden">
-			<div className="gap-3 p-4 md:p-5 md:border-r md:border-b-0 flex flex-col border-b">
-				<h3
-					id="home-response-time"
-					className="font-semibold text-sm md:text-base tracking-tight font-heading"
-				>
+			<div className="gap-2 px-5 pt-4 pb-4.5 md:border-r md:border-b-0 flex flex-col border-b">
+				<h3 id="home-response-time" className="text-base font-extrabold tracking-tight">
 					{t("responseTime")}
 				</h3>
 				{time ? (
 					<>
-						<div className="gap-2 mt-3 flex items-baseline">
+						<div className="gap-2 mt-1 flex items-baseline">
 							<Figure parts={durationParts(time.medianMs, units)} />
-							<span className="text-sm text-muted-foreground">{t("median")}</span>
+							<span className="text-sm font-semibold text-muted-foreground">{t("median")}</span>
 						</div>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-note font-semibold text-pretty">
 							{t("p90", { value: formatDuration(time.p90Ms, units) })}
-							<span aria-hidden="true"> · </span>
+							<span aria-hidden="true" className="mx-1.5 text-mist">
+								·
+							</span>
 							{t("answered", { count: time.answered })}
 						</p>
 					</>
 				) : (
 					<Figure parts={[{ value: "–", number: true }]} muted className="mt-3" />
 				)}
-				<p className="text-xs text-pretty text-muted-foreground">
+				<p className="text-note font-medium text-pretty text-muted-foreground">
 					{t("responseTimeHint")} {time ? null : t("noResponseTime")}
 				</p>
 			</div>
 			<ul
 				aria-label={t("spread.label")}
-				className="gap-3.5 p-4 md:p-5 md:col-span-2 grid content-center"
+				className="gap-3 px-5 py-5 md:px-6 md:col-span-2 grid content-center"
 			>
 				{BUCKETS.map((bucket) => {
 					const value = time?.buckets[bucket] ?? 0;
 					const share = answered > 0 ? value / answered : 0;
 					return (
-						<li key={bucket} className="gap-3 text-sm grid-cols-bucket grid items-center">
-							<span className="text-foreground">{t(`spread.${bucket}`)}</span>
+						<li
+							key={bucket}
+							className="gap-4 text-sm font-semibold grid-cols-bucket grid items-center"
+						>
+							<span>{t(`spread.${bucket}`)}</span>
 							<ShareBar
 								share={share}
 								size="thick"
 								tone={bucket === "under5m" ? "strong" : "soft"}
 							/>
-							<span className="text-xs text-right text-muted-foreground tabular-nums">
-								<span className="font-mono font-medium text-foreground">{value}</span>
-								<span aria-hidden="true"> · </span>
-								<span className="font-mono">{percent(value, answered)}</span>%
+							<span className="text-note text-right text-muted-foreground tabular-nums">
+								<span className="font-extrabold text-foreground">{value}</span>
+								<span aria-hidden="true" className="mx-1 text-mist">
+									·
+								</span>
+								{percent(value, answered)}%
 							</span>
 						</li>
 					);
@@ -211,7 +220,8 @@ export async function Home() {
 				subtitle={t("subtitle")}
 				className="mb-4 md:mb-5"
 				aside={
-					<span className="h-7 px-2.5 text-xs shadow-hairline inline-flex items-center rounded-md bg-card whitespace-nowrap text-muted-foreground">
+					<span className="gap-1.5 h-8 px-2.5 text-note font-bold inline-flex items-center rounded-lg border bg-card whitespace-nowrap">
+						<CalendarIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
 						{t("window", { days: FUNNEL_WINDOW_DAYS })}
 					</span>
 				}
@@ -221,9 +231,9 @@ export async function Home() {
 					<p className="text-sm text-pretty">{t(`denied.${loaded.denied}`)}</p>
 				</Card>
 			) : funnel ? (
-				<div className="gap-2.5 md:gap-3 grid">
+				<div className="gap-3 md:gap-4 grid">
 					<FunnelStrip funnel={funnel} crm={loaded.crm ?? null} locale={locale} t={t} />
-					<div className="gap-2.5 md:gap-3 lg:grid-cols-3 grid">
+					<div className="gap-3 md:gap-4 lg:grid-cols-3 grid">
 						<div className="min-w-0 lg:col-span-2 grid">
 							<LeadsByDay days={funnel.byDay} total={funnel.leadsIn} />
 						</div>
