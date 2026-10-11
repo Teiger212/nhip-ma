@@ -222,12 +222,18 @@ test.describe("Thread layout 8 — a sent reply says Sent on its row, then the t
 			await row(middle).click();
 			await expect(openThread(page).getByText(firsts[1], { exact: true })).toBeVisible();
 			await replyBox(page).fill(`Reply to ${middle.id}`);
+			// Sent shows for half a second: watched every frame from before the click, not polled.
+			const saysSent = page.waitForFunction(
+				() => document.querySelector('[data-test="thread-row-sent"]')?.textContent === "Sent",
+				null,
+				{ polling: "raf", timeout: 30_000 },
+			);
 			const sent = page.waitForResponse((r) => r.url().endsWith("/approve"));
 			await openThread(page).getByTestId("approve-and-send").click();
 			expect((await sent).status(), "the reply is sent").toBe(200);
 
 			// The row says Sent, then goes; the thread that was below it is open.
-			await expect(list.getByTestId("thread-row-sent")).toHaveText("Sent");
+			await saysSent;
 			await expect(row(middle), "the answered row leaves the list").toHaveCount(0);
 			await expect(row(below), "the thread below is the current one").toHaveAttribute(
 				"aria-current",

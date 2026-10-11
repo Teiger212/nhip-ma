@@ -177,22 +177,25 @@ export function buildQueueView(
 export type HeldRow = {
 	conversation: ConversationSummary;
 	section: "visible" | "quiet";
-	index: number;
+	/** The rows above it in its section when it was held, nearest last: where it goes back. */
+	above: string[];
 	/** The server confirmed the send: the row says ✓ Sent. */
 	sent: boolean;
 };
 
 /**
- * The queue with the held row back where it stood, once the data has dropped it: the list and
- * the selection keep it until the handoff takes it away. The counts stay the data's, and the
- * queue isn't caught up while the row still shows.
+ * The queue with the held row back where it stood, once the data has dropped it: just below the
+ * nearest row that was above it and is still listed (a row above may have left meanwhile), else
+ * first. The list and the selection keep it until the handoff takes it away. The counts stay the
+ * data's, and the queue isn't caught up while the row still shows.
  */
 export function withHeldRow(queue: QueueView, held: HeldRow | null): QueueView {
 	if (!held) return queue;
 	const id = held.conversation.id;
 	if (queue.visible.some((c) => c.id === id) || queue.quiet.some((c) => c.id === id)) return queue;
 	const section = [...queue[held.section]];
-	section.splice(Math.min(held.index, section.length), 0, held.conversation);
+	const anchor = held.above.findLast((above) => section.some((c) => c.id === above));
+	section.splice(anchor ? section.findIndex((c) => c.id === anchor) + 1 : 0, 0, held.conversation);
 	return { ...queue, [held.section]: section, caughtUp: false, allAssigned: false };
 }
 

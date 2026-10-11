@@ -175,12 +175,17 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	// After a send: ✓ Sent on the answered row, then the list closes up and the thread below opens.
 	const handoff = useHandoff({
 		latestList: () => lastList.current.ordered,
+		selection: () => selectedId,
 		onMoveOn: (next) => {
 			setSelectedId(next);
 			setCelebrate(next === null);
 		},
 	});
-	const { keepSelection } = handoff;
+	// A new view, search or filter lists other threads: the held row goes at once.
+	const { release } = handoff;
+	useEffect(() => {
+		release();
+	}, [listKey, release]);
 	const queue = useMemo(
 		() => withHeldRow(buildQueueView(conversations, view, query), handoff.held),
 		[conversations, view, query, handoff.held],
@@ -390,7 +395,6 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const openThread = useCallback(
 		(id: string) => {
 			const open = () => {
-				keepSelection();
 				setPinnedId(null);
 				setNotice(null);
 				setCelebrate(false);
@@ -400,7 +404,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			if (sideBySide || detailOpen) open();
 			else swapScreens("push", open);
 		},
-		[sideBySide, detailOpen, keepSelection],
+		[sideBySide, detailOpen],
 	);
 
 	/** Phone only: back from the thread to the list. */
@@ -492,7 +496,6 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							// No view is pressed until the role says which one this Inbox opens on.
 							view={rolePending ? null : view}
 							onViewChange={(next) => {
-								handoff.release();
 								setPinnedId(null);
 								setNotice(null);
 								setCelebrate(false);

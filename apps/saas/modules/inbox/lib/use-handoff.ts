@@ -23,34 +23,45 @@ import type { ConversationSummary } from "./types";
  * the selection moves to the thread that was below it. The next thread is fetched during the
  * beat, so the card shows it whole at once.
  *
- * `latestList` is the list as the selection last saw it, read when it is needed; `onMoveOn`
- * gets the thread to open, or null when none waits, inside the transition.
+ * `latestList` is the list as the selection last saw it and `selection` the thread open now,
+ * both read when needed; `onMoveOn` gets the thread to open, or null when none waits, inside the
+ * transition. The selection moves on only if it is still on the answered thread: whatever the
+ * operator opened meanwhile (a row, a toast, a link) stays open.
  */
 export function useHandoff({
 	latestList,
+	selection,
 	onMoveOn,
 }: {
 	latestList: () => ConversationSummary[];
+	selection: () => string | null;
 	onMoveOn: (next: string | null) => void;
 }) {
 	const [held, setHeld] = useState<HeldRow | null>(null);
 	const prefetch = usePrefetchConversation();
-	// Each send, and each choice the operator makes meanwhile, bumps the run: a beat that ends
-	// under a newer run still takes its row away, but no longer moves the selection.
+	// Each send, and each release, bumps the run: a beat that ends under a newer run still takes
+	// its row away, but no longer moves the selection.
 	const run = useRef(0);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	// The caller's latest callbacks, for a beat that ends after later renders.
-	const callbacks = useRef({ latestList, onMoveOn });
+	const callbacks = useRef({ latestList, selection, onMoveOn });
 	useLayoutEffect(() => {
-		callbacks.current = { latestList, onMoveOn };
+		callbacks.current = { latestList, selection, onMoveOn };
 	});
 	useEffect(() => () => clearTimeout(timer.current), []);
 
 	/** The send is on its way: keep the row where it stands in the queue. Returns the run. */
 	const hold = useCallback((row: ConversationSummary, queue: QueueView) => {
 		const section = queue.visible.some((c) => c.id === row.id) ? "visible" : "quiet";
-		const index = queue[section].findIndex((c) => c.id === row.id);
-		setHeld({ conversation: row, section, index: Math.max(index, 0), sent: false });
+		const rows = queue[section];
+		const above = rows.slice(
+			0,
+			Math.max(
+				rows.findIndex((c) => c.id === row.id),
+				0,
+			),
+		);
+		setHeld({ conversation: row, section, above: above.map((c) => c.id), sent: false });
 		return ++run.current;
 	}, []);
 
@@ -73,7 +84,7 @@ export function useHandoff({
 				startTransition(() => {
 					addTransitionType("handoff");
 					setHeld((current) => (current?.conversation.id === id ? null : current));
-					if (sentRun !== run.current) return;
+					if (sentRun !== run.current || callbacks.current.selection() !== id) return;
 					const list = callbacks.current.latestList();
 					callbacks.current.onMoveOn(
 						nextSelection(
@@ -89,17 +100,12 @@ export function useHandoff({
 		[prefetch],
 	);
 
-	/** The send failed, or the view changed: the row is let go at once, unplayed. */
+	/** The send failed, or the list changed (a view, a search, a filter): the row goes at once. */
 	const release = useCallback(() => {
 		run.current++;
 		clearTimeout(timer.current);
 		setHeld(null);
 	}, []);
 
-	/** The operator opened a thread during the beat: the row still leaves, the selection stays. */
-	const keepSelection = useCallback(() => {
-		run.current++;
-	}, []);
-
-	return { held, hold, sent, release, keepSelection };
+	return { held, hold, sent, release };
 }

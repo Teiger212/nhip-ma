@@ -165,8 +165,13 @@ test("a thread that left the list gives way to its neighbour in the list before"
 test("a held row goes back where it stood, until the data has it again", () => {
 	const [a, b, c] = ["a", "b", "c"].map((id) => conv({ id, guestName: id }));
 	const queue = buildQueueView([a, c], "all", "", NOW);
-	const held = { conversation: b, section: "visible" as const, index: 1, sent: true };
+	const held = { conversation: b, section: "visible" as const, above: ["a"], sent: true };
 	expect(withHeldRow(queue, held).visible.map((x) => x.id)).toEqual(["a", "b", "c"]);
+	// The row above it left meanwhile: it goes first, still above the one that was below it.
+	expect(withHeldRow(buildQueueView([c], "all", "", NOW), held).visible.map((x) => x.id)).toEqual([
+		"b",
+		"c",
+	]);
 	expect(withHeldRow(queue, held).counts).toEqual(queue.counts);
 	expect(withHeldRow(buildQueueView([], "yourTurn", "", NOW), held).caughtUp).toBe(false);
 	// Still listed (the send hasn't landed): nothing is added twice.
