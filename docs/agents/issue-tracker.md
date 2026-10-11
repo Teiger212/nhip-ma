@@ -23,7 +23,7 @@ The board is the GitHub project **Nhịp** (https://github.com/users/Teiger212/p
   - Every issue, done or not, sits under exactly one epic, as a GitHub **sub-issue**: `gh api -X POST repos/Teiger212/nhip-ma/issues/<epic>/sub_issues -F sub_issue_id=<child-db-id>`, where `<child-db-id>` comes from `gh api repos/Teiger212/nhip-ma/issues/<n> --jq .id`.
 - **Ticket**: one sub-issue = one PR = one agent session, independently shippable. Size S or M; an L is split.
 - **Task**: a checklist inside a ticket, never its own issue.
-- **Milestone** says _when_: `First client · 2026-10-18` or `After first client`. Every open ticket has one; epics don't, since they span milestones.
+- **Milestone** says _when_: `Demo-ready · 2026-10-18` (the first demo) or `After first client`. Every open ticket has one; epics don't, since they span milestones.
 - **Labels** stay the triage state (`needs-triage` … `ready-for-agent`); the board adds views, not a second status.
 - **A new ticket** goes under its epic, with a milestone and a triage label, and onto the board: `gh project item-add 4 --owner Teiger212 --url <issue-url>`. Built-in workflows add it automatically once Eyal turns them on.
 - **A merged PR with no ticket** is listed in its epic's "Shipped" section.
@@ -33,7 +33,7 @@ The board is the GitHub project **Nhịp** (https://github.com/users/Teiger212/p
 | View         | Layout  | Shows                                                                        |
 | ------------ | ------- | ---------------------------------------------------------------------------- |
 | Epics        | Table   | Top-level epics with their sub-issue progress; expand one to see its tickets |
-| First Client | Board   | `milestone:"First client · 2026-10-18"`, by status                           |
+| First Client | Board   | `milestone:"Demo-ready · 2026-10-18"`, by status                             |
 | Backlog      | Table   | `milestone:"After first client"`                                             |
 | Roadmap      | Roadmap | `has:target`: dated epics on a timeline, with milestone markers              |
 
