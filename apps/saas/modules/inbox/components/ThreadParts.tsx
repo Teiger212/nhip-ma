@@ -5,6 +5,7 @@ import {
 	CheckIcon,
 	ClockIcon,
 	GlobeIcon,
+	MapPinIcon,
 	MessageCircleIcon,
 	MessageSquareIcon,
 	PhoneIcon,
@@ -14,7 +15,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { isDecided } from "../lib/crm/rules";
-import { areaTone, languageTone, type TagTone } from "../lib/fact-tags";
+import { type AreaTone, areaTone, languageTone, type TagTone } from "../lib/fact-tags";
 import { formatGuestDetail } from "../lib/guest-details-format";
 import { guestInitials } from "../lib/guest-initials";
 import { useOfficeRole } from "../lib/inbox-queries";
@@ -280,6 +281,34 @@ export function FactTag({
 	);
 }
 
+/** Each area tone as its text and outline, written out whole so Tailwind can see them. */
+const AREA_TONE = {
+	copper: "text-area-copper border-area-copper/45",
+	cocoa: "text-area-cocoa border-area-cocoa/45",
+	pine: "text-area-pine border-area-pine/45",
+	plum: "text-area-plum border-area-plum/45",
+	steel: "text-area-steel border-area-steel/45",
+	olive: "text-area-olive border-area-olive/45",
+} as const satisfies Record<AreaTone, string>;
+
+/**
+ * An area tag (DESIGN.md, Fact Tags): the same squared size as a fact tag, but drawn as an
+ * outline with a pin in the areas' own palette, so an area never reads as a language.
+ */
+export function AreaTag({ area }: { area: string }) {
+	return (
+		<span
+			className={cn(
+				"h-4.5 px-1 text-micro font-semibold gap-0.5 inline-flex shrink-0 items-center rounded-sm border bg-card leading-none whitespace-nowrap",
+				AREA_TONE[areaTone(area)],
+			)}
+		>
+			<MapPinIcon aria-hidden="true" className="size-2.5 shrink-0" strokeWidth={2.5} />
+			{area}
+		</span>
+	);
+}
+
 /** Whether a stored fact is there to show. */
 function known(value: string | null | undefined): value is string {
 	return typeof value === "string" && value.trim() !== "";
@@ -308,7 +337,7 @@ export function FactTags({
 					{languageName(code, locale, (language) => t(`guestLanguage.${language}`))}
 				</FactTag>
 			) : null}
-			{known(facts?.area) ? <FactTag tone={areaTone(facts.area)}>{facts.area}</FactTag> : null}
+			{known(facts?.area) ? <AreaTag area={facts.area} /> : null}
 			{known(facts?.beds) ? <FactTag tone="plain">{detail("beds", facts.beds)}</FactTag> : null}
 			{known(facts?.budget) ? (
 				<FactTag tone="plain">{detail("budget", facts.budget)}</FactTag>

@@ -66,6 +66,13 @@
 		--tag-moss-foreground: #555a15;
 		--tag-plain: #edf1f6;
 		--tag-plain-foreground: #476788;
+		/* Area tags: their own earth palette, as text and outline on white (#314). */
+		--area-copper: #8a4a24;
+		--area-cocoa: #6b4f3a;
+		--area-pine: #2e5a46;
+		--area-plum: #6a3d63;
+		--area-steel: #3d5670;
+		--area-olive: #5a5a26;
 		/* The one raised surface (the open thread), a dock lifted off what scrolls under it, and
 		   the primary action's lift: blue-tinted, three layers, never grey. */
 		--elevation-raised:
@@ -139,6 +146,12 @@
 		--tag-moss-foreground: #d7dc9a;
 		--tag-plain: #142a42;
 		--tag-plain-foreground: #9fb4cc;
+		--area-copper: #e7b08f;
+		--area-cocoa: #d6bba4;
+		--area-pine: #9fd0b8;
+		--area-plum: #dbb1d2;
+		--area-steel: #aac3dc;
+		--area-olive: #d2d28f;
 		--elevation-raised:
 			rgba(0, 0, 0, 0.18) 0 4px 5px 0, rgba(0, 0, 0, 0.14) 0 8px 15px 0,
 			rgba(0, 0, 0, 0.3) 0 30px 50px 0;
@@ -208,6 +221,12 @@
 	--color-tag-moss-foreground: var(--tag-moss-foreground);
 	--color-tag-plain: var(--tag-plain);
 	--color-tag-plain-foreground: var(--tag-plain-foreground);
+	--color-area-copper: var(--area-copper);
+	--color-area-cocoa: var(--area-cocoa);
+	--color-area-pine: var(--area-pine);
+	--color-area-plum: var(--area-plum);
+	--color-area-steel: var(--area-steel);
+	--color-area-olive: var(--area-olive);
 
 	--shadow-raised: var(--elevation-raised);
 	--shadow-dock: var(--elevation-dock);

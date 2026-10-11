@@ -12,7 +12,8 @@
   filled for your turn, outlined while waiting, muted once sent. Who sees which threads is
   unchanged.
 - **Rows show the guest's facts as tags.** Under each preview: their language, the area, beds
-  and budget, when Nhịp has them. Each value keeps one colour everywhere.
+  and budget, when Nhịp has them. Each value keeps one colour everywhere; an area is an outlined
+  tag with a pin in its own earth colours, so it never shares a colour with a language.
 - **The guest details open on a stay card.** The area is the title, rent or buy and beds sit
   under it, then the move-in and the budget. A fact the guest hasn't given shows as a dashed
   open slot, and the Missing row still names what to ask for. The details rail is narrower

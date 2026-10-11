@@ -133,14 +133,18 @@ names, so every screen (settings, admin, auth) follows without per-component edi
 
 ### Fact tags
 
-Nine muted pairs (`tag-*`, fill and text, each 4.5:1 or better): violet, teal, rose, amber,
-berry, lagoon, sage, moss, and plain (Slate on #edf1f6). Never Signal Blue.
+Nine muted pairs for languages, beds and budget (`tag-*`, fill and text, each 4.5:1 or better):
+violet, teal, rose, amber, berry, lagoon, sage, moss, and plain (Slate on #edf1f6). Never Signal
+Blue.
 
 - **Languages** keep a fixed colour (`apps/saas/modules/inbox/lib/fact-tags.ts`): Korean
   violet, English teal, Japanese rose, Vietnamese amber, Chinese berry, Russian lagoon, French
   sage, German moss. Any other code hashes into the eight hues.
-- **Areas** hash into the eight hues: FNV-1a over the name, Unicode-normalised, trimmed,
-  spacing and case folded, so "Tây Hồ" is the same colour on every row, every device, every day.
+- **Areas** have their own palette, never a language's (Eyal, 2026-10-11): six earth tones
+  (`area-*`: copper, cocoa, pine, plum, steel, olive), drawn as an outline with a small pin on
+  white, not as a fill. An area hashes into the six (FNV-1a over the name, Unicode-normalised,
+  trimmed, spacing and case folded), so "Tây Hồ" is the same colour on every row, every device,
+  every day, and a row never shows a language and an area in one colour.
 - **Beds and budget** are plain: they are numbers to read, not places to recognise.
 
 ### Night
@@ -158,8 +162,9 @@ fills the secondary action and your turn. Nothing else is filled with colour.
 **The Ink Rule.** Every glyph is Ink Navy or Slate. Mist is never text.
 
 **The One Colour Per Value Rule.** A fact tag's colour belongs to its value, not its row: a
-language by the fixed map, an area by its hash. Two values may share a hue; one value never
-changes hue.
+language by the fixed map, an area by its hash into the areas' own palette. Two areas may share
+a hue, and so may two languages; a language and an area never do, and one value never changes
+hue.
 
 **The Red Means Broken Rule.** Signal Red is for errors and destructive actions only. A waiting
 guest is never red.
