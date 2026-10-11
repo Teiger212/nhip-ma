@@ -167,9 +167,10 @@ function RailSection({ title, children }: { title: string; children: ReactNode }
 /**
  * One open thread (#248, layout D): the header; the conversation as bubbles, with the reply box
  * and the send control docked under it, always in view; and the guest's details, in a rail beside
- * the conversation on a wide pane, or in a strip under the header on a narrow one, where the CRM
- * status and the owner control move into the header. Everything is handed in; the Inbox shell
- * owns the state and the mutations.
+ * the conversation on a wide pane, or in a strip under the header on a narrow one, where the owner
+ * control moves into the header. The CRM status is in the header beside the rail too: after the
+ * turn plate, past a hairline (#314); on a narrow pane, at the header's end; on a phone, in the
+ * strip. Everything is handed in; the Inbox shell owns the state and the mutations.
  */
 export function ThreadDetail({
 	conversation,
@@ -201,7 +202,7 @@ export function ThreadDetail({
 	const blocked = disconnected.some(
 		(item) => item.pipe === conversation.pipe && item.externalId === endpoint,
 	);
-	// An office with no CRM shows no CRM status (DESIGN.md, Badges), so no CRM section either.
+	// An office with no CRM shows no CRM status (DESIGN.md, Badges), so no hairline before it either.
 	const hasCrm = Boolean(conversation.crm) || conversation.officeHasCrm;
 	const name = guestLabel(conversation).text;
 	const chip = useTurnChip(conversation);
@@ -259,6 +260,13 @@ export function ThreadDetail({
 							size={phone ? "md" : "lg"}
 							pipeIconOnly={phone && role === "manager"}
 						/>
+						{/* Beside the rail, the CRM status follows the plate past a hairline (#314). */}
+						{rail && hasCrm ? (
+							<>
+								<span aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
+								<CrmStatus conversation={conversation} />
+							</>
+						) : null}
 					</span>
 				</div>
 				<div
@@ -377,13 +385,6 @@ export function ThreadDetail({
 						className="min-h-0 w-thread-rail px-5.5 pt-5.5 pb-5 flex shrink-0 flex-col overflow-y-auto border-l"
 					>
 						<ExtractFields conversation={conversation} layout="rail" />
-						{hasCrm ? (
-							<RailSection title={t("details.crm")}>
-								<div className="flex">
-									<CrmStatus conversation={conversation} />
-								</div>
-							</RailSection>
-						) : null}
 						<RailSection title={t("details.owner")}>
 							<OwnerControl conversation={conversation} placement="rail" onAssigned={onAssigned} />
 						</RailSection>

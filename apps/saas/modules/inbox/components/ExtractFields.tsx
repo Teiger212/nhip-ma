@@ -163,8 +163,10 @@ function OpenSlot({ details, id }: { details: Details; id: "moveIn" | "budget" }
 /**
  * The stay card (#314), at the top of the details rail, the way a booking summary opens on the
  * slot you picked: the area as its title, rent or buy and beds under it, then a field box with
- * the move-in and the budget. A fact the guest hasn't given is a dashed open slot in the box's
- * place, never inside its frame, and the Missing row under them names what to ask for (#244).
+ * the move-in and the stay length side by side (#317) over the budget. A missing move-in or
+ * budget is a dashed open slot in the box's place, never inside its frame, and the Missing row
+ * under them names what to ask for (#244); a stay length is optional, so a missing one is
+ * simply not shown.
  * Its labels stay terms of one list, so the area's is there for a screen reader where the pin
  * stands for it.
  */
@@ -188,7 +190,9 @@ function StayCard({ details }: { details: Details }) {
 			</div>
 		),
 	);
-	const given = (["moveIn", "budget"] as const).filter((id) => values[id] !== undefined);
+	const given = (["moveIn", "stay", "budget"] as const).filter((id) => values[id] !== undefined);
+	// Move-in and stay share the box's first row when both are there; the budget has its own.
+	const paired = given.includes("moveIn") && given.includes("stay");
 	const open = (["moveIn", "budget"] as const).filter((id) => values[id] === undefined);
 	return (
 		<dl className="flex flex-col">
@@ -216,9 +220,16 @@ function StayCard({ details }: { details: Details }) {
 				</div>
 			</div>
 			{given.length > 0 ? (
-				<div className="mt-4 flex flex-col overflow-hidden rounded-lg border">
+				<div className="mt-4 grid grid-cols-2 overflow-hidden rounded-lg border">
 					{given.map((id) => (
-						<div key={id} className="px-3 pt-2.5 pb-3 border-t first:border-t-0">
+						<div
+							key={id}
+							className={cn(
+								"px-3 pt-2.5 pb-3 border-t first:border-t-0",
+								paired && id !== "budget" ? "col-span-1" : "col-span-2",
+								paired && id === "stay" && "border-t-0 border-l",
+							)}
+						>
 							<dt className="text-2xs font-extrabold tracking-wider uppercase">{label(id)}</dt>
 							<dd
 								className={cn(
@@ -244,8 +255,8 @@ function StayCard({ details }: { details: Details }) {
 	);
 }
 
-/** The stay facts the strip's line reads, after the area and before the budget's frame. */
-const LINE_FIELDS = ["rentOrBuy", "beds", "moveIn"] as const;
+/** The stay facts the strip's line reads, after the area and before the budget's frame (#317). */
+const LINE_FIELDS = ["rentOrBuy", "beds", "moveIn", "stay"] as const;
 
 /**
  * The narrow pane's stay (#248, #314), as the mockup's phone band: one white line on the canvas,

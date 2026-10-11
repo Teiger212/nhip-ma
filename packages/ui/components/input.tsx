@@ -9,8 +9,12 @@ const inputVariants = cva(
 		variants: {
 			variant: {
 				default: "h-9 px-3 py-1 rounded-lg border border-input bg-card",
-				/** A white search field on the canvas, with room for a leading icon at left-3. */
-				search: "h-11 md:h-9 pr-3 pl-9 text-sm rounded-lg border border-input bg-card",
+				/**
+				 * A white search field on the canvas, with room for a leading icon at left-3. The
+				 * browser's own cancel button is hidden: the field draws its own clear.
+				 */
+				search:
+					"h-11 md:h-9 pr-3 pl-9 text-sm rounded-lg border border-input bg-card [&::-webkit-search-cancel-button]:appearance-none",
 			},
 		},
 		defaultVariants: {
@@ -19,8 +23,7 @@ const inputVariants = cva(
 	},
 );
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement> &
-	VariantProps<typeof inputVariants>;
+export type InputProps = React.ComponentProps<"input"> & VariantProps<typeof inputVariants>;
 
 const Input = ({ className, type, variant, ...props }: InputProps) => {
 	return <input type={type} className={cn(inputVariants({ variant }), className)} {...props} />;

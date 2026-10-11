@@ -539,16 +539,25 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    every guest the office owes a reply is labelled "Waiting N" (VI "Đang chờ N", pending the #78
    review). It is never "Your turn". It holds the same threads: the Unassigned guests and the
    agents' guests still waiting, not the answered ones. Its count is the same office-wide number
-   as the nav badge, the tab title ("(N) Inbox", VI "(N) Hộp thư") and the list's count line. An
+   as the nav badge and the tab title ("(N) Inbox", VI "(N) Hộp thư"). An
    agent in the same office still sees "Your turn N" (VI "Đến lượt bạn N"), and no "Waiting".
    Spec: `apps/saas/tests/inbox-tabs.spec.ts` (Inbox view tabs 2, in EN; an office of the test's
    own with two Unassigned guests, one waiting on the invited agent and one the agent answered.
-   The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so do the
-   title, and the count line is #208's manager line on Unassigned, "2 unassigned · 3 waiting in the
-   office". Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1,
-   Sent 1, All 2, their nav reads 1, and Your turn lists only their guest). The Vietnamese labels,
-   title and count line are checked by the translation-key test
+   The manager's tabs read Unassigned 2, Waiting 3, Sent 1, All 4. The nav reads 3, and so does the
+   title. Waiting lists exactly the three guests owed a reply. The agent's tabs read Your turn 1,
+   Sent 1, All 2, their nav reads 1, and Your turn lists only their guest). The Vietnamese labels
+   and title are checked by the translation-key test
    (`apps/saas/modules/i18n/lib/translation-keys.test.ts`, #278).
+
+3. **Clearing the search brings the whole list back** (Eyal, 2026-10-11, #314). While the
+   search ("Search conversations") holds text, a "Clear search" button (VI "Xóa tìm kiếm") sits
+   at its right end. The manager of 2's office, on Waiting, searches one Unassigned guest: Waiting
+   counts 1 and lists only that guest. Clear search empties the field and leaves the cursor in it,
+   the button goes, and the tabs read Unassigned 2, Waiting 3, Sent 1, All 4 again, with Waiting
+   listing the three guests.
+   Spec: `apps/saas/tests/inbox-tabs.spec.ts` (a step of Inbox view tabs 2's test, on its office;
+   the 44px target on a phone, the hover colour and the native cancel button hidden are not
+   checked: polish, lean testing).
 
 ## Hidden kit screens (#210)
 
@@ -598,27 +607,22 @@ is a WhatsApp guest whose profile name is 40 characters.
    never covered and the phone have no E2E test (lean testing, #278): variants of the hover
    check; assigning through the menu is Assign's spec).
 
-3. **The count line under the tabs says what each view holds.** For a manager, per view:
-   - Unassigned: "{u} unassigned · {w} waiting in the office"
-   - Waiting: "{w} waiting in the office"
-   - Sent: "{s} sent · {w} waiting in the office"
-   - All: "{a} threads · {w} waiting in the office" ("1 thread" for one)
-
-   u is the Unassigned threads, w the office's Waiting threads, s the Sent threads and a all
-   threads. That w counts the Unassigned guests waiting too, as the manager's Waiting tab does,
-   is the test author's reading of #208, pending Eyal's confirmation: if w means only the guests
-   waiting on agents, every manager line in the spec changes. With
-   the "Showing" filter on an operator, the counts are that operator's threads and "waiting in the
-   office" becomes "waiting on <their name>". An agent's line is unchanged: "N guests are waiting
-   on you" ("1 guest is waiting on you"), the same in every view.
-   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 3; an office of the test's own with
+3. **Retired: the count line under the tabs** (#208). Eyal removed the line on 2026-10-11
+   (#314): since #314 the view tabs show each view's full count, so a line such as "7 unassigned
+   · 18 waiting in the office" or "6 guests are waiting on you" only repeated them, and the
+   "Showing" filter already names the operator. What it counted is now Inbox polish 4.
+4. **A manager's view tabs count the office, or the operator "Showing" names.** On every view
+   the tabs read the office's counts: Unassigned u, Waiting w, Sent s, All a. w counts the
+   Unassigned guests waiting too, as ADR 0022's Waiting view does. With the "Showing" filter on
+   an operator (Waiting, Sent or All), the filter names them and the tabs count only their
+   threads, Unassigned 0 among them. Unassigned sits the filter out: on it the tabs read the
+   office's counts again.
+   Spec: `apps/saas/tests/inbox-polish.spec.ts` (Inbox polish 4; an office of the test's own with
    an invited manager and two invited agents, each with a name of their own. Two guests wait
    Unassigned; agent A holds three guests and has answered one through the Inbox; agent B holds
-   one, waiting. The office reads u 2, w 5, s 1, a 6, checked first on the view tabs; agent A
-   reads 2 waiting, 1 sent, 3 threads, judged on Waiting, Sent and All; agent B is "1 thread · 1
-   waiting on <B>". The wording is #208's, written out in `tests/support/copy.ts`, not read from
-   the app's strings. The agent's line has no E2E test here (lean testing, #278): an agent's
-   waiting count is proven by `nav-count.spec.ts` and Inbox view tabs 2).
+   one, waiting. The office reads 2, 5, 1, 6 on every view; showing agent A, 0, 2, 1, 3 on
+   Waiting, Sent and All; showing agent B, 0, 1, 0, 1 on All; then Unassigned reads 2, 5, 1, 6.
+   An agent's tabs are Inbox view tabs 2's and `nav-count.spec.ts`'s).
 
 ## Thread layout (#248)
 
@@ -640,7 +644,9 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    CRM opens a guest's thread at 1563×784 with the sidebar open, and again at 1366×768 with the
    sidebar collapsed. The details are to the right of the conversation: their left edge is at or
    right of every message's right edge, and of the reply box's, and they start below the header.
-   "In CRM" and Assign to… are in the details, not in the header.
+   Assign to… is in the details, not in the header. "In CRM" is in the header, after the turn
+   plate (its left edge at or right of the plate's right edge; Eyal, 2026-10-11, #314), not in the
+   details.
    Covered by Thread layout 2's spec (#278): its collapse step, at 1366×768 with the sidebar
    collapsed, is this wide pane; 1563×784 is a viewport variant. What every Thread layout test
    shares (`apps/saas/tests/thread-layout.spec.ts`): an office of the test's own on
@@ -650,13 +656,13 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    the details are looked for on the whole page, not only inside the `article`; "in / not in" is
    what a person sees: a copy hidden by CSS counts as absent; the sidebar's state is told by the
    Home link's width, as in Sidebar 1, and collapsed with `sidebar-toggle` before the thread opens).
-2. **On a narrow pane the details fold into a strip under the header, and the CRM status and the
-   owner move into the header.** The same thread at 1366×768 with the sidebar open: the details
+2. **On a narrow pane the details fold into a strip under the header, and the owner joins the
+   CRM status in the header.** The same thread at 1366×768 with the sidebar open: the details
    are under the header and above the first message, at least as wide as the messages' column
    (left edge at or left of each message's, right edge at or right of each's). "In CRM" and Assign
    to… are inside the header, not in the details. Collapsing the sidebar in the same window
-   brings the details back beside the conversation, with "In CRM" and Assign to… in them;
-   expanding it folds them into the strip again.
+   brings the details back beside the conversation, with Assign to… in them and "In CRM" in the
+   header after the turn plate, as in 1; expanding it folds them into the strip again.
    Spec: `apps/saas/tests/thread-layout.spec.ts` (Thread layout 2; set up as in 1; each layout
    after a sidebar change is polled until it holds, the sidebar's width animating).
 3. **The reply box is in view without scrolling, on a thread of ten messages.** A guest has

@@ -396,7 +396,6 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							}}
 							counts={queue.counts}
 							manager={manager}
-							ownerName={agents.data?.find((agent) => agent.id === filterOwner)?.name ?? null}
 						/>
 						<div
 							className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"

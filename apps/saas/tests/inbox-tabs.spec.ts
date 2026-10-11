@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import type { Browser, Page } from "@playwright/test";
 
-import { COUNT_LINE_EN } from "./support/copy";
 import type { Admin } from "./support/fixtures";
 import { expect, test as base } from "./support/fixtures";
 import { seedZaloGuests } from "./support/guests";
@@ -39,6 +38,10 @@ const LABEL = {
 
 /** The Inbox's own name, after the count in the tab title: "(n) Inbox", or "(n) Inbox – Nhịp" once the title names the page (#212). */
 const INBOX = "Inbox";
+
+/** The thread search and its clear button, by their accessible names (EN). */
+const SEARCH_FIELD = "Search conversations";
+const CLEAR_SEARCH = "Clear search";
 
 /** Every label a view tab has had, in either language: a tab is one of these and its count. */
 const ANY_LABEL = [...Object.values(LABEL.en), ...Object.values(LABEL.vi)];
@@ -405,7 +408,7 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 	// English only: the Vietnamese labels are the translation-key test's (#278,
 	// modules/i18n/lib/translation-keys.test.ts).
 	const locale = "en";
-	test(`EN: the manager's tab of every guest the office owes a reply reads "${LABEL.en.waiting} 3", the same office-wide number as the nav, the tab title and the count line, and lists those three guests; the agent's still reads "${LABEL.en.yourTurn} 1"`, async ({
+	test(`EN: the manager's tab of every guest the office owes a reply reads "${LABEL.en.waiting} 3", the same office-wide number as the nav and the tab title, and lists those three guests; the agent's still reads "${LABEL.en.yourTurn} 1"`, async ({
 		seededOffice,
 	}) => {
 		test.setTimeout(180_000);
@@ -436,15 +439,11 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 			tabText(label.all, 4),
 		]);
 
-		// The same office-wide number: the nav, the tab title and the count line.
+		// The same office-wide number: the nav and the tab title.
 		await expect(navCount(page), "the nav counts the same three").toHaveText("3");
 		await expect(page, "the tab title counts the same three").toHaveTitle(
 			new RegExp(`^\\(3\\) ${INBOX}( |$)`),
 		);
-		await expect(
-			listPanel(page).getByText(COUNT_LINE_EN.unassigned(2, 3), { exact: true }),
-			"the list's count line counts the same three",
-		).toBeVisible();
 
 		// The same threads: every guest owed a reply, the Unassigned and the agent's, and not the
 		// one answered.
@@ -455,6 +454,32 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 		}
 		await expect(guestRows(page), "Waiting lists only those three").toHaveCount(3);
 		await expect(rowOf(page, guests.answeredByAgent[0]), "not the answered guest").toHaveCount(0);
+
+		// scenario: docs/e2e-scenarios.md Inbox view tabs 3
+		await test.step("clearing the search brings the whole list back: type, clear, the three guests and the counts return", async () => {
+			const field = listPanel(page).getByRole("textbox", { name: SEARCH_FIELD });
+			const one = guests.unassigned[0];
+			await field.fill(one.id);
+			await expect(
+				tab(page, label.waiting, 1),
+				"searched, Waiting counts the one guest",
+			).toBeVisible();
+			await expect(guestRows(page), "searched, Waiting lists only that guest").toHaveCount(1);
+			await listPanel(page).getByRole("button", { name: CLEAR_SEARCH, exact: true }).click();
+			await expect(field, "the search is empty").toHaveValue("");
+			await expect(field, "the cursor stays in the search").toBeFocused();
+			await expect(
+				listPanel(page).getByRole("button", { name: CLEAR_SEARCH, exact: true }),
+				"no clear button once the search is empty",
+			).toHaveCount(0);
+			await expect(viewTabs(page), "the counts are the whole office's again").toHaveText([
+				tabText(label.unassigned, 2),
+				tabText(label.waiting, 3),
+				tabText(label.sent, 1),
+				tabText(label.all, 4),
+			]);
+			await expect(guestRows(page), "Waiting lists the three guests again").toHaveCount(3);
+		});
 
 		// The agent of the same office: still Your turn, their own guest.
 		const agent = office.agent.page;

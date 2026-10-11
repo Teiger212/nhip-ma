@@ -893,6 +893,7 @@
 		"no": "Không",
 		"searchPlaceholder": "Tìm tên hoặc tin nhắn gần nhất",
 		"searchAria": "Tìm cuộc trò chuyện",
+		"searchClear": "Xóa tìm kiếm",
 		"empty": "Không có cuộc trò chuyện nào.",
 		"loading": "Đang tải cuộc trò chuyện…",
 		"loadError": "Không tải được cuộc trò chuyện.",
@@ -963,7 +964,6 @@
 		},
 		"details": {
 			"title": "Thông tin khách",
-			"crm": "CRM",
 			"owner": "Phụ trách",
 			"guest": "Khách",
 			"stay": "Chỗ ở",
@@ -1068,14 +1068,6 @@
 			"all": "Tất cả"
 		},
 		"queueCount": "{count, plural, =0 {Không có khách nào đang chờ bạn} other {# khách đang chờ bạn}}",
-		"managerCount": {
-			"line": "{view} · {waiting}",
-			"waitingOffice": "{count} khách đang chờ văn phòng",
-			"waitingOn": "{count} khách đang chờ {name}",
-			"unassigned": "{count} khách chưa giao",
-			"sent": "{count} đã gửi",
-			"all": "{count} cuộc trò chuyện"
-		},
 		"allCaughtUp": "Đã xử lý hết.",
 		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",
