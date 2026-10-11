@@ -6,26 +6,25 @@ import { cn } from "../lib";
 import { Spinner } from "./spinner";
 
 const buttonVariants = cva(
-	"flex items-center justify-center font-semibold enabled:cursor-pointer transition-[color,background-color,border-color,transform,opacity] duration-200 ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background enabled:active:scale-[0.98] motion-reduce:transition-none motion-reduce:enabled:active:scale-100 disabled:pointer-events-none disabled:opacity-50 [&>svg]:mr-1.5 [&>svg+svg]:hidden",
+	"flex items-center justify-center font-bold enabled:cursor-pointer transition-[color,background-color,border-color,transform,opacity] duration-200 ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background enabled:active:scale-[0.98] motion-reduce:transition-none motion-reduce:enabled:active:scale-100 disabled:pointer-events-none disabled:opacity-50 [&>svg]:mr-1.5 [&>svg+svg]:hidden",
 	{
 		variants: {
 			variant: {
 				primary:
-					"bg-primary text-primary-foreground hover:bg-[color-mix(in_srgb,var(--primary)82%,var(--background))]",
+					"bg-primary text-primary-foreground shadow-cta hover:bg-[color-mix(in_srgb,var(--primary)86%,black)]",
 				secondary:
 					"bg-secondary text-secondary-foreground hover:bg-[color-mix(in_srgb,var(--secondary)90%,black)]",
-				outline:
-					"border border-foreground/10 bg-transparent text-foreground hover:bg-foreground/10",
+				outline: "border border-border bg-card text-foreground hover:border-foreground",
 				ghost: "text-foreground hover:bg-foreground/10 hover:text-foreground",
 				destructive:
 					"bg-destructive text-destructive-foreground hover:bg-[color-mix(in_srgb,var(--destructive)90%,black)]",
 				link: "text-primary underline-offset-4 hover:underline",
 			},
 			size: {
-				sm: "h-6 rounded-full px-3 text-xs",
-				md: "h-9 rounded-full px-4 text-sm",
-				lg: "h-12 rounded-full px-6 text-base",
-				icon: "size-8 rounded-full [&>svg]:m-0",
+				sm: "h-6 rounded-lg px-3 text-xs",
+				md: "h-9 rounded-lg px-4 text-sm",
+				lg: "h-12 rounded-lg px-6 text-base",
+				icon: "size-8 rounded-lg [&>svg]:m-0",
 			},
 		},
 		defaultVariants: {

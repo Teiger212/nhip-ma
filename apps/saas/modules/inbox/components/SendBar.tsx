@@ -2,7 +2,7 @@
 
 import { Button, cn } from "@repo/ui";
 import { useHydrated } from "@shared/hooks/use-hydrated";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, SendIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type { SendStatus } from "../lib/send-status";
@@ -45,7 +45,7 @@ export function SendBar({
 	const warn = Boolean(blockedReason) || status.kind === "error" || status.kind === "unknown";
 	const quiet = !blockedReason && status.kind === "none";
 	return (
-		<div className="gap-3 flex items-center justify-between">
+		<div className="gap-x-3 gap-y-2 flex flex-wrap items-center justify-between">
 			<output
 				data-test="send-status"
 				aria-live="polite"
@@ -65,11 +65,13 @@ export function SendBar({
 			<Button
 				type="button"
 				variant="primary"
-				className="min-h-11 ml-auto shrink-0"
+				size="lg"
+				className="md:h-10.5 md:w-auto ml-auto w-full shrink-0"
 				disabled={!canApprove || sending || Boolean(blockedReason)}
 				data-test="approve-and-send"
 				onClick={onApprove}
 			>
+				<SendIcon aria-hidden="true" className="size-4.5" />
 				{t("approveAndSend")}
 			</Button>
 		</div>

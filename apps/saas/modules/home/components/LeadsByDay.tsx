@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@repo/ui";
+import { Card, cn } from "@repo/ui";
 import {
 	type ChartConfig,
 	ChartContainer,
@@ -27,15 +27,42 @@ function dayDate(day: string): Date {
 	return new Date(`${day}T00:00:00Z`);
 }
 
+/** A date under the axis: today's in bold ink, the only mark of today (#314), the rest in Slate. */
+function DayTick({
+	x,
+	y,
+	payload,
+	today,
+	format,
+}: {
+	x?: number;
+	y?: number;
+	payload?: { value: string };
+	today: string;
+	format: (day: string) => string;
+}) {
+	if (x === undefined || y === undefined || !payload) return null;
+	const isToday = payload.value === today;
+	return (
+		<text x={x} y={y} dy={12} textAnchor="middle" className="text-micro tabular-nums">
+			{/* The chart paints every tick's text Slate; the tspan carries today's ink over it. */}
+			<tspan className={cn(isToday ? "font-extrabold fill-foreground" : "font-semibold")}>
+				{format(payload.value)}
+			</tspan>
+		</text>
+	);
+}
+
 /**
- * Leads by day over Home's window, in the office's local days (ADR 0002): one bar per
- * day in the soft blue, today in the strong one.
+ * Leads by day over Home's window, in the office's local days (ADR 0002): one bar per day in
+ * Mist, today's in Signal Blue, on hairline gridlines. An empty today draws nothing; its bold
+ * date marks it.
  */
 export function LeadsByDay({ days, total }: { days: Day[]; total: number }) {
 	const t = useTranslations("home");
 	const locale = useLocale();
 	const config = {
-		leads: { label: t("funnel.leadsIn"), color: "var(--chart-soft)" },
+		leads: { label: t("funnel.leadsIn"), color: "var(--mist)" },
 	} satisfies ChartConfig;
 	const short = new Intl.DateTimeFormat(locale, {
 		day: "numeric",
@@ -66,8 +93,8 @@ export function LeadsByDay({ days, total }: { days: Day[]; total: number }) {
 					className="min-h-44 md:min-h-56 aspect-auto w-full flex-1"
 					aria-label={t("chartLabel", { days: days.length, total })}
 				>
-					<BarChart data={days} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-						<CartesianGrid vertical={false} />
+					<BarChart data={days} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+						<CartesianGrid vertical={false} stroke="var(--border)" />
 						<YAxis
 							width={24}
 							domain={[0, max]}
@@ -79,7 +106,13 @@ export function LeadsByDay({ days, total }: { days: Day[]; total: number }) {
 						<XAxis
 							dataKey="day"
 							ticks={ticks}
-							tickFormatter={(day: string) => short.format(dayDate(day))}
+							tick={
+								<DayTick
+									today={days[last]?.day ?? ""}
+									format={(day) => short.format(dayDate(day))}
+								/>
+							}
+							interval={0}
 							tickLine={false}
 							axisLine={false}
 							tickMargin={8}
@@ -96,7 +129,7 @@ export function LeadsByDay({ days, total }: { days: Day[]; total: number }) {
 								/>
 							}
 						/>
-						<Bar dataKey="leads" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+						<Bar dataKey="leads" radius={[2, 2, 0, 0]} maxBarSize={14} isAnimationActive={false}>
 							{days.map((day, index) => (
 								<Cell
 									key={day.day}

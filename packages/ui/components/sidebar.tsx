@@ -448,9 +448,9 @@ const sidebarMenuButtonVariants = cva(
 				default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
 				outline:
 					"bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
-				/** Nhịp's main nav: the active item is a white chip on the canvas, its icon in the
-				 * action blue; 44px tall in the phone shell, where it is tapped. */
-				chip: "max-lg:h-11 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-card data-[active=true]:text-foreground data-[active=true]:shadow-hairline data-[active=true]:[&>svg]:text-primary",
+				/** Nhịp's main nav: 40px items in ink on the canvas; the active one is white paper
+				 * edged in a hairline, in bold; 44px tall in the phone shell, where it is tapped. */
+				chip: "h-10 max-lg:h-11 rounded-lg px-3 gap-2.5 font-semibold text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-card data-[active=true]:font-bold data-[active=true]:text-foreground data-[active=true]:shadow-hairline [&>svg]:size-4.5",
 			},
 			size: {
 				default: "h-8 text-sm",

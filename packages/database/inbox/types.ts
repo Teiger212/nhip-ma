@@ -241,6 +241,18 @@ export type ConversationSummary = Pick<
 	guestLanguage: LanguageCode | null;
 	/** The text of the guest's latest message: the row's preview and what search reads. "" when none. */
 	lastInboundText: string;
+	/**
+	 * The qualification facts a row's tags show (#314), as stored; null until the one-shot has
+	 * run, exactly when the open thread's `oneShot` is null.
+	 */
+	facts: SummaryFacts | null;
+};
+
+/** A row's fact tags (#314): the qualification's area, beds or household, and budget. */
+export type SummaryFacts = {
+	area: string | null;
+	beds: string | null;
+	budget: string | null;
 };
 
 /** The thread's linked lead (ADR 0003). */

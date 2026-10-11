@@ -2,6 +2,7 @@
 
 import { Badge, cn } from "@repo/ui";
 import { useHydrated } from "@shared/hooks/use-hydrated";
+import { ZapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useOfficeLanguage } from "../lib/inbox-queries";
@@ -11,6 +12,7 @@ import { formatInboxTimestamp } from "../lib/time";
 import type { GuestLanguage, Message } from "../lib/types";
 import { OfficeLine } from "./OfficeLine";
 import { useOperatorLanguage } from "./ThreadParts";
+import { TranslationLine } from "./TranslationLine";
 
 /** Who sent one of the office's messages, as a person reads it (the stored values are internal). */
 const SOURCE_KEYS = {
@@ -21,10 +23,10 @@ const SOURCE_KEYS = {
 } as const;
 
 /**
- * One message on the thread as a chat bubble (#248): the guest's on the left, with its
- * translation as a muted second block inside the bubble; the office's on the right, with its
- * operator line (#242) as the same muted block. Under the bubble, on its side: where an office
- * message came from, the demo-send badge, and the time.
+ * One message on the thread as a chat bubble (#248, #314): the guest's on the left on a pebble
+ * fill, with its translation under a hairline inside the bubble; the office's on the right on
+ * white paper edged in a hairline, with its operator line (#242) the same way. Over an office
+ * bubble, who sent it; under every bubble, the demo-send badge and the time.
  */
 export function ThreadMessage({
 	message,
@@ -60,57 +62,58 @@ export function ThreadMessage({
 			? languageName(guestLanguage, locale, (language) => t(`guestLanguage.${language}`))
 			: null;
 	const officeLine = messageLine(message, officeLanguage, replyLanguage);
+	const source = inbound ? null : message.source === "auto-reply" ? (
+		// The office's greeting, sent on its own (ADR 0021), named over its bubble.
+		<span
+			className="gap-1.5 px-1 text-xs font-bold flex items-center text-muted-foreground"
+			data-test="message-source"
+			data-writer={message.writtenBy ?? undefined}
+		>
+			<ZapIcon aria-hidden="true" className="size-3.5" />
+			{t("source.autoReply")}
+		</span>
+	) : (
+		<span className="px-1 text-xs font-semibold text-muted-foreground" data-test="message-source">
+			{t(`source.${SOURCE_KEYS[message.source]}`)}
+		</span>
+	);
 	return (
-		<div className={cn("gap-1 min-w-0 flex flex-col", inbound ? "items-start" : "items-end")}>
+		<div
+			className={cn(
+				"gap-1.5 min-w-0 max-w-md flex flex-col",
+				inbound ? "items-start self-start" : "items-end self-end",
+			)}
+		>
+			{source}
 			<div
 				data-test="message"
 				className={cn(
-					"px-3.5 py-2.5 text-sm max-w-xl min-w-0 rounded-xl break-words",
-					inbound ? "shadow-hairline bg-card" : "bg-muted",
+					"px-4 py-3 min-w-0 rounded-2xl break-words",
+					inbound ? "rounded-bl-sm bg-muted" : "rounded-br-sm border bg-card",
 				)}
 			>
-				<p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
+				<p className="text-base leading-relaxed whitespace-pre-wrap">{message.text}</p>
 				{translation ? (
-					<p className="mt-2 pt-2 text-xs leading-relaxed border-t whitespace-pre-wrap text-muted-foreground">
+					<TranslationLine className="mt-2.5 pt-2.5 border-t">
 						<span className="sr-only">{t("translation")}: </span>
 						{translation}
-					</p>
+					</TranslationLine>
 				) : kept ? (
-					<p
-						data-test="kept-translation"
-						className="mt-2 pt-2 text-xs leading-relaxed border-t whitespace-pre-wrap text-muted-foreground"
-					>
-						<span className="font-medium block">
+					<TranslationLine data-test="kept-translation" className="mt-2.5 pt-2.5 border-t">
+						<span className="font-semibold block text-muted-foreground">
 							{t("translationIn", { language: t(`guestLanguage.${keptLanguage}`) })}
 						</span>
 						{kept}
-					</p>
+					</TranslationLine>
 				) : untranslated ? (
-					<p className="mt-2 pt-2 text-xs leading-relaxed border-t text-muted-foreground">
+					<p className="mt-2.5 pt-2.5 text-note leading-normal border-t text-muted-foreground">
 						{t("noTranslation", { language: untranslated })}
 					</p>
 				) : officeLine ? (
-					<OfficeLine line={officeLine} className="mt-2 pt-2 border-t" />
+					<OfficeLine line={officeLine} className="mt-2.5 pt-2.5 border-t" />
 				) : null}
 			</div>
 			<div className="gap-x-2 gap-y-1 px-1 text-xs flex flex-wrap items-center text-muted-foreground">
-				{inbound ? null : message.source === "auto-reply" ? (
-					<>
-						{/* The office's greeting, sent on its own (ADR 0021, DESIGN.md: inline badges). */}
-						<Badge
-							status="neutral"
-							size="sm"
-							data-test="message-source"
-							data-writer={message.writtenBy ?? undefined}
-						>
-							{t("source.autoReply")}
-						</Badge>
-					</>
-				) : (
-					<span className="font-medium text-foreground/80" data-test="message-source">
-						{t(`source.${SOURCE_KEYS[message.source]}`)}
-					</span>
-				)}
 				{message.mock ? (
 					<Badge status="info" size="sm">
 						{t("mock")}

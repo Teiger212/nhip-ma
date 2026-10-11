@@ -34,6 +34,7 @@ function conv(
 		crm: null,
 		updatedAt: at,
 		guestLanguage: null,
+		facts: null,
 		lastInboundText: `hello from ${partial.guestName}`,
 		...partial,
 	};

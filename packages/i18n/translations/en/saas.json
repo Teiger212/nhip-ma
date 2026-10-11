@@ -852,7 +852,7 @@
 		"responseTime": "Response time",
 		"responseTimeHint": "First inbound to first approved send.",
 		"median": "median",
-		"p90": "p90 {value}",
+		"p90": "9 in 10 answered within {value}",
 		"answered": "{count, plural, one {# lead answered} other {# leads answered}}",
 		"noResponseTime": "No lead was answered in this window yet.",
 		"denied": {
@@ -866,6 +866,7 @@
 		"waitingNow": "Waiting now",
 		"waitingEmpty": "No guest is waiting.",
 		"waitingFailed": "Could not load who is waiting.",
+		"quietDivider": "Quiet · over 48 h",
 		"openInbox": "Open inbox",
 		"openInboxMore": "Open inbox ({count} more)",
 		"waitedFor": "Waiting {duration}",
@@ -963,7 +964,10 @@
 		"details": {
 			"title": "Guest details",
 			"crm": "CRM",
-			"owner": "Owner"
+			"owner": "Owner",
+			"guest": "Guest",
+			"stay": "Stay",
+			"notGiven": "Not given yet"
 		},
 		"fields": {
 			"language": "Language",

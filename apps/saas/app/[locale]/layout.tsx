@@ -7,23 +7,17 @@ import { getTheme, getThemeScript } from "@teispace/next-themes/server";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { Be_Vietnam_Pro, IBM_Plex_Mono, Noto_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { PropsWithChildren } from "react";
 
-// Preloads are what a first visit waits on, so only the faces the first paint uses are
-// preloaded: the headings (500 to 700) and Noto Sans, one variable file per subset.
-const sansFont = Be_Vietnam_Pro({
-	subsets: ["latin", "vietnamese"],
-	weight: ["500", "600", "700"],
-	variable: "--font-be-vietnam",
-	display: "swap",
-});
-
-const bodyFont = Noto_Sans({
-	subsets: ["latin", "vietnamese"],
-	variable: "--font-noto-sans",
+// One family for headings and body (DESIGN.md, #314): Manrope's variable file, with the
+// Vietnamese subset so diacritics set cleanly, and Cyrillic for Russian guests. Korean,
+// Japanese and Chinese fall back to the platform's CJK faces (`--font-sans`, globals.css).
+const sansFont = Manrope({
+	subsets: ["latin", "latin-ext", "vietnamese", "cyrillic"],
+	variable: "--font-manrope",
 	display: "swap",
 });
 
@@ -70,7 +64,7 @@ export default async function LocaleLayout({
 		<html
 			lang={locale}
 			suppressHydrationWarning
-			className={cn(sansFont.variable, bodyFont.variable, monoFont.variable)}
+			className={cn(sansFont.variable, monoFont.variable)}
 		>
 			<head>
 				<script dangerouslySetInnerHTML={{ __html: themeScript }} />

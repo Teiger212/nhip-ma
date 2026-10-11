@@ -12,10 +12,10 @@ import { ThreadRow } from "./ThreadRow";
 
 function ThreadListSkeleton() {
 	return (
-		<div className="divide-y" aria-hidden="true">
+		<div className="px-1.5" aria-hidden="true">
 			{Array.from({ length: 4 }, (_, index) => (
-				<div key={index} className="gap-2.5 px-3 py-2.5 flex items-start">
-					<Skeleton className="size-8 rounded-md" />
+				<div key={index} className="gap-2.5 px-2.5 py-2.5 flex items-start">
+					<Skeleton className="size-7 rounded-lg" />
 					<div className="min-w-0 flex-1">
 						<Skeleton className="mb-1.5 h-3.5 w-28" />
 						<Skeleton className="mb-1 h-3 w-full" />
@@ -124,15 +124,15 @@ export function ThreadList({
 				rows(queue.visible)
 			)}
 			{queue.quiet.length > 0 ? (
-				<details className="group/quiet border-t">
-					<summary className="min-h-11 px-3 text-xs font-medium gap-1.5 no-marker flex cursor-pointer items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset">
+				<details className="group/quiet mt-1 border-t">
+					<summary className="min-h-11 px-4 text-xs font-medium gap-1.5 no-marker flex cursor-pointer items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset">
 						<ChevronRightIcon
 							aria-hidden="true"
 							className="size-3.5 ease-out shrink-0 transition-transform duration-200 group-open/quiet:rotate-90 motion-reduce:transition-none"
 						/>
 						{t("quiet", { count: queue.quiet.length })}
 					</summary>
-					<p className="px-3 pb-2 text-xs text-pretty text-muted-foreground">{t("quietHint")}</p>
+					<p className="px-4 pb-2 text-xs text-pretty text-muted-foreground">{t("quietHint")}</p>
 					{rows(queue.quiet)}
 				</details>
 			) : null}

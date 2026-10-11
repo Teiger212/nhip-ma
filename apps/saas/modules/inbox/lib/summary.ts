@@ -30,6 +30,13 @@ export function summarize(conversation: Conversation): ConversationSummary {
 		updatedAt: conversation.updatedAt,
 		guestLanguage: conversation.oneShot ? namedLanguage(conversation.oneShot) : null,
 		lastInboundText: latestGuestText(conversation),
+		facts: conversation.oneShot
+			? {
+					area: conversation.oneShot.qualification.areaOfInterest,
+					beds: conversation.oneShot.qualification.bedsOrHousehold,
+					budget: conversation.oneShot.qualification.budgetBand,
+				}
+			: null,
 		crm: conversation.crm,
 	};
 }

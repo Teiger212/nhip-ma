@@ -24,7 +24,7 @@ const SelectTrigger = ({
 }) => (
 	<SelectPrimitive.Trigger
 		className={cn(
-			"shadow-xs flex w-full items-center justify-between rounded-xl border border-input bg-card ring-offset-background placeholder:text-foreground/60 focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+			"font-semibold flex w-full items-center justify-between rounded-lg border border-input bg-card ring-offset-background transition-colors placeholder:text-foreground/60 hover:border-foreground focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
 			size === "sm" ? "h-8 gap-2 px-2.5 text-sm" : "h-9 px-3 py-2 text-base",
 			className,
 		)}

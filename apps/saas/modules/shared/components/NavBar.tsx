@@ -8,13 +8,11 @@ import { config as paymentsConfig } from "@repo/payments/config";
 import {
 	Badge,
 	cn,
-	Logo,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
 	SidebarGroup,
 	SidebarGroupContent,
-	SidebarGroupLabel,
 	SidebarHeader,
 	SidebarMenu,
 	SidebarMenuButton,
@@ -28,6 +26,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 	useSidebar,
+	Wordmark,
 } from "@repo/ui";
 import { NotificationCenter } from "@shared/components/NotificationCenter";
 import { UserMenu } from "@shared/components/UserMenu";
@@ -160,9 +159,13 @@ function NavItemLink({
 							aria-label={countLabel}
 							className="group-data-[collapsible=icon]:-top-0.5 group-data-[collapsible=icon]:-right-3 ml-auto flex shrink-0 group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:z-20 group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:bg-sidebar group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar"
 						>
-							<Badge status="warning" numeric size={collapsed ? "corner" : "md"}>
-								{collapsed && count > 99 ? "99+" : count}
-							</Badge>
+							{collapsed ? (
+								<Badge status="ink" size="corner">
+									{count > 99 ? "99+" : count}
+								</Badge>
+							) : (
+								<span className="text-sm font-bold tabular-nums">{count}</span>
+							)}
 						</span>
 					) : null}
 				</LocaleLink>
@@ -194,15 +197,15 @@ function NavItemComingSoon({
 				<SidebarMenuButton variant="chip" disabled data-test={`nav-${item.id}`}>
 					<Icon />
 					<span className={FADING_LABEL}>{label}</span>
-					<span className={FADING_END}>
-						<Badge>{soon}</Badge>
+					<span className={cn(FADING_END, "text-xs font-medium text-muted-foreground")}>
+						{soon}
 					</span>
 				</SidebarMenuButton>
 			</TooltipTrigger>
 			<TooltipContent side="right" align="center">
 				<span className="gap-2 flex items-center">
 					{label}
-					<Badge>{soon}</Badge>
+					<span className="text-muted-foreground">{soon}</span>
 				</span>
 			</TooltipContent>
 		</Tooltip>
@@ -257,15 +260,11 @@ export function NavBar() {
 										href={isAdmin ? "/admin/organizations" : "/inbox"}
 										prefetch
 									>
-										<Logo withLabel={false} className="group-data-[collapsible=icon]:ml-0.5" />
-										<span
-											className={cn(
-												"font-heading font-semibold tracking-tight text-brand",
-												FADING_LABEL,
-											)}
-										>
-											{t("inbox.brand")}
-										</span>
+										<Wordmark
+											label={t("inbox.brand")}
+											className="group-data-[collapsible=icon]:ml-0.5"
+											fadeInSidebarStrip
+										/>
 									</LocaleLink>
 								)}
 							/>
@@ -278,8 +277,7 @@ export function NavBar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					{/* The platform admin's one item is Admin: a "Workspace" heading over it names nothing. */}
-					{isAdmin ? null : <SidebarGroupLabel>{t("app.menu.groupWorkspace")}</SidebarGroupLabel>}
+					{/* No heading over the items (#314): the nav is named for a screen reader only. */}
 					<SidebarGroupContent>
 						<nav aria-label={t("app.menu.groupWorkspace")}>
 							<SidebarMenu>

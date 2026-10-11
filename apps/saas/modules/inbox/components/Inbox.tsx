@@ -316,22 +316,22 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	}
 
 	return (
-		<div className="min-h-0 text-sm md:gap-2.5 md:p-3 lg:pl-1 md:bg-canvas flex h-full flex-col bg-card text-foreground">
+		<div className="min-h-0 text-sm md:bg-canvas flex h-full flex-col bg-card text-foreground">
 			<h1 className="sr-only">{tMenu("inbox")}</h1>
 			{disconnectedPipes.length > 0 ? (
 				<output
 					data-test="pipe-disconnected-banner"
-					className="px-3 py-2 text-sm font-medium md:rounded-xl md:border-0 block border-b bg-destructive/10 text-destructive"
+					className="px-4 py-2 text-sm font-semibold block border-b bg-destructive/10 text-destructive"
 				>
 					{t("pipeDisconnectedBanner", {
 						pipes: disconnectedPipes.map((pipe) => PIPE_NAMES[pipe]).join(", "),
 					})}
 				</output>
 			) : null}
-			<div className="min-h-0 min-w-0 md:gap-2.5 flex flex-1 overflow-hidden">
+			<div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
 				<div
 					className={cn(
-						"min-h-0 min-w-0 md:gap-2.5 flex-col",
+						"min-h-0 min-w-0 md:gap-2.5 md:border-r flex-col",
 						"md:w-inbox-list md:min-w-inbox-list md:max-w-inbox-list w-full",
 						"md:flex md:flex-none md:shrink-0 md:grow-0 md:basis-inbox-list",
 						detailOpen ? "md:flex hidden" : "md:flex-none flex flex-1",
@@ -339,19 +339,19 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 				>
 					{/* Above the list, a panel of its own (The Canvas And Panel Rule, #135). */}
 					<AlertsPanel />
-					<aside className="min-h-0 min-w-0 md:rounded-3xl md:border flex flex-1 flex-col overflow-hidden bg-card">
+					<aside className="min-h-0 min-w-0 md:bg-canvas flex flex-1 flex-col overflow-hidden bg-card">
 						{/* A row in every view of a manager's, so the search and the tabs never move (#208).
 						    Unassigned holds no one's threads, so there a quiet note keeps the filter's
 						    place instead of a filter that could only narrow it to nothing (#94). */}
 						{manager && view === "unassigned" ? (
 							<p
 								data-test="owner-filter-note"
-								className="px-3 pt-3 min-h-11 text-xs flex items-center text-pretty text-muted-foreground"
+								className="px-4 pt-3 min-h-11 text-note flex items-center text-pretty text-muted-foreground"
 							>
 								{t("owner.unassignedNote")}
 							</p>
 						) : manager ? (
-							<div className="px-3 pt-3 gap-2 min-h-11 text-xs flex items-center text-muted-foreground">
+							<div className="px-4 pt-3 gap-2 min-h-11 text-note flex items-center text-muted-foreground">
 								<span id="inbox-owner-filter-label">{t("owner.filter")}</span>
 								<Select
 									items={ownerFilterItems}
@@ -426,7 +426,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 				</div>
 				<article
 					className={cn(
-						"min-h-0 min-w-0 md:rounded-3xl md:border flex-1 flex-col overflow-hidden bg-card",
+						"min-h-0 min-w-0 md:m-3 md:rounded-2xl md:border md:shadow-raised flex-1 flex-col overflow-hidden bg-card",
 						detailOpen ? "flex" : "md:flex hidden",
 					)}
 				>

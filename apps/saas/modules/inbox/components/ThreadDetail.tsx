@@ -15,7 +15,13 @@ import {
 
 import { guestLabel } from "../lib/display-name";
 import { useInboxSideBySide } from "../lib/inbox-presence";
-import { replyEndpoint, useDisconnectedEndpoints, useOfficeLanguage } from "../lib/inbox-queries";
+import {
+	replyEndpoint,
+	useDisconnectedEndpoints,
+	useOfficeLanguage,
+	useOfficeRole,
+} from "../lib/inbox-queries";
+import { namedLanguage } from "../lib/language-name";
 import { suggestionLine } from "../lib/office-line";
 import { PIPE_NAMES } from "../lib/pipe-names";
 import type { SendStatus } from "../lib/send-status";
@@ -27,7 +33,7 @@ import { ReplyBox } from "./ReplyBox";
 import { AnsweredLine, SendBar } from "./SendBar";
 import { ThreadActions } from "./ThreadActions";
 import { ThreadMessage } from "./ThreadMessage";
-import { GuestMark, ThreadFlags } from "./ThreadParts";
+import { LanguageMark, ThreadFlags, useTurnChip } from "./ThreadParts";
 
 export type ReplyState = {
 	reply: string;
@@ -45,11 +51,12 @@ export type ReplyState = {
 };
 
 /**
- * From this width of the thread's own pane (56rem, 896px) the guest's details sit in a rail beside
+ * From this width of the thread's own pane (46rem, 736px) the guest's details sit in a rail beside
  * the conversation; narrower, they fold into a strip under the header (#248). Measured on the
- * pane, not the window, so the sidebar and the thread list count.
+ * pane, not the window, so the sidebar and the thread list count. The rail is 300px since #314,
+ * so the pane holds it from 736px (a 1440 window with the sidebar open; a 1366 one folds).
  */
-const RAIL_MIN_PANE_REM = 56;
+const RAIL_MIN_PANE_REM = 46;
 
 /** Whether the pane is wide enough for the details rail, kept current as the pane resizes. */
 function usePaneFitsRail(pane: RefObject<HTMLElement | null>): boolean {
@@ -134,26 +141,24 @@ function useConversationScroll(threadId: string, messages: Conversation["message
 export function ThreadDetailSkeleton() {
 	return (
 		<div className="flex flex-col" aria-hidden="true">
-			<div className="gap-2 px-4 py-2.5 flex items-center border-b">
-				<Skeleton className="size-8 rounded-md" />
+			<div className="gap-3 px-5 h-16 flex items-center border-b">
+				<Skeleton className="size-9.5 rounded-lg" />
 				<Skeleton className="h-4 w-32" />
 			</div>
 			<div className="gap-4 px-5 py-5 flex flex-col">
-				<Skeleton className="h-16 w-3/5 rounded-xl" />
-				<Skeleton className="h-12 w-1/2 self-end rounded-xl" />
-				<Skeleton className="h-10 w-2/5 rounded-xl" />
+				<Skeleton className="h-16 w-3/5 rounded-2xl" />
+				<Skeleton className="h-12 w-1/2 self-end rounded-2xl" />
+				<Skeleton className="h-10 w-2/5 rounded-2xl" />
 			</div>
 		</div>
 	);
 }
 
-/** One titled block of the details rail. */
+/** One titled block of the details rail, under the stay and the guest, past a hairline. */
 function RailSection({ title, children }: { title: string; children: ReactNode }) {
 	return (
-		<section className="gap-2.5 p-4 flex flex-col">
-			<h2 className="font-semibold tracking-wide text-xs font-heading text-muted-foreground uppercase">
-				{title}
-			</h2>
+		<section className="gap-3 pt-4 mt-5.5 flex flex-col border-t">
+			<h2 className="text-base font-extrabold">{title}</h2>
 			{children}
 		</section>
 	);
@@ -198,8 +203,9 @@ export function ThreadDetail({
 	);
 	// An office with no CRM shows no CRM status (DESIGN.md, Badges), so no CRM section either.
 	const hasCrm = Boolean(conversation.crm) || conversation.officeHasCrm;
-	const label = guestLabel(conversation);
-	const name = label.text;
+	const name = guestLabel(conversation).text;
+	const chip = useTurnChip(conversation);
+	const { role } = useOfficeRole();
 	const officeLanguage = useOfficeLanguage().data;
 	// No guest message waits and nothing about the last send needs a person: the reply box folds to
 	// one line (#94). An unknown delivery or a failed send keeps the whole box, with its status.
@@ -211,7 +217,7 @@ export function ThreadDetail({
 		<div ref={pane} className="min-h-0 min-w-0 flex flex-1 flex-col">
 			<header
 				className={cn(
-					"gap-2 px-3 py-2 md:px-4 flex shrink-0 items-center border-b",
+					"gap-2 px-3 py-2 md:px-5 md:min-h-16 flex shrink-0 items-center border-b",
 					phone ? "pl-1" : "flex-wrap",
 				)}
 			>
@@ -228,16 +234,31 @@ export function ThreadDetail({
 				{/* Who it is, as one group: a long name truncates before the controls wrap. */}
 				<div
 					className={cn(
-						"gap-2 min-w-0 flex flex-1 items-center",
+						"gap-2 md:gap-3 min-w-0 flex flex-1 items-center",
 						phone ? "flex-nowrap" : "basis-40 flex-wrap",
 					)}
 				>
-					<GuestMark name={name} phone={label.phone} />
-					<p className="min-w-0 font-semibold tracking-tight font-heading max-w-full truncate">
+					<LanguageMark
+						code={conversation.oneShot ? namedLanguage(conversation.oneShot) : null}
+						chip={chip}
+						size={phone ? "md" : "lg"}
+					/>
+					<p
+						className={cn(
+							"min-w-0 font-extrabold max-w-full truncate",
+							phone ? "text-base" : "text-title",
+						)}
+					>
 						{name}
 					</p>
-					<span className="gap-2 flex shrink-0 items-center">
-						<ThreadFlags conversation={conversation} parts={phone ? "turn" : "all"} owner={false} />
+					<span className="gap-3 flex shrink-0 items-center">
+						{/* A manager's phone header also holds the actions menu: the pipe keeps its glyph. */}
+						<ThreadFlags
+							conversation={conversation}
+							owner={false}
+							size={phone ? "md" : "lg"}
+							pipeIconOnly={phone && role === "manager"}
+						/>
 					</span>
 				</div>
 				<div
@@ -268,9 +289,8 @@ export function ThreadDetail({
 					meta={
 						phone ? (
 							<>
-								<ThreadFlags conversation={conversation} parts="meta" owner={false} />
 								<CrmStatus conversation={conversation} />
-								{/* At the row's end while it fits beside the badges; a narrow phone wraps it. */}
+								{/* At the row's end while it fits beside the facts; a narrow phone wraps it. */}
 								<div className="w-40 ml-auto empty:hidden">
 									<OwnerControl
 										conversation={conversation}
@@ -287,7 +307,7 @@ export function ThreadDetail({
 				<div className="min-h-0 min-w-0 flex flex-1 flex-col">
 					<div className="min-h-0 relative flex flex-1 flex-col">
 						<div ref={scroller} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-							<div className="gap-4 px-3 py-4 md:px-5 md:py-5 flex flex-col">
+							<div className="gap-3.5 px-3.5 py-4 md:px-6 md:pt-4.5 md:pb-3 flex flex-col">
 								{conversation.messages.map((message) => (
 									<ThreadMessage
 										key={message.id}
@@ -315,7 +335,7 @@ export function ThreadDetail({
 							</div>
 						) : null}
 					</div>
-					<div className="gap-2 px-3 py-3 md:px-5 flex shrink-0 flex-col border-t bg-muted/40">
+					<div className="gap-2.5 px-3.5 pt-3 pb-4 md:px-6 md:pt-3.5 md:pb-4.5 md:shadow-none flex shrink-0 flex-col border-t bg-card shadow-dock">
 						{answered ? (
 							<AnsweredLine sentAt={reply.status.kind === "sent" ? reply.status.at : null} />
 						) : (
@@ -354,11 +374,9 @@ export function ThreadDetail({
 				{rail ? (
 					<div
 						data-test="thread-details"
-						className="min-h-0 w-88 flex shrink-0 flex-col divide-y overflow-y-auto border-l"
+						className="min-h-0 w-thread-rail px-5.5 pt-5.5 pb-5 flex shrink-0 flex-col overflow-y-auto border-l"
 					>
-						<RailSection title={t("details.title")}>
-							<ExtractFields conversation={conversation} layout="rail" />
-						</RailSection>
+						<ExtractFields conversation={conversation} layout="rail" />
 						{hasCrm ? (
 							<RailSection title={t("details.crm")}>
 								<div className="flex">

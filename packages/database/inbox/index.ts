@@ -39,6 +39,7 @@ export type {
 	CrmOutcome,
 	OpenThreadCrm,
 	ConversationSummary,
+	SummaryFacts,
 	Draft,
 	GuestDeletionResult,
 	InboundEvent,

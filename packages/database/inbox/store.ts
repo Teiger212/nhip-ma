@@ -148,6 +148,11 @@ type SummaryRow = {
 	crmOutcomeAt: Date | null;
 	crmOutcomeReason: string | null;
 	crmOutcomeObservedAt: Date | null;
+	/** Whether the thread has a whole one-shot, as `mapConversation` builds `oneShot`. */
+	hasOneShot: boolean;
+	factArea: string | null;
+	factBeds: string | null;
+	factBudget: string | null;
 };
 
 /** A thread's CRM link row, as either read shapes it. */
@@ -418,6 +423,9 @@ function mapSummary(row: SummaryRow): ConversationSummary {
 				? vocab(GuestLanguage, row.language, "Conversation.language")
 				: null,
 		lastInboundText: row.lastInboundText ?? "",
+		facts: row.hasOneShot
+			? { area: row.factArea, beds: row.factBeds, budget: row.factBudget }
+			: null,
 		crm: mapCrmLink({
 			leadId: row.crmLeadId,
 			leadName: row.crmLeadName,
@@ -631,10 +639,17 @@ export function createInboxStore(db: PrismaClient): InboxStore {
 					"crm"."leadId" AS "crmLeadId", "crm"."leadName" AS "crmLeadName",
 					"crm"."method"::text AS "crmMethod", "crm"."outcome"::text AS "crmOutcome",
 					"crm"."outcomeAt" AS "crmOutcomeAt", "crm"."outcomeReason" AS "crmOutcomeReason",
-					"crm"."outcomeObservedAt" AS "crmOutcomeObservedAt"
+					"crm"."outcomeObservedAt" AS "crmOutcomeObservedAt",
+					"q"."areaOfInterest" AS "factArea", "q"."bedsOrHousehold" AS "factBeds",
+					"q"."budgetBand" AS "factBudget",
+					("c"."language" IS NOT NULL AND "q"."conversationId" IS NOT NULL
+						AND EXISTS (SELECT 1 FROM "inbox_draft" "d" WHERE "d"."conversationId" = "c"."id")
+						AND EXISTS (SELECT 1 FROM "inbox_paperwork" "p" WHERE "p"."conversationId" = "c"."id")
+					) AS "hasOneShot"
 				FROM "inbox_conversation" "c"
 				LEFT JOIN "user" "owner" ON "owner"."id" = "c"."ownerId"
 				LEFT JOIN "inbox_crm_link" "crm" ON "crm"."conversationId" = "c"."id"
+				LEFT JOIN "inbox_qualification" "q" ON "q"."conversationId" = "c"."id"
 				${LATEST_INBOUND}
 				WHERE ${visibleSql(viewer)}
 				ORDER BY "c"."updatedAt" DESC, "c"."id"

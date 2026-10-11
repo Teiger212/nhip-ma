@@ -214,8 +214,9 @@ is renamed.
   auto-reply, the suggested reply and a reply sent as suggested, in the office language, muted
   under the office's text. A template's line is the same template rendered in the office
   language, no model call, labelled "In English" / "Bằng tiếng Việt"; only the model's text is
-  labelled "Translation". None when the reply is already in the office language, and none yet
-  for a reply the agent edited or typed.
+  labelled "Translation". The label is the name and title of the line's translate glyph, not
+  visible text: the line looks like a guest message's translation (#314). None when the reply is
+  already in the office language, and none yet for a reply the agent edited or typed.
 - **Office language**: EN or VI, one per office, set by the office's manager (ADR 0025). It
   is the interface language of every member of the office, the target of translations, the
   language of the operator note, and the second text of an AI suggested reply. The platform

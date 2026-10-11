@@ -852,7 +852,7 @@
 		"responseTime": "Thời gian phản hồi",
 		"responseTimeHint": "Từ tin đầu tiên của khách đến lần gửi đầu tiên được duyệt.",
 		"median": "trung vị",
-		"p90": "p90 {value}",
+		"p90": "9/10 khách được trả lời trong {value}",
 		"answered": "{count} khách đã được trả lời",
 		"noResponseTime": "Chưa trả lời khách nào trong khoảng này.",
 		"denied": {
@@ -866,6 +866,7 @@
 		"waitingNow": "Đang chờ",
 		"waitingEmpty": "Không có khách nào đang chờ.",
 		"waitingFailed": "Không tải được danh sách khách đang chờ.",
+		"quietDivider": "Lâu chưa nhắn · quá 48 giờ",
 		"openInbox": "Mở hộp thư",
 		"openInboxMore": "Mở hộp thư (thêm {count})",
 		"waitedFor": "Đã chờ {duration}",
@@ -963,7 +964,10 @@
 		"details": {
 			"title": "Thông tin khách",
 			"crm": "CRM",
-			"owner": "Phụ trách"
+			"owner": "Phụ trách",
+			"guest": "Khách",
+			"stay": "Chỗ ở",
+			"notGiven": "Chưa có"
 		},
 		"fields": {
 			"language": "Ngôn ngữ",
