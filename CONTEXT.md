@@ -13,7 +13,8 @@ is renamed.
 - **Language bridge**: the durable value. Agents who work in Vietnamese and some English
   serve multinational guests (JA, KO, RU, EN today) without a translator in the loop.
   Two-way: every guest message is translated into the office language (ADR 0007, ADR 0025),
-  and every reply is drafted in the guest's language.
+  and every reply is drafted in the guest's language when it is supported (EN and VI for now,
+  #306), in English otherwise.
 - **Listing match**: the horizon. The office's own pool of properties searched against
   what the guest said, so the reply carries the best few matches. Not built.
 
@@ -204,7 +205,8 @@ is renamed.
 - **Daily cap**: how many model calls of one task an office gets in a day, midnight to
   midnight in Asia/Ho_Chi_Minh (ADR 0024). Past it, the task falls back.
 - **Operator note**: one line in the agent's language beside the reply box: the language the
-  reply is in, nothing more (#303). The guest's facts and the paperwork flag are in
+  reply is in, nothing more (#303). When that isn't the guest's language, it says so ("in
+  English · Korean isn't supported", #245, #306). The guest's facts and the paperwork flag are in
   the guest details beside it (#248). Not shown to the guest, never invents Vietnamese law, and
   is not a translation.
 - **Translation**: the guest message rendered in the office language, shown under the
@@ -223,14 +225,18 @@ is renamed.
   admin keeps their own interface language. _Avoid_: operator language, operator locale.
 - **Guest language**: the language the guest writes in, detected per conversation from all
   their messages, locally, with no model call, and named whatever it is (ADR 0021 R4, as
-  amended by #245). EN, VI, JA, KO, RU are **supported**: the greeting, the suggested reply
-  and translation work in them. VI is read only from letters Vietnamese alone uses (ă, â, đ,
-  ơ, ư, a hook above or a dot below, ẽ ĩ ũ ỹ, any tone on ă â ê ô ơ ư) or its common words
-  (ADR 0021). Any other language is **unsupported**: the thread names it with a note ("French
-  · not supported, replies in English"), the guest is greeted and answered in English, and
-  their messages are not translated (each shows "French isn't supported: no translation"
-  instead). English is only the reply fallback; when detection is unsure, the guest language
-  is English.
+  amended by #245). Nhịp has copy and translation for five: EN, VI, JA, KO, RU. A guest
+  language is **supported** when Nhịp replies in it: the deployment's gate,
+  `SUPPORTED_GUEST_LANGUAGES`, EN and VI for now (#306). VI is read only from letters
+  Vietnamese alone uses (ă, â, đ, ơ, ư, a hook above or a dot below, ẽ ĩ ũ ỹ, any tone on ă â
+  ê ô ơ ư) or its common words (ADR 0021). Any other language is **unsupported**: the thread
+  names it with a note ("Korean · not supported, replies in English"), and the guest is
+  greeted and answered in English. JA, KO and RU, gated off, are still translated for the
+  agent, and the office's first message to the guest carries the **English-reply line**
+  once: "We reply in English. If you can write to us in English, we'll help you faster." A
+  language outside the five gets no line and no translation (each message shows "French isn't
+  supported: no translation" instead). English is only the reply fallback; when detection is
+  unsure, the guest language is English.
 
 ## Integrations
 

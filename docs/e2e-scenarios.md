@@ -1167,11 +1167,14 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    conversation and response time move only with the human reply. Home's rendering of the funnel
    and response time is the Home specs'.
 
-4. **The guest's language picks the greeting.** Guests write in Vietnamese, Japanese, Korean
-   and Russian. Each auto-reply, label included, is in the guest's language: a letter only
-   Vietnamese uses, kana, Hangul or Cyrillic. A guest writing "Bonjour, je cherche un
-   appartement à louer" is greeted in English, and so is one writing in Spanish ("Hola, busco
-   un apartamento, está disponible?").
+4. **The guest's language picks the greeting** (EN and VI for now, #306). Guests write in
+   Vietnamese, Japanese, Korean and Russian. The Vietnamese guest's auto-reply, label included,
+   is in Vietnamese (a letter only Vietnamese uses). The Japanese, Korean and Russian guests'
+   are in English, with no kana, Hangul or Cyrillic, and carry "We reply in English. If you can
+   write to us in English, we'll help you faster." as their own paragraph, just before the
+   English label. A guest writing "Bonjour, je cherche un appartement à louer" is greeted in
+   English without that line, and so is one writing in Spanish ("Hola, busco un apartamento,
+   está disponible?").
 5. **A manager turns the auto-reply off.**
    - In the office's settings, the manager switches the auto-reply off. A new guest then gets
      no auto-reply, and the reply box holds the template suggested reply (ADR 0024): with no
@@ -1224,15 +1227,16 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
    greeting, for the first message and the next; `apps/saas/modules/inbox/lib/reply-template.test.ts`
    › it thanks the guest only when the office has sent nothing, never after the auto-reply.
 
-9. **An English-reading agent reads the Korean auto-reply and suggestion in English** (#242,
-   ADR 0007 as amended). The office's language is English (the default). A guest writes in
-   Korean, "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요", and is greeted in Korean.
-   - Inside the auto-reply's bubble, under the Korean, a muted line holds the English
+9. **An English-reading agent reads the Vietnamese auto-reply and suggestion in English**
+   (#242, ADR 0007 as amended). The office's language is English (the default). A guest writes
+   in Vietnamese, "Chào anh, tôi muốn thuê căn hộ ở Tây Hồ", and is greeted in Vietnamese
+   (a Korean guest was this scenario's until #306: Korean is answered in English for now).
+   - Inside the auto-reply's bubble, under the Vietnamese, a muted line holds the English
      auto-reply after the translate glyph, which is named "In English" (its accessible name and
      title, not visible text, #314): it starts "Thanks for writing to us." and ends with the office's
      English label ("Auto-reply from Saigon Prime Test: …").
-   - Under the reply box, which holds the Korean template, the same line, its glyph named "In
-     English", holds the English template: "Hi, this is Saigon Prime Test. …".
+   - Under the reply box, which holds the Vietnamese template, the same line, its glyph named
+     "In English", holds the English template: "Hi, this is Saigon Prime Test. …".
    - The manager types into the box: the line under it goes.
    - No model is asked for either line: they are the templates, rendered in the office language.
 
@@ -1431,11 +1435,13 @@ auto-reply, not when the guest writes again, not on opening the thread; Regenera
 template; `apps/saas/modules/inbox/lib/model-draft.test.ts` › before the office's first human
 reply, neither the wait nor opening the thread asks the model.
 
-## Guest language (ADR 0021 R4 as amended by #245, ADR 0025)
+## Guest language (ADR 0021 R4 as amended by #245 and #306, ADR 0025)
 
 A guest who writes in a language Nhịp doesn't support is named in that language, with a note
-that it isn't supported, instead of reading as English. What the guest gets is unchanged: the
-English greeting and an English suggested reply. Their messages aren't translated.
+that it isn't supported, instead of reading as English. What the guest gets is the English
+greeting and an English suggested reply. A language Nhịp doesn't know isn't translated; one of
+the five the gate leaves out (Japanese, Korean, Russian: EN and VI only for now, #306) still is,
+and the office's first message tells the guest it replies in English. E2E runs the default gate.
 
 **How these run.** As First greeting: guests write through signed Zalo webhooks to an office of
 the test's own, with a manager and an invited agent, the auto-reply on and `SEND_MODE=mock`.
@@ -1484,13 +1490,28 @@ VI copy is pending a native read (#78).
    pinned) and holds no "colleague". Home's entry is judged by its link's name: it holds "French"
    and not "English").
 
-2. **A guest writes in Korean: the thread reads as before.** A guest writes "안녕하세요, 서호에서
-   방 두 개짜리 아파트를 월세로 찾고 있어요." The Language row reads "Korean" with no note, no
-   message shows a "isn't supported" note, the operator note reads "in Korean",
-   and the auto-reply is in Hangul. Home's Waiting now names "Korean".
-   Covered by Vitest: `apps/saas/modules/inbox/lib/language-name.test.ts` › a supported language
-   keeps its own copy; › the operator note of a supported language reads as before; › a supported
-   guest's message is translated as before. The Hangul auto-reply is First greeting 4's spec.
+2. **A Korean guest is answered in English, told so once, and still translated** (#306). A
+   guest writes "안녕하세요, 서호에서 방 두 개짜리 아파트를 월세로 찾고 있어요." The manager opens the
+   thread.
+   - **The first reply, the auto-reply, is English.** It starts "Thanks for writing", ends with
+     the English label, and just before the label, as its own paragraph, carries "We reply in
+     English. If you can write to us in English, we'll help you faster."
+   - **The guest's message is still translated:** its bubble reads "Stub translation, Korean to
+     English.", and no message says it isn't supported.
+   - **The thread says the reply is English:** the Language row reads "Korean · not supported,
+     replies in English" and the operator note "in English · Korean isn't supported".
+   - **The second reply doesn't repeat the line.** The reply box holds the English template,
+     starting "Hi, this is Saigon Prime Test." and without the line. The manager sends it as it
+     stands: the office's two messages are the auto-reply, which holds the line, then that
+     reply.
+
+   Spec: `apps/saas/tests/guest-language.spec.ts` (Guest language 2; in `/en/`, as Guest
+   language 1). The auto-reply is read through the API; the line is its second-to-last
+   paragraph. Covered by Vitest too: `apps/saas/modules/inbox/lib/english-reply.db.test.ts`
+   (with the auto-reply off, the first template carries the line and the next one doesn't; a
+   VI office's operator line carries it in Vietnamese; a French guest never gets it; with the
+   gate open to Korean, the greeting is Korean), and `config.test.ts` (the gate's default, its
+   parsing, and the codes it refuses).
 
 ## Office language (ADR 0025, #256)
 

@@ -128,7 +128,8 @@ tell a name.
 - **When unsure, the greeting is in English.** Detection is shared, so translation and
   drafting follow the same reading. Any language other than the five reads as English.
   _Amended 2026-10-08 (#245): another language is named, not read as English; English stays
-  only the reply's fallback. See the amendment at the end._
+  only the reply's fallback. Amended 2026-10-11 (#306): until after the demo only EN and VI
+  guests are greeted in their language. See the amendments at the end._
 - **â stays in the decided set, though French also uses it** ("château"). The test set
   watches it.
 
@@ -270,3 +271,32 @@ the five reads as English".
 - **Data.** The named language is a new nullable column on the thread, next to the language
   Nhịp writes in (expand only). A thread from before it reads as it did until the guest
   writes again.
+
+## Amendment (2026-10-11, #306): EN and VI guests only, until after the demo
+
+Decided by Eyal on 2026-10-10. JA, KO and RU copy has no native read yet, and the demo is in
+English and Vietnamese. More languages come back before there are many clients. It amends R4
+and G3's "the template in the guest's language".
+
+- **A gate, not a removal.** `SUPPORTED_GUEST_LANGUAGES` (default `en,vi`) names the guest
+  languages Nhịp replies in. It is validated at startup with the rest of the inbox env: only
+  the five's codes, and English always among them. The JA, KO and RU templates, prompts and
+  tests stay in the code; adding one back is config plus a native read.
+- **What the guest gets.** A guest in one of the five the gate leaves out is greeted, and their
+  suggested replies written, in English: the reply language is decided once, in the one-shot,
+  and the greeting, the template and the model draft (ADR 0024) all follow it.
+- **The line.** The office's first message to such a guest carries, in English, as its own
+  paragraph: "We reply in English. If you can write to us in English, we'll help you faster."
+  - The first message is the auto-reply when it is on (the line sits before the label, which
+    stays last, R7), otherwise the first template suggested reply.
+  - Once per conversation, read from the stored thread: only while the office has sent the guest
+    nothing. No new column.
+  - A VI office's operator line (#242) carries it in Vietnamese.
+  - A language Nhịp doesn't know at all (#245: French, Spanish…) never gets it.
+- **Translation for the agent stays.** JA, KO and RU messages are still translated into the
+  office language. Languages Nhịp doesn't know keep #245's note and no translation.
+- **The thread says it.** The Language row reads "Korean · not supported, replies in English"
+  and the operator note "in English · Korean isn't supported", as #245's do: both follow the
+  stored reply language, never the gate.
+- **Data.** A thread keeps the reply language its last one-shot stored: a change to the gate
+  takes effect on each thread's next guest message.

@@ -45,10 +45,13 @@ web
 - **Managers** read Home and reassign threads, on a laptop or a phone.
 - **Languages**: the interface is English and Vietnamese (operators); guests write in
   English, Vietnamese, Japanese, Korean and Russian, and see only the agency's own
-  WhatsApp or Zalo, never Nhịp. At go-live any other language reads as English, French,
-  Spanish and Portuguese included (Vietnamese is read only from letters Vietnamese alone
-  uses), so such a guest is greeted in English. Chinese (Han script) is the likeliest next
-  language.
+  WhatsApp or Zalo, never Nhịp. **EN and VI for now** (decided 2026-10-10, #306): until
+  after the demo Nhịp replies only to English and Vietnamese guests in their language.
+  Japanese, Korean and Russian guests are answered in English, told so once on the first
+  reply, and their messages are still translated for the agent; the three come back by config
+  plus a native read, before there are many clients. Any other language is named and
+  answered in English, untranslated (#245; Vietnamese is read only from letters Vietnamese
+  alone uses). Chinese (Han script) is the likeliest next language.
 - **Speed is the product**: a guest greeted within seconds and answered by a human within
   minutes, at any hour; a human approves every message after the greeting.
 
@@ -71,7 +74,7 @@ screenshots of real guests. The seed's demo threads (Minji, Yuki, Alexei, Thảo
   guest on its own (ADR 0021); after it, Nhịp drafts, and the agent decides and sends.
 - **The queue, not the mailbox.** What waits on the agent comes first; nothing is dismissed.
 - **Both directions of the language bridge.** Every guest message is translated for the
-  agent; every reply is drafted in the guest's language.
+  agent; every reply is drafted in the guest's language (EN and VI for now, #306).
 - **Never invent facts.** No Vietnamese law, no listing detail the office did not provide.
 - **Office numbers, not people's scores.** Home is office-level; no per-agent ranking yet.
 
