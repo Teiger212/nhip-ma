@@ -95,6 +95,38 @@ function allView(page: Page): Locator {
 	return page.getByRole("button", { name: /^All \d+$/ });
 }
 
+/** A view button, by its label, whatever its count (a manager's Your turn is named Waiting). */
+function viewButton(page: Page, label: "Waiting" | "Your turn"): Locator {
+	return page.getByRole("button", { name: new RegExp(`^${label} \\d+$`) });
+}
+
+/**
+ * The operator's Inbox under that view, searched by the guest's id: the guest's row is listed,
+ * and carries the plate `chip`, or none where the view's tab already says its turn (#327).
+ */
+async function expectPlateUnder(
+	operator: Operator,
+	label: "Waiting" | "Your turn",
+	guestId: string,
+	chip: Chip | null,
+	whose: string,
+) {
+	const { page } = operator;
+	await viewButton(page, label).click();
+	await expect(viewButton(page, label)).toHaveAttribute("aria-pressed", "true");
+	await page.getByRole("textbox", { name: "Search conversations" }).fill(guestId);
+	const row = rowOf(page, guestId);
+	await expect(row, `${operator.label}, ${whose}, listed under ${label}`).toBeVisible();
+	const status = row.getByTestId("thread-status");
+	if (chip === null) {
+		await expect
+			.soft(status, `${operator.label}, ${whose}: ${label} says it, so the row carries no plate`)
+			.toHaveCount(0);
+	} else {
+		await expectChip(row, chip, `${operator.label}, ${whose}, under ${label}`);
+	}
+}
+
 /** The operator's Inbox, under All. */
 async function openAll(page: Page) {
 	await page.goto("/en/inbox");
@@ -142,7 +174,7 @@ async function expectChipOn(
 
 // scenario: docs/e2e-scenarios.md Assigning leads 12 (#212; ADR 0022, amended 2026-10-06)
 test.describe("Assign 12 — a manager sees Your turn only on their own threads", () => {
-	test("with four guests waiting, the manager sees Your turn on their own thread and Waiting on the Unassigned one, agent 1's and the second manager's, on the row and the thread header; agent 1 and the second manager each see Your turn on theirs", async ({
+	test("with four guests waiting, the manager sees Your turn on their own thread and Waiting on the Unassigned one, agent 1's and the second manager's, on the row and the thread header; agent 1 and the second manager each see Your turn on theirs; a row's plate shows only where it differs from the view's tab", async ({
 		office,
 	}) => {
 		test.setTimeout(300_000);
@@ -183,5 +215,17 @@ test.describe("Assign 12 — a manager sees Your turn only on their own threads"
 		// Agent 1 and the second manager: Your turn on their own.
 		await expectChipFor(agent, agents, "yourTurn", "their own thread");
 		await expectChipFor(secondManager, secondManagers, "yourTurn", "their own thread");
+
+		await test.step("a plate says only what the view's tab doesn't: under the manager's Waiting only their own thread carries one, Your turn; under agent 1's Your turn their row carries none", async () => {
+			for (const [guestId, chip, whose] of [
+				[managers, "yourTurn", "their own thread"],
+				[unassigned, null, "the Unassigned thread"],
+				[agents, null, "agent 1's thread"],
+				[secondManagers, null, "the second manager's thread"],
+			] as const) {
+				await expectPlateUnder(manager, "Waiting", guestId, chip, whose);
+			}
+			await expectPlateUnder(agent, "Your turn", agents, null, "their own thread");
+		});
 	});
 });

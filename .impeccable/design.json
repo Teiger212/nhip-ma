@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 2,
-	"generatedAt": "2026-10-11T11:22:10+00:00",
+	"generatedAt": "2026-10-11T13:01:37+00:00",
 	"title": "Design System: Nhịp",
 	"extensions": {
 		"colorMeta": {
@@ -716,6 +716,10 @@
 				"displayName": "Thread Title",
 				"purpose": "The guest's name in the thread header (text-title)."
 			},
+			"panel-heading": {
+				"displayName": "Panel Heading",
+				"purpose": "Home's panels and the details' Guest and Owner; a real step over the 14px body (#327)."
+			},
 			"body": {
 				"displayName": "Body",
 				"purpose": "Message text, pre-wrap so guests' line breaks survive."
@@ -738,7 +742,7 @@
 			},
 			"field-key": {
 				"displayName": "Field Key",
-				"purpose": "MOVE-IN, STAY and BUDGET in the stay card's field box; uppercase (text-2xs)."
+				"purpose": "MOVE-IN, STAY and BUDGET in the stay card's field box, and Home's funnel stages; 11px since #327 for Vietnamese stacked marks."
 			},
 			"mono": {
 				"displayName": "Mono",
@@ -881,14 +885,14 @@
 			"kind": "card",
 			"description": "The booking summary at the top of the details rail: a pin and the area as Stay Title, rent or buy and beds in Slate, then a field box with move-in and stay side by side over the budget; a fact not given is a dashed open slot.",
 			"html": "<dl class=\"ds-stay\"><div class=\"ds-stay-head\"><span class=\"ds-stay-pin\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/></svg></span><div><dd class=\"ds-stay-title\">Tây Hồ</dd><div class=\"ds-stay-sub\"><dd>Rent</dd><span aria-hidden=\"true\">·</span><dd>2 beds</dd></div></div></div><div class=\"ds-stay-box\"><div class=\"ds-stay-cell\"><dt>Move-in</dt><dd>1 Nov</dd></div><div class=\"ds-stay-cell ds-stay-cell-side\"><dt>Stay</dt><dd>12 months</dd></div><div class=\"ds-stay-cell ds-stay-cell-wide\"><dt>Budget</dt><dd class=\"ds-stay-budget\">$800–1,000 / month</dd></div></div></dl>",
-			"css": ".ds-stay { display: flex; flex-direction: column; width: 300px; margin: 0; font-family: var(--font-sans, Manrope, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Noto Sans KR', system-ui, sans-serif); color: var(--foreground, #0b3558); } .ds-stay dd { margin: 0; } .ds-stay-head { display: flex; align-items: flex-start; gap: 10px; } .ds-stay-pin { margin-top: 6px; color: var(--muted-foreground, #476788); } .ds-stay-title { font-size: 1.375rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.015em; } .ds-stay-sub { display: flex; gap: 6px; margin-top: 4px; font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground, #476788); } .ds-stay-box { display: grid; grid-template-columns: 1fr 1fr; margin-top: 16px; overflow: hidden; border: 1px solid var(--border, #d4e0ed); border-radius: 8px; } .ds-stay-cell { padding: 10px 12px 12px; } .ds-stay-cell-side { border-left: 1px solid var(--border, #d4e0ed); } .ds-stay-cell-wide { grid-column: span 2; border-top: 1px solid var(--border, #d4e0ed); } .ds-stay-cell dt { font-size: 0.625rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; } .ds-stay-cell dd { margin-top: 2px; font-size: 0.875rem; font-weight: 600; } .ds-stay-cell dd.ds-stay-budget { font-size: 1rem; font-weight: 700; }"
+			"css": ".ds-stay { display: flex; flex-direction: column; width: 300px; margin: 0; font-family: var(--font-sans, Manrope, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Noto Sans KR', system-ui, sans-serif); color: var(--foreground, #0b3558); } .ds-stay dd { margin: 0; } .ds-stay-head { display: flex; align-items: flex-start; gap: 10px; } .ds-stay-pin { margin-top: 6px; color: var(--muted-foreground, #476788); } .ds-stay-title { font-size: 1.375rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.015em; } .ds-stay-sub { display: flex; gap: 6px; margin-top: 4px; font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground, #476788); } .ds-stay-box { display: grid; grid-template-columns: 1fr 1fr; margin-top: 16px; overflow: hidden; border: 1px solid var(--border, #d4e0ed); border-radius: 8px; } .ds-stay-cell { padding: 10px 12px 12px; } .ds-stay-cell-side { border-left: 1px solid var(--border, #d4e0ed); } .ds-stay-cell-wide { grid-column: span 2; border-top: 1px solid var(--border, #d4e0ed); } .ds-stay-cell dt { font-size: 0.6875rem; font-weight: 800; line-height: 1.45; letter-spacing: 0.04em; text-transform: uppercase; } .ds-stay-cell dd { margin-top: 2px; font-size: 0.875rem; font-weight: 600; } .ds-stay-cell dd.ds-stay-budget { font-size: 1rem; font-weight: 700; }"
 		},
 		{
 			"name": "Open Slot",
 			"kind": "custom",
 			"description": "A stay fact the guest hasn't given, in the field box's place: 1.5px dashed Mist on marble, 8px corners, its key, a dash and a dashed \"?\" disc.",
 			"html": "<div class=\"ds-slot\"><div class=\"ds-slot-text\"><div class=\"ds-slot-key\">Budget</div><div class=\"ds-slot-value\">—<span class=\"ds-sr\">Not given yet</span></div></div><span class=\"ds-slot-q\" aria-hidden=\"true\">?</span></div>",
-			"css": ".ds-slot { display: flex; align-items: center; gap: 12px; width: 300px; padding: 10px 12px 12px; border: 1.5px dashed var(--mist, #a6bbd1); border-radius: 8px; background: var(--canvas, #f8f9fb); font-family: var(--font-sans, Manrope, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Noto Sans KR', system-ui, sans-serif); color: var(--foreground, #0b3558); } .ds-slot-text { flex: 1; min-width: 0; } .ds-slot-key { font-size: 0.625rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; } .ds-slot-value { margin-top: 2px; font-size: 1rem; font-weight: 700; color: var(--muted-foreground, #476788); } .ds-slot-q { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border: 1.5px dashed var(--mist, #a6bbd1); border-radius: 9999px; font-size: 0.875rem; font-weight: 800; color: var(--muted-foreground, #476788); } .ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }"
+			"css": ".ds-slot { display: flex; align-items: center; gap: 12px; width: 300px; padding: 10px 12px 12px; border: 1.5px dashed var(--mist, #a6bbd1); border-radius: 8px; background: var(--canvas, #f8f9fb); font-family: var(--font-sans, Manrope, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Noto Sans KR', system-ui, sans-serif); color: var(--foreground, #0b3558); } .ds-slot-text { flex: 1; min-width: 0; } .ds-slot-key { font-size: 0.6875rem; font-weight: 800; line-height: 1.45; letter-spacing: 0.04em; text-transform: uppercase; } .ds-slot-value { margin-top: 2px; font-size: 1rem; font-weight: 700; color: var(--muted-foreground, #476788); } .ds-slot-q { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border: 1.5px dashed var(--mist, #a6bbd1); border-radius: 9999px; font-size: 0.875rem; font-weight: 800; color: var(--muted-foreground, #476788); } .ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }"
 		},
 		{
 			"name": "Search Input",
@@ -942,6 +946,11 @@
 				"section": "components"
 			},
 			{
+				"name": "The Plate Says Something Rule",
+				"section": "components",
+				"body": "A row's plate shows only when it says something the view's tab doesn't. Under All every row keeps its plate, since All mixes every turn. Unassigned and a manager's Waiting hide \"Waiting\" plates, an agent's Your turn hides \"Your turn\", and Sent hides \"Sent\": what is left is the exception, and it jumps out. The thread header always shows its plate, and the guest marker keeps its fill rule in every view (Eyal, 2026-10-11, #327)."
+			},
+			{
 				"name": "The Fixed Text Box Rule",
 				"body": "Text boxes are a fixed height and never resize: no drag handle, no auto-grow, they scroll on overflow. The reply box is 80px (#312, PR #313).",
 				"section": "components"
@@ -965,7 +974,8 @@
 			"Do use theme tokens and utilities (`text-note`, `text-title`, `text-stay`, `border-mark`, `border-open`, `shadow-raised`, `w-thread-rail`); `@shadcn/lint` rejects raw colours, arbitrary values and inline styles in the app.",
 			"Do give every new colour a night twin in `.dark`.",
 			"Do keep text boxes a fixed height with no resize handle (#312).",
-			"Do draw a chart in one colour at two strengths on a hairline track."
+			"Do draw a chart in one colour at two strengths on a hairline track.",
+			"Do let a row's plate say only what its view's tab doesn't (#327)."
 		],
 		"donts": [
 			"Don't use Mist (#a6bbd1) for text.",
@@ -977,7 +987,8 @@
 			"Don't use grey borders or grey shadows; both are blue-tinted.",
 			"Don't make a status into a button, or a button into a status.",
 			"Don't restyle a `@repo/ui` component with `className` beyond layout; add a variant.",
-			"Don't write arbitrary Tailwind values in app code; name the value as a token in `apps/saas/app/globals.css`."
+			"Don't write arbitrary Tailwind values in app code; name the value as a token in `apps/saas/app/globals.css`.",
+			"Don't spend three lines of a phone strip on prose; a chip opens the sheet."
 		]
 	}
 }

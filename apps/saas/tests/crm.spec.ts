@@ -242,6 +242,22 @@ async function expectQueue(
 }
 
 /**
+ * The guest's row is listed under the agent's Your turn view, which says the turn for every row
+ * in it: the row carries no plate of its own, neither Your turn nor an outcome (Assigning leads
+ * 12, #327).
+ */
+async function expectUnderYourTurn(page: Page, guest: Guest, message: string) {
+	const yourTurn = page.getByRole("button", { name: /^Your turn \d+$/ });
+	await expect(yourTurn, `${message}: the Your turn view is shown`).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
+	const row = rowOf(page, guest);
+	await expect(row, `${message}: listed under Your turn`).toBeVisible();
+	await expect(row.getByTestId("thread-status"), `${message}: no plate repeats it`).toHaveCount(0);
+}
+
+/**
  * On a resolved thread's row, the outcome stands where the turn was: one status badge, saying
  * the outcome, no "Your turn" or "Sent" beside it, and neutral, the tone of the pipe badge on the
  * same row (DESIGN.md, Badges), not the turn's amber or green.
@@ -734,10 +750,7 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 		await guest.write(`Is it still available after all? ${randomUUID().slice(0, 8)}`);
 		await expectQueue(page, { yourTurn: 2, sent: 0, all: 2 }, WITHIN_A_POLL);
 		await view(page, "Your turn", 2).click();
-		await expect(
-			rowOf(page, guest).getByTestId("thread-status"),
-			"the guest who wrote again is Your turn",
-		).toHaveText(crmCopy.yourTurn);
+		await expectUnderYourTurn(page, guest, "the guest who wrote again is Your turn");
 		// A second office on the mock CRM, only as a clock: once its guest, who writes after this
 		// one, is a lead, the background work for this guest's message has had its chance.
 		const clock = await newOffice("CRM 3 lost clock", { crm: "mock", agent: false });
@@ -763,10 +776,7 @@ test.describe("CRM 3 — won or lost leaves the queue, and comes back", () => {
 		expectNoticeTaken(won, "a lead is won");
 		await expectQueue(page, { yourTurn: 1, sent: 1, all: 2 }, WITHIN_A_POLL);
 		await expect(rowOf(page, other), "the won guest has left Your turn").toHaveCount(0);
-		await expect(
-			rowOf(page, guest).getByTestId("thread-status"),
-			"the guest who wrote after the outcome stays Your turn",
-		).toHaveText(crmCopy.yourTurn);
+		await expectUnderYourTurn(page, guest, "the guest who wrote after the outcome stays Your turn");
 
 		// The other guest's won thread left Your turn just above, and the nav count dropped with it
 		// (2 to 1, in expectQueue): where it went, and what it says there.
@@ -832,10 +842,7 @@ test.describe("CRM 4a — a missing lead says so, and heals when the thread is o
 			// The message still arrives: the guest waits on the agent, in Your turn.
 			await page.goto("/en/inbox");
 			await expectQueue(page, { yourTurn: 1, sent: 0, all: 1 }, WITHIN_A_POLL);
-			await expect(
-				rowOf(page, guest).getByTestId("thread-status"),
-				"the guest is Your turn",
-			).toHaveText(crmCopy.yourTurn);
+			await expectUnderYourTurn(page, guest, "the guest is Your turn");
 
 			// The agent opens the thread: its header says the guest is not in the CRM yet.
 			await openThreadOf(page, guest);

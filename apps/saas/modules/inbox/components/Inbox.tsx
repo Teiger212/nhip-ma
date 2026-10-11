@@ -51,7 +51,7 @@ import { InboxToolbar } from "./InboxToolbar";
 import { AssignFromRow } from "./OwnerControl";
 import { ThreadDetail, ThreadDetailSkeleton } from "./ThreadDetail";
 import { ThreadList } from "./ThreadList";
-import { ThreadListState } from "./ThreadParts";
+import { ThreadListState, turnTheViewSays } from "./ThreadParts";
 
 // No default here: which view an Inbox opens on depends on who opens it (`openingView`).
 const viewParser = parseAsStringLiteral(INBOX_VIEWS);
@@ -412,6 +412,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								onViewSent={() => void setView("sent")}
 								emptyTitle={manager ? undefined : t("emptyAssigned")}
 								ownerBadges={!(manager && view === "unassigned")}
+								viewSays={turnTheViewSays(view, manager)}
 								rowAction={
 									manager && view === "unassigned"
 										? (conversation) => (

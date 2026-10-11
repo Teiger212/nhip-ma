@@ -177,12 +177,12 @@ async function firstWordOf(request: APIRequestContext, oaId: string): Promise<Gu
 async function openInbox(page: Page) {
 	await page.goto("/en/inbox");
 	await expect(
-		// A row (it carries its status flag), or the list saying it is empty, caught up, unmatched,
+		// A row, or the list saying it is empty, caught up, unmatched,
 		// that every lead is assigned (a manager's Unassigned), or that only Quiet threads wait.
 		// The view buttons above the list are buttons too, so a button proves nothing.
 		threadList(page)
 			.locator(
-				'[data-test="thread-status"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
+				'[data-test="thread-row"], [data-test="inbox-empty"], [data-test="inbox-caught-up"], [data-test="inbox-no-matches"], [data-test="inbox-all-assigned"]',
 			)
 			// A Quiet row sits folded away until opened, so only a shown one counts.
 			.filter({ visible: true })
@@ -310,7 +310,7 @@ async function expectOwner(where: Locator, owner: Owner, message?: string) {
 		await expect(flag, message).toHaveAttribute("data-owner", "unassigned");
 		await expect(flag, message).toHaveText(copy.unassigned);
 	} else if (owner === "mine") {
-		await expect(where.getByTestId("thread-status"), message).toBeVisible();
+		await expect(where, message).toBeVisible();
 		await expect(flag, message).toHaveCount(0);
 	} else {
 		await expect(flag, message).toHaveAttribute("data-owner", "other");
@@ -436,7 +436,11 @@ test.describe("Assign 1 — a new guest waits in Unassigned, for managers only",
 		);
 		const row = rowOf(page, guest);
 		await expect(row, "the new guest is under Unassigned").toBeVisible();
-		await expect(row.getByTestId("thread-status"), "the row is listed with its turn").toBeVisible();
+		// Unassigned says Waiting, so the row doesn't (Assigning leads 12, #327).
+		await expect(
+			row.getByTestId("thread-status"),
+			"the view says Waiting, so the row carries no plate",
+		).toHaveCount(0);
 		await expect(
 			row.getByTestId("thread-owner"),
 			"the view says Unassigned, not the row",

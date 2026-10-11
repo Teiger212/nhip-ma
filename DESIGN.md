@@ -101,11 +101,18 @@ typography:
     fontFamily: "Manrope, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 600
+  panel-heading:
+    fontFamily: "Manrope, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 800
+    lineHeight: 1.35
+    letterSpacing: "-0.01em"
   field-key:
     fontFamily: "Manrope, sans-serif"
-    fontSize: "0.625rem"
+    fontSize: "0.6875rem"
     fontWeight: 800
-    letterSpacing: "0.05em"
+    lineHeight: 1.45
+    letterSpacing: "0.04em"
   mono:
     fontFamily: "'IBM Plex Mono', ui-monospace, monospace"
     fontWeight: 500
@@ -301,14 +308,20 @@ chart tooltip's value and a numeric `Badge` (the notification bell's count).
   5px disc, so it reads at 1x where the font's own mark blurs into the baseline.
 - **Stay Title** (800, 1.375rem, `text-stay`): the area at the top of the stay card.
 - **Thread Title** (800, 1.1875rem, `text-title`): the guest's name in the thread header.
+- **Panel Heading** (800, 1.125rem, -0.01em, `text-heading`): Home's panels (Leads by day,
+  Waiting now, Response time) and the details' Guest and Owner. A real step over the 14px body
+  under it (#327); the detector found 16px headings over 14px text before.
 - **Body** (400, 1rem, 1.625): message text, `pre-wrap` so guests' line breaks survive.
 - **Name** (700, 0.875rem): the guest's name on a row; "Reply" over the dock (800).
 - **Note** (0.8125rem / 1.125rem, `text-note`): row previews (clamped to two lines),
   translation lines, the operator note, the pipe in the header, guest-fact labels.
 - **Body Small** (0.75rem): message meta, hints.
 - **Label** (600, 0.6875rem, `text-micro`): fact tags, a view tab's label, row times.
-- **Field Key** (800, 0.625rem, +0.05em, uppercase, `text-2xs`): MOVE-IN, STAY and BUDGET in
-  the stay card's field box.
+- **Field Key** (800, 0.6875rem, +0.04em, uppercase, line-height 1.45, `text-key`): MOVE-IN,
+  STAY and BUDGET in the stay card's field box, and Home's funnel stages. 11px since #327 (10px
+  was too small, worse with Vietnamese stacked marks: NGÂN SÁCH, THỜI GIAN Ở); the tall line
+  keeps those marks clear of the field box's edge. `text-2xs` (10px) stays for the language
+  marker's code and the small badge only.
 - **Figure** (800, 2rem, 2.375rem from `md`, -0.03em, `text-figure-sm`/`text-figure`): Home's
   numbers, tabular, units beside them at the body size in Slate.
 - **Numbers** are Manrope with `tabular-nums`: view-tab counts (700, 0.875rem), the nav count,
@@ -408,6 +421,13 @@ Whose turn it is (CONTEXT.md, Your turn), on a row (22px, 0.75rem) and the threa
 **The Turn Is The Signal Rule.** On a thread only the turn is filled; the pipe, the owner and
 the CRM status are slate or neutral, so the turn reads from across the room.
 
+**The Plate Says Something Rule** (Eyal, 2026-10-11, #327). A row's plate shows only when it
+says something the view's tab doesn't. Under All every row keeps its plate, since All mixes every
+turn. Unassigned and a manager's Waiting hide "Waiting" plates, an agent's Your turn hides "Your
+turn", and Sent hides "Sent": what is left is the exception (Hà's own thread in her Waiting view,
+a Won or Lost lead under Sent), and it jumps out. The thread header always shows its plate, and
+the guest marker keeps its fill rule in every view (`turnTheViewSays` in `ThreadParts.tsx`).
+
 ### Guest marker
 
 The guest's language as its ISO code (KO, EN, JA, VI, ZH, RU…), extra-bold 10px in a 28px
@@ -484,19 +504,29 @@ on marble, 8px corners, its key, a dash (and "Not given yet" to a screen reader)
 "?" disc. Under the box the **Missing
 row** (#244) names what to ask for, in the auto-reply's order and words ("budget, move-in"),
 term and value in Slate, the Waiting plate's tone. Every fact is a term and its value in one
-list; the area's term is for screen readers, where the pin stands for it. Nothing in the
-details opens or closes.
+list; the area's term is for screen readers, where the pin stands for it. Nothing in the rail
+opens or closes.
 
 Below it, past a hairline, **Guest** (800): Language (its tag), Nationality, In Vietnam now,
 Paperwork, as a label/value list (`grid-cols-fields`); then **Owner** (a manager's Assign to; an
 agent's read-only name). The CRM status is in the header, not the rail (#314).
 
 The **strip** (a narrow card or a phone): a marble band under the header. First the stay as
-one 44px white line: pin, the area in bold, rent or buy, beds, move-in and stay in Slate, cut with an
-ellipsis rather than wrapping, and the budget in a 4px hairline frame at the end (a small dashed
-slot until it is given). The Missing row under it names every fact still to ask for. Then the
-guest facts along a line, which on a phone also holds the CRM status and a manager's owner
-select.
+one 44px white line: pin, the area in bold, rent or buy, beds, move-in and stay in Slate, cut
+with an ellipsis rather than wrapping, the budget in a 4px hairline frame (a small dashed slot
+until it is given) and a Slate chevron at the end. The whole line is one target ("Show all guest
+details"): its hairline turns ink on hover, and a tap opens the **details sheet** (#327). The
+Missing row under it names every fact still to ask for. Then the guest facts along a line, which
+on a phone also holds the CRM status and a manager's owner select. A paperwork flag there is not
+its three lines of prose but a compact **paperwork chip**: Amber Note on its 12% tint, 24px, 6px
+corners, a file-warning glyph and "Paperwork" in bold, with a 44px target; it opens the same
+sheet, where the flag reads in full.
+
+The **details sheet** (#327, the kit's `Sheet`, `side="bottom"`): paper rising from the foot of
+the screen, 16px top corners, a hairline edge, at most 85% of the screen and scrolling past it,
+clear of the home indicator; from `md` (a narrow pane on the desk) a 36rem column, centred. A
+44px close at its top right, "Guest details" as its title, then every stay and guest fact whole,
+exactly as the rail has them. The conversation keeps its room; the rail is unchanged.
 
 ### Home (#314, approved by Eyal 2026-10-11, `home-navy-marble-plus.html`)
 
@@ -575,6 +605,7 @@ ink on hover.
 - **Do** give every new colour a night twin in `.dark`.
 - **Do** keep text boxes a fixed height with no resize handle (#312).
 - **Do** draw a chart in one colour at two strengths on a hairline track.
+- **Do** let a row's plate say only what its view's tab doesn't (#327).
 
 ### Don't:
 
@@ -584,6 +615,7 @@ ink on hover.
 - **Don't** use red for a waiting or overdue lead.
 - **Don't** colour a tag by its row or position; colour belongs to the value.
 - **Don't** let a text box grow or show a drag handle.
+- **Don't** spend three lines of a phone strip on prose; a chip opens the sheet.
 - **Don't** use grey borders or grey shadows; both are blue-tinted.
 - **Don't** make a status into a button, or a button into a status.
 - **Don't** restyle a `@repo/ui` component with `className` beyond layout; add a variant.

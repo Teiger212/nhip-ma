@@ -18,6 +18,16 @@
 	/* Nhịp's small sizes: flags, timestamps and labels under the body text. */
 	--text-2xs: 0.625rem;
 	--text-micro: 0.6875rem;
+	/* A Field Key (MOVE-IN, BUDGET, Home's funnel stages): 11px uppercase, modest tracking and room
+	   above the cap height for Vietnamese stacked marks (NGÂN SÁCH, THỜI GIAN Ở), #327. */
+	--text-key: 0.6875rem;
+	--text-key--line-height: 1.45;
+	--text-key--letter-spacing: 0.04em;
+	/* A panel's heading (Home's panels, the details' Guest and Owner): a real step over the 14px
+	   body, below the 19px thread title (#327). */
+	--text-heading: 1.125rem;
+	--text-heading--line-height: 1.35;
+	--text-heading--letter-spacing: -0.01em;
 	/* A row's preview and the thread's secondary lines: between Body Small and Body. */
 	--text-note: 0.8125rem;
 	--text-note--line-height: 1.125rem;

@@ -967,7 +967,8 @@
 			"owner": "Owner",
 			"guest": "Guest",
 			"stay": "Stay",
-			"notGiven": "Not given yet"
+			"notGiven": "Not given yet",
+			"showAll": "Show all guest details"
 		},
 		"fields": {
 			"language": "Language",

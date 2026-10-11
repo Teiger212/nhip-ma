@@ -158,7 +158,7 @@ export function ThreadDetailSkeleton() {
 function RailSection({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<section className="gap-3 pt-4 mt-5.5 flex flex-col border-t">
-			<h2 className="text-base font-extrabold">{title}</h2>
+			<h2 className="text-heading font-extrabold">{title}</h2>
 			{children}
 		</section>
 	);
@@ -292,6 +292,8 @@ export function ThreadDetail({
 			</header>
 			{rail ? null : (
 				<ExtractFields
+					// Keyed: a details sheet left open never carries over to the next thread.
+					key={conversation.id}
 					conversation={conversation}
 					layout="strip"
 					meta={

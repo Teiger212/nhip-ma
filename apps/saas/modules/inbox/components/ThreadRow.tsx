@@ -13,6 +13,7 @@ import {
 	LanguageMark,
 	OwnerFlag,
 	PipeLabel,
+	type TurnChip,
 	TurnPlate,
 	useTurnChip,
 } from "./ThreadParts";
@@ -20,7 +21,8 @@ import {
 /**
  * One thread in the list (#314): the guest's language mark; their name, pipe and turn plate;
  * a preview of what they last wrote; then the fact tags, a manager's owner flag and when they
- * wrote. An `action` (a manager's "Assign to…" on Unassigned rows, ADR 0022) sits at the row's
+ * wrote. The plate shows only when it says something the view's tab doesn't (#327): under
+ * Waiting, only the rows that aren't Waiting carry one. The marker keeps its fill either way. An `action` (a manager's "Assign to…" on Unassigned rows, ADR 0022) sits at the row's
  * end, beside the row's button rather than in it: a click on it never opens the thread.
  */
 export function ThreadRow({
@@ -29,6 +31,7 @@ export function ThreadRow({
 	onOpen,
 	action,
 	ownerBadge = true,
+	viewSays = null,
 }: {
 	conversation: ConversationSummary;
 	active: boolean;
@@ -36,6 +39,8 @@ export function ThreadRow({
 	action?: ReactNode;
 	/** False where the view already says who holds every row (a manager's Unassigned, #303). */
 	ownerBadge?: boolean;
+	/** The turn the view's tab already says (`turnTheViewSays`): a row in that turn shows no plate. */
+	viewSays?: TurnChip | null;
 }) {
 	const locale = useLocale();
 	const hydrated = useHydrated();
@@ -60,6 +65,7 @@ export function ThreadRow({
 		// The row stays lit while the pointer is on its action, which sits over it. A hairline
 		// parts it from the row above, except where the selected row's own edge does.
 		<li
+			data-test="thread-row"
 			data-active={active || undefined}
 			className="group/row px-1.5 before:inset-x-4 before:top-0 relative before:absolute before:h-px before:bg-border first:before:hidden data-active:before:hidden"
 		>
@@ -77,9 +83,11 @@ export function ThreadRow({
 					<span className={cn("h-5.5 gap-2 min-w-0 flex w-full items-center", shown?.line)}>
 						<span className="text-sm font-bold min-w-0 truncate">{name}</span>
 						<PipeLabel pipe={conversation.pipe} />
-						<span className="ml-auto flex shrink-0">
-							<TurnPlate conversation={conversation} />
-						</span>
+						{chip === viewSays ? null : (
+							<span className="ml-auto flex shrink-0">
+								<TurnPlate conversation={conversation} />
+							</span>
+						)}
 					</span>
 					{preview ? (
 						<span

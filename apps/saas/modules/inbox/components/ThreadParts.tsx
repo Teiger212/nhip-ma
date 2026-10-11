@@ -20,7 +20,7 @@ import { formatGuestDetail } from "../lib/guest-details-format";
 import { guestInitials } from "../lib/guest-initials";
 import { useOfficeRole } from "../lib/inbox-queries";
 import { languageName } from "../lib/language-name";
-import { type ThreadStatus, threadStatus } from "../lib/queue";
+import { type InboxView, type ThreadStatus, threadStatus } from "../lib/queue";
 import type { ConversationSummary, OperatorLanguage, Pipe } from "../lib/types";
 
 /** SaaS routing only serves the operator locales (`modules/i18n/routing.ts`). */
@@ -74,6 +74,25 @@ export function useTurnChip(conversation: TurnFields): TurnChip {
 	return status === "yourTurn" && role === "manager" && conversation.owner?.id !== userId
 		? "waiting"
 		: status;
+}
+
+/**
+ * The turn a view's tab already says of every row in it (DESIGN.md, The Plate Says Something
+ * Rule, #327): Unassigned and a manager's Waiting say "Waiting", an agent's Your turn says
+ * "Your turn", Sent says "Sent". All mixes every turn and says none. A row's plate shows only
+ * when its turn differs: Hà's own thread in her Waiting view, a won or lost lead under Sent.
+ */
+export function turnTheViewSays(view: InboxView, manager: boolean): TurnChip | null {
+	switch (view) {
+		case "unassigned":
+			return "waiting";
+		case "yourTurn":
+			return manager ? "waiting" : "yourTurn";
+		case "sent":
+			return "sent";
+		case "all":
+			return null;
+	}
 }
 
 /**
