@@ -22,6 +22,10 @@ import {
  * The walk office's invented guests (#69): the walk's four demo threads, then about forty more
  * over the last 30 days, in every Inbox, CRM and alert state. The auto-reply is on (no settings
  * row: the default) and the CRM is the mock CRM. Nothing here is a real guest.
+ *
+ * The office answers fast (#315): of the 21 answered leads, the median first human reply is 6 min and
+ * the 90th percentile 17 min (nearest rank, the 19th); Mikhail and Isabelle are the two slow ones.
+ * A first reply stays after the assignment that precedes it.
  */
 
 /** The walk's demo threads (`DEMO_THREADS`), as they are, with their translations and owners. */
@@ -321,7 +325,7 @@ const firstAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(3) - minutesAgo(3), "agent"),
 			replies(
-				daysAgo(3) - minutesAgo(6),
+				daysAgo(3) - minutesAgo(4),
 				"agent",
 				"Chào anh Tuấn, bên em có hai căn 2 phòng ngủ ở Cầu Giấy trong tầm 18 triệu. Anh muốn xem vào ngày nào ạ?",
 			),
@@ -342,7 +346,7 @@ const firstAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(6) - minutesAgo(4), "agent"),
 			replies(
-				daysAgo(6) - minutesAgo(12),
+				daysAgo(6) - minutesAgo(5),
 				"agent",
 				"Welcome back, Emily! We have two 2-bedroom flats in Ciputra around $1600/month. Would Saturday morning suit you for a viewing?",
 			),
@@ -363,7 +367,7 @@ const firstAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(11) - minutesAgo(10), "agent"),
 			replies(
-				daysAgo(11) - minutesAgo(35),
+				daysAgo(11) - minutesAgo(11),
 				"agent",
 				"안녕하세요! Times City 근처에 $900 안팎의 1 bedroom이 두 곳 있습니다. 이번 주에 보러 오시겠어요?",
 			),
@@ -403,7 +407,7 @@ const firstAgent: SeedGuest[] = [
 			),
 			assigns(hoursAgo(49.9), "agent"),
 			replies(
-				hoursAgo(49.8),
+				hoursAgo(50) - minutesAgo(7),
 				"agent",
 				"Bonjour Claire! We have a 3-bedroom in Ba Dinh at $2900/month, newly renovated. Would you like photos first?",
 			),
@@ -424,7 +428,7 @@ const firstAgent: SeedGuest[] = [
 			}),
 			assigns(daysAgo(20) - minutesAgo(3), "agent"),
 			replies(
-				daysAgo(20) - minutesAgo(8),
+				daysAgo(20) - minutesAgo(5),
 				"agent",
 				"Chào chị Linh, bên em có ba căn 2 phòng ngủ ở Long Biên quanh 3 tỷ. Chị muốn xem căn nào trước ạ?",
 			),
@@ -457,7 +461,7 @@ const firstAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(18) - minutesAgo(5), "agent"),
 			replies(
-				daysAgo(18) - minutesAgo(20),
+				daysAgo(18) - minutesAgo(6),
 				"agent",
 				"こんにちは！Ciputraに$2400前後の3 bedroomが2件ございます。今週ご内見はいかがでしょうか。",
 			),
@@ -571,7 +575,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(7) - minutesAgo(5), "agent2"),
 			replies(
-				daysAgo(7) - minutesAgo(50),
+				daysAgo(7) - minutesAgo(9),
 				"agent2",
 				"Hi Lucas! We have a bright studio in the Old Quarter at $680/month, free from next week. Would Thursday suit you for a viewing?",
 			),
@@ -589,7 +593,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(10) - minutesAgo(10), "agent2"),
 			replies(
-				daysAgo(10) - hoursAgo(1.5),
+				daysAgo(10) - minutesAgo(13),
 				"agent2",
 				"Hello Mei! There are 2-bedroom flats in Ecopark around $250,000. On what a foreign buyer can own, our legal partner will explain in a call. Shall I set one up?",
 			),
@@ -610,7 +614,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(22) - minutesAgo(4), "agent2"),
 			replies(
-				daysAgo(22) - minutesAgo(9),
+				daysAgo(22) - minutesAgo(5),
 				"agent2",
 				"はじめまして！Tay Hoに2 bedroomが3件ございます。来週火曜日はいかがでしょうか。",
 			),
@@ -640,7 +644,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(25) - minutesAgo(6), "agent2"),
 			replies(
-				daysAgo(25) - minutesAgo(25),
+				daysAgo(25) - minutesAgo(8),
 				"agent2",
 				"Добрый вечер, Николай! Сегодня пришлю подборку квартир с 3 спальнями в Landmark.",
 			),
@@ -662,7 +666,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(16) - minutesAgo(3), "agent2"),
 			replies(
-				daysAgo(16) - minutesAgo(14),
+				daysAgo(16) - minutesAgo(5),
 				"agent2",
 				"Hi Grace! Tay Ho 1-bedrooms usually start around $750/month. Would you consider Long Bien, where $600 goes further?",
 			),
@@ -690,7 +694,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			assigns(daysAgo(12) - minutesAgo(5), "agent2"),
 			replies(
-				daysAgo(12) - minutesAgo(40),
+				daysAgo(12) - minutesAgo(10),
 				"agent2",
 				"Chào anh Hải, bên em có một căn 2 phòng ngủ ở Đống Đa giá 19 triệu, hợp để làm việc tại nhà. Anh xem ảnh nhé?",
 			),
@@ -716,7 +720,7 @@ const secondAgent: SeedGuest[] = [
 			),
 			// Never assigned, so no "assigned" bell row outlives the thread (`removeSeeded`).
 			replies(
-				daysAgo(9) - minutesAgo(10),
+				daysAgo(9) - minutesAgo(2),
 				"manager",
 				"Hi Tom, yes: two 2-bedroom flats in Ciputra fit $1700. Shall I send them?",
 			),
@@ -739,7 +743,7 @@ const managerOwn: SeedGuest[] = [
 				},
 			),
 			replies(
-				hoursAgo(24) - minutesAgo(5),
+				hoursAgo(24) - minutesAgo(4),
 				"manager",
 				"Hello Arjun, welcome! We have three family homes in Tay Ho within $3500. I'll send you a short list today.",
 			),
@@ -758,7 +762,7 @@ const managerOwn: SeedGuest[] = [
 				},
 			),
 			replies(
-				daysAgo(2) - minutesAgo(18),
+				daysAgo(2) - minutesAgo(6),
 				"manager",
 				"Chào em Thu, chị gửi em danh sách 6 căn 1 phòng ngủ ở Cầu Giấy trong hôm nay nhé.",
 			),
@@ -778,7 +782,7 @@ const managerOwn: SeedGuest[] = [
 				},
 			),
 			replies(
-				daysAgo(14) - minutesAgo(55),
+				daysAgo(14) - minutesAgo(12),
 				"manager",
 				"こんにちは！Ba Dinhに$1100の1 bedroomがございます。明日ご内見いただけます。",
 			),
@@ -815,7 +819,7 @@ const managerOwn: SeedGuest[] = [
 				},
 			),
 			replies(
-				daysAgo(27) - hoursAgo(3),
+				daysAgo(27) - minutesAgo(17),
 				"manager",
 				"Здравствуйте, Елена! В Times City есть квартира с 2 спальнями за $1300. Могу показать в субботу.",
 			),
@@ -834,7 +838,7 @@ const managerOwn: SeedGuest[] = [
 				},
 			),
 			replies(
-				daysAgo(28) - minutesAgo(7),
+				daysAgo(28) - minutesAgo(4),
 				"manager",
 				"Chào em Vy, chị có hai studio ở Hai Bà Trưng giá 8,5 và 9 triệu. Em muốn xem căn nào?",
 			),

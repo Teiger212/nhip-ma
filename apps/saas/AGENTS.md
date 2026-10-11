@@ -37,6 +37,7 @@ Unassigned, owned by each agent and by the manager, Your turn, Quiet, Sent, writ
 a reply, greeted, in CRM, Not in CRM yet (a recorded write failure; a guest whose number is on
 two leads), Won, Lost, lost and written back, an unmatched lead, bell rows and the alert log,
 and one deleted guest (receipt and lead tally).
+Home shows the walk office fast (#315): over its 21 answered leads (one is the deleted guest's tally) the median first reply is 6 min and the 90th percentile 17 min; five answers took under 5 min, 13 took 5 to 15, one 15 to 60 and two over an hour (Mikhail, Isabelle). A story's first human reply sits after the manager's assignment; keep it so when retiming.
 A second office, `river-office`, has its own manager (`river-manager@nhip.local`) and agents
 (`river-agent@nhip.local`, `river-agent2@nhip.local`), its auto-reply off and no CRM; nothing
 crosses offices. Guests write on WhatsApp (numbers in North America's 555-01xx fiction range)
