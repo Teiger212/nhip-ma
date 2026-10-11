@@ -88,7 +88,8 @@ greeting. Related: #242, #245, #246, #83.
   - No phone numbers and no CRM data.
 - **What it returns.** One call returns JSON with both texts: the reply in the guest's
   language, and the same reply in the office language (ADR 0025).
-  - For a guest language Nhịp doesn't support, the draft is in English (#245).
+  - For a guest language Nhịp doesn't support, the draft is in English (#245). So is it for
+    one of the five the gate leaves out (amended 2026-10-11, #306: see the end).
   - An edited reply still goes through the translation model (#242).
 - **The rules a draft follows.**
   1. The intro of the agent lives in the template only, which introduces the agent when the
@@ -194,6 +195,16 @@ greeting. Related: #242, #245, #246, #83.
   needs one too. Both are additive.
 - **Docs that describe `DRAFT_*` change:** `.env.local.example`, `ARCHITECTURE.md`,
   `HANDOFF.md` and `docs/setup-checklist.md` (its staging steps and its production env list).
+
+## Amendment (2026-10-11, #306): drafts follow the reply-language gate
+
+Until after the demo Nhịp replies in EN and VI only (`SUPPORTED_GUEST_LANGUAGES`, default
+`en,vi`; ADR 0021's amendment of the same day). The model draft is written in the reply language
+the one-shot stored, so for a JA, KO or RU guest it is in English, with its operator line only
+when the office language is Vietnamese. The prompt is unchanged: it already writes English as
+the reply's fallback. The draft never carries the "We reply in English" line: drafts start after
+the office's first human reply, and the line goes only on the office's first message. The
+translate task is unchanged: JA, KO and RU messages are still translated for the agent.
 
 ## Open
 

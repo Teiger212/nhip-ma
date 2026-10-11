@@ -109,6 +109,41 @@ test("production calls OpenRouter only", () => {
 });
 
 // ADR 0024: E2E runs against a deterministic stub, refused in production as the mock CRM's secret is.
+// #306: the guest languages Nhịp replies in, EN and VI until after the demo. A gate, not a
+// removal: the other three come back by config.
+test("SUPPORTED_GUEST_LANGUAGES defaults to English and Vietnamese", () => {
+	expect(configOf(BASE).supportedGuestLanguages).toEqual(["en", "vi"]);
+	expect(configOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: " " }).supportedGuestLanguages).toEqual([
+		"en",
+		"vi",
+	]);
+	expect(mockInboxConfig().supportedGuestLanguages).toEqual(["en", "vi"]);
+});
+
+test("SUPPORTED_GUEST_LANGUAGES is a comma list of the five, read as written", () => {
+	expect(
+		configOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: "en, vi,KO,ja,ru" }).supportedGuestLanguages,
+	).toEqual(["en", "vi", "ko", "ja", "ru"]);
+	expect(configOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: "en" }).supportedGuestLanguages).toEqual([
+		"en",
+	]);
+	expect(
+		configOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: "en,vi,en" }).supportedGuestLanguages,
+	).toEqual(["en", "vi"]);
+});
+
+test("SUPPORTED_GUEST_LANGUAGES refuses a code Nhịp has no copy for, and a list without English", () => {
+	expect(errorsOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: "en,vi,fr,zh" })).toEqual([
+		'SUPPORTED_GUEST_LANGUAGES lists guest languages Nhịp has copy for (en, vi, ja, ko, ru), got "fr, zh"',
+	]);
+	expect(errorsOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: "vi,ko" })).toEqual([
+		"SUPPORTED_GUEST_LANGUAGES must include en: English is the reply to every other guest",
+	]);
+	expect(errorsOf({ ...BASE, SUPPORTED_GUEST_LANGUAGES: "," })).toEqual([
+		"SUPPORTED_GUEST_LANGUAGES must include en: English is the reply to every other guest",
+	]);
+});
+
 test("the stub model answers the tasks MODEL_STUB names, needs no key, and production refuses it", () => {
 	const config = configOf({ ...BASE, MODEL_STUB: "translate" });
 	expect(config.models.stub).toEqual(["translate"]);

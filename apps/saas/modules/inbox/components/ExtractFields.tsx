@@ -8,7 +8,7 @@ import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { arrangeExtractRows, type ExtractFieldId, type ExtractRow } from "../lib/extract-rows";
 import { languageTone } from "../lib/fact-tags";
 import { formatGuestDetail } from "../lib/guest-details-format";
-import { isSupportedLanguage, languageName } from "../lib/language-name";
+import { languageName, repliesInEnglishInstead } from "../lib/language-name";
 import type { Conversation } from "../lib/types";
 import { FactTag } from "./ThreadParts";
 
@@ -43,10 +43,14 @@ function useDetails(conversation: Conversation): Details {
 	const value = (row: ExtractRow): string => {
 		switch (row.id) {
 			case "language": {
-				// An unsupported guest language is named, with the note that replies are English (#245).
+				// A guest answered in English instead of their own language is named with the note
+				// that replies are English: a language Nhịp doesn't know (#245), or one the gate
+				// leaves out (#306).
 				const code = String(row.value);
 				const name = languageName(code, locale, (language) => t(`guestLanguage.${language}`));
-				return isSupportedLanguage(code) ? name : t("languageUnsupported", { language: name });
+				return conversation.oneShot && repliesInEnglishInstead(conversation.oneShot)
+					? t("languageUnsupported", { language: name })
+					: name;
 			}
 			case "rentOrBuy":
 				return t(`intent.${String(row.value)}`);

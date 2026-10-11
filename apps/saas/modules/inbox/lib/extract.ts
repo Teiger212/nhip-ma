@@ -1,6 +1,6 @@
 import { AREAS, bounded } from "./areas";
 import { identifyLanguage } from "./language";
-import { isSupportedLanguage } from "./language-name";
+import { DEFAULT_SUPPORTED_GUEST_LANGUAGES, replyLanguageFor } from "./language-name";
 import type { GuestLanguage, Qualification } from "./types";
 
 const NATIONALITIES: Array<{ id: string; re: RegExp }> = [
@@ -313,7 +313,14 @@ export function emptyQualification(): Qualification {
 	};
 }
 
-export function extractFromInbound(text: string): {
+/**
+ * What the guest's messages say, read locally. `supported` is the deployment's gate
+ * (`SUPPORTED_GUEST_LANGUAGES`, #306): the guest languages Nhịp replies in.
+ */
+export function extractFromInbound(
+	text: string,
+	supported: readonly GuestLanguage[] = DEFAULT_SUPPORTED_GUEST_LANGUAGES,
+): {
 	language: GuestLanguage;
 	guestLanguage: string;
 	qualification: Qualification;
@@ -323,9 +330,10 @@ export function extractFromInbound(text: string): {
 	const inbound = String(text || "")
 		.normalize("NFC")
 		.trim();
-	// The guest language, named (#245); Nhịp writes in it if supported, else in English.
+	// The guest language, named (#245); Nhịp writes in it if the gate lets it through, else in
+	// English (#306).
 	const guestLanguage = identifyLanguage(inbound);
-	const language = isSupportedLanguage(guestLanguage) ? guestLanguage : "en";
+	const language = replyLanguageFor(guestLanguage, supported);
 	if (!inbound) {
 		return {
 			language,

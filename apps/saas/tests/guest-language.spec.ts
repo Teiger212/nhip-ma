@@ -8,6 +8,7 @@ import type { Guest, OwnOffice } from "./support/own-office";
 import {
 	greetingIn,
 	literal,
+	officeMessages,
 	threadIdOf,
 	threadLink,
 	WITHIN_SECONDS,
@@ -31,6 +32,23 @@ const FRENCH = {
 	noTranslation: "French isn't supported: no translation",
 	/** The operator note, one line beside the reply box (#248). */
 	operatorNote: "in English · French isn't supported",
+} as const;
+
+/**
+ * A Korean guest under the default gate (#306, `SUPPORTED_GUEST_LANGUAGES=en,vi`): one of the
+ * five Nhịp knows, so their messages are translated, and answered in English for now.
+ */
+const KOREAN = {
+	/** The guest's first message (Guest language 2). */
+	text: "안녕하세요, 서호에서 방 두 개짜리 아파트를 월세로 찾고 있어요.",
+	/** The details' Language row. */
+	languageRow: "Korean · not supported, replies in English",
+	/** The operator note. */
+	operatorNote: "in English · Korean isn't supported",
+	/** The stub model's translation line under the guest's message, into the office language. */
+	translation: "Stub translation, Korean to English.",
+	/** What the office's first reply tells the guest, once per conversation. */
+	englishLine: "We reply in English. If you can write to us in English, we'll help you faster.",
 } as const;
 
 /** The French guest's two messages: the second mixes French and English. */
@@ -309,6 +327,72 @@ test.describe("Guest language 1 — a guest writes in French: the thread names F
 			await check(entry, `the entry doesn't name ${copy.english}`).not.toHaveAccessibleName(
 				new RegExp(literal(copy.english)),
 			);
+		});
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Guest language 2
+test.describe("Guest language 2 — a Korean guest is answered in English, told so once, and still translated", () => {
+	test(`the auto-reply is English and carries "${KOREAN.englishLine}" before its label; the guest's message reads "${KOREAN.translation}"; the Language row reads "${KOREAN.languageRow}" and the operator note "${KOREAN.operatorNote}"; the reply box holds the English template without the line, and sent, it is the office's second message with the line still in the thread once`, async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const { page } = manager;
+		const guest = office.newGuest();
+		await guest.write(KOREAN.text);
+		const threadId = await threadIdOf(manager.api, guest.id);
+
+		await test.step("the first reply, the auto-reply, is English with the line before its label", async () => {
+			const greeting = await greetingIn(manager.api, threadId);
+			expect(greeting, "the auto-reply is the English first-reply template").toMatch(
+				EN_GREETING_START,
+			);
+			const paragraphs = greeting.trim().split("\n\n");
+			expect(paragraphs.at(-2), "the line, its own paragraph, before the label").toBe(
+				KOREAN.englishLine,
+			);
+			expect(paragraphs.at(-1), "its label is the English one").toBe(EN_LABEL);
+		});
+
+		await openThreadByLink(page, threadId, KOREAN.text);
+
+		await test.step("the guest's message is still translated for the agent", async () => {
+			await expect(
+				bubbleSaying(page, KOREAN.text),
+				`the guest's message reads "${KOREAN.translation}"`,
+			).toContainText(KOREAN.translation, WITHIN_SECONDS);
+			await expect(
+				bubbles(page).filter({ hasText: "isn't supported: no translation" }),
+				"no message says it isn't translated",
+			).toHaveCount(0);
+		});
+
+		await test.step("the thread says the reply is in English", async () => {
+			await expect
+				.poll(() => detailRow(page, UI.inbox.fields.language), {
+					message: `the Language row reads "${KOREAN.languageRow}"`,
+				})
+				.toBe(KOREAN.languageRow);
+			await expect(operatorNote(page), "the operator note's line").toHaveText(
+				noteReading(KOREAN.operatorNote),
+			);
+		});
+
+		await test.step("the second reply, the template sent as it stands, doesn't repeat the line", async () => {
+			const box = replyBox(page);
+			await expect(box, `the reply box holds the English template`).toHaveValue(
+				new RegExp(`^${literal(EN_TEMPLATE_START)}`),
+				WITHIN_SECONDS,
+			);
+			const suggested = await box.inputValue();
+			expect(suggested, "the template doesn't carry the line").not.toContain(KOREAN.englishLine);
+			await openThread(page).getByTestId("approve-and-send").click();
+			await expect
+				.poll(async () => (await officeMessages(manager.api, threadId)).map((m) => m.text), {
+					message: "the office's two messages: the auto-reply, then the reply as suggested",
+					...WITHIN_SECONDS,
+				})
+				.toEqual([expect.stringContaining(KOREAN.englishLine), suggested]);
 		});
 	});
 });

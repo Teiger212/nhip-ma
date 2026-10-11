@@ -155,6 +155,11 @@ go-live.
       replies (ADR 0005, ADR 0007, ADR 0024).
 - [ ] **Verify from your second Zalo account:** a first message gets the auto-reply within
       seconds, with the label naming the office, and its badge says "Model".
+- [ ] **Guest languages: leave `SUPPORTED_GUEST_LANGUAGES` unset until after the demo** (#306).
+      Unset means EN and VI only: a Japanese, Korean or Russian guest is answered in English,
+      told so once, and still translated for the agent. To bring one back, get its copy a
+      native read (#78), then set the list on staging and production (for example
+      `en,vi,ko`; it must include `en`, and startup refuses any other code) and redeploy.
 
 ### Error tracking (PostHog, PR #41)
 
@@ -197,7 +202,8 @@ go-live.
       as `neondb_owner`. `DRAFT_API_KEY`, set on neither staging nor prod yet;
       `DRAFT_MODEL` and `TRANSLATE_MODEL` only to override their defaults (Haiku 5.5, Gemini 3.1
       Flash-Lite), and
-      `DRAFT_DAILY_CAP` and `TRANSLATE_DAILY_CAP` only to change 50 and 1,000. Never set
+      `DRAFT_DAILY_CAP` and `TRANSLATE_DAILY_CAP` only to change 50 and 1,000;
+      `SUPPORTED_GUEST_LANGUAGES` only to reply in more than EN and VI (#306). Never set
       `MOCK_CRM_WEBHOOK_SECRET`, `MODEL_STUB` or `AUTH_TRUSTED_ORIGINS` in production, nor a
       `DRAFT_BASE_URL` other than OpenRouter: startup refuses each.
 - [ ] **Production's app role** (#98): the staging steps under "The app's database role", on

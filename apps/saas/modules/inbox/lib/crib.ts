@@ -1,4 +1,4 @@
-import { isSupportedLanguage, languageName, namedLanguage } from "./language-name";
+import { languageName, namedLanguage, repliesInEnglishInstead } from "./language-name";
 import type { Conversation, GuestLanguage } from "./types";
 
 export type CribTranslate = (key: string, values?: Record<string, string>) => string;
@@ -7,8 +7,9 @@ export type CribTranslate = (key: string, values?: Record<string, string>) => st
  * The operator note: one line beside the reply box, in the operator's language, on how to answer
  * (#248): the language the reply is in, and nothing more (Eyal, 2026-10-10, #303). The guest's
  * facts, what is missing and the paperwork flag are in the guest details beside it, so the note
- * never repeats them. For a guest language Nhịp doesn't support, it says the reply is
- * in English and names that language (#245).
+ * never repeats them. For a guest answered in English instead of their own language, one Nhịp
+ * doesn't know (#245) or one the gate leaves out (#306), it says the reply is in English and
+ * names that language.
  */
 export function formatConversationCrib(
 	conversation: Pick<Conversation, "oneShot">,
@@ -38,7 +39,7 @@ export function formatCribNote(
 	locale = "en",
 ): string {
 	const guestLanguage = input.guestLanguage ?? input.language;
-	if (!isSupportedLanguage(guestLanguage)) {
+	if (repliesInEnglishInstead({ language: input.language, guestLanguage })) {
 		return t("crib.noteUnsupported", {
 			language: languageName(guestLanguage, locale, (language) => t(`guestLanguage.${language}`)),
 		});

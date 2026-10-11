@@ -54,7 +54,7 @@ function greeted(qualification: Qualification, overrides: Partial<TemplateThread
 	const autoReply = {
 		direction: "out" as const,
 		source: "auto-reply" as const,
-		text: greetingTemplate("en", qualification, OFFICE),
+		text: greetingTemplate("en", qualification, OFFICE, false),
 	};
 	return thread({ messages: [guestSays("Hi"), autoReply], ...overrides });
 }
@@ -73,7 +73,7 @@ const QUESTION = /[?？]/u;
 
 describe.each(LANGUAGES)("in %s", (language) => {
 	const reply = (qualification: Qualification, on: TemplateThread) => {
-		const text = replyTemplate(language, qualification, on);
+		const text = replyTemplate(language, qualification, on, false);
 		expect(text).not.toBe("");
 		return text;
 	};
@@ -117,7 +117,7 @@ describe.each(LANGUAGES)("in %s", (language) => {
 		const autoReply = {
 			direction: "out" as const,
 			source: "auto-reply" as const,
-			text: greetingTemplate(language === "en" ? "vi" : "en", NOTHING, OFFICE),
+			text: greetingTemplate(language === "en" ? "vi" : "en", NOTHING, OFFICE, false),
 		};
 		const text = reply(NOTHING, thread({ messages: [guestSays("Hi"), autoReply] }));
 		for (const asked of asks(language, NOTHING)) expect(text).not.toContain(asked);
@@ -149,13 +149,15 @@ function asks(language: GuestLanguage, qualification: Qualification): string[] {
 
 describe("the EN reference copy", () => {
 	test("after the auto-reply, an assigned thread", () => {
-		expect(replyTemplate("en", RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO))).toBe(
+		expect(replyTemplate("en", RENT_IN_TAY_HO, greeted(RENT_IN_TAY_HO), false)).toBe(
 			"Hi, I'm Lan from Saigon Prime. I'll pull together a few options to rent in Tây Hồ and send them here shortly. Who will be living there, and how many bedrooms do you need?",
 		);
 	});
 
 	test("with no auto-reply, an Unassigned thread with a named guest", () => {
-		expect(replyTemplate("en", NOTHING, thread({ agentName: null, guestName: "Minji" }))).toBe(
+		expect(
+			replyTemplate("en", NOTHING, thread({ agentName: null, guestName: "Minji" }), false),
+		).toBe(
 			"Hi Minji, this is Saigon Prime. Thanks for getting in touch. I'll help you find the right place. Are you looking to rent or to buy?",
 		);
 	});
@@ -166,6 +168,7 @@ describe("the EN reference copy", () => {
 				"en",
 				RENT_IN_TAY_HO,
 				thread({ messages: [guestSays("Hi"), agentSays("Hello")] }),
+				false,
 			),
 		).toBe("Noted. I'll look into this and get back to you here shortly.");
 	});

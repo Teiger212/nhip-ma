@@ -28,7 +28,7 @@ const OFFICE = "Saigon Prime";
 
 /** The template, which is never empty: every check below reads real text. */
 function template(language: GuestLanguage, qualification: Qualification, office = OFFICE): string {
-	const text = greetingTemplate(language, qualification, office);
+	const text = greetingTemplate(language, qualification, office, false);
 	expect(text).not.toBe("");
 	return text;
 }
@@ -136,25 +136,25 @@ describe("the template (R9): greeting, acknowledgement, up to two questions, the
 	});
 
 	test("English, rent in Tây Hồ: acknowledges both, asks budget then move-in (First greeting 1)", () => {
-		expect(greetingTemplate("en", RENT_IN_TAY_HO, OFFICE)).toBe(
+		expect(greetingTemplate("en", RENT_IN_TAY_HO, OFFICE, false)).toBe(
 			"Thanks for writing to us. We have your note about renting in Tây Hồ. What budget do you have in mind? When would you like to move in?\n\nAuto-reply from Saigon Prime: a colleague will continue with you right here.",
 		);
 	});
 
 	test("English, nothing extracted: thanks, then rent or buy and area", () => {
-		expect(greetingTemplate("en", NOTHING, OFFICE)).toBe(
+		expect(greetingTemplate("en", NOTHING, OFFICE, false)).toBe(
 			"Thanks for writing to us. Are you looking to rent or to buy? Which area or building do you have in mind?\n\nAuto-reply from Saigon Prime: a colleague will continue with you right here.",
 		);
 	});
 
 	test("English, an area alone reads as the area, never 'about in'", () => {
-		const text = greetingTemplate("en", { ...NOTHING, areaOfInterest: "Tây Hồ" }, OFFICE);
+		const text = greetingTemplate("en", { ...NOTHING, areaOfInterest: "Tây Hồ" }, OFFICE, false);
 		expect(text).toContain("We have your note about Tây Hồ.");
 		expect(text).not.toContain("about in");
 	});
 
 	test("English, everything given: acknowledged by kind, no question", () => {
-		expect(greetingTemplate("en", { ...EVERYTHING, rentOrBuy: "buy" }, OFFICE)).toBe(
+		expect(greetingTemplate("en", { ...EVERYTHING, rentOrBuy: "buy" }, OFFICE, false)).toBe(
 			"Thanks for writing to us. We have your note about buying in Tây Hồ, your budget, your timing and your household.\n\nAuto-reply from Saigon Prime: a colleague will continue with you right here.",
 		);
 	});

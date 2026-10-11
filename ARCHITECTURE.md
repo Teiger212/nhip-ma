@@ -85,7 +85,12 @@ planned rather than built, it says so and names the ADR or PRODUCT line.
   `auto_reply`, `writtenBy`, and the hashed vendor id, so the vendor's echo is a duplicate. It
   is not an Answer: no `sentAt`, no owner, and the queue and funnel SQL read only Answers and
   `oa_echo`, so the thread stays Your turn. The text is `greetingTemplate` (`greeting.ts`) in
-  the guest's language, ending with the label; the model writes it from #168. The seed passes
+  the reply language, ending with the label; the model writes it from #168. The reply language
+  is the guest's when `SUPPORTED_GUEST_LANGUAGES` (EN and VI by default, #306) lets it through,
+  English otherwise; it is decided once in the one-shot (`extract.ts`), and the greeting, the
+  template and the model draft follow it. A JA, KO or RU guest it leaves out is still
+  translated, and the office's first message carries the English-reply line
+  (`owesEnglishReplyLine`, read from the stored thread). The seed passes
   `autoReply: false`.
 - **Background work** (`background.ts`) runs on Next.js `after()` inside a request, so the
   platform keeps it alive after the response (ADR 0016). Tests call `settleBackgroundWork()`.

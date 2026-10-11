@@ -31,7 +31,9 @@ afterEach(async () => {
 test("demo threads extract; Japanese paperwork does not invent law", () => {
 	const [ko, jp, ru, vi] = DEMO_THREADS.map((thread) => oneShot(thread.text));
 
-	expect(ko.language).toBe("ko");
+	// Answered in English, the default gate's (#306); the guest language is still named.
+	expect(ko.language).toBe("en");
+	expect(ko.guestLanguage).toBe("ko");
 	expect(ko.qualification.nationality).toBe("Korean");
 	expect(ko.qualification.areaOfInterest).toBe("Tây Hồ");
 	expect(ko.qualification.rentOrBuy).toBe("rent");
@@ -40,14 +42,18 @@ test("demo threads extract; Japanese paperwork does not invent law", () => {
 	expect(ko.qualification.stayLength).toBe("3 nights or monthly");
 	expect(ko.paperwork.mentioned).toBe(false);
 
-	expect(jp.language).toBe("ja");
+	// Answered in English, the default gate's (#306); the guest language is still named.
+	expect(jp.language).toBe("en");
+	expect(jp.guestLanguage).toBe("ja");
 	expect(jp.qualification.nationality).toBe("Japanese");
 	expect(jp.qualification.rentOrBuy).toBe("buy");
 	expect(jp.paperwork.mentioned).toBe(true);
 	expect(jp.draft.reply).not.toMatch(/you (can|will) (get|receive) a pink book/i);
 	expect(jp.draft.reply).not.toMatch(/tomorrow/i);
 
-	expect(ru.language).toBe("ru");
+	// Answered in English, the default gate's (#306); the guest language is still named.
+	expect(ru.language).toBe("en");
+	expect(ru.guestLanguage).toBe("ru");
 	expect(ru.qualification.nationality).toBe("Russian");
 	expect(ru.qualification.areaOfInterest).toBe("Ciputra");
 	expect(ru.qualification.rentOrBuy).toBe("rent");

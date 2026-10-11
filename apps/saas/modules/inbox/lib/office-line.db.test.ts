@@ -30,13 +30,18 @@ const OFFICE = "office-a";
 const OA = "oa-1";
 const MANAGER = { userId: "agent-1", officeId: OFFICE, role: "manager" as const };
 const KOREAN = "안녕하세요, Tay Ho에서 아파트 임대 찾고 있어요";
+/** The gate open to all five (#306), so a Korean guest is answered in Korean here. */
+const ALL_FIVE: GuestLanguage[] = ["en", "vi", "ja", "ko", "ru"];
 
 let runtime: Runtime;
 
 beforeEach(async () => {
 	runtime = {
 		store: createInboxStore(testDb),
-		config: mockInboxConfig({ pipeSecretsKey: TEST_SECRETS_KEY }),
+		config: mockInboxConfig({
+			pipeSecretsKey: TEST_SECRETS_KEY,
+			supportedGuestLanguages: ALL_FIVE,
+		}),
 		drafts: noDraftAdapter,
 	};
 	setRuntimeForTests(runtime);
@@ -76,11 +81,12 @@ function autoReply(conversation: Conversation): Message {
 /** The template suggested reply for the thread as it stands, in `language`. */
 function template(conversation: Conversation, language: GuestLanguage): string {
 	const shot = conversation.oneShot!;
-	return replyTemplate(language, shot.qualification, {
-		...conversation,
-		agentName: null,
-		officeName: OFFICE,
-	});
+	return replyTemplate(
+		language,
+		shot.qualification,
+		{ ...conversation, agentName: null, officeName: OFFICE },
+		false,
+	);
 }
 
 describe("a Korean guest in an English office", () => {
@@ -88,8 +94,10 @@ describe("a Korean guest in an English office", () => {
 		const conversation = await arrive("ko-1", KOREAN);
 		const { qualification } = conversation.oneShot!;
 		const greeting = autoReply(conversation);
-		expect(greeting.text).toBe(greetingTemplate("ko", qualification, OFFICE));
-		expect(greeting.translations).toEqual({ en: greetingTemplate("en", qualification, OFFICE) });
+		expect(greeting.text).toBe(greetingTemplate("ko", qualification, OFFICE, false));
+		expect(greeting.translations).toEqual({
+			en: greetingTemplate("en", qualification, OFFICE, false),
+		});
 	});
 
 	test("the suggested reply carries the English template", async () => {
@@ -179,7 +187,7 @@ describe("a Vietnamese office", () => {
 		const conversation = await arrive("ko-vi", KOREAN);
 		const { qualification, draft } = conversation.oneShot!;
 		expect(autoReply(conversation).translations).toEqual({
-			vi: greetingTemplate("vi", qualification, OFFICE),
+			vi: greetingTemplate("vi", qualification, OFFICE, false),
 		});
 		expect(draft.officeReply).toBe(template(conversation, "vi"));
 	});

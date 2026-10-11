@@ -3,7 +3,7 @@ import { DEMO_SEED_OFFICE } from "../lib/dev-seed/demo-office";
 import type { SeedGuest } from "../lib/dev-seed/story";
 import { DRAFT_MESSAGES, type DraftInput } from "../lib/drafts";
 import { extractFromInbound } from "../lib/extract";
-import { greetingTemplate } from "../lib/greeting";
+import { greetingTemplate, owesEnglishReplyLine } from "../lib/greeting";
 import { autoReplyOpenQuestions } from "../lib/model-draft";
 import { officeHasHumanReply, replyTemplate } from "../lib/reply-template";
 import type { Message, OperatorLanguage } from "../lib/types";
@@ -220,13 +220,18 @@ function seedMessages(guest: SeedGuest, now: number): Message[] {
 			const first = !messages.some((each) => each.direction === "in");
 			messages.push(message(id, "in", "guest", step.text, at));
 			if (first && guest.greeted && DEMO_SEED_OFFICE.autoReply) {
-				const { language, qualification } = extractFromInbound(step.text);
+				const shot = extractFromInbound(step.text);
 				messages.push(
 					message(
 						`${id}-greeting`,
 						"out",
 						"auto-reply",
-						greetingTemplate(language, qualification, DEMO_OFFICE_NAME),
+						greetingTemplate(
+							shot.language,
+							shot.qualification,
+							DEMO_OFFICE_NAME,
+							owesEnglishReplyLine(shot, messages),
+						),
 						at + GREETING_DELAY_MS,
 					),
 				);
@@ -249,14 +254,19 @@ function thread(spec: Spec, officeLanguage: OperatorLanguage, now: number): Eval
 		const at = new Date(messages.at(-1)?.at ?? now).getTime() + 5 * MINUTE;
 		const id = `${guest.guestId}-${messages.length}`;
 		if (turn.by === "template") {
-			const { language, qualification } = extractFromInbound(guestTexts(messages).join("\n"));
-			const text = replyTemplate(language, qualification, {
-				guestName: guest.name,
-				sentAt: null,
-				agentName: DEMO_AGENT_NAME_GUESTS_SEE,
-				officeName: DEMO_OFFICE_NAME,
-				messages,
-			});
+			const shot = extractFromInbound(guestTexts(messages).join("\n"));
+			const text = replyTemplate(
+				shot.language,
+				shot.qualification,
+				{
+					guestName: guest.name,
+					sentAt: null,
+					agentName: DEMO_AGENT_NAME_GUESTS_SEE,
+					officeName: DEMO_OFFICE_NAME,
+					messages,
+				},
+				owesEnglishReplyLine(shot, messages),
+			);
 			messages.push(message(id, "out", "nhip", text, at));
 		} else {
 			const direction = turn.by === "guest" ? "in" : "out";

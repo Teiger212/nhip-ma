@@ -25,7 +25,7 @@ const RENT_IN_TAY_HO: Qualification = {
 const THREAD = { ...NEW_THREAD, officeName: "Hanoi Nest Seekers" };
 
 function render(language: GuestLanguage): string {
-	return replyTemplate(language, RENT_IN_TAY_HO, THREAD);
+	return replyTemplate(language, RENT_IN_TAY_HO, THREAD, false);
 }
 
 function templateDraft(language: GuestLanguage, officeReply?: string): Draft {
@@ -52,25 +52,29 @@ function office(
 
 describe("the template's line is the same template in the office language", () => {
 	test("a Korean reply in an English office carries the English template", () => {
-		expect(templateTexts("ko", "en", RENT_IN_TAY_HO, THREAD)).toEqual({
+		expect(templateTexts("ko", "en", RENT_IN_TAY_HO, THREAD, false)).toEqual({
 			reply: render("ko"),
 			officeReply: render("en"),
 		});
 	});
 
 	test("in a Vietnamese office it carries the Vietnamese one", () => {
-		expect(templateTexts("ko", "vi", RENT_IN_TAY_HO, THREAD).officeReply).toBe(render("vi"));
+		expect(templateTexts("ko", "vi", RENT_IN_TAY_HO, THREAD, false).officeReply).toBe(render("vi"));
 	});
 
 	test("no line when the reply is already in the office language", () => {
-		expect(templateTexts("en", "en", RENT_IN_TAY_HO, THREAD)).toEqual({ reply: render("en") });
-		expect(templateTexts("vi", "vi", RENT_IN_TAY_HO, THREAD)).toEqual({ reply: render("vi") });
+		expect(templateTexts("en", "en", RENT_IN_TAY_HO, THREAD, false)).toEqual({
+			reply: render("en"),
+		});
+		expect(templateTexts("vi", "vi", RENT_IN_TAY_HO, THREAD, false)).toEqual({
+			reply: render("vi"),
+		});
 	});
 
 	test("an unsupported guest language is answered in English, so an English office gets none (#245)", () => {
 		// A French guest's reply language is English (ADR 0021 R4).
-		expect(templateTexts("en", "en", RENT_IN_TAY_HO, THREAD).officeReply).toBeUndefined();
-		expect(templateTexts("en", "vi", RENT_IN_TAY_HO, THREAD).officeReply).toBe(render("vi"));
+		expect(templateTexts("en", "en", RENT_IN_TAY_HO, THREAD, false).officeReply).toBeUndefined();
+		expect(templateTexts("en", "vi", RENT_IN_TAY_HO, THREAD, false).officeReply).toBe(render("vi"));
 	});
 });
 

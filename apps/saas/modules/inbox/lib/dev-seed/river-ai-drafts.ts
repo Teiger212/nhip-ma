@@ -21,7 +21,7 @@ export type AiDraftFixtures = {
 
 export const RIVER_AI_DRAFTS: AiDraftFixtures = {
 	model: "anthropic/claude-haiku-5.5",
-	generatedAt: "2026-10-10",
+	generatedAt: "2026-10-11",
 	drafts: {
 		mai: {
 			reply:
@@ -41,23 +41,11 @@ export const RIVER_AI_DRAFTS: AiDraftFixtures = {
 			officeReply:
 				"Noted: the client needs a place near a primary school with car parking. I'll shortlist 2-bedroom units in Cầu Giấy around 12 million VND/month that meet both and send them over. I'll check whether a viewing this weekend is possible and confirm back with him.",
 		},
-		minjun: {
-			reply:
-				"헬스장이 있는 건물 위주로 Hai Bà Trưng 지역 1 bedroom 후보를 찾아 보내드리겠습니다. 반려견 허용 여부는 건물마다 달라서 후보별로 확인해서 알려드리겠습니다. 토요일 방문은 제 일정을 확인한 뒤 가능한 시간을 확인해서 바로 알려드리겠습니다.",
-			officeReply:
-				"I'll pull together 1-bedroom options in Hai Bà Trưng, prioritizing buildings with a gym. I'll check with each building whether pets are allowed, since it varies, and report back per option. I'll check my schedule for Saturday and confirm a viewing time once I have it.",
-		},
 		harper: {
 			reply:
 				"Thanks Harper, noted on the garden and garage. I'll look for 3-bedroom houses with both and check the usual lease length for Long Bien, then send it over with the options. I'll also confirm whether we can arrange a couple of viewings next Tuesday and get back to you on timing.",
 			officeReply:
 				"Thanks Harper, noted on the garden and garage. I'll look for 3-bedroom houses with both and check the usual lease length for Long Bien, then send it over with the options. I'll also confirm whether we can arrange a couple of viewings next Tuesday and get back to you on timing.",
-		},
-		yuna: {
-			reply:
-				"ありがとうございます。駅に近く、エレベーター付きのBa Dinhの1ベッドルームを中心に探して、候補をご案内します。来週水曜日の内見は、物件と日程を確認してから改めてご連絡いたします。",
-			officeReply:
-				"Thank you. I'll look for 1-bedroom places in Ba Đình near a station with an elevator and send you options. I'll check whether a viewing next Wednesday works and confirm with you.",
 		},
 		rowan: {
 			reply:
@@ -77,17 +65,29 @@ export const RIVER_AI_DRAFTS: AiDraftFixtures = {
 			officeReply:
 				"Noted, I'll filter and send photos of 2-bedroom places in Cầu Giấy near a primary school with car parking, around 12 million, as soon as possible. I'll also check the weekend viewing schedule and confirm back with him.",
 		},
-		"minjun-2": {
-			reply:
-				"네, 알겠습니다. Hai Bà Trưng 지역에서 예산 $900 안의 1 bedroom 후보를 헬스장 있는 건물 위주로 골라 사진을 보내드리겠습니다. 반려견 허용 여부는 건물별로 확인해서 사진과 함께 알려드리겠습니다.",
-			officeReply:
-				"Yes, understood. I'll pull together photos of 1-bedroom options in Hai Bà Trưng within the $900 budget, focusing on buildings with a gym. I'll check the pet policy for each building and send it with the photos.",
-		},
 		"harper-2": {
 			reply:
 				"Thanks Harper, I'll send photos of 3-bedroom houses in Long Bien with a garden and garage, within your $2,000 monthly budget. I'll confirm the Tuesday viewings and the usual lease length once I've checked, and let you know.",
 			officeReply:
 				"Thanks Harper, I'll send photos of 3-bedroom houses in Long Bien with a garden and garage, within your $2,000 monthly budget. I'll confirm the Tuesday viewings and the usual lease length once I've checked, and let you know.",
+		},
+		minjun: {
+			reply:
+				"Thanks, Min-jun. I'll look for 1-bedroom places in Hai Ba Trung with a gym in the building, and I'll check with the landlords whether they accept dogs. I'll also confirm whether a viewing this Saturday is possible once I've checked with the owners.",
+			officeReply:
+				"Thanks, Min-jun. I'll look for 1-bedroom places in Hai Ba Trung with a gym in the building, and I'll check with the landlords whether they accept dogs. I'll also confirm whether a viewing this Saturday is possible once I've checked with the owners.",
+		},
+		"minjun-2": {
+			reply:
+				"Sure, Min-jun. I'll pull together photos of 1-bedroom places in Hai Ba Trung with a gym in the building and send them over. I'll confirm the dog question with each landlord before I send, so you know which ones are pet-friendly.",
+			officeReply:
+				"Sure, Min-jun. I'll pull together photos of 1-bedroom places in Hai Ba Trung with a gym in the building and send them over. I'll confirm the dog question with each landlord before I send, so you know which ones are pet-friendly.",
+		},
+		yuna: {
+			reply:
+				"Thanks, Yuna. I'll look for 1-bedroom rentals in Ba Dinh near a station with an elevator, within your $1,100/month budget. I'll check whether a viewing on Wednesday next week is possible and confirm the time with you.",
+			officeReply:
+				"Thanks, Yuna. I'll look for 1-bedroom rentals in Ba Dinh near a station with an elevator, within your $1,100/month budget. I'll check whether a viewing on Wednesday next week is possible and confirm the time with you.",
 		},
 	},
 };

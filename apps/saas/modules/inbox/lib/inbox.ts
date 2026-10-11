@@ -4,7 +4,7 @@ import { runInBackground } from "./background";
 import { crmFailureKind } from "./crm/retry";
 import { createCrmSync, logAccountLookupFailure } from "./crm/sync";
 import { oneShot } from "./draft";
-import { greetingTemplate } from "./greeting";
+import { greetingTemplate, owesEnglishReplyLine } from "./greeting";
 import { scheduleGuestAlert } from "./guest-alerts";
 import type { AlertTransport } from "./guest-alerts/transport";
 import { draftNow, modelDrafts, scheduleModelDraft } from "./model-draft";
@@ -15,6 +15,7 @@ import { getRuntime, type Runtime } from "./runtime";
 import { scheduleTranslations } from "./translate";
 import type {
 	Conversation,
+	GuestLanguage,
 	InboundEvent,
 	InboxViewer,
 	OperatorLanguage,
@@ -74,7 +75,13 @@ export async function refreshTemplate(
 	if (!shot || shot.draft.source !== "template") return conversation;
 	const read = office ?? (await templateOffice(store, conversation.officeId));
 	const thread = await templateThread(store, conversation, read);
-	const next = templateTexts(shot.language, read.language, shot.qualification, thread);
+	const next = templateTexts(
+		shot.language,
+		read.language,
+		shot.qualification,
+		thread,
+		owesEnglishReplyLine(shot, thread.messages),
+	);
 	if (
 		next.reply === shot.draft.reply &&
 		(next.officeReply ?? null) === (shot.draft.officeReply ?? null)
@@ -162,11 +169,13 @@ export async function setNameGuestsSee(
 
 /**
  * The deterministic pass after a guest message, with the template suggested reply for the
- * thread as it stands (ADR 0024); the model draft (ADR 0005) replaces it when it lands.
+ * thread as it stands (ADR 0024); the model draft (ADR 0005) replaces it when it lands. The reply
+ * language follows the deployment's gate (`SUPPORTED_GUEST_LANGUAGES`, #306).
  */
 export async function applyOneShot(
 	store: Store,
 	conversation: Conversation | null,
+	supported: readonly GuestLanguage[] = getRuntime().config.supportedGuestLanguages,
 ): Promise<Conversation | null> {
 	if (!conversation) {
 		return null;
@@ -177,7 +186,13 @@ export async function applyOneShot(
 	}
 	const office = await templateOffice(store, conversation.officeId);
 	const thread = await templateThread(store, conversation, office);
-	const shot = oneShot(inbound, conversation.unansweredInboundId, thread, office.language);
+	const shot = oneShot(
+		inbound,
+		conversation.unansweredInboundId,
+		thread,
+		office.language,
+		supported,
+	);
 	const stored = await store.setOneShot(conversation.officeId, conversation.id, shot);
 	// The thread may have moved since it was read (the greeting landed, its own rewrite may
 	// already have run, or it was assigned): the template follows the stored thread.
@@ -345,12 +360,14 @@ export async function sendAutoReply(runtime: Runtime, conversation: Conversation
 	}
 	if (!pipeAdapter(conversation.pipe).sendWindow(conversation).open) return;
 
-	const text = greetingTemplate(shot.language, shot.qualification, office.name);
+	// A guest the gate answers in English is told so, on this first message only (#306).
+	const englishLine = owesEnglishReplyLine(shot, conversation.messages);
+	const text = greetingTemplate(shot.language, shot.qualification, office.name, englishLine);
 	// Its operator line (#242): the same template in the office language, no model call. Read
 	// before the send, so a failed read never leaves a sent greeting off file.
 	const officeLanguage = await store.officeLanguage(conversation.officeId);
 	const officeText = officeRender(shot.language, officeLanguage, (language) =>
-		greetingTemplate(language, shot.qualification, office.name),
+		greetingTemplate(language, shot.qualification, office.name, englishLine),
 	);
 	let result: SendResult;
 	try {
@@ -806,7 +823,13 @@ async function suggestedReplyLine(
 			text,
 			replyLanguage: shot.language,
 			officeLanguage: office.language,
-			render: (language) => replyTemplate(language, shot.qualification, thread),
+			render: (language) =>
+				replyTemplate(
+					language,
+					shot.qualification,
+					thread,
+					owesEnglishReplyLine(shot, thread.messages),
+				),
 		});
 	} catch (error) {
 		console.warn("inbox: a sent reply's operator line was not read", {
@@ -841,11 +864,13 @@ export async function regenerateDraft(id: string, viewer: InboxViewer): Promise<
 	}
 	const shot = conv.oneShot;
 	const office = await templateOffice(runtime.store, conv.officeId);
+	const thread = await templateThread(runtime.store, conv, office);
 	const texts = templateTexts(
 		shot.language,
 		office.language,
 		shot.qualification,
-		await templateThread(runtime.store, conv, office),
+		thread,
+		owesEnglishReplyLine(shot, thread.messages),
 	);
 	const updated = await runtime.store.setDraft(conv.officeId, conv.id, {
 		...texts,
