@@ -726,7 +726,8 @@ anything. It is one more row of the details, like the others (Eyal on PR #261, 2
 label "Missing", and as its value the names, "budget, move-in", in the amber Waiting tone. Only the
 auto-reply's asks count (ADR 0021 R3), in its order: rent or buy, area, budget, move-in, beds /
 household. Nationality and "In Vietnam now" show only when known, and paperwork only when the guest
-mentioned it; none of them is ever missing. There is no "N missing" count and nothing to open (a
+mentioned it; none of them is ever missing. Nor is the stay length (#317), shown as "Stay" after
+the move-in when the guest names one (pending Eyal: whether a missing one joins the asks). There is no "N missing" count and nothing to open (a
 fold was considered and rejected).
 
 **How these run.** As Guest language: a guest writes through a signed Zalo webhook to an office of
@@ -754,7 +755,7 @@ warning tone, DESIGN.md "In the inbox"). The VI copy is pending a native read (#
 
 The values read in the office language too (#243, #96; ADR 0025), whatever language the guest
 wrote in: the move-in as a phrase ("Next week", not a date), the budget as an amount and a
-currency, the nationality and the beds / household in words. They are put in words when shown,
+currency, the nationality, the beds / household and the stay length in words. They are put in words when shown,
 from what was stored, so older threads read the same way. A value Nhịp doesn't recognise shows
 as the guest wrote it, never empty. The VI wording is pending #78.
 
@@ -774,7 +775,9 @@ paperwork are never missing. 3: checked by the translation-key test
 half, 5 and 6: covered by Vitest, `apps/saas/modules/inbox/lib/guest-details-format.test.ts` ›
 move-in reads as a phrase, not a date; › budget reads as an amount and a currency; and
 `apps/saas/modules/inbox/lib/extract.test.ts` › a budget at the end of a sentence keeps no full
-stop (#243).
+stop (#243). The Stay row: Vitest, `extract-rows.test.ts` › a stay length gets a Stay row after
+the move-in, and a missing one is never asked for (#317); its words, `guest-details-format.test.ts`
+› stay length reads in the office language (#317).
 
 ## Home (ADR 0002, ADR 0004, ADR 0015)
 

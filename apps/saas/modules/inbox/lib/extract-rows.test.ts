@@ -68,6 +68,25 @@ test("a guest who gave everything has nothing missing and no unknown rows (#244)
 	]);
 });
 
+test("a stay length gets a Stay row after the move-in, and a missing one is never asked for (#317)", () => {
+	const stated = arrangeExtractRows(
+		from("I want to rent a 2 bedroom in Tay Ho for 6 months, budget $1500/month, from next month."),
+	);
+	expect(stated.rows.map((row) => row.id)).toEqual([
+		"language",
+		"area",
+		"rentOrBuy",
+		"moveIn",
+		"stay",
+		"budget",
+		"beds",
+	]);
+	expect(stated.rows.find((row) => row.id === "stay")?.value).toBe("6 months");
+	const unstated = arrangeExtractRows(from("I want to rent in Tay Ho."));
+	expect(unstated.rows.some((row) => row.id === "stay")).toBe(false);
+	expect(unstated.missing).not.toContain("stay");
+});
+
 test("the card and the auto-reply agree: the auto-reply asks the first of what is missing", () => {
 	const fieldOf = {
 		rentOrBuy: "rentOrBuy",

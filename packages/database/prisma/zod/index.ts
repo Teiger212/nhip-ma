@@ -114,7 +114,7 @@ export type TranslationFailureScalarFieldEnum = z.infer<typeof TranslationFailur
 
 // File: QualificationScalarFieldEnum.schema.ts
 
-export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold'])
+export const QualificationScalarFieldEnumSchema = z.enum(['conversationId', 'officeId', 'areaOfInterest', 'nationality', 'inVietnamNow', 'rentOrBuy', 'timeframe', 'budgetBand', 'bedsOrHousehold', 'stayLength'])
 
 export type QualificationScalarFieldEnum = z.infer<typeof QualificationScalarFieldEnumSchema>;
 
@@ -631,6 +631,7 @@ export const QualificationSchema = z.object({
   timeframe: z.string().nullish(),
   budgetBand: z.string().nullish(),
   bedsOrHousehold: z.string().nullish(),
+  stayLength: z.string().nullish(),
 });
 
 export type QualificationType = z.infer<typeof QualificationSchema>;

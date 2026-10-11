@@ -342,6 +342,7 @@ function mapConversation(record: ConversationRecord): Conversation {
 						timeframe: record.qualification.timeframe,
 						budgetBand: record.qualification.budgetBand,
 						bedsOrHousehold: record.qualification.bedsOrHousehold,
+						stayLength: record.qualification.stayLength,
 					},
 					paperwork: { mentioned: record.paperwork.mentioned, flag: record.paperwork.flag },
 					draft: {

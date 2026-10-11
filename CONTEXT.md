@@ -172,6 +172,14 @@ is renamed.
 - **One-shot**: the deterministic pass on a new inbound: language detection, extraction
   (Qualification), the template suggested reply, operator note. Regex and templates. The
   auto-reply's fallback template is built from it too (ADR 0021).
+- **Stay length**: how long the guest wants to stay ("3 nights", "monthly", "3 nights or
+  monthly", "1 year", "6–12 months"), a fact the one-shot extracts (Qualification, #317). Only
+  from the guest's own words, never inferred: a price per month, a move-in ("in 3 weeks"),
+  where the guest is now ("in Hanoi for 2 weeks") or 월세 (a kind of lease) is not one. Separate
+  from the move-in, which says when the guest comes. The guest details show it as "Stay". A
+  missing stay length is not one of the Missing asks (the default; Eyal hasn't decided yet). It
+  is not in the model draft's facts (the model reads the guest's own words in the conversation)
+  nor in the HubSpot deal. _Avoid_: duration, lease term.
 - **Name guests see**: the name an operator gives guests, the "Display name" field on their own
   account page (#266; the label was "Name guests see" until 2026-10-09). The template suggested reply introduces the thread's owner by it, never by a word of
   their account name (Vietnamese names are written family name first). Empty, the template

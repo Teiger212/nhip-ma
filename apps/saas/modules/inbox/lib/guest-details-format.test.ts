@@ -108,6 +108,25 @@ describe("nationality and household read in the office language", () => {
 	});
 });
 
+describe("stay length reads in the office language (#317)", () => {
+	test.each([
+		["3 nights", "3 nights", "3 đêm"],
+		["1 night", "1 night", "1 đêm"],
+		["1 year", "1 year", "1 năm"],
+		["6 months", "6 months", "6 tháng"],
+		["6–12 months", "6–12 months", "6–12 tháng"],
+		["monthly", "monthly", "theo tháng"],
+		["3 nights or monthly", "3 nights or monthly", "3 đêm hoặc theo tháng"],
+	])("%s reads %s / %s", (raw, english, vietnamese) => {
+		expect(en("stay", raw)).toBe(english);
+		expect(vi("stay", raw)).toBe(vietnamese);
+	});
+
+	test("a stay piece it doesn't know reads as stored, beside the ones it does", () => {
+		expect(vi("stay", "3 nights or long-term")).toBe("3 đêm hoặc long-term");
+	});
+});
+
 describe("the walk's guests read in words (stored values from their seeded messages)", () => {
 	const shot = (text: string) => extractFromInbound(text).qualification;
 

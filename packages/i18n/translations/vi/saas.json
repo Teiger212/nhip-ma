@@ -972,6 +972,7 @@
 			"inVietnamNow": "Đang ở Việt Nam",
 			"rentOrBuy": "Thuê hoặc mua",
 			"moveIn": "Ngày vào",
+			"stay": "Thời gian ở",
 			"budget": "Ngân sách",
 			"beds": "Phòng ngủ / hộ",
 			"paperwork": "Giấy tờ"
@@ -1036,6 +1037,22 @@
 				"peopleOne": "{count} người",
 				"kids": "{count} con",
 				"kidsOne": "{count} con"
+			},
+			"stay": {
+				"nights": "{count} đêm",
+				"nightsOne": "{count} đêm",
+				"nightsRange": "{from}–{to} đêm",
+				"weeks": "{count} tuần",
+				"weeksOne": "{count} tuần",
+				"weeksRange": "{from}–{to} tuần",
+				"months": "{count} tháng",
+				"monthsOne": "{count} tháng",
+				"monthsRange": "{from}–{to} tháng",
+				"years": "{count} năm",
+				"yearsOne": "{count} năm",
+				"yearsRange": "{from}–{to} năm",
+				"monthly": "theo tháng",
+				"or": "{first} hoặc {second}"
 			}
 		},
 		"views": {
