@@ -23,7 +23,6 @@ const SAME_IN_BOTH = new Set([
 	"saas:notFound.code",
 	"saas:organizations.settings.members.inviteMember.email",
 	"saas:settings.account.nameGuestsSee.placeholder",
-	"saas:home.p90",
 	"saas:inbox.brand",
 	"saas:inbox.pipes.zalo",
 	"saas:inbox.pipes.whatsapp",
