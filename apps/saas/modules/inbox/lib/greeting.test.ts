@@ -13,6 +13,7 @@ const NOTHING: Qualification = {
 	timeframe: null,
 	budgetBand: null,
 	bedsOrHousehold: null,
+	stayLength: null,
 };
 const RENT_IN_TAY_HO: Qualification = { ...NOTHING, rentOrBuy: "rent", areaOfInterest: "Tây Hồ" };
 const EVERYTHING: Qualification = {
@@ -20,6 +21,7 @@ const EVERYTHING: Qualification = {
 	timeframe: "next month",
 	budgetBand: "$1500/month",
 	bedsOrHousehold: "2 bed",
+	stayLength: null,
 };
 const LANGUAGES: GuestLanguage[] = ["en", "vi", "ja", "ko", "ru"];
 const OFFICE = "Saigon Prime";

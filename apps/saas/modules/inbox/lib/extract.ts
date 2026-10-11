@@ -145,6 +145,161 @@ function inferBedsOrHousehold(text: string): string | null {
 	return parts.length ? parts.join(", ") : null;
 }
 
+/* ---------------------------------------------------------------- stay length (#317) */
+
+type StayUnit = "night" | "week" | "month" | "year";
+
+/**
+ * A count of one or two digits, or a range of them: "6", "6-12", "6~12", "6 to 12", "6 до 12".
+ * Never the end of a longer number or an amount ("2026년", "$1,500").
+ */
+const COUNT = "(?<![\\p{L}\\d.,$])(\\d{1,2})(?:\\s*(?:-|–|—|~|〜|to|đến|до)\\s*(\\d{1,2}))?";
+
+/** A unit as the guest wrote it, in any of the languages below. */
+function stayUnit(word: string): StayUnit | null {
+	const unit = word.toLocaleLowerCase();
+	if (/^(?:nights?|đêm|박|泊|ноч)/u.test(unit)) return "night";
+	if (/^(?:weeks?|tuần|주|週|недел)/u.test(unit)) return "week";
+	if (/^(?:months?|tháng|개월|달|[ヶケかカヵ箇]月|мес)/u.test(unit)) return "month";
+	if (/^(?:years?|yrs?|năm|년|年|год|лет)/u.test(unit)) return "year";
+	return null;
+}
+
+/** One stay length as stored, in English like the household: "3 nights", "1 year", "6–12 months". */
+function stayPiece(unit: StayUnit | null, from: string | undefined, to?: string): string | null {
+	if (!unit) return null;
+	const first = from === "một" ? 1 : Number(from ?? 1);
+	if (!Number.isInteger(first) || first < 1) return null;
+	if (to !== undefined) {
+		const last = Number(to);
+		return last > first ? `${first}–${last} ${unit}s` : null;
+	}
+	return `${first} ${unit}${first === 1 ? "" : "s"}`;
+}
+
+/** A counted stay: groups 1 and 2 are the count or range, and group 3 the unit, unless `unit` names it. */
+function counted(unit?: StayUnit) {
+	return (match: RegExpMatchArray) =>
+		stayPiece(unit ?? stayUnit(match[3] ?? ""), match[1], match[2]);
+}
+
+const MONTHLY = () => "monthly";
+
+/** Not a letter on either side, for the scripts `\b` doesn't know. */
+const word = (source: string) => `(?<!\\p{L})(?:${source})(?!\\p{L})`;
+
+/**
+ * The guest's stay length, each pattern with how it reads (#317). A number of nights is always a
+ * stay; a number of weeks, months or years only beside a word that makes it one ("for 6 months",
+ * "12-month lease", "thuê 1 năm", "6개월", "1年間", "на год"), so a move-in ("in 3 weeks",
+ * "3개월 후") or a budget ("$1,500 a month", "12 triệu một tháng") never reads as one. 월세 is a
+ * kind of lease, not a length, and "monthly rent" is mostly a price: neither is "monthly".
+ */
+const STAY_PATTERNS: Array<{ re: RegExp; read: (match: RegExpMatchArray) => string | null }> = [
+	// English.
+	{
+		re: new RegExp(
+			`${word("for")}\\s+(?:about\\s+|around\\s+|roughly\\s+)?${COUNT}[\\s-]*(nights?|weeks?|months?|years?|yrs?)(?!\\p{L})`,
+			"giu",
+		),
+		read: counted(),
+	},
+	{
+		re: new RegExp(
+			`${COUNT}[\\s-]*(nights?|weeks?|months?|years?|yrs?)\\s+(?:stay|lease|rental|contract|tenancy|let|term)(?!\\p{L})`,
+			"giu",
+		),
+		read: counted(),
+	},
+	{ re: new RegExp(`${COUNT}\\s*nights?(?!\\p{L})`, "giu"), read: counted("night") },
+	{
+		re: new RegExp(
+			`${word("for\\s+(?:a|one)\\s+(year)|(?:a|one)[\\s-]+(year|month)\\s+(?:lease|contract|stay|rental)")}`,
+			"giu",
+		),
+		read: (match) => stayPiece(stayUnit(match[1] ?? match[2] ?? ""), "1"),
+	},
+	{
+		re: new RegExp(
+			word(
+				"monthly\\s+(?:stay|rental|lease|basis|let)(?!\\s+(?:price|cost|fee|rate|budget|of))|month[\\s-]to[\\s-]month|by\\s+the\\s+month",
+			),
+			"giu",
+		),
+		read: MONTHLY,
+	},
+	// Vietnamese: "thuê 6 tháng", "ở 3 đêm", "trong 6-12 tháng", "hợp đồng 1 năm", "thuê theo tháng";
+	// not a date ("ngày 15 tháng 12") nor a move-in or the past ("trong 2 tuần tới", "1 năm qua").
+	{
+		re: new RegExp(
+			`${word("thuê|ở|trong|hợp\\s*đồng")}\\s+(?:khoảng\\s+|tầm\\s+)?(\\d{1,2}|một)(?:\\s*(?:-|–|~|đến)\\s*(\\d{1,2}))?\\s*(đêm|tuần|tháng|năm)(?!\\p{L})(?!\\s*(?:\\d|tới|nữa|qua|trước|sau))`,
+			"giu",
+		),
+		read: counted(),
+	},
+	{ re: new RegExp(`${COUNT}\\s*đêm(?!\\p{L})`, "giu"), read: counted("night") },
+	{ re: new RegExp(`${word("thuê|ở")}\\s+theo\\s+tháng(?!\\p{L})`, "giu"), read: MONTHLY },
+	// Korean: "3박", "6개월" (not "3개월 후", in three months), "1년 계약", "2주 동안", "한 달 살기".
+	{ re: new RegExp(`${COUNT}\\s*박`, "gu"), read: counted("night") },
+	{
+		re: new RegExp(`${COUNT}\\s*개월(?!\\s*(?:후|뒤|안|이내|전))`, "gu"),
+		read: counted("month"),
+	},
+	{ re: new RegExp(`${COUNT}\\s*(주|년)\\s*(?:동안|간|계약|살기)`, "gu"), read: counted() },
+	{ re: /한\s*달\s*(?:동안|간|살기)/gu, read: () => stayPiece("month", "1") },
+	// Japanese: "3泊", "6ヶ月" (not "3ヶ月後"), "2週間", "1年間", "1年契約", "マンスリー".
+	{ re: new RegExp(`${COUNT}\\s*泊`, "gu"), read: counted("night") },
+	{
+		re: new RegExp(
+			`${COUNT}\\s*([ヶケかカヵ箇]月|週間|年間|年(?=\\s*契約))(?!\\s*(?:後|以内|前))`,
+			"gu",
+		),
+		read: counted(),
+	},
+	{ re: /マンスリー|月単位/gu, read: MONTHLY },
+	// Russian: "3 ночи", "на 6 месяцев", "на 1-2 года", "на год", "помесячно".
+	{ re: new RegExp(`${COUNT}\\s*(ноч\\p{L}*)`, "giu"), read: counted() },
+	{
+		re: new RegExp(
+			`${word("на")}\\s+${COUNT}\\s*(недел\\p{L}*|месяц\\p{L}*|мес|год\\p{L}*|лет)(?!\\p{L})`,
+			"giu",
+		),
+		read: counted(),
+	},
+	{
+		re: new RegExp(`${word("на")}\\s+(неделю|месяц|год)(?!\\p{L})`, "giu"),
+		read: (match) => stayPiece(stayUnit(match[1] ?? ""), "1"),
+	},
+	{ re: new RegExp(word("помесячн\\p{L}*"), "giu"), read: MONTHLY },
+];
+
+/**
+ * A clause that is about where the guest is now, or about money held, names no stay: "currently in
+ * Hanoi for 2 weeks", "đang ở Hà Nội 2 tuần", "a deposit of 2 months".
+ */
+const NOT_A_STAY_RE =
+	/(?<!\p{L})(?:currently|already|been|deposit|notice|(?:i'?m|i\s+am|we'?re|we\s+are)\s+(?:here|in))(?!\p{L})|đang\s+ở|hiện\s+ở|(?<!\p{L})cọc(?!\p{L})|보증금|敷金|сейчас|залог|депозит/iu;
+
+/**
+ * How long the guest wants to stay, from their own words only: every length they named, in the
+ * order they wrote them, once each, joined with "or" ("3 nights or monthly"). Never inferred.
+ */
+function inferStayLength(text: string): string | null {
+	const found: Array<{ start: number; end: number; piece: string }> = [];
+	for (const { re, read } of STAY_PATTERNS) {
+		for (const match of text.matchAll(re)) {
+			const start = match.index;
+			const end = start + match[0].length;
+			if (found.some((taken) => start < taken.end && end > taken.start)) continue;
+			if (NOT_A_STAY_RE.test(clauseAround(text, start, match[0].length))) continue;
+			const piece = read(match);
+			if (piece) found.push({ start, end, piece });
+		}
+	}
+	const pieces = [...new Set(found.sort((a, b) => a.start - b.start).map((each) => each.piece))];
+	return pieces.length ? pieces.join(" or ") : null;
+}
+
 export function emptyQualification(): Qualification {
 	return {
 		areaOfInterest: null,
@@ -154,6 +309,7 @@ export function emptyQualification(): Qualification {
 		timeframe: null,
 		budgetBand: null,
 		bedsOrHousehold: null,
+		stayLength: null,
 	};
 }
 
@@ -191,6 +347,7 @@ export function extractFromInbound(text: string): {
 			timeframe: inferTimeframe(inbound),
 			budgetBand: inferBudget(inbound),
 			bedsOrHousehold: inferBedsOrHousehold(inbound),
+			stayLength: inferStayLength(inbound),
 		},
 		paperwork: {
 			mentioned,

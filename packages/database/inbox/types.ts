@@ -37,6 +37,8 @@ export type Qualification = {
 	timeframe: string | null;
 	budgetBand: string | null;
 	bedsOrHousehold: string | null;
+	/** How long the guest wants to stay ("3 nights or monthly"); `timeframe` is when (#317). */
+	stayLength: string | null;
 };
 
 export type Paperwork = {

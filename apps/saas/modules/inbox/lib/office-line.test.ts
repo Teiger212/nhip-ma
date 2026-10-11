@@ -19,6 +19,7 @@ const RENT_IN_TAY_HO: Qualification = {
 	timeframe: null,
 	budgetBand: null,
 	bedsOrHousehold: null,
+	stayLength: null,
 };
 
 const THREAD = { ...NEW_THREAD, officeName: "Hanoi Nest Seekers" };

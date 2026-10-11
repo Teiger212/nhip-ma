@@ -109,6 +109,7 @@ function draftInput(officeId: string): DraftInput {
 			timeframe: null,
 			budgetBand: null,
 			bedsOrHousehold: null,
+			stayLength: null,
 		},
 		paperwork: { mentioned: false, flag: null },
 	};

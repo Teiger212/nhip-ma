@@ -1,9 +1,9 @@
 import type { ExtractFieldId } from "./extract-rows";
 
 /**
- * The guest's details as the office reads them (#243, #96): the move-in, budget, nationality and
- * household the extractor stored as the guest wrote them ("tuần sau", "$3500.", "Russian",
- * "3 bed, family of 4"), put in the office language at render. Nothing stored changes, so old
+ * The guest's details as the office reads them (#243, #96): the move-in, budget, nationality,
+ * household and stay length the extractor stored as the guest wrote them ("tuần sau", "$3500.",
+ * "Russian", "3 bed, family of 4", "3 nights or monthly"), put in the office language at render. Nothing stored changes, so old
  * threads read the same way. Safe for the client: pure, no `@repo/database` at runtime.
  *
  * A value it doesn't know reads as stored, never empty. The model prompt keeps the stored values.
@@ -294,12 +294,41 @@ function formatHousehold(raw: string, t: DetailTranslate): string {
 		.join(", ");
 }
 
+/* ---------------------------------------------------------------- stay length */
+
+/** One length the extractor builds ("3 nights", "1 year", "6–12 months", "monthly"), or null. */
+function stayPiece(piece: string, t: DetailTranslate): string | null {
+	const text = normalized(piece);
+	if (text === "monthly") return t("detailValues.stay.monthly");
+	const range = text.match(/^(\d+)–(\d+) (night|week|month|year)s$/);
+	if (range) {
+		return t(`detailValues.stay.${range[3]}sRange`, { from: range[1], to: range[2] });
+	}
+	const count = text.match(/^(\d+) (night|week|month|year)s?$/);
+	if (count) {
+		const one = count[1] === "1" ? "One" : "";
+		return t(`detailValues.stay.${count[2]}s${one}`, { count: count[1] });
+	}
+	return null;
+}
+
+/** "3 nights or monthly", in words; a piece it doesn't know reads as stored. */
+function formatStay(raw: string, t: DetailTranslate): string | null {
+	const pieces = raw
+		.split(" or ")
+		.map((piece) => piece.trim())
+		.filter(Boolean)
+		.map((piece) => stayPiece(piece, t) ?? piece);
+	if (pieces.length === 0) return null;
+	return pieces.reduce((first, second) => t("detailValues.stay.or", { first, second }));
+}
+
 /* ---------------------------------------------------------------- the one formatter */
 
 /**
  * A stored detail, read in `lang` (the office language, ADR 0025) through `t`, whose messages
- * are in that language. Move-in, budget, nationality and beds / household are put in words; any
- * other field, and any value not recognised, reads as stored.
+ * are in that language. Move-in, budget, nationality, beds / household and stay are put in words;
+ * any other field, and any value not recognised, reads as stored.
  */
 export function formatGuestDetail(
 	id: ExtractFieldId,
@@ -317,6 +346,8 @@ export function formatGuestDetail(
 				return formatNationality(raw, t);
 			case "beds":
 				return formatHousehold(raw, t);
+			case "stay":
+				return formatStay(raw, t);
 			default:
 				return null;
 		}

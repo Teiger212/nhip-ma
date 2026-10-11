@@ -37,6 +37,7 @@ test("demo threads extract; Japanese paperwork does not invent law", () => {
 	expect(ko.qualification.rentOrBuy).toBe("rent");
 	expect(ko.qualification.timeframe).toBe("this Friday");
 	expect(ko.qualification.bedsOrHousehold).toBe("2 bed");
+	expect(ko.qualification.stayLength).toBe("3 nights or monthly");
 	expect(ko.paperwork.mentioned).toBe(false);
 
 	expect(jp.language).toBe("ja");
@@ -56,6 +57,7 @@ test("demo threads extract; Japanese paperwork does not invent law", () => {
 	expect(vi.qualification.rentOrBuy).toBe("rent");
 	expect(vi.qualification.timeframe).toBe("đầu tháng 9");
 	expect(vi.qualification.bedsOrHousehold).toBe("2 bed");
+	expect(vi.qualification.stayLength).toBeNull();
 });
 
 test("seed finds an existing thread by guest and does not write it twice", async () => {
@@ -106,6 +108,9 @@ test("seed writes invented threads once", async () => {
 	const again = await seedInbox(DEMO_OFFICE_ID);
 	expect(again.map((conversation) => conversation.id).sort(byId)).toEqual(firstIds);
 	expect(again.reduce((n, conversation) => n + conversation.messages.length, 0)).toBe(4);
+	// Read back from the database: Minji's stay length is stored with her other facts (#317).
+	const minji = again.find((conversation) => conversation.guestName === "Minji");
+	expect(minji?.oneShot?.qualification.stayLength).toBe("3 nights or monthly");
 });
 
 test("the fresh pair lands in Your turn, the other two in Quiet", async () => {

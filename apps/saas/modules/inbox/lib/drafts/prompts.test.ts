@@ -42,6 +42,7 @@ const INPUT: DraftInput = {
 		timeframe: null,
 		budgetBand: null,
 		bedsOrHousehold: "2 bed",
+		stayLength: null,
 	},
 	paperwork: { mentioned: false, flag: null },
 };

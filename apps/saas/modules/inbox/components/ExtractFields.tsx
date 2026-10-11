@@ -55,7 +55,7 @@ function useDetails(conversation: Conversation): Details {
 			case "paperwork":
 				return t("paperworkFlag");
 			default:
-				// Move-in, budget, nationality and household in words; anything else as stored (#243).
+				// Move-in, stay, budget, nationality and household in words; anything else as stored (#243).
 				// They read in the office language (ADR 0025): a member's interface locale is the office
 				// language, as the authenticated layout redirects them to it, and the inbox refuses
 				// anyone who isn't a member.
