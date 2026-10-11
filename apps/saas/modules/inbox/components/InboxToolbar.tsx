@@ -1,8 +1,9 @@
 "use client";
 
 import { Input, cn } from "@repo/ui";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRef } from "react";
 
 import type { InboxView, QueueCounts } from "../lib/queue";
 
@@ -33,7 +34,9 @@ function managerCountLine(
 
 /**
  * The top of the thread list (#314): search, then the view tabs as slots (a small label over
- * its full count; the view shown is filled Signal Blue), then the count line. The tabs share
+ * its full count; the view shown is filled Signal Blue), then the count line. While the search
+ * holds text, an X at its end clears it and leaves the cursor in the field (a 44px target on a
+ * phone, inside the field's own height). The tabs share
  * the row in equal columns and never scroll or wrap (#210); each holds its whole label and count.
  * They live inside the list, so they hide with it.
  */
@@ -64,6 +67,7 @@ export function InboxToolbar({
 	ownerName: string | null;
 }) {
 	const t = useTranslations("inbox");
+	const search = useRef<HTMLInputElement>(null);
 	const countLine = manager
 		? managerCountLine(t, view, counts, ownerName)
 		: t("queueCount", { count: counts.yourTurn });
@@ -75,13 +79,31 @@ export function InboxToolbar({
 					className="left-3 size-4 pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground"
 				/>
 				<Input
+					ref={search}
 					id="inbox-search"
 					value={query}
 					onChange={(event) => onQueryChange(event.target.value)}
 					placeholder={t("searchPlaceholder")}
 					aria-label={t("searchAria")}
 					variant="search"
+					className={query ? "pr-11 md:pr-9" : undefined}
 				/>
+				{query ? (
+					<button
+						type="button"
+						aria-label={t("searchClear")}
+						title={t("searchClear")}
+						// The field keeps focus under a pointer; a keyboard press hands it back below.
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => {
+							onQueryChange("");
+							search.current?.focus();
+						}}
+						className="right-0 size-11 md:size-9 absolute top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+					>
+						<XIcon aria-hidden="true" className="size-4" />
+					</button>
+				) : null}
 			</div>
 			<div className="gap-1.5 grid auto-cols-fr grid-flow-col">
 				{views.map((option) => {

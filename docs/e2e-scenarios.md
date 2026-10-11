@@ -550,6 +550,16 @@ out of it, so a tab cut off at its edge is as wrong as a row that wraps.
    title and count line are checked by the translation-key test
    (`apps/saas/modules/i18n/lib/translation-keys.test.ts`, #278).
 
+3. **Clearing the search brings the whole list back** (Eyal, 2026-10-11, #314). While the
+   search ("Search conversations") holds text, a "Clear search" button (VI "Xóa tìm kiếm") sits
+   at its right end. The manager of 2's office, on Waiting, searches one Unassigned guest: Waiting
+   counts 1 and lists only that guest. Clear search empties the field and leaves the cursor in it,
+   the button goes, and the tabs read Unassigned 2, Waiting 3, Sent 1, All 4 again, with Waiting
+   listing the three guests.
+   Spec: `apps/saas/tests/inbox-tabs.spec.ts` (a step of Inbox view tabs 2's test, on its office;
+   the 44px target on a phone, the hover colour and the native cancel button hidden are not
+   checked: polish, lean testing).
+
 ## Hidden kit screens (#210)
 
 A kit screen Nhịp doesn't use yet is hidden (`kit-screens.ts`), not deleted: opening its address

@@ -893,6 +893,7 @@
 		"no": "Không",
 		"searchPlaceholder": "Tìm tên hoặc tin nhắn gần nhất",
 		"searchAria": "Tìm cuộc trò chuyện",
+		"searchClear": "Xóa tìm kiếm",
 		"empty": "Không có cuộc trò chuyện nào.",
 		"loading": "Đang tải cuộc trò chuyện…",
 		"loadError": "Không tải được cuộc trò chuyện.",

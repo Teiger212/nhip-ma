@@ -893,6 +893,7 @@
 		"no": "No",
 		"searchPlaceholder": "Search name or last message",
 		"searchAria": "Search conversations",
+		"searchClear": "Clear search",
 		"empty": "No conversations.",
 		"loading": "Loading conversations…",
 		"loadError": "Could not load conversations.",

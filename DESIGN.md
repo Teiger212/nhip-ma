@@ -411,7 +411,9 @@ corner count (`Badge status="ink" size="corner"`). The bell's unread count is Si
 
 36px, a hairline stroke on paper, 8px corners, Signal Blue stroke and ring on focus, a Signal
 Blue caret, Slate placeholder. Search (`variant="search"`): 36px (44px below `md`), 14px text,
-room for its icon at 12px.
+room for its icon at 12px. While it holds text, an X in Slate at its right end clears it (ink on
+hover; the field's own height as its target, 44px below `md`; the cursor stays in the field); the
+browser's own cancel button never shows.
 
 ### Badges
 

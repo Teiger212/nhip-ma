@@ -35,3 +35,5 @@
   language. A small "Quiet · over 48 h" divider now shows where the quiet guests start.
 - **Response time says p90 in plain words:** "9 in 10 answered within 2 h" ("9/10 khách được
   trả lời trong 2 giờ"). The number is the same.
+- **Clear the inbox search in one tap.** While the search holds text, an X at its end empties
+  it, brings back the whole list and leaves the cursor in the field.

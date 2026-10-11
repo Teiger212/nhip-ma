@@ -40,6 +40,10 @@ const LABEL = {
 /** The Inbox's own name, after the count in the tab title: "(n) Inbox", or "(n) Inbox – Nhịp" once the title names the page (#212). */
 const INBOX = "Inbox";
 
+/** The thread search and its clear button, by their accessible names (EN). */
+const SEARCH_FIELD = "Search conversations";
+const CLEAR_SEARCH = "Clear search";
+
 /** Every label a view tab has had, in either language: a tab is one of these and its count. */
 const ANY_LABEL = [...Object.values(LABEL.en), ...Object.values(LABEL.vi)];
 const VIEW_TAB = new RegExp(`^(${ANY_LABEL.join("|")}) \\d+$`);
@@ -455,6 +459,32 @@ test.describe("Inbox view tabs 2 — a manager's Your turn reads Waiting", () =>
 		}
 		await expect(guestRows(page), "Waiting lists only those three").toHaveCount(3);
 		await expect(rowOf(page, guests.answeredByAgent[0]), "not the answered guest").toHaveCount(0);
+
+		// scenario: docs/e2e-scenarios.md Inbox view tabs 3
+		await test.step("clearing the search brings the whole list back: type, clear, the three guests and the counts return", async () => {
+			const field = listPanel(page).getByRole("textbox", { name: SEARCH_FIELD });
+			const one = guests.unassigned[0];
+			await field.fill(one.id);
+			await expect(
+				tab(page, label.waiting, 1),
+				"searched, Waiting counts the one guest",
+			).toBeVisible();
+			await expect(guestRows(page), "searched, Waiting lists only that guest").toHaveCount(1);
+			await listPanel(page).getByRole("button", { name: CLEAR_SEARCH, exact: true }).click();
+			await expect(field, "the search is empty").toHaveValue("");
+			await expect(field, "the cursor stays in the search").toBeFocused();
+			await expect(
+				listPanel(page).getByRole("button", { name: CLEAR_SEARCH, exact: true }),
+				"no clear button once the search is empty",
+			).toHaveCount(0);
+			await expect(viewTabs(page), "the counts are the whole office's again").toHaveText([
+				tabText(label.unassigned, 2),
+				tabText(label.waiting, 3),
+				tabText(label.sent, 1),
+				tabText(label.all, 4),
+			]);
+			await expect(guestRows(page), "Waiting lists the three guests again").toHaveCount(3);
+		});
 
 		// The agent of the same office: still Your turn, their own guest.
 		const agent = office.agent.page;
