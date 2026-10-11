@@ -795,7 +795,7 @@
 			{
 				"name": "press",
 				"value": "scale(0.98)",
-				"purpose": "A button pressing in while active; none under prefers-reduced-motion."
+				"purpose": "A button pressing in while active; none while busy (aria-busy) or under prefers-reduced-motion."
 			},
 			{
 				"name": "quick",
@@ -806,6 +806,71 @@
 				"name": "accordion",
 				"value": "0.3s cubic-bezier(0.32, 0.72, 0, 1)",
 				"purpose": "Accordion panels opening and closing (animate-accordion-down/up)."
+			},
+			{
+				"name": "ease-arrive",
+				"value": "cubic-bezier(0.16, 1, 0.3, 1)",
+				"purpose": "What comes in: the rows' glide, the count's new value, All caught up's mark, toasts (#330)."
+			},
+			{
+				"name": "ease-kit",
+				"value": "cubic-bezier(0.32, 0.72, 0, 1)",
+				"purpose": "Sheets rising and the phone's steps: the push and the step to the next guest (#330)."
+			},
+			{
+				"name": "ease-exit",
+				"value": "cubic-bezier(0.4, 0, 1, 1)",
+				"purpose": "What leaves, faster than it came: the answered row's ghost, the count's old value, sheets and toasts leaving (#330)."
+			},
+			{
+				"name": "handoff-row",
+				"value": "160ms ease-exit; 220ms ease-arrive",
+				"purpose": "After a confirmed send: the answered row's faded copy slides 12px left in 160ms, the rows below glide up in 220ms (FLIP, transform only, #330)."
+			},
+			{
+				"name": "handoff-card",
+				"value": "160ms ease-out desk; 240ms ease-kit phone",
+				"purpose": "The card turns to the next guest: a cross-fade on a desk, a 12px step forward with opacity on a phone (#330)."
+			},
+			{
+				"name": "count-tick",
+				"value": "150ms in ease-arrive; 120ms out ease-exit",
+				"purpose": "Tab, nav and top bar counts: the new value rises into its slot, the old one leaves upward (#330)."
+			},
+			{
+				"name": "caught-up",
+				"value": "220ms ease-arrive; check 260ms from 80ms; words 200ms",
+				"purpose": "All caught up's mark scales 0.9 to 1, its check strokes in, the words fade, only after the agent's own last send (#330)."
+			},
+			{
+				"name": "phone-push",
+				"value": "300ms in, 250ms back, ease-kit",
+				"purpose": "List to thread on a phone (View Transitions): the thread slides in, the list recedes 24% (#330)."
+			},
+			{
+				"name": "sheet",
+				"value": "300ms in ease-kit; 200ms out ease-exit; backdrop 240/200ms",
+				"purpose": "The details sheet and the phone menu, with no backdrop blur (#330)."
+			},
+			{
+				"name": "toast",
+				"value": "260ms in ease-arrive; 180ms out ease-exit",
+				"purpose": "Toasts; their height no longer animates (#330)."
+			},
+			{
+				"name": "menu-exit",
+				"value": "100ms",
+				"purpose": "Menus, selects and popovers leave; they enter in 150ms (#330)."
+			},
+			{
+				"name": "send-busy",
+				"value": "spinner after 150ms",
+				"purpose": "Approve and send keeps its blue while sending; its icon gives way to a spinner past 150ms. A failed send has no motion (#330)."
+			},
+			{
+				"name": "reduced",
+				"value": "150ms fade",
+				"purpose": "prefers-reduced-motion: every motion becomes a 150ms cross-fade or none; slides, zooms, the push and the glide are dropped; the spinner keeps turning (#330)."
 			}
 		],
 		"breakpoints": [

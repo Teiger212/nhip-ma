@@ -735,6 +735,20 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    `approve-and-send`. The guest writes again; once their message shows, the textbox and the
    button are back and the status no longer reads the answered line. The VI line, the line with
    no send and the kept reply box on an unknown or failed send are not tested (lean testing).)
+7. **The last reply sent leaves the agent "All caught up", with a way back on a phone** (#330,
+   delight 1, approved by Eyal on 2026-10-11). An agent whose Your turn holds one guest opens that
+   thread and approves the reply. The open card, where the thread was, says "All caught up." and
+   "No guest is waiting on you. The next one to write will open here.", and names the reply that
+   went: "Last reply sent to <the guest> at <time>". It used to say "No conversation selected.",
+   and on a phone that screen had no way back to the list. On a phone (390 wide) the card shows
+   "View sent"; pressing it shows the list again, on Sent. The mark's motion plays only after the
+   agent's own send, and is never asserted.
+   Spec: `apps/saas/tests/answered-thread.spec.ts` (Thread layout 7; the office, the agent, the
+   manager and the guest as in 6. The agent opens Your turn, opens the guest's row and approves; the
+   card is `data-test="caught-up"` inside the `article`, matched by its words, the last-sent line
+   as `Last reply sent to <the guest's Zalo id> at …`. The window then narrows to 390×844 in the same
+   page: the `article` shows "View sent", and pressing it shows the Sent tab pressed. Every run
+   is in reduced motion (playwright.config.ts). The Vietnamese words and Home are not tested.)
 
 ## Guest details (#244)
 

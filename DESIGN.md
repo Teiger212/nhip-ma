@@ -585,6 +585,67 @@ check, or with a cross while not in the CRM yet) and its words in Slate Note sem
 filled. Where the CRM has a web app, "In CRM" is a link with a small external-link glyph and
 ink on hover.
 
+## Motion
+
+Approved by Eyal on 2026-10-11 and shipped in #330 (`reports/design/motion-2026-10-11.html`,
+`delight-2026-10-11.html`). Agents use the Inbox all day, half of it on a phone between viewings,
+so motion explains a change of state and never stands between the agent and the next tap. Every
+routine motion finishes in 300ms or less, exits run faster than entrances, and only transform and
+opacity move: nothing animates width, height, top, margin or a grid track, and no blur animates.
+
+Three curves, tokens in `apps/saas/app/globals.css` (repeated for script in
+`modules/inbox/lib/motion.ts`): **arrive** `cubic-bezier(0.16, 1, 0.3, 1)` for what comes in,
+**kit** `cubic-bezier(0.32, 0.72, 0, 1)` for sheets and the phone's steps, **exit**
+`cubic-bezier(0.4, 0, 1, 1)` for what leaves.
+
+- **The handoff** (the focal motion). Only once the server has confirmed Approve and send, in Your
+  turn or Unassigned: the answered row leaves the list at once and a faded copy of it slides 12px
+  left in 160ms (exit) where it stood, while the rows below glide up in 220ms (arrive), FLIP with
+  transform only. On a desk the card cross-fades to the next guest in 160ms; on a phone it steps
+  12px forward in 240ms (kit), once, on whatever renders first. A row whose data didn't change
+  isn't rendered again. A poll, a view switch or a search swaps the list at once.
+- **Count tick.** The view tabs, the nav count and the phone top bar's count: the new value rises
+  into its one-line slot in 150ms (arrive), the old one leaves upward in 120ms (exit). The first
+  value shows still.
+- **All caught up mark.** Only when the agent's own send empties the queue: the mark scales from
+  0.9 to 1 in 220ms (arrive), its check strokes in over 260ms from 80ms, the words fade in over
+  200ms. An Inbox already empty shows it still.
+- **Phone push.** List to thread on a phone, with the browser's View Transitions: the thread
+  slides in from the right over 300ms while the list recedes 24%; Back reverses it in 250ms
+  (kit). The app's top bar stays put. Where the browser has no View Transitions, the screens
+  swap at once.
+- **Sheets.** The details sheet and the phone menu rise in 300ms (kit) and leave in 200ms (exit);
+  their backdrop fades in 240ms and out in 200ms, with no blur. The marketing site's menu keeps
+  the kit's timing.
+- **Send states.** Approve and send keeps its blue while a reply is out (`aria-busy`, a progress
+  cursor, no press), and a spinner replaces its icon only once the send passes 150ms. A failed
+  send gets no motion: the red line, with its glyph, says so.
+- **Kit timing.** Toasts enter in 260ms (arrive) and leave in 180ms (exit), their height no longer
+  animated; menus, selects and popovers enter in 150ms and leave in 100ms. The 0.98 press stays.
+
+**The Reduced Motion Floor.** Under `prefers-reduced-motion` every motion has a path: the handoff
+removes the row and cross-fades the next thread in 150ms; a count changes in place with a 150ms
+fade, the old value gone at once; All caught up cross-fades with its check already drawn; the
+push is an instant swap; sheets, menus and dialogs keep a 150ms fade with no slide or zoom
+(one global block in `globals.css`); toasts fade in place. The spinner keeps turning: it is
+progress. Playwright runs in reduced motion (`contextOptions.reducedMotion`), and no test asserts
+an animation.
+
+**Delight** (Eyal, 2026-10-11, #330). Three moments, each a fact, never applause:
+
+- **All caught up**, in the open card where the thread was: the Pebble Strong mark with the Sent
+  Green check, "All caught up.", "No guest is waiting on you. The next one to write will open
+  here." and "Last reply sent to {name} at {time}" (a clock time today, the date otherwise). On a
+  phone, "View sent" goes back to the list on Sent: the way out the old "No conversation
+  selected." screen lacked. A manager whose Unassigned empties sees "Every lead is assigned." in
+  the same card.
+- **Sent, then who's next.** The sent toast adds "Next: {name}, waiting {duration}" (Home's
+  duration units) in Your turn and Unassigned, so a phone agent knows the guest on screen changed.
+- **A failed send keeps your reply.** "Send failed. Your reply is still here.", or the server's
+  reason then "Your reply is still here.". Deliberately no "Try again", which could send twice.
+
+No confetti, streaks, day counts, page-load choreography, staggered entrances or hover lifts.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -606,6 +667,8 @@ ink on hover.
 - **Do** keep text boxes a fixed height with no resize handle (#312).
 - **Do** draw a chart in one colour at two strengths on a hairline track.
 - **Do** let a row's plate say only what its view's tab doesn't (#327).
+- **Do** move only transform and opacity, exit faster than you enter, and give every motion a
+  reduced-motion path (#330).
 
 ### Don't:
 
@@ -621,3 +684,5 @@ ink on hover.
 - **Don't** restyle a `@repo/ui` component with `className` beyond layout; add a variant.
 - **Don't** write arbitrary Tailwind values in app code; name the value as a token in
   `apps/saas/app/globals.css`.
+- **Don't** animate layout (width, height, top, grid tracks), blur a whole screen, or animate a
+  failed send.

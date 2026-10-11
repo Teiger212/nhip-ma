@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDuration } from "@home/lib/duration";
 import {
 	Button,
 	cn,
@@ -12,7 +13,7 @@ import {
 } from "@repo/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { formatConversationCrib } from "../lib/crib";
 import { guestLabel } from "../lib/display-name";
@@ -33,6 +34,7 @@ import {
 	useOfficeRole,
 	useRegenerateDraft,
 } from "../lib/inbox-queries";
+import { playHandoff, swapScreens } from "../lib/motion";
 import { PIPE_NAMES } from "../lib/pipe-names";
 import {
 	buildQueueView,
@@ -47,6 +49,7 @@ import { summarize } from "../lib/summary";
 import type { ConversationSummary } from "../lib/types";
 import { useReplyDraft } from "../lib/use-reply-draft";
 import { AlertsPanel } from "./AlertsPanel";
+import { CaughtUp } from "./CaughtUp";
 import { InboxToolbar } from "./InboxToolbar";
 import { AssignFromRow } from "./OwnerControl";
 import { ThreadDetail, ThreadDetailSkeleton } from "./ThreadDetail";
@@ -61,6 +64,24 @@ const viewParser = parseAsStringLiteral(INBOX_VIEWS);
  * or an alert's link or a toast's tap led to a guest a colleague now holds (#136).
  */
 type LinkNotice = "notHere" | "colleague";
+
+/** The thread among these with the latest reply sent: what All caught up names (#330). */
+function latestSent(conversations: ConversationSummary[]): ConversationSummary | null {
+	let latest: ConversationSummary | null = null;
+	for (const conversation of conversations) {
+		if (!conversation.sentAt) continue;
+		if (!latest?.sentAt || Date.parse(conversation.sentAt) > Date.parse(latest.sentAt)) {
+			latest = conversation;
+		}
+	}
+	return latest;
+}
+
+/** A server's reason for a failed send, then that the reply is still in the box (#330). */
+function withReplyKept(reason: string, kept: string): string {
+	const text = reason.trim();
+	return `${/[.!?…]$/.test(text) ? text : `${text}.`} ${kept}`;
+}
 
 /** What a row shows about a thread's state; when the row's differs from the open thread's, one of them is behind. */
 function turnState(thread: ConversationSummary): string {
@@ -78,6 +99,7 @@ function turnState(thread: ConversationSummary): string {
 export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const t = useTranslations("inbox");
 	const tMenu = useTranslations("app.menu");
+	const tHome = useTranslations("home");
 	const locale = useLocale();
 	const disconnectedPipes = [...new Set(useDisconnectedEndpoints().map((item) => item.pipe))];
 	const conversationsQuery = useConversations();
@@ -133,6 +155,14 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 	const sideBySide = useInboxSideBySide();
 	const listOnScreen = sideBySide || !detailOpen;
 	const [sendError, setSendError] = useState<string | null>(null);
+	// The handoff (#330). The thread whose reply is out: when it leaves the list, its row fades and
+	// the rows below glide up (ThreadList), and the card turns to the next guest (`handoff`), or,
+	// when it was the last, All caught up plays its mark (`celebrate`). Set before the send, since
+	// the list drops the row before the send's promise resolves; a failure clears it, unplayed.
+	const [departingId, setDepartingId] = useState<string | null>(null);
+	const [celebrate, setCelebrate] = useState(false);
+	const handoff = useRef(false);
+	const card = useRef<HTMLDivElement>(null);
 
 	const conversations = useMemo(() => {
 		const all = conversationsQuery.data ?? [];
@@ -197,7 +227,17 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		}
 		if (listPending || notice) return;
 		const next = nextSelection(ordered, selectedId, pinnedId);
-		if (next !== selectedId) setSelectedId(next);
+		if (next !== selectedId) {
+			// The answered thread left the view: the handoff (#330).
+			if (selectedId !== null && selectedId === departingId) {
+				handoff.current = next !== null;
+				setCelebrate(next === null);
+				setDepartingId(null);
+			} else if (next !== null) {
+				setCelebrate(false);
+			}
+			setSelectedId(next);
+		}
 	}, [
 		listPending,
 		rolePending,
@@ -214,7 +254,15 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		setOwnerFilter,
 		notice,
 		views,
+		departingId,
 	]);
+
+	// The card turns to the next guest once the selection has moved there (#330).
+	useLayoutEffect(() => {
+		if (!handoff.current) return;
+		handoff.current = false;
+		if (selectedId !== null && card.current) playHandoff(card.current, sideBySide);
+	}, [selectedId, sideBySide]);
 
 	// A pin outlives anything but a new selection: the thread selected is no longer the pinned one.
 	useEffect(() => {
@@ -263,6 +311,13 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		if (!selected || !selected.unansweredInboundId || !target || !reply.trim() || approve.isPending)
 			return;
 		setSendError(null);
+		// Who is next once this one leaves the view: the oldest waiting guest after it, in Your
+		// turn and Unassigned only (Sent and All keep the answered thread open).
+		const moving = view === "yourTurn" || view === "unassigned";
+		const nextUp = moving
+			? (ordered.find((conversation) => conversation.id !== selected.id) ?? null)
+			: null;
+		setDepartingId(moving ? selected.id : null);
 		try {
 			// A kept edit names the message it was typed for; the server answers the latest with it.
 			const result = await approve.mutateAsync({
@@ -274,15 +329,33 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 			});
 			dropEdit(selected.id);
 			setPinnedId(null);
+			const waitingSince = nextUp?.lastGuestInboundAt;
 			toast.add({
 				title: t("sentTo", { name: guestLabel(result.conversation).text }),
+				description:
+					nextUp && waitingSince
+						? t("nextUp", {
+								name: guestLabel(nextUp).text,
+								duration: formatDuration(Date.now() - Date.parse(waitingSince), {
+									day: tHome("units.day"),
+									hour: tHome("units.hour"),
+									minute: tHome("units.minute"),
+								}),
+							})
+						: undefined,
 				type: "success",
 			});
 			// Sent and All keep the answered thread open; Your turn and Unassigned move on, since
 			// it has left them (a manager's reply on a lead makes it theirs, ADR 0022).
 			if (view === "sent" || view === "all") setSelectedId(result.conversation.id);
 		} catch (error) {
-			setSendError(error instanceof Error ? error.message : t("sendFailed"));
+			setDepartingId(null);
+			// No motion, only the red line: what went wrong, and that the reply is still in the box.
+			setSendError(
+				error instanceof InboxApiError && error.message
+					? withReplyKept(error.message, t("replyKept"))
+					: t("sendFailed"),
+			);
 			// The edit's message was answered since: keep the text, for the message waiting now.
 			if (error instanceof InboxApiError && error.code === "stale_target") {
 				retarget(selected.id, selected.unansweredInboundId);
@@ -308,15 +381,40 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 		if (id === selectedId) setPinnedId(id);
 	}
 
-	function openThread(id: string) {
-		setPinnedId(null);
-		setNotice(null);
-		setSelectedId(id);
-		setDetailOpen(true);
+	// Stable, so a list re-render leaves unchanged rows alone (ThreadRow's memo, #330). On a phone
+	// the thread pushes in over the list (#330).
+	const openThread = useCallback(
+		(id: string) => {
+			const open = () => {
+				setPinnedId(null);
+				setNotice(null);
+				setDepartingId(null);
+				setCelebrate(false);
+				setSelectedId(id);
+				setDetailOpen(true);
+			};
+			if (sideBySide || detailOpen) open();
+			else swapScreens("push", open);
+		},
+		[sideBySide, detailOpen],
+	);
+
+	/** Phone only: back from the thread to the list. */
+	function closeThread() {
+		swapScreens("back", () => setDetailOpen(false));
 	}
 
+	/** The phone's way out of All caught up: back to the list, on Sent (#330). */
+	function viewSentFromCard() {
+		void setView("sent");
+		setCelebrate(false);
+		closeThread();
+	}
+
+	const lastSent = useMemo(() => latestSent(conversations), [conversations]);
+
 	return (
-		<div className="min-h-0 text-sm md:bg-canvas flex h-full flex-col bg-card text-foreground">
+		<div className="vt-inbox min-h-0 text-sm md:bg-canvas flex h-full flex-col bg-card text-foreground">
 			<h1 className="sr-only">{tMenu("inbox")}</h1>
 			{disconnectedPipes.length > 0 ? (
 				<output
@@ -392,6 +490,8 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 							onViewChange={(next) => {
 								setPinnedId(null);
 								setNotice(null);
+								setDepartingId(null);
+								setCelebrate(false);
 								void setView(next);
 							}}
 							counts={queue.counts}
@@ -413,6 +513,7 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 								emptyTitle={manager ? undefined : t("emptyAssigned")}
 								ownerBadges={!(manager && view === "unassigned")}
 								viewSays={turnTheViewSays(view, manager)}
+								departingId={departingId}
 								rowAction={
 									manager && view === "unassigned"
 										? (conversation) => (
@@ -430,70 +531,87 @@ export function Inbox({ alertLink }: { alertLink?: AlertLinkTarget }) {
 						detailOpen ? "flex" : "md:flex hidden",
 					)}
 				>
-					{notice ? (
-						<ThreadListState
-							testId={notice === "colleague" ? "alert-colleague" : "thread-not-found"}
-							title={notice === "colleague" ? t("alerts.colleagueAnswering") : t("threadNotFound")}
-							action={
-								<Button
-									type="button"
-									variant="outline"
-									className="mt-3 min-h-11 md:hidden"
-									onClick={() => {
-										setNotice(null);
-										setDetailOpen(false);
-									}}
-								>
-									{t("back")}
-								</Button>
-							}
-						/>
-					) : !selected ? (
-						!listed || detailGone ? (
-							<ThreadListState title={t("noneSelected")} />
-						) : detailQuery.isError ? (
+					{/* The card's body: what the handoff turns to the next guest (#330). */}
+					<div ref={card} className="min-h-0 min-w-0 flex flex-1 flex-col">
+						{notice ? (
 							<ThreadListState
-								testId="thread-load-error"
-								title={t("loadError")}
+								testId={notice === "colleague" ? "alert-colleague" : "thread-not-found"}
+								title={
+									notice === "colleague" ? t("alerts.colleagueAnswering") : t("threadNotFound")
+								}
 								action={
 									<Button
 										type="button"
 										variant="outline"
-										className="mt-3 min-h-11"
-										onClick={() => void detailQuery.refetch()}
+										className="mt-3 min-h-11 md:hidden"
+										onClick={() => {
+											setNotice(null);
+											closeThread();
+										}}
 									>
-										{t("retry")}
+										{t("back")}
 									</Button>
 								}
 							/>
+						) : !selected ? (
+							!listed || detailGone ? (
+								// Nothing waits: All caught up, said where the agent is looking (#330), with
+								// the phone's way back to the list. Otherwise nothing is selected yet.
+								queue.caughtUp || queue.allAssigned ? (
+									<CaughtUp
+										title={queue.caughtUp ? t("allCaughtUp") : t("allAssigned")}
+										body={queue.caughtUp ? t("caughtUpNext") : undefined}
+										lastSent={lastSent}
+										celebrate={celebrate}
+										onViewSent={sideBySide ? undefined : viewSentFromCard}
+									/>
+								) : (
+									<ThreadListState title={t("noneSelected")} />
+								)
+							) : detailQuery.isError ? (
+								<ThreadListState
+									testId="thread-load-error"
+									title={t("loadError")}
+									action={
+										<Button
+											type="button"
+											variant="outline"
+											className="mt-3 min-h-11"
+											onClick={() => void detailQuery.refetch()}
+										>
+											{t("retry")}
+										</Button>
+									}
+								/>
+							) : (
+								<ThreadDetailSkeleton />
+							)
 						) : (
-							<ThreadDetailSkeleton />
-						)
-					) : (
-						<ThreadDetail
-							conversation={selected}
-							cribNotes={cribNotes}
-							onBack={() => setDetailOpen(false)}
-							onAssigned={onAssigned}
-							reply={{
-								reply,
-								edited,
-								guestWroteAgain,
-								draftSource: selected.oneShot?.draft?.source ?? "template",
-								canApprove,
-								onReplyChange: setReply,
-								regenerating: regenerate.isPending,
-								onRegenerate: () => void onRegenerate(),
-								sending: approve.isPending,
-								status: sendStatusFor({
+							<ThreadDetail
+								conversation={selected}
+								cribNotes={cribNotes}
+								onBack={closeThread}
+								onAssigned={onAssigned}
+								reply={{
+									reply,
+									edited,
+									guestWroteAgain,
+									draftSource: selected.oneShot?.draft?.source ?? "template",
+									canApprove,
+									onReplyChange: setReply,
+									regenerating: regenerate.isPending,
+									onRegenerate: () => void onRegenerate(),
 									sending: approve.isPending,
-									error: sendError,
-									conversation: selected,
-								}),
-								onApprove: () => void onApprove(),
-							}}
-						/>
-					)}
+									status: sendStatusFor({
+										sending: approve.isPending,
+										error: sendError,
+										conversation: selected,
+									}),
+									onApprove: () => void onApprove(),
+								}}
+							/>
+						)}
+					</div>
 				</article>
 			</div>
 			<footer

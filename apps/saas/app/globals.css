@@ -55,6 +55,164 @@
 	--container-inbox-list: 23.25rem;
 	--container-thread-rail: 18.75rem;
 	--container-empty-note: 22ch;
+	/* All caught up's sentence in the open card (#330). */
+	--container-caught-note: 30ch;
+}
+
+/*
+ * Motion (#330, DESIGN.md "Motion"). Three curves: arrive (a confident deceleration, for what
+ * comes in), kit (the kit's own, for sheets and the phone's steps) and exit (what leaves, faster
+ * than it came). The handoff (the answered row's ghost, the rows' glide, the card's turn) runs in
+ * script with the same values (`modules/inbox/lib/motion.ts`).
+ */
+@theme {
+	--ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-kit: cubic-bezier(0.32, 0.72, 0, 1);
+	--ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+	/* A count ticks: the new value rises into its slot, the old one leaves upward. */
+	--animate-count-in: count-in 150ms var(--ease-arrive) both;
+	--animate-count-out: count-out 120ms var(--ease-exit) both;
+	/* All caught up: the mark rises, its check strokes in 80ms later, the words fade in. */
+	--animate-caught-mark: caught-mark 220ms var(--ease-arrive) both;
+	--animate-caught-check: caught-check 260ms 80ms var(--ease-arrive) both;
+	--animate-caught-words: fade-in 200ms ease-out both;
+	/* The reduced path of every motion above: a 150ms cross-fade. */
+	--animate-fade-in: fade-in 150ms ease-out both;
+	/* Approve and send: the send icon gives way to a spinner only once a send passes 150ms. */
+	--animate-busy-hide: busy-hide 0s 150ms both;
+	--animate-busy-show: busy-show 0s 150ms both, busy-spin 0.7s linear infinite;
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes count-in {
+		from {
+			transform: translateY(100%);
+		}
+	}
+	@keyframes count-out {
+		to {
+			transform: translateY(-100%);
+		}
+	}
+	@keyframes caught-mark {
+		from {
+			opacity: 0;
+			transform: scale(0.9);
+		}
+	}
+	@keyframes caught-check {
+		from {
+			stroke-dashoffset: 24;
+		}
+	}
+	@keyframes busy-hide {
+		to {
+			opacity: 0;
+		}
+	}
+	@keyframes busy-show {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes busy-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+}
+
+/* The check in All caught up's mark, drawn by its stroke (24 covers the path's length). */
+@utility stroke-draw {
+	stroke-dasharray: 24;
+}
+
+/*
+ * The phone's push between the list and a thread (View Transitions): the thread slides in over
+ * the list, which recedes 24%; Back reverses it. The Inbox carries the name only while a push runs,
+ * so the app's top bar stays put.
+ */
+html.vt-push .vt-inbox,
+html.vt-back .vt-inbox {
+	view-transition-name: inbox-screen;
+}
+html:is(.vt-push, .vt-back)::view-transition-old(root) {
+	display: none;
+}
+html:is(.vt-push, .vt-back)::view-transition-new(root) {
+	animation: none;
+}
+html:is(.vt-push, .vt-back)::view-transition-group(inbox-screen) {
+	overflow: clip;
+	animation-duration: 300ms;
+}
+html:is(.vt-push, .vt-back)::view-transition-old(inbox-screen),
+html:is(.vt-push, .vt-back)::view-transition-new(inbox-screen) {
+	mix-blend-mode: normal;
+	height: 100%;
+}
+html.vt-push::view-transition-old(inbox-screen) {
+	animation: vt-recede 300ms var(--ease-kit) both;
+}
+html.vt-push::view-transition-new(inbox-screen) {
+	animation: vt-arrive 300ms var(--ease-kit) both;
+	box-shadow: -1px 0 0 var(--border);
+}
+html.vt-back::view-transition-old(inbox-screen) {
+	z-index: 1;
+	animation: vt-leave 250ms var(--ease-kit) both;
+	box-shadow: -1px 0 0 var(--border);
+}
+html.vt-back::view-transition-new(inbox-screen) {
+	animation: vt-return 250ms var(--ease-kit) both;
+}
+@keyframes vt-recede {
+	to {
+		transform: translateX(-24%);
+	}
+}
+@keyframes vt-arrive {
+	from {
+		transform: translateX(100%);
+	}
+}
+@keyframes vt-leave {
+	to {
+		transform: translateX(100%);
+	}
+}
+@keyframes vt-return {
+	from {
+		transform: translateX(-24%);
+	}
+}
+
+/*
+ * The reduced-motion floor (#330): the kit's overlays (tw-animate's enter and exit) keep their
+ * fades but lose every slide, zoom and spin, capped at 150ms; toasts fade in place. The spinner
+ * is progress, not decoration: it keeps turning. Nhịp's own motions carry their own reduced path.
+ */
+@media (prefers-reduced-motion: reduce) {
+	[class*="animate-in"],
+	[class*="animate-out"] {
+		--tw-enter-translate-x: 0 !important;
+		--tw-enter-translate-y: 0 !important;
+		--tw-exit-translate-x: 0 !important;
+		--tw-exit-translate-y: 0 !important;
+		--tw-enter-scale: 1 !important;
+		--tw-exit-scale: 1 !important;
+		--tw-enter-rotate: 0 !important;
+		--tw-exit-rotate: 0 !important;
+		--tw-duration: 150ms !important;
+	}
+	[data-slot="toast"] {
+		transition-property: opacity !important;
+		transition-duration: 150ms !important;
+	}
 }
 
 /* An outlined mark (a Waiting guest's language): 1.5px of Mist, a mark, never text. */

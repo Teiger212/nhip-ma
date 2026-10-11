@@ -31,6 +31,21 @@ export function formatDateTime(
 	}).format(date);
 }
 
+/**
+ * A moment as a clock time when it was today on the device's clock ("2:32 PM", "14:32"), and as
+ * `formatDateTime`'s date and time otherwise: what "at {time}" can say truthfully (#330).
+ */
+export function formatClockTime(iso: string, locale: string, nowMs: number = Date.now()): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) {
+		return iso;
+	}
+	if (date.toDateString() !== new Date(nowMs).toDateString()) {
+		return formatDateTime(iso, locale, { nowMs });
+	}
+	return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(date);
+}
+
 /** How long ago, in the operator's words, within a week; past it, the date and time. */
 export function formatInboxTimestamp(
 	iso: string,

@@ -22,7 +22,9 @@ const viewportClassNames: Record<ToastPosition, string> = {
 const toastSharedClassNames = [
 	"pointer-events-auto absolute right-0 left-0 z-[calc(1000-var(--toast-index))] w-full border border-border bg-card text-card-foreground rounded-xl shadow-lg shadow-black/5 select-none outline-none will-change-transform focus-visible:ring-2 focus-visible:ring-ring",
 	"[--gap:0.75rem] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))] [--height:var(--toast-frontmost-height,var(--toast-height))]",
-	"h-(--height) data-expanded:h-(--toast-height) [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms]",
+	// In over 260ms on the arrive curve, out in 180ms on the exit curve; the height snaps rather
+	// than laying the stack out on every frame (#330). Reduced motion fades in place (globals.css).
+	"h-(--height) data-expanded:h-(--toast-height) [transition-property:transform,opacity] duration-260 ease-arrive data-ending-style:duration-180 data-ending-style:ease-exit",
 	"data-limited:opacity-0 data-ending-style:opacity-0",
 	"data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))]",
 	"data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))]",
