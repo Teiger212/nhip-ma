@@ -385,7 +385,7 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
 1. **A new guest waits in Unassigned, for managers only.** A guest writes to the office for
    the first time.
    - The manager sees the thread in the Unassigned view, which says it: its row carries no
-     owner flag there (#303). The open thread says it once, in its owner select ("Unassigned").
+     owner flag there (#303), nor a Waiting plate (12, #327). The open thread says it once, in its owner select ("Unassigned").
    - Neither agent sees it: it is not listed, counted or searched. Opening it by address or
      through the API is a 404.
 
@@ -482,6 +482,13 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     - Agent 1 still sees "Your turn" on their thread: every thread an agent sees is their own.
       The second manager sees "Your turn" on theirs.
     - Only the turn changes: Sent, Won and Lost read as before.
+    - **A plate says only what the view's tab doesn't** (Eyal, 2026-10-11, #327; DESIGN.md, The
+      Plate Says Something Rule). Under All every row keeps its plate. Under the manager's
+      Waiting only their own thread carries one ("Your turn"); the Unassigned thread, agent 1's
+      and the second manager's carry none, as the tab already says Waiting. Under agent 1's Your
+      turn their row carries none. Unassigned hides "Waiting" plates and Sent hides "Sent" ones
+      the same way, so a Won or Lost row under Sent keeps its outcome. The thread header always
+      shows the plate, and the guest's marker keeps its fill.
 
     Spec: `apps/saas/tests/manager-chip.spec.ts` (Assign 12; an office of the test's own with one
     invited agent and two invited managers, nameless Zalo guests given out by the manager through
@@ -489,7 +496,10 @@ kit `admin` of an office of the test's own. Every new guest also gets the auto-r
     Inbox load, agent 1's and the second manager's by searching it), and its header is the
     thread opened from that row. The chip is `data-test="thread-status"`: "Your turn" with
     `data-status="yourTurn"`, "Waiting" with `data-status="waiting"`, matched exactly, in English
-    only (the Vietnamese "Đang chờ" waits on #78). Sent, Won and Lost are not checked here).
+    only (the Vietnamese "Đang chờ" waits on #78). Sent, Won and Lost are not checked here. The
+    plate rule: each guest's row searched by id under the manager's Waiting and agent 1's Your
+    turn, "no plate" being no `thread-status` on the row. Unassigned's half is in Assign 1's spec,
+    the agent's Your turn in CRM 3's and CRM 4a's; Sent's is not checked).
 
 13. **The thread a manager assigns stays open** (#267). The manager opens a new guest's thread
     in Unassigned, with a second Unassigned guest listed, and gives it to agent 1 from the
@@ -734,8 +744,10 @@ label "Missing", and as its value the names, "budget, move-in", in the amber Wai
 auto-reply's asks count (ADR 0021 R3), in its order: rent or buy, area, budget, move-in, beds /
 household. Nationality and "In Vietnam now" show only when known, and paperwork only when the guest
 mentioned it; none of them is ever missing. Nor is the stay length (#317), shown as "Stay" after
-the move-in when the guest names one (pending Eyal: whether a missing one joins the asks). There is no "N missing" count and nothing to open (a
-fold was considered and rejected).
+the move-in when the guest names one (pending Eyal: whether a missing one joins the asks). There is no "N missing" count, and nothing in the
+rail opens (a fold was considered and rejected). In the strip (a narrow pane or a phone) the stay
+is one line cut short with an ellipsis; that line opens a sheet with every fact whole, and a
+paperwork flag there is a compact chip that opens the same sheet (Eyal, 2026-10-11, #327).
 
 **How these run.** As Guest language: a guest writes through a signed Zalo webhook to an office of
 the test's own, with a manager, the auto-reply on and `SEND_MODE=mock`. The manager opens the
@@ -749,8 +761,9 @@ warning tone, DESIGN.md "In the inbox"). The VI copy is pending a native read (#
 1. **The details name what to ask for.** A guest writes "I want to rent a 2 bedroom in Tay Ho."
    The details have a row "Missing" whose value reads "budget, move-in", in that order, in the
    Waiting tone, in the rail and in the strip; it is a row of the same list as the other details
-   (Area, Rent or buy, …), not a line apart. No "N missing" count shows, and nothing in the details
-   opens or closes (no disclosure, no button).
+   (Area, Rent or buy, …), not a line apart. No "N missing" count shows. Nothing in the rail
+   opens or closes (no disclosure, no button); in the strip the one button is the stay line's,
+   "Show all guest details" (7), and still nothing is a disclosure.
 2. **A guest who gave everything shows nothing missing.** A guest writes "I want to rent a 2
    bedroom in Tay Ho, budget $1500/month, moving in next month." The details show no "Missing"
    row, and no Paperwork, Nationality or "In Vietnam now" row, in the rail and in the strip.
@@ -774,8 +787,16 @@ as the guest wrote it, never empty. The VI wording is pending #78.
 6. **A budget at the end of a sentence has no full stop.** A guest writes "budget $3500." The
    details read "$3,500".
 
-Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1 and 4, the English half; an
-office of its own, left at English). 2: covered by Vitest: `apps/saas/modules/inbox/lib/extract-rows.test.ts` › a guest who
+7. **On a phone, the stay line opens every fact** (#327). A guest writes "I want to rent a 2
+   bedroom in Tay Ho from next Friday for 6 months." On a phone (390×844) the strip's stay line,
+   "Tây Hồ · Rent · 2 bed · Next Friday · 6 months", is cut short with an ellipsis. Tapped, it opens
+   a sheet from the foot of the screen, "Guest details", with every stay and guest fact whole, as
+   the rail has them: there the term "Stay" reads "6 months". The rail itself is unchanged.
+
+Spec: `apps/saas/tests/guest-details.spec.ts` (Guest details 1, 4 (the English half) and 7; an
+office of its own, left at English. 7: "cut short" is the line's text wider than its box
+(`data-test="stay-line"`), the control is the button named "Show all guest details", the sheet
+the dialog named "Guest details". The paperwork chip opening the same sheet is not checked). 2: covered by Vitest: `apps/saas/modules/inbox/lib/extract-rows.test.ts` › a guest who
 gave everything has nothing missing and no unknown rows (#244); › nationality, In Vietnam now and
 paperwork are never missing. 3: checked by the translation-key test
 (`apps/saas/modules/i18n/lib/translation-keys.test.ts`); the row itself is 1's. 4's Vietnamese

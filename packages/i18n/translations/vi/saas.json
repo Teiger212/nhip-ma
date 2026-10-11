@@ -967,7 +967,8 @@
 			"owner": "Phụ trách",
 			"guest": "Khách",
 			"stay": "Chỗ ở",
-			"notGiven": "Chưa có"
+			"notGiven": "Chưa có",
+			"showAll": "Xem toàn bộ thông tin khách"
 		},
 		"fields": {
 			"language": "Ngôn ngữ",

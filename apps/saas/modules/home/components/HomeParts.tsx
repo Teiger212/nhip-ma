@@ -93,7 +93,7 @@ export function PanelTitle({
 }) {
 	return (
 		<div className="gap-3 px-5 pt-4 min-h-12 flex items-center">
-			<h3 id={id} className="text-base font-extrabold tracking-tight">
+			<h3 id={id} className="text-heading font-extrabold">
 				{children}
 			</h3>
 			{meta ? (

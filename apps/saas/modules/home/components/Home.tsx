@@ -50,7 +50,7 @@ function Stage({
 }) {
 	return (
 		<li className={cn("gap-3 px-5 pt-4 pb-4.5 lg:min-h-40 flex flex-col", CELL_EDGES[index])}>
-			<p className="gap-2 text-2xs font-extrabold tracking-wider flex items-baseline uppercase">
+			<p className="gap-2 text-key font-extrabold flex items-baseline uppercase">
 				<span className="text-micro font-bold tracking-normal text-muted-foreground tabular-nums">
 					{index + 1}
 				</span>
@@ -149,7 +149,7 @@ function ResponseTime({ funnel, t }: { funnel: Funnel; t: Translate }) {
 	return (
 		<Card aria-labelledby="home-response-time" className="md:grid-cols-3 grid overflow-hidden">
 			<div className="gap-2 px-5 pt-4 pb-4.5 md:border-r md:border-b-0 flex flex-col border-b">
-				<h3 id="home-response-time" className="text-base font-extrabold tracking-tight">
+				<h3 id="home-response-time" className="text-heading font-extrabold">
 					{t("responseTime")}
 				</h3>
 				{time ? (

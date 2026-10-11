@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 
 import type { QueueView } from "../lib/queue";
 import type { ConversationSummary } from "../lib/types";
-import { ThreadListState } from "./ThreadParts";
+import { ThreadListState, type TurnChip } from "./ThreadParts";
 import { ThreadRow } from "./ThreadRow";
 
 function ThreadListSkeleton() {
@@ -44,6 +44,7 @@ export function ThreadList({
 	emptyTitle,
 	rowAction,
 	ownerBadges = true,
+	viewSays = null,
 }: {
 	queue: QueueView;
 	loading: boolean;
@@ -60,6 +61,8 @@ export function ThreadList({
 	rowAction?: (conversation: ConversationSummary) => ReactNode;
 	/** False in a manager's Unassigned view: the view says whose they are, so rows don't (#303). */
 	ownerBadges?: boolean;
+	/** The turn the view's tab already says, which its rows don't repeat (#327). */
+	viewSays?: TurnChip | null;
 }) {
 	const t = useTranslations("inbox");
 
@@ -74,6 +77,7 @@ export function ThreadList({
 						onOpen={() => onOpen(conversation.id)}
 						action={rowAction?.(conversation)}
 						ownerBadge={ownerBadges}
+						viewSays={viewSays}
 					/>
 				))}
 			</ul>

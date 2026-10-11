@@ -33,8 +33,13 @@ const sheetVariants = cva(
 		variants: {
 			side: {
 				top: "inset-x-0 top-0 border-b data-[closed]:slide-out-to-top data-[open]:slide-in-from-top",
+				/**
+				 * A bottom sheet (the phone thread's guest details, #327): paper with 16px top corners,
+				 * at most 85% of the screen and scrolling past it, clear of the home indicator. From `md`
+				 * it keeps to a reading width, centred.
+				 */
 				bottom:
-					"inset-x-0 bottom-0 border-t data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom",
+					"inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t bg-card pb-[max(1.5rem,env(safe-area-inset-bottom))] md:mx-auto md:max-w-xl md:border-x data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom",
 				left: "inset-y-0 left-0 h-full w-3/4 border-r data-[closed]:slide-out-to-left data-[open]:slide-in-from-left sm:max-w-sm",
 				right:
 					"inset-y-0 right-0 h-full w-3/4  border-l data-[closed]:slide-out-to-right data-[open]:slide-in-from-right sm:max-w-sm",
@@ -52,9 +57,9 @@ type SheetContentProps = {} & React.ComponentProps<typeof SheetPrimitive.Popup> 
 const SheetContent = ({ side = "right", className, children, ...props }: SheetContentProps) => (
 	<SheetPrimitive.Portal>
 		<SheetOverlay />
-		<SheetPrimitive.Popup className={sheetVariants({ side, className })} {...props}>
+		<SheetPrimitive.Popup className={cn(sheetVariants({ side }), className)} {...props}>
 			{children}
-			<SheetPrimitive.Close className="top-4 right-4 absolute rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[open]:bg-secondary">
+			<SheetPrimitive.Close className="top-2 right-2 size-11 md:top-3 md:right-3 md:size-8 absolute grid place-items-center rounded-lg opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none">
 				<XIcon className="size-4" />
 				<span className="sr-only">Close</span>
 			</SheetPrimitive.Close>
@@ -75,7 +80,7 @@ const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 
 const SheetTitle = ({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) => (
 	<SheetPrimitive.Title
-		className={cn("font-semibold text-lg text-foreground", className)}
+		className={cn("font-extrabold text-lg tracking-tight text-foreground", className)}
 		{...props}
 	/>
 );

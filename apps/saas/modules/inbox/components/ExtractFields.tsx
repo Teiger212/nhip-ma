@@ -1,9 +1,9 @@
 "use client";
 
-import { cn } from "@repo/ui";
-import { MapPinIcon } from "lucide-react";
+import { cn, Sheet, SheetContent, SheetTitle } from "@repo/ui";
+import { ChevronRightIcon, FileWarningIcon, MapPinIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, type ReactNode, useMemo } from "react";
+import { Fragment, type ReactNode, useMemo, useState } from "react";
 
 import { arrangeExtractRows, type ExtractFieldId, type ExtractRow } from "../lib/extract-rows";
 import { languageTone } from "../lib/fact-tags";
@@ -112,8 +112,38 @@ function guestValue(details: Details, id: GuestField): ReactNode {
 	return value;
 }
 
-/** The guest's own facts, those Nhịp has: a label/value list, or pairs along a line. */
-function GuestFacts({ details, layout }: { details: Details; layout: "rail" | "strip" }) {
+/**
+ * The paperwork flag on the strip (#327): a compact Amber Note chip in place of its three lines
+ * of prose. It opens the details sheet, where the flag reads in full; its target is 44px tall
+ * though the chip is 24px, so the strip stays one line.
+ */
+function PaperworkChip({ label, onOpen }: { label: string; onOpen: () => void }) {
+	return (
+		<button
+			type="button"
+			onClick={onOpen}
+			data-test="paperwork-chip"
+			className="h-6 gap-1 px-1.5 text-xs font-bold after:-inset-y-2.5 after:-inset-x-1 ease-out relative inline-flex cursor-pointer items-center rounded-md bg-warning/12 whitespace-nowrap text-warning transition-colors duration-200 after:absolute hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none"
+		>
+			<FileWarningIcon aria-hidden="true" className="size-3.5 shrink-0" />
+			{label}
+		</button>
+	);
+}
+
+/**
+ * The guest's own facts, those Nhịp has: a label/value list, or pairs along a line. On the strip
+ * the paperwork flag is a chip that opens the sheet (`onOpen`) rather than its whole text.
+ */
+function GuestFacts({
+	details,
+	layout,
+	onOpen,
+}: {
+	details: Details;
+	layout: "rail" | "strip";
+	onOpen?: () => void;
+}) {
 	const known = GUEST_FIELDS.filter((id) => details.values[id] !== undefined);
 	if (known.length === 0) return null;
 	if (layout === "rail") {
@@ -130,12 +160,21 @@ function GuestFacts({ details, layout }: { details: Details; layout: "rail" | "s
 	}
 	return (
 		<dl className="gap-x-4 gap-y-1 text-xs min-w-0 flex flex-wrap items-baseline">
-			{known.map((id) => (
-				<div key={id} className="gap-1.5 min-w-0 flex items-baseline">
-					<dt className="shrink-0 text-muted-foreground">{details.label(id)}</dt>
-					<dd className="font-semibold min-w-0">{guestValue(details, id)}</dd>
-				</div>
-			))}
+			{known.map((id) =>
+				id === "paperwork" && onOpen ? (
+					<div key={id} className="flex items-center">
+						<dt className="sr-only">{details.label(id)}</dt>
+						<dd>
+							<PaperworkChip label={details.label(id)} onOpen={onOpen} />
+						</dd>
+					</div>
+				) : (
+					<div key={id} className="gap-1.5 min-w-0 flex items-baseline">
+						<dt className="shrink-0 text-muted-foreground">{details.label(id)}</dt>
+						<dd className="font-semibold min-w-0">{guestValue(details, id)}</dd>
+					</div>
+				),
+			)}
 		</dl>
 	);
 }
@@ -145,7 +184,7 @@ function OpenSlot({ details, id }: { details: Details; id: "moveIn" | "budget" }
 	return (
 		<div className="gap-3 px-3 pt-2.5 pb-3 border-open flex items-center rounded-lg bg-canvas">
 			<div className="min-w-0 flex-1">
-				<dt className="text-2xs font-extrabold tracking-wider uppercase">{details.label(id)}</dt>
+				<dt className="text-key font-extrabold uppercase">{details.label(id)}</dt>
 				<dd className="mt-0.5 text-base font-bold text-muted-foreground">
 					<NotGiven notGiven={details.notGiven} />
 				</dd>
@@ -206,7 +245,7 @@ function StayCard({ details }: { details: Details }) {
 						</>
 					) : (
 						<div className="gap-2 px-3 py-1.5 border-open flex items-baseline rounded-lg bg-canvas">
-							<dt className="text-2xs font-extrabold tracking-wider uppercase">{label("area")}</dt>
+							<dt className="text-key font-extrabold uppercase">{label("area")}</dt>
 							<dd className="text-base font-bold text-muted-foreground">
 								<NotGiven notGiven={notGiven} />
 							</dd>
@@ -230,7 +269,7 @@ function StayCard({ details }: { details: Details }) {
 								paired && id === "stay" && "border-t-0 border-l",
 							)}
 						>
-							<dt className="text-2xs font-extrabold tracking-wider uppercase">{label(id)}</dt>
+							<dt className="text-key font-extrabold uppercase">{label(id)}</dt>
 							<dd
 								className={cn(
 									"mt-0.5 break-words",
@@ -263,16 +302,21 @@ const LINE_FIELDS = ["rentOrBuy", "beds", "moveIn", "stay"] as const;
  * the area in bold, then rent or buy, beds and move-in in Slate, cut short with an ellipsis
  * rather than wrapping, and the budget in its own frame at the end (a dashed slot until the
  * guest gives it). The Missing row under the line names every fact still to ask for, so the line
- * carries no other open slots.
+ * carries no other open slots. The whole line is one 44px target (#327) that opens the details
+ * sheet, where nothing is cut: a button laid over it, so the line stays terms of the one list.
  */
-function StayLine({ details }: { details: Details }) {
+function StayLine({ details, onOpen }: { details: Details; onOpen: () => void }) {
+	const t = useTranslations("inbox");
 	const { values, label, notGiven } = details;
 	const known = LINE_FIELDS.filter((id) => values[id] !== undefined);
 	return (
 		<dl className="gap-1.5 min-w-0 flex flex-col">
-			<div className="gap-2 h-11 pr-2 pl-2.5 text-note min-w-0 flex items-center rounded-lg border bg-card">
+			<div className="gap-2 h-11 pr-1.5 pl-2.5 text-note min-w-0 relative flex items-center rounded-lg bg-card">
 				<MapPinIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-				<div className="min-w-0 font-semibold flex-1 truncate text-muted-foreground">
+				<div
+					data-test="stay-line"
+					className="min-w-0 font-semibold flex-1 truncate text-muted-foreground"
+				>
 					{values.area !== undefined ? (
 						<>
 							<dt className="sr-only">{label("area")}</dt>
@@ -302,18 +346,41 @@ function StayLine({ details }: { details: Details }) {
 						</dd>
 					</div>
 				)}
+				<ChevronRightIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+				{/* Over the line, drawing its hairline: it turns ink on hover, as an outline button's does. */}
+				<button
+					type="button"
+					onClick={onOpen}
+					aria-label={t("details.showAll")}
+					className="inset-0 ease-out absolute cursor-pointer rounded-lg border transition-colors duration-200 hover:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden active:bg-foreground/5 motion-reduce:transition-none"
+				/>
 			</div>
 			<MissingRow details={details} className="px-0.5 text-xs" />
 		</dl>
 	);
 }
 
+/** Every stay and guest fact, whole: the rail's body, and the strip's sheet (#327). */
+function DetailsBody({ details }: { details: Details }) {
+	const t = useTranslations("inbox");
+	return (
+		<div className="flex flex-col">
+			<StayCard details={details} />
+			<hr className="mt-5.5 mb-4" />
+			<h3 className="mb-3 text-heading font-extrabold">{t("details.guest")}</h3>
+			<GuestFacts details={details} layout="rail" />
+		</div>
+	);
+}
+
 /**
  * The guest's details (#314): the stay card, then the guest's own facts. In the details rail
- * the stay is a card over a label/value list; in the narrow pane's strip under the header
- * (#248), a band with the stay along one line and the guest's facts after it. On a phone the
- * facts' line also takes the thread's metadata (`meta`: the CRM status, a manager's owner
- * select), which leave the header there (#94, #303). Nothing in it opens or closes.
+ * the stay is a card over a label/value list, and nothing in it opens or closes. In the narrow
+ * pane's strip under the header (#248), a band with the stay along one line and the guest's
+ * facts after it; on a phone the facts' line also takes the thread's metadata (`meta`: the CRM
+ * status, a manager's owner select), which leave the header there (#94, #303). The strip keeps
+ * the conversation its room (#327): the line, and the paperwork chip, open a sheet from the
+ * foot of the screen with every fact whole, as the rail has them.
  */
 export function ExtractFields({
 	conversation,
@@ -326,26 +393,30 @@ export function ExtractFields({
 }) {
 	const t = useTranslations("inbox");
 	const details = useDetails(conversation);
+	const [sheetOpen, setSheetOpen] = useState(false);
 	if (layout === "rail") {
-		return (
-			<div className="flex flex-col">
-				<StayCard details={details} />
-				<hr className="mt-5.5 mb-4" />
-				<h3 className="mb-3 text-base font-extrabold">{t("details.guest")}</h3>
-				<GuestFacts details={details} layout="rail" />
-			</div>
-		);
+		return <DetailsBody details={details} />;
 	}
+	const open = () => setSheetOpen(true);
 	return (
 		<div
 			data-test="thread-details"
 			className="gap-2 px-3 py-2.5 md:px-4 flex shrink-0 flex-col border-b bg-canvas"
 		>
-			<StayLine details={details} />
+			<StayLine details={details} onOpen={open} />
 			<div className="gap-x-4 gap-y-1.5 min-w-0 flex flex-wrap items-center">
-				<GuestFacts details={details} layout="strip" />
+				<GuestFacts details={details} layout="strip" onOpen={open} />
 				{meta}
 			</div>
+			<Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+				<SheetContent side="bottom">
+					{/* Clear of the sheet's close button, at its top right. */}
+					<div className="mb-4 pr-10">
+						<SheetTitle>{t("details.title")}</SheetTitle>
+					</div>
+					<DetailsBody details={details} />
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 }

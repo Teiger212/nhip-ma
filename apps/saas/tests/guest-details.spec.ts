@@ -47,9 +47,22 @@ const IN_ENGLISH = [
  * and 2).
  */
 const PANES = [
-	{ pane: "wide (the rail)", size: { width: 1563, height: 784 } },
-	{ pane: "narrow (the strip)", size: { width: 1366, height: 768 } },
+	{ pane: "wide (the rail)", size: { width: 1563, height: 784 }, strip: false },
+	{ pane: "narrow (the strip)", size: { width: 1366, height: 768 }, strip: true },
 ] as const;
+
+/** A phone, where the thread fills the screen and its details are the strip (Guest details 7). */
+const PHONE = { width: 390, height: 844 } as const;
+
+/**
+ * Guest details 7: a guest who gave the area, rent, beds, a move-in and a stay length, more than
+ * the phone's one stay line holds; the stay length is the fact at its cut end.
+ */
+const LONG_STAY = "I want to rent a 2 bedroom in Tay Ho from next Friday for 6 months.";
+const CUT_FACT = { term: "Stay", value: "6 months" } as const;
+
+/** The strip's stay line, and the control over it that opens every fact (the scenario's words). */
+const SHOW_ALL = "Show all guest details";
 
 /** The details settle within a poll of the thread opening; three production polls of margin. */
 const WITHIN_A_POLL = { timeout: 30_000 };
@@ -137,18 +150,32 @@ async function openThreadByLink(page: Page, threadId: string, text: string) {
 }
 
 /**
- * Nothing in the details opens or closes: no disclosure (`details` / `summary`), no button, and
- * nothing that says it is expanded or collapsed. The manager's owner control ("Assign to…", a
- * combobox in the rail's Owner section) is the one exception: it is not the guest's details.
+ * Nothing in the rail opens or closes, and in the strip only the stay line does (it opens the
+ * sheet, Guest details 7): no disclosure (`details` / `summary`), no other button, and nothing
+ * that says it is expanded or collapsed. The manager's owner control ("Assign to…", a combobox in
+ * the rail's Owner section) is the one exception: it is not the guest's details.
  */
-async function expectNothingOpens(check: typeof expect, page: Page, pane: string) {
+async function expectOnlyTheLineOpens(
+	check: typeof expect,
+	page: Page,
+	pane: string,
+	strip: boolean,
+) {
 	await check(
 		details(page).locator("details, summary"),
 		`no disclosure in the details (${pane})`,
 	).toHaveCount(0);
-	await check(details(page).getByRole("button"), `no button in the details (${pane})`).toHaveCount(
-		0,
-	);
+	if (strip) {
+		const buttons = details(page).getByRole("button");
+		await check(buttons, `one button in the strip (${pane})`).toHaveCount(1);
+		await check(buttons, `the strip's one button is its stay line (${pane})`).toHaveAccessibleName(
+			SHOW_ALL,
+		);
+	} else {
+		await check(details(page).getByRole("button"), `no button in the rail (${pane})`).toHaveCount(
+			0,
+		);
+	}
 	await check(
 		details(page).locator('[aria-expanded]:not([data-test="thread-owner-select"])'),
 		`nothing to expand or collapse in the details (${pane})`,
@@ -200,7 +227,7 @@ test.describe.configure({ timeout: 180_000 });
 
 // scenario: docs/e2e-scenarios.md Guest details 1
 test.describe("Guest details 1 — the details name what to ask for", () => {
-	test(`a guest who wrote "${ASKS_BUDGET_AND_MOVE_IN}": the details have a row "${MISSING_ROW.term}" reading "${MISSING_ROW.value}", in that order, in the Waiting tone, among the other rows, in the rail and in the strip; no "N missing" count, and nothing in the details opens or closes`, async ({
+	test(`a guest who wrote "${ASKS_BUDGET_AND_MOVE_IN}": the details have a row "${MISSING_ROW.term}" reading "${MISSING_ROW.value}", in that order, in the Waiting tone, among the other rows, in the rail and in the strip; no "N missing" count; nothing in the rail opens, and in the strip only the stay line does`, async ({
 		office,
 	}) => {
 		const { manager } = office;
@@ -215,11 +242,11 @@ test.describe("Guest details 1 — the details name what to ask for", () => {
 		await page.setViewportSize(PANES[0].size);
 		await openThreadByLink(page, threadId, ASKS_BUDGET_AND_MOVE_IN);
 
-		for (const { pane, size } of PANES) {
-			await test.step(`${pane}: "${MISSING_ROW.term}" reads "${MISSING_ROW.value}", no count, nothing to open`, async () => {
+		for (const { pane, size, strip } of PANES) {
+			await test.step(`${pane}: "${MISSING_ROW.term}" reads "${MISSING_ROW.value}", no count, ${strip ? "only the stay line opens" : "nothing to open"}`, async () => {
 				await page.setViewportSize(size);
 				await expectMissingRow(check, page, pane);
-				await expectNothingOpens(check, page, pane);
+				await expectOnlyTheLineOpens(check, page, pane, strip);
 			});
 		}
 	});
@@ -248,5 +275,41 @@ test.describe("Guest details 4 — an English office reads a Russian guest's det
 				useInnerText: true,
 			});
 		}
+	});
+});
+
+// scenario: docs/e2e-scenarios.md Guest details 7
+test.describe("Guest details 7 — on a phone, the stay line opens every fact", () => {
+	test(`a guest who wrote "${LONG_STAY}": on a phone the stay line is cut short; tapped, a sheet opens with every fact whole, "${CUT_FACT.term}" reading "${CUT_FACT.value}"`, async ({
+		office,
+	}) => {
+		const { manager } = office;
+		const { page } = manager;
+
+		const guest = office.newGuest();
+		await guest.write(LONG_STAY);
+		const threadId = await threadIdOf(manager.api, guest.id);
+
+		await page.setViewportSize(PHONE);
+		await openThreadByLink(page, threadId, LONG_STAY);
+
+		// The line holds more than a phone's width: it ends in an ellipsis rather than wrapping.
+		const line = details(page).getByTestId("stay-line");
+		await expect(line, "the stay line").toContainText("Tây Hồ", WITHIN_A_POLL);
+		await expect
+			.poll(() => line.evaluate((el) => el.scrollWidth > el.clientWidth), {
+				message: "the phone's stay line is cut short",
+			})
+			.toBe(true);
+
+		await test.step(`tapped, the line opens a sheet where "${CUT_FACT.term}" reads "${CUT_FACT.value}"`, async () => {
+			await details(page).getByRole("button", { name: SHOW_ALL, exact: true }).click();
+			const sheet = page.getByRole("dialog", { name: "Guest details" });
+			await expect(sheet, "the details sheet").toBeVisible();
+			const stay = sheet.getByRole("term").filter({ hasText: new RegExp(`^${CUT_FACT.term}$`) });
+			await expect(stay, `the sheet's "${CUT_FACT.term}"`).toBeVisible();
+			await expect(valueOf(stay)).toHaveText(CUT_FACT.value, { useInnerText: true });
+			await expect(details(page), "the strip itself stays one set of details").toHaveCount(1);
+		});
 	});
 });
