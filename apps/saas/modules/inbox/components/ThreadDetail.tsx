@@ -15,7 +15,12 @@ import {
 
 import { guestLabel } from "../lib/display-name";
 import { useInboxSideBySide } from "../lib/inbox-presence";
-import { replyEndpoint, useDisconnectedEndpoints, useOfficeLanguage } from "../lib/inbox-queries";
+import {
+	replyEndpoint,
+	useDisconnectedEndpoints,
+	useOfficeLanguage,
+	useOfficeRole,
+} from "../lib/inbox-queries";
 import { namedLanguage } from "../lib/language-name";
 import { suggestionLine } from "../lib/office-line";
 import { PIPE_NAMES } from "../lib/pipe-names";
@@ -200,6 +205,7 @@ export function ThreadDetail({
 	const hasCrm = Boolean(conversation.crm) || conversation.officeHasCrm;
 	const name = guestLabel(conversation).text;
 	const chip = useTurnChip(conversation);
+	const { role } = useOfficeRole();
 	const officeLanguage = useOfficeLanguage().data;
 	// No guest message waits and nothing about the last send needs a person: the reply box folds to
 	// one line (#94). An unknown delivery or a failed send keeps the whole box, with its status.
@@ -246,11 +252,12 @@ export function ThreadDetail({
 						{name}
 					</p>
 					<span className="gap-3 flex shrink-0 items-center">
+						{/* A manager's phone header also holds the actions menu: the pipe keeps its glyph. */}
 						<ThreadFlags
 							conversation={conversation}
-							parts={phone ? "turn" : "all"}
 							owner={false}
 							size={phone ? "md" : "lg"}
+							pipeIconOnly={phone && role === "manager"}
 						/>
 					</span>
 				</div>
@@ -282,9 +289,8 @@ export function ThreadDetail({
 					meta={
 						phone ? (
 							<>
-								<ThreadFlags conversation={conversation} parts="meta" owner={false} />
 								<CrmStatus conversation={conversation} />
-								{/* At the row's end while it fits beside the badges; a narrow phone wraps it. */}
+								{/* At the row's end while it fits beside the facts; a narrow phone wraps it. */}
 								<div className="w-40 ml-auto empty:hidden">
 									<OwnerControl
 										conversation={conversation}

@@ -314,7 +314,8 @@ to make room; below `md` a 44px target over the tags' line. Quiet threads fold u
 
 The 38px marker, the name in Thread Title, the pipe, the 30px plate; at the end, in a narrow
 card, the CRM status and the manager's Assign to; then the thread's actions menu. On a phone:
-back, marker, name and plate on one line.
+back, marker, name, pipe and plate on one line (a manager's pipe as its glyph alone, to leave
+room for the actions menu).
 
 ### Messages
 
@@ -342,8 +343,9 @@ no auto-grow, they scroll on overflow. The reply box is 80px (#312, PR #313).
 At the top of the rail, the booking summary of what the guest wants: a pin, the area as Stay
 Title, then rent or buy · beds in Slate semibold; then a field box (8px corners, hairline):
 MOVE-IN, then BUDGET (larger, bold), each a Field Key over its value. A fact the guest hasn't
-given is a **dashed open slot**: 1.5px dashed Mist on marble, its key, a dash (and "Not given
-yet" to a screen reader), and in the field box a dashed "?" disc. Under the box the **Missing
+given is a **dashed open slot** in the box's place, never inside its frame: 1.5px dashed Mist
+on marble, 8px corners, its key, a dash (and "Not given yet" to a screen reader) and a dashed
+"?" disc. Under the box the **Missing
 row** (#244) names what to ask for, in the auto-reply's order and words ("budget, move-in"),
 term and value in Slate, the Waiting plate's tone. Every fact is a term and its value in one
 list; the area's term is for screen readers, where the pin stands for it. Nothing in the
@@ -353,11 +355,12 @@ Below it, past a hairline, **Guest** (800): Language (its tag), Nationality, In 
 Paperwork, as a label/value list (`grid-cols-fields`); then **CRM** (the status; no section
 without a CRM) and **Owner** (a manager's Assign to; an agent's read-only name).
 
-The **strip** (a narrow card or a phone): a marble band under the header. On a phone its first
-row holds the pipe, the CRM status and a manager's owner select. Then the stay along one white
-box: pin, the area in bold, rent or buy, beds and move-in in Slate, the budget in a 4px
-hairline frame, open slots as small dashed chips, the Missing row last. Then the guest facts
-along a line.
+The **strip** (a narrow card or a phone): a marble band under the header. First the stay as
+one 44px white line: pin, the area in bold, rent or buy, beds and move-in in Slate, cut with an
+ellipsis rather than wrapping, and the budget in a 4px hairline frame at the end (a small dashed
+slot until it is given). The Missing row under it names every fact still to ask for. Then the
+guest facts along a line, which on a phone also holds the CRM status and a manager's owner
+select.
 
 ### Home (#314, approved by Eyal 2026-10-11, `home-navy-marble-plus.html`)
 
@@ -392,8 +395,8 @@ Blue for the value to read first, its soft strength (or Mist, for the day bars) 
 ### Navigation
 
 40px items (44px below `lg`), 8px corners, semibold ink with 18px icons. Active: paper with a
-hairline, bold. Hover: paper. Coming soon items (Paperwork, CRM) are disabled with a neutral
-"Coming soon" badge. The Inbox item's Your-turn count is bold ink at its end; collapsed, a navy
+hairline, bold. Hover: paper. No heading over the items. Coming soon items (Paperwork, CRM)
+are disabled, "Coming soon" in plain Slate at their end. The Inbox item's Your-turn count is bold ink at its end; collapsed, a navy
 corner count (`Badge status="ink" size="corner"`). The bell's unread count is Signal Blue.
 
 ### Inputs
@@ -408,6 +411,11 @@ room for its icon at 12px.
 Slate on Pebble; info Signal Blue on its tint; success, warning and error their colour on a 12%
 tint; `primary` solid Signal Blue (the bell); `ink` solid navy (the collapsed nav count, the
 phone top bar's count).
+
+The **CRM status** is not a badge: it reads as the pipe beside it does, a glyph (a person with a
+check, or with a cross while not in the CRM yet) and its words in Slate Note semibold, never
+filled. Where the CRM has a web app, "In CRM" is a link with a small external-link glyph and
+ink on hover.
 
 ## Do's and Don'ts
 

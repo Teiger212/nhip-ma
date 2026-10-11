@@ -12,12 +12,9 @@ import { isSupportedLanguage, languageName } from "../lib/language-name";
 import type { Conversation } from "../lib/types";
 import { FactTag } from "./ThreadParts";
 
-/** The stay's own facts: what the guest wants, as the booking summary reads it (#314). */
-const STAY_FIELDS = ["area", "rentOrBuy", "beds", "moveIn", "budget"] as const;
 /** The guest's own facts, under the stay. */
 const GUEST_FIELDS = ["language", "nationality", "inVietnamNow", "paperwork"] as const;
 
-type StayField = (typeof STAY_FIELDS)[number];
 type GuestField = (typeof GUEST_FIELDS)[number];
 
 /** The guest's details as the operator reads them: each known fact in words, and what to ask. */
@@ -143,12 +140,33 @@ function GuestFacts({ details, layout }: { details: Details; layout: "rail" | "s
 	);
 }
 
+/** A stay fact the guest hasn't given, in the field box's place: a dashed open slot with a "?". */
+function OpenSlot({ details, id }: { details: Details; id: "moveIn" | "budget" }) {
+	return (
+		<div className="gap-3 px-3 pt-2.5 pb-3 border-open flex items-center rounded-lg bg-canvas">
+			<div className="min-w-0 flex-1">
+				<dt className="text-2xs font-extrabold tracking-wider uppercase">{details.label(id)}</dt>
+				<dd className="mt-0.5 text-base font-bold text-muted-foreground">
+					<NotGiven notGiven={details.notGiven} />
+				</dd>
+			</div>
+			<span
+				aria-hidden="true"
+				className="size-7.5 text-sm font-extrabold border-open grid shrink-0 place-items-center rounded-full text-muted-foreground"
+			>
+				?
+			</span>
+		</div>
+	);
+}
+
 /**
  * The stay card (#314), at the top of the details rail, the way a booking summary opens on the
  * slot you picked: the area as its title, rent or buy and beds under it, then a field box with
- * the move-in and the budget. A fact the guest hasn't given is a dashed open slot, and the
- * Missing row under the box names what to ask for (#244). Its labels stay terms of one list, so
- * the area's is there for a screen reader where the pin stands for it.
+ * the move-in and the budget. A fact the guest hasn't given is a dashed open slot in the box's
+ * place, never inside its frame, and the Missing row under them names what to ask for (#244).
+ * Its labels stay terms of one list, so the area's is there for a screen reader where the pin
+ * stands for it.
  */
 function StayCard({ details }: { details: Details }) {
 	const { values, label, notGiven } = details;
@@ -170,6 +188,8 @@ function StayCard({ details }: { details: Details }) {
 			</div>
 		),
 	);
+	const given = (["moveIn", "budget"] as const).filter((id) => values[id] !== undefined);
+	const open = (["moveIn", "budget"] as const).filter((id) => values[id] === undefined);
 	return (
 		<dl className="flex flex-col">
 			<div className="gap-2.5 flex items-start">
@@ -195,10 +215,9 @@ function StayCard({ details }: { details: Details }) {
 					</div>
 				</div>
 			</div>
-			<div className="mt-4 flex flex-col overflow-hidden rounded-lg border">
-				{(["moveIn", "budget"] as const).map((id) => {
-					const value = values[id];
-					return value !== undefined ? (
+			{given.length > 0 ? (
+				<div className="mt-4 flex flex-col overflow-hidden rounded-lg border">
+					{given.map((id) => (
 						<div key={id} className="px-3 pt-2.5 pb-3 border-t first:border-t-0">
 							<dt className="text-2xs font-extrabold tracking-wider uppercase">{label(id)}</dt>
 							<dd
@@ -207,76 +226,73 @@ function StayCard({ details }: { details: Details }) {
 									id === "budget" ? "text-base font-bold" : "text-sm font-semibold",
 								)}
 							>
-								{value}
+								{values[id]}
 							</dd>
 						</div>
-					) : (
-						<div
-							key={id}
-							className="gap-3 px-3 pt-2.5 pb-3 border-open flex items-center bg-canvas first:rounded-t-lg last:rounded-b-lg"
-						>
-							<div className="min-w-0 flex-1">
-								<dt className="text-2xs font-extrabold tracking-wider uppercase">{label(id)}</dt>
-								<dd className="mt-0.5 text-base font-bold text-muted-foreground">
-									<NotGiven notGiven={notGiven} />
-								</dd>
-							</div>
-							<span
-								aria-hidden="true"
-								className="size-7.5 text-sm font-extrabold border-open grid shrink-0 place-items-center rounded-full text-muted-foreground"
-							>
-								?
-							</span>
-						</div>
-					);
-				})}
-			</div>
+					))}
+				</div>
+			) : null}
+			{open.length > 0 ? (
+				<div className={cn("gap-2 flex flex-col", given.length > 0 ? "mt-2" : "mt-4")}>
+					{open.map((id) => (
+						<OpenSlot key={id} details={details} id={id} />
+					))}
+				</div>
+			) : null}
 			<MissingRow details={details} className="mt-3 text-sm" />
 		</dl>
 	);
 }
 
+/** The stay facts the strip's line reads, after the area and before the budget's frame. */
+const LINE_FIELDS = ["rentOrBuy", "beds", "moveIn"] as const;
+
 /**
- * The narrow pane's stay (#248, #314): the same facts along one white box on the canvas band,
- * the area first in bold, then rent or buy, beds, move-in, and the budget in its own frame. A
- * fact not given is a small dashed slot; the Missing row closes the box.
+ * The narrow pane's stay (#248, #314), as the mockup's phone band: one white line on the canvas,
+ * the area in bold, then rent or buy, beds and move-in in Slate, cut short with an ellipsis
+ * rather than wrapping, and the budget in its own frame at the end (a dashed slot until the
+ * guest gives it). The Missing row under the line names every fact still to ask for, so the line
+ * carries no other open slots.
  */
 function StayLine({ details }: { details: Details }) {
 	const { values, label, notGiven } = details;
+	const known = LINE_FIELDS.filter((id) => values[id] !== undefined);
 	return (
-		<dl className="gap-x-2 gap-y-1.5 px-3 py-2 text-note min-w-0 flex flex-wrap items-center rounded-lg border bg-card">
-			<MapPinIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-			{STAY_FIELDS.map((id: StayField) => {
-				const value = values[id];
-				if (value === undefined) {
-					return (
-						<div
-							key={id}
-							className="gap-1 px-1.5 text-xs border-open inline-flex items-baseline rounded-md bg-canvas text-muted-foreground"
-						>
-							<dt>{label(id)}</dt>
-							<dd>
-								<NotGiven notGiven={notGiven} />
-							</dd>
-						</div>
-					);
-				}
-				return (
-					<div key={id} className="contents">
-						<dt className="sr-only">{label(id)}</dt>
-						<dd
-							className={cn(
-								id === "area" && "font-extrabold",
-								id === "budget" && "px-1.5 font-bold rounded-sm border",
-								id !== "area" && id !== "budget" && "font-semibold text-muted-foreground",
-							)}
-						>
-							{value}
+		<dl className="gap-1.5 min-w-0 flex flex-col">
+			<div className="gap-2 h-11 pr-2 pl-2.5 text-note min-w-0 flex items-center rounded-lg border bg-card">
+				<MapPinIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+				<div className="min-w-0 font-semibold flex-1 truncate text-muted-foreground">
+					{values.area !== undefined ? (
+						<>
+							<dt className="sr-only">{label("area")}</dt>
+							<dd className="font-extrabold inline text-foreground">{values.area}</dd>
+						</>
+					) : null}
+					{known.map((id, index) => (
+						<Fragment key={id}>
+							{index > 0 || values.area !== undefined ? <span aria-hidden="true"> · </span> : null}
+							<dt className="sr-only">{label(id)}</dt>
+							<dd className="inline">{values[id]}</dd>
+						</Fragment>
+					))}
+				</div>
+				{values.budget !== undefined ? (
+					<div className="contents">
+						<dt className="sr-only">{label("budget")}</dt>
+						<dd className="h-6.5 px-1.5 font-bold inline-flex shrink-0 items-center rounded-sm border">
+							{values.budget}
 						</dd>
 					</div>
-				);
-			})}
-			<MissingRow details={details} className="text-xs" />
+				) : (
+					<div className="gap-1 h-6.5 px-1.5 text-xs border-open inline-flex shrink-0 items-center rounded-sm bg-canvas text-muted-foreground">
+						<dt>{label("budget")}</dt>
+						<dd>
+							<NotGiven notGiven={notGiven} />
+						</dd>
+					</div>
+				)}
+			</div>
+			<MissingRow details={details} className="px-0.5 text-xs" />
 		</dl>
 	);
 }
@@ -284,9 +300,9 @@ function StayLine({ details }: { details: Details }) {
 /**
  * The guest's details (#314): the stay card, then the guest's own facts. In the details rail
  * the stay is a card over a label/value list; in the narrow pane's strip under the header
- * (#248), a band with the stay along one line and the facts after it. On a phone the strip
- * opens with the thread's metadata (`meta`: pipe, CRM status, a manager's owner select), which
- * leave the header there (#94, #303). Nothing in it opens or closes.
+ * (#248), a band with the stay along one line and the guest's facts after it. On a phone the
+ * facts' line also takes the thread's metadata (`meta`: the CRM status, a manager's owner
+ * select), which leave the header there (#94, #303). Nothing in it opens or closes.
  */
 export function ExtractFields({
 	conversation,
@@ -314,9 +330,11 @@ export function ExtractFields({
 			data-test="thread-details"
 			className="gap-2 px-3 py-2.5 md:px-4 flex shrink-0 flex-col border-b bg-canvas"
 		>
-			{meta ? <div className="gap-2 flex flex-wrap items-center">{meta}</div> : null}
 			<StayLine details={details} />
-			<GuestFacts details={details} layout="strip" />
+			<div className="gap-x-4 gap-y-1.5 min-w-0 flex flex-wrap items-center">
+				<GuestFacts details={details} layout="strip" />
+				{meta}
+			</div>
 		</div>
 	);
 }

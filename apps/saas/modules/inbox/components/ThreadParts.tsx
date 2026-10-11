@@ -161,7 +161,16 @@ export function TurnPlate({
 const PIPE_ICON = { whatsapp: MessageCircleIcon, zalo: MessageSquareIcon } as const;
 
 /** The pipe the guest wrote on, as a small glyph and its name in slate. */
-export function PipeLabel({ pipe, size = "sm" }: { pipe: Pipe; size?: "sm" | "md" }) {
+export function PipeLabel({
+	pipe,
+	size = "sm",
+	iconOnly = false,
+}: {
+	pipe: Pipe;
+	size?: "sm" | "md";
+	/** The glyph alone, its name for a screen reader: a phone header with no room for words. */
+	iconOnly?: boolean;
+}) {
 	const t = useTranslations("inbox");
 	const Icon = PIPE_ICON[pipe];
 	return (
@@ -172,7 +181,7 @@ export function PipeLabel({ pipe, size = "sm" }: { pipe: Pipe; size?: "sm" | "md
 			)}
 		>
 			<Icon aria-hidden="true" className={size === "md" ? "size-4" : "size-3.5"} />
-			{t(`pipes.${pipe}`)}
+			<span className={iconOnly ? "sr-only" : undefined}>{t(`pipes.${pipe}`)}</span>
 		</span>
 	);
 }
@@ -199,34 +208,33 @@ export function OwnerFlag({ conversation }: { conversation: Pick<ConversationSum
 
 /**
  * The pipe, who holds the thread (a manager's, ADR 0022) and the turn plate, on the thread
- * header and the details strip. `parts` splits the set for the phone's thread, whose header
- * keeps the turn and whose details strip takes the pipe (#94). An open thread shows no owner
- * flag: the owner select already says whose it is (#303).
+ * header. An open thread shows no owner flag: the owner select already says whose it is (#303).
  */
 export function ThreadFlags({
 	conversation,
-	parts = "all",
 	owner = true,
 	size = "md",
+	pipeIconOnly = false,
 }: {
 	conversation: Pick<
 		ConversationSummary,
 		"pipe" | "owner" | "unansweredInboundId" | "crm" | "lastGuestInboundAt"
 	>;
-	parts?: "all" | "meta" | "turn";
 	/** Whether the owner flag may show; something else on screen already says it (#303). */
 	owner?: boolean;
 	size?: "md" | "lg";
+	/** The pipe as its glyph alone (`PipeLabel`'s `iconOnly`), where the header has no room. */
+	pipeIconOnly?: boolean;
 }) {
 	return (
 		<>
-			{parts === "turn" ? null : (
-				<>
-					<PipeLabel pipe={conversation.pipe} size={size === "lg" ? "md" : "sm"} />
-					{owner ? <OwnerFlag conversation={conversation} /> : null}
-				</>
-			)}
-			{parts === "meta" ? null : <TurnPlate conversation={conversation} size={size} />}
+			<PipeLabel
+				pipe={conversation.pipe}
+				size={size === "lg" ? "md" : "sm"}
+				iconOnly={pipeIconOnly}
+			/>
+			{owner ? <OwnerFlag conversation={conversation} /> : null}
+			<TurnPlate conversation={conversation} size={size} />
 		</>
 	);
 }

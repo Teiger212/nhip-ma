@@ -16,7 +16,11 @@
 - **The guest details open on a stay card.** The area is the title, rent or buy and beds sit
   under it, then the move-in and the budget. A fact the guest hasn't given shows as a dashed
   open slot, and the Missing row still names what to ask for. The details rail is narrower
-  (300px), so it now shows at 1440 wide with the sidebar open.
+  (300px), so it now shows at 1440 wide with the sidebar open. On a phone or a narrow pane the
+  stay is one line under the header (area, rent or buy, beds, move-in, then the budget), and
+  the guest's facts and the CRM status share the line under it.
+- **The CRM status reads like the pipe:** a small glyph and "In CRM" or "Not in CRM yet" in
+  slate, no longer a badge.
 - **The view tabs are slots:** a small label over the full count, with the view you're on
   filled blue.
 - **Home takes the same look.** The funnel's figures are bold, Leads by day marks today in blue

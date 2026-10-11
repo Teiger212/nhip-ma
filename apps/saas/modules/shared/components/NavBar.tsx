@@ -7,12 +7,12 @@ import { isPlatformAdmin } from "@repo/auth/lib/roles";
 import { config as paymentsConfig } from "@repo/payments/config";
 import {
 	Badge,
+	cn,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
 	SidebarGroup,
 	SidebarGroupContent,
-	SidebarGroupLabel,
 	SidebarHeader,
 	SidebarMenu,
 	SidebarMenuButton,
@@ -197,15 +197,15 @@ function NavItemComingSoon({
 				<SidebarMenuButton variant="chip" disabled data-test={`nav-${item.id}`}>
 					<Icon />
 					<span className={FADING_LABEL}>{label}</span>
-					<span className={FADING_END}>
-						<Badge>{soon}</Badge>
+					<span className={cn(FADING_END, "text-xs font-medium text-muted-foreground")}>
+						{soon}
 					</span>
 				</SidebarMenuButton>
 			</TooltipTrigger>
 			<TooltipContent side="right" align="center">
 				<span className="gap-2 flex items-center">
 					{label}
-					<Badge>{soon}</Badge>
+					<span className="text-muted-foreground">{soon}</span>
 				</span>
 			</TooltipContent>
 		</Tooltip>
@@ -277,8 +277,7 @@ export function NavBar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					{/* The platform admin's one item is Admin: a "Workspace" heading over it names nothing. */}
-					{isAdmin ? null : <SidebarGroupLabel>{t("app.menu.groupWorkspace")}</SidebarGroupLabel>}
+					{/* No heading over the items (#314): the nav is named for a screen reader only. */}
 					<SidebarGroupContent>
 						<nav aria-label={t("app.menu.groupWorkspace")}>
 							<SidebarMenu>
