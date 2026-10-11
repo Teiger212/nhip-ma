@@ -2,7 +2,7 @@
 
 import { Badge, cn } from "@repo/ui";
 import { useHydrated } from "@shared/hooks/use-hydrated";
-import { LanguagesIcon, ZapIcon } from "lucide-react";
+import { ZapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useOfficeLanguage } from "../lib/inbox-queries";
@@ -12,6 +12,7 @@ import { formatInboxTimestamp } from "../lib/time";
 import type { GuestLanguage, Message } from "../lib/types";
 import { OfficeLine } from "./OfficeLine";
 import { useOperatorLanguage } from "./ThreadParts";
+import { TranslationLine } from "./TranslationLine";
 
 /** Who sent one of the office's messages, as a person reads it (the stored values are internal). */
 const SOURCE_KEYS = {
@@ -93,32 +94,17 @@ export function ThreadMessage({
 			>
 				<p className="text-base leading-relaxed whitespace-pre-wrap">{message.text}</p>
 				{translation ? (
-					<p className="mt-2.5 pt-2.5 gap-2 text-note leading-normal flex border-t whitespace-pre-wrap">
-						<LanguagesIcon
-							aria-hidden="true"
-							className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-						/>
-						<span>
-							<span className="sr-only">{t("translation")}: </span>
-							{translation}
-						</span>
-					</p>
+					<TranslationLine className="mt-2.5 pt-2.5 border-t">
+						<span className="sr-only">{t("translation")}: </span>
+						{translation}
+					</TranslationLine>
 				) : kept ? (
-					<p
-						data-test="kept-translation"
-						className="mt-2.5 pt-2.5 gap-2 text-note leading-normal flex border-t whitespace-pre-wrap"
-					>
-						<LanguagesIcon
-							aria-hidden="true"
-							className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-						/>
-						<span>
-							<span className="font-semibold block text-muted-foreground">
-								{t("translationIn", { language: t(`guestLanguage.${keptLanguage}`) })}
-							</span>
-							{kept}
+					<TranslationLine data-test="kept-translation" className="mt-2.5 pt-2.5 border-t">
+						<span className="font-semibold block text-muted-foreground">
+							{t("translationIn", { language: t(`guestLanguage.${keptLanguage}`) })}
 						</span>
-					</p>
+						{kept}
+					</TranslationLine>
 				) : untranslated ? (
 					<p className="mt-2.5 pt-2.5 text-note leading-normal border-t text-muted-foreground">
 						{t("noTranslation", { language: untranslated })}

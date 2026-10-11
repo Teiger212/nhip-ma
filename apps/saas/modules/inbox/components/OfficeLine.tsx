@@ -5,11 +5,14 @@ import { useTranslations } from "next-intl";
 
 import { useOfficeLanguage } from "../lib/inbox-queries";
 import type { OfficeLine as Line } from "../lib/office-line";
+import { TranslationLine } from "./TranslationLine";
 
 /**
  * An outgoing text's operator line (#242), muted: inside the office's bubble, or under the reply
- * box (#248, layout D). Its label says what it is: the template in the office language ("In
- * English"), or the model's translation ("Translation"). Rendered as text, never as markup.
+ * box (#248, layout D), drawn as the thread's translation lines are: the translate glyph, then the
+ * text (#314). The glyph's accessible name and title say what it is: the template in the office
+ * language ("In English"), or the model's translation ("Translation"). Rendered as text, never as
+ * markup.
  */
 export function OfficeLine({ line, className }: { line: Line; className?: string }) {
 	const t = useTranslations("inbox");
@@ -21,17 +24,13 @@ export function OfficeLine({ line, className }: { line: Line; className?: string
 				? t("translation")
 				: t("translationIn", { language: t(`guestLanguage.${line.language}`) });
 	return (
-		<p
+		<TranslationLine
 			data-test="office-line"
-			className={cn(
-				"text-note leading-normal whitespace-pre-wrap text-muted-foreground",
-				className,
-			)}
+			label={label}
+			labelTestId="office-line-label"
+			className={cn("text-muted-foreground", className)}
 		>
-			<span data-test="office-line-label" className="font-semibold block">
-				{label}
-			</span>
 			{line.text}
-		</p>
+		</TranslationLine>
 	);
 }

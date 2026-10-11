@@ -1197,11 +1197,12 @@ base64url P-256 public key, 65 bytes>, "auth": <base64url, 16 bytes> } }` → 20
 9. **An English-reading agent reads the Korean auto-reply and suggestion in English** (#242,
    ADR 0007 as amended). The office's language is English (the default). A guest writes in
    Korean, "안녕하세요, 떠이호에서 아파트를 임대하고 싶어요", and is greeted in Korean.
-   - Inside the auto-reply's bubble, under the Korean, a muted line labelled "In English" holds
-     the English auto-reply: it starts "Thanks for writing to us." and ends with the office's
+   - Inside the auto-reply's bubble, under the Korean, a muted line holds the English
+     auto-reply after the translate glyph, which is named "In English" (its accessible name and
+     title, not visible text, #314): it starts "Thanks for writing to us." and ends with the office's
      English label ("Auto-reply from Saigon Prime Test: …").
-   - Under the reply box, which holds the Korean template, a muted line labelled "In English"
-     holds the English template: "Hi, this is Saigon Prime Test. …".
+   - Under the reply box, which holds the Korean template, the same line, its glyph named "In
+     English", holds the English template: "Hi, this is Saigon Prime Test. …".
    - The manager types into the box: the line under it goes.
    - No model is asked for either line: they are the templates, rendered in the office language.
 

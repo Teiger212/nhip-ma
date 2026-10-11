@@ -439,7 +439,10 @@ test.describe("First greeting 5 — a manager turns the auto-reply off", () => {
 
 /* ---------------------------------------------------------------- the operator line (#242) */
 
-/** The line's label, in the scenario's own words: the office language, English by default. */
+/**
+ * The line's translate glyph is named for what it is, in the scenario's own words: the office
+ * language, English by default. The name is the glyph's, not visible text (#314).
+ */
 const IN_ENGLISH = "In English";
 
 /** The open thread's operator lines (#242): under a bubble's text, or under the reply box. */
@@ -449,7 +452,7 @@ function officeLines(page: Page) {
 
 // scenario: docs/e2e-scenarios.md First greeting 9
 test.describe("First greeting 9 — an English-reading agent reads the Korean auto-reply and suggestion in English", () => {
-	test("a Korean guest's auto-reply and the reply box each show \"In English\" with the English template under them, in an English office; typing takes the box's line away", async ({
+	test("a Korean guest's auto-reply and the reply box each show the translate glyph named \"In English\" with the English template beside it, in an English office; typing takes the box's line away", async ({
 		office,
 	}) => {
 		const { manager } = office;
@@ -468,14 +471,20 @@ test.describe("First greeting 9 — an English-reading agent reads the Korean au
 			.getByTestId("message")
 			.filter({ hasText: greeting.split("\n")[0] });
 		const greetingLine = bubble.getByTestId("office-line");
-		await expect(greetingLine.getByTestId("office-line-label")).toHaveText(IN_ENGLISH);
+		await expect(greetingLine.getByRole("img", { name: IN_ENGLISH })).toBeVisible();
+		await expect(greetingLine, "the label is the glyph's name, not text").not.toContainText(
+			IN_ENGLISH,
+		);
 		await expect(greetingLine, "the English auto-reply").toContainText("Thanks for writing to us.");
 		await expect(greetingLine, "its English label").toContainText(EN_LABEL);
 
 		// Under the reply box, holding the Korean template: the English template.
 		const replyLine = officeLines(page).filter({ hasText: `Hi, this is ${OFFICE_NAME}.` });
 		await expect(replyLine, "the English template under the box").toBeVisible(WITHIN_SECONDS);
-		await expect(replyLine.getByTestId("office-line-label")).toHaveText(IN_ENGLISH);
+		await expect(replyLine.getByRole("img", { name: IN_ENGLISH })).toBeVisible();
+		await expect(replyLine, "the label is the glyph's name, not text").not.toContainText(
+			IN_ENGLISH,
+		);
 		const box = openThread(page).getByRole("textbox", { name: saas.inbox.reply, exact: true });
 		await expect(box, "the box holds the Korean template").toHaveValue(HANGUL);
 

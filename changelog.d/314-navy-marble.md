@@ -20,6 +20,10 @@
   (300px), so it now shows at 1440 wide with the sidebar open. On a phone or a narrow pane the
   stay is one line under the header (area, rent or buy, beds, move-in, then the budget), and
   the guest's facts share the line under it (on a phone, with the CRM status).
+- **The English line under the reply box looks like a translation.** It and the line inside the
+  office's bubbles now read like a guest message's translation: the translate glyph, then the
+  text, with no "In English" or "Translation" label above it. The glyph still says which one it
+  is when you hover it.
 - **The CRM status reads like the pipe:** a small glyph and "In CRM" or "Not in CRM yet" in
   slate, no longer a badge.
 - **The view tabs are slots:** a small label over the full count, with the view you're on
