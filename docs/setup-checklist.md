@@ -208,16 +208,21 @@ go-live.
 ### WhatsApp (Meta's test number)
 
 No new SIM needed for staging: a Meta app with WhatsApp gets a test business number
-automatically, with no business verification.
+automatically, with no business verification or app review. Checked against Meta's pages on
+2026-10-12 ([report](../reports/whatsapp-verification-2026-10-12.md)).
 
-- [ ] Meta developer account and a Meta app with WhatsApp; in its API setup, add your own
-      WhatsApp as a "To" number.
+- [ ] Meta developer account; a Meta app with the use case "Connect with customers through
+      WhatsApp" and a business portfolio (it needn't be verified). In its API setup, add the
+      guest phone (a burner SIM keeps your own WhatsApp out of it) as a "To" number.
+- [ ] A **System User token** with WhatsApp permissions (Business settings → System users):
+      the dashboard's temporary token expires within hours.
 - [ ] Vercel, staging, Sensitive, all three together: `WHATSAPP_APP_SECRET`,
-      `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` (the test number's); plus
-      `WHATSAPP_VERIFY_TOKEN`.
-- [ ] Meta webhook: `https://nhip-staging.vercel.app/webhooks/whatsapp`.
-- [ ] Verify: a message from your WhatsApp to the test number appears in the inbox, and,
-      after `SEND_MODE=live`, an approved reply arrives on your phone.
+      `WHATSAPP_ACCESS_TOKEN` (the System User token), `WHATSAPP_PHONE_NUMBER_ID` (the test
+      number's); plus `WHATSAPP_VERIFY_TOKEN`.
+- [ ] Meta webhook: `https://nhip-staging.vercel.app/webhooks/whatsapp`, field `messages`
+      subscribed. Some webhooks aren't sent while the app is in Development mode.
+- [ ] Verify: a message from the guest phone to the test number appears in the inbox, and,
+      after `SEND_MODE=live`, an approved reply arrives on the guest phone.
 
 ### Accounts and access
 
@@ -249,6 +254,25 @@ automatically, with no business verification.
 - [ ] **Each agency's Zalo OA**, before it connects: verified under its own licence, with
       "Tăng trưởng" bought by the agency (a plan can't be transferred), and its admin on a +84
       number (see "Zalo" above). A project-specific OA name takes the prefix "Dự án".
+- [ ] **Meta Tech Provider**, so each office connects its own WhatsApp number on Meta's
+      screen (Embedded Signup; ADR 0017). Start early; it needs a registered legal entity.
+  - Nhịp's business portfolio passes Meta business verification (up to 14 business days).
+  - App Review for advanced access to `whatsapp_business_messaging` and
+    `whatsapp_business_management` (about a day), with a privacy policy URL and screencasts.
+  - Access verification (about 5 days). By default at most 10 new agencies per 7 days, 200
+    after all three; a real agency probably can't connect before all three are done
+    (unconfirmed).
+  - Then build the connect flow on Embedded Signup v4 (v2 and v3 are deprecated 2026-10-15).
+- [ ] **Each agency's WhatsApp**, before it connects:
+  - a business portfolio of its own;
+  - a payment method, which Meta requires before it can message at all (unless Nhịp joins
+    a Solution Partner's credit line); service replies past 1,000 a month per number have
+    also been charged since 2026-10-01;
+  - a display name with a clear relationship to its legal name;
+  - a number that receives an SMS or call.
+  - A number now on the WhatsApp app must be deleted from it first, unless it joins by
+    Coexistence (Business app 2.24.17+). With Coexistence, replies typed on the phone skip
+    Nhịp's approval.
 - [ ] **Production's app role** (#98): the staging steps under "The app's database role", on
       branch `production` and with a new password, before the first release. Run
       `app-role.sql` again after the first release has migrated the empty branch: that run
