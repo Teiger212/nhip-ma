@@ -56,18 +56,51 @@ paste the password in chat or a file.
 
 ### Zalo (ADR 0017)
 
-- [ ] **Test OA** at oa.zalo.me, your Zalo account as admin (e.g. "Nhịp Staging Test").
-- [ ] **Zalo app** at developers.zalo.me, linked to that OA. In its Official Account settings:
+Zalo's docs offer no sandbox for OA chat: a real round trip needs a real OA that meets all three
+requirements below, whether it is the staging test OA or an agency's own. Checked against
+Zalo's pages on 2026-10-12 ([report](../reports/zalo-verification-2026-10-12.md)).
+
+- **Admin:** a personal Zalo account on a verified +84 number.
+- **Verified OA:** a Vietnamese business registration (company or household business).
+  Submit the paperwork within 14 days of creating the OA; review usually takes 2–3 working
+  days. The legal representative confirms within 48 hours, by a request sent to the Zalo
+  number on the form (a company may use Zalo's verification-letter template, CVXT, instead;
+  a household business may not). The no-licence "ads profile" cannot message.
+- **Plan "Tăng trưởng" (Growth)**, bought through a ZBS account: 1,400,000đ for 6 months or
+  2,500,000đ a year. Basic and Standard have no Open API (per the FAQ; the pricing table's
+  "authorised apps" row disagrees, ask oa@zalo.me if it matters). When the plan lapses, the
+  OA drops to Basic, so Nhịp's connection stops. Plans are not refundable or transferable.
+
+**The staging test OA, on a friend's business** (fallback: the first agency opens an internal
+test OA under its company licence):
+
+- [ ] **She agrees** the OA appears publicly under her business's name as a test channel.
+- [ ] **Her licence fits:** a household-business licence verifies only one OA, so if her shop
+      already has one, use the fallback. The name, when verifying by business name: her
+      company or shop name with a prefix or suffix such as "Công ty …" or "Cửa hàng …".
+- [ ] **New SIM in her name**, with a new verified Zalo account on it: the test account. Her
+      personal Zalo never becomes an admin.
+- [ ] **The test account creates the OA** at oa.zalo.me and submits verification with her
+      licence, entering the new number as the legal representative's Zalo number, so the
+      confirmation lands on the test account. Confirm within 48 hours. Unconfirmed: Zalo
+      may expect the representative's usual Zalo; if it refuses, she confirms once from hers.
+- [ ] **The test account buys "Tăng trưởng"** through its own ZBS account (you reimburse her).
+      Renew it before it lapses.
+- [ ] **Zalo app** at developers.zalo.me (your own Zalo account), linked to that OA. Verify
+      the domain `nhip-staging.vercel.app` in the app (Zalo's services accept only verified
+      domains). Then, in its Official Account settings:
   - Callback URL: `https://nhip-staging.vercel.app/api/pipes/zalo/callback`
   - Webhook URL: `https://nhip-staging.vercel.app/webhooks/zalo`, event "user sends text" on
     (the webhook check may only pass once the app is deployed with the values below).
 - [ ] **Vercel, staging, Sensitive, all three together:** `ZALO_APP_ID`, `ZALO_APP_SECRET`,
       `ZALO_OA_SECRET_KEY` (the OA secret key that signs webhooks).
 - [ ] **Tell Claude**, who then sets `PIPE_SECRETS_KEY` (generated, never shown) and redeploys.
-- [ ] **Connect:** Admin → Offices → Test Office → Connections → Connect Zalo OA;
-      approve on Zalo's screen. Verify: the OA shows "Connected".
+- [ ] **Connect:** Admin → Offices → Test Office → Connections → Connect Zalo OA; the test
+      account approves on Zalo's screen. Verify: the OA shows "Connected".
 - [ ] **Guest account:** a second Zalo account follows the OA and writes to it. Verify: the
-      message appears in Test Office's inbox, translated.
+      message appears in Test Office's inbox, translated. The signature check has only been
+      tested against Zalo's docs, so if the message is rejected, tell Claude: the header's exact
+      form and which key signs it are unconfirmed.
 - [ ] **Live sends:** tell Claude to set `SEND_MODE=live` on staging. Verify: a reply approved
       in the inbox arrives on the guest's phone.
 
@@ -172,12 +205,24 @@ go-live.
 - [ ] **Verify:** an error shows up in PostHog → Error tracking, with no phone numbers,
       emails, message text or query strings in it.
 
-### WhatsApp (parked until the new SIM)
+### WhatsApp (Meta's test number)
 
-- [ ] New SIM and number; Meta business account and a Meta app with WhatsApp.
+No new SIM needed for staging: a Meta app with WhatsApp gets a test business number
+automatically, with no business verification or app review. Checked against Meta's pages on
+2026-10-12 ([report](../reports/whatsapp-verification-2026-10-12.md)).
+
+- [ ] Meta developer account; a Meta app with the use case "Connect with customers through
+      WhatsApp" and a business portfolio (it needn't be verified). In its API setup, add the
+      guest phone (a burner SIM keeps your own WhatsApp out of it) as a "To" number.
+- [ ] A **System User token** with WhatsApp permissions (Business settings → System users):
+      the dashboard's temporary token expires within hours.
 - [ ] Vercel, staging, Sensitive, all three together: `WHATSAPP_APP_SECRET`,
-      `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`; plus `WHATSAPP_VERIFY_TOKEN`.
-- [ ] Meta webhook: `https://nhip-staging.vercel.app/webhooks/whatsapp`.
+      `WHATSAPP_ACCESS_TOKEN` (the System User token), `WHATSAPP_PHONE_NUMBER_ID` (the test
+      number's); plus `WHATSAPP_VERIFY_TOKEN`.
+- [ ] Meta webhook: `https://nhip-staging.vercel.app/webhooks/whatsapp`, field `messages`
+      subscribed. Some webhooks aren't sent while the app is in Development mode.
+- [ ] Verify: a message from the guest phone to the test number appears in the inbox, and,
+      after `SEND_MODE=live`, an approved reply arrives on the guest phone.
 
 ### Accounts and access
 
@@ -206,6 +251,28 @@ go-live.
       `SUPPORTED_GUEST_LANGUAGES` only to reply in more than EN and VI (#306). Never set
       `MOCK_CRM_WEBHOOK_SECRET`, `MODEL_STUB` or `AUTH_TRUSTED_ORIGINS` in production, nor a
       `DRAFT_BASE_URL` other than OpenRouter: startup refuses each.
+- [ ] **Each agency's Zalo OA**, before it connects: verified under its own licence, with
+      "Tăng trưởng" bought by the agency (a plan can't be transferred), and its admin on a +84
+      number (see "Zalo" above). A project-specific OA name takes the prefix "Dự án".
+- [ ] **Meta Tech Provider**, so each office connects its own WhatsApp number on Meta's
+      screen (Embedded Signup; ADR 0017). Start early; it needs a registered legal entity.
+  - Nhịp's business portfolio passes Meta business verification (up to 14 business days).
+  - App Review for advanced access to `whatsapp_business_messaging` and
+    `whatsapp_business_management` (about a day), with a privacy policy URL and screencasts.
+  - Access verification (about 5 days). By default at most 10 new agencies per 7 days, 200
+    after all three; a real agency probably can't connect before all three are done
+    (unconfirmed).
+  - Then build the connect flow on Embedded Signup v4 (v2 and v3 are deprecated 2026-10-15).
+- [ ] **Each agency's WhatsApp**, before it connects:
+  - a business portfolio of its own;
+  - a payment method, which Meta requires before it can message at all (unless Nhịp joins
+    a Solution Partner's credit line); service replies past 1,000 a month per number have
+    also been charged since 2026-10-01;
+  - a display name with a clear relationship to its legal name;
+  - a number that receives an SMS or call.
+  - A number now on the WhatsApp app must be deleted from it first, unless it joins by
+    Coexistence (Business app 2.24.17+). With Coexistence, replies typed on the phone skip
+    Nhịp's approval.
 - [ ] **Production's app role** (#98): the staging steps under "The app's database role", on
       branch `production` and with a new password, before the first release. Run
       `app-role.sql` again after the first release has migrated the empty branch: that run
