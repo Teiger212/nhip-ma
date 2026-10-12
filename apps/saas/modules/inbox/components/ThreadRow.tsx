@@ -2,8 +2,9 @@
 
 import { cn } from "@repo/ui";
 import { useHydrated } from "@shared/hooks/use-hydrated";
-import { useLocale } from "next-intl";
-import { memo, type ReactNode, useCallback } from "react";
+import { CheckIcon } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { memo, type ReactNode } from "react";
 
 import { guestLabel } from "../lib/display-name";
 import { formatInboxTimestamp } from "../lib/time";
@@ -26,21 +27,22 @@ import {
  * end, beside the row's button rather than in it: a click on it never opens the thread.
  * A row whose props are unchanged isn't rendered again (`memo`), so a send re-renders only the
  * rows it changed (#330): its callbacks take the thread's id and stay the same between renders.
+ * The answered row held through the handoff says ✓ Sent over itself for a beat (#337).
  */
 export const ThreadRow = memo(function ThreadRow({
 	conversation,
 	active,
+	sent = false,
 	onOpen,
-	registerRow,
 	action,
 	ownerBadge = true,
 	viewSays = null,
 }: {
 	conversation: ConversationSummary;
 	active: boolean;
+	/** The send is confirmed and the handoff holds the row: it says ✓ Sent (#337). */
+	sent?: boolean;
 	onOpen: (id: string) => void;
-	/** Hands the list the row's element, for the handoff's glide (#330). */
-	registerRow?: (id: string, node: HTMLLIElement | null) => void;
 	action?: ReactNode;
 	/** False where the view already says who holds every row (a manager's Unassigned, #303). */
 	ownerBadge?: boolean;
@@ -48,16 +50,13 @@ export const ThreadRow = memo(function ThreadRow({
 	viewSays?: TurnChip | null;
 }) {
 	const locale = useLocale();
+	const t = useTranslations("inbox");
 	const hydrated = useHydrated();
 	const chip = useTurnChip(conversation);
 	const preview = conversation.lastInboundText;
 	const name = guestLabel(conversation).text;
 	const when = conversation.lastGuestInboundAt;
 	const id = conversation.id;
-	const rowRef = useCallback(
-		(node: HTMLLIElement | null) => registerRow?.(id, node),
-		[registerRow, id],
-	);
 	// From `md` an action shows only on the row's hover, on focus within it, on the selected row
 	// and while its menu is open; it sits at the end of the name's line, so that line makes room
 	// for it and the plate moves left, never under the pill (#208). Where nothing hovers (below
@@ -75,7 +74,6 @@ export const ThreadRow = memo(function ThreadRow({
 		// The row stays lit while the pointer is on its action, which sits over it. A hairline
 		// parts it from the row above, except where the selected row's own edge does.
 		<li
-			ref={rowRef}
 			data-test="thread-row"
 			data-active={active || undefined}
 			className="group/row px-1.5 before:inset-x-4 before:top-0 relative before:absolute before:h-px before:bg-border first:before:hidden data-active:before:hidden"
@@ -145,6 +143,17 @@ export const ThreadRow = memo(function ThreadRow({
 				>
 					{action}
 				</div>
+			) : null}
+			{sent ? (
+				<span
+					data-test="thread-row-sent"
+					className="inset-y-0 inset-x-1.5 animate-row-sent absolute overflow-hidden rounded-xl bg-card"
+				>
+					<span className="gap-1.5 pl-3.5 text-sm font-bold flex size-full items-center rounded-xl border border-success/30 bg-success/10 text-success">
+						<CheckIcon aria-hidden="true" className="size-4" />
+						{t("rowSent")}
+					</span>
+				</span>
 			) : null}
 		</li>
 	);

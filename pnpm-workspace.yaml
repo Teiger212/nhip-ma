@@ -9,6 +9,16 @@ overrides:
   # One pg: @prisma/adapter-pg uses the app's pool only if it is an instance of its own pg (#98).
   "@prisma/adapter-pg>pg": "catalog:"
 
+packageExtensions:
+  # input-otp's types import React's without declaring @types/react; with one @types/react left
+  # (React 19.3, #337) pnpm no longer hoists a stray copy where they could find it.
+  input-otp:
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+
 allowBuilds:
   "@parcel/watcher": true
   "@prisma/client": true
@@ -53,8 +63,8 @@ catalog:
   "@types/node": 26.2.0
   "@types/nodemailer": ^8.0.1
   "@types/nprogress": ^0.2.3
-  "@types/react": 19.2.18
-  "@types/react-dom": 19.2.4
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
   "@vitest/coverage-v8": ^4.1.10
   ai: ^7.0.66
   autoprefixer: 10.5.2
@@ -88,8 +98,8 @@ catalog:
   prettier: 3.9.3
   prisma: 7.9.1
   prisma-zod-generator: 3.3.0
-  react: 19.2.8
-  react-dom: 19.2.8
+  react: 19.3.0
+  react-dom: 19.3.0
   react-dropzone: ^20.1.0
   react-hook-form: ^7.85.0
   react-qr-code: ^2.2.0

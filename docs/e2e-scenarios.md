@@ -749,6 +749,17 @@ and the send button `approve-and-send`. The sidebar is collapsed and expanded wi
    as `Last reply sent to <the guest's Zalo id> at …`. The window then narrows to 390×844 in the same
    page: the `article` shows "View sent", and pressing it shows the Sent tab pressed. Every run
    is in reduced motion (playwright.config.ts). The Vietnamese words and Home are not tested.)
+8. **A sent reply says ✓ Sent on its row, then the thread below it opens** (#337, #335; approved by
+   Eyal on 2026-10-11, variant B4). An agent's Your turn holds three guests, oldest first. The agent
+   opens the middle one and approves the reply. Its row says "Sent" for a beat, then leaves the list,
+   and the thread that was below it opens: not the first in the list. The motion (the list closing
+   up) is never asserted.
+   Spec: `apps/saas/tests/answered-thread.spec.ts` (Thread layout 8; the office and the agent as in
+   7, with three guests who write one after the other and are each given to the agent. The middle
+   row is opened by its guest's Zalo id; after the approve, the row's `data-test="thread-row-sent"`
+   reads "Sent", then the middle guest's row is gone, the third guest's row is the current one
+   (`aria-current`) and the open thread shows the third guest's message. The Vietnamese word "Đã
+   gửi" is not tested.)
 
 ## Guest details (#244)
 

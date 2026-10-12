@@ -1074,6 +1074,7 @@
 		"lastSentTo": "Tin trả lời gần nhất: gửi cho <guest>{name}</guest> lúc {time}",
 		"allAssigned": "Mọi khách đã được giao.",
 		"viewSent": "Xem đã gửi",
+		"rowSent": "Đã gửi",
 		"sentTo": "Đã gửi cho {name}",
 		"nextUp": "Tiếp theo: {name}, đã chờ {duration}",
 		"sendFailed": "Gửi không thành công. Tin trả lời của bạn vẫn còn đây.",

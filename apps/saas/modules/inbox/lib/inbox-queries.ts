@@ -7,6 +7,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { noteOwnAction } from "./inbox-presence";
 import {
@@ -94,22 +95,40 @@ export function useConversation(id: string | null) {
 	const queryClient = useQueryClient();
 	return useQuery({
 		queryKey: detailQueryKey(id ?? ""),
-		queryFn: async () => {
-			const { officeLanguage, ...conversation } = await api<
-				Conversation & { officeLanguage: OperatorLanguage }
-			>(`/api/conversations/${encodeURIComponent(id ?? "")}`);
-			// Each poll of the open thread keeps the office language fresh for its translations,
-			// so a manager's change shows within a poll.
-			queryClient.setQueryData(officeLanguageQueryKey, officeLanguage);
-			putSummary(queryClient, conversation);
-			return conversation;
-		},
+		queryFn: () => fetchConversation(queryClient, id ?? ""),
 		enabled: id !== null,
 		refetchInterval: POLL_INTERVAL_MS,
 		// A thread this operator can no longer open stays gone; asking again will not help.
 		retry: (failures, error) =>
 			!(error instanceof InboxApiError && error.code === "not_found") && failures < 3,
 	});
+}
+
+async function fetchConversation(queryClient: QueryClient, id: string): Promise<Conversation> {
+	const { officeLanguage, ...conversation } = await api<
+		Conversation & { officeLanguage: OperatorLanguage }
+	>(`/api/conversations/${encodeURIComponent(id)}`);
+	// Each poll of the open thread keeps the office language fresh for its translations,
+	// so a manager's change shows within a poll.
+	queryClient.setQueryData(officeLanguageQueryKey, officeLanguage);
+	putSummary(queryClient, conversation);
+	return conversation;
+}
+
+/**
+ * Fetch a thread ahead of opening it, so after a send the card shows the next guest whole
+ * rather than a skeleton (#337). A thread already cached is left alone.
+ */
+export function usePrefetchConversation() {
+	const queryClient = useQueryClient();
+	return useCallback(
+		(id: string) =>
+			void queryClient.prefetchQuery({
+				queryKey: detailQueryKey(id),
+				queryFn: () => fetchConversation(queryClient, id),
+			}),
+		[queryClient],
+	);
 }
 
 /**
